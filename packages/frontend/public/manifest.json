@@ -1,0 +1,16 @@
+{
+  "name": "ScrubaDub",
+  "short_name": "ScrubaDub",
+  "description": "Cleaning Operations Platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#059669",
+  "icons": [
+    {
+      "src": "/scrubadub.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

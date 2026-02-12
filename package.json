@@ -1,0 +1,18 @@
+{
+  "name": "scrubadub",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npx convex dev\" \"npm run dev -w packages/frontend\"",
+    "dev:frontend": "npm run dev -w packages/frontend",
+    "dev:convex": "npx convex dev"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "convex": "^1.31.7"
+  }
+}
