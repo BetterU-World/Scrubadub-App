@@ -19,11 +19,8 @@ interface AuthUser {
 function getStoredUserId(): Id<"users"> | null {
   try {
     const stored = localStorage.getItem(AUTH_KEY);
-    const parsed = stored ? (JSON.parse(stored) as Id<"users">) : null;
-    console.log("[AUTH DEBUG] getStoredUserId: raw localStorage =", JSON.stringify(stored), "=> parsed =", parsed);
-    return parsed;
-  } catch (e) {
-    console.log("[AUTH DEBUG] getStoredUserId: parse error", e);
+    return stored ? (JSON.parse(stored) as Id<"users">) : null;
+  } catch {
     return null;
   }
 }
@@ -34,17 +31,19 @@ export function useAuth() {
 
   const signUpAction = useAction(api.authActions.signUp);
   const signInAction = useAction(api.authActions.signIn);
-  const queryArg = { userId: userId ?? undefined };
-  console.log("[AUTH DEBUG] useAuth render: userId state =", userId, "| queryArg =", JSON.stringify(queryArg));
-  const user = useQuery(api.auth.getCurrentUser, queryArg);
-  console.log("[AUTH DEBUG] useQuery(getCurrentUser) returned:", user, "| typeof:", typeof user);
+  const user = useQuery(
+    api.auth.getCurrentUser,
+    userId ? { userId } : "skip",
+  );
 
   useEffect(() => {
-    console.log("[AUTH DEBUG] useEffect: user =", user, "| userId =", userId, "| isLoading =", isLoading);
+    if (!userId) {
+      setIsLoading(false);
+      return;
+    }
     if (user !== undefined) {
       setIsLoading(false);
-      if (user === null && userId) {
-        console.log("[AUTH DEBUG] CLEARING AUTH: getCurrentUser returned null for userId =", userId);
+      if (user === null) {
         localStorage.removeItem(AUTH_KEY);
         setUserId(null);
       }
@@ -60,6 +59,7 @@ export function useAuth() {
     }) => {
       const result = await signUpAction(args);
       localStorage.setItem(AUTH_KEY, JSON.stringify(result.userId));
+      setIsLoading(true);
       setUserId(result.userId);
       return result;
     },
@@ -69,10 +69,8 @@ export function useAuth() {
   const signIn = useCallback(
     async (args: { email: string; password: string }) => {
       const result = await signInAction(args);
-      console.log("[AUTH DEBUG] signIn result:", JSON.stringify(result));
-      const serialized = JSON.stringify(result.userId);
-      localStorage.setItem(AUTH_KEY, serialized);
-      console.log("[AUTH DEBUG] signIn: wrote localStorage", AUTH_KEY, "=", serialized, "| readback =", localStorage.getItem(AUTH_KEY));
+      localStorage.setItem(AUTH_KEY, JSON.stringify(result.userId));
+      setIsLoading(true);
       setUserId(result.userId as Id<"users">);
       return result;
     },
