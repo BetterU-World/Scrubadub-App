@@ -8,6 +8,8 @@
 
 import type { ApiFromModules } from "convex/server";
 import type * as auth from "../auth.js";
+import type * as authActions from "../authActions.js";
+import type * as employeeActions from "../employeeActions.js";
 import type * as mutations_employees from "../mutations/employees.js";
 import type * as mutations_forms from "../mutations/forms.js";
 import type * as mutations_jobs from "../mutations/jobs.js";
@@ -21,12 +23,15 @@ import type * as queries_employees from "../queries/employees.js";
 import type * as queries_forms from "../queries/forms.js";
 import type * as queries_jobs from "../queries/jobs.js";
 import type * as queries_notifications from "../queries/notifications.js";
+import type * as queries_performance from "../queries/performance.js";
 import type * as queries_properties from "../queries/properties.js";
 import type * as queries_redFlags from "../queries/redFlags.js";
 import type * as queries_storage from "../queries/storage.js";
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  authActions: typeof authActions;
+  employeeActions: typeof employeeActions;
   "mutations/employees": typeof mutations_employees;
   "mutations/forms": typeof mutations_forms;
   "mutations/jobs": typeof mutations_jobs;
@@ -40,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   "queries/forms": typeof queries_forms;
   "queries/jobs": typeof queries_jobs;
   "queries/notifications": typeof queries_notifications;
+  "queries/performance": typeof queries_performance;
   "queries/properties": typeof queries_properties;
   "queries/redFlags": typeof queries_redFlags;
   "queries/storage": typeof queries_storage;

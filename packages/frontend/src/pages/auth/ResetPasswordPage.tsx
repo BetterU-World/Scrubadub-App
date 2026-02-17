@@ -1,5 +1,5 @@
 import { useState, FormEvent } from "react";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Link, useLocation, useParams } from "wouter";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
@@ -13,7 +13,7 @@ export function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const resetPassword = useMutation(api.auth.resetPassword);
+  const resetPassword = useAction(api.authActions.resetPassword);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

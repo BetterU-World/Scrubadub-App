@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -14,9 +14,9 @@ export function EmployeeListPage() {
   const { user } = useAuth();
   const employees = useQuery(
     api.queries.employees.list,
-    user?.companyId ? { companyId: user.companyId } : "skip"
+    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
   );
-  const inviteCleaner = useMutation(api.mutations.employees.inviteCleaner);
+  const inviteCleaner = useAction(api.employeeActions.inviteCleaner);
   const updateStatus = useMutation(api.mutations.employees.updateEmployeeStatus);
 
   const [showInvite, setShowInvite] = useState(false);
@@ -38,6 +38,7 @@ export function EmployeeListPage() {
         companyId: user.companyId,
         email: inviteEmail,
         name: inviteName,
+        userId: user._id,
       });
       setInviteLink(`${window.location.origin}/invite/${result.token}`);
     } catch (err: any) {
@@ -105,8 +106,9 @@ export function EmployeeListPage() {
                     {emp.role !== "owner" && emp.status !== "pending" && (
                       <button
                         onClick={() => updateStatus({
-                          userId: emp._id,
+                          employeeId: emp._id,
                           status: emp.status === "active" ? "inactive" : "active",
+                          userId: user._id,
                         })}
                         className="text-sm text-primary-600 hover:text-primary-700 font-medium"
                       >

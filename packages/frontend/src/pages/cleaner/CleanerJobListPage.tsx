@@ -20,11 +20,11 @@ export function CleanerJobListPage() {
   const { user } = useAuth();
   const jobs = useQuery(
     api.queries.jobs.getForCleaner,
-    user ? { cleanerId: user._id, companyId: user.companyId } : "skip"
+    user ? { cleanerId: user._id, companyId: user.companyId, userId: user._id } : "skip"
   );
   const stats = useQuery(
     api.queries.performance.getCleanerStats,
-    user ? { cleanerId: user._id, companyId: user.companyId } : "skip"
+    user ? { cleanerId: user._id, companyId: user.companyId, userId: user._id } : "skip"
   );
 
   if (!user || jobs === undefined) return <PageLoader />;

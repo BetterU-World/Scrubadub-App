@@ -1,5 +1,5 @@
 import { useState, FormEvent } from "react";
-import { useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Link } from "wouter";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
@@ -11,7 +11,7 @@ export function ForgotPasswordPage() {
   const [submitted, setSubmitted] = useState(false);
   const [resetLink, setResetLink] = useState("");
 
-  const requestReset = useMutation(api.auth.requestPasswordReset);
+  const requestReset = useAction(api.authActions.requestPasswordReset);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

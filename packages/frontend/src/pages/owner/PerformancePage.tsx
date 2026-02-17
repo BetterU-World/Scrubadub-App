@@ -58,7 +58,7 @@ export function PerformancePage() {
   const { user } = useAuth();
   const leaderboard = useQuery(
     api.queries.performance.getLeaderboard,
-    user?.companyId ? { companyId: user.companyId } : "skip"
+    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
   );
 
   const [sortKey, setSortKey] = useState<SortKey>("averageScore");

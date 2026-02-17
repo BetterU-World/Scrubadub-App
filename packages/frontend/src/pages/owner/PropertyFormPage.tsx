@@ -23,7 +23,7 @@ export function PropertyFormPage() {
 
   const existing = useQuery(
     api.queries.properties.get,
-    params.id ? { propertyId: params.id as Id<"properties"> } : "skip"
+    params.id && user ? { propertyId: params.id as Id<"properties">, userId: user._id } : "skip"
   );
 
   const createProperty = useMutation(api.mutations.properties.create);
@@ -79,10 +79,10 @@ export function PropertyFormPage() {
         ownerNotes: ownerNotes || undefined,
       };
       if (isEditing) {
-        await updateProperty({ propertyId: params.id as Id<"properties">, ...data });
+        await updateProperty({ propertyId: params.id as Id<"properties">, userId: user._id, ...data });
         setLocation(`/properties/${params.id}`);
       } else {
-        const id = await createProperty({ companyId: user.companyId, ...data });
+        const id = await createProperty({ companyId: user.companyId, userId: user._id, ...data });
         setLocation(`/properties/${id}`);
       }
     } catch (err: any) {

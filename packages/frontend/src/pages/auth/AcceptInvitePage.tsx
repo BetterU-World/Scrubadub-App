@@ -1,5 +1,5 @@
 import { useState, FormEvent } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useParams, useLocation } from "wouter";
 import { LoadingSpinner, PageLoader } from "@/components/ui/LoadingSpinner";
@@ -10,7 +10,7 @@ export function AcceptInvitePage() {
   const inviteInfo = useQuery(api.queries.employees.getByInviteToken, {
     token: params.token ?? "",
   });
-  const acceptInvite = useMutation(api.mutations.employees.acceptInvite);
+  const acceptInvite = useAction(api.employeeActions.acceptInvite);
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");

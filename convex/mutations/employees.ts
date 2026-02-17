@@ -7,23 +7,24 @@ import { requireOwner, logAudit } from "../lib/helpers";
 
 export const updateEmployeeStatus = mutation({
   args: {
-    userId: v.id("users"),
+    employeeId: v.id("users"),
     status: v.union(v.literal("active"), v.literal("inactive")),
+    userId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx);
-    const target = await ctx.db.get(args.userId);
+    const owner = await requireOwner(ctx, args.userId);
+    const target = await ctx.db.get(args.employeeId);
     if (!target) throw new Error("User not found");
     if (target.companyId !== owner.companyId) throw new Error("Access denied");
 
-    await ctx.db.patch(args.userId, { status: args.status });
+    await ctx.db.patch(args.employeeId, { status: args.status });
 
     await logAudit(ctx, {
       companyId: owner.companyId,
       userId: owner._id,
       action: args.status === "active" ? "activate_employee" : "deactivate_employee",
       entityType: "user",
-      entityId: args.userId,
+      entityId: args.employeeId,
     });
   },
 });

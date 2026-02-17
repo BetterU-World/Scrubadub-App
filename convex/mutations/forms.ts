@@ -11,7 +11,7 @@ export const createFromTemplate = mutation({
     cleanerId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
+    const user = await requireAuth(ctx, args.cleanerId);
     // Verify company access
     if (user.companyId !== args.companyId) throw new Error("Access denied");
     // Verify cleaner is assigned to this job
@@ -66,17 +66,18 @@ export const updateItem = mutation({
     note: v.optional(v.string()),
     isRedFlag: v.optional(v.boolean()),
     photoStorageId: v.optional(v.id("_storage")),
+    userId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
+    const user = await requireAuth(ctx, args.userId);
     const item = await ctx.db.get(args.itemId);
     if (!item) throw new Error("Item not found");
 
     const form = await requireEditable(ctx, item.formId);
     if (form.companyId !== user.companyId) throw new Error("Access denied");
 
-    const { itemId, ...updates } = args;
-    const cleanUpdates: Record<string, boolean | string | Id<"_storage">> = {};
+    const { itemId, userId: _uid, ...updates } = args;
+    const cleanUpdates: Record<string, any> = {};
     for (const [key, val] of Object.entries(updates)) {
       if (val !== undefined) cleanUpdates[key] = val;
     }
@@ -88,9 +89,10 @@ export const updateScore = mutation({
   args: {
     formId: v.id("forms"),
     cleanerScore: v.number(),
+    userId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
+    const user = await requireAuth(ctx, args.userId);
     const form = await requireEditable(ctx, args.formId);
     if (form.companyId !== user.companyId) throw new Error("Access denied");
 
@@ -102,9 +104,10 @@ export const updateFinalPass = mutation({
   args: {
     formId: v.id("forms"),
     finalPass: v.boolean(),
+    userId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
+    const user = await requireAuth(ctx, args.userId);
     const form = await requireEditable(ctx, args.formId);
     if (form.companyId !== user.companyId) throw new Error("Access denied");
 
@@ -116,9 +119,10 @@ export const saveSignature = mutation({
   args: {
     formId: v.id("forms"),
     signatureStorageId: v.id("_storage"),
+    userId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
+    const user = await requireAuth(ctx, args.userId);
     const form = await requireEditable(ctx, args.formId);
     if (form.companyId !== user.companyId) throw new Error("Access denied");
 
@@ -129,9 +133,9 @@ export const saveSignature = mutation({
 });
 
 export const submit = mutation({
-  args: { formId: v.id("forms") },
+  args: { formId: v.id("forms"), userId: v.optional(v.id("users")) },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
+    const user = await requireAuth(ctx, args.userId);
     const form = await ctx.db.get(args.formId);
     if (!form) throw new Error("Form not found");
     if (form.cleanerId !== user._id) throw new Error("Not your form");

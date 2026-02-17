@@ -62,6 +62,7 @@ export function CalendarPage() {
     user?.companyId
       ? {
           companyId: user.companyId,
+          userId: user._id,
           startDate: format(rangeStart, "yyyy-MM-dd"),
           endDate: format(rangeEnd, "yyyy-MM-dd"),
         }
@@ -71,13 +72,13 @@ export function CalendarPage() {
   // Query properties for filter dropdown
   const properties = useQuery(
     api.queries.properties.list,
-    user?.companyId ? { companyId: user.companyId } : "skip"
+    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
   );
 
   // Query cleaners for filter dropdown
   const cleaners = useQuery(
     api.queries.employees.getCleaners,
-    user?.companyId ? { companyId: user.companyId } : "skip"
+    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
   );
 
   // Apply client-side filters (role-based + user selections)

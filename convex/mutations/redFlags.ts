@@ -4,6 +4,7 @@ import { requireAuth, requireOwner, logAudit, createNotification } from "../lib/
 
 export const create = mutation({
   args: {
+    userId: v.optional(v.id("users")),
     companyId: v.id("companies"),
     propertyId: v.id("properties"),
     jobId: v.id("jobs"),
@@ -25,15 +26,16 @@ export const create = mutation({
     photoStorageId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
+    const user = await requireAuth(ctx, args.userId);
     // Verify company access
     if (user.companyId !== args.companyId) throw new Error("Access denied");
     // Verify job belongs to this company
     const job = await ctx.db.get(args.jobId);
     if (!job || job.companyId !== user.companyId) throw new Error("Access denied");
 
+    const { userId: _uid, ...flagData } = args;
     const flagId = await ctx.db.insert("redFlags", {
-      ...args,
+      ...flagData,
       status: "open",
     });
 
@@ -69,9 +71,10 @@ export const updateStatus = mutation({
     flagId: v.id("redFlags"),
     status: v.union(v.literal("acknowledged"), v.literal("resolved")),
     ownerNote: v.optional(v.string()),
+    userId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx);
+    const owner = await requireOwner(ctx, args.userId);
     const flag = await ctx.db.get(args.flagId);
     if (!flag) throw new Error("Red flag not found");
     if (flag.companyId !== owner.companyId) throw new Error("Access denied");
@@ -97,9 +100,10 @@ export const createMaintenanceJob = mutation({
     cleanerIds: v.array(v.id("users")),
     notes: v.optional(v.string()),
     durationMinutes: v.optional(v.number()),
+    userId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx);
+    const owner = await requireOwner(ctx, args.userId);
     const flag = await ctx.db.get(args.flagId);
     if (!flag) throw new Error("Red flag not found");
     if (flag.companyId !== owner.companyId) throw new Error("Access denied");

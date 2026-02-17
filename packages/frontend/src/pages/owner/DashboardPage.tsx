@@ -15,9 +15,10 @@ import {
 
 export function DashboardPage() {
   const { user } = useAuth();
-  const stats = useQuery(api.queries.dashboard.getStats, {
-    companyId: user?.companyId!,
-  });
+  const stats = useQuery(
+    api.queries.dashboard.getStats,
+    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+  );
 
   if (!user) return <PageLoader />;
 

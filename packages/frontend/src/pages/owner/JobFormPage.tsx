@@ -23,16 +23,16 @@ export function JobFormPage() {
 
   const properties = useQuery(
     api.queries.properties.list,
-    user?.companyId ? { companyId: user.companyId } : "skip"
+    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
   );
   const cleaners = useQuery(
     api.queries.employees.getCleaners,
-    user?.companyId ? { companyId: user.companyId } : "skip"
+    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
   );
 
   const existing = useQuery(
     api.queries.jobs.get,
-    params.id ? { jobId: params.id as Id<"jobs"> } : "skip"
+    params.id && user ? { jobId: params.id as Id<"jobs">, userId: user._id } : "skip"
   );
 
   const createJob = useMutation(api.mutations.jobs.create);
@@ -88,11 +88,12 @@ export function JobFormPage() {
         notes: notes || undefined,
       };
       if (isEditing) {
-        await updateJob({ jobId: params.id as Id<"jobs">, ...data });
+        await updateJob({ jobId: params.id as Id<"jobs">, userId: user._id, ...data });
         setLocation(`/jobs/${params.id}`);
       } else {
         const id = await createJob({
           companyId: user.companyId,
+          userId: user._id,
           ...data,
           requireConfirmation,
         });

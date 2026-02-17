@@ -109,18 +109,18 @@ export function CleaningFormPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
 
-  const job = useQuery(api.queries.jobs.get, {
-    jobId: params.id as Id<"jobs">,
-  });
+  const job = useQuery(api.queries.jobs.get,
+    user ? { jobId: params.id as Id<"jobs">, userId: user._id } : "skip"
+  );
 
   const form = useQuery(
     api.queries.forms.getByJob,
-    job ? { jobId: job._id } : "skip"
+    job && user ? { jobId: job._id, userId: user._id } : "skip"
   );
 
   const formItems = useQuery(
     api.queries.forms.getItems,
-    form ? { formId: form._id } : "skip"
+    form && user ? { formId: form._id, userId: user._id } : "skip"
   );
 
   const updateItem = useMutation(api.mutations.forms.updateItem);
@@ -319,7 +319,7 @@ export function CleaningFormPage() {
       }, 500);
     }
 
-    await updateItem({ itemId, completed: willBeCompleted });
+    await updateItem({ itemId, completed: willBeCompleted, userId: user!._id });
 
     // After update, check milestones and section completion
     if (willBeCompleted) {
@@ -331,20 +331,20 @@ export function CleaningFormPage() {
   };
 
   const handleSaveNote = async (itemId: Id<"formItems">) => {
-    await updateItem({ itemId, note: noteText || undefined });
+    await updateItem({ itemId, note: noteText || undefined, userId: user!._id });
     setShowNoteFor(null);
     setNoteText("");
   };
 
   const handlePhotoUpload = async (itemId: Id<"formItems">, file: File) => {
-    const url = await generateUploadUrl({});
+    const url = await generateUploadUrl({ userId: user!._id });
     const result = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": file.type },
       body: file,
     });
     const { storageId } = await result.json();
-    await updateItem({ itemId, photoStorageId: storageId });
+    await updateItem({ itemId, photoStorageId: storageId, userId: user!._id });
   };
 
   const handleCreateRedFlag = async (itemId: Id<"formItems">) => {
@@ -357,8 +357,9 @@ export function CleaningFormPage() {
       category: rfCategory as any,
       severity: rfSeverity as any,
       note: rfNote,
+      userId: user!._id,
     });
-    await updateItem({ itemId, isRedFlag: true });
+    await updateItem({ itemId, isRedFlag: true, userId: user!._id });
     setShowRedFlag(null);
     setRfNote("");
   };
@@ -366,8 +367,8 @@ export function CleaningFormPage() {
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      await updateScore({ formId: form._id, cleanerScore: selfScore });
-      await submitForm({ formId: form._id });
+      await updateScore({ formId: form._id, cleanerScore: selfScore, userId: user!._id });
+      await submitForm({ formId: form._id, userId: user!._id });
       clearFormCache();
       setLocation(`/jobs/${job._id}`);
     } catch (err) {

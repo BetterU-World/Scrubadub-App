@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
+import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
@@ -22,12 +23,12 @@ export function RedFlagsDashboard() {
   const flags = useQuery(
     api.queries.redFlags.listByCompany,
     user?.companyId
-      ? { companyId: user.companyId, status: statusFilter || undefined }
+      ? { companyId: user.companyId, userId: user._id, status: statusFilter || undefined }
       : "skip"
   );
   const cleaners = useQuery(
     api.queries.employees.getCleaners,
-    user?.companyId ? { companyId: user.companyId } : "skip"
+    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
   );
   const updateStatus = useMutation(api.mutations.redFlags.updateStatus);
   const createMaintenanceJob = useMutation(api.mutations.redFlags.createMaintenanceJob);
@@ -36,8 +37,9 @@ export function RedFlagsDashboard() {
 
   const handleStatusUpdate = async (flagId: string, status: "acknowledged" | "resolved", ownerNote: string) => {
     await updateStatus({
-      flagId,
+      flagId: flagId as Id<"redFlags">,
       status,
+      userId: user!._id,
       ...(ownerNote.trim() ? { ownerNote: ownerNote.trim() } : {}),
     });
     setActiveAction(null);
@@ -49,9 +51,10 @@ export function RedFlagsDashboard() {
     if (!scheduledDate || cleanerIds.length === 0) return;
 
     await createMaintenanceJob({
-      flagId,
+      flagId: flagId as Id<"redFlags">,
       scheduledDate,
-      cleanerIds,
+      cleanerIds: cleanerIds as Id<"users">[],
+      userId: user!._id,
       ...(notes.trim() ? { notes: notes.trim() } : {}),
       ...(durationMinutes.trim() ? { durationMinutes: parseInt(durationMinutes, 10) } : {}),
     });
