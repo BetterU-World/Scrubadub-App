@@ -21,6 +21,9 @@ export const inviteCleaner = action({
   handler: async (ctx, args) => {
     validateEmail(args.email);
     validateName(args.name);
+    await ctx.runQuery(internal.authInternal.checkSubscription, {
+      companyId: args.companyId,
+    });
     const email = args.email.toLowerCase();
 
     const existing = await ctx.runQuery(internal.authInternal.getUserByEmail, {

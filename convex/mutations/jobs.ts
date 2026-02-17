@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwner, requireAuth, logAudit, createNotification } from "../lib/helpers";
+import { requireActiveSubscription } from "../lib/subscriptionGating";
 
 export const create = mutation({
   args: {
@@ -24,6 +25,7 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const owner = await requireOwner(ctx, args.userId);
     if (owner.companyId !== args.companyId) throw new Error("Not your company");
+    await requireActiveSubscription(ctx, args.companyId);
 
     const initialStatus = args.requireConfirmation === false ? "confirmed" : "scheduled";
 

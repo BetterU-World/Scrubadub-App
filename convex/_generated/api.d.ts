@@ -10,6 +10,7 @@ import type { ApiFromModules } from "convex/server";
 import type * as auth from "../auth.js";
 import type * as authActions from "../authActions.js";
 import type * as employeeActions from "../employeeActions.js";
+import type * as stripeWebhook from "../stripeWebhook.js";
 import type * as mutations_employees from "../mutations/employees.js";
 import type * as mutations_forms from "../mutations/forms.js";
 import type * as mutations_jobs from "../mutations/jobs.js";
@@ -32,6 +33,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   authActions: typeof authActions;
   employeeActions: typeof employeeActions;
+  stripeWebhook: typeof stripeWebhook;
   "mutations/employees": typeof mutations_employees;
   "mutations/forms": typeof mutations_forms;
   "mutations/jobs": typeof mutations_jobs;

@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { getSessionUser } from "../lib/auth";
+import { requireActiveSubscription } from "../lib/subscriptionGating";
 
 const ALLOWED_MIME_TYPES = new Set([
   "image/jpeg",
@@ -15,7 +16,8 @@ const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
 export const generateUploadUrl = mutation({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
-    await getSessionUser(ctx, args.userId);
+    const user = await getSessionUser(ctx, args.userId);
+    await requireActiveSubscription(ctx, user.companyId);
     return await ctx.storage.generateUploadUrl();
   },
 });

@@ -5,7 +5,24 @@ export default defineSchema({
   companies: defineTable({
     name: v.string(),
     timezone: v.string(),
-  }),
+    // Stripe subscription fields
+    stripeCustomerId: v.optional(v.string()),
+    stripeSubscriptionId: v.optional(v.string()),
+    subscriptionStatus: v.optional(
+      v.union(
+        v.literal("active"),
+        v.literal("trialing"),
+        v.literal("past_due"),
+        v.literal("canceled"),
+        v.literal("unpaid"),
+        v.literal("incomplete"),
+        v.literal("incomplete_expired"),
+        v.literal("paused")
+      )
+    ),
+    currentPeriodEnd: v.optional(v.number()),
+    subscriptionUpdatedAt: v.optional(v.number()),
+  }).index("by_stripeCustomerId", ["stripeCustomerId"]),
 
   users: defineTable({
     email: v.string(),
