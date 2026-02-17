@@ -37,9 +37,12 @@ import { NotificationsPage } from "@/pages/shared/NotificationsPage";
 export default function App() {
   const { user, isLoading, isAuthenticated } = useAuth();
 
+  console.log("[APP DEBUG] App render: isLoading =", isLoading, "| isAuthenticated =", isAuthenticated, "| user =", user);
+
   if (isLoading) return <PageLoader />;
 
   if (!isAuthenticated) {
+    console.log("[APP DEBUG] NOT AUTHENTICATED — rendering login routes. user =", user);
     return (
       <ErrorBoundary>
         <OfflineIndicator />
