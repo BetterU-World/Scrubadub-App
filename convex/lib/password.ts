@@ -1,3 +1,5 @@
+"use node";
+
 import bcrypt from "bcryptjs";
 
 const BCRYPT_ROUNDS = 12;

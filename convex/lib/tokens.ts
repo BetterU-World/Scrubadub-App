@@ -1,3 +1,5 @@
+"use node";
+
 import crypto from "crypto";
 
 const TOKEN_PEPPER = process.env.TOKEN_PEPPER ?? "scrubadub-default-pepper-change-me";
