@@ -3,6 +3,7 @@
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 import {
   hashPassword,
   verifyBcryptPassword,
@@ -20,7 +21,7 @@ export const signUp = action({
     companyName: v.string(),
     timezone: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ userId: Id<"users">; companyId: Id<"companies"> }> => {
     validateEmail(args.email);
     validatePassword(args.password);
     validateName(args.name);
@@ -35,12 +36,12 @@ export const signUp = action({
 
     const passwordHash = await hashPassword(args.password);
 
-    const companyId = await ctx.runMutation(internal.authInternal.createCompany, {
+    const companyId: Id<"companies"> = await ctx.runMutation(internal.authInternal.createCompany, {
       name: args.companyName,
       timezone: args.timezone ?? "America/New_York",
     });
 
-    const userId = await ctx.runMutation(internal.authInternal.createUser, {
+    const userId: Id<"users"> = await ctx.runMutation(internal.authInternal.createUser, {
       email,
       passwordHash,
       name: args.name,
@@ -58,7 +59,14 @@ export const signIn = action({
     email: v.string(),
     password: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{
+    userId: Id<"users">;
+    email: string;
+    name: string;
+    role: string;
+    companyId: Id<"companies">;
+    status: string;
+  }> => {
     const email = args.email.toLowerCase();
     const genericError = "Invalid email or password";
 
@@ -100,7 +108,7 @@ export const signIn = action({
 
 export const requestPasswordReset = action({
   args: { email: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ success: boolean; token?: string }> => {
     const email = args.email.toLowerCase();
 
     const user = await ctx.runQuery(internal.authInternal.getUserByEmail, {
@@ -131,7 +139,7 @@ export const resetPassword = action({
     token: v.string(),
     newPassword: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ success: boolean }> => {
     validatePassword(args.newPassword);
 
     const tokenHash = hashToken(args.token);

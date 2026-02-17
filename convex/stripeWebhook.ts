@@ -44,7 +44,7 @@ function verifyStripeSignature(
 
 export const handleWebhook = action({
   args: { body: v.string(), signature: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<void> => {
     const secret = process.env.STRIPE_WEBHOOK_SECRET;
     if (!secret) throw new Error("STRIPE_WEBHOOK_SECRET not configured");
 

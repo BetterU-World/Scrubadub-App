@@ -3,6 +3,7 @@
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 import { hashPassword } from "./lib/password";
 import {
   generateSecureToken,
@@ -18,7 +19,7 @@ export const inviteCleaner = action({
     name: v.string(),
     userId: v.id("users"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ token: string; userId: Id<"users"> }> => {
     validateEmail(args.email);
     validateName(args.name);
     await ctx.runQuery(internal.authInternal.checkSubscription, {
@@ -35,7 +36,7 @@ export const inviteCleaner = action({
     const tokenHash = hashToken(token);
     const expiry = Date.now() + INVITE_TOKEN_EXPIRY_MS;
 
-    const newUserId = await ctx.runMutation(internal.authInternal.createUser, {
+    const newUserId: Id<"users"> = await ctx.runMutation(internal.authInternal.createUser, {
       email,
       passwordHash: "",
       name: args.name,
@@ -64,7 +65,13 @@ export const acceptInvite = action({
     token: v.string(),
     password: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{
+    userId: Id<"users">;
+    email: string;
+    name: string;
+    role: string;
+    companyId: Id<"companies">;
+  }> => {
     validatePassword(args.password);
 
     const tokenHash = hashToken(args.token);
