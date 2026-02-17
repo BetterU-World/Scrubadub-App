@@ -18,15 +18,22 @@ export default defineSchema({
       v.literal("inactive"),
       v.literal("pending")
     ),
+    // Legacy token fields (kept for migration, cleared on use)
     inviteToken: v.optional(v.string()),
-    phone: v.optional(v.string()),
     resetToken: v.optional(v.string()),
+    // Secure hashed token fields
+    inviteTokenHash: v.optional(v.string()),
+    inviteTokenExpiry: v.optional(v.number()),
+    resetTokenHash: v.optional(v.string()),
     resetTokenExpiry: v.optional(v.number()),
+    phone: v.optional(v.string()),
   })
     .index("by_email", ["email"])
     .index("by_companyId", ["companyId"])
     .index("by_inviteToken", ["inviteToken"])
-    .index("by_resetToken", ["resetToken"]),
+    .index("by_resetToken", ["resetToken"])
+    .index("by_inviteTokenHash", ["inviteTokenHash"])
+    .index("by_resetTokenHash", ["resetTokenHash"]),
 
   properties: defineTable({
     companyId: v.id("companies"),
@@ -40,7 +47,6 @@ export default defineSchema({
     address: v.string(),
     accessInstructions: v.optional(v.string()),
     amenities: v.array(v.string()),
-    // Structured inventory counts for supply tracking
     towelCount: v.optional(v.number()),
     sheetSets: v.optional(v.number()),
     pillowCount: v.optional(v.number()),

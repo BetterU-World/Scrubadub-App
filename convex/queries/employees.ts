@@ -1,9 +1,12 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { assertCompanyAccess } from "../lib/auth";
 
 export const list = query({
-  args: { companyId: v.id("companies") },
+  args: { companyId: v.id("companies"), userId: v.id("users") },
   handler: async (ctx, args) => {
+    await assertCompanyAccess(ctx, args.userId, args.companyId);
+
     return await ctx.db
       .query("users")
       .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
@@ -14,6 +17,7 @@ export const list = query({
 export const getByInviteToken = query({
   args: { token: v.string() },
   handler: async (ctx, args) => {
+    // Public endpoint for invite acceptance page - no auth required
     const user = await ctx.db
       .query("users")
       .withIndex("by_inviteToken", (q) => q.eq("inviteToken", args.token))
@@ -31,8 +35,10 @@ export const getByInviteToken = query({
 });
 
 export const getCleaners = query({
-  args: { companyId: v.id("companies") },
+  args: { companyId: v.id("companies"), userId: v.id("users") },
   handler: async (ctx, args) => {
+    await assertCompanyAccess(ctx, args.userId, args.companyId);
+
     const users = await ctx.db
       .query("users")
       .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))

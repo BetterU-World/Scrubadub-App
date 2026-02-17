@@ -1,17 +1,19 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { assertCompanyAccess } from "../lib/auth";
 
 export const getCleanerStats = query({
   args: {
     cleanerId: v.id("users"),
     companyId: v.id("companies"),
+    userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const now = Date.now();
-    const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
-    const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+    await assertCompanyAccess(ctx, args.userId, args.companyId);
 
-    // Get all jobs for this company
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+
     const allJobs = await ctx.db
       .query("jobs")
       .withIndex("by_companyId_scheduledDate", (q) =>
@@ -19,32 +21,25 @@ export const getCleanerStats = query({
       )
       .collect();
 
-    // Filter to approved jobs where this cleaner was assigned
     const approvedJobs = allJobs.filter(
-      (j) =>
-        j.status === "approved" && j.cleanerIds.includes(args.cleanerId)
+      (j) => j.status === "approved" && j.cleanerIds.includes(args.cleanerId)
     );
 
-    // Jobs completed this week (using completedAt timestamp)
     const jobsCompletedThisWeek = approvedJobs.filter(
       (j) => j.completedAt && j.completedAt >= sevenDaysAgo
     ).length;
 
-    // Jobs completed this month
     const jobsCompletedThisMonth = approvedJobs.filter(
       (j) => j.completedAt && j.completedAt >= thirtyDaysAgo
     ).length;
 
-    // Total jobs completed all time
     const totalJobsCompleted = approvedJobs.length;
 
-    // Get all forms by this cleaner
     const forms = await ctx.db
       .query("forms")
       .withIndex("by_cleanerId", (q) => q.eq("cleanerId", args.cleanerId))
       .collect();
 
-    // Average cleaner score from submitted/approved forms
     const scoredForms = forms.filter(
       (f) =>
         (f.status === "submitted" || f.status === "approved") &&
@@ -60,25 +55,22 @@ export const getCleanerStats = query({
           ) / 10
         : 0;
 
-    // Red flags reported: count red flags from jobs this cleaner was on
-    const cleanerJobIds = new Set(approvedJobs.map((j) => j._id));
-    // Also include non-approved jobs the cleaner submitted forms for
+    // Batch red flag lookup instead of N+1 per-job queries
     const allCleanerJobs = allJobs.filter((j) =>
       j.cleanerIds.includes(args.cleanerId)
     );
     const allCleanerJobIds = new Set(allCleanerJobs.map((j) => j._id));
 
-    let redFlagsReported = 0;
-    for (const jobId of allCleanerJobIds) {
-      const flags = await ctx.db
-        .query("redFlags")
-        .withIndex("by_jobId", (q) => q.eq("jobId", jobId))
-        .collect();
-      redFlagsReported += flags.length;
-    }
+    const companyRedFlags = await ctx.db
+      .query("redFlags")
+      .withIndex("by_companyId_status", (q) =>
+        q.eq("companyId", args.companyId)
+      )
+      .collect();
+    const redFlagsReported = companyRedFlags.filter((f) =>
+      allCleanerJobIds.has(f.jobId)
+    ).length;
 
-    // Current streak: consecutive approved jobs without rework, from most recent
-    // Sort approved jobs by completedAt descending
     const sortedApproved = approvedJobs
       .filter((j) => j.completedAt)
       .sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0));
@@ -106,19 +98,20 @@ export const getCleanerStats = query({
 export const getLeaderboard = query({
   args: {
     companyId: v.id("companies"),
+    userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    // Get all active cleaners in the company
+    await assertCompanyAccess(ctx, args.userId, args.companyId);
+
     const allUsers = await ctx.db
       .query("users")
       .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
       .collect();
 
-    const activecleaners = allUsers.filter(
+    const activeCleaners = allUsers.filter(
       (u) => u.role === "cleaner" && u.status === "active"
     );
 
-    // Get all jobs for this company
     const allJobs = await ctx.db
       .query("jobs")
       .withIndex("by_companyId_scheduledDate", (q) =>
@@ -128,17 +121,22 @@ export const getLeaderboard = query({
 
     const approvedJobs = allJobs.filter((j) => j.status === "approved");
 
-    // Build leaderboard for each cleaner
+    // Batch: fetch all red flags for this company once (fixes N+1)
+    const allRedFlags = await ctx.db
+      .query("redFlags")
+      .withIndex("by_companyId_status", (q) =>
+        q.eq("companyId", args.companyId)
+      )
+      .collect();
+
     const leaderboard = await Promise.all(
-      activecleaners.map(async (cleaner) => {
-        // Approved jobs for this cleaner
+      activeCleaners.map(async (cleaner) => {
         const cleanerApprovedJobs = approvedJobs.filter((j) =>
           j.cleanerIds.includes(cleaner._id)
         );
 
         const totalJobs = cleanerApprovedJobs.length;
 
-        // Average job duration in minutes (completedAt - startedAt)
         const timedJobs = cleanerApprovedJobs.filter(
           (j) => j.startedAt && j.completedAt
         );
@@ -153,7 +151,6 @@ export const getLeaderboard = query({
               )
             : 0;
 
-        // Get forms for this cleaner to compute average score
         const forms = await ctx.db
           .query("forms")
           .withIndex("by_cleanerId", (q) => q.eq("cleanerId", cleaner._id))
@@ -177,19 +174,12 @@ export const getLeaderboard = query({
               ) / 10
             : 0;
 
-        // Red flag count from their jobs
-        let redFlagCount = 0;
-        const cleanerJobIds = cleanerApprovedJobs.map((j) => j._id);
-        for (const jobId of cleanerJobIds) {
-          const flags = await ctx.db
-            .query("redFlags")
-            .withIndex("by_jobId", (q) => q.eq("jobId", jobId))
-            .collect();
-          redFlagCount += flags.length;
-        }
+        // Use pre-fetched red flags instead of N+1
+        const cleanerJobIds = new Set(cleanerApprovedJobs.map((j) => j._id));
+        const redFlagCount = allRedFlags.filter((f) =>
+          cleanerJobIds.has(f.jobId)
+        ).length;
 
-        // Consistency score: percentage of jobs approved on first try (reworkCount === 0)
-        // Consider all jobs this cleaner was part of (not just approved)
         const allCleanerJobs = allJobs.filter(
           (j) =>
             j.cleanerIds.includes(cleaner._id) && j.status !== "cancelled"
@@ -214,7 +204,6 @@ export const getLeaderboard = query({
       })
     );
 
-    // Sort by averageScore descending by default
     return leaderboard.sort((a, b) => b.averageScore - a.averageScore);
   },
 });

@@ -1,5 +1,6 @@
-import { mutation } from "../_generated/server";
+import { mutation, MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
+import { Id } from "../_generated/dataModel";
 import { requireAuth, logAudit, createNotification } from "../lib/helpers";
 import { FORM_TEMPLATE } from "../lib/constants";
 
@@ -10,7 +11,14 @@ export const createFromTemplate = mutation({
     cleanerId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    // Check if form already exists
+    const user = await requireAuth(ctx);
+    // Verify company access
+    if (user.companyId !== args.companyId) throw new Error("Access denied");
+    // Verify cleaner is assigned to this job
+    const job = await ctx.db.get(args.jobId);
+    if (!job) throw new Error("Job not found");
+    if (job.companyId !== user.companyId) throw new Error("Access denied");
+
     const existing = await ctx.db
       .query("forms")
       .withIndex("by_jobId", (q) => q.eq("jobId", args.jobId))
@@ -42,8 +50,7 @@ export const createFromTemplate = mutation({
   },
 });
 
-// Helper to check form is still editable (not submitted or approved)
-async function requireEditable(ctx: any, formId: any) {
+async function requireEditable(ctx: MutationCtx, formId: Id<"forms">) {
   const form = await ctx.db.get(formId);
   if (!form) throw new Error("Form not found");
   if (form.status === "submitted" || form.status === "approved") {
@@ -61,14 +68,15 @@ export const updateItem = mutation({
     photoStorageId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
+    const user = await requireAuth(ctx);
     const item = await ctx.db.get(args.itemId);
     if (!item) throw new Error("Item not found");
 
-    // Enforce immutability after submission
-    await requireEditable(ctx, item.formId);
+    const form = await requireEditable(ctx, item.formId);
+    if (form.companyId !== user.companyId) throw new Error("Access denied");
 
     const { itemId, ...updates } = args;
-    const cleanUpdates: Record<string, any> = {};
+    const cleanUpdates: Record<string, boolean | string | Id<"_storage">> = {};
     for (const [key, val] of Object.entries(updates)) {
       if (val !== undefined) cleanUpdates[key] = val;
     }
@@ -82,7 +90,10 @@ export const updateScore = mutation({
     cleanerScore: v.number(),
   },
   handler: async (ctx, args) => {
-    await requireEditable(ctx, args.formId);
+    const user = await requireAuth(ctx);
+    const form = await requireEditable(ctx, args.formId);
+    if (form.companyId !== user.companyId) throw new Error("Access denied");
+
     await ctx.db.patch(args.formId, { cleanerScore: args.cleanerScore });
   },
 });
@@ -93,7 +104,10 @@ export const updateFinalPass = mutation({
     finalPass: v.boolean(),
   },
   handler: async (ctx, args) => {
-    await requireEditable(ctx, args.formId);
+    const user = await requireAuth(ctx);
+    const form = await requireEditable(ctx, args.formId);
+    if (form.companyId !== user.companyId) throw new Error("Access denied");
+
     await ctx.db.patch(args.formId, { finalPass: args.finalPass });
   },
 });
@@ -104,7 +118,10 @@ export const saveSignature = mutation({
     signatureStorageId: v.id("_storage"),
   },
   handler: async (ctx, args) => {
-    await requireEditable(ctx, args.formId);
+    const user = await requireAuth(ctx);
+    const form = await requireEditable(ctx, args.formId);
+    if (form.companyId !== user.companyId) throw new Error("Access denied");
+
     await ctx.db.patch(args.formId, {
       signatureStorageId: args.signatureStorageId,
     });
@@ -118,11 +135,11 @@ export const submit = mutation({
     const form = await ctx.db.get(args.formId);
     if (!form) throw new Error("Form not found");
     if (form.cleanerId !== user._id) throw new Error("Not your form");
+    if (form.companyId !== user.companyId) throw new Error("Access denied");
     if (form.status === "submitted" || form.status === "approved") {
       throw new Error("Form already submitted");
     }
 
-    // Validate all items are completed
     const items = await ctx.db
       .query("formItems")
       .withIndex("by_formId", (q) => q.eq("formId", args.formId))
@@ -139,12 +156,10 @@ export const submit = mutation({
       submittedAt: Date.now(),
     });
 
-    // Update job status
     const job = await ctx.db.get(form.jobId);
     if (job) {
       await ctx.db.patch(form.jobId, { status: "submitted" });
 
-      // Notify owners
       const owners = await ctx.db
         .query("users")
         .withIndex("by_companyId", (q) => q.eq("companyId", form.companyId))

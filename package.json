@@ -10,9 +10,12 @@
     "dev:convex": "npx convex dev"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "@types/bcryptjs": "^2.4.6",
+    "concurrently": "^8.2.2",
+    "vitest": "^4.0.18"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "convex": "^1.31.7"
   }
 }
