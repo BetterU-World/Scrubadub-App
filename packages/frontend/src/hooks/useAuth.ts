@@ -94,6 +94,12 @@ export function useAuth() {
     setSessionToken(null);
   }, [sessionToken, signOutAction]);
 
+  // Set session from external flows (e.g. invite acceptance) without full reload
+  const setSession = useCallback((token: string) => {
+    localStorage.setItem(AUTH_KEY, token);
+    setSessionToken(token);
+  }, []);
+
   return {
     user: user as AuthUser | null | undefined,
     sessionToken,
@@ -102,5 +108,6 @@ export function useAuth() {
     signUp,
     signIn,
     signOut,
+    setSession,
   };
 }

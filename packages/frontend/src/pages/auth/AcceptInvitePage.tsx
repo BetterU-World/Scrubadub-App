@@ -2,11 +2,13 @@ import { useState, FormEvent } from "react";
 import { useQuery, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useParams, useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 import { LoadingSpinner, PageLoader } from "@/components/ui/LoadingSpinner";
 
 export function AcceptInvitePage() {
   const params = useParams<{ token: string }>();
   const [, setLocation] = useLocation();
+  const { setSession } = useAuth();
   const inviteInfo = useQuery(api.queries.employees.getByInviteToken, {
     token: params.token ?? "",
   });
@@ -45,9 +47,10 @@ export function AcceptInvitePage() {
     setLoading(true);
     try {
       const result = await acceptInvite({ token: params.token!, password });
-      localStorage.setItem("scrubadub_auth", result.sessionToken);
+      // Pure SPA: update auth state in-memory, triggers getCurrentUser re-query
+      setSession(result.sessionToken);
+      // Role-aware redirect: "/" resolves to owner or cleaner dashboard via App.tsx
       setLocation("/");
-      window.location.reload();
     } catch (err: any) {
       setError(err.message || "Failed to accept invite");
     } finally {
