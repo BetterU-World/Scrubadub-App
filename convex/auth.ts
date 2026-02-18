@@ -148,11 +148,12 @@ export const updatePasswordByResetToken = internalMutation({
 export const getCurrentUser = query({
   args: { sessionToken: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    if (!args.sessionToken) return null;
+    const token = args.sessionToken;
+    if (!token) return null;
 
     const session = await ctx.db
       .query("sessions")
-      .withIndex("by_token", (q) => q.eq("token", args.sessionToken))
+      .withIndex("by_token", (q) => q.eq("token", token))
       .first();
     if (!session || session.expiresAt < Date.now()) return null;
 

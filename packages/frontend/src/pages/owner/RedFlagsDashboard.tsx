@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
+import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
@@ -10,8 +11,8 @@ import { Flag, CheckCircle, Eye, Wrench } from "lucide-react";
 import { Link } from "wouter";
 
 type ActiveAction =
-  | { flagId: string; type: "acknowledge" | "resolve"; ownerNote: string }
-  | { flagId: string; type: "maintenance"; scheduledDate: string; cleanerIds: string[]; notes: string; durationMinutes: string }
+  | { flagId: Id<"redFlags">; type: "acknowledge" | "resolve"; ownerNote: string }
+  | { flagId: Id<"redFlags">; type: "maintenance"; scheduledDate: string; cleanerIds: Id<"users">[]; notes: string; durationMinutes: string }
   | null;
 
 export function RedFlagsDashboard() {
@@ -34,7 +35,7 @@ export function RedFlagsDashboard() {
 
   if (!user || flags === undefined) return <PageLoader />;
 
-  const handleStatusUpdate = async (flagId: string, status: "acknowledged" | "resolved", ownerNote: string) => {
+  const handleStatusUpdate = async (flagId: Id<"redFlags">, status: "acknowledged" | "resolved", ownerNote: string) => {
     await updateStatus({
       sessionToken: sessionToken!,
       flagId,
@@ -44,7 +45,7 @@ export function RedFlagsDashboard() {
     setActiveAction(null);
   };
 
-  const handleCreateMaintenanceJob = async (flagId: string) => {
+  const handleCreateMaintenanceJob = async (flagId: Id<"redFlags">) => {
     if (activeAction?.type !== "maintenance") return;
     const { scheduledDate, cleanerIds, notes, durationMinutes } = activeAction;
     if (!scheduledDate || cleanerIds.length === 0) return;
