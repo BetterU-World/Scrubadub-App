@@ -1,4 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  createContext,
+  useContext,
+  type ReactNode,
+} from "react";
 import { useAction, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
@@ -16,6 +23,24 @@ interface AuthUser {
   phone?: string;
 }
 
+interface AuthContextValue {
+  user: AuthUser | null | undefined;
+  userId: Id<"users"> | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  signUp: (args: {
+    email: string;
+    password: string;
+    name: string;
+    companyName: string;
+  }) => Promise<{ userId: Id<"users"> }>;
+  signIn: (args: {
+    email: string;
+    password: string;
+  }) => Promise<{ userId: Id<"users"> }>;
+  signOut: () => void;
+}
+
 function getStoredUserId(): Id<"users"> | null {
   try {
     const stored = localStorage.getItem(AUTH_KEY);
@@ -25,7 +50,9 @@ function getStoredUserId(): Id<"users"> | null {
   }
 }
 
-export function useAuth() {
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [userId, setUserId] = useState<Id<"users"> | null>(getStoredUserId);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -63,7 +90,7 @@ export function useAuth() {
       setUserId(result.userId);
       return result;
     },
-    [signUpAction]
+    [signUpAction],
   );
 
   const signIn = useCallback(
@@ -74,7 +101,7 @@ export function useAuth() {
       setUserId(result.userId as Id<"users">);
       return result;
     },
-    [signInAction]
+    [signInAction],
   );
 
   const signOut = useCallback(() => {
@@ -82,13 +109,45 @@ export function useAuth() {
     setUserId(null);
   }, []);
 
-  return {
-    user: user as AuthUser | null | undefined,
-    userId,
-    isLoading,
-    isAuthenticated: !!user,
-    signUp,
-    signIn,
-    signOut,
-  };
+  return (
+    <AuthContext.Provider
+      value={{
+        user: user as AuthUser | null | undefined,
+        userId,
+        isLoading,
+        isAuthenticated: !!user,
+        signUp,
+        signIn,
+        signOut,
+      }}
+    >
+      {children}
+      {import.meta.env.DEV && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 4,
+            left: 4,
+            padding: "4px 8px",
+            background: "rgba(0,0,0,0.85)",
+            color: "#0f0",
+            fontSize: 11,
+            fontFamily: "monospace",
+            borderRadius: 4,
+            zIndex: 99999,
+            pointerEvents: "none",
+          }}
+        >
+          uid:{userId ? "yes" : "no"} | loading:{String(isLoading)} | user:
+          {user === undefined ? "undef" : user === null ? "null" : "obj"}
+        </div>
+      )}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
 }
