@@ -84,8 +84,8 @@ export function CleanerJobListPage() {
       {jobs.length === 0 ? (
         <EmptyState
           icon={ClipboardCheck}
-          title="No jobs assigned"
-          description="You'll see your assigned cleaning jobs here"
+          title="No jobs assigned yet"
+          description="When your manager assigns you a cleaning job, it will appear here."
         />
       ) : (
         <div className="space-y-6">
