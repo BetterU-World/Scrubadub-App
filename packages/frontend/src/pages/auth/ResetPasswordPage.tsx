@@ -13,7 +13,7 @@ export function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  const resetPassword = useMutation(api.auth.resetPassword);
+  const resetPassword = useMutation(api.authActions.resetPassword);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

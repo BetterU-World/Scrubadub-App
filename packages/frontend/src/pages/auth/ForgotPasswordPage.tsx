@@ -11,7 +11,7 @@ export function ForgotPasswordPage() {
   const [submitted, setSubmitted] = useState(false);
   const [resetLink, setResetLink] = useState("");
 
-  const requestReset = useMutation(api.auth.requestPasswordReset);
+  const requestReset = useMutation(api.authActions.requestPasswordReset);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
