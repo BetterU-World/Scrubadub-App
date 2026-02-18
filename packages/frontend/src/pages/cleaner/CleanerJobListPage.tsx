@@ -17,14 +17,14 @@ import {
 } from "lucide-react";
 
 export function CleanerJobListPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const jobs = useQuery(
     api.queries.jobs.getForCleaner,
-    user ? { cleanerId: user._id, companyId: user.companyId } : "skip"
+    sessionToken ? { sessionToken } : "skip"
   );
   const stats = useQuery(
     api.queries.performance.getCleanerStats,
-    user ? { cleanerId: user._id, companyId: user.companyId } : "skip"
+    sessionToken ? { sessionToken } : "skip"
   );
 
   if (!user || jobs === undefined) return <PageLoader />;

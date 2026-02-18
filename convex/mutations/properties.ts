@@ -4,7 +4,7 @@ import { requireOwner, logAudit } from "../lib/helpers";
 
 export const create = mutation({
   args: {
-    companyId: v.id("companies"),
+    sessionToken: v.string(),
     name: v.string(),
     type: v.union(
       v.literal("residential"),
@@ -24,16 +24,18 @@ export const create = mutation({
     ownerNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx);
-    if (owner.companyId !== args.companyId) throw new Error("Not your company");
+    const owner = await requireOwner(ctx, args.sessionToken);
+    const companyId = owner.companyId;
 
+    const { sessionToken, ...rest } = args;
     const propertyId = await ctx.db.insert("properties", {
-      ...args,
+      ...rest,
+      companyId,
       active: true,
     });
 
     await logAudit(ctx, {
-      companyId: args.companyId,
+      companyId,
       userId: owner._id,
       action: "create_property",
       entityType: "property",
@@ -46,6 +48,7 @@ export const create = mutation({
 
 export const update = mutation({
   args: {
+    sessionToken: v.string(),
     propertyId: v.id("properties"),
     name: v.string(),
     type: v.union(
@@ -66,12 +69,12 @@ export const update = mutation({
     ownerNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx);
+    const owner = await requireOwner(ctx, args.sessionToken);
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
     if (property.companyId !== owner.companyId) throw new Error("Not your company");
 
-    const { propertyId, ...updates } = args;
+    const { propertyId, sessionToken, ...updates } = args;
     await ctx.db.patch(propertyId, updates);
 
     await logAudit(ctx, {
@@ -85,9 +88,9 @@ export const update = mutation({
 });
 
 export const toggleActive = mutation({
-  args: { propertyId: v.id("properties") },
+  args: { sessionToken: v.string(), propertyId: v.id("properties") },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx);
+    const owner = await requireOwner(ctx, args.sessionToken);
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
     if (property.companyId !== owner.companyId) throw new Error("Not your company");

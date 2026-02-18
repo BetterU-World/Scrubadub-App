@@ -1,12 +1,26 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { requireAuth } from "../lib/helpers";
 
 export const getCleanerStats = query({
   args: {
-    cleanerId: v.id("users"),
-    companyId: v.id("companies"),
+    sessionToken: v.string(),
+    cleanerId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
+    const user = await requireAuth(ctx, args.sessionToken);
+    const companyId = user.companyId;
+    // If cleanerId not provided, show stats for the authenticated user
+    const cleanerId = args.cleanerId ?? user._id;
+
+    // Verify the target cleaner belongs to same company
+    if (args.cleanerId) {
+      const targetUser = await ctx.db.get(args.cleanerId);
+      if (!targetUser || targetUser.companyId !== companyId) {
+        throw new Error("Not your company");
+      }
+    }
+
     const now = Date.now();
     const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
     const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
@@ -15,14 +29,14 @@ export const getCleanerStats = query({
     const allJobs = await ctx.db
       .query("jobs")
       .withIndex("by_companyId_scheduledDate", (q) =>
-        q.eq("companyId", args.companyId)
+        q.eq("companyId", companyId)
       )
       .collect();
 
     // Filter to approved jobs where this cleaner was assigned
     const approvedJobs = allJobs.filter(
       (j) =>
-        j.status === "approved" && j.cleanerIds.includes(args.cleanerId)
+        j.status === "approved" && j.cleanerIds.includes(cleanerId)
     );
 
     // Jobs completed this week (using completedAt timestamp)
@@ -41,7 +55,7 @@ export const getCleanerStats = query({
     // Get all forms by this cleaner
     const forms = await ctx.db
       .query("forms")
-      .withIndex("by_cleanerId", (q) => q.eq("cleanerId", args.cleanerId))
+      .withIndex("by_cleanerId", (q) => q.eq("cleanerId", cleanerId))
       .collect();
 
     // Average cleaner score from submitted/approved forms
@@ -61,10 +75,8 @@ export const getCleanerStats = query({
         : 0;
 
     // Red flags reported: count red flags from jobs this cleaner was on
-    const cleanerJobIds = new Set(approvedJobs.map((j) => j._id));
-    // Also include non-approved jobs the cleaner submitted forms for
     const allCleanerJobs = allJobs.filter((j) =>
-      j.cleanerIds.includes(args.cleanerId)
+      j.cleanerIds.includes(cleanerId)
     );
     const allCleanerJobIds = new Set(allCleanerJobs.map((j) => j._id));
 
@@ -78,7 +90,6 @@ export const getCleanerStats = query({
     }
 
     // Current streak: consecutive approved jobs without rework, from most recent
-    // Sort approved jobs by completedAt descending
     const sortedApproved = approvedJobs
       .filter((j) => j.completedAt)
       .sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0));
@@ -105,13 +116,16 @@ export const getCleanerStats = query({
 
 export const getLeaderboard = query({
   args: {
-    companyId: v.id("companies"),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
+    const user = await requireAuth(ctx, args.sessionToken);
+    const companyId = user.companyId;
+
     // Get all active cleaners in the company
     const allUsers = await ctx.db
       .query("users")
-      .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
+      .withIndex("by_companyId", (q) => q.eq("companyId", companyId))
       .collect();
 
     const activecleaners = allUsers.filter(
@@ -122,7 +136,7 @@ export const getLeaderboard = query({
     const allJobs = await ctx.db
       .query("jobs")
       .withIndex("by_companyId_scheduledDate", (q) =>
-        q.eq("companyId", args.companyId)
+        q.eq("companyId", companyId)
       )
       .collect();
 
@@ -189,7 +203,6 @@ export const getLeaderboard = query({
         }
 
         // Consistency score: percentage of jobs approved on first try (reworkCount === 0)
-        // Consider all jobs this cleaner was part of (not just approved)
         const allCleanerJobs = allJobs.filter(
           (j) =>
             j.cleanerIds.includes(cleaner._id) && j.status !== "cancelled"

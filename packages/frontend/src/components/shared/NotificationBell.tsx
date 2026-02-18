@@ -5,10 +5,10 @@ import { Link } from "wouter";
 import { Bell } from "lucide-react";
 
 export function NotificationBell() {
-  const { user } = useAuth();
+  const { sessionToken } = useAuth();
   const count = useQuery(
     api.queries.notifications.unreadCount,
-    user ? { userId: user._id } : "skip"
+    sessionToken ? { sessionToken } : "skip"
   );
 
   return (

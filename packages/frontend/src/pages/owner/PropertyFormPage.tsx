@@ -16,14 +16,14 @@ const PROPERTY_TYPES = [
 ] as const;
 
 export function PropertyFormPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const [, setLocation] = useLocation();
   const params = useParams<{ id?: string }>();
   const isEditing = !!params.id;
 
   const existing = useQuery(
     api.queries.properties.get,
-    params.id ? { propertyId: params.id as Id<"properties"> } : "skip"
+    params.id && sessionToken ? { sessionToken, propertyId: params.id as Id<"properties"> } : "skip"
   );
 
   const createProperty = useMutation(api.mutations.properties.create);
@@ -62,7 +62,7 @@ export function PropertyFormPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!user?.companyId) return;
+    if (!sessionToken) return;
     setError("");
     setLoading(true);
     try {
@@ -79,10 +79,10 @@ export function PropertyFormPage() {
         ownerNotes: ownerNotes || undefined,
       };
       if (isEditing) {
-        await updateProperty({ propertyId: params.id as Id<"properties">, ...data });
+        await updateProperty({ sessionToken: sessionToken!, propertyId: params.id as Id<"properties">, ...data });
         setLocation(`/properties/${params.id}`);
       } else {
-        const id = await createProperty({ companyId: user.companyId, ...data });
+        const id = await createProperty({ sessionToken: sessionToken!, ...data });
         setLocation(`/properties/${id}`);
       }
     } catch (err: any) {

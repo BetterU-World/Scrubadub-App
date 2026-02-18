@@ -106,21 +106,21 @@ function getCacheKey(jobId: string): string {
 
 export function CleaningFormPage() {
   const params = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const [, setLocation] = useLocation();
 
-  const job = useQuery(api.queries.jobs.get, {
-    jobId: params.id as Id<"jobs">,
-  });
+  const job = useQuery(api.queries.jobs.get,
+    sessionToken ? { sessionToken, jobId: params.id as Id<"jobs"> } : "skip"
+  );
 
   const form = useQuery(
     api.queries.forms.getByJob,
-    job ? { jobId: job._id } : "skip"
+    job && sessionToken ? { sessionToken, jobId: job._id } : "skip"
   );
 
   const formItems = useQuery(
     api.queries.forms.getItems,
-    form ? { formId: form._id } : "skip"
+    form && sessionToken ? { sessionToken, formId: form._id } : "skip"
   );
 
   const updateItem = useMutation(api.mutations.forms.updateItem);
@@ -140,6 +140,7 @@ export function CleaningFormPage() {
   const [selfScore, setSelfScore] = useState(8);
   const [showReview, setShowReview] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [showSignature, setShowSignature] = useState(false);
 
   // Micro-win animation state
@@ -319,7 +320,7 @@ export function CleaningFormPage() {
       }, 500);
     }
 
-    await updateItem({ itemId, completed: willBeCompleted });
+    await updateItem({ sessionToken: sessionToken!, itemId, completed: willBeCompleted });
 
     // After update, check milestones and section completion
     if (willBeCompleted) {
@@ -331,26 +332,26 @@ export function CleaningFormPage() {
   };
 
   const handleSaveNote = async (itemId: Id<"formItems">) => {
-    await updateItem({ itemId, note: noteText || undefined });
+    await updateItem({ sessionToken: sessionToken!, itemId, note: noteText || undefined });
     setShowNoteFor(null);
     setNoteText("");
   };
 
   const handlePhotoUpload = async (itemId: Id<"formItems">, file: File) => {
-    const url = await generateUploadUrl({});
+    const url = await generateUploadUrl({ sessionToken: sessionToken! });
     const result = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": file.type },
       body: file,
     });
     const { storageId } = await result.json();
-    await updateItem({ itemId, photoStorageId: storageId });
+    await updateItem({ sessionToken: sessionToken!, itemId, photoStorageId: storageId });
   };
 
   const handleCreateRedFlag = async (itemId: Id<"formItems">) => {
     if (!rfNote.trim()) return;
     await createRedFlag({
-      companyId: job.companyId,
+      sessionToken: sessionToken!,
       propertyId: job.propertyId,
       jobId: job._id,
       formItemId: itemId,
@@ -358,20 +359,21 @@ export function CleaningFormPage() {
       severity: rfSeverity as any,
       note: rfNote,
     });
-    await updateItem({ itemId, isRedFlag: true });
+    await updateItem({ sessionToken: sessionToken!, itemId, isRedFlag: true });
     setShowRedFlag(null);
     setRfNote("");
   };
 
   const handleSubmit = async () => {
     setSubmitting(true);
+    setSubmitError("");
     try {
-      await updateScore({ formId: form._id, cleanerScore: selfScore });
-      await submitForm({ formId: form._id });
+      await updateScore({ sessionToken: sessionToken!, formId: form._id, cleanerScore: selfScore });
+      await submitForm({ sessionToken: sessionToken!, formId: form._id });
       clearFormCache();
       setLocation(`/jobs/${job._id}`);
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      setSubmitError(err.message || "Failed to submit form");
     } finally {
       setSubmitting(false);
     }
@@ -514,6 +516,12 @@ export function CleaningFormPage() {
               </div>
             );
           })}
+
+          {submitError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              {submitError}
+            </div>
+          )}
 
           <button
             onClick={handleSubmit}

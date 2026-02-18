@@ -11,10 +11,10 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 
 export function EmployeeListPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const employees = useQuery(
     api.queries.employees.list,
-    user?.companyId ? { companyId: user.companyId } : "skip"
+    sessionToken ? { sessionToken } : "skip"
   );
   const inviteCleaner = useMutation(api.mutations.employees.inviteCleaner);
   const updateStatus = useMutation(api.mutations.employees.updateEmployeeStatus);
@@ -30,12 +30,12 @@ export function EmployeeListPage() {
   if (!user || employees === undefined) return <PageLoader />;
 
   const handleInvite = async () => {
-    if (!user.companyId) return;
+    if (!sessionToken) return;
     setError("");
     setInviteLoading(true);
     try {
       const result = await inviteCleaner({
-        companyId: user.companyId,
+        sessionToken: sessionToken!,
         email: inviteEmail,
         name: inviteName,
       });
@@ -105,6 +105,7 @@ export function EmployeeListPage() {
                     {emp.role !== "owner" && emp.status !== "pending" && (
                       <button
                         onClick={() => updateStatus({
+                          sessionToken: sessionToken!,
                           userId: emp._id,
                           status: emp.status === "active" ? "inactive" : "active",
                         })}

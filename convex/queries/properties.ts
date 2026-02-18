@@ -1,26 +1,37 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { requireAuth } from "../lib/helpers";
 
 export const list = query({
-  args: { companyId: v.id("companies") },
+  args: { sessionToken: v.string() },
   handler: async (ctx, args) => {
+    const user = await requireAuth(ctx, args.sessionToken);
     return await ctx.db
       .query("properties")
-      .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
+      .withIndex("by_companyId", (q) => q.eq("companyId", user.companyId))
       .collect();
   },
 });
 
 export const get = query({
-  args: { propertyId: v.id("properties") },
+  args: { sessionToken: v.string(), propertyId: v.id("properties") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.propertyId);
+    const user = await requireAuth(ctx, args.sessionToken);
+    const property = await ctx.db.get(args.propertyId);
+    if (!property) return null;
+    if (property.companyId !== user.companyId) throw new Error("Not your company");
+    return property;
   },
 });
 
 export const getHistory = query({
-  args: { propertyId: v.id("properties") },
+  args: { sessionToken: v.string(), propertyId: v.id("properties") },
   handler: async (ctx, args) => {
+    const user = await requireAuth(ctx, args.sessionToken);
+    const property = await ctx.db.get(args.propertyId);
+    if (!property) throw new Error("Property not found");
+    if (property.companyId !== user.companyId) throw new Error("Not your company");
+
     // Get all jobs for this property
     const jobs = await ctx.db
       .query("jobs")
@@ -44,8 +55,8 @@ export const getHistory = query({
     for (const job of jobs) {
       const cleaners = await Promise.all(
         job.cleanerIds.map(async (id) => {
-          const user = await ctx.db.get(id);
-          return user ? { _id: user._id, name: user.name } : null;
+          const u = await ctx.db.get(id);
+          return u ? { _id: u._id, name: u.name } : null;
         })
       );
       timeline.push({

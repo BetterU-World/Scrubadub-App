@@ -24,13 +24,14 @@ import {
 
 export function JobDetailPage() {
   const params = useParams<{ id: string }>();
-  const { user } = useAuth();
-  const job = useQuery(api.queries.jobs.get, {
+  const { user, sessionToken } = useAuth();
+  const job = useQuery(api.queries.jobs.get, sessionToken ? {
+    sessionToken,
     jobId: params.id as Id<"jobs">,
-  });
+  } : "skip");
   const formItems = useQuery(
     api.queries.forms.getItems,
-    job?.form ? { formId: job.form._id } : "skip"
+    job?.form && sessionToken ? { sessionToken, formId: job.form._id } : "skip"
   );
 
   const cancelJob = useMutation(api.mutations.jobs.cancel);
@@ -190,7 +191,7 @@ export function JobDetailPage() {
               <div className="flex gap-3">
                 <button
                   onClick={async () => {
-                    await approveJob({ jobId: job._id, notes: approveNotes || undefined });
+                    await approveJob({ sessionToken: sessionToken!, jobId: job._id, notes: approveNotes || undefined });
                   }}
                   className="btn-primary flex items-center gap-2"
                 >
@@ -218,7 +219,7 @@ export function JobDetailPage() {
         confirmLabel="Cancel Job"
         confirmVariant="danger"
         onConfirm={async () => {
-          await cancelJob({ jobId: job._id });
+          await cancelJob({ sessionToken: sessionToken!, jobId: job._id });
           setShowCancel(false);
         }}
       />
@@ -240,7 +241,7 @@ export function JobDetailPage() {
               <button
                 onClick={async () => {
                   if (!reworkNotes.trim()) return;
-                  await requestRework({ jobId: job._id, notes: reworkNotes });
+                  await requestRework({ sessionToken: sessionToken!, jobId: job._id, notes: reworkNotes });
                   setShowRework(false);
                   setReworkNotes("");
                 }}

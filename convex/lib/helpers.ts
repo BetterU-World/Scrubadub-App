@@ -1,42 +1,27 @@
 import { QueryCtx, MutationCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
 
-export async function getAuthSessionId(
-  ctx: QueryCtx
-): Promise<Id<"users"> | null> {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) return null;
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_email", (q) => q.eq("email", identity.email!))
-    .first();
-  return user?._id ?? null;
-}
+// Session-based authentication: validates session token,
+// returns the authenticated user. Never trusts client-supplied userId.
+export async function requireAuth(ctx: QueryCtx, sessionToken: string) {
+  if (!sessionToken) throw new Error("Not authenticated");
 
-export async function requireAuth(ctx: QueryCtx) {
-  const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw new Error("Not authenticated");
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_email", (q) => q.eq("email", identity.email!))
+  const session = await ctx.db
+    .query("sessions")
+    .withIndex("by_token", (q) => q.eq("token", sessionToken))
     .first();
+  if (!session) throw new Error("Not authenticated");
+  if (session.expiresAt < Date.now()) throw new Error("Session expired");
+
+  const user = await ctx.db.get(session.userId);
   if (!user) throw new Error("User not found");
   if (user.status !== "active") throw new Error("Account not active");
   return user;
 }
 
-export async function requireOwner(ctx: QueryCtx) {
-  const user = await requireAuth(ctx);
+export async function requireOwner(ctx: QueryCtx, sessionToken: string) {
+  const user = await requireAuth(ctx, sessionToken);
   if (user.role !== "owner") throw new Error("Owner access required");
-  return user;
-}
-
-export async function requireCompanyMember(
-  ctx: QueryCtx,
-  companyId: Id<"companies">
-) {
-  const user = await requireAuth(ctx);
-  if (user.companyId !== companyId) throw new Error("Not a member of this company");
   return user;
 }
 

@@ -4,7 +4,7 @@ import { requireAuth, requireOwner, logAudit, createNotification } from "../lib/
 
 export const create = mutation({
   args: {
-    companyId: v.id("companies"),
+    sessionToken: v.string(),
     propertyId: v.id("properties"),
     jobId: v.id("jobs"),
     formItemId: v.optional(v.id("formItems")),
@@ -25,21 +25,27 @@ export const create = mutation({
     photoStorageId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
+    const user = await requireAuth(ctx, args.sessionToken);
+    const companyId = user.companyId;
 
+    // Verify job belongs to user's company
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.companyId !== companyId) throw new Error("Job not found");
+
+    const { sessionToken, ...rest } = args;
     const flagId = await ctx.db.insert("redFlags", {
-      ...args,
+      ...rest,
+      companyId,
       status: "open",
     });
 
-    // Notify owners
     const owners = await ctx.db
       .query("users")
-      .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
+      .withIndex("by_companyId", (q) => q.eq("companyId", companyId))
       .collect();
     for (const owner of owners.filter((u) => u.role === "owner")) {
       await createNotification(ctx, {
-        companyId: args.companyId,
+        companyId,
         userId: owner._id,
         type: "red_flag",
         title: `Red Flag: ${args.category} (${args.severity})`,
@@ -49,7 +55,7 @@ export const create = mutation({
     }
 
     await logAudit(ctx, {
-      companyId: args.companyId,
+      companyId,
       userId: user._id,
       action: "create_red_flag",
       entityType: "redFlag",
@@ -62,15 +68,13 @@ export const create = mutation({
 
 export const updateStatus = mutation({
   args: {
+    sessionToken: v.string(),
     flagId: v.id("redFlags"),
-    status: v.union(
-      v.literal("acknowledged"),
-      v.literal("resolved")
-    ),
+    status: v.union(v.literal("acknowledged"), v.literal("resolved")),
     ownerNote: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx);
+    const owner = await requireOwner(ctx, args.sessionToken);
     const flag = await ctx.db.get(args.flagId);
     if (!flag) throw new Error("Red flag not found");
     if (flag.companyId !== owner.companyId) throw new Error("Not your company");
@@ -91,6 +95,7 @@ export const updateStatus = mutation({
 
 export const createMaintenanceJob = mutation({
   args: {
+    sessionToken: v.string(),
     flagId: v.id("redFlags"),
     scheduledDate: v.string(),
     cleanerIds: v.array(v.id("users")),
@@ -98,7 +103,7 @@ export const createMaintenanceJob = mutation({
     durationMinutes: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx);
+    const owner = await requireOwner(ctx, args.sessionToken);
     const flag = await ctx.db.get(args.flagId);
     if (!flag) throw new Error("Red flag not found");
     if (flag.companyId !== owner.companyId) throw new Error("Not your company");
@@ -118,10 +123,8 @@ export const createMaintenanceJob = mutation({
       sourceRedFlagId: args.flagId,
     });
 
-    // Link the red flag to the maintenance job
     await ctx.db.patch(args.flagId, { maintenanceJobId: jobId });
 
-    // Notify assigned cleaners
     for (const cleanerId of args.cleanerIds) {
       await createNotification(ctx, {
         companyId: flag.companyId,

@@ -8,10 +8,10 @@ import { Link } from "wouter";
 import { Bell, CheckCheck } from "lucide-react";
 
 export function NotificationsPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const notifications = useQuery(
     api.queries.notifications.list,
-    user ? { userId: user._id } : "skip"
+    sessionToken ? { sessionToken } : "skip"
   );
   const markAsRead = useMutation(api.mutations.notifications.markAsRead);
   const markAllAsRead = useMutation(api.mutations.notifications.markAllAsRead);
@@ -28,7 +28,7 @@ export function NotificationsPage() {
         action={
           unreadCount > 0 && (
             <button
-              onClick={() => markAllAsRead({ userId: user._id })}
+              onClick={() => markAllAsRead({ sessionToken: sessionToken! })}
               className="btn-secondary flex items-center gap-2"
             >
               <CheckCheck className="w-4 h-4" /> Mark all read
@@ -45,7 +45,7 @@ export function NotificationsPage() {
             <div
               key={n._id}
               onClick={() => {
-                if (!n.read) markAsRead({ notificationId: n._id });
+                if (!n.read) markAsRead({ sessionToken: sessionToken!, notificationId: n._id });
               }}
               className={`card cursor-pointer transition-colors ${
                 n.read ? "opacity-60" : "border-primary-200 bg-primary-50/20"

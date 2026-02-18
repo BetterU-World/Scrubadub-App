@@ -16,23 +16,23 @@ const JOB_TYPES = [
 ] as const;
 
 export function JobFormPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const [, setLocation] = useLocation();
   const params = useParams<{ id?: string }>();
   const isEditing = !!params.id;
 
   const properties = useQuery(
     api.queries.properties.list,
-    user?.companyId ? { companyId: user.companyId } : "skip"
+    sessionToken ? { sessionToken } : "skip"
   );
   const cleaners = useQuery(
     api.queries.employees.getCleaners,
-    user?.companyId ? { companyId: user.companyId } : "skip"
+    sessionToken ? { sessionToken } : "skip"
   );
 
   const existing = useQuery(
     api.queries.jobs.get,
-    params.id ? { jobId: params.id as Id<"jobs"> } : "skip"
+    params.id && sessionToken ? { sessionToken, jobId: params.id as Id<"jobs"> } : "skip"
   );
 
   const createJob = useMutation(api.mutations.jobs.create);
@@ -74,7 +74,7 @@ export function JobFormPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!user.companyId) return;
+    if (!sessionToken) return;
     setError("");
     setLoading(true);
     try {
@@ -88,11 +88,11 @@ export function JobFormPage() {
         notes: notes || undefined,
       };
       if (isEditing) {
-        await updateJob({ jobId: params.id as Id<"jobs">, ...data });
+        await updateJob({ sessionToken: sessionToken!, jobId: params.id as Id<"jobs">, ...data });
         setLocation(`/jobs/${params.id}`);
       } else {
         const id = await createJob({
-          companyId: user.companyId,
+          sessionToken: sessionToken!,
           ...data,
           requireConfirmation,
         });

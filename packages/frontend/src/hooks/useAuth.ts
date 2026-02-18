@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 
@@ -16,33 +16,46 @@ interface AuthUser {
   phone?: string;
 }
 
-function getStoredUserId(): Id<"users"> | null {
+function getStoredSessionToken(): string | null {
   try {
     const stored = localStorage.getItem(AUTH_KEY);
-    return stored ? (JSON.parse(stored) as Id<"users">) : null;
+    if (!stored) return null;
+    // Handle migration: old format stored JSON-stringified userId
+    // New format stores plain sessionToken string (64-char hex)
+    if (stored.startsWith('"')) {
+      // Old format - clear it
+      localStorage.removeItem(AUTH_KEY);
+      return null;
+    }
+    return stored;
   } catch {
     return null;
   }
 }
 
 export function useAuth() {
-  const [userId, setUserId] = useState<Id<"users"> | null>(getStoredUserId);
+  const [sessionToken, setSessionToken] = useState<string | null>(getStoredSessionToken);
   const [isLoading, setIsLoading] = useState(true);
 
-  const signUpMutation = useMutation(api.auth.signUp);
-  const signInMutation = useMutation(api.auth.signIn);
-  const user = useQuery(api.auth.getCurrentUser, { userId: userId ?? undefined });
+  const signUpAction = useAction(api.authActions.signUp);
+  const signInAction = useAction(api.authActions.signIn);
+  const signOutAction = useAction(api.authActions.signOut);
+
+  const user = useQuery(
+    api.auth.getCurrentUser,
+    { sessionToken: sessionToken ?? undefined }
+  );
 
   useEffect(() => {
     if (user !== undefined) {
       setIsLoading(false);
-      if (user === null && userId) {
-        // User was deleted or invalid
+      if (user === null && sessionToken) {
+        // Session expired or invalid
         localStorage.removeItem(AUTH_KEY);
-        setUserId(null);
+        setSessionToken(null);
       }
     }
-  }, [user, userId]);
+  }, [user, sessionToken]);
 
   const signUp = useCallback(
     async (args: {
@@ -51,32 +64,39 @@ export function useAuth() {
       name: string;
       companyName: string;
     }) => {
-      const result = await signUpMutation(args);
-      localStorage.setItem(AUTH_KEY, JSON.stringify(result.userId));
-      setUserId(result.userId);
+      const result = await signUpAction(args);
+      localStorage.setItem(AUTH_KEY, result.sessionToken);
+      setSessionToken(result.sessionToken);
       return result;
     },
-    [signUpMutation]
+    [signUpAction]
   );
 
   const signIn = useCallback(
     async (args: { email: string; password: string }) => {
-      const result = await signInMutation(args);
-      localStorage.setItem(AUTH_KEY, JSON.stringify(result.userId));
-      setUserId(result.userId as Id<"users">);
+      const result = await signInAction(args);
+      localStorage.setItem(AUTH_KEY, result.sessionToken);
+      setSessionToken(result.sessionToken);
       return result;
     },
-    [signInMutation]
+    [signInAction]
   );
 
-  const signOut = useCallback(() => {
+  const signOut = useCallback(async () => {
+    if (sessionToken) {
+      try {
+        await signOutAction({ sessionToken });
+      } catch {
+        // Ignore errors during signout (e.g. session already expired)
+      }
+    }
     localStorage.removeItem(AUTH_KEY);
-    setUserId(null);
-  }, []);
+    setSessionToken(null);
+  }, [sessionToken, signOutAction]);
 
   return {
     user: user as AuthUser | null | undefined,
-    userId,
+    sessionToken,
     isLoading,
     isAuthenticated: !!user,
     signUp,

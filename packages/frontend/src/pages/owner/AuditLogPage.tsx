@@ -7,10 +7,10 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ScrollText } from "lucide-react";
 
 export function AuditLogPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const logs = useQuery(
     api.queries.auditLog.list,
-    user?.companyId ? { companyId: user.companyId } : "skip"
+    sessionToken ? { sessionToken } : "skip"
   );
 
   if (!user || logs === undefined) return <PageLoader />;

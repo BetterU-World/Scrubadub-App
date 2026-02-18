@@ -9,10 +9,10 @@ import { Link } from "wouter";
 import { Building2, Plus, MapPin } from "lucide-react";
 
 export function PropertyListPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const properties = useQuery(
     api.queries.properties.list,
-    user?.companyId ? { companyId: user.companyId } : "skip"
+    sessionToken ? { sessionToken } : "skip"
   );
 
   if (!user || properties === undefined) return <PageLoader />;

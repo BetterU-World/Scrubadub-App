@@ -14,10 +14,8 @@ import {
 } from "lucide-react";
 
 export function DashboardPage() {
-  const { user } = useAuth();
-  const stats = useQuery(api.queries.dashboard.getStats, {
-    companyId: user?.companyId!,
-  });
+  const { user, sessionToken } = useAuth();
+  const stats = useQuery(api.queries.dashboard.getStats, sessionToken ? { sessionToken } : "skip");
 
   if (!user) return <PageLoader />;
 

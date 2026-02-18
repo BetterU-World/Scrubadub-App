@@ -1,16 +1,20 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { requireAuth, requireOwner } from "../lib/helpers";
 
 export const list = query({
-  args: { companyId: v.id("companies") },
+  args: { sessionToken: v.string() },
   handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.sessionToken);
     return await ctx.db
       .query("users")
-      .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
+      .withIndex("by_companyId", (q) => q.eq("companyId", owner.companyId))
       .collect();
   },
 });
 
+// Public query for invite acceptance flow - no auth required
+// Only returns safe, non-sensitive fields
 export const getByInviteToken = query({
   args: { token: v.string() },
   handler: async (ctx, args) => {
@@ -31,11 +35,12 @@ export const getByInviteToken = query({
 });
 
 export const getCleaners = query({
-  args: { companyId: v.id("companies") },
+  args: { sessionToken: v.string() },
   handler: async (ctx, args) => {
+    const user = await requireAuth(ctx, args.sessionToken);
     const users = await ctx.db
       .query("users")
-      .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
+      .withIndex("by_companyId", (q) => q.eq("companyId", user.companyId))
       .collect();
     return users.filter((u) => u.role === "cleaner" && u.status === "active");
   },

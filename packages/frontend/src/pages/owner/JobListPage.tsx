@@ -21,12 +21,12 @@ const STATUS_FILTERS = [
 ];
 
 export function JobListPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const [statusFilter, setStatusFilter] = useState("");
   const jobs = useQuery(
     api.queries.jobs.list,
-    user?.companyId
-      ? { companyId: user.companyId, status: statusFilter || undefined }
+    sessionToken
+      ? { sessionToken, status: statusFilter || undefined }
       : "skip"
   );
 

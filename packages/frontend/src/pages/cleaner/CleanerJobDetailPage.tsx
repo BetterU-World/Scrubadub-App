@@ -12,11 +12,11 @@ import { Calendar, Clock, MapPin, Key, CheckCircle, XCircle, Play, ClipboardChec
 
 export function CleanerJobDetailPage() {
   const params = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const [, setLocation] = useLocation();
-  const job = useQuery(api.queries.jobs.get, {
-    jobId: params.id as Id<"jobs">,
-  });
+  const job = useQuery(api.queries.jobs.get,
+    sessionToken ? { sessionToken, jobId: params.id as Id<"jobs"> } : "skip"
+  );
   const confirmJob = useMutation(api.mutations.jobs.confirmJob);
   const denyJob = useMutation(api.mutations.jobs.denyJob);
   const startJob = useMutation(api.mutations.jobs.startJob);
@@ -34,11 +34,10 @@ export function CleanerJobDetailPage() {
 
   const handleStartJob = async () => {
     if (!user) return;
-    await startJob({ jobId: job._id });
+    await startJob({ sessionToken: sessionToken!, jobId: job._id });
     const formId = await createForm({
+      sessionToken: sessionToken!,
       jobId: job._id,
-      companyId: job.companyId,
-      cleanerId: user._id,
     });
     setLocation(`/jobs/${job._id}/form`);
   };
@@ -91,7 +90,7 @@ export function CleanerJobDetailPage() {
           {canConfirm && (
             <div className="flex gap-3">
               <button
-                onClick={async () => { await confirmJob({ jobId: job._id }); }}
+                onClick={async () => { await confirmJob({ sessionToken: sessionToken!, jobId: job._id }); }}
                 className="btn-primary flex-1 flex items-center justify-center gap-2"
               >
                 <CheckCircle className="w-4 h-4" /> Confirm Job
@@ -152,7 +151,7 @@ export function CleanerJobDetailPage() {
               <button onClick={() => setShowDeny(false)} className="btn-secondary">Cancel</button>
               <button
                 onClick={async () => {
-                  await denyJob({ jobId: job._id, reason: denyReason || undefined });
+                  await denyJob({ sessionToken: sessionToken!, jobId: job._id, reason: denyReason || undefined });
                   setShowDeny(false);
                 }}
                 className="btn-danger"

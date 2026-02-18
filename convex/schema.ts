@@ -28,6 +28,12 @@ export default defineSchema({
     .index("by_inviteToken", ["inviteToken"])
     .index("by_resetToken", ["resetToken"]),
 
+  sessions: defineTable({
+    userId: v.id("users"),
+    token: v.string(),
+    expiresAt: v.number(),
+  }).index("by_token", ["token"]),
+
   properties: defineTable({
     companyId: v.id("companies"),
     name: v.string(),
@@ -40,7 +46,6 @@ export default defineSchema({
     address: v.string(),
     accessInstructions: v.optional(v.string()),
     amenities: v.array(v.string()),
-    // Structured inventory counts for supply tracking
     towelCount: v.optional(v.number()),
     sheetSets: v.optional(v.number()),
     pillowCount: v.optional(v.number()),

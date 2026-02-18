@@ -4,7 +4,7 @@ import { requireOwner, requireAuth, logAudit, createNotification } from "../lib/
 
 export const create = mutation({
   args: {
-    companyId: v.id("companies"),
+    sessionToken: v.string(),
     propertyId: v.id("properties"),
     cleanerIds: v.array(v.id("users")),
     type: v.union(
@@ -21,33 +21,36 @@ export const create = mutation({
     requireConfirmation: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx);
-    if (owner.companyId !== args.companyId) throw new Error("Not your company");
+    const owner = await requireOwner(ctx, args.sessionToken);
+    const companyId = owner.companyId;
+
+    const property = await ctx.db.get(args.propertyId);
+    if (!property || property.companyId !== companyId) {
+      throw new Error("Property not found");
+    }
 
     const initialStatus = args.requireConfirmation === false ? "confirmed" : "scheduled";
-
+    const { sessionToken, ...rest } = args;
     const jobId = await ctx.db.insert("jobs", {
-      ...args,
+      ...rest,
+      companyId,
       status: initialStatus,
       reworkCount: 0,
     });
 
-    const property = await ctx.db.get(args.propertyId);
-
-    // Notify assigned cleaners
     for (const cleanerId of args.cleanerIds) {
       await createNotification(ctx, {
-        companyId: args.companyId,
+        companyId,
         userId: cleanerId,
         type: "job_assigned",
         title: "New Job Assigned",
-        message: `You've been assigned to clean ${property?.name ?? "a property"} on ${args.scheduledDate}`,
+        message: `You've been assigned to clean ${property.name} on ${args.scheduledDate}`,
         relatedJobId: jobId,
       });
     }
 
     await logAudit(ctx, {
-      companyId: args.companyId,
+      companyId,
       userId: owner._id,
       action: "create_job",
       entityType: "job",
@@ -60,6 +63,7 @@ export const create = mutation({
 
 export const update = mutation({
   args: {
+    sessionToken: v.string(),
     jobId: v.id("jobs"),
     propertyId: v.optional(v.id("properties")),
     cleanerIds: v.optional(v.array(v.id("users"))),
@@ -69,7 +73,7 @@ export const update = mutation({
         v.literal("deep_clean"),
         v.literal("turnover"),
         v.literal("move_in_out"),
-      v.literal("maintenance")
+        v.literal("maintenance")
       )
     ),
     scheduledDate: v.optional(v.string()),
@@ -78,13 +82,12 @@ export const update = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx);
+    const owner = await requireOwner(ctx, args.sessionToken);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
 
-    const { jobId, ...updates } = args;
-    // Remove undefined values
+    const { jobId, sessionToken, ...updates } = args;
     const cleanUpdates: Record<string, any> = {};
     for (const [key, val] of Object.entries(updates)) {
       if (val !== undefined) cleanUpdates[key] = val;
@@ -102,9 +105,9 @@ export const update = mutation({
 });
 
 export const cancel = mutation({
-  args: { jobId: v.id("jobs") },
+  args: { sessionToken: v.string(), jobId: v.id("jobs") },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx);
+    const owner = await requireOwner(ctx, args.sessionToken);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
@@ -133,17 +136,17 @@ export const cancel = mutation({
 });
 
 export const confirmJob = mutation({
-  args: { jobId: v.id("jobs") },
+  args: { sessionToken: v.string(), jobId: v.id("jobs") },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
+    const user = await requireAuth(ctx, args.sessionToken);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
+    if (job.companyId !== user.companyId) throw new Error("Not your company");
     if (!job.cleanerIds.includes(user._id)) throw new Error("Not assigned to this job");
     if (job.status !== "scheduled") throw new Error("Job cannot be confirmed in current status");
 
     await ctx.db.patch(args.jobId, { status: "confirmed" });
 
-    // Notify owners
     const owners = await ctx.db
       .query("users")
       .withIndex("by_companyId", (q) => q.eq("companyId", job.companyId))
@@ -162,11 +165,12 @@ export const confirmJob = mutation({
 });
 
 export const denyJob = mutation({
-  args: { jobId: v.id("jobs"), reason: v.optional(v.string()) },
+  args: { sessionToken: v.string(), jobId: v.id("jobs"), reason: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
+    const user = await requireAuth(ctx, args.sessionToken);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
+    if (job.companyId !== user.companyId) throw new Error("Not your company");
     if (!job.cleanerIds.includes(user._id)) throw new Error("Not assigned to this job");
     if (job.status !== "scheduled") throw new Error("Job cannot be denied in current status");
 
@@ -190,19 +194,17 @@ export const denyJob = mutation({
 });
 
 export const startJob = mutation({
-  args: { jobId: v.id("jobs") },
+  args: { sessionToken: v.string(), jobId: v.id("jobs") },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
+    const user = await requireAuth(ctx, args.sessionToken);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
+    if (job.companyId !== user.companyId) throw new Error("Not your company");
     if (!job.cleanerIds.includes(user._id)) throw new Error("Not assigned to this job");
     if (job.status !== "confirmed" && job.status !== "rework_requested")
       throw new Error("Job cannot be started in current status");
 
-    await ctx.db.patch(args.jobId, {
-      status: "in_progress",
-      startedAt: Date.now(),
-    });
+    await ctx.db.patch(args.jobId, { status: "in_progress", startedAt: Date.now() });
 
     const owners = await ctx.db
       .query("users")
@@ -222,9 +224,9 @@ export const startJob = mutation({
 });
 
 export const approveJob = mutation({
-  args: { jobId: v.id("jobs"), notes: v.optional(v.string()) },
+  args: { sessionToken: v.string(), jobId: v.id("jobs"), notes: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx);
+    const owner = await requireOwner(ctx, args.sessionToken);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
@@ -232,7 +234,6 @@ export const approveJob = mutation({
 
     await ctx.db.patch(args.jobId, { status: "approved", completedAt: Date.now() });
 
-    // Update form status
     const form = await ctx.db
       .query("forms")
       .withIndex("by_jobId", (q) => q.eq("jobId", args.jobId))
@@ -263,9 +264,9 @@ export const approveJob = mutation({
 });
 
 export const requestRework = mutation({
-  args: { jobId: v.id("jobs"), notes: v.string() },
+  args: { sessionToken: v.string(), jobId: v.id("jobs"), notes: v.string() },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx);
+    const owner = await requireOwner(ctx, args.sessionToken);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");

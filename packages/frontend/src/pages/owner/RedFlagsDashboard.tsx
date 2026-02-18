@@ -15,19 +15,19 @@ type ActiveAction =
   | null;
 
 export function RedFlagsDashboard() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const [statusFilter, setStatusFilter] = useState("open");
   const [activeAction, setActiveAction] = useState<ActiveAction>(null);
 
   const flags = useQuery(
     api.queries.redFlags.listByCompany,
-    user?.companyId
-      ? { companyId: user.companyId, status: statusFilter || undefined }
+    sessionToken
+      ? { sessionToken, status: statusFilter || undefined }
       : "skip"
   );
   const cleaners = useQuery(
     api.queries.employees.getCleaners,
-    user?.companyId ? { companyId: user.companyId } : "skip"
+    sessionToken ? { sessionToken } : "skip"
   );
   const updateStatus = useMutation(api.mutations.redFlags.updateStatus);
   const createMaintenanceJob = useMutation(api.mutations.redFlags.createMaintenanceJob);
@@ -36,6 +36,7 @@ export function RedFlagsDashboard() {
 
   const handleStatusUpdate = async (flagId: string, status: "acknowledged" | "resolved", ownerNote: string) => {
     await updateStatus({
+      sessionToken: sessionToken!,
       flagId,
       status,
       ...(ownerNote.trim() ? { ownerNote: ownerNote.trim() } : {}),
@@ -49,6 +50,7 @@ export function RedFlagsDashboard() {
     if (!scheduledDate || cleanerIds.length === 0) return;
 
     await createMaintenanceJob({
+      sessionToken: sessionToken!,
       flagId,
       scheduledDate,
       cleanerIds,

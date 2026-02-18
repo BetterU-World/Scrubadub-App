@@ -5,12 +5,18 @@ import { FORM_TEMPLATE } from "../lib/constants";
 
 export const createFromTemplate = mutation({
   args: {
+    sessionToken: v.string(),
     jobId: v.id("jobs"),
-    companyId: v.id("companies"),
-    cleanerId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    // Check if form already exists
+    const user = await requireAuth(ctx, args.sessionToken);
+
+    const job = await ctx.db.get(args.jobId);
+    if (!job) throw new Error("Job not found");
+    if (job.companyId !== user.companyId) throw new Error("Not your company");
+    if (!job.cleanerIds.includes(user._id)) throw new Error("Not assigned to this job");
+
+    // Idempotency: return existing form if already created
     const existing = await ctx.db
       .query("forms")
       .withIndex("by_jobId", (q) => q.eq("jobId", args.jobId))
@@ -19,8 +25,8 @@ export const createFromTemplate = mutation({
 
     const formId = await ctx.db.insert("forms", {
       jobId: args.jobId,
-      companyId: args.companyId,
-      cleanerId: args.cleanerId,
+      companyId: job.companyId,
+      cleanerId: user._id,
       status: "in_progress",
     });
 
@@ -42,7 +48,6 @@ export const createFromTemplate = mutation({
   },
 });
 
-// Helper to check form is still editable (not submitted or approved)
 async function requireEditable(ctx: any, formId: any) {
   const form = await ctx.db.get(formId);
   if (!form) throw new Error("Form not found");
@@ -54,6 +59,7 @@ async function requireEditable(ctx: any, formId: any) {
 
 export const updateItem = mutation({
   args: {
+    sessionToken: v.string(),
     itemId: v.id("formItems"),
     completed: v.optional(v.boolean()),
     note: v.optional(v.string()),
@@ -61,13 +67,15 @@ export const updateItem = mutation({
     photoStorageId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
+    const user = await requireAuth(ctx, args.sessionToken);
+
     const item = await ctx.db.get(args.itemId);
     if (!item) throw new Error("Item not found");
 
-    // Enforce immutability after submission
-    await requireEditable(ctx, item.formId);
+    const form = await requireEditable(ctx, item.formId);
+    if (form.companyId !== user.companyId) throw new Error("Not your company");
 
-    const { itemId, ...updates } = args;
+    const { itemId, sessionToken, ...updates } = args;
     const cleanUpdates: Record<string, any> = {};
     for (const [key, val] of Object.entries(updates)) {
       if (val !== undefined) cleanUpdates[key] = val;
@@ -78,33 +86,42 @@ export const updateItem = mutation({
 
 export const updateScore = mutation({
   args: {
+    sessionToken: v.string(),
     formId: v.id("forms"),
     cleanerScore: v.number(),
   },
   handler: async (ctx, args) => {
-    await requireEditable(ctx, args.formId);
+    const user = await requireAuth(ctx, args.sessionToken);
+    const form = await requireEditable(ctx, args.formId);
+    if (form.companyId !== user.companyId) throw new Error("Not your company");
     await ctx.db.patch(args.formId, { cleanerScore: args.cleanerScore });
   },
 });
 
 export const updateFinalPass = mutation({
   args: {
+    sessionToken: v.string(),
     formId: v.id("forms"),
     finalPass: v.boolean(),
   },
   handler: async (ctx, args) => {
-    await requireEditable(ctx, args.formId);
+    const user = await requireAuth(ctx, args.sessionToken);
+    const form = await requireEditable(ctx, args.formId);
+    if (form.companyId !== user.companyId) throw new Error("Not your company");
     await ctx.db.patch(args.formId, { finalPass: args.finalPass });
   },
 });
 
 export const saveSignature = mutation({
   args: {
+    sessionToken: v.string(),
     formId: v.id("forms"),
     signatureStorageId: v.id("_storage"),
   },
   handler: async (ctx, args) => {
-    await requireEditable(ctx, args.formId);
+    const user = await requireAuth(ctx, args.sessionToken);
+    const form = await requireEditable(ctx, args.formId);
+    if (form.companyId !== user.companyId) throw new Error("Not your company");
     await ctx.db.patch(args.formId, {
       signatureStorageId: args.signatureStorageId,
     });
@@ -112,17 +129,17 @@ export const saveSignature = mutation({
 });
 
 export const submit = mutation({
-  args: { formId: v.id("forms") },
+  args: { sessionToken: v.string(), formId: v.id("forms") },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
+    const user = await requireAuth(ctx, args.sessionToken);
     const form = await ctx.db.get(args.formId);
     if (!form) throw new Error("Form not found");
+    if (form.companyId !== user.companyId) throw new Error("Not your company");
     if (form.cleanerId !== user._id) throw new Error("Not your form");
     if (form.status === "submitted" || form.status === "approved") {
       throw new Error("Form already submitted");
     }
 
-    // Validate all items are completed
     const items = await ctx.db
       .query("formItems")
       .withIndex("by_formId", (q) => q.eq("formId", args.formId))
@@ -139,12 +156,10 @@ export const submit = mutation({
       submittedAt: Date.now(),
     });
 
-    // Update job status
     const job = await ctx.db.get(form.jobId);
     if (job) {
       await ctx.db.patch(form.jobId, { status: "submitted" });
 
-      // Notify owners
       const owners = await ctx.db
         .query("users")
         .withIndex("by_companyId", (q) => q.eq("companyId", form.companyId))

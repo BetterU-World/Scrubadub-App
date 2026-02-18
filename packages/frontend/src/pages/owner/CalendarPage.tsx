@@ -27,7 +27,7 @@ import {
 type ViewMode = "month" | "week" | "day";
 
 export function CalendarPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
@@ -59,9 +59,9 @@ export function CalendarPage() {
   // Query jobs for the computed range
   const jobs = useQuery(
     api.queries.jobs.getCalendarJobs,
-    user?.companyId
+    sessionToken
       ? {
-          companyId: user.companyId,
+          sessionToken,
           startDate: format(rangeStart, "yyyy-MM-dd"),
           endDate: format(rangeEnd, "yyyy-MM-dd"),
         }
@@ -71,13 +71,13 @@ export function CalendarPage() {
   // Query properties for filter dropdown
   const properties = useQuery(
     api.queries.properties.list,
-    user?.companyId ? { companyId: user.companyId } : "skip"
+    sessionToken ? { sessionToken } : "skip"
   );
 
   // Query cleaners for filter dropdown
   const cleaners = useQuery(
     api.queries.employees.getCleaners,
-    user?.companyId ? { companyId: user.companyId } : "skip"
+    sessionToken ? { sessionToken } : "skip"
   );
 
   // Apply client-side filters (role-based + user selections)

@@ -55,10 +55,10 @@ function RankCell({ rank }: { rank: number }) {
 }
 
 export function PerformancePage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const leaderboard = useQuery(
     api.queries.performance.getLeaderboard,
-    user?.companyId ? { companyId: user.companyId } : "skip"
+    sessionToken ? { sessionToken } : "skip"
   );
 
   const [sortKey, setSortKey] = useState<SortKey>("averageScore");

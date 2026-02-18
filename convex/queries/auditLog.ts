@@ -1,16 +1,20 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { requireOwner } from "../lib/helpers";
 
 export const list = query({
   args: {
-    companyId: v.id("companies"),
+    sessionToken: v.string(),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.sessionToken);
+    const companyId = owner.companyId;
+
     const logs = await ctx.db
       .query("auditLog")
       .withIndex("by_companyId_timestamp", (q) =>
-        q.eq("companyId", args.companyId)
+        q.eq("companyId", companyId)
       )
       .order("desc")
       .take(args.limit ?? 100);

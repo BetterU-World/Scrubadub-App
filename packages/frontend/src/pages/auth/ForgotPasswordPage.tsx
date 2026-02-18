@@ -9,8 +9,6 @@ export function ForgotPasswordPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [resetLink, setResetLink] = useState("");
-
   const requestReset = useMutation(api.auth.requestPasswordReset);
 
   const handleSubmit = async (e: FormEvent) => {
@@ -18,12 +16,8 @@ export function ForgotPasswordPage() {
     setError("");
     setLoading(true);
     try {
-      const result = await requestReset({ email });
+      await requestReset({ email });
       setSubmitted(true);
-      // For MVP, show the reset link directly since we can't send email
-      if (result?.token) {
-        setResetLink(`/reset-password/${result.token}`);
-      }
     } catch (err: any) {
       setError(err.message || "Something went wrong");
     } finally {
@@ -55,17 +49,6 @@ export function ForgotPasswordPage() {
               <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
                 If an account exists with this email, a reset link has been sent.
               </div>
-
-              {resetLink && (
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
-                  <p className="text-blue-700 font-medium mb-1">MVP: Reset link (would be emailed in production)</p>
-                  <Link href={resetLink}>
-                    <a className="text-primary-600 font-medium hover:text-primary-700 break-all">
-                      {window.location.origin}{resetLink}
-                    </a>
-                  </Link>
-                </div>
-              )}
 
               <p className="text-center text-sm text-gray-500">
                 <Link href="/login">
