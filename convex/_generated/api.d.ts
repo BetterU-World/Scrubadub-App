@@ -7,7 +7,9 @@
  */
 
 import type { ApiFromModules } from "convex/server";
+import type * as actions_billing from "../actions/billing.js";
 import type * as auth from "../auth.js";
+import type * as mutations_billing from "../mutations/billing.js";
 import type * as mutations_employees from "../mutations/employees.js";
 import type * as mutations_forms from "../mutations/forms.js";
 import type * as mutations_jobs from "../mutations/jobs.js";
@@ -16,6 +18,7 @@ import type * as mutations_properties from "../mutations/properties.js";
 import type * as mutations_redFlags from "../mutations/redFlags.js";
 import type * as mutations_storage from "../mutations/storage.js";
 import type * as queries_auditLog from "../queries/auditLog.js";
+import type * as queries_billing from "../queries/billing.js";
 import type * as queries_dashboard from "../queries/dashboard.js";
 import type * as queries_employees from "../queries/employees.js";
 import type * as queries_forms from "../queries/forms.js";
@@ -26,7 +29,9 @@ import type * as queries_redFlags from "../queries/redFlags.js";
 import type * as queries_storage from "../queries/storage.js";
 
 declare const fullApi: ApiFromModules<{
+  "actions/billing": typeof actions_billing;
   auth: typeof auth;
+  "mutations/billing": typeof mutations_billing;
   "mutations/employees": typeof mutations_employees;
   "mutations/forms": typeof mutations_forms;
   "mutations/jobs": typeof mutations_jobs;
@@ -35,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   "mutations/redFlags": typeof mutations_redFlags;
   "mutations/storage": typeof mutations_storage;
   "queries/auditLog": typeof queries_auditLog;
+  "queries/billing": typeof queries_billing;
   "queries/dashboard": typeof queries_dashboard;
   "queries/employees": typeof queries_employees;
   "queries/forms": typeof queries_forms;

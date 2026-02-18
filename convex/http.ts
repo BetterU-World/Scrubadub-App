@@ -1,5 +1,6 @@
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
+import { internal } from "./_generated/api";
 
 const http = httpRouter();
 
@@ -51,14 +52,25 @@ const stripeWebhook = httpAction(async (ctx, request) => {
 
   const event = JSON.parse(payload);
 
-  // TODO: implement full billing logic
   switch (event.type) {
     case "customer.subscription.created":
     case "customer.subscription.updated":
-    case "customer.subscription.deleted":
+    case "customer.subscription.deleted": {
+      const subscription = event.data.object;
+      const priceId = subscription.items?.data?.[0]?.price?.id ?? "";
+      await ctx.runMutation(internal.mutations.billing.syncSubscription, {
+        stripeCustomerId: subscription.customer,
+        stripeSubscriptionId: subscription.id,
+        stripePriceId: priceId,
+        status: subscription.status,
+        currentPeriodEnd: subscription.current_period_end,
+        cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
+      });
+      break;
+    }
     case "invoice.payment_succeeded":
     case "invoice.payment_failed":
-      console.log(`Received Stripe event: ${event.type}`, event.id);
+      console.log(`Stripe invoice event: ${event.type}`, event.id);
       break;
     default:
       console.log(`Unhandled Stripe event type: ${event.type}`);
