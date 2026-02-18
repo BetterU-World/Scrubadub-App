@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { Users, UserPlus, Copy, Check } from "lucide-react";
+import { Users, UserPlus, Copy, Check, ExternalLink } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 
@@ -140,13 +140,24 @@ export function EmployeeListPage() {
               <div>
                 <p className="text-sm text-gray-600 mb-3">Share this link with {inviteName}:</p>
                 <div className="flex gap-2">
-                  <input className="input-field text-sm" value={inviteLink} readOnly />
-                  <button onClick={copyLink} className="btn-secondary flex items-center gap-1">
+                  <input className="input-field text-sm flex-1" value={inviteLink} readOnly />
+                </div>
+                <div className="flex gap-2 mt-3">
+                  <button onClick={copyLink} className="btn-primary flex-1 flex items-center justify-center gap-2">
                     {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    {copied ? "Copied" : "Copy"}
+                    {copied ? "Copied!" : "Copy Invite Link"}
+                  </button>
+                  <button
+                    onClick={() => window.open(inviteLink, "_blank")}
+                    className="btn-secondary flex items-center justify-center gap-2"
+                  >
+                    <ExternalLink className="w-4 h-4" /> Open
                   </button>
                 </div>
-                <button onClick={resetInviteDialog} className="btn-primary w-full mt-4">Done</button>
+                <p className="text-xs text-gray-500 mt-3">
+                  Send this link to the cleaner. They should open it while logged out.
+                </p>
+                <button onClick={resetInviteDialog} className="btn-secondary w-full mt-3">Done</button>
               </div>
             ) : (
               <div className="space-y-4">
