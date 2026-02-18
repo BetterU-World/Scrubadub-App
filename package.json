@@ -5,6 +5,7 @@
     "packages/*"
   ],
   "scripts": {
+    "build": "npx convex deploy --cmd 'npm run build -w packages/frontend'",
     "dev": "concurrently \"npx convex dev\" \"npm run dev -w packages/frontend\"",
     "dev:frontend": "npm run dev -w packages/frontend",
     "dev:convex": "npx convex dev"
