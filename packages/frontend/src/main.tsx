@@ -6,20 +6,22 @@ import "./index.css";
 
 const convexUrl = import.meta.env.VITE_CONVEX_URL;
 if (!convexUrl) {
-  throw new Error(
-    "Missing VITE_CONVEX_URL env variable. " +
-      "Run `npx convex dev` from the repo root to generate .env.local.",
+  document.getElementById("root")!.innerHTML =
+    '<div style="font-family:system-ui;padding:2rem">' +
+    "<h1>Missing VITE_CONVEX_URL</h1>" +
+    "<p>Run <code>npx convex dev</code> from the repo root to generate " +
+    "<code>.env.local</code>, then restart Vite.</p></div>";
+} else {
+  const convex = new ConvexReactClient(convexUrl);
+
+  ReactDOM.createRoot(document.getElementById("root")!).render(
+    <React.StrictMode>
+      <ConvexProvider client={convex}>
+        <App />
+      </ConvexProvider>
+    </React.StrictMode>
   );
 }
-const convex = new ConvexReactClient(convexUrl);
-
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <ConvexProvider client={convex}>
-      <App />
-    </ConvexProvider>
-  </React.StrictMode>
-);
 
 // Register service worker for PWA
 if ("serviceWorker" in navigator) {
