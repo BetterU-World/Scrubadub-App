@@ -29,9 +29,9 @@ export function useAuth() {
   const [userId, setUserId] = useState<Id<"users"> | null>(getStoredUserId);
   const [isLoading, setIsLoading] = useState(true);
 
-  const signUpMutation = useMutation(api.auth.signUp);
-  const signInMutation = useMutation(api.auth.signIn);
-  const user = useQuery(api.auth.getCurrentUser, { userId: userId ?? undefined });
+  const signUpMutation = useMutation(api.authActions.signUp);
+  const signInMutation = useMutation(api.authActions.signIn);
+  const user = useQuery(api.authActions.getCurrentUser, { userId: userId ?? undefined });
 
   useEffect(() => {
     if (user !== undefined) {

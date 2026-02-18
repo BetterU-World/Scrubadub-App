@@ -30,7 +30,7 @@ import type * as queries_storage from "../queries/storage.js";
 
 declare const fullApi: ApiFromModules<{
   "actions/billing": typeof actions_billing;
-  auth: typeof auth;
+  authActions: typeof auth;
   "mutations/billing": typeof mutations_billing;
   "mutations/employees": typeof mutations_employees;
   "mutations/forms": typeof mutations_forms;
