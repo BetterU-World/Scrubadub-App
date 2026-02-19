@@ -17,42 +17,48 @@ function getStripe() {
   return new Stripe(process.env.STRIPE_SECRET_KEY!);
 }
 
-export const createCheckoutSession = action({
+export const createCheckoutSession: any = action({
   args: {
     userId: v.id("users"),
     tier: v.union(v.literal("cleaning_owner"), v.literal("str_owner")),
   },
-  handler: async (ctx, args) => {
-    const data = await ctx.runQuery(
+  handler: async (ctx: any, args: any): Promise<any> => {
+    const data: any = await ctx.runQuery(
       internal.queries.billing.getCompanyForBilling,
       { userId: args.userId }
     );
     if (!data) throw new Error("User or company not found");
     if (data.role !== "owner") throw new Error("Only owners can subscribe");
 
-    const stripe = getStripe();
+    const stripe: any = getStripe();
 
     // Create or retrieve Stripe customer
-    let customerId = data.stripeCustomerId as string | undefined;
+    let customerId: string | undefined = data.stripeCustomerId as
+      | string
+      | undefined;
+
     if (!customerId) {
-      const customer = await stripe.customers.create({
+      const customer: any = await stripe.customers.create({
         email: data.email,
         metadata: { companyId: data.companyId, ownerUserId: args.userId },
       });
-      customerId = customer.id;
-      await ctx.runMutation(
-        internal.mutations.billing.setStripeCustomerId,
-        { companyId: data.companyId, stripeCustomerId: customerId }
-      );
+
+      customerId = customer.id as string;
+
+      // customerId is definitely set here
+      await ctx.runMutation(internal.mutations.billing.setStripeCustomerId, {
+        companyId: data.companyId,
+        stripeCustomerId: customerId,
+      });
     }
 
     const APP_URL =
       process.env.APP_URL ?? "https://scrubadub-app-frontend.vercel.app";
 
-    const session = await stripe.checkout.sessions.create({
+    const session: any = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
-      line_items: [{ price: PRICE_IDS[args.tier], quantity: 1 }],
+      line_items: [{ price: PRICE_IDS[args.tier as keyof typeof PRICE_IDS], quantity: 1 }],
       subscription_data: {
         trial_period_days: 14,
         metadata: {
@@ -71,33 +77,32 @@ export const createCheckoutSession = action({
       },
     });
 
-    return session.url;
+    return session.url ?? null;
   },
 });
 
-export const createBillingPortalSession = action({
+export const createBillingPortalSession: any = action({
   args: {
     userId: v.id("users"),
   },
-  handler: async (ctx, args) => {
-    const data = await ctx.runQuery(
+  handler: async (ctx: any, args: any): Promise<any> => {
+    const data: any = await ctx.runQuery(
       internal.queries.billing.getCompanyForBilling,
       { userId: args.userId }
     );
     if (!data) throw new Error("User or company not found");
     if (data.role !== "owner") throw new Error("Only owners can manage billing");
-    if (!data.stripeCustomerId)
-      throw new Error("No billing account found");
+    if (!data.stripeCustomerId) throw new Error("No billing account found");
 
-    const stripe = getStripe();
+    const stripe: any = getStripe();
     const APP_URL =
       process.env.APP_URL ?? "https://scrubadub-app-frontend.vercel.app";
 
-    const session = await stripe.billingPortal.sessions.create({
+    const session: any = await stripe.billingPortal.sessions.create({
       customer: data.stripeCustomerId as string,
       return_url: APP_URL,
     });
 
-    return session.url;
+    return session.url ?? null;
   },
 });

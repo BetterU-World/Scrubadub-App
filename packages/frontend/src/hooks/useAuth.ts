@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 
@@ -29,15 +29,20 @@ export function useAuth() {
   const [userId, setUserId] = useState<Id<"users"> | null>(getStoredUserId);
   const [isLoading, setIsLoading] = useState(true);
 
-  const signUpMutation = useMutation(api.authActions.signUp);
-  const signInMutation = useMutation(api.authActions.signIn);
-  const user = useQuery(api.authActions.getCurrentUser, { userId: userId ?? undefined });
+  // ✅ Convex Actions
+  const signUpAction = useAction(api.authActions.signUp);
+  const signInAction = useAction(api.authActions.signIn);
+
+  // ✅ Query current user
+  const user = useQuery(api.authQueries.getCurrentUser, {
+    userId: userId ?? undefined,
+  });
 
   useEffect(() => {
     if (user !== undefined) {
       setIsLoading(false);
+
       if (user === null && userId) {
-        // User was deleted or invalid
         localStorage.removeItem(AUTH_KEY);
         setUserId(null);
       }
@@ -51,22 +56,22 @@ export function useAuth() {
       name: string;
       companyName: string;
     }) => {
-      const result = await signUpMutation(args);
+      const result = await signUpAction(args);
       localStorage.setItem(AUTH_KEY, JSON.stringify(result.userId));
       setUserId(result.userId);
       return result;
     },
-    [signUpMutation]
+    [signUpAction]
   );
 
   const signIn = useCallback(
     async (args: { email: string; password: string }) => {
-      const result = await signInMutation(args);
+      const result = await signInAction(args);
       localStorage.setItem(AUTH_KEY, JSON.stringify(result.userId));
       setUserId(result.userId as Id<"users">);
       return result;
     },
-    [signInMutation]
+    [signInAction]
   );
 
   const signOut = useCallback(() => {

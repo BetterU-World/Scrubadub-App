@@ -16,7 +16,7 @@ export function EmployeeListPage() {
     api.queries.employees.list,
     user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
   );
-  const inviteCleaner = useAction(api.employeeActions.inviteCleaner);
+  const inviteCleaner = useAction(api.actions.employeeActions.inviteCleaner);
   const updateStatus = useMutation(api.mutations.employees.updateEmployeeStatus);
 
   const [showInvite, setShowInvite] = useState(false);

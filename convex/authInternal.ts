@@ -30,7 +30,7 @@ export const createUser = internalMutation({
       v.literal("inactive"),
       v.literal("pending")
     ),
-    inviteTokenHash: v.optional(v.string()),
+    inviteToken: v.optional(v.string()),
     inviteTokenExpiry: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -48,12 +48,12 @@ export const updatePasswordHash = internalMutation({
 export const setResetToken = internalMutation({
   args: {
     userId: v.id("users"),
-    resetTokenHash: v.string(),
+    resetToken: v.string(),
     resetTokenExpiry: v.number(),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.userId, {
-      resetTokenHash: args.resetTokenHash,
+      resetToken: args.resetToken,
       resetTokenExpiry: args.resetTokenExpiry,
       // Clear legacy field
       resetToken: undefined,
@@ -61,13 +61,13 @@ export const setResetToken = internalMutation({
   },
 });
 
-export const getUserByResetTokenHash = internalQuery({
+export const getUserByresetToken = internalQuery({
   args: { tokenHash: v.string() },
   handler: async (ctx, args) => {
     return await ctx.db
       .query("users")
-      .withIndex("by_resetTokenHash", (q) =>
-        q.eq("resetTokenHash", args.tokenHash)
+      .withIndex("by_resetToken", (q) =>
+        q.eq("resetToken", args.tokenHash)
       )
       .first();
   },
@@ -78,20 +78,20 @@ export const consumeResetToken = internalMutation({
   handler: async (ctx, args) => {
     await ctx.db.patch(args.userId, {
       passwordHash: args.passwordHash,
-      resetTokenHash: undefined,
+      resetToken: undefined,
       resetTokenExpiry: undefined,
       resetToken: undefined,
     });
   },
 });
 
-export const getUserByInviteTokenHash = internalQuery({
+export const getUserByinviteToken = internalQuery({
   args: { tokenHash: v.string() },
   handler: async (ctx, args) => {
     return await ctx.db
       .query("users")
-      .withIndex("by_inviteTokenHash", (q) =>
-        q.eq("inviteTokenHash", args.tokenHash)
+      .withIndex("by_inviteToken", (q) =>
+        q.eq("inviteToken", args.tokenHash)
       )
       .first();
   },
@@ -103,7 +103,7 @@ export const consumeInviteToken = internalMutation({
     await ctx.db.patch(args.userId, {
       passwordHash: args.passwordHash,
       status: "active",
-      inviteTokenHash: undefined,
+      inviteToken: undefined,
       inviteTokenExpiry: undefined,
       inviteToken: undefined,
     });
@@ -113,12 +113,12 @@ export const consumeInviteToken = internalMutation({
 export const setInviteToken = internalMutation({
   args: {
     userId: v.id("users"),
-    inviteTokenHash: v.string(),
+    inviteToken: v.string(),
     inviteTokenExpiry: v.number(),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.userId, {
-      inviteTokenHash: args.inviteTokenHash,
+      inviteToken: args.inviteToken,
       inviteTokenExpiry: args.inviteTokenExpiry,
       inviteToken: undefined,
     });
@@ -165,7 +165,7 @@ export const upsertSubscription = internalMutation({
       stripeSubscriptionId: args.stripeSubscriptionId,
       subscriptionStatus: args.status as any,
       currentPeriodEnd: args.currentPeriodEnd,
-      subscriptionUpdatedAt: Date.now(),
+      
     });
   },
 });

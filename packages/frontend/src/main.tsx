@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
-import { AuthProvider } from "./hooks/useAuth";
+
 import App from "./App";
 import "./index.css";
 
@@ -18,9 +18,7 @@ if (!convexUrl) {
   ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
       <ConvexProvider client={convex}>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
+        <App />
       </ConvexProvider>
     </React.StrictMode>
   );

@@ -1,5 +1,3 @@
-"use node";
-
 import Stripe from "stripe";
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
@@ -43,7 +41,7 @@ const stripeWebhook = httpAction(async (ctx, request) => {
         stripeSubscriptionId: subscription.id,
         stripePriceId: priceId,
         status: subscription.status,
-        currentPeriodEnd: subscription.current_period_end,
+        currentPeriodEnd: (subscription as any).current_period_end ?? 0,
         cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
       });
       break;
