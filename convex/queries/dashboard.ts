@@ -1,9 +1,12 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { assertCompanyAccess } from "../lib/auth";
 
 export const getStats = query({
-  args: { companyId: v.id("companies") },
+  args: { companyId: v.id("companies"), userId: v.id("users") },
   handler: async (ctx, args) => {
+    await assertCompanyAccess(ctx, args.userId, args.companyId);
+
     const properties = await ctx.db
       .query("properties")
       .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
@@ -24,9 +27,7 @@ export const getStats = query({
       .collect();
 
     const activeJobs = allJobs.filter(
-      (j) =>
-        j.status !== "cancelled" &&
-        j.status !== "approved"
+      (j) => j.status !== "cancelled" && j.status !== "approved"
     );
 
     const upcomingJobs = allJobs
@@ -39,7 +40,6 @@ export const getStats = query({
       .sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate))
       .slice(0, 5);
 
-    // Enrich upcoming jobs with property names
     const enrichedJobs = await Promise.all(
       upcomingJobs.map(async (job) => {
         const property = await ctx.db.get(job.propertyId);

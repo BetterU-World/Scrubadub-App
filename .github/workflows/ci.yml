@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # Typecheck convex functions
+      - run: npx tsc -p convex/tsconfig.json --noEmit
+
+      # Typecheck frontend
+      - run: npx tsc -p packages/frontend/tsconfig.json --noEmit
+
+      # Run unit tests
+      - run: npx vitest run
+
+      # Build frontend
+      - run: npm run build -w packages/frontend

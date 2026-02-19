@@ -26,7 +26,7 @@ export function JobListPage() {
   const jobs = useQuery(
     api.queries.jobs.list,
     user?.companyId
-      ? { companyId: user.companyId, status: statusFilter || undefined }
+      ? { companyId: user.companyId, userId: user._id, status: statusFilter || undefined }
       : "skip"
   );
 

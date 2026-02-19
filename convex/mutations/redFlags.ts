@@ -4,6 +4,7 @@ import { requireAuth, requireOwner, logAudit, createNotification } from "../lib/
 
 export const create = mutation({
   args: {
+    userId: v.optional(v.id("users")),
     companyId: v.id("companies"),
     propertyId: v.id("properties"),
     jobId: v.id("jobs"),
@@ -25,14 +26,19 @@ export const create = mutation({
     photoStorageId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
+    const user = await requireAuth(ctx, args.userId);
+    // Verify company access
+    if (user.companyId !== args.companyId) throw new Error("Access denied");
+    // Verify job belongs to this company
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.companyId !== user.companyId) throw new Error("Access denied");
 
+    const { userId: _uid, ...flagData } = args;
     const flagId = await ctx.db.insert("redFlags", {
-      ...args,
+      ...flagData,
       status: "open",
     });
 
-    // Notify owners
     const owners = await ctx.db
       .query("users")
       .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
@@ -43,7 +49,7 @@ export const create = mutation({
         userId: owner._id,
         type: "red_flag",
         title: `Red Flag: ${args.category} (${args.severity})`,
-        message: args.note,
+        message: args.note.slice(0, 200),
         relatedJobId: args.jobId,
       });
     }
@@ -63,19 +69,17 @@ export const create = mutation({
 export const updateStatus = mutation({
   args: {
     flagId: v.id("redFlags"),
-    status: v.union(
-      v.literal("acknowledged"),
-      v.literal("resolved")
-    ),
+    status: v.union(v.literal("acknowledged"), v.literal("resolved")),
     ownerNote: v.optional(v.string()),
+    userId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx);
+    const owner = await requireOwner(ctx, args.userId);
     const flag = await ctx.db.get(args.flagId);
     if (!flag) throw new Error("Red flag not found");
-    if (flag.companyId !== owner.companyId) throw new Error("Not your company");
+    if (flag.companyId !== owner.companyId) throw new Error("Access denied");
 
-    const updates: Record<string, any> = { status: args.status };
+    const updates: Record<string, string> = { status: args.status };
     if (args.ownerNote !== undefined) updates.ownerNote = args.ownerNote;
     await ctx.db.patch(args.flagId, updates);
 
@@ -96,12 +100,13 @@ export const createMaintenanceJob = mutation({
     cleanerIds: v.array(v.id("users")),
     notes: v.optional(v.string()),
     durationMinutes: v.optional(v.number()),
+    userId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx);
+    const owner = await requireOwner(ctx, args.userId);
     const flag = await ctx.db.get(args.flagId);
     if (!flag) throw new Error("Red flag not found");
-    if (flag.companyId !== owner.companyId) throw new Error("Not your company");
+    if (flag.companyId !== owner.companyId) throw new Error("Access denied");
 
     const property = await ctx.db.get(flag.propertyId);
 
@@ -113,22 +118,20 @@ export const createMaintenanceJob = mutation({
       status: "scheduled",
       scheduledDate: args.scheduledDate,
       durationMinutes: args.durationMinutes ?? 60,
-      notes: args.notes ?? `Maintenance from Red Flag: ${flag.note}`,
+      notes: args.notes ?? `Maintenance from Red Flag: ${flag.note.slice(0, 200)}`,
       reworkCount: 0,
       sourceRedFlagId: args.flagId,
     });
 
-    // Link the red flag to the maintenance job
     await ctx.db.patch(args.flagId, { maintenanceJobId: jobId });
 
-    // Notify assigned cleaners
     for (const cleanerId of args.cleanerIds) {
       await createNotification(ctx, {
         companyId: flag.companyId,
         userId: cleanerId,
         type: "job_assigned",
         title: "Maintenance Job Assigned",
-        message: `Maintenance needed at ${property?.name ?? "a property"}: ${flag.note}`,
+        message: `Maintenance needed at ${property?.name ?? "a property"}: ${flag.note.slice(0, 100)}`,
         relatedJobId: jobId,
       });
     }

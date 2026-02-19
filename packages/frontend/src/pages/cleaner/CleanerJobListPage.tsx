@@ -11,13 +11,20 @@ import {
   Calendar,
   MapPin,
   Clock,
+  TrendingUp,
+  Star,
+  Zap,
 } from "lucide-react";
 
 export function CleanerJobListPage() {
   const { user } = useAuth();
   const jobs = useQuery(
     api.queries.jobs.getForCleaner,
-    user ? { cleanerId: user._id, companyId: user.companyId } : "skip"
+    user ? { cleanerId: user._id, companyId: user.companyId, userId: user._id } : "skip"
+  );
+  const stats = useQuery(
+    api.queries.performance.getCleanerStats,
+    user ? { cleanerId: user._id, companyId: user.companyId, userId: user._id } : "skip"
   );
 
   if (!user || jobs === undefined) return <PageLoader />;
@@ -28,6 +35,51 @@ export function CleanerJobListPage() {
   return (
     <div>
       <PageHeader title="My Jobs" description={`${activeJobs.length} active jobs`} />
+
+      {/* Stats Cards */}
+      {stats && (
+        <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="card">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary-100 text-primary-600">
+                <TrendingUp className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats.jobsCompletedThisWeek}
+                </p>
+                <p className="text-sm text-gray-500">This Week</p>
+              </div>
+            </div>
+          </div>
+          <div className="card">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-yellow-100 text-yellow-600">
+                <Star className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats.averageScore > 0 ? stats.averageScore.toFixed(1) : "—"}
+                </p>
+                <p className="text-sm text-gray-500">Avg Score</p>
+              </div>
+            </div>
+          </div>
+          <div className="card">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-green-100 text-green-600">
+                <Zap className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats.currentStreak}
+                </p>
+                <p className="text-sm text-gray-500">Streak</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {jobs.length === 0 ? (
         <EmptyState

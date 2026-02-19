@@ -1,12 +1,16 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { assertCompanyAccess, getSessionUser } from "../lib/auth";
 
 export const listByCompany = query({
   args: {
     companyId: v.id("companies"),
+    userId: v.id("users"),
     status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await assertCompanyAccess(ctx, args.userId, args.companyId);
+
     let flags;
     if (args.status) {
       flags = await ctx.db
@@ -39,8 +43,13 @@ export const listByCompany = query({
 });
 
 export const listByJob = query({
-  args: { jobId: v.id("jobs") },
+  args: { jobId: v.id("jobs"), userId: v.id("users") },
   handler: async (ctx, args) => {
+    const user = await getSessionUser(ctx, args.userId);
+    const job = await ctx.db.get(args.jobId);
+    if (!job) return [];
+    if (job.companyId !== user.companyId) throw new Error("Access denied");
+
     return await ctx.db
       .query("redFlags")
       .withIndex("by_jobId", (q) => q.eq("jobId", args.jobId))

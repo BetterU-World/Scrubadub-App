@@ -1,9 +1,11 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwner, requireAuth, logAudit, createNotification } from "../lib/helpers";
+import { requireActiveSubscription } from "../lib/subscriptionGating";
 
 export const create = mutation({
   args: {
+    userId: v.optional(v.id("users")),
     companyId: v.id("companies"),
     propertyId: v.id("properties"),
     cleanerIds: v.array(v.id("users")),
@@ -21,13 +23,15 @@ export const create = mutation({
     requireConfirmation: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx);
+    const owner = await requireOwner(ctx, args.userId);
     if (owner.companyId !== args.companyId) throw new Error("Not your company");
+    await requireActiveSubscription(ctx, args.companyId);
 
     const initialStatus = args.requireConfirmation === false ? "confirmed" : "scheduled";
 
+    const { userId: _uid, ...jobData } = args;
     const jobId = await ctx.db.insert("jobs", {
-      ...args,
+      ...jobData,
       status: initialStatus,
       reworkCount: 0,
     });
@@ -60,6 +64,7 @@ export const create = mutation({
 
 export const update = mutation({
   args: {
+    userId: v.optional(v.id("users")),
     jobId: v.id("jobs"),
     propertyId: v.optional(v.id("properties")),
     cleanerIds: v.optional(v.array(v.id("users"))),
@@ -78,12 +83,12 @@ export const update = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx);
+    const owner = await requireOwner(ctx, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
 
-    const { jobId, ...updates } = args;
+    const { jobId, userId: _uid, ...updates } = args;
     // Remove undefined values
     const cleanUpdates: Record<string, any> = {};
     for (const [key, val] of Object.entries(updates)) {
@@ -102,9 +107,9 @@ export const update = mutation({
 });
 
 export const cancel = mutation({
-  args: { jobId: v.id("jobs") },
+  args: { jobId: v.id("jobs"), userId: v.optional(v.id("users")) },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx);
+    const owner = await requireOwner(ctx, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
@@ -133,9 +138,9 @@ export const cancel = mutation({
 });
 
 export const confirmJob = mutation({
-  args: { jobId: v.id("jobs") },
+  args: { jobId: v.id("jobs"), userId: v.optional(v.id("users")) },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
+    const user = await requireAuth(ctx, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (!job.cleanerIds.includes(user._id)) throw new Error("Not assigned to this job");
@@ -162,9 +167,9 @@ export const confirmJob = mutation({
 });
 
 export const denyJob = mutation({
-  args: { jobId: v.id("jobs"), reason: v.optional(v.string()) },
+  args: { jobId: v.id("jobs"), reason: v.optional(v.string()), userId: v.optional(v.id("users")) },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
+    const user = await requireAuth(ctx, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (!job.cleanerIds.includes(user._id)) throw new Error("Not assigned to this job");
@@ -190,9 +195,9 @@ export const denyJob = mutation({
 });
 
 export const startJob = mutation({
-  args: { jobId: v.id("jobs") },
+  args: { jobId: v.id("jobs"), userId: v.optional(v.id("users")) },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
+    const user = await requireAuth(ctx, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (!job.cleanerIds.includes(user._id)) throw new Error("Not assigned to this job");
@@ -222,9 +227,9 @@ export const startJob = mutation({
 });
 
 export const approveJob = mutation({
-  args: { jobId: v.id("jobs"), notes: v.optional(v.string()) },
+  args: { jobId: v.id("jobs"), notes: v.optional(v.string()), userId: v.optional(v.id("users")) },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx);
+    const owner = await requireOwner(ctx, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
@@ -263,9 +268,9 @@ export const approveJob = mutation({
 });
 
 export const requestRework = mutation({
-  args: { jobId: v.id("jobs"), notes: v.string() },
+  args: { jobId: v.id("jobs"), notes: v.string(), userId: v.optional(v.id("users")) },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx);
+    const owner = await requireOwner(ctx, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");

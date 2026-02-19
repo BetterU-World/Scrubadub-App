@@ -26,16 +26,17 @@ type Tab = "details" | "history";
 export function PropertyDetailPage() {
   const params = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("details");
 
-  const property = useQuery(api.queries.properties.get, {
-    propertyId: params.id as Id<"properties">,
-  });
+  const property = useQuery(api.queries.properties.get,
+    user ? { propertyId: params.id as Id<"properties">, userId: user._id } : "skip"
+  );
   const toggleActive = useMutation(api.mutations.properties.toggleActive);
 
   const history = useQuery(
     api.queries.properties.getHistory,
-    activeTab === "history" ? { propertyId: params.id as Id<"properties"> } : "skip"
+    activeTab === "history" && user ? { propertyId: params.id as Id<"properties">, userId: user._id } : "skip"
   );
 
   if (property === undefined) return <PageLoader />;
@@ -50,7 +51,7 @@ export function PropertyDetailPage() {
           <div className="flex gap-2">
             <button
               onClick={async () => {
-                await toggleActive({ propertyId: property._id });
+                await toggleActive({ propertyId: property._id, userId: user!._id });
               }}
               className="btn-secondary flex items-center gap-2"
             >

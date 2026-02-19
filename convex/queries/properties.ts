@@ -1,9 +1,12 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { assertCompanyAccess, getSessionUser } from "../lib/auth";
 
 export const list = query({
-  args: { companyId: v.id("companies") },
+  args: { companyId: v.id("companies"), userId: v.id("users") },
   handler: async (ctx, args) => {
+    await assertCompanyAccess(ctx, args.userId, args.companyId);
+
     return await ctx.db
       .query("properties")
       .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
@@ -12,50 +15,53 @@ export const list = query({
 });
 
 export const get = query({
-  args: { propertyId: v.id("properties") },
+  args: { propertyId: v.id("properties"), userId: v.id("users") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.propertyId);
+    const user = await getSessionUser(ctx, args.userId);
+    const property = await ctx.db.get(args.propertyId);
+    if (!property) return null;
+    if (property.companyId !== user.companyId) throw new Error("Access denied");
+    return property;
   },
 });
 
 export const getHistory = query({
-  args: { propertyId: v.id("properties") },
+  args: { propertyId: v.id("properties"), userId: v.id("users") },
   handler: async (ctx, args) => {
-    // Get all jobs for this property
+    const user = await getSessionUser(ctx, args.userId);
+    const property = await ctx.db.get(args.propertyId);
+    if (!property) return { timeline: [], totalJobs: 0, totalRedFlags: 0, openRedFlags: 0 };
+    if (property.companyId !== user.companyId) throw new Error("Access denied");
+
     const jobs = await ctx.db
       .query("jobs")
       .withIndex("by_propertyId", (q) => q.eq("propertyId", args.propertyId))
       .collect();
 
-    // Get all red flags for this property
     const redFlags = await ctx.db
       .query("redFlags")
       .withIndex("by_propertyId", (q) => q.eq("propertyId", args.propertyId))
       .collect();
 
-    // Build timeline entries
     const timeline: Array<{
       type: "job" | "red_flag";
       date: string;
       timestamp: number;
-      data: any;
+      data: Record<string, unknown>;
     }> = [];
 
     for (const job of jobs) {
       const cleaners = await Promise.all(
         job.cleanerIds.map(async (id) => {
-          const user = await ctx.db.get(id);
-          return user ? { _id: user._id, name: user.name } : null;
+          const u = await ctx.db.get(id);
+          return u ? { _id: u._id, name: u.name } : null;
         })
       );
       timeline.push({
         type: "job",
         date: job.scheduledDate,
         timestamp: job._creationTime,
-        data: {
-          ...job,
-          cleaners: cleaners.filter(Boolean),
-        },
+        data: { ...job, cleaners: cleaners.filter(Boolean) },
       });
     }
 
@@ -65,14 +71,10 @@ export const getHistory = query({
         type: "red_flag",
         date: job?.scheduledDate ?? "",
         timestamp: flag._creationTime,
-        data: {
-          ...flag,
-          jobDate: job?.scheduledDate ?? "Unknown",
-        },
+        data: { ...flag, jobDate: job?.scheduledDate ?? "Unknown" },
       });
     }
 
-    // Sort by timestamp descending (most recent first)
     timeline.sort((a, b) => b.timestamp - a.timestamp);
 
     return {

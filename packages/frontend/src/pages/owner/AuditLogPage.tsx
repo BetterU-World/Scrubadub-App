@@ -10,7 +10,7 @@ export function AuditLogPage() {
   const { user } = useAuth();
   const logs = useQuery(
     api.queries.auditLog.list,
-    user?.companyId ? { companyId: user.companyId } : "skip"
+    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
   );
 
   if (!user || logs === undefined) return <PageLoader />;

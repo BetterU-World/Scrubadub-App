@@ -12,7 +12,7 @@ export function PropertyListPage() {
   const { user } = useAuth();
   const properties = useQuery(
     api.queries.properties.list,
-    user?.companyId ? { companyId: user.companyId } : "skip"
+    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
   );
 
   if (!user || properties === undefined) return <PageLoader />;

@@ -1,9 +1,15 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { getSessionUser } from "../lib/auth";
 
 export const getByJob = query({
-  args: { jobId: v.id("jobs") },
+  args: { jobId: v.id("jobs"), userId: v.id("users") },
   handler: async (ctx, args) => {
+    const user = await getSessionUser(ctx, args.userId);
+    const job = await ctx.db.get(args.jobId);
+    if (!job) return null;
+    if (job.companyId !== user.companyId) throw new Error("Access denied");
+
     return await ctx.db
       .query("forms")
       .withIndex("by_jobId", (q) => q.eq("jobId", args.jobId))
@@ -12,8 +18,13 @@ export const getByJob = query({
 });
 
 export const getItems = query({
-  args: { formId: v.id("forms") },
+  args: { formId: v.id("forms"), userId: v.id("users") },
   handler: async (ctx, args) => {
+    const user = await getSessionUser(ctx, args.userId);
+    const form = await ctx.db.get(args.formId);
+    if (!form) return [];
+    if (form.companyId !== user.companyId) throw new Error("Access denied");
+
     const items = await ctx.db
       .query("formItems")
       .withIndex("by_formId", (q) => q.eq("formId", args.formId))
@@ -23,8 +34,17 @@ export const getItems = query({
 });
 
 export const getItemsBySection = query({
-  args: { formId: v.id("forms"), section: v.string() },
+  args: {
+    formId: v.id("forms"),
+    section: v.string(),
+    userId: v.id("users"),
+  },
   handler: async (ctx, args) => {
+    const user = await getSessionUser(ctx, args.userId);
+    const form = await ctx.db.get(args.formId);
+    if (!form) return [];
+    if (form.companyId !== user.companyId) throw new Error("Access denied");
+
     const items = await ctx.db
       .query("formItems")
       .withIndex("by_formId_section", (q) =>

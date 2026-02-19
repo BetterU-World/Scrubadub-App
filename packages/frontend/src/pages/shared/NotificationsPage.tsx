@@ -45,7 +45,7 @@ export function NotificationsPage() {
             <div
               key={n._id}
               onClick={() => {
-                if (!n.read) markAsRead({ notificationId: n._id });
+                if (!n.read) markAsRead({ notificationId: n._id, userId: user._id });
               }}
               className={`card cursor-pointer transition-colors ${
                 n.read ? "opacity-60" : "border-primary-200 bg-primary-50/20"

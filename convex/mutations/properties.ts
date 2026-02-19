@@ -1,9 +1,11 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwner, logAudit } from "../lib/helpers";
+import { requireActiveSubscription } from "../lib/subscriptionGating";
 
 export const create = mutation({
   args: {
+    userId: v.optional(v.id("users")),
     companyId: v.id("companies"),
     name: v.string(),
     type: v.union(
@@ -24,11 +26,13 @@ export const create = mutation({
     ownerNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx);
+    const owner = await requireOwner(ctx, args.userId);
     if (owner.companyId !== args.companyId) throw new Error("Not your company");
+    await requireActiveSubscription(ctx, args.companyId);
 
+    const { userId: _uid, ...propData } = args;
     const propertyId = await ctx.db.insert("properties", {
-      ...args,
+      ...propData,
       active: true,
     });
 
@@ -46,6 +50,7 @@ export const create = mutation({
 
 export const update = mutation({
   args: {
+    userId: v.optional(v.id("users")),
     propertyId: v.id("properties"),
     name: v.string(),
     type: v.union(
@@ -66,12 +71,12 @@ export const update = mutation({
     ownerNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx);
+    const owner = await requireOwner(ctx, args.userId);
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
     if (property.companyId !== owner.companyId) throw new Error("Not your company");
 
-    const { propertyId, ...updates } = args;
+    const { propertyId, userId: _uid, ...updates } = args;
     await ctx.db.patch(propertyId, updates);
 
     await logAudit(ctx, {
@@ -85,9 +90,9 @@ export const update = mutation({
 });
 
 export const toggleActive = mutation({
-  args: { propertyId: v.id("properties") },
+  args: { propertyId: v.id("properties"), userId: v.optional(v.id("users")) },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx);
+    const owner = await requireOwner(ctx, args.userId);
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
     if (property.companyId !== owner.companyId) throw new Error("Not your company");

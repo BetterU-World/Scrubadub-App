@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
-import type { Id } from "../../../../../convex/_generated/dataModel";
+import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
@@ -11,8 +11,8 @@ import { Flag, CheckCircle, Eye, Wrench } from "lucide-react";
 import { Link } from "wouter";
 
 type ActiveAction =
-  | { flagId: Id<"redFlags">; type: "acknowledge" | "resolve"; ownerNote: string }
-  | { flagId: Id<"redFlags">; type: "maintenance"; scheduledDate: string; cleanerIds: Id<"users">[]; notes: string; durationMinutes: string }
+  | { flagId: string; type: "acknowledge" | "resolve"; ownerNote: string }
+  | { flagId: string; type: "maintenance"; scheduledDate: string; cleanerIds: string[]; notes: string; durationMinutes: string }
   | null;
 
 export function RedFlagsDashboard() {
@@ -23,36 +23,38 @@ export function RedFlagsDashboard() {
   const flags = useQuery(
     api.queries.redFlags.listByCompany,
     user?.companyId
-      ? { companyId: user.companyId, status: statusFilter || undefined }
+      ? { companyId: user.companyId, userId: user._id, status: statusFilter || undefined }
       : "skip"
   );
   const cleaners = useQuery(
     api.queries.employees.getCleaners,
-    user?.companyId ? { companyId: user.companyId } : "skip"
+    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
   );
   const updateStatus = useMutation(api.mutations.redFlags.updateStatus);
   const createMaintenanceJob = useMutation(api.mutations.redFlags.createMaintenanceJob);
 
   if (!user || flags === undefined) return <PageLoader />;
 
-  const handleStatusUpdate = async (flagId: Id<"redFlags">, status: "acknowledged" | "resolved", ownerNote: string) => {
+  const handleStatusUpdate = async (flagId: string, status: "acknowledged" | "resolved", ownerNote: string) => {
     await updateStatus({
-      flagId,
+      flagId: flagId as Id<"redFlags">,
       status,
+      userId: user!._id,
       ...(ownerNote.trim() ? { ownerNote: ownerNote.trim() } : {}),
     });
     setActiveAction(null);
   };
 
-  const handleCreateMaintenanceJob = async (flagId: Id<"redFlags">) => {
+  const handleCreateMaintenanceJob = async (flagId: string) => {
     if (activeAction?.type !== "maintenance") return;
     const { scheduledDate, cleanerIds, notes, durationMinutes } = activeAction;
     if (!scheduledDate || cleanerIds.length === 0) return;
 
     await createMaintenanceJob({
-      flagId,
+      flagId: flagId as Id<"redFlags">,
       scheduledDate,
-      cleanerIds,
+      cleanerIds: cleanerIds as Id<"users">[],
+      userId: user!._id,
       ...(notes.trim() ? { notes: notes.trim() } : {}),
       ...(durationMinutes.trim() ? { durationMinutes: parseInt(durationMinutes, 10) } : {}),
     });
