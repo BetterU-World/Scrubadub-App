@@ -1,6 +1,6 @@
 "use node";
 
-import { action } from "./_generated/server";
+import { action, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
@@ -13,6 +13,10 @@ import {
 import { generateSecureToken, hashToken, RESET_TOKEN_EXPIRY_MS } from "./lib/tokens";
 import { validatePassword, validateEmail, validateName } from "./lib/validation";
 
+/**
+ * Actions
+ */
+
 export const signUp = action({
   args: {
     email: v.string(),
@@ -21,7 +25,10 @@ export const signUp = action({
     companyName: v.string(),
     timezone: v.optional(v.string()),
   },
-  handler: async (ctx, args): Promise<{ userId: Id<"users">; companyId: Id<"companies"> }> => {
+  handler: async (
+    ctx,
+    args
+  ): Promise<{ userId: Id<"users">; companyId: Id<"companies"> }> => {
     validateEmail(args.email);
     validatePassword(args.password);
     validateName(args.name);
@@ -36,19 +43,25 @@ export const signUp = action({
 
     const passwordHash = await hashPassword(args.password);
 
-    const companyId: Id<"companies"> = await ctx.runMutation(internal.authInternal.createCompany, {
-      name: args.companyName,
-      timezone: args.timezone ?? "America/New_York",
-    });
+    const companyId: Id<"companies"> = await ctx.runMutation(
+      internal.authInternal.createCompany,
+      {
+        name: args.companyName,
+        timezone: args.timezone ?? "America/New_York",
+      }
+    );
 
-    const userId: Id<"users"> = await ctx.runMutation(internal.authInternal.createUser, {
-      email,
-      passwordHash,
-      name: args.name,
-      companyId,
-      role: "owner",
-      status: "active",
-    });
+    const userId: Id<"users"> = await ctx.runMutation(
+      internal.authInternal.createUser,
+      {
+        email,
+        passwordHash,
+        name: args.name,
+        companyId,
+        role: "owner",
+        status: "active",
+      }
+    );
 
     return { userId, companyId };
   },
@@ -59,7 +72,10 @@ export const signIn = action({
     email: v.string(),
     password: v.string(),
   },
-  handler: async (ctx, args): Promise<{
+  handler: async (
+    ctx,
+    args
+  ): Promise<{
     userId: Id<"users">;
     email: string;
     name: string;
@@ -79,7 +95,6 @@ export const signIn = action({
     let passwordValid = false;
 
     if (isLegacyHash(user.passwordHash)) {
-      // Legacy hash: verify, then upgrade to bcrypt
       passwordValid = verifyLegacyPassword(args.password, user.passwordHash);
       if (passwordValid) {
         const newHash = await hashPassword(args.password);
@@ -89,7 +104,6 @@ export const signIn = action({
         });
       }
     } else {
-      // bcrypt hash
       passwordValid = await verifyBcryptPassword(args.password, user.passwordHash);
     }
 
@@ -122,14 +136,14 @@ export const requestPasswordReset = action({
     const tokenHash = hashToken(token);
     const expiry = Date.now() + RESET_TOKEN_EXPIRY_MS;
 
+    // Schema uses resetToken (not resetTokenHash)
     await ctx.runMutation(internal.authInternal.setResetToken, {
       userId: user._id,
-      resetTokenHash: tokenHash,
+      resetToken: tokenHash,
       resetTokenExpiry: expiry,
     });
 
     // In production, send token via email. For now, return it.
-    // TODO: integrate email service and REMOVE token from response
     return { success: true, token };
   },
 });
@@ -143,10 +157,11 @@ export const resetPassword = action({
     validatePassword(args.newPassword);
 
     const tokenHash = hashToken(args.token);
-    const user = await ctx.runQuery(
-      internal.authInternal.getUserByResetTokenHash,
-      { tokenHash }
-    );
+
+    // Schema/index uses resetToken (not resetTokenHash)
+    const user = await ctx.runQuery(internal.authInternal.getUserByresetToken, {
+      tokenHash,
+    });
 
     if (!user) throw new Error("Invalid or expired reset token");
     if (!user.resetTokenExpiry || user.resetTokenExpiry < Date.now()) {
@@ -161,5 +176,47 @@ export const resetPassword = action({
     });
 
     return { success: true };
+  },
+});
+
+/**
+ * Queries
+ * Kept here so frontend can call api.authActions.getUser / getCurrentUser
+ */
+
+export const getUser = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) return null;
+    return {
+      _id: user._id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      companyId: user.companyId,
+      status: user.status,
+      phone: user.phone,
+    };
+  },
+});
+
+export const getCurrentUser = query({
+  args: { userId: v.optional(v.id("users")) },
+  handler: async (ctx, args) => {
+    if (!args.userId) return null;
+    const user = await ctx.db.get(args.userId);
+    if (!user) return null;
+    const company = await ctx.db.get(user.companyId);
+    return {
+      _id: user._id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      companyId: user.companyId,
+      companyName: company?.name ?? "",
+      status: user.status,
+      phone: user.phone,
+    };
   },
 });
