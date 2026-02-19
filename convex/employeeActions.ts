@@ -5,11 +5,7 @@ import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { hashPassword } from "./lib/password";
-import {
-  generateSecureToken,
-  hashToken,
-  INVITE_TOKEN_EXPIRY_MS,
-} from "./lib/tokens";
+import { generateSecureToken, hashToken } from "./lib/tokens";
 import { validatePassword, validateEmail, validateName } from "./lib/validation";
 
 export const inviteCleaner = action({
@@ -22,9 +18,11 @@ export const inviteCleaner = action({
   handler: async (ctx, args): Promise<{ token: string; userId: Id<"users"> }> => {
     validateEmail(args.email);
     validateName(args.name);
+
     await ctx.runQuery(internal.authInternal.checkSubscription, {
       companyId: args.companyId,
     });
+
     const email = args.email.toLowerCase();
 
     const existing = await ctx.runQuery(internal.authInternal.getUserByEmail, {
@@ -34,18 +32,19 @@ export const inviteCleaner = action({
 
     const token = generateSecureToken();
     const tokenHash = hashToken(token);
-    const expiry = Date.now() + INVITE_TOKEN_EXPIRY_MS;
 
-    const newUserId: Id<"users"> = await ctx.runMutation(internal.authInternal.createUser, {
-      email,
-      passwordHash: "",
-      name: args.name,
-      companyId: args.companyId,
-      role: "cleaner",
-      status: "pending",
-      inviteTokenHash: tokenHash,
-      inviteTokenExpiry: expiry,
-    });
+    const newUserId: Id<"users"> = await ctx.runMutation(
+      internal.authInternal.createUser,
+      {
+        email,
+        passwordHash: "",
+        name: args.name,
+        companyId: args.companyId,
+        role: "cleaner",
+        status: "pending",
+        inviteToken: tokenHash,
+      }
+    );
 
     await ctx.runMutation(internal.authInternal.logAuditEntry, {
       companyId: args.companyId,
@@ -75,16 +74,13 @@ export const acceptInvite = action({
     validatePassword(args.password);
 
     const tokenHash = hashToken(args.token);
-    const user = await ctx.runQuery(
-      internal.authInternal.getUserByInviteTokenHash,
-      { tokenHash }
-    );
+
+    const user = await ctx.runQuery(internal.authInternal.getUserByinviteToken, {
+      tokenHash,
+    });
 
     if (!user) throw new Error("Invalid or expired invite link");
     if (user.status !== "pending") throw new Error("Invite already used");
-    if (user.inviteTokenExpiry && user.inviteTokenExpiry < Date.now()) {
-      throw new Error("Invite link has expired");
-    }
 
     const passwordHash = await hashPassword(args.password);
 
