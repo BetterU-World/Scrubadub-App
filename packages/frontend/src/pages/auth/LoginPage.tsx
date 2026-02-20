@@ -4,7 +4,6 @@ import { Link } from "wouter";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
 export function LoginPage() {
-  console.log("[LoginPage] mounted");
   const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -13,16 +12,12 @@ export function LoginPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    console.log("[LoginPage] submit fired");
     setError("");
     setLoading(true);
     try {
-      console.log("[LoginPage] calling signIn");
-      const res = await signIn({ email, password });
-      console.log("[LoginPage] signIn returned", res);
+      await signIn({ email, password });
       window.location.assign("/");
     } catch (err: any) {
-      console.error("[LoginPage] signIn error", err);
       setError(String(err?.message ?? err));
     } finally {
       setLoading(false);
