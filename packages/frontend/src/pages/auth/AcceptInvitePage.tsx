@@ -45,9 +45,8 @@ export function AcceptInvitePage() {
     setLoading(true);
     try {
       const result = await acceptInvite({ token: params.token!, password });
-      localStorage.setItem("scrubadub_auth", JSON.stringify(result.userId));
-      setLocation("/");
-      window.location.reload();
+      localStorage.setItem("scrubadub_userId", String(result.userId));
+      window.location.assign("/");
     } catch (err: any) {
       setError(err.message || "Failed to accept invite");
     } finally {
