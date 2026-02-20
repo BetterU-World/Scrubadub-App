@@ -21,6 +21,7 @@ interface AuthUser {
   companyName: string;
   status: string;
   phone?: string;
+  isSuperadmin?: boolean;
 }
 
 interface AuthContextValue {

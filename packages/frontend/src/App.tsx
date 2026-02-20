@@ -86,7 +86,9 @@ export default function App() {
   if (subscription === undefined) return <PageLoader />;
 
   const isOwner = user?.role === "owner";
+  const isSuperadmin = user?.isSuperadmin === true;
   const isSubActive =
+    isSuperadmin ||
     subscription?.subscriptionStatus === "trialing" ||
     subscription?.subscriptionStatus === "active";
   const isInGracePeriod =

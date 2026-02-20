@@ -1,6 +1,9 @@
 import { query } from "./_generated/server";
 import { v } from "convex/values";
 
+// Temporary superadmin bypass — emails here skip subscription checks
+const SUPERADMIN_EMAILS: string[] = ["dzbfyse@gmail.com"];
+
 export const getUser = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
@@ -34,6 +37,7 @@ export const getCurrentUser = query({
       companyName: company?.name ?? "",
       status: user.status,
       phone: user.phone,
+      isSuperadmin: SUPERADMIN_EMAILS.includes(user.email),
     };
   },
 });
