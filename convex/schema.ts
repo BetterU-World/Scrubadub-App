@@ -30,6 +30,9 @@ export default defineSchema({
       v.literal("pending")
     ),
     inviteToken: v.optional(v.string()),
+    inviteTokenHash: v.optional(v.string()),
+    inviteTokenExpiry: v.optional(v.float64()),
+
     phone: v.optional(v.string()),
     resetToken: v.optional(v.string()),
     resetTokenExpiry: v.optional(v.number()),

@@ -9,6 +9,7 @@
  */
 
 import type * as actions_billing from "../actions/billing.js";
+import type * as auth from "../auth.js";
 import type * as authActions from "../authActions.js";
 import type * as authInternal from "../authInternal.js";
 import type * as authQueries from "../authQueries.js";
@@ -51,6 +52,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "actions/billing": typeof actions_billing;
+  auth: typeof auth;
   authActions: typeof authActions;
   authInternal: typeof authInternal;
   authQueries: typeof authQueries;

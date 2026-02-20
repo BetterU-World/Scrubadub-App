@@ -31,7 +31,6 @@ export const createUser = internalMutation({
       v.literal("pending")
     ),
     inviteToken: v.optional(v.string()),
-    inviteTokenExpiry: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("users", args);
@@ -55,8 +54,6 @@ export const setResetToken = internalMutation({
     await ctx.db.patch(args.userId, {
       resetToken: args.resetToken,
       resetTokenExpiry: args.resetTokenExpiry,
-      // Clear legacy field
-      resetToken: undefined,
     });
   },
 });
@@ -66,9 +63,7 @@ export const getUserByresetToken = internalQuery({
   handler: async (ctx, args) => {
     return await ctx.db
       .query("users")
-      .withIndex("by_resetToken", (q) =>
-        q.eq("resetToken", args.tokenHash)
-      )
+      .withIndex("by_resetToken", (q) => q.eq("resetToken", args.tokenHash))
       .first();
   },
 });
@@ -80,7 +75,6 @@ export const consumeResetToken = internalMutation({
       passwordHash: args.passwordHash,
       resetToken: undefined,
       resetTokenExpiry: undefined,
-      resetToken: undefined,
     });
   },
 });
@@ -90,9 +84,7 @@ export const getUserByinviteToken = internalQuery({
   handler: async (ctx, args) => {
     return await ctx.db
       .query("users")
-      .withIndex("by_inviteToken", (q) =>
-        q.eq("inviteToken", args.tokenHash)
-      )
+      .withIndex("by_inviteToken", (q) => q.eq("inviteToken", args.tokenHash))
       .first();
   },
 });
@@ -104,8 +96,6 @@ export const consumeInviteToken = internalMutation({
       passwordHash: args.passwordHash,
       status: "active",
       inviteToken: undefined,
-      inviteTokenExpiry: undefined,
-      inviteToken: undefined,
     });
   },
 });
@@ -114,13 +104,10 @@ export const setInviteToken = internalMutation({
   args: {
     userId: v.id("users"),
     inviteToken: v.string(),
-    inviteTokenExpiry: v.number(),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.userId, {
       inviteToken: args.inviteToken,
-      inviteTokenExpiry: args.inviteTokenExpiry,
-      inviteToken: undefined,
     });
   },
 });
@@ -158,14 +145,15 @@ export const upsertSubscription = internalMutation({
       )
       .first();
     if (!company) {
-      console.warn(`No company found for Stripe customer ${args.stripeCustomerId}`);
+      console.warn(
+        `No company found for Stripe customer ${args.stripeCustomerId}`
+      );
       return;
     }
     await ctx.db.patch(company._id, {
       stripeSubscriptionId: args.stripeSubscriptionId,
       subscriptionStatus: args.status as any,
       currentPeriodEnd: args.currentPeriodEnd,
-      
     });
   },
 });
