@@ -40,16 +40,16 @@ export function MobileNav() {
               ? location === "/"
               : location.startsWith(item.href);
           return (
-            <Link key={item.href} href={item.href}>
-              <a
-                className={clsx(
-                  "flex flex-col items-center gap-1 px-3 py-1 text-xs",
-                  isActive ? "text-primary-600" : "text-gray-500"
-                )}
-              >
-                <item.icon className="w-5 h-5" />
-                {item.label}
-              </a>
+            <Link
+              key={item.href}
+              href={item.href}
+              className={clsx(
+                "flex flex-col items-center gap-1 px-3 py-1 text-xs",
+                isActive ? "text-primary-600" : "text-gray-500"
+              )}
+            >
+              <item.icon className="w-5 h-5" />
+              {item.label}
             </Link>
           );
         })}

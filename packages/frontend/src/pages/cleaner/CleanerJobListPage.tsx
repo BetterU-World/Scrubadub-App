@@ -94,28 +94,26 @@ export function CleanerJobListPage() {
               <h3 className="text-sm font-medium text-gray-500 mb-3 uppercase tracking-wider">Active</h3>
               <div className="space-y-3">
                 {activeJobs.map((job) => (
-                  <Link key={job._id} href={`/jobs/${job._id}`}>
-                    <a className="card block hover:shadow-md transition-shadow">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="font-semibold text-gray-900">{job.propertyName}</h3>
-                          <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500">
+                  <Link key={job._id} href={`/jobs/${job._id}`} className="card block hover:shadow-md transition-shadow">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="font-semibold text-gray-900">{job.propertyName}</h3>
+                        <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5" /> {job.scheduledDate}
+                          </span>
+                          {job.startTime && (
                             <span className="flex items-center gap-1">
-                              <Calendar className="w-3.5 h-3.5" /> {job.scheduledDate}
+                              <Clock className="w-3.5 h-3.5" /> {job.startTime}
                             </span>
-                            {job.startTime && (
-                              <span className="flex items-center gap-1">
-                                <Clock className="w-3.5 h-3.5" /> {job.startTime}
-                              </span>
-                            )}
-                            <span className="flex items-center gap-1">
-                              <MapPin className="w-3.5 h-3.5" /> {job.propertyAddress}
-                            </span>
-                          </div>
+                          )}
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5" /> {job.propertyAddress}
+                          </span>
                         </div>
-                        <StatusBadge status={job.status} />
                       </div>
-                    </a>
+                      <StatusBadge status={job.status} />
+                    </div>
                   </Link>
                 ))}
               </div>
@@ -127,16 +125,14 @@ export function CleanerJobListPage() {
               <h3 className="text-sm font-medium text-gray-500 mb-3 uppercase tracking-wider">Completed</h3>
               <div className="space-y-3">
                 {pastJobs.map((job) => (
-                  <Link key={job._id} href={`/jobs/${job._id}`}>
-                    <a className="card block opacity-75">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-medium text-gray-700">{job.propertyName}</h3>
-                          <p className="text-sm text-gray-400">{job.scheduledDate}</p>
-                        </div>
-                        <StatusBadge status={job.status} />
+                  <Link key={job._id} href={`/jobs/${job._id}`} className="card block opacity-75">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-medium text-gray-700">{job.propertyName}</h3>
+                        <p className="text-sm text-gray-400">{job.scheduledDate}</p>
                       </div>
-                    </a>
+                      <StatusBadge status={job.status} />
+                    </div>
                   </Link>
                 ))}
               </div>
