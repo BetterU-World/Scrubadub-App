@@ -14,6 +14,7 @@ interface AuthUser {
   companyName: string;
   status: string;
   phone?: string;
+  isSuperadmin?: boolean;
 }
 
 function getStoredUserId(): Id<"users"> | null {
