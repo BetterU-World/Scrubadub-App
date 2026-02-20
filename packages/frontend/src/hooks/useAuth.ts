@@ -69,8 +69,7 @@ export function useAuth() {
     async (args: { email: string; password: string }) => {
       const result = await signInAction(args);
       localStorage.setItem(AUTH_KEY, JSON.stringify(result.userId));
-      // Force full page reload so every hook re-reads userId from localStorage
-      window.location.href = "/";
+      setUserId(result.userId);
       return result;
     },
     [signInAction]

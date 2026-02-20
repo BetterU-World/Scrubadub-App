@@ -1,11 +1,10 @@
 import { useState, FormEvent } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
 export function LoginPage() {
   const { signIn } = useAuth();
-  const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -17,7 +16,7 @@ export function LoginPage() {
     setLoading(true);
     try {
       await signIn({ email, password });
-      setLocation("/");
+      window.location.assign("/");
     } catch (err: any) {
       setError(err.message || "Failed to sign in");
     } finally {
