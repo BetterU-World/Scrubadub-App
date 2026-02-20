@@ -96,9 +96,22 @@ export default function App() {
     subscription?.subscriptionBecameInactiveAt != null &&
     Date.now() - subscription.subscriptionBecameInactiveAt < THREE_DAYS_MS;
 
+  const debugInfo = import.meta.env.DEV ? {
+    email: user?.email,
+    isSuperadmin: user?.isSuperadmin,
+    isOwner,
+    isSubActive,
+    subStatus: subscription?.subscriptionStatus ?? "none",
+  } : null;
+
   return (
     <ErrorBoundary>
       <OfflineIndicator />
+      {debugInfo && (
+        <div style={{position:"fixed",bottom:0,left:0,right:0,padding:"4px 8px",background:"rgba(0,0,0,0.85)",color:"#0f0",fontSize:11,fontFamily:"monospace",zIndex:99999}}>
+          {`email=${debugInfo.email} | superadmin=${debugInfo.isSuperadmin} | owner=${debugInfo.isOwner} | subActive=${debugInfo.isSubActive} | subStatus=${debugInfo.subStatus}`}
+        </div>
+      )}
       <AppLayout>
         <Switch>
           {isOwner ? (
