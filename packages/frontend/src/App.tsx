@@ -1,4 +1,4 @@
-import { Route, Switch, Redirect } from "wouter";
+import { Route, Switch, Redirect, useLocation } from "wouter";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -56,18 +56,68 @@ function SubscriptionInactive() {
 }
 
 export default function App() {
-  const { user, isLoading, isAuthenticated } = useAuth();
+  const { user, userId, isLoading, isAuthenticated } = useAuth();
+  const [pathname] = useLocation();
+  const storedUserId = localStorage.getItem("scrubadub_userId");
+
   const subscription = useQuery(
     api.queries.billing.getCompanySubscription,
     user?.companyId ? { companyId: user.companyId } : "skip"
   );
 
-  if (isLoading) return <PageLoader />;
+  // --- Derived state ---
+  const isAuthed = Boolean(userId || storedUserId);
+  const subSettled = subscription !== undefined || !user?.companyId;
 
-  if (!isAuthenticated) {
+  const isOwner = user?.role === "owner";
+  const isSuperadmin = user?.isSuperadmin === true;
+  const isSubActive =
+    isSuperadmin ||
+    subscription?.subscriptionStatus === "trialing" ||
+    subscription?.subscriptionStatus === "active";
+  const isInGracePeriod =
+    !isSubActive &&
+    subscription?.subscriptionBecameInactiveAt != null &&
+    Date.now() - subscription.subscriptionBecameInactiveAt < THREE_DAYS_MS;
+  const accessOk = isSubActive || isInGracePeriod;
+
+  // --- Determine which guard branch we hit ---
+  let redirectBranch = "app";
+  if (isLoading) {
+    redirectBranch = "auth-loading";
+  } else if (!isAuthed && !isAuthenticated) {
+    redirectBranch = "no-auth→/login";
+  } else if (isAuthed && !isAuthenticated) {
+    redirectBranch = "query-settling";
+  } else if (!subSettled) {
+    redirectBranch = "sub-loading";
+  } else if (isOwner && !accessOk) {
+    redirectBranch = "no-access→/subscribe";
+  }
+
+  // --- DEV banner ---
+  const devBanner = import.meta.env.DEV ? (
+    <div style={{position:"fixed",bottom:0,left:0,right:0,padding:"4px 8px",background:"rgba(0,0,0,0.9)",color:"#0f0",fontSize:10,fontFamily:"monospace",zIndex:99999,whiteSpace:"nowrap",overflow:"auto"}}>
+      {`path=${pathname} | stored=${storedUserId ? "yes" : "no"} | userId=${userId ? "yes" : "no"} | authLoading=${isLoading} | isAuthed=${isAuthed} | email=${user?.email ?? "-"} | superadmin=${user?.isSuperadmin ?? "-"} | subActive=${isSubActive} | accessOk=${accessOk} | branch=${redirectBranch}`}
+    </div>
+  ) : null;
+
+  // --- GUARD 1: Auth still loading — show spinner, NEVER redirect ---
+  if (isLoading) {
+    return <>{devBanner}<PageLoader /></>;
+  }
+
+  // --- GUARD 2: storedUserId exists but query hasn't resolved yet — wait ---
+  if (isAuthed && !isAuthenticated) {
+    return <>{devBanner}<PageLoader /></>;
+  }
+
+  // --- GUARD 3: Definitely not authenticated — show login routes ---
+  if (!isAuthed && !isAuthenticated) {
     return (
       <ErrorBoundary>
         <OfflineIndicator />
+        {devBanner}
         <Switch>
           <Route path="/login" component={LoginPage} />
           <Route path="/signup" component={SignupPage} />
@@ -82,40 +132,20 @@ export default function App() {
     );
   }
 
-  // Wait for subscription data before rendering gated routes
-  if (subscription === undefined) return <PageLoader />;
+  // --- GUARD 4: Authenticated but subscription data still loading ---
+  if (!subSettled) {
+    return <>{devBanner}<PageLoader /></>;
+  }
 
-  const isOwner = user?.role === "owner";
-  const isSuperadmin = user?.isSuperadmin === true;
-  const isSubActive =
-    isSuperadmin ||
-    subscription?.subscriptionStatus === "trialing" ||
-    subscription?.subscriptionStatus === "active";
-  const isInGracePeriod =
-    !isSubActive &&
-    subscription?.subscriptionBecameInactiveAt != null &&
-    Date.now() - subscription.subscriptionBecameInactiveAt < THREE_DAYS_MS;
-
-  const debugInfo = import.meta.env.DEV ? {
-    email: user?.email,
-    isSuperadmin: user?.isSuperadmin,
-    isOwner,
-    isSubActive,
-    subStatus: subscription?.subscriptionStatus ?? "none",
-  } : null;
-
+  // --- GUARD 5: Fully resolved — render app with access control ---
   return (
     <ErrorBoundary>
       <OfflineIndicator />
-      {debugInfo && (
-        <div style={{position:"fixed",bottom:0,left:0,right:0,padding:"4px 8px",background:"rgba(0,0,0,0.85)",color:"#0f0",fontSize:11,fontFamily:"monospace",zIndex:99999}}>
-          {`email=${debugInfo.email} | superadmin=${debugInfo.isSuperadmin} | owner=${debugInfo.isOwner} | subActive=${debugInfo.isSubActive} | subStatus=${debugInfo.subStatus}`}
-        </div>
-      )}
+      {devBanner}
       <AppLayout>
         <Switch>
           {isOwner ? (
-            isSubActive ? (
+            accessOk ? (
               <>
                 <Route path="/" component={DashboardPage} />
                 <Route path="/properties" component={PropertyListPage} />
@@ -148,7 +178,7 @@ export default function App() {
                 </Route>
               </>
             )
-          ) : isSubActive || isInGracePeriod ? (
+          ) : accessOk ? (
             <>
               <Route path="/" component={CleanerJobListPage} />
               <Route path="/jobs/:id" component={CleanerJobDetailPage} />

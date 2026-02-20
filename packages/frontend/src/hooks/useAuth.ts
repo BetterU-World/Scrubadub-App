@@ -79,6 +79,7 @@ export function useAuth() {
   const signOut = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
     setUserId(null);
+    window.location.assign("/login");
   }, []);
 
   return {
