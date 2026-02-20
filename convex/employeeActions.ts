@@ -5,7 +5,7 @@ import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { hashPassword } from "./lib/password";
-import { generateSecureToken, hashToken } from "./lib/tokens";
+import { generateSecureToken } from "./lib/tokens";
 import { validatePassword, validateEmail, validateName } from "./lib/validation";
 
 export const inviteCleaner = action({
@@ -31,7 +31,6 @@ export const inviteCleaner = action({
     if (existing) throw new Error("Email already registered");
 
     const token = generateSecureToken();
-    const tokenHash = hashToken(token);
 
     const newUserId: Id<"users"> = await ctx.runMutation(
       internal.authInternal.createUser,
@@ -42,7 +41,7 @@ export const inviteCleaner = action({
         companyId: args.companyId,
         role: "cleaner",
         status: "pending",
-        inviteToken: tokenHash,
+        inviteToken: token,
       }
     );
 
@@ -73,10 +72,8 @@ export const acceptInvite = action({
   }> => {
     validatePassword(args.password);
 
-    const tokenHash = hashToken(args.token);
-
     const user = await ctx.runQuery(internal.authInternal.getUserByinviteToken, {
-      tokenHash,
+      tokenHash: args.token,
     });
 
     if (!user) throw new Error("Invalid or expired invite link");

@@ -17,7 +17,7 @@ function getStripe() {
   return new Stripe(process.env.STRIPE_SECRET_KEY!);
 }
 
-export const createCheckoutSession: any = action({
+export const createCheckoutSession = action({
   args: {
     userId: v.id("users"),
     tier: v.union(v.literal("cleaning_owner"), v.literal("str_owner")),
@@ -81,7 +81,7 @@ export const createCheckoutSession: any = action({
   },
 });
 
-export const createBillingPortalSession: any = action({
+export const createBillingPortalSession = action({
   args: {
     userId: v.id("users"),
   },

@@ -10,7 +10,7 @@ export function AcceptInvitePage() {
   const inviteInfo = useQuery(api.queries.employees.getByInviteToken, {
     token: params.token ?? "",
   });
-  const acceptInvite = useAction(api.actions.employeeActions.acceptInvite);
+  const acceptInvite = useAction(api.employeeActions.acceptInvite);
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
