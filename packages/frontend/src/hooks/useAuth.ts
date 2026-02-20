@@ -3,7 +3,7 @@ import { useAction, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 
-const AUTH_KEY = "scrubadub_auth";
+const STORAGE_KEY = "scrubadub_userId";
 
 interface AuthUser {
   _id: Id<"users">;
@@ -18,12 +18,8 @@ interface AuthUser {
 }
 
 function getStoredUserId(): Id<"users"> | null {
-  try {
-    const stored = localStorage.getItem(AUTH_KEY);
-    return stored ? (JSON.parse(stored) as Id<"users">) : null;
-  } catch {
-    return null;
-  }
+  const stored = localStorage.getItem(STORAGE_KEY);
+  return stored ? (stored as Id<"users">) : null;
 }
 
 export function useAuth() {
@@ -44,7 +40,7 @@ export function useAuth() {
       setIsLoading(false);
 
       if (user === null && userId) {
-        localStorage.removeItem(AUTH_KEY);
+        localStorage.removeItem(STORAGE_KEY);
         setUserId(null);
       }
     }
@@ -58,7 +54,7 @@ export function useAuth() {
       companyName: string;
     }) => {
       const result = await signUpAction(args);
-      localStorage.setItem(AUTH_KEY, JSON.stringify(result.userId));
+      localStorage.setItem(STORAGE_KEY, String(result.userId));
       setUserId(result.userId);
       return result;
     },
@@ -68,15 +64,17 @@ export function useAuth() {
   const signIn = useCallback(
     async (args: { email: string; password: string }) => {
       const result = await signInAction(args);
-      localStorage.setItem(AUTH_KEY, JSON.stringify(result.userId));
-      setUserId(result.userId);
+      const uid = String(result.userId);
+      localStorage.setItem(STORAGE_KEY, uid);
+      console.log("[useAuth] stored userId", uid);
+      setUserId(uid as Id<"users">);
       return result;
     },
     [signInAction]
   );
 
   const signOut = useCallback(() => {
-    localStorage.removeItem(AUTH_KEY);
+    localStorage.removeItem(STORAGE_KEY);
     setUserId(null);
   }, []);
 
