@@ -4,6 +4,7 @@ import { Link } from "wouter";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
 export function LoginPage() {
+  console.log("[LoginPage] mounted");
   const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -12,13 +13,17 @@ export function LoginPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    console.log("[LoginPage] submit fired");
     setError("");
     setLoading(true);
     try {
-      await signIn({ email, password });
+      console.log("[LoginPage] calling signIn");
+      const res = await signIn({ email, password });
+      console.log("[LoginPage] signIn returned", res);
       window.location.assign("/");
     } catch (err: any) {
-      setError(err.message || "Failed to sign in");
+      console.error("[LoginPage] signIn error", err);
+      setError(String(err?.message ?? err));
     } finally {
       setLoading(false);
     }
@@ -75,10 +80,8 @@ export function LoginPage() {
             </div>
 
             <div className="flex justify-end">
-              <Link href="/forgot-password">
-                <a className="text-sm text-primary-600 font-medium hover:text-primary-700">
-                  Forgot password?
-                </a>
+              <Link href="/forgot-password" className="text-sm text-primary-600 font-medium hover:text-primary-700">
+                Forgot password?
               </Link>
             </div>
 
@@ -94,10 +97,8 @@ export function LoginPage() {
 
           <p className="mt-4 text-center text-sm text-gray-500">
             Don't have an account?{" "}
-            <Link href="/signup">
-              <a className="text-primary-600 font-medium hover:text-primary-700">
-                Sign up
-              </a>
+            <Link href="/signup" className="text-primary-600 font-medium hover:text-primary-700">
+              Sign up
             </Link>
           </p>
         </div>

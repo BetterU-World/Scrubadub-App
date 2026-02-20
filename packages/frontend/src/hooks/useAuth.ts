@@ -63,10 +63,13 @@ export function useAuth() {
 
   const signIn = useCallback(
     async (args: { email: string; password: string }) => {
+      console.log("[useAuth] signIn start");
       const result = await signInAction(args);
+      console.log("[useAuth] signIn result", result);
       const uid = String(result.userId);
+      console.log("[useAuth] storing", uid);
       localStorage.setItem(STORAGE_KEY, uid);
-      console.log("[useAuth] stored userId", uid);
+      console.log("[useAuth] stored?", localStorage.getItem(STORAGE_KEY));
       setUserId(uid as Id<"users">);
       return result;
     },
