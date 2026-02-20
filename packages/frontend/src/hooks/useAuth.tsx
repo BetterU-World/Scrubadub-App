@@ -98,8 +98,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (args: { email: string; password: string }) => {
       const result = await signInAction(args);
       localStorage.setItem(AUTH_KEY, JSON.stringify(result.userId));
-      setIsLoading(true);
-      setUserId(result.userId as Id<"users">);
+      // Force full page reload so every hook re-reads userId from localStorage
+      window.location.href = "/";
       return result;
     },
     [signInAction],
