@@ -175,7 +175,13 @@ export const submit = mutation({
     const user = await requireAuth(ctx, args.userId);
     const form = await ctx.db.get(args.formId);
     if (!form) throw new Error("Form not found");
-    if (form.cleanerId !== user._id) throw new Error("Not your form");
+    if (form.cleanerId !== user._id) {
+      // Fall back: allow if user is assigned to the job (handles auth identity mismatch)
+      const job = await ctx.db.get(form.jobId);
+      if (!job || !job.cleanerIds.includes(user._id)) {
+        throw new Error("Not your form");
+      }
+    }
     if (form.companyId !== user.companyId) throw new Error("Access denied");
     if (form.status === "submitted" || form.status === "approved") {
       throw new Error("Form already submitted");
