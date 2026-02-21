@@ -201,6 +201,12 @@ export function CleanerJobDetailPage() {
             </button>
           )}
 
+          {job.status === "rework_requested" && (
+            <div className="text-center text-sm text-red-600 font-medium py-2">
+              Owner has requested rework — tap Start Cleaning to redo.
+            </div>
+          )}
+
           {job.status === "submitted" && (
             <div className="text-center text-sm text-gray-500 py-2">
               Waiting for owner review...

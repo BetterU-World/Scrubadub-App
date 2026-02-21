@@ -11,7 +11,7 @@ const statusStyles: Record<string, string> = {
   in_progress: "bg-purple-100 text-purple-800",
   submitted: "bg-teal-100 text-teal-800",
   approved: "bg-green-100 text-green-800",
-  rework_requested: "bg-orange-100 text-orange-800",
+  rework_requested: "bg-red-100 text-red-800",
   cancelled: "bg-gray-100 text-gray-600",
   open: "bg-red-100 text-red-800",
   acknowledged: "bg-yellow-100 text-yellow-800",
