@@ -14,7 +14,12 @@ export async function getAuthSessionId(
 }
 
 export async function requireAuth(ctx: QueryCtx, userId?: Id<"users">) {
-  // Try Convex identity first (when auth provider is configured)
+  // Prefer explicit userId when provided (client-side auth)
+  if (userId) {
+    const user = await ctx.db.get(userId);
+    if (user && user.status === "active") return user;
+  }
+  // Fall back to Convex identity (when auth provider is configured)
   const identity = await ctx.auth.getUserIdentity();
   if (identity?.email) {
     const user = await ctx.db
@@ -23,12 +28,7 @@ export async function requireAuth(ctx: QueryCtx, userId?: Id<"users">) {
       .first();
     if (user && user.status === "active") return user;
   }
-  // Fall back to provided userId (client-side auth)
-  if (!userId) throw new Error("Not authenticated");
-  const user = await ctx.db.get(userId);
-  if (!user) throw new Error("User not found");
-  if (user.status !== "active") throw new Error("Account not active");
-  return user;
+  throw new Error("Not authenticated");
 }
 
 export async function requireOwner(ctx: QueryCtx, userId?: Id<"users">) {
