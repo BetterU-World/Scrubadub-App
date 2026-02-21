@@ -168,7 +168,7 @@ export function CleanerJobDetailPage() {
             </div>
           )}
 
-          {canArrive && !canConfirm && (
+          {canArrive && !canAccept && (
             <button
               onClick={async () => { await arriveJob({ jobId: job._id, userId: user!._id }); }}
               className="btn-secondary w-full flex items-center justify-center gap-2 py-3"
