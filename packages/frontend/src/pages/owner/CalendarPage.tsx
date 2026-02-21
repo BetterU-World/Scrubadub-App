@@ -163,6 +163,14 @@ export function CalendarPage() {
 
   const formatJobType = (type: string) => type.replace(/_/g, " ");
 
+  // Color helper based on acceptanceStatus
+  const getAcceptanceColor = (job: any) => {
+    const acceptance = job.acceptanceStatus ?? "pending";
+    if (acceptance === "accepted") return "bg-green-100 text-green-800 hover:bg-green-200";
+    if (acceptance === "denied") return "bg-red-50 text-red-400 hover:bg-red-100";
+    return "bg-gray-100 text-gray-600 hover:bg-gray-200"; // pending
+  };
+
   return (
     <div>
       <PageHeader title="Calendar" />
@@ -260,6 +268,7 @@ export function CalendarPage() {
             currentDate={currentDate}
             today={today}
             jobsByDate={jobsByDate}
+            getAcceptanceColor={getAcceptanceColor}
           />
         )}
 
@@ -269,6 +278,7 @@ export function CalendarPage() {
             days={days}
             today={today}
             jobsByDate={jobsByDate}
+            getAcceptanceColor={getAcceptanceColor}
           />
         )}
 
@@ -293,9 +303,10 @@ interface MonthViewProps {
   currentDate: Date;
   today: Date;
   jobsByDate: Record<string, any[]>;
+  getAcceptanceColor: (job: any) => string;
 }
 
-function MonthView({ days, currentDate, today, jobsByDate }: MonthViewProps) {
+function MonthView({ days, currentDate, today, jobsByDate, getAcceptanceColor }: MonthViewProps) {
   return (
     <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
       {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
@@ -328,7 +339,7 @@ function MonthView({ days, currentDate, today, jobsByDate }: MonthViewProps) {
             </div>
             <div className="space-y-1">
               {dayJobs.slice(0, 3).map((job) => (
-                <Link key={job._id} href={`/jobs/${job._id}`} className="block text-xs p-1 rounded bg-primary-50 text-primary-700 truncate hover:bg-primary-100">
+                <Link key={job._id} href={`/jobs/${job._id}`} className={`block text-xs p-1 rounded truncate ${getAcceptanceColor(job)}`}>
                     {job.propertyName}
                 </Link>
               ))}
@@ -351,9 +362,10 @@ interface WeekViewProps {
   days: Date[];
   today: Date;
   jobsByDate: Record<string, any[]>;
+  getAcceptanceColor: (job: any) => string;
 }
 
-function WeekView({ days, today, jobsByDate }: WeekViewProps) {
+function WeekView({ days, today, jobsByDate, getAcceptanceColor }: WeekViewProps) {
   return (
     <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
       {/* Day headers */}
@@ -393,8 +405,11 @@ function WeekView({ days, today, jobsByDate }: WeekViewProps) {
             }`}
           >
             <div className="space-y-2">
-              {dayJobs.map((job) => (
-                <Link key={job._id} href={`/jobs/${job._id}`} className="block p-2 rounded-lg border border-gray-200 hover:border-primary-300 hover:shadow-sm transition-all bg-white">
+              {dayJobs.map((job) => {
+                const acceptance = job.acceptanceStatus ?? "pending";
+                const borderColor = acceptance === "accepted" ? "border-green-300" : acceptance === "denied" ? "border-red-300" : "border-gray-200";
+                return (
+                <Link key={job._id} href={`/jobs/${job._id}`} className={`block p-2 rounded-lg border ${borderColor} hover:shadow-sm transition-all bg-white`}>
                     {job.startTime && (
                       <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
                         <Clock className="w-3 h-3" />
@@ -409,11 +424,13 @@ function WeekView({ days, today, jobsByDate }: WeekViewProps) {
                         {job.cleaners.map((c: any) => c.name).join(", ")}
                       </div>
                     )}
-                    <div className="mt-1">
+                    <div className="mt-1 flex gap-1">
                       <StatusBadge status={job.status} className="text-[10px] px-1.5 py-0" />
+                      <StatusBadge status={acceptance} className="text-[10px] px-1.5 py-0" />
                     </div>
                 </Link>
-              ))}
+                );
+              })}
               {dayJobs.length === 0 && (
                 <div className="text-xs text-gray-300 text-center pt-4">
                   No jobs
@@ -488,6 +505,7 @@ function DayView({ date, today, jobs, formatJobType }: DayViewProps) {
                     {/* Job type */}
                     <div className="flex items-center gap-2 flex-wrap">
                       <StatusBadge status={job.status} />
+                      <StatusBadge status={job.acceptanceStatus ?? "pending"} />
                       <span className="badge bg-gray-100 text-gray-700 capitalize">
                         {formatJobType(job.type)}
                       </span>

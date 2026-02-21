@@ -16,7 +16,7 @@ export function CleanerJobDetailPage() {
   const job = useQuery(api.queries.jobs.get,
     user ? { jobId: params.id as Id<"jobs">, userId: user._id } : "skip"
   );
-  const confirmJob = useMutation(api.mutations.jobs.confirmJob);
+  const acceptJob = useMutation(api.mutations.jobs.acceptJob);
   const denyJob = useMutation(api.mutations.jobs.denyJob);
   const arriveJob = useMutation(api.mutations.jobs.arriveJob);
   const startJob = useMutation(api.mutations.jobs.startJob);
@@ -28,11 +28,15 @@ export function CleanerJobDetailPage() {
   const [showComplete, setShowComplete] = useState(false);
   const [completionNotes, setCompletionNotes] = useState("");
   const [completing, setCompleting] = useState(false);
+  const [accepting, setAccepting] = useState(false);
+  const [denying, setDenying] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   if (job === undefined) return <PageLoader />;
   if (job === null) return <div className="text-center py-12 text-gray-500">Job not found</div>;
 
-  const canConfirm = job.status === "scheduled";
+  const acceptance = job.acceptanceStatus ?? "pending";
+  const canAccept = job.status === "scheduled" && acceptance === "pending";
   const canArrive = (job.status === "confirmed" || job.status === "scheduled") && !job.arrivedAt;
   const hasArrived = !!job.arrivedAt;
   const canStart = (job.status === "confirmed" || job.status === "rework_requested");
@@ -111,15 +115,49 @@ export function CleanerJobDetailPage() {
           )}
         </div>
 
+        {/* Toast notification */}
+        {toast && (
+          <div
+            className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all ${
+              toast.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"
+            }`}
+          >
+            {toast.message}
+          </div>
+        )}
+
+        {/* Acceptance status */}
+        {acceptance !== "pending" && (
+          <div className={`card text-center text-sm font-medium py-3 ${
+            acceptance === "accepted" ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"
+          }`}>
+            {acceptance === "accepted" ? "You accepted this job" : "You denied this job"}
+          </div>
+        )}
+
         {/* Action buttons */}
         <div className="card space-y-3">
-          {canConfirm && (
+          {canAccept && (
             <div className="flex gap-3">
               <button
-                onClick={async () => { await confirmJob({ jobId: job._id, userId: user!._id }); }}
+                disabled={accepting}
+                onClick={async () => {
+                  if (!user) return;
+                  setAccepting(true);
+                  try {
+                    await acceptJob({ jobId: job._id, userId: user._id });
+                    setToast({ message: "Job accepted", type: "success" });
+                    setTimeout(() => setToast(null), 3000);
+                  } catch (err: any) {
+                    setToast({ message: err.message ?? "Failed to accept", type: "error" });
+                    setTimeout(() => setToast(null), 3000);
+                  } finally {
+                    setAccepting(false);
+                  }
+                }}
                 className="btn-primary flex-1 flex items-center justify-center gap-2"
               >
-                <CheckCircle className="w-4 h-4" /> Confirm Job
+                <CheckCircle className="w-4 h-4" /> {accepting ? "Accepting..." : "Accept Job"}
               </button>
               <button
                 onClick={() => setShowDeny(true)}
@@ -192,13 +230,25 @@ export function CleanerJobDetailPage() {
             <div className="flex justify-end gap-3">
               <button onClick={() => setShowDeny(false)} className="btn-secondary">Cancel</button>
               <button
+                disabled={denying}
                 onClick={async () => {
-                  await denyJob({ jobId: job._id, reason: denyReason || undefined, userId: user!._id });
-                  setShowDeny(false);
+                  if (!user) return;
+                  setDenying(true);
+                  try {
+                    await denyJob({ jobId: job._id, reason: denyReason || undefined, userId: user._id });
+                    setShowDeny(false);
+                    setToast({ message: "Job denied", type: "success" });
+                    setTimeout(() => setToast(null), 3000);
+                  } catch (err: any) {
+                    setToast({ message: err.message ?? "Failed to deny", type: "error" });
+                    setTimeout(() => setToast(null), 3000);
+                  } finally {
+                    setDenying(false);
+                  }
                 }}
                 className="btn-danger"
               >
-                Deny Job
+                {denying ? "Denying..." : "Deny Job"}
               </button>
             </div>
           </div>

@@ -76,6 +76,8 @@ export async function createNotification(
       | "job_started"
       | "job_submitted"
       | "job_approved"
+      | "job_accepted"
+      | "job_reassigned"
       | "rework_requested"
       | "red_flag"
       | "invite";

@@ -95,6 +95,12 @@ export default defineSchema({
     notes: v.optional(v.string()),
     requireConfirmation: v.optional(v.boolean()),
     reworkCount: v.number(),
+    acceptanceStatus: v.optional(
+      v.union(v.literal("pending"), v.literal("accepted"), v.literal("denied"))
+    ),
+    acceptedAt: v.optional(v.number()),
+    deniedAt: v.optional(v.number()),
+    denyReason: v.optional(v.string()),
     arrivedAt: v.optional(v.number()),
     startedAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
@@ -178,6 +184,8 @@ export default defineSchema({
       v.literal("job_started"),
       v.literal("job_submitted"),
       v.literal("job_approved"),
+      v.literal("job_accepted"),
+      v.literal("job_reassigned"),
       v.literal("rework_requested"),
       v.literal("red_flag"),
       v.literal("invite")

@@ -79,9 +79,15 @@ export function JobListPage() {
             <Link key={job._id} href={`/jobs/${job._id}`} className="card block hover:shadow-md transition-shadow">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold text-gray-900">{job.propertyName}</h3>
                       <StatusBadge status={job.status} />
+                      {(job as any).acceptanceStatus && (job as any).acceptanceStatus !== "accepted" && (
+                        <StatusBadge status={(job as any).acceptanceStatus} className="text-[10px]" />
+                      )}
+                      {(job as any).acceptanceStatus === "accepted" && (
+                        <span className="badge bg-green-100 text-green-800 text-[10px]">accepted</span>
+                      )}
                     </div>
                     <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500">
                       <span className="flex items-center gap-1">

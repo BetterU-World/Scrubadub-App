@@ -20,6 +20,7 @@ import {
   RotateCcw,
   ChevronDown,
   ChevronUp,
+  RefreshCw,
 } from "lucide-react";
 
 export function JobDetailPage() {
@@ -36,12 +37,21 @@ export function JobDetailPage() {
   const cancelJob = useMutation(api.mutations.jobs.cancel);
   const approveJob = useMutation(api.mutations.jobs.approveJob);
   const requestRework = useMutation(api.mutations.jobs.requestRework);
+  const reassignJob = useMutation(api.mutations.jobs.reassignJob);
+
+  const cleaners = useQuery(
+    api.queries.employees.getCleaners,
+    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+  );
 
   const [showCancel, setShowCancel] = useState(false);
   const [showRework, setShowRework] = useState(false);
   const [reworkNotes, setReworkNotes] = useState("");
   const [approveNotes, setApproveNotes] = useState("");
   const [expandForm, setExpandForm] = useState(false);
+  const [showReassign, setShowReassign] = useState(false);
+  const [reassignCleanerId, setReassignCleanerId] = useState("");
+  const [reassigning, setReassigning] = useState(false);
 
   if (job === undefined) return <PageLoader />;
   if (job === null) return <div className="text-center py-12 text-gray-500">Job not found</div>;
@@ -55,6 +65,11 @@ export function JobDetailPage() {
         title={job.property?.name ?? "Job Details"}
         action={
           <div className="flex gap-2">
+            {((job as any).acceptanceStatus === "denied" || (job as any).acceptanceStatus === "pending") && (
+              <button onClick={() => setShowReassign(true)} className="btn-secondary flex items-center gap-2">
+                <RefreshCw className="w-4 h-4" /> Reassign
+              </button>
+            )}
             {canCancel && (
               <>
                 <Link href={`/jobs/${job._id}/edit`} className="btn-secondary flex items-center gap-2">
@@ -72,13 +87,23 @@ export function JobDetailPage() {
       <div className="space-y-6">
         {/* Job info card */}
         <div className="card space-y-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <StatusBadge status={job.status} />
+            {(job as any).acceptanceStatus && (
+              <StatusBadge status={(job as any).acceptanceStatus} />
+            )}
             <span className="text-sm text-gray-500 capitalize">{job.type.replace(/_/g, " ")}</span>
             {job.reworkCount > 0 && (
               <span className="badge bg-orange-100 text-orange-700">Rework #{job.reworkCount}</span>
             )}
           </div>
+
+          {(job as any).acceptanceStatus === "denied" && (job as any).denyReason && (
+            <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+              <p className="text-sm font-medium text-red-800">Deny reason:</p>
+              <p className="text-sm text-red-700 mt-1">{(job as any).denyReason}</p>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
             <div className="flex items-center gap-2 text-gray-600">
@@ -248,6 +273,53 @@ export function JobDetailPage() {
                 className="btn-primary"
               >
                 Send Rework Request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reassign dialog */}
+      {showReassign && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">Reassign Job</h3>
+            <select
+              className="input-field mb-4"
+              value={reassignCleanerId}
+              onChange={(e) => setReassignCleanerId(e.target.value)}
+            >
+              <option value="">Select a cleaner...</option>
+              {cleaners
+                ?.filter((c) => !job.cleanerIds.includes(c._id))
+                .map((c) => (
+                  <option key={c._id} value={c._id}>{c.name} ({c.email})</option>
+                ))}
+            </select>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => { setShowReassign(false); setReassignCleanerId(""); }} className="btn-secondary">Cancel</button>
+              <button
+                disabled={!reassignCleanerId || reassigning}
+                onClick={async () => {
+                  if (!reassignCleanerId || !user) return;
+                  setReassigning(true);
+                  try {
+                    await reassignJob({
+                      jobId: job._id,
+                      newCleanerId: reassignCleanerId as Id<"users">,
+                      userId: user._id,
+                    });
+                    setShowReassign(false);
+                    setReassignCleanerId("");
+                  } catch (err: any) {
+                    console.error(err);
+                  } finally {
+                    setReassigning(false);
+                  }
+                }}
+                className="btn-primary"
+              >
+                {reassigning ? "Reassigning..." : "Reassign"}
               </button>
             </div>
           </div>

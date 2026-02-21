@@ -28,11 +28,13 @@ export const create = mutation({
     await requireActiveSubscription(ctx, args.companyId);
 
     const initialStatus = args.requireConfirmation === false ? "confirmed" : "scheduled";
+    const initialAcceptance = args.requireConfirmation === false ? "accepted" as const : "pending" as const;
 
     const { userId: _uid, ...jobData } = args;
     const jobId = await ctx.db.insert("jobs", {
       ...jobData,
       status: initialStatus,
+      acceptanceStatus: initialAcceptance,
       reworkCount: 0,
     });
 
@@ -166,6 +168,48 @@ export const confirmJob = mutation({
   },
 });
 
+export const acceptJob = mutation({
+  args: { jobId: v.id("jobs"), userId: v.optional(v.id("users")) },
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx, args.userId);
+    const job = await ctx.db.get(args.jobId);
+    if (!job) throw new Error("Job not found");
+    if (!job.cleanerIds.includes(user._id)) throw new Error("Not assigned to this job");
+    if (job.status !== "scheduled") throw new Error("Job cannot be accepted in current status");
+
+    await ctx.db.patch(args.jobId, {
+      status: "confirmed",
+      acceptanceStatus: "accepted",
+      acceptedAt: Date.now(),
+      deniedAt: undefined,
+      denyReason: undefined,
+    });
+
+    const owners = await ctx.db
+      .query("users")
+      .withIndex("by_companyId", (q) => q.eq("companyId", job.companyId))
+      .collect();
+    for (const owner of owners.filter((u) => u.role === "owner")) {
+      await createNotification(ctx, {
+        companyId: job.companyId,
+        userId: owner._id,
+        type: "job_accepted",
+        title: "Job Accepted",
+        message: `${user.name} accepted the job for ${job.scheduledDate}`,
+        relatedJobId: args.jobId,
+      });
+    }
+
+    await logAudit(ctx, {
+      companyId: job.companyId,
+      userId: user._id,
+      action: "accept_job",
+      entityType: "job",
+      entityId: args.jobId,
+    });
+  },
+});
+
 export const denyJob = mutation({
   args: { jobId: v.id("jobs"), reason: v.optional(v.string()), userId: v.optional(v.id("users")) },
   handler: async (ctx, args) => {
@@ -175,7 +219,13 @@ export const denyJob = mutation({
     if (!job.cleanerIds.includes(user._id)) throw new Error("Not assigned to this job");
     if (job.status !== "scheduled") throw new Error("Job cannot be denied in current status");
 
-    await ctx.db.patch(args.jobId, { status: "denied" });
+    await ctx.db.patch(args.jobId, {
+      status: "denied",
+      acceptanceStatus: "denied",
+      deniedAt: Date.now(),
+      denyReason: args.reason,
+      acceptedAt: undefined,
+    });
 
     const owners = await ctx.db
       .query("users")
@@ -191,6 +241,62 @@ export const denyJob = mutation({
         relatedJobId: args.jobId,
       });
     }
+
+    await logAudit(ctx, {
+      companyId: job.companyId,
+      userId: user._id,
+      action: "deny_job",
+      entityType: "job",
+      entityId: args.jobId,
+      details: args.reason,
+    });
+  },
+});
+
+export const reassignJob = mutation({
+  args: {
+    jobId: v.id("jobs"),
+    newCleanerId: v.id("users"),
+    userId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+    const job = await ctx.db.get(args.jobId);
+    if (!job) throw new Error("Job not found");
+    if (job.companyId !== owner.companyId) throw new Error("Not your company");
+
+    const newCleaner = await ctx.db.get(args.newCleanerId);
+    if (!newCleaner || newCleaner.companyId !== owner.companyId)
+      throw new Error("Cleaner not found in your company");
+
+    await ctx.db.patch(args.jobId, {
+      cleanerIds: [args.newCleanerId],
+      status: "scheduled",
+      acceptanceStatus: "pending",
+      acceptedAt: undefined,
+      deniedAt: undefined,
+      denyReason: undefined,
+    });
+
+    // Notify the new cleaner
+    const property = await ctx.db.get(job.propertyId);
+    await createNotification(ctx, {
+      companyId: job.companyId,
+      userId: args.newCleanerId,
+      type: "job_reassigned",
+      title: "Job Assigned to You",
+      message: `You've been assigned to clean ${property?.name ?? "a property"} on ${job.scheduledDate}`,
+      relatedJobId: args.jobId,
+    });
+
+    await logAudit(ctx, {
+      companyId: owner.companyId,
+      userId: owner._id,
+      action: "reassign_job",
+      entityType: "job",
+      entityId: args.jobId,
+      details: `Reassigned to ${newCleaner.name}`,
+    });
   },
 });
 
