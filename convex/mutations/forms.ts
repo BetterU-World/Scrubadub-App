@@ -180,27 +180,27 @@ export const approve = mutation({
     const form = await ctx.db.get(args.formId);
     if (!form) throw new Error("Form not found");
     if (form.companyId !== owner.companyId) throw new Error("Access denied");
-    if (form.status !== "submitted") throw new Error("Form not submitted for review");
+
+    // Check job status (authoritative) — works for both forms.submit and jobs.completeJob paths
+    const job = await ctx.db.get(form.jobId);
+    if (!job) throw new Error("Job not found");
+    if (job.status !== "submitted") throw new Error("Job not submitted for review");
 
     await ctx.db.patch(args.formId, {
       status: "approved",
       ownerNotes: args.notes,
     });
+    await ctx.db.patch(form.jobId, { status: "approved", completedAt: Date.now() });
 
-    const job = await ctx.db.get(form.jobId);
-    if (job) {
-      await ctx.db.patch(form.jobId, { status: "approved", completedAt: Date.now() });
-
-      for (const cid of job.cleanerIds) {
-        await createNotification(ctx, {
-          companyId: form.companyId,
-          userId: cid,
-          type: "job_approved",
-          title: "Job Approved",
-          message: `Owner approved cleaning for ${job.scheduledDate}`,
-          relatedJobId: form.jobId,
-        });
-      }
+    for (const cid of job.cleanerIds) {
+      await createNotification(ctx, {
+        companyId: form.companyId,
+        userId: cid,
+        type: "job_approved",
+        title: "Job Approved",
+        message: `Owner approved cleaning for ${job.scheduledDate}`,
+        relatedJobId: form.jobId,
+      });
     }
 
     await logAudit(ctx, {
@@ -224,30 +224,30 @@ export const requestRework = mutation({
     const form = await ctx.db.get(args.formId);
     if (!form) throw new Error("Form not found");
     if (form.companyId !== owner.companyId) throw new Error("Access denied");
-    if (form.status !== "submitted") throw new Error("Form not submitted for review");
+
+    // Check job status (authoritative) — works for both forms.submit and jobs.completeJob paths
+    const job = await ctx.db.get(form.jobId);
+    if (!job) throw new Error("Job not found");
+    if (job.status !== "submitted") throw new Error("Job not submitted for review");
 
     await ctx.db.patch(args.formId, {
       status: "rework_requested",
       ownerNotes: args.notes,
     });
+    await ctx.db.patch(form.jobId, {
+      status: "rework_requested",
+      reworkCount: (job.reworkCount ?? 0) + 1,
+    });
 
-    const job = await ctx.db.get(form.jobId);
-    if (job) {
-      await ctx.db.patch(form.jobId, {
-        status: "rework_requested",
-        reworkCount: (job.reworkCount ?? 0) + 1,
+    for (const cid of job.cleanerIds) {
+      await createNotification(ctx, {
+        companyId: form.companyId,
+        userId: cid,
+        type: "rework_requested",
+        title: "Rework Requested",
+        message: `Owner requested rework for ${job.scheduledDate}: ${args.notes}`,
+        relatedJobId: form.jobId,
       });
-
-      for (const cid of job.cleanerIds) {
-        await createNotification(ctx, {
-          companyId: form.companyId,
-          userId: cid,
-          type: "rework_requested",
-          title: "Rework Requested",
-          message: `Owner requested rework for ${job.scheduledDate}: ${args.notes}`,
-          relatedJobId: form.jobId,
-        });
-      }
     }
 
     await logAudit(ctx, {
