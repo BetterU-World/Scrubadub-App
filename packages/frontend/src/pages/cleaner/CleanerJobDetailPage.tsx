@@ -4,11 +4,10 @@ import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { PageLoader } from "@/components/ui/LoadingSpinner";
+import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useParams, Link, useLocation } from "wouter";
-import { Calendar, Clock, MapPin, Key, CheckCircle, XCircle, Play, ClipboardCheck } from "lucide-react";
+import { Calendar, Clock, MapPin, Key, CheckCircle, XCircle, Play, ClipboardCheck, MapPinCheck, Send } from "lucide-react";
 
 export function CleanerJobDetailPage() {
   const params = useParams<{ id: string }>();
@@ -19,28 +18,49 @@ export function CleanerJobDetailPage() {
   );
   const confirmJob = useMutation(api.mutations.jobs.confirmJob);
   const denyJob = useMutation(api.mutations.jobs.denyJob);
+  const arriveJob = useMutation(api.mutations.jobs.arriveJob);
   const startJob = useMutation(api.mutations.jobs.startJob);
+  const completeJob = useMutation(api.mutations.jobs.completeJob);
   const createForm = useMutation(api.mutations.forms.createFromTemplate);
 
   const [showDeny, setShowDeny] = useState(false);
   const [denyReason, setDenyReason] = useState("");
+  const [showComplete, setShowComplete] = useState(false);
+  const [completionNotes, setCompletionNotes] = useState("");
+  const [completing, setCompleting] = useState(false);
 
   if (job === undefined) return <PageLoader />;
   if (job === null) return <div className="text-center py-12 text-gray-500">Job not found</div>;
 
   const canConfirm = job.status === "scheduled";
-  const canStart = job.status === "confirmed" || job.status === "rework_requested";
+  const canArrive = (job.status === "confirmed" || job.status === "scheduled") && !job.arrivedAt;
+  const hasArrived = !!job.arrivedAt;
+  const canStart = (job.status === "confirmed" || job.status === "rework_requested");
   const isInProgress = job.status === "in_progress";
+  const hasForm = !!job.form;
 
   const handleStartJob = async () => {
     if (!user) return;
-    await startJob({ jobId: job._id, userId: user!._id });
-    const formId = await createForm({
+    await startJob({ jobId: job._id, userId: user._id });
+    await createForm({
       jobId: job._id,
       companyId: job.companyId,
       cleanerId: user._id,
     });
     setLocation(`/jobs/${job._id}/form`);
+  };
+
+  const handleCompleteJob = async () => {
+    if (!user) return;
+    setCompleting(true);
+    try {
+      await completeJob({ jobId: job._id, notes: completionNotes || undefined, userId: user._id });
+      setShowComplete(false);
+    } catch (err: any) {
+      console.error(err);
+    } finally {
+      setCompleting(false);
+    }
   };
 
   return (
@@ -52,6 +72,11 @@ export function CleanerJobDetailPage() {
           <div className="flex items-center gap-2">
             <StatusBadge status={job.status} />
             <span className="text-sm text-gray-500 capitalize">{job.type.replace(/_/g, " ")}</span>
+            {hasArrived && (
+              <span className="badge bg-green-100 text-green-700 flex items-center gap-1">
+                <MapPinCheck className="w-3 h-3" /> Arrived
+              </span>
+            )}
           </div>
 
           <div className="space-y-2 text-sm text-gray-600">
@@ -87,7 +112,7 @@ export function CleanerJobDetailPage() {
         </div>
 
         {/* Action buttons */}
-        <div className="card">
+        <div className="card space-y-3">
           {canConfirm && (
             <div className="flex gap-3">
               <button
@@ -105,6 +130,15 @@ export function CleanerJobDetailPage() {
             </div>
           )}
 
+          {canArrive && !canConfirm && (
+            <button
+              onClick={async () => { await arriveJob({ jobId: job._id, userId: user!._id }); }}
+              className="btn-secondary w-full flex items-center justify-center gap-2 py-3"
+            >
+              <MapPinCheck className="w-5 h-5" /> I've Arrived
+            </button>
+          )}
+
           {canStart && (
             <button
               onClick={handleStartJob}
@@ -114,12 +148,19 @@ export function CleanerJobDetailPage() {
             </button>
           )}
 
-          {isInProgress && (
-            <Link href={`/jobs/${job._id}/form`}>
-              <a className="btn-primary w-full flex items-center justify-center gap-2 py-3 text-lg">
-                <ClipboardCheck className="w-5 h-5" /> Continue Checklist
-              </a>
+          {isInProgress && hasForm && (
+            <Link href={`/jobs/${job._id}/form`} className="btn-secondary w-full flex items-center justify-center gap-2 py-3 text-lg">
+              <ClipboardCheck className="w-5 h-5" /> Continue Checklist
             </Link>
+          )}
+
+          {isInProgress && (
+            <button
+              onClick={() => setShowComplete(true)}
+              className="btn-primary w-full flex items-center justify-center gap-2 py-3 text-lg"
+            >
+              <CheckCircle className="w-5 h-5" /> Complete Clean
+            </button>
           )}
 
           {job.status === "submitted" && (
@@ -158,6 +199,34 @@ export function CleanerJobDetailPage() {
                 className="btn-danger"
               >
                 Deny Job
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Complete dialog */}
+      {showComplete && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">Complete Clean</h3>
+            <p className="text-sm text-gray-500 mb-3">Add any notes about the cleaning (optional).</p>
+            <textarea
+              className="input-field mb-4"
+              rows={3}
+              value={completionNotes}
+              onChange={(e) => setCompletionNotes(e.target.value)}
+              placeholder="Notes about the cleaning..."
+            />
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setShowComplete(false)} className="btn-secondary">Cancel</button>
+              <button
+                onClick={handleCompleteJob}
+                disabled={completing}
+                className="btn-primary flex items-center gap-2"
+              >
+                {completing && <LoadingSpinner size="sm" />}
+                <Send className="w-4 h-4" /> Submit
               </button>
             </div>
           </div>

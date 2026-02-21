@@ -23,10 +23,8 @@ export function PropertyListPage() {
         title="Properties"
         description="Manage your cleaning properties"
         action={
-          <Link href="/properties/new">
-            <a className="btn-primary flex items-center gap-2">
-              <Plus className="w-4 h-4" /> Add Property
-            </a>
+          <Link href="/properties/new" className="btn-primary flex items-center gap-2">
+            <Plus className="w-4 h-4" /> Add Property
           </Link>
         }
       />
@@ -37,16 +35,13 @@ export function PropertyListPage() {
           title="No properties yet"
           description="Add your first property to get started"
           action={
-            <Link href="/properties/new">
-              <a className="btn-primary">Add Property</a>
-            </Link>
+            <Link href="/properties/new" className="btn-primary">Add Property</Link>
           }
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {properties.map((property) => (
-            <Link key={property._id} href={`/properties/${property._id}`}>
-              <a className="card hover:shadow-md transition-shadow block">
+            <Link key={property._id} href={`/properties/${property._id}`} className="card hover:shadow-md transition-shadow block">
                 <div className="flex items-start justify-between mb-2">
                   <h3 className="font-semibold text-gray-900">{property.name}</h3>
                   <StatusBadge status={property.active ? "active" : "inactive"} />
@@ -72,7 +67,6 @@ export function PropertyListPage() {
                     )}
                   </div>
                 )}
-              </a>
             </Link>
           ))}
         </div>

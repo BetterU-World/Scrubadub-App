@@ -67,10 +67,8 @@ export function ResetPasswordPage() {
               </div>
               <p className="text-center text-sm text-gray-500">
                 Redirecting to login...{" "}
-                <Link href="/login">
-                  <a className="text-primary-600 font-medium hover:text-primary-700">
+                <Link href="/login" className="text-primary-600 font-medium hover:text-primary-700">
                     Go now
-                  </a>
                 </Link>
               </p>
             </div>
@@ -118,10 +116,8 @@ export function ResetPasswordPage() {
               </form>
 
               <p className="mt-4 text-center text-sm text-gray-500">
-                <Link href="/login">
-                  <a className="text-primary-600 font-medium hover:text-primary-700">
+                <Link href="/login" className="text-primary-600 font-medium hover:text-primary-700">
                     Back to sign in
-                  </a>
                 </Link>
               </p>
             </>

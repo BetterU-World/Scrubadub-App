@@ -35,6 +35,9 @@ export function PropertyFormPage() {
   const [accessInstructions, setAccessInstructions] = useState("");
   const [amenities, setAmenities] = useState<string[]>([]);
   const [amenityInput, setAmenityInput] = useState("");
+  const [beds, setBeds] = useState<number | undefined>(undefined);
+  const [baths, setBaths] = useState<number | undefined>(undefined);
+  const [linenCount, setLinenCount] = useState<number | undefined>(undefined);
   const [towelCount, setTowelCount] = useState<number | undefined>(undefined);
   const [sheetSets, setSheetSets] = useState<number | undefined>(undefined);
   const [pillowCount, setPillowCount] = useState<number | undefined>(undefined);
@@ -50,6 +53,9 @@ export function PropertyFormPage() {
       setAddress(existing.address);
       setAccessInstructions(existing.accessInstructions ?? "");
       setAmenities(existing.amenities);
+      setBeds(existing.beds ?? undefined);
+      setBaths(existing.baths ?? undefined);
+      setLinenCount(existing.linenCount ?? undefined);
       setTowelCount(existing.towelCount ?? undefined);
       setSheetSets(existing.sheetSets ?? undefined);
       setPillowCount(existing.pillowCount ?? undefined);
@@ -72,6 +78,9 @@ export function PropertyFormPage() {
         address,
         accessInstructions: accessInstructions || undefined,
         amenities,
+        beds: beds ?? undefined,
+        baths: baths ?? undefined,
+        linenCount: linenCount ?? undefined,
         towelCount: towelCount ?? undefined,
         sheetSets: sheetSets ?? undefined,
         pillowCount: pillowCount ?? undefined,
@@ -132,6 +141,43 @@ export function PropertyFormPage() {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
           <input className="input-field" value={address} onChange={(e) => setAddress(e.target.value)} required placeholder="123 Main St, City, ST 12345" />
+        </div>
+
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Beds</label>
+            <input
+              type="number"
+              min={0}
+              className="input-field"
+              value={beds ?? ""}
+              onChange={(e) => setBeds(e.target.value ? parseInt(e.target.value, 10) : undefined)}
+              placeholder="0"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Baths</label>
+            <input
+              type="number"
+              min={0}
+              step="0.5"
+              className="input-field"
+              value={baths ?? ""}
+              onChange={(e) => setBaths(e.target.value ? parseFloat(e.target.value) : undefined)}
+              placeholder="0"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Linen Count</label>
+            <input
+              type="number"
+              min={0}
+              className="input-field"
+              value={linenCount ?? ""}
+              onChange={(e) => setLinenCount(e.target.value ? parseInt(e.target.value, 10) : undefined)}
+              placeholder="0"
+            />
+          </div>
         </div>
 
         <div>

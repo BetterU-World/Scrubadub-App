@@ -61,10 +61,8 @@ export function NotificationsPage() {
                   </p>
                 </div>
                 {n.relatedJobId && (
-                  <Link href={`/jobs/${n.relatedJobId}`}>
-                    <a className="text-xs text-primary-600 hover:text-primary-700 whitespace-nowrap">
+                  <Link href={`/jobs/${n.relatedJobId}`} className="text-xs text-primary-600 hover:text-primary-700 whitespace-nowrap">
                       View Job
-                    </a>
                   </Link>
                 )}
               </div>

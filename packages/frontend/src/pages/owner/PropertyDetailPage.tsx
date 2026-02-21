@@ -62,10 +62,8 @@ export function PropertyDetailPage() {
               )}
               {property.active ? "Deactivate" : "Activate"}
             </button>
-            <Link href={`/properties/${property._id}/edit`}>
-              <a className="btn-primary flex items-center gap-2">
-                <Pencil className="w-4 h-4" /> Edit
-              </a>
+            <Link href={`/properties/${property._id}/edit`} className="btn-primary flex items-center gap-2">
+              <Pencil className="w-4 h-4" /> Edit
             </Link>
           </div>
         }
@@ -128,6 +126,29 @@ function DetailsTab({ property }: { property: any }) {
           <span>{property.address}</span>
         </div>
       </div>
+
+      {(property.beds != null || property.baths != null || property.linenCount != null) && (
+        <div className="grid grid-cols-3 gap-4">
+          {property.beds != null && (
+            <div className="bg-gray-50 rounded-lg p-3 text-center">
+              <div className="text-2xl font-semibold text-gray-800">{property.beds}</div>
+              <div className="text-xs text-gray-500 mt-1">Beds</div>
+            </div>
+          )}
+          {property.baths != null && (
+            <div className="bg-gray-50 rounded-lg p-3 text-center">
+              <div className="text-2xl font-semibold text-gray-800">{property.baths}</div>
+              <div className="text-xs text-gray-500 mt-1">Baths</div>
+            </div>
+          )}
+          {property.linenCount != null && (
+            <div className="bg-gray-50 rounded-lg p-3 text-center">
+              <div className="text-2xl font-semibold text-gray-800">{property.linenCount}</div>
+              <div className="text-xs text-gray-500 mt-1">Linens</div>
+            </div>
+          )}
+        </div>
+      )}
 
       {property.accessInstructions && (
         <div>

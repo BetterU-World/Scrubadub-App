@@ -59,19 +59,15 @@ export function ForgotPasswordPage() {
               {resetLink && (
                 <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
                   <p className="text-blue-700 font-medium mb-1">MVP: Reset link (would be emailed in production)</p>
-                  <Link href={resetLink}>
-                    <a className="text-primary-600 font-medium hover:text-primary-700 break-all">
+                  <Link href={resetLink} className="text-primary-600 font-medium hover:text-primary-700 break-all">
                       {window.location.origin}{resetLink}
-                    </a>
                   </Link>
                 </div>
               )}
 
               <p className="text-center text-sm text-gray-500">
-                <Link href="/login">
-                  <a className="text-primary-600 font-medium hover:text-primary-700">
+                <Link href="/login" className="text-primary-600 font-medium hover:text-primary-700">
                     Back to sign in
-                  </a>
                 </Link>
               </p>
             </div>
@@ -109,10 +105,8 @@ export function ForgotPasswordPage() {
 
               <p className="mt-4 text-center text-sm text-gray-500">
                 Remember your password?{" "}
-                <Link href="/login">
-                  <a className="text-primary-600 font-medium hover:text-primary-700">
+                <Link href="/login" className="text-primary-600 font-medium hover:text-primary-700">
                     Sign in
-                  </a>
                 </Link>
               </p>
             </>

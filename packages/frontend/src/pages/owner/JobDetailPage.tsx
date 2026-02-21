@@ -57,8 +57,8 @@ export function JobDetailPage() {
           <div className="flex gap-2">
             {canCancel && (
               <>
-                <Link href={`/jobs/${job._id}/edit`}>
-                  <a className="btn-secondary flex items-center gap-2"><Pencil className="w-4 h-4" /> Edit</a>
+                <Link href={`/jobs/${job._id}/edit`} className="btn-secondary flex items-center gap-2">
+                  <Pencil className="w-4 h-4" /> Edit
                 </Link>
                 <button onClick={() => setShowCancel(true)} className="btn-danger flex items-center gap-2">
                   <XCircle className="w-4 h-4" /> Cancel

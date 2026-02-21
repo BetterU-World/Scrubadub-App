@@ -194,6 +194,20 @@ export const denyJob = mutation({
   },
 });
 
+export const arriveJob = mutation({
+  args: { jobId: v.id("jobs"), userId: v.optional(v.id("users")) },
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx, args.userId);
+    const job = await ctx.db.get(args.jobId);
+    if (!job) throw new Error("Job not found");
+    if (!job.cleanerIds.includes(user._id)) throw new Error("Not assigned to this job");
+    if (job.status !== "confirmed" && job.status !== "scheduled")
+      throw new Error("Cannot mark arrived in current status");
+
+    await ctx.db.patch(args.jobId, { arrivedAt: Date.now() });
+  },
+});
+
 export const startJob = mutation({
   args: { jobId: v.id("jobs"), userId: v.optional(v.id("users")) },
   handler: async (ctx, args) => {
@@ -308,6 +322,51 @@ export const requestRework = mutation({
       entityType: "job",
       entityId: args.jobId,
       details: args.notes,
+    });
+  },
+});
+
+export const completeJob = mutation({
+  args: {
+    jobId: v.id("jobs"),
+    notes: v.optional(v.string()),
+    userId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx, args.userId);
+    const job = await ctx.db.get(args.jobId);
+    if (!job) throw new Error("Job not found");
+    if (!job.cleanerIds.includes(user._id)) throw new Error("Not assigned to this job");
+    if (job.status !== "in_progress") throw new Error("Job not in progress");
+
+    await ctx.db.patch(args.jobId, {
+      status: "submitted",
+      completedAt: Date.now(),
+      notes: args.notes ? `${job.notes ? job.notes + "\n" : ""}Completion notes: ${args.notes}` : job.notes,
+    });
+
+    const property = await ctx.db.get(job.propertyId);
+    const owners = await ctx.db
+      .query("users")
+      .withIndex("by_companyId", (q) => q.eq("companyId", job.companyId))
+      .collect();
+    for (const owner of owners.filter((u) => u.role === "owner")) {
+      await createNotification(ctx, {
+        companyId: job.companyId,
+        userId: owner._id,
+        type: "job_submitted",
+        title: "Job Completed",
+        message: `${user.name} completed cleaning ${property?.name ?? "a property"} on ${job.scheduledDate}`,
+        relatedJobId: args.jobId,
+      });
+    }
+
+    await logAudit(ctx, {
+      companyId: job.companyId,
+      userId: user._id,
+      action: "complete_job",
+      entityType: "job",
+      entityId: args.jobId,
     });
   },
 });

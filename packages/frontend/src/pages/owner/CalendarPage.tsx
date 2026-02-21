@@ -328,10 +328,8 @@ function MonthView({ days, currentDate, today, jobsByDate }: MonthViewProps) {
             </div>
             <div className="space-y-1">
               {dayJobs.slice(0, 3).map((job) => (
-                <Link key={job._id} href={`/jobs/${job._id}`}>
-                  <a className="block text-xs p-1 rounded bg-primary-50 text-primary-700 truncate hover:bg-primary-100">
+                <Link key={job._id} href={`/jobs/${job._id}`} className="block text-xs p-1 rounded bg-primary-50 text-primary-700 truncate hover:bg-primary-100">
                     {job.propertyName}
-                  </a>
                 </Link>
               ))}
               {dayJobs.length > 3 && (
@@ -396,8 +394,7 @@ function WeekView({ days, today, jobsByDate }: WeekViewProps) {
           >
             <div className="space-y-2">
               {dayJobs.map((job) => (
-                <Link key={job._id} href={`/jobs/${job._id}`}>
-                  <a className="block p-2 rounded-lg border border-gray-200 hover:border-primary-300 hover:shadow-sm transition-all bg-white">
+                <Link key={job._id} href={`/jobs/${job._id}`} className="block p-2 rounded-lg border border-gray-200 hover:border-primary-300 hover:shadow-sm transition-all bg-white">
                     {job.startTime && (
                       <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
                         <Clock className="w-3 h-3" />
@@ -415,7 +412,6 @@ function WeekView({ days, today, jobsByDate }: WeekViewProps) {
                     <div className="mt-1">
                       <StatusBadge status={job.status} className="text-[10px] px-1.5 py-0" />
                     </div>
-                  </a>
                 </Link>
               ))}
               {dayJobs.length === 0 && (
@@ -458,8 +454,7 @@ function DayView({ date, today, jobs, formatJobType }: DayViewProps) {
       ) : (
         <div className="space-y-3">
           {jobs.map((job) => (
-            <Link key={job._id} href={`/jobs/${job._id}`}>
-              <a className="block p-4 rounded-lg border border-gray-200 hover:border-primary-300 hover:shadow-md transition-all bg-white">
+            <Link key={job._id} href={`/jobs/${job._id}`} className="block p-4 rounded-lg border border-gray-200 hover:border-primary-300 hover:shadow-md transition-all bg-white">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     {/* Time */}
@@ -499,7 +494,6 @@ function DayView({ date, today, jobs, formatJobType }: DayViewProps) {
                     </div>
                   </div>
                 </div>
-              </a>
             </Link>
           ))}
         </div>

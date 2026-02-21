@@ -40,10 +40,8 @@ export function JobListPage() {
         title="Jobs"
         description="Manage cleaning jobs"
         action={
-          <Link href="/jobs/new">
-            <a className="btn-primary flex items-center gap-2">
-              <Plus className="w-4 h-4" /> Schedule Job
-            </a>
+          <Link href="/jobs/new" className="btn-primary flex items-center gap-2">
+            <Plus className="w-4 h-4" /> Schedule Job
           </Link>
         }
       />
@@ -71,17 +69,14 @@ export function JobListPage() {
           description={statusFilter ? "No jobs match the selected filter" : "Schedule your first cleaning job"}
           action={
             !statusFilter && (
-              <Link href="/jobs/new">
-                <a className="btn-primary">Schedule Job</a>
-              </Link>
+              <Link href="/jobs/new" className="btn-primary">Schedule Job</Link>
             )
           }
         />
       ) : (
         <div className="space-y-3">
           {sortedJobs.map((job) => (
-            <Link key={job._id} href={`/jobs/${job._id}`}>
-              <a className="card block hover:shadow-md transition-shadow">
+            <Link key={job._id} href={`/jobs/${job._id}`} className="card block hover:shadow-md transition-shadow">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <div className="flex items-center gap-2">
@@ -103,7 +98,6 @@ export function JobListPage() {
                     {(job.cleaners as any[]).map((c: any) => c.name).join(", ") || "Unassigned"}
                   </div>
                 </div>
-              </a>
             </Link>
           ))}
         </div>
