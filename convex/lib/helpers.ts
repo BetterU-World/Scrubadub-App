@@ -33,8 +33,13 @@ export async function requireAuth(ctx: QueryCtx, userId?: Id<"users">) {
 
 export async function requireOwner(ctx: QueryCtx, userId?: Id<"users">) {
   const user = await requireAuth(ctx, userId);
-  if (user.role !== "owner") throw new Error("Owner access required");
-  return user;
+  if (user.role === "owner") return user;
+  // Identity resolved to non-owner; try explicit userId fallback
+  if (userId) {
+    const explicit = await ctx.db.get(userId);
+    if (explicit && explicit.status === "active" && explicit.role === "owner") return explicit;
+  }
+  throw new Error("Owner access required");
 }
 
 export async function requireCompanyMember(
