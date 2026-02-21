@@ -132,6 +132,43 @@ export const saveSignature = mutation({
   },
 });
 
+export const markAllComplete = mutation({
+  args: { formId: v.id("forms"), userId: v.optional(v.id("users")) },
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx, args.userId);
+    const form = await requireEditable(ctx, args.formId);
+    if (form.companyId !== user.companyId) throw new Error("Access denied");
+
+    const items = await ctx.db
+      .query("formItems")
+      .withIndex("by_formId", (q) => q.eq("formId", args.formId))
+      .collect();
+    for (const item of items) {
+      if (!item.completed) {
+        await ctx.db.patch(item._id, { completed: true });
+      }
+    }
+  },
+});
+
+export const addPhoto = mutation({
+  args: {
+    formId: v.id("forms"),
+    photoStorageId: v.id("_storage"),
+    userId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx, args.userId);
+    const form = await requireEditable(ctx, args.formId);
+    if (form.companyId !== user.companyId) throw new Error("Access denied");
+
+    const existing = form.photoStorageIds ?? [];
+    await ctx.db.patch(args.formId, {
+      photoStorageIds: [...existing, args.photoStorageId],
+    });
+  },
+});
+
 export const submit = mutation({
   args: { formId: v.id("forms"), userId: v.optional(v.id("users")) },
   handler: async (ctx, args) => {

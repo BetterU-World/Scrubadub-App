@@ -117,6 +117,7 @@ export default defineSchema({
     cleanerScore: v.optional(v.number()),
     finalPass: v.optional(v.boolean()),
     signatureStorageId: v.optional(v.id("_storage")),
+    photoStorageIds: v.optional(v.array(v.id("_storage"))),
     submittedAt: v.optional(v.number()),
     status: v.union(
       v.literal("in_progress"),

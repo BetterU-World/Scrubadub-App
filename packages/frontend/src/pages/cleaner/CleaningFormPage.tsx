@@ -7,8 +7,6 @@ import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useParams, useLocation } from "wouter";
 import {
   ChevronLeft,
-  ChevronRight,
-  Camera,
   Flag,
   Check,
   MessageSquare,
@@ -16,6 +14,8 @@ import {
   AlertTriangle,
   WifiOff,
   Save,
+  Zap,
+  ImagePlus,
 } from "lucide-react";
 
 const SECTIONS = [
@@ -27,13 +27,6 @@ const SECTIONS = [
   "Exterior / Patio (if applicable)",
   "Final Walkthrough (Client Perspective)",
 ];
-
-const MILESTONE_MESSAGES: Record<number, string> = {
-  25: "Quarter done!",
-  50: "Halfway there!",
-  75: "Almost done!",
-  100: "All items complete!",
-};
 
 // Inline keyframes for micro-win animations
 const animationStyles = `
@@ -52,10 +45,6 @@ const animationStyles = `
   0% { transform: translateY(-20px); opacity: 0; }
   100% { transform: translateY(0); opacity: 1; }
 }
-@keyframes toastSlideOut {
-  0% { transform: translateY(0); opacity: 1; }
-  100% { transform: translateY(-20px); opacity: 0; }
-}
 @keyframes bannerSlideDown {
   0% { max-height: 0; opacity: 0; }
   100% { max-height: 60px; opacity: 1; }
@@ -66,37 +55,16 @@ const animationStyles = `
 .toast-enter {
   animation: toastSlideIn 0.25s ease-out forwards;
 }
-.toast-exit {
-  animation: toastSlideOut 0.25s ease-in forwards;
-}
 .banner-enter {
   animation: bannerSlideDown 0.3s ease-out forwards;
 }
 `;
-
-function formatElapsed(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  if (minutes === 0) return `${seconds}s so far`;
-  return `${minutes} min so far`;
-}
-
-function formatTotalTime(ms: number): string {
-  const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  if (minutes === 0) return `${seconds} seconds`;
-  if (seconds === 0) return `${minutes} min`;
-  return `${minutes} min ${seconds}s`;
-}
 
 interface CachedFormState {
   completions: Record<string, boolean>;
   notes: Record<string, string>;
   scores: Record<string, number>;
   selfScore: number;
-  currentSection: number;
   savedAt: number;
 }
 
@@ -125,12 +93,12 @@ export function CleaningFormPage() {
 
   const updateItem = useMutation(api.mutations.forms.updateItem);
   const updateScore = useMutation(api.mutations.forms.updateScore);
-  const updateFinalPass = useMutation(api.mutations.forms.updateFinalPass);
   const submitForm = useMutation(api.mutations.forms.submit);
   const createRedFlag = useMutation(api.mutations.redFlags.create);
   const generateUploadUrl = useMutation(api.mutations.storage.generateUploadUrl);
+  const markAllComplete = useMutation(api.mutations.forms.markAllComplete);
+  const addPhoto = useMutation(api.mutations.forms.addPhoto);
 
-  const [currentSection, setCurrentSection] = useState(0);
   const [showNoteFor, setShowNoteFor] = useState<string | null>(null);
   const [noteText, setNoteText] = useState("");
   const [showRedFlag, setShowRedFlag] = useState<string | null>(null);
@@ -140,24 +108,22 @@ export function CleaningFormPage() {
   const [selfScore, setSelfScore] = useState(8);
   const [showReview, setShowReview] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [showSignature, setShowSignature] = useState(false);
+
+  // Fast mode
+  const [fastMode, setFastMode] = useState(true);
+  const fastModeInitRef = useRef(false);
 
   // Micro-win animation state
   const [animatingItems, setAnimatingItems] = useState<Set<string>>(new Set());
-  const [sectionCompleteToast, setSectionCompleteToast] = useState<string | null>(null);
-  const [milestoneToast, setMilestoneToast] = useState<string | null>(null);
-  const lastMilestoneRef = useRef<number>(0);
-
-  // Speed feedback state
-  const startTimeRef = useRef<number>(Date.now());
-  const [elapsedDisplay, setElapsedDisplay] = useState("0s so far");
-  const [totalTimeTaken, setTotalTimeTaken] = useState("");
 
   // Offline caching state
   const [showResumeBanner, setShowResumeBanner] = useState(false);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [lastSavedLocally, setLastSavedLocally] = useState<number | null>(null);
   const hasMountedCacheCheck = useRef(false);
+
+  // Photo upload state
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   // Signature canvas
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -175,13 +141,25 @@ export function CleaningFormPage() {
     };
   }, []);
 
-  // Elapsed time ticker
+  // Fast Mode: batch-mark all items complete on first load
   useEffect(() => {
-    const interval = setInterval(() => {
-      setElapsedDisplay(formatElapsed(Date.now() - startTimeRef.current));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
+    if (
+      !fastMode ||
+      fastModeInitRef.current ||
+      !form ||
+      !formItems ||
+      formItems.length === 0 ||
+      !user
+    )
+      return;
+    const hasUncompleted = formItems.some((i) => !i.completed);
+    if (hasUncompleted) {
+      fastModeInitRef.current = true;
+      markAllComplete({ formId: form._id, userId: user._id });
+    } else {
+      fastModeInitRef.current = true;
+    }
+  }, [fastMode, form, formItems, user]);
 
   // Check for cached form on mount
   useEffect(() => {
@@ -191,7 +169,6 @@ export function CleaningFormPage() {
       const cached = localStorage.getItem(getCacheKey(params.id));
       if (cached) {
         const parsed: CachedFormState = JSON.parse(cached);
-        // Only show resume banner if cache is less than 24 hours old
         if (Date.now() - parsed.savedAt < 24 * 60 * 60 * 1000) {
           setShowResumeBanner(true);
         }
@@ -210,7 +187,6 @@ export function CleaningFormPage() {
         notes: {},
         scores: {},
         selfScore,
-        currentSection,
         savedAt: Date.now(),
       };
       for (const item of formItems) {
@@ -222,7 +198,7 @@ export function CleaningFormPage() {
     } catch {
       // localStorage full or unavailable
     }
-  }, [params.id, formItems, selfScore, currentSection]);
+  }, [params.id, formItems, selfScore]);
 
   // Auto-save whenever formItems change
   useEffect(() => {
@@ -238,7 +214,6 @@ export function CleaningFormPage() {
       if (cached) {
         const parsed: CachedFormState = JSON.parse(cached);
         setSelfScore(parsed.selfScore);
-        setCurrentSection(parsed.currentSection);
       }
     } catch {
       // Ignore
@@ -271,43 +246,15 @@ export function CleaningFormPage() {
     return <div className="text-center py-12 text-gray-500">Form not found</div>;
   }
 
-  const sectionItems = formItems.filter((i) => i.section === SECTIONS[currentSection]);
   const totalItems = formItems.length;
   const completedItems = formItems.filter((i) => i.completed).length;
   const progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
   const redFlagItems = formItems.filter((i) => i.isRedFlag);
-
-  // Check milestone triggers
-  const checkMilestone = (newProgress: number) => {
-    const milestones = [25, 50, 75, 100];
-    for (const m of milestones) {
-      if (newProgress >= m && lastMilestoneRef.current < m) {
-        lastMilestoneRef.current = m;
-        setMilestoneToast(MILESTONE_MESSAGES[m]);
-        setTimeout(() => setMilestoneToast(null), 2000);
-        break;
-      }
-    }
-  };
-
-  // Check if completing this item completes the section
-  const checkSectionComplete = (itemId: string, willBeCompleted: boolean) => {
-    const sectionName = formItems.find((i) => i._id === itemId)?.section;
-    if (!sectionName) return;
-    const sectionFormItems = formItems.filter((i) => i.section === sectionName);
-    const willAllBeComplete = sectionFormItems.every(
-      (i) => (i._id === itemId ? willBeCompleted : i.completed)
-    );
-    if (willAllBeComplete) {
-      setSectionCompleteToast(sectionName);
-      setTimeout(() => setSectionCompleteToast(null), 1500);
-    }
-  };
+  const photoCount = (form as any).photoStorageIds?.length ?? 0;
 
   const handleToggleItem = async (itemId: Id<"formItems">, completed: boolean) => {
     const willBeCompleted = !completed;
 
-    // Trigger checkmark animation
     if (willBeCompleted) {
       setAnimatingItems((prev) => new Set(prev).add(itemId));
       setTimeout(() => {
@@ -320,14 +267,6 @@ export function CleaningFormPage() {
     }
 
     await updateItem({ itemId, completed: willBeCompleted, userId: user!._id });
-
-    // After update, check milestones and section completion
-    if (willBeCompleted) {
-      const newCompleted = completedItems + 1;
-      const newProgress = totalItems > 0 ? Math.round((newCompleted / totalItems) * 100) : 0;
-      checkMilestone(newProgress);
-      checkSectionComplete(itemId, true);
-    }
   };
 
   const handleSaveNote = async (itemId: Id<"formItems">) => {
@@ -336,15 +275,23 @@ export function CleaningFormPage() {
     setNoteText("");
   };
 
-  const handlePhotoUpload = async (itemId: Id<"formItems">, file: File) => {
-    const url = await generateUploadUrl({ userId: user!._id });
-    const result = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": file.type },
-      body: file,
-    });
-    const { storageId } = await result.json();
-    await updateItem({ itemId, photoStorageId: storageId, userId: user!._id });
+  const handleGlobalPhotoUpload = async (file: File) => {
+    if (!form) return;
+    setUploadingPhoto(true);
+    try {
+      const url = await generateUploadUrl({ userId: user!._id });
+      const result = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      const { storageId } = await result.json();
+      await addPhoto({ formId: form._id, photoStorageId: storageId, userId: user!._id });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setUploadingPhoto(false);
+    }
   };
 
   const handleCreateRedFlag = async (itemId: Id<"formItems">) => {
@@ -362,6 +309,14 @@ export function CleaningFormPage() {
     await updateItem({ itemId, isRedFlag: true, userId: user!._id });
     setShowRedFlag(null);
     setRfNote("");
+  };
+
+  const handleToggleFastMode = async () => {
+    const next = !fastMode;
+    setFastMode(next);
+    if (next && form) {
+      await markAllComplete({ formId: form._id, userId: user!._id });
+    }
   };
 
   const handleSubmit = async () => {
@@ -401,9 +356,7 @@ export function CleaningFormPage() {
   };
   const stopDraw = () => { isDrawingRef.current = false; };
 
-  // Compute total time for review screen
-  const totalTimeMs = Date.now() - startTimeRef.current;
-
+  // ---------- Review Screen ----------
   if (showReview) {
     return (
       <div className="max-w-2xl mx-auto pb-8">
@@ -430,8 +383,8 @@ export function CleaningFormPage() {
                 <span className="font-medium text-red-600">{redFlagItems.length}</span>
               </div>
               <div>
-                <span className="text-gray-500">Time taken:</span>{" "}
-                <span className="font-medium">{formatTotalTime(totalTimeMs)}</span>
+                <span className="text-gray-500">Photos:</span>{" "}
+                <span className="font-medium">{photoCount}</span>
               </div>
             </div>
           </div>
@@ -529,6 +482,7 @@ export function CleaningFormPage() {
     );
   }
 
+  // ---------- Main Form ----------
   return (
     <div className="max-w-2xl mx-auto pb-8">
       <style>{animationStyles}</style>
@@ -559,29 +513,29 @@ export function CleaningFormPage() {
         </div>
       )}
 
-      {/* Milestone toast */}
-      {milestoneToast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 toast-enter">
-          <div className="bg-primary-600 text-white px-5 py-2.5 rounded-full shadow-lg text-sm font-semibold">
-            {milestoneToast}
-          </div>
+      {/* Fast Mode toggle */}
+      <div className="mb-4 flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+        <div className="flex items-center gap-2">
+          <Zap className="w-4 h-4 text-amber-600" />
+          <span className="text-sm font-medium text-amber-800">Fast Mode (Recommended)</span>
         </div>
-      )}
-
-      {/* Section complete toast */}
-      {sectionCompleteToast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 toast-enter">
-          <div className="bg-green-600 text-white px-5 py-2.5 rounded-full shadow-lg text-sm font-semibold flex items-center gap-2">
-            <Check className="w-4 h-4" />
-            Section complete!
-          </div>
-        </div>
+        <button
+          onClick={handleToggleFastMode}
+          className={`relative w-11 h-6 rounded-full transition-colors ${fastMode ? "bg-amber-500" : "bg-gray-300"}`}
+        >
+          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${fastMode ? "translate-x-5" : ""}`} />
+        </button>
+      </div>
+      {fastMode && (
+        <p className="text-xs text-gray-500 mb-4 -mt-2 px-1">
+          All items pre-checked. Just scroll and flag exceptions.
+        </p>
       )}
 
       {/* Progress bar */}
       <div className="mb-4">
         <div className="flex items-center justify-between text-sm mb-1">
-          <span className="font-medium text-gray-700">{SECTIONS[currentSection]}</span>
+          <span className="font-medium text-gray-700">Checklist</span>
           <div className="flex items-center gap-3">
             {isOffline && lastSavedLocally && (
               <span className="text-xs text-amber-600 flex items-center gap-1">
@@ -589,7 +543,6 @@ export function CleaningFormPage() {
                 Saved locally
               </span>
             )}
-            <span className="text-gray-400 text-xs">{elapsedDisplay}</span>
             <span className="text-gray-500">{progress}% complete</span>
           </div>
         </div>
@@ -599,108 +552,101 @@ export function CleaningFormPage() {
             style={{ width: `${progress}%` }}
           />
         </div>
-        <div className="flex justify-center gap-1 mt-2">
-          {SECTIONS.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setCurrentSection(i)}
-              className={`w-2 h-2 rounded-full ${
-                i === currentSection ? "bg-primary-500" : "bg-gray-300"
-              }`}
-            />
-          ))}
-        </div>
       </div>
 
-      {/* Section items */}
-      <div className="space-y-2">
-        {sectionItems.map((item) => (
-          <div
-            key={item._id}
-            className={`card py-3 px-4 ${item.isRedFlag ? "border-red-200 bg-red-50/30" : ""}`}
-          >
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => handleToggleItem(item._id, item.completed)}
-                className={`w-6 h-6 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                  item.completed
-                    ? "bg-primary-500 border-primary-500 text-white"
-                    : "border-gray-300"
-                } ${animatingItems.has(item._id) ? "check-pulse" : ""}`}
-              >
-                {item.completed && <Check className="w-4 h-4" />}
-              </button>
+      {/* All sections — single scroll */}
+      <div className="space-y-6">
+        {SECTIONS.map((section) => {
+          const items = formItems.filter((i) => i.section === section);
+          return (
+            <div key={section}>
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">{section}</h2>
+              <div className="space-y-2">
+                {items.map((item) => (
+                  <div
+                    key={item._id}
+                    className={`card py-3 px-4 ${item.isRedFlag ? "border-red-200 bg-red-50/30" : ""}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => handleToggleItem(item._id, item.completed)}
+                        className={`w-6 h-6 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                          item.completed
+                            ? "bg-primary-500 border-primary-500 text-white"
+                            : "border-gray-300"
+                        } ${animatingItems.has(item._id) ? "check-pulse" : ""}`}
+                      >
+                        {item.completed && <Check className="w-4 h-4" />}
+                      </button>
 
-              <span className={`flex-1 text-sm ${item.completed ? "text-gray-700" : "text-gray-500"}`}>
-                {item.itemName}
-              </span>
+                      <span className={`flex-1 text-sm ${item.completed ? "text-gray-700" : "text-gray-500"}`}>
+                        {item.itemName}
+                      </span>
 
-              <div className="flex items-center gap-1">
-                {/* Note button */}
-                <button
-                  onClick={() => { setShowNoteFor(item._id); setNoteText(item.note ?? ""); }}
-                  className={`p-1.5 rounded ${item.note ? "text-blue-500" : "text-gray-300 hover:text-gray-500"}`}
-                >
-                  <MessageSquare className="w-4 h-4" />
-                </button>
+                      <div className="flex items-center gap-1">
+                        {/* Note button */}
+                        <button
+                          onClick={() => { setShowNoteFor(item._id); setNoteText(item.note ?? ""); }}
+                          className={`p-1.5 rounded ${item.note ? "text-blue-500" : "text-gray-300 hover:text-gray-500"}`}
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                        </button>
 
-                {/* Photo button */}
-                <label className={`p-1.5 rounded cursor-pointer ${item.photoStorageId ? "text-green-500" : "text-gray-300 hover:text-gray-500"}`}>
-                  <Camera className="w-4 h-4" />
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handlePhotoUpload(item._id, file);
-                    }}
-                  />
-                </label>
+                        {/* Red flag button */}
+                        <button
+                          onClick={() => { setShowRedFlag(item._id); setRfNote(""); }}
+                          className={`p-1.5 rounded ${item.isRedFlag ? "text-red-500" : "text-gray-300 hover:text-gray-500"}`}
+                        >
+                          <Flag className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
 
-                {/* Red flag button */}
-                <button
-                  onClick={() => { setShowRedFlag(item._id); setRfNote(""); }}
-                  className={`p-1.5 rounded ${item.isRedFlag ? "text-red-500" : "text-gray-300 hover:text-gray-500"}`}
-                >
-                  <Flag className="w-4 h-4" />
-                </button>
+                    {item.note && (
+                      <p className="text-xs text-gray-500 mt-1 ml-9">{item.note}</p>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
-
-            {item.note && (
-              <p className="text-xs text-gray-500 mt-1 ml-9">{item.note}</p>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* Navigation */}
-      <div className="flex items-center justify-between mt-6">
-        <button
-          onClick={() => setCurrentSection(Math.max(0, currentSection - 1))}
-          disabled={currentSection === 0}
-          className="btn-secondary flex items-center gap-1"
-        >
-          <ChevronLeft className="w-4 h-4" /> Previous
-        </button>
-
-        {currentSection < SECTIONS.length - 1 ? (
-          <button
-            onClick={() => setCurrentSection(currentSection + 1)}
-            className="btn-primary flex items-center gap-1"
-          >
-            Next <ChevronRight className="w-4 h-4" />
-          </button>
-        ) : (
-          <button
-            onClick={() => setShowReview(true)}
-            className="btn-primary flex items-center gap-2"
-          >
-            <Send className="w-4 h-4" /> Review & Submit
-          </button>
+      {/* Attach Photos (optional, end of form) */}
+      <div className="mt-6 card">
+        <h3 className="font-semibold text-gray-900 flex items-center gap-2 mb-3">
+          <ImagePlus className="w-5 h-5 text-gray-400" /> Attach Photos (Optional)
+        </h3>
+        <p className="text-xs text-gray-500 mb-3">Add photos of the completed cleaning. Not required.</p>
+        {photoCount > 0 && (
+          <p className="text-sm text-green-600 font-medium mb-2">{photoCount} photo(s) attached</p>
         )}
+        <label className={`btn-secondary inline-flex items-center gap-2 cursor-pointer ${uploadingPhoto ? "opacity-50" : ""}`}>
+          {uploadingPhoto ? <LoadingSpinner size="sm" /> : <ImagePlus className="w-4 h-4" />}
+          {uploadingPhoto ? "Uploading..." : "Add Photo"}
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            disabled={uploadingPhoto}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleGlobalPhotoUpload(file);
+            }}
+          />
+        </label>
+      </div>
+
+      {/* Review & Submit */}
+      <div className="mt-6">
+        <button
+          onClick={() => setShowReview(true)}
+          className="btn-primary w-full flex items-center justify-center gap-2 py-3 text-lg"
+        >
+          <Send className="w-5 h-5" /> Review & Submit
+        </button>
       </div>
 
       {/* Note modal */}
