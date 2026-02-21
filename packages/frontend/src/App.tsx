@@ -70,9 +70,9 @@ export default function App() {
   const subSettled = subscription !== undefined || !user?.companyId;
 
   const isOwner = user?.role === "owner";
-  const isSuperadmin = user?.isSuperadmin === true;
+  const companyBypassed = subscription?.companyBypassed === true;
   const isSubActive =
-    isSuperadmin ||
+    companyBypassed ||
     subscription?.subscriptionStatus === "trialing" ||
     subscription?.subscriptionStatus === "active";
   const isInGracePeriod =
@@ -98,7 +98,7 @@ export default function App() {
   // --- DEV banner (enable: localStorage.setItem("DEBUG_AUTH_BANNER","1"); location.reload();) ---
   const devBanner = import.meta.env.DEV && localStorage.getItem("DEBUG_AUTH_BANNER") === "1" ? (
     <div style={{position:"fixed",bottom:0,left:0,right:0,padding:"4px 8px",background:"rgba(0,0,0,0.9)",color:"#0f0",fontSize:10,fontFamily:"monospace",zIndex:99999,whiteSpace:"nowrap",overflow:"auto"}}>
-      {`path=${pathname} | stored=${storedUserId ? "yes" : "no"} | userId=${userId ? "yes" : "no"} | authLoading=${isLoading} | isAuthed=${isAuthed} | email=${user?.email ?? "-"} | superadmin=${user?.isSuperadmin ?? "-"} | subActive=${isSubActive} | accessOk=${accessOk} | branch=${redirectBranch}`}
+      {`path=${pathname} | stored=${storedUserId ? "yes" : "no"} | userId=${userId ? "yes" : "no"} | authLoading=${isLoading} | isAuthed=${isAuthed} | email=${user?.email ?? "-"} | companyBypassed=${companyBypassed} | subActive=${isSubActive} | accessOk=${accessOk} | branch=${redirectBranch}`}
     </div>
   ) : null;
 
