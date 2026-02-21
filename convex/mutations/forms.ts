@@ -1,7 +1,7 @@
 import { mutation, MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
-import { requireAuth, logAudit, createNotification } from "../lib/helpers";
+import { requireAuth, requireOwner, logAudit, createNotification } from "../lib/helpers";
 import { FORM_TEMPLATE } from "../lib/constants";
 
 export const createFromTemplate = mutation({
@@ -165,6 +165,97 @@ export const addPhoto = mutation({
     const existing = form.photoStorageIds ?? [];
     await ctx.db.patch(args.formId, {
       photoStorageIds: [...existing, args.photoStorageId],
+    });
+  },
+});
+
+export const approve = mutation({
+  args: {
+    formId: v.id("forms"),
+    notes: v.optional(v.string()),
+    userId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+    const form = await ctx.db.get(args.formId);
+    if (!form) throw new Error("Form not found");
+    if (form.companyId !== owner.companyId) throw new Error("Access denied");
+    if (form.status !== "submitted") throw new Error("Form not submitted for review");
+
+    await ctx.db.patch(args.formId, {
+      status: "approved",
+      ownerNotes: args.notes,
+    });
+
+    const job = await ctx.db.get(form.jobId);
+    if (job) {
+      await ctx.db.patch(form.jobId, { status: "approved", completedAt: Date.now() });
+
+      for (const cid of job.cleanerIds) {
+        await createNotification(ctx, {
+          companyId: form.companyId,
+          userId: cid,
+          type: "job_approved",
+          title: "Job Approved",
+          message: `Owner approved cleaning for ${job.scheduledDate}`,
+          relatedJobId: form.jobId,
+        });
+      }
+    }
+
+    await logAudit(ctx, {
+      companyId: form.companyId,
+      userId: owner._id,
+      action: "approve_form",
+      entityType: "form",
+      entityId: args.formId,
+    });
+  },
+});
+
+export const requestRework = mutation({
+  args: {
+    formId: v.id("forms"),
+    notes: v.string(),
+    userId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+    const form = await ctx.db.get(args.formId);
+    if (!form) throw new Error("Form not found");
+    if (form.companyId !== owner.companyId) throw new Error("Access denied");
+    if (form.status !== "submitted") throw new Error("Form not submitted for review");
+
+    await ctx.db.patch(args.formId, {
+      status: "rework_requested",
+      ownerNotes: args.notes,
+    });
+
+    const job = await ctx.db.get(form.jobId);
+    if (job) {
+      await ctx.db.patch(form.jobId, {
+        status: "rework_requested",
+        reworkCount: (job.reworkCount ?? 0) + 1,
+      });
+
+      for (const cid of job.cleanerIds) {
+        await createNotification(ctx, {
+          companyId: form.companyId,
+          userId: cid,
+          type: "rework_requested",
+          title: "Rework Requested",
+          message: `Owner requested rework for ${job.scheduledDate}: ${args.notes}`,
+          relatedJobId: form.jobId,
+        });
+      }
+    }
+
+    await logAudit(ctx, {
+      companyId: form.companyId,
+      userId: owner._id,
+      action: "request_rework",
+      entityType: "form",
+      entityId: args.formId,
     });
   },
 });

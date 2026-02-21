@@ -35,8 +35,8 @@ export function JobDetailPage() {
   );
 
   const cancelJob = useMutation(api.mutations.jobs.cancel);
-  const approveJob = useMutation(api.mutations.jobs.approveJob);
-  const requestRework = useMutation(api.mutations.jobs.requestRework);
+  const approveForm = useMutation(api.mutations.forms.approve);
+  const requestFormRework = useMutation(api.mutations.forms.requestRework);
   const reassignJob = useMutation(api.mutations.jobs.reassignJob);
 
   const cleaners = useQuery(
@@ -52,6 +52,7 @@ export function JobDetailPage() {
   const [showReassign, setShowReassign] = useState(false);
   const [reassignCleanerId, setReassignCleanerId] = useState("");
   const [reassigning, setReassigning] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   if (job === undefined) return <PageLoader />;
   if (job === null) return <div className="text-center py-12 text-gray-500">Job not found</div>;
@@ -83,6 +84,16 @@ export function JobDetailPage() {
           </div>
         }
       />
+
+      {toast && (
+        <div
+          className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all ${
+            toast.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"
+          }`}
+        >
+          {toast.message}
+        </div>
+      )}
 
       <div className="space-y-6">
         {/* Job info card */}
@@ -215,7 +226,15 @@ export function JobDetailPage() {
               <div className="flex gap-3">
                 <button
                   onClick={async () => {
-                    await approveJob({ jobId: job._id, notes: approveNotes || undefined, userId: user!._id });
+                    if (!job.form) return;
+                    try {
+                      await approveForm({ formId: job.form._id, notes: approveNotes || undefined, userId: user!._id });
+                      setToast({ message: "Job approved!", type: "success" });
+                      setTimeout(() => setToast(null), 3000);
+                    } catch (err: any) {
+                      setToast({ message: err.message ?? "Failed to approve", type: "error" });
+                      setTimeout(() => setToast(null), 3000);
+                    }
                   }}
                   className="btn-primary flex items-center gap-2"
                 >
@@ -264,10 +283,17 @@ export function JobDetailPage() {
               <button onClick={() => setShowRework(false)} className="btn-secondary">Cancel</button>
               <button
                 onClick={async () => {
-                  if (!reworkNotes.trim()) return;
-                  await requestRework({ jobId: job._id, notes: reworkNotes, userId: user!._id });
-                  setShowRework(false);
-                  setReworkNotes("");
+                  if (!reworkNotes.trim() || !job.form) return;
+                  try {
+                    await requestFormRework({ formId: job.form._id, notes: reworkNotes, userId: user!._id });
+                    setShowRework(false);
+                    setReworkNotes("");
+                    setToast({ message: "Rework requested", type: "success" });
+                    setTimeout(() => setToast(null), 3000);
+                  } catch (err: any) {
+                    setToast({ message: err.message ?? "Failed to request rework", type: "error" });
+                    setTimeout(() => setToast(null), 3000);
+                  }
                 }}
                 disabled={!reworkNotes.trim()}
                 className="btn-primary"
