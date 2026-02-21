@@ -67,7 +67,8 @@ export default function App() {
 
   // --- Derived state ---
   const isAuthed = Boolean(userId || storedUserId);
-  const subSettled = subscription !== undefined || !user?.companyId;
+  // != null catches both undefined (loading) and null (company not found)
+  const subSettled = (subscription != null) || !user?.companyId;
 
   const isOwner = user?.role === "owner";
   const companyBypassed = subscription?.companyBypassed === true;
