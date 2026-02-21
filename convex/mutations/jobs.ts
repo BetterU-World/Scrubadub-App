@@ -451,6 +451,15 @@ export const completeJob = mutation({
       notes: args.notes ? `${job.notes ? job.notes + "\n" : ""}Completion notes: ${args.notes}` : job.notes,
     });
 
+    // Keep form status in sync to prevent drift
+    const form = await ctx.db
+      .query("forms")
+      .withIndex("by_jobId", (q) => q.eq("jobId", args.jobId))
+      .first();
+    if (form && form.status === "in_progress") {
+      await ctx.db.patch(form._id, { status: "submitted", submittedAt: Date.now() });
+    }
+
     const property = await ctx.db.get(job.propertyId);
     const owners = await ctx.db
       .query("users")
