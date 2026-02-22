@@ -26,8 +26,8 @@ export function RedFlagsDashboard() {
       ? { companyId: user.companyId, userId: user._id, status: statusFilter || undefined }
       : "skip"
   );
-  const cleaners = useQuery(
-    api.queries.employees.getCleaners,
+  const maintenanceWorkers = useQuery(
+    api.queries.employees.getMaintenanceWorkers,
     user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
   );
   const updateStatus = useMutation(api.mutations.redFlags.updateStatus);
@@ -235,28 +235,28 @@ export function RedFlagsDashboard() {
 
                     <div>
                       <label className="block text-xs font-medium text-gray-500 mb-1">
-                        Assign Cleaners *
+                        Assign Maintenance Worker(s) *
                       </label>
-                      {cleaners === undefined ? (
-                        <p className="text-xs text-gray-400">Loading cleaners...</p>
-                      ) : cleaners.length === 0 ? (
-                        <p className="text-xs text-gray-400">No cleaners available</p>
+                      {maintenanceWorkers === undefined ? (
+                        <p className="text-xs text-gray-400">Loading maintenance workers...</p>
+                      ) : maintenanceWorkers.length === 0 ? (
+                        <p className="text-xs text-gray-400">No maintenance workers available</p>
                       ) : (
                         <div className="flex flex-wrap gap-x-4 gap-y-1">
-                          {cleaners.map((cleaner) => (
-                            <label key={cleaner._id} className="flex items-center gap-1.5 text-sm text-gray-700">
+                          {maintenanceWorkers.map((worker) => (
+                            <label key={worker._id} className="flex items-center gap-1.5 text-sm text-gray-700">
                               <input
                                 type="checkbox"
-                                checked={activeAction.cleanerIds.includes(cleaner._id)}
+                                checked={activeAction.cleanerIds.includes(worker._id)}
                                 onChange={(e) => {
                                   const ids = e.target.checked
-                                    ? [...activeAction.cleanerIds, cleaner._id]
-                                    : activeAction.cleanerIds.filter((id) => id !== cleaner._id);
+                                    ? [...activeAction.cleanerIds, worker._id]
+                                    : activeAction.cleanerIds.filter((id) => id !== worker._id);
                                   setActiveAction({ ...activeAction, cleanerIds: ids });
                                 }}
                                 className="rounded border-gray-300"
                               />
-                              {cleaner.name}
+                              {worker.name}
                             </label>
                           ))}
                         </div>
