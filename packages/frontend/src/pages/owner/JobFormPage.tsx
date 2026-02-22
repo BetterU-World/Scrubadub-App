@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
+import { requireUserId } from "@/lib/requireUserId";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useLocation, useParams } from "wouter";
@@ -74,7 +75,8 @@ export function JobFormPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!user.companyId) return;
+    const uid = requireUserId(user);
+    if (!uid || !user!.companyId) return;
     setError("");
     setLoading(true);
     try {
@@ -88,12 +90,12 @@ export function JobFormPage() {
         notes: notes || undefined,
       };
       if (isEditing) {
-        await updateJob({ jobId: params.id as Id<"jobs">, userId: user._id, ...data });
+        await updateJob({ jobId: params.id as Id<"jobs">, userId: uid, ...data });
         setLocation(`/jobs/${params.id}`);
       } else {
         const id = await createJob({
-          companyId: user.companyId,
-          userId: user._id,
+          companyId: user!.companyId,
+          userId: uid,
           ...data,
           requireConfirmation,
         });

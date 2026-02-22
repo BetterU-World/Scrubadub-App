@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
+import { requireUserId } from "@/lib/requireUserId";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -226,9 +227,10 @@ export function JobDetailPage() {
               <div className="flex gap-3">
                 <button
                   onClick={async () => {
-                    if (!job.form) return;
+                    const uid = requireUserId(user);
+                    if (!uid || !job.form) return;
                     try {
-                      await approveForm({ formId: job.form._id, notes: approveNotes || undefined, userId: user!._id });
+                      await approveForm({ formId: job.form._id, notes: approveNotes || undefined, userId: uid });
                       setToast({ message: "Job approved!", type: "success" });
                       setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
@@ -262,7 +264,9 @@ export function JobDetailPage() {
         confirmLabel="Cancel Job"
         confirmVariant="danger"
         onConfirm={async () => {
-          await cancelJob({ jobId: job._id, userId: user!._id });
+          const uid = requireUserId(user);
+          if (!uid) return;
+          await cancelJob({ jobId: job._id, userId: uid });
           setShowCancel(false);
         }}
       />
@@ -283,9 +287,10 @@ export function JobDetailPage() {
               <button onClick={() => setShowRework(false)} className="btn-secondary">Cancel</button>
               <button
                 onClick={async () => {
-                  if (!reworkNotes.trim() || !job.form) return;
+                  const uid = requireUserId(user);
+                  if (!uid || !reworkNotes.trim() || !job.form) return;
                   try {
-                    await requestFormRework({ formId: job.form._id, notes: reworkNotes, userId: user!._id });
+                    await requestFormRework({ formId: job.form._id, notes: reworkNotes, userId: uid });
                     setShowRework(false);
                     setReworkNotes("");
                     setToast({ message: "Rework requested", type: "success" });
@@ -327,13 +332,14 @@ export function JobDetailPage() {
               <button
                 disabled={!reassignCleanerId || reassigning}
                 onClick={async () => {
-                  if (!reassignCleanerId || !user) return;
+                  const uid = requireUserId(user);
+                  if (!reassignCleanerId || !uid) return;
                   setReassigning(true);
                   try {
                     await reassignJob({
                       jobId: job._id,
                       newCleanerId: reassignCleanerId as Id<"users">,
-                      userId: user._id,
+                      userId: uid,
                     });
                     setShowReassign(false);
                     setReassignCleanerId("");
