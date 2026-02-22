@@ -8,6 +8,7 @@ import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { OfflineIndicator } from "@/components/shared/OfflineIndicator";
 
 // Auth pages
+import { LandingPage } from "@/pages/auth/LandingPage";
 import { LoginPage } from "@/pages/auth/LoginPage";
 import { SignupPage } from "@/pages/auth/SignupPage";
 import { AcceptInvitePage } from "@/pages/auth/AcceptInvitePage";
@@ -126,13 +127,14 @@ export default function App() {
         <OfflineIndicator />
         {devBanner}
         <Switch>
+          <Route path="/" component={LandingPage} />
           <Route path="/login" component={LoginPage} />
           <Route path="/signup" component={SignupPage} />
           <Route path="/forgot-password" component={ForgotPasswordPage} />
           <Route path="/reset-password/:token" component={ResetPasswordPage} />
           <Route path="/invite/:token" component={AcceptInvitePage} />
           <Route>
-            <Redirect to="/login" />
+            <Redirect to="/" />
           </Route>
         </Switch>
       </ErrorBoundary>

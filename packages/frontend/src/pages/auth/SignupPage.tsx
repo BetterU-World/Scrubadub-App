@@ -3,9 +3,17 @@ import { useAuth } from "@/hooks/useAuth";
 import { Link, useLocation } from "wouter";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
+const OWNER_LABELS: Record<string, string> = {
+  cleaning: "Cleaning Owner",
+  str: "STR Owner / Property Manager",
+};
+
 export function SignupPage() {
   const { signUp } = useAuth();
   const [, setLocation] = useLocation();
+  const [ownerType] = useState(
+    () => new URLSearchParams(window.location.search).get("ownerType") || ""
+  );
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -43,6 +51,12 @@ export function SignupPage() {
 
         <div className="card">
           <h2 className="text-xl font-semibold mb-6">Create Account</h2>
+
+          {ownerType && OWNER_LABELS[ownerType] && (
+            <div className="mb-4 p-3 bg-primary-50 border border-primary-200 rounded-lg text-sm text-primary-800">
+              Selected plan: <strong>{OWNER_LABELS[ownerType]}</strong>
+            </div>
+          )}
 
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
