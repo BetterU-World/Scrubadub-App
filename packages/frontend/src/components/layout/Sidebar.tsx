@@ -11,7 +11,10 @@ import {
   LogOut,
   BarChart3,
   TrendingUp,
+  Shield,
 } from "lucide-react";
+import { useQuery } from "convex/react";
+import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { clsx } from "clsx";
 
@@ -37,6 +40,11 @@ const workerNav = [
 export function Sidebar() {
   const [location] = useLocation();
   const { user, signOut } = useAuth();
+
+  const isSuperAdmin = useQuery(
+    api.queries.admin.isSuperAdmin,
+    user?._id ? { userId: user._id } : "skip"
+  );
 
   const nav = user?.role === "owner" ? ownerNav : workerNav;
 
@@ -69,6 +77,20 @@ export function Sidebar() {
             </Link>
           );
         })}
+        {isSuperAdmin && (
+          <Link
+            href="/admin"
+            className={clsx(
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors mt-2 border-t border-gray-100 pt-3",
+              location.startsWith("/admin")
+                ? "bg-primary-50 text-primary-700"
+                : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+            )}
+          >
+            <Shield className="w-5 h-5" />
+            Admin
+          </Link>
+        )}
       </nav>
 
       <div className="p-4 border-t border-gray-200">

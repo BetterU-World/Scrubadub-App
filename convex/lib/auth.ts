@@ -42,6 +42,27 @@ export async function assertCompanyAccess(
   return user;
 }
 
+const SUPER_ADMIN_EMAILS = [
+  "admin@scrubadub.com",
+  "ceo@scrubadub.com",
+];
+
+export function isSuperAdminEmail(email: string): boolean {
+  return SUPER_ADMIN_EMAILS.includes(email.toLowerCase());
+}
+
+/** Verify the session user is a super admin. */
+export async function requireSuperAdmin(
+  ctx: QueryCtx,
+  providedUserId?: Id<"users">
+) {
+  const user = await getSessionUser(ctx, providedUserId);
+  if (!isSuperAdminEmail(user.email)) {
+    throw new Error("Super admin access required");
+  }
+  return user;
+}
+
 /** Verify the session user is an owner of their company. */
 export async function assertOwnerRole(
   ctx: QueryCtx,

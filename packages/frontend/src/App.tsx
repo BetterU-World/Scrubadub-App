@@ -37,6 +37,9 @@ import { WorkerJobListPage } from "@/pages/worker/WorkerJobListPage";
 import { WorkerJobDetailPage } from "@/pages/worker/WorkerJobDetailPage";
 import { WorkerJobFormPage } from "@/pages/worker/WorkerJobFormPage";
 
+// Admin pages
+import { SuperAdminPage } from "@/pages/admin/SuperAdminPage";
+
 // Shared pages
 import { NotificationsPage } from "@/pages/shared/NotificationsPage";
 
@@ -194,6 +197,7 @@ export default function App() {
             </Route>
           )}
           <Route path="/notifications" component={NotificationsPage} />
+          <Route path="/admin" component={SuperAdminPage} />
           <Route path="/invite/:token" component={AcceptInvitePage} />
           <Route>
             <Redirect to="/" />
