@@ -47,6 +47,9 @@ import { NotificationsPage } from "@/pages/shared/NotificationsPage";
 import { ManualsPage } from "@/pages/shared/ManualsPage";
 import { ManualViewerPage } from "@/pages/shared/ManualViewerPage";
 
+// Public pages (no auth required)
+import { PublicRequestPage } from "@/pages/public/PublicRequestPage";
+
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 
 function SubscriptionInactive() {
@@ -112,6 +115,15 @@ export default function App() {
       {`path=${pathname} | stored=${storedUserId ? "yes" : "no"} | userId=${userId ? "yes" : "no"} | authLoading=${isLoading} | isAuthed=${isAuthed} | email=${user?.email ?? "-"} | devBypass=${devBypass} | companyBypassed=${companyBypassed} | subActive=${isSubActive} | accessOk=${accessOk} | branch=${redirectBranch}`}
     </div>
   ) : null;
+
+  // --- PUBLIC ROUTES: bypass all auth guards, no layout ---
+  if (pathname.startsWith("/r/")) {
+    return (
+      <ErrorBoundary>
+        <Route path="/r/:token" component={PublicRequestPage} />
+      </ErrorBoundary>
+    );
+  }
 
   // --- GUARD 1: Auth still loading — show spinner, NEVER redirect ---
   if (isLoading) {
