@@ -75,8 +75,10 @@ export default function App() {
 
   // --- Derived state ---
   const isAuthed = Boolean(userId || storedUserId);
+  // DEV bypass to prevent local onboarding/subscription deadlock
+  const devBypass = import.meta.env.DEV && !!user;
   // != null catches both undefined (loading) and null (company not found)
-  const subSettled = (subscription != null) || !user?.companyId;
+  const subSettled = devBypass || (subscription != null) || !user?.companyId;
 
   const isOwner = user?.role === "owner";
   const companyBypassed = subscription?.companyBypassed === true;
@@ -88,7 +90,7 @@ export default function App() {
     !isSubActive &&
     subscription?.subscriptionBecameInactiveAt != null &&
     Date.now() - subscription.subscriptionBecameInactiveAt < THREE_DAYS_MS;
-  const accessOk = isSubActive || isInGracePeriod;
+  const accessOk = devBypass || isSubActive || isInGracePeriod;
 
   // --- Determine which guard branch we hit ---
   let redirectBranch = "app";
@@ -107,7 +109,7 @@ export default function App() {
   // --- DEV banner (enable: localStorage.setItem("DEBUG_AUTH_BANNER","1"); location.reload();) ---
   const devBanner = import.meta.env.DEV && localStorage.getItem("DEBUG_AUTH_BANNER") === "1" ? (
     <div style={{position:"fixed",bottom:0,left:0,right:0,padding:"4px 8px",background:"rgba(0,0,0,0.9)",color:"#0f0",fontSize:10,fontFamily:"monospace",zIndex:99999,whiteSpace:"nowrap",overflow:"auto"}}>
-      {`path=${pathname} | stored=${storedUserId ? "yes" : "no"} | userId=${userId ? "yes" : "no"} | authLoading=${isLoading} | isAuthed=${isAuthed} | email=${user?.email ?? "-"} | companyBypassed=${companyBypassed} | subActive=${isSubActive} | accessOk=${accessOk} | branch=${redirectBranch}`}
+      {`path=${pathname} | stored=${storedUserId ? "yes" : "no"} | userId=${userId ? "yes" : "no"} | authLoading=${isLoading} | isAuthed=${isAuthed} | email=${user?.email ?? "-"} | devBypass=${devBypass} | companyBypassed=${companyBypassed} | subActive=${isSubActive} | accessOk=${accessOk} | branch=${redirectBranch}`}
     </div>
   ) : null;
 
