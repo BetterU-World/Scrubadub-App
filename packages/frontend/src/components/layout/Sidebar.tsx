@@ -10,6 +10,7 @@ import {
   ScrollText,
   LogOut,
   BarChart3,
+  TrendingUp,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { clsx } from "clsx";
@@ -22,6 +23,7 @@ const ownerNav = [
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/red-flags", label: "Red Flags", icon: Flag },
   { href: "/performance", label: "Performance", icon: BarChart3 },
+  { href: "/analytics", label: "Analytics", icon: TrendingUp },
   { href: "/notifications", label: "Notifications", icon: Bell },
   { href: "/audit-log", label: "Audit Log", icon: ScrollText },
 ];

@@ -27,6 +27,7 @@ import { CalendarPage } from "@/pages/owner/CalendarPage";
 import { RedFlagsDashboard } from "@/pages/owner/RedFlagsDashboard";
 import { AuditLogPage } from "@/pages/owner/AuditLogPage";
 import { PerformancePage } from "@/pages/owner/PerformancePage";
+import { AnalyticsPage } from "@/pages/owner/AnalyticsPage";
 import { SubscribePage } from "@/pages/owner/SubscribePage";
 import { BillingSuccessPage } from "@/pages/owner/BillingSuccessPage";
 import { BillingCancelPage } from "@/pages/owner/BillingCancelPage";
@@ -164,6 +165,7 @@ export default function App() {
                 <Route path="/calendar" component={CalendarPage} />
                 <Route path="/red-flags" component={RedFlagsDashboard} />
                 <Route path="/performance" component={PerformancePage} />
+                <Route path="/analytics" component={AnalyticsPage} />
                 <Route path="/audit-log" component={AuditLogPage} />
                 <Route path="/subscribe" component={SubscribePage} />
                 <Route path="/billing/success" component={BillingSuccessPage} />
