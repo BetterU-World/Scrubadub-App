@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useParams, Link, useLocation } from "wouter";
+import { JobTimeline } from "@/components/JobTimeline";
 import { Calendar, Clock, MapPin, Key, CheckCircle, XCircle, Play, ClipboardCheck, MapPinCheck, Send } from "lucide-react";
 
 export function CleanerJobDetailPage() {
@@ -106,14 +107,18 @@ export function CleanerJobDetailPage() {
           )}
 
           {job.notes && <p className="text-sm text-gray-600 border-t pt-3">{job.notes}</p>}
+        </div>
 
-          {job.form?.ownerNotes && (
+        <JobTimeline job={job as any} />
+
+        {job.form?.ownerNotes && (
+          <div className="card">
             <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
               <p className="text-sm font-medium text-orange-800">Rework notes from owner:</p>
               <p className="text-sm text-orange-700 mt-1">{job.form.ownerNotes}</p>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Toast notification */}
         {toast && (

@@ -9,6 +9,7 @@ import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useParams, Link } from "wouter";
+import { JobTimeline } from "@/components/JobTimeline";
 import {
   Calendar,
   Clock,
@@ -136,6 +137,8 @@ export function JobDetailPage() {
 
           {job.notes && <p className="text-sm text-gray-600 border-t pt-3">{job.notes}</p>}
         </div>
+
+        <JobTimeline job={job as any} />
 
         {/* Red flags section - shown FIRST for review */}
         {job.redFlags.length > 0 && (
