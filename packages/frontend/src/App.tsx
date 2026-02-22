@@ -31,15 +31,10 @@ import { SubscribePage } from "@/pages/owner/SubscribePage";
 import { BillingSuccessPage } from "@/pages/owner/BillingSuccessPage";
 import { BillingCancelPage } from "@/pages/owner/BillingCancelPage";
 
-// Cleaner pages
-import { CleanerJobListPage } from "@/pages/cleaner/CleanerJobListPage";
-import { CleanerJobDetailPage } from "@/pages/cleaner/CleanerJobDetailPage";
-import { CleaningFormPage } from "@/pages/cleaner/CleaningFormPage";
-
-// Maintenance pages
-import { MaintenanceJobListPage } from "@/pages/maintenance/MaintenanceJobListPage";
-import { MaintenanceJobDetailPage } from "@/pages/maintenance/MaintenanceJobDetailPage";
-import { MaintenanceFormPage } from "@/pages/maintenance/MaintenanceFormPage";
+// Worker pages (cleaner + maintenance unified)
+import { WorkerJobListPage } from "@/pages/worker/WorkerJobListPage";
+import { WorkerJobDetailPage } from "@/pages/worker/WorkerJobDetailPage";
+import { WorkerJobFormPage } from "@/pages/worker/WorkerJobFormPage";
 
 // Shared pages
 import { NotificationsPage } from "@/pages/shared/NotificationsPage";
@@ -184,24 +179,11 @@ export default function App() {
                 </Route>
               </>
             )
-          ) : user?.role === "maintenance" ? (
-            accessOk ? (
-              <>
-                <Route path="/" component={MaintenanceJobListPage} />
-                <Route path="/jobs/:id" component={MaintenanceJobDetailPage} />
-                <Route path="/jobs/:id/form" component={MaintenanceFormPage} />
-                <Route path="/calendar" component={CalendarPage} />
-              </>
-            ) : (
-              <Route>
-                <SubscriptionInactive />
-              </Route>
-            )
           ) : accessOk ? (
             <>
-              <Route path="/" component={CleanerJobListPage} />
-              <Route path="/jobs/:id" component={CleanerJobDetailPage} />
-              <Route path="/jobs/:id/form" component={CleaningFormPage} />
+              <Route path="/" component={WorkerJobListPage} />
+              <Route path="/jobs/:id" component={WorkerJobDetailPage} />
+              <Route path="/jobs/:id/form" component={WorkerJobFormPage} />
               <Route path="/calendar" component={CalendarPage} />
             </>
           ) : (
