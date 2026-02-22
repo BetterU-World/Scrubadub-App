@@ -343,6 +343,17 @@ export const startJob = mutation({
         relatedJobId: args.jobId,
       });
     }
+
+    // ── Shared-job in_progress sync ──
+    if (job.sharedFromJobId) {
+      const sharedRecord = await ctx.db
+        .query("sharedJobs")
+        .withIndex("by_copiedJobId", (q) => q.eq("copiedJobId", args.jobId))
+        .first();
+      if (sharedRecord && sharedRecord.status === "pending") {
+        await ctx.db.patch(sharedRecord._id, { status: "in_progress" });
+      }
+    }
   },
 });
 
@@ -375,6 +386,34 @@ export const approveJob = mutation({
         message: `Your work for ${job.scheduledDate} has been approved${args.notes ? `: ${args.notes}` : ""}`,
         relatedJobId: args.jobId,
       });
+    }
+
+    // ── Shared-job completion sync ──
+    if (job.sharedFromJobId) {
+      const sharedRecord = await ctx.db
+        .query("sharedJobs")
+        .withIndex("by_copiedJobId", (q) => q.eq("copiedJobId", args.jobId))
+        .first();
+      if (sharedRecord) {
+        const completionPatch: Record<string, any> = {
+          status: "completed" as const,
+          completedAt: Date.now(),
+        };
+        if (sharedRecord.sharePackage && form) {
+          const items = await ctx.db
+            .query("formItems")
+            .withIndex("by_formId", (q) => q.eq("formId", form._id))
+            .collect();
+          const total = items.length;
+          const done = items.filter((i) => i.completed).length;
+          completionPatch.checklistSummary = `${done}/${total} items completed`;
+          completionPatch.completionNotes = args.notes ?? "";
+          if (form.photoStorageIds && form.photoStorageIds.length > 0) {
+            completionPatch.photoStorageIds = form.photoStorageIds;
+          }
+        }
+        await ctx.db.patch(sharedRecord._id, completionPatch);
+      }
     }
 
     await logAudit(ctx, {

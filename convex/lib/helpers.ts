@@ -85,7 +85,8 @@ export async function createNotification(
       | "job_reassigned"
       | "rework_requested"
       | "red_flag"
-      | "invite";
+      | "invite"
+      | "job_shared";
     title: string;
     message: string;
     relatedJobId?: Id<"jobs">;

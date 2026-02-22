@@ -197,6 +197,11 @@ export function JobListPage() {
                       {(job as any).acceptanceStatus === "accepted" && (
                         <span className="badge bg-green-100 text-green-800 text-[10px]">accepted</span>
                       )}
+                      {(job as any).sharedFromCompanyName && (
+                        <span className="badge bg-blue-100 text-blue-700 text-[10px]">
+                          Shared from {(job as any).sharedFromCompanyName}
+                        </span>
+                      )}
                     </div>
                     <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500">
                       <span className="flex items-center gap-1">

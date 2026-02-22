@@ -13,6 +13,7 @@ import {
   TrendingUp,
   Shield,
   BookOpen,
+  Handshake,
 } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -28,6 +29,7 @@ const ownerNav = [
   { href: "/red-flags", label: "Red Flags", icon: Flag },
   { href: "/performance", label: "Performance", icon: BarChart3 },
   { href: "/analytics", label: "Analytics", icon: TrendingUp },
+  { href: "/partners", label: "Partners", icon: Handshake },
   { href: "/notifications", label: "Notifications", icon: Bell },
   { href: "/audit-log", label: "Audit Log", icon: ScrollText },
   { href: "/manuals", label: "Manuals", icon: BookOpen },

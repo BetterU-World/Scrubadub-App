@@ -105,6 +105,9 @@ export default defineSchema({
     startedAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
     sourceRedFlagId: v.optional(v.id("redFlags")),
+    // Shared-job fields (set on the copy created in the partner's company)
+    sharedFromJobId: v.optional(v.id("jobs")),
+    sharedFromCompanyName: v.optional(v.string()),
   })
     .index("by_companyId_status", ["companyId", "status"])
     .index("by_companyId_scheduledDate", ["companyId", "scheduledDate"])
@@ -191,7 +194,8 @@ export default defineSchema({
       v.literal("job_reassigned"),
       v.literal("rework_requested"),
       v.literal("red_flag"),
-      v.literal("invite")
+      v.literal("invite"),
+      v.literal("job_shared")
     ),
     title: v.string(),
     message: v.string(),
@@ -208,4 +212,44 @@ export default defineSchema({
     details: v.optional(v.string()),
     timestamp: v.number(),
   }).index("by_companyId_timestamp", ["companyId", "timestamp"]),
+
+  // ── Owner-to-Owner job sharing (Phase 1) ──────────────────────────
+
+  partnerContacts: defineTable({
+    companyId: v.id("companies"),
+    name: v.string(),
+    email: v.string(),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_companyId", ["companyId"]),
+
+  ownerConnections: defineTable({
+    companyAId: v.id("companies"),
+    companyBId: v.id("companies"),
+    createdAt: v.number(),
+  })
+    .index("by_companyAId", ["companyAId"])
+    .index("by_companyBId", ["companyBId"]),
+
+  sharedJobs: defineTable({
+    originalJobId: v.id("jobs"),
+    copiedJobId: v.id("jobs"),
+    fromCompanyId: v.id("companies"),
+    toCompanyId: v.id("companies"),
+    sharePackage: v.boolean(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("in_progress"),
+      v.literal("completed")
+    ),
+    // Completion package fields (populated when sharePackage=true and job is completed)
+    completionNotes: v.optional(v.string()),
+    checklistSummary: v.optional(v.string()),
+    photoStorageIds: v.optional(v.array(v.id("_storage"))),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_originalJobId", ["originalJobId"])
+    .index("by_copiedJobId", ["copiedJobId"])
+    .index("by_fromCompanyId", ["fromCompanyId"])
+    .index("by_toCompanyId", ["toCompanyId"]),
 });

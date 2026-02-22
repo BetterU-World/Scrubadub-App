@@ -23,6 +23,8 @@ import {
   ChevronDown,
   ChevronUp,
   RefreshCw,
+  Share2,
+  Package,
 } from "lucide-react";
 
 export function JobDetailPage() {
@@ -40,10 +42,19 @@ export function JobDetailPage() {
   const approveForm = useMutation(api.mutations.forms.approve);
   const requestFormRework = useMutation(api.mutations.forms.requestRework);
   const reassignJob = useMutation(api.mutations.jobs.reassignJob);
+  const shareJobMut = useMutation(api.mutations.partners.shareJob);
 
   const cleaners = useQuery(
     api.queries.employees.getCleaners,
     user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+  );
+  const connections = useQuery(
+    api.queries.partners.listConnections,
+    user ? { userId: user._id } : "skip"
+  );
+  const sharedStatus = useQuery(
+    api.queries.partners.getSharedJobStatus,
+    user && job ? { jobId: params.id as Id<"jobs">, userId: user._id } : "skip"
   );
 
   const [showCancel, setShowCancel] = useState(false);
@@ -55,6 +66,11 @@ export function JobDetailPage() {
   const [reassignCleanerId, setReassignCleanerId] = useState("");
   const [reassigning, setReassigning] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [showShare, setShowShare] = useState(false);
+  const [shareToCompany, setShareToCompany] = useState("");
+  const [sharePackage, setSharePackage] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const [expandPackage, setExpandPackage] = useState(false);
 
   if (job === undefined) return <PageLoader />;
   if (job === null) return <div className="text-center py-12 text-gray-500">Job not found</div>;
@@ -68,6 +84,11 @@ export function JobDetailPage() {
         title={job.property?.name ?? "Job Details"}
         action={
           <div className="flex gap-2">
+            {!job.sharedFromJobId && canCancel && (
+              <button onClick={() => setShowShare(true)} className="btn-secondary flex items-center gap-2">
+                <Share2 className="w-4 h-4" /> Share Job
+              </button>
+            )}
             {((job as any).acceptanceStatus === "denied" || (job as any).acceptanceStatus === "pending") && (
               <button onClick={() => setShowReassign(true)} className="btn-secondary flex items-center gap-2">
                 <RefreshCw className="w-4 h-4" /> Reassign
@@ -108,6 +129,9 @@ export function JobDetailPage() {
             <span className="text-sm text-gray-500 capitalize">{job.type.replace(/_/g, " ")}</span>
             {job.reworkCount > 0 && (
               <span className="badge bg-orange-100 text-orange-700">Rework #{job.reworkCount}</span>
+            )}
+            {(job as any).sharedFromCompanyName && (
+              <span className="badge bg-blue-100 text-blue-700">Shared from {(job as any).sharedFromCompanyName}</span>
             )}
           </div>
 
@@ -271,6 +295,75 @@ export function JobDetailPage() {
             </div>
           </div>
         )}
+
+        {/* Shared job status (Owner1 view: shows who the job is shared to) */}
+        {sharedStatus && sharedStatus.length > 0 && (
+          <div className="card border-blue-200">
+            <h3 className="font-semibold text-blue-700 flex items-center gap-2 mb-3">
+              <Share2 className="w-5 h-5" /> Shared Job Status
+            </h3>
+            <div className="space-y-3">
+              {sharedStatus.map((s) => (
+                <div key={s._id} className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-900">
+                      Shared to: {s.toCompanyName}
+                    </span>
+                    <span className={`badge ${
+                      s.status === "completed" ? "bg-green-100 text-green-700" :
+                      s.status === "in_progress" ? "bg-yellow-100 text-yellow-700" :
+                      "bg-gray-100 text-gray-600"
+                    }`}>
+                      {s.status === "completed" ? "Completed" :
+                       s.status === "in_progress" ? "In Progress" : "Pending"}
+                    </span>
+                  </div>
+                  {s.completedAt && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Completed {new Date(s.completedAt).toLocaleString()}
+                    </p>
+                  )}
+
+                  {/* Completion package */}
+                  {s.sharePackage && s.status === "completed" && (
+                    <div className="mt-2">
+                      <button
+                        onClick={() => setExpandPackage(!expandPackage)}
+                        className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800"
+                      >
+                        <Package className="w-4 h-4" />
+                        {expandPackage ? "Hide" : "View"} completion package
+                        {expandPackage ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                      </button>
+                      {expandPackage && (
+                        <div className="mt-2 p-3 bg-white rounded border border-blue-100 space-y-2">
+                          {s.checklistSummary && (
+                            <p className="text-sm text-gray-700">
+                              <span className="font-medium">Checklist:</span> {s.checklistSummary}
+                            </p>
+                          )}
+                          {s.completionNotes && (
+                            <p className="text-sm text-gray-700">
+                              <span className="font-medium">Notes:</span> {s.completionNotes}
+                            </p>
+                          )}
+                          {s.photoStorageIds && s.photoStorageIds.length > 0 ? (
+                            <p className="text-sm text-gray-500">{s.photoStorageIds.length} photo(s) shared</p>
+                          ) : (
+                            <p className="text-sm text-gray-400">No photos shared</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {s.sharePackage && s.status !== "completed" && (
+                    <p className="text-xs text-gray-400 mt-1">Completion package will be shared when done</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <ConfirmDialog
@@ -321,6 +414,76 @@ export function JobDetailPage() {
                 className="btn-primary"
               >
                 Send Rework Request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Share Job dialog */}
+      {showShare && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">Share Job</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Select partner company</label>
+                <select
+                  className="input-field"
+                  value={shareToCompany}
+                  onChange={(e) => setShareToCompany(e.target.value)}
+                >
+                  <option value="">Choose a connected partner...</option>
+                  {connections?.map((c) => (
+                    <option key={c.companyId} value={c.companyId}>{c.companyName}</option>
+                  ))}
+                </select>
+                {connections?.length === 0 && (
+                  <p className="text-xs text-amber-600 mt-1">No connections yet. Go to Partners to connect first.</p>
+                )}
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={sharePackage}
+                  onChange={(e) => setSharePackage(e.target.checked)}
+                  className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+                <span className="text-sm text-gray-700">Share completion package (checklists/photos)</span>
+              </label>
+            </div>
+            <div className="flex justify-end gap-3 mt-4">
+              <button onClick={() => { setShowShare(false); setShareToCompany(""); setSharePackage(false); }} className="btn-secondary">
+                Cancel
+              </button>
+              <button
+                disabled={!shareToCompany || sharing}
+                onClick={async () => {
+                  const uid = requireUserId(user);
+                  if (!uid || !shareToCompany) return;
+                  setSharing(true);
+                  try {
+                    await shareJobMut({
+                      userId: uid,
+                      jobId: job._id,
+                      toCompanyId: shareToCompany as Id<"companies">,
+                      sharePackage,
+                    });
+                    setShowShare(false);
+                    setShareToCompany("");
+                    setSharePackage(false);
+                    setToast({ message: "Job shared successfully!", type: "success" });
+                    setTimeout(() => setToast(null), 3000);
+                  } catch (err: any) {
+                    setToast({ message: err.message ?? "Failed to share job", type: "error" });
+                    setTimeout(() => setToast(null), 3000);
+                  } finally {
+                    setSharing(false);
+                  }
+                }}
+                className="btn-primary flex items-center gap-2"
+              >
+                <Share2 className="w-4 h-4" /> {sharing ? "Sharing..." : "Share Job"}
               </button>
             </div>
           </div>
