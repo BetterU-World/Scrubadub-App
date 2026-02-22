@@ -112,7 +112,7 @@ export const connectByEmail = mutation({
       const st = connStatus(existing);
       if (st === "active") return { success: false as const, reason: "already_connected" };
       if (st === "pending") return { success: false as const, reason: "already_pending" };
-      // declined → remove old record so we can re-invite
+      // declined / disconnected → remove old record so we can re-invite
       await ctx.db.delete(existing._id);
     }
 
@@ -257,6 +257,131 @@ export const declineConnection = mutation({
       action: "decline_connection",
       entityType: "ownerConnections",
       entityId: args.connectionId,
+    });
+  },
+});
+
+export const disconnectConnection = mutation({
+  args: {
+    userId: v.optional(v.id("users")),
+    connectionId: v.id("ownerConnections"),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+    const conn = await ctx.db.get(args.connectionId);
+    if (!conn) throw new Error("Connection not found");
+    if (connStatus(conn) !== "active") throw new Error("Connection is not active");
+    // Either party can disconnect
+    if (conn.companyAId !== owner.companyId && conn.companyBId !== owner.companyId) {
+      throw new Error("Not authorized");
+    }
+
+    await ctx.db.patch(args.connectionId, {
+      status: "disconnected" as const,
+      respondedAt: Date.now(),
+    });
+
+    await logAudit(ctx, {
+      companyId: owner.companyId,
+      userId: owner._id,
+      action: "disconnect_connection",
+      entityType: "ownerConnections",
+      entityId: args.connectionId,
+    });
+  },
+});
+
+// ── Shared Job Accept / Reject ────────────────────────────────────
+
+export const acceptSharedJob = mutation({
+  args: {
+    userId: v.optional(v.id("users")),
+    sharedJobId: v.id("sharedJobs"),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+    const shared = await ctx.db.get(args.sharedJobId);
+    if (!shared) throw new Error("Shared job not found");
+    if (shared.toCompanyId !== owner.companyId) throw new Error("Not authorized");
+    if (shared.status !== "pending") throw new Error("Shared job is not pending");
+
+    await ctx.db.patch(args.sharedJobId, {
+      status: "accepted",
+      respondedAt: Date.now(),
+    });
+
+    // Notify originator owners
+    const fromOwners = await ctx.db
+      .query("users")
+      .withIndex("by_companyId", (q) => q.eq("companyId", shared.fromCompanyId))
+      .collect();
+    const toCompany = await ctx.db.get(shared.toCompanyId);
+    const copiedJob = await ctx.db.get(shared.copiedJobId);
+    for (const fo of fromOwners.filter((u) => u.role === "owner")) {
+      await createNotification(ctx, {
+        companyId: shared.fromCompanyId,
+        userId: fo._id,
+        type: "shared_job_accepted",
+        title: "Shared Job Accepted",
+        message: `${toCompany?.name ?? "A partner"} accepted the shared job for ${copiedJob?.scheduledDate ?? ""}`.trim(),
+        relatedJobId: shared.originalJobId,
+      });
+    }
+
+    await logAudit(ctx, {
+      companyId: owner.companyId,
+      userId: owner._id,
+      action: "accept_shared_job",
+      entityType: "sharedJobs",
+      entityId: args.sharedJobId,
+    });
+  },
+});
+
+export const rejectSharedJob = mutation({
+  args: {
+    userId: v.optional(v.id("users")),
+    sharedJobId: v.id("sharedJobs"),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+    const shared = await ctx.db.get(args.sharedJobId);
+    if (!shared) throw new Error("Shared job not found");
+    if (shared.toCompanyId !== owner.companyId) throw new Error("Not authorized");
+    if (shared.status !== "pending") throw new Error("Shared job is not pending");
+
+    await ctx.db.patch(args.sharedJobId, {
+      status: "rejected",
+      respondedAt: Date.now(),
+    });
+
+    // Cancel the copied job so it leaves Owner2's active list
+    await ctx.db.patch(shared.copiedJobId, { status: "cancelled" });
+
+    // Notify originator owners
+    const fromOwners = await ctx.db
+      .query("users")
+      .withIndex("by_companyId", (q) => q.eq("companyId", shared.fromCompanyId))
+      .collect();
+    const toCompany = await ctx.db.get(shared.toCompanyId);
+    const copiedJob = await ctx.db.get(shared.copiedJobId);
+    for (const fo of fromOwners.filter((u) => u.role === "owner")) {
+      await createNotification(ctx, {
+        companyId: shared.fromCompanyId,
+        userId: fo._id,
+        type: "shared_job_rejected",
+        title: "Shared Job Rejected",
+        message: `${toCompany?.name ?? "A partner"} rejected the shared job for ${copiedJob?.scheduledDate ?? ""}`.trim(),
+        relatedJobId: shared.originalJobId,
+      });
+    }
+
+    await logAudit(ctx, {
+      companyId: owner.companyId,
+      userId: owner._id,
+      action: "reject_shared_job",
+      entityType: "sharedJobs",
+      entityId: args.sharedJobId,
     });
   },
 });

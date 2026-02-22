@@ -107,6 +107,58 @@ export const listOutgoingInvites = query({
   },
 });
 
+/** Pending shared jobs incoming to the current owner's company (Owner2 inbox) */
+export const listIncomingSharedJobs = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const owner = await assertOwnerRole(ctx, args.userId);
+
+    const rows = await ctx.db
+      .query("sharedJobs")
+      .withIndex("by_toCompanyId", (q) => q.eq("toCompanyId", owner.companyId))
+      .collect();
+
+    const results = [];
+    for (const shared of rows) {
+      if (shared.status !== "pending") continue;
+      const copiedJob = await ctx.db.get(shared.copiedJobId);
+      const fromCompany = await ctx.db.get(shared.fromCompanyId);
+      results.push({
+        _id: shared._id,
+        copiedJobId: shared.copiedJobId,
+        fromCompanyName: fromCompany?.name ?? "Unknown",
+        scheduledDate: copiedJob?.scheduledDate ?? "",
+        type: copiedJob?.type ?? "standard",
+        status: shared.status,
+      });
+    }
+    return results;
+  },
+});
+
+/** Get sharedJob status for a copied job (Owner2 view on their job detail) */
+export const getIncomingSharedStatus = query({
+  args: { copiedJobId: v.id("jobs"), userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const owner = await assertOwnerRole(ctx, args.userId);
+
+    const shared = await ctx.db
+      .query("sharedJobs")
+      .withIndex("by_copiedJobId", (q) => q.eq("copiedJobId", args.copiedJobId))
+      .first();
+
+    if (!shared || shared.toCompanyId !== owner.companyId) return null;
+
+    const fromCompany = await ctx.db.get(shared.fromCompanyId);
+    return {
+      _id: shared._id,
+      status: shared.status,
+      fromCompanyName: fromCompany?.name ?? "Unknown",
+      respondedAt: shared.respondedAt,
+    };
+  },
+});
+
 export const getSharedJobStatus = query({
   args: { jobId: v.id("jobs"), userId: v.id("users") },
   handler: async (ctx, args) => {

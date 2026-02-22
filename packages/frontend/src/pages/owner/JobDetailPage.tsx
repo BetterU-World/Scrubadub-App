@@ -56,6 +56,15 @@ export function JobDetailPage() {
     api.queries.partners.getSharedJobStatus,
     user && job ? { jobId: params.id as Id<"jobs">, userId: user._id } : "skip"
   );
+  const incomingShared = useQuery(
+    api.queries.partners.getIncomingSharedStatus,
+    user && job && (job as any).sharedFromJobId
+      ? { copiedJobId: params.id as Id<"jobs">, userId: user._id }
+      : "skip"
+  );
+
+  const acceptSharedJobMut = useMutation(api.mutations.partners.acceptSharedJob);
+  const rejectSharedJobMut = useMutation(api.mutations.partners.rejectSharedJob);
 
   const [showCancel, setShowCancel] = useState(false);
   const [showRework, setShowRework] = useState(false);
@@ -71,6 +80,7 @@ export function JobDetailPage() {
   const [sharePackage, setSharePackage] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [expandPackage, setExpandPackage] = useState(false);
+  const [sharedJobAction, setSharedJobAction] = useState(false);
 
   if (job === undefined) return <PageLoader />;
   if (job === null) return <div className="text-center py-12 text-gray-500">Job not found</div>;
@@ -163,6 +173,82 @@ export function JobDetailPage() {
         </div>
 
         <JobTimeline job={job as any} />
+
+        {/* Owner2: shared job accept/reject banner */}
+        {incomingShared && incomingShared.status === "pending" && (
+          <div className="card border-blue-200 bg-blue-50/50">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <h3 className="font-semibold text-blue-800 flex items-center gap-2">
+                  <Share2 className="w-5 h-5" /> Shared Job from {incomingShared.fromCompanyName}
+                </h3>
+                <p className="text-sm text-blue-600 mt-1">
+                  Accept to assign cleaners and start work, or reject to decline.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  disabled={sharedJobAction}
+                  onClick={async () => {
+                    const uid = requireUserId(user);
+                    if (!uid) return;
+                    setSharedJobAction(true);
+                    try {
+                      await acceptSharedJobMut({ userId: uid, sharedJobId: incomingShared._id });
+                      setToast({ message: "Shared job accepted!", type: "success" });
+                      setTimeout(() => setToast(null), 3000);
+                    } catch (err: any) {
+                      setToast({ message: err.message ?? "Failed", type: "error" });
+                      setTimeout(() => setToast(null), 3000);
+                    } finally {
+                      setSharedJobAction(false);
+                    }
+                  }}
+                  className="btn-primary flex items-center gap-1"
+                >
+                  <CheckCircle className="w-4 h-4" /> Accept
+                </button>
+                <button
+                  disabled={sharedJobAction}
+                  onClick={async () => {
+                    const uid = requireUserId(user);
+                    if (!uid) return;
+                    setSharedJobAction(true);
+                    try {
+                      await rejectSharedJobMut({ userId: uid, sharedJobId: incomingShared._id });
+                      setToast({ message: "Shared job rejected", type: "success" });
+                      setTimeout(() => setToast(null), 3000);
+                    } catch (err: any) {
+                      setToast({ message: err.message ?? "Failed", type: "error" });
+                      setTimeout(() => setToast(null), 3000);
+                    } finally {
+                      setSharedJobAction(false);
+                    }
+                  }}
+                  className="btn-secondary flex items-center gap-1 text-red-600 border-red-200 hover:bg-red-50"
+                >
+                  <XCircle className="w-4 h-4" /> Reject
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {incomingShared && incomingShared.status === "rejected" && (
+          <div className="card border-red-200 bg-red-50/50">
+            <p className="text-sm font-medium text-red-700">
+              This shared job was rejected. It has been cancelled.
+            </p>
+          </div>
+        )}
+
+        {incomingShared && incomingShared.status === "accepted" && (
+          <div className="card border-green-200 bg-green-50/50">
+            <p className="text-sm font-medium text-green-700">
+              Shared job accepted from {incomingShared.fromCompanyName}. You can now assign cleaners and start work.
+            </p>
+          </div>
+        )}
 
         {/* Red flags section - shown FIRST for review */}
         {job.redFlags.length > 0 && (
@@ -312,10 +398,14 @@ export function JobDetailPage() {
                     <span className={`badge ${
                       s.status === "completed" ? "bg-green-100 text-green-700" :
                       s.status === "in_progress" ? "bg-yellow-100 text-yellow-700" :
+                      s.status === "accepted" ? "bg-blue-100 text-blue-700" :
+                      s.status === "rejected" ? "bg-red-100 text-red-700" :
                       "bg-gray-100 text-gray-600"
                     }`}>
                       {s.status === "completed" ? "Completed" :
-                       s.status === "in_progress" ? "In Progress" : "Pending"}
+                       s.status === "in_progress" ? "In Progress" :
+                       s.status === "accepted" ? "Accepted" :
+                       s.status === "rejected" ? "Rejected" : "Pending"}
                     </span>
                   </div>
                   {s.completedAt && (
