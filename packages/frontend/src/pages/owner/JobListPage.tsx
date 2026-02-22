@@ -9,7 +9,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Link } from "wouter";
-import { ClipboardCheck, Plus, Calendar, MapPin, Users, Trash2 } from "lucide-react";
+import { ClipboardCheck, Plus, Calendar, MapPin, Users, Trash2, Search } from "lucide-react";
 
 const STATUS_FILTERS = [
   { value: "", label: "All" },
@@ -22,9 +22,34 @@ const STATUS_FILTERS = [
   { value: "cancelled", label: "Cancelled" },
 ];
 
+const DATE_RANGES = [
+  { value: "all", label: "All" },
+  { value: "today", label: "Today" },
+  { value: "week", label: "This Week" },
+] as const;
+
+function getToday() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
+function getWeekRange(): [string, string] {
+  const now = new Date();
+  const day = now.getDay();
+  const mon = new Date(now);
+  mon.setDate(now.getDate() - ((day + 6) % 7));
+  const sun = new Date(mon);
+  sun.setDate(mon.getDate() + 6);
+  const fmt = (d: Date) =>
+    d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  return [fmt(mon), fmt(sun)];
+}
+
 export function JobListPage() {
   const { user } = useAuth();
   const [statusFilter, setStatusFilter] = useState("");
+  const [dateRange, setDateRange] = useState<"all" | "today" | "week">("all");
+  const [search, setSearch] = useState("");
   const [showReset, setShowReset] = useState(false);
   const [resetting, setResetting] = useState(false);
   const resetOps = useMutation(api.mutations.devReset.resetCompanyOpsData);
@@ -37,7 +62,27 @@ export function JobListPage() {
 
   if (!user || jobs === undefined) return <PageLoader />;
 
-  const sortedJobs = [...jobs].sort((a, b) => b.scheduledDate.localeCompare(a.scheduledDate));
+  const searchLower = search.toLowerCase();
+  const filteredJobs = [...jobs]
+    .filter((job) => {
+      if (dateRange === "today") {
+        if (job.scheduledDate !== getToday()) return false;
+      } else if (dateRange === "week") {
+        const [mon, sun] = getWeekRange();
+        if (job.scheduledDate < mon || job.scheduledDate > sun) return false;
+      }
+      if (searchLower) {
+        const propMatch = job.propertyName?.toLowerCase().includes(searchLower);
+        const cleanerMatch = (job.cleaners as any[]).some((c: any) =>
+          c.name?.toLowerCase().includes(searchLower)
+        );
+        if (!propMatch && !cleanerMatch) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => b.scheduledDate.localeCompare(a.scheduledDate));
+
+  const hasFilters = statusFilter || dateRange !== "all" || search;
 
   return (
     <div>
@@ -61,6 +106,36 @@ export function JobListPage() {
         }
       />
 
+      {/* Date range + search controls */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+        <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
+          {DATE_RANGES.map((r) => (
+            <button
+              key={r.value}
+              onClick={() => setDateRange(r.value)}
+              className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                dateRange === r.value
+                  ? "bg-primary-600 text-white"
+                  : "bg-white text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search property or cleaner…"
+            className="input-field pl-8 py-1.5 text-sm w-full"
+          />
+        </div>
+      </div>
+
+      {/* Status pills */}
       <div className="flex flex-wrap gap-2 mb-6">
         {STATUS_FILTERS.map((f) => (
           <button
@@ -77,20 +152,20 @@ export function JobListPage() {
         ))}
       </div>
 
-      {sortedJobs.length === 0 ? (
+      {filteredJobs.length === 0 ? (
         <EmptyState
           icon={ClipboardCheck}
           title="No jobs found"
-          description={statusFilter ? "No jobs match the selected filter" : "Schedule your first cleaning job"}
+          description={hasFilters ? "No jobs match your filters." : "Schedule your first cleaning job"}
           action={
-            !statusFilter && (
+            !hasFilters && (
               <Link href="/jobs/new" className="btn-primary">Schedule Job</Link>
             )
           }
         />
       ) : (
         <div className="space-y-3">
-          {sortedJobs.map((job) => (
+          {filteredJobs.map((job) => (
             <Link key={job._id} href={`/jobs/${job._id}`} className="card block hover:shadow-md transition-shadow">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>

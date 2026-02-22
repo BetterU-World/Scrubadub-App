@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,10 +15,36 @@ import {
   TrendingUp,
   Star,
   Zap,
+  Search,
 } from "lucide-react";
+
+const DATE_RANGES = [
+  { value: "all", label: "All" },
+  { value: "today", label: "Today" },
+  { value: "week", label: "This Week" },
+] as const;
+
+function getToday() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
+function getWeekRange(): [string, string] {
+  const now = new Date();
+  const day = now.getDay();
+  const mon = new Date(now);
+  mon.setDate(now.getDate() - ((day + 6) % 7));
+  const sun = new Date(mon);
+  sun.setDate(mon.getDate() + 6);
+  const fmt = (d: Date) =>
+    d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  return [fmt(mon), fmt(sun)];
+}
 
 export function CleanerJobListPage() {
   const { user } = useAuth();
+  const [dateRange, setDateRange] = useState<"all" | "today" | "week">("all");
+  const [search, setSearch] = useState("");
   const jobs = useQuery(
     api.queries.jobs.getForCleaner,
     user ? { cleanerId: user._id, companyId: user.companyId, userId: user._id } : "skip"
@@ -29,12 +56,56 @@ export function CleanerJobListPage() {
 
   if (!user || jobs === undefined) return <PageLoader />;
 
-  const activeJobs = jobs.filter((j) => !["cancelled", "approved"].includes(j.status));
-  const pastJobs = jobs.filter((j) => ["approved"].includes(j.status));
+  const searchLower = search.toLowerCase();
+  const filtered = jobs.filter((job) => {
+    if (dateRange === "today") {
+      if (job.scheduledDate !== getToday()) return false;
+    } else if (dateRange === "week") {
+      const [mon, sun] = getWeekRange();
+      if (job.scheduledDate < mon || job.scheduledDate > sun) return false;
+    }
+    if (searchLower) {
+      if (!job.propertyName?.toLowerCase().includes(searchLower)) return false;
+    }
+    return true;
+  });
+
+  const activeJobs = filtered.filter((j) => !["cancelled", "approved"].includes(j.status));
+  const pastJobs = filtered.filter((j) => ["approved"].includes(j.status));
+  const hasFilters = dateRange !== "all" || search;
 
   return (
     <div>
       <PageHeader title="My Jobs" description={`${activeJobs.length} active jobs`} />
+
+      {/* Date range + search controls */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
+          {DATE_RANGES.map((r) => (
+            <button
+              key={r.value}
+              onClick={() => setDateRange(r.value)}
+              className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                dateRange === r.value
+                  ? "bg-primary-600 text-white"
+                  : "bg-white text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search property…"
+            className="input-field pl-8 py-1.5 text-sm w-full"
+          />
+        </div>
+      </div>
 
       {/* Stats Cards */}
       {stats && (
@@ -81,11 +152,11 @@ export function CleanerJobListPage() {
         </div>
       )}
 
-      {jobs.length === 0 ? (
+      {filtered.length === 0 ? (
         <EmptyState
           icon={ClipboardCheck}
-          title="No jobs assigned"
-          description="You'll see your assigned cleaning jobs here"
+          title={hasFilters ? "No jobs found" : "No jobs assigned"}
+          description={hasFilters ? "No jobs match your filters." : "You'll see your assigned cleaning jobs here"}
         />
       ) : (
         <div className="space-y-6">
