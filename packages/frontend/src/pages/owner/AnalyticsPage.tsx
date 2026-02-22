@@ -23,6 +23,11 @@ const today = daysAgo(0);
 const sevenAgo = daysAgo(7);
 const thirtyAgo = daysAgo(30);
 
+function completionDate(j: { completedAt?: number; scheduledDate: string }): string {
+  if (j.completedAt) return new Date(j.completedAt).toISOString().slice(0, 10);
+  return j.scheduledDate;
+}
+
 export function AnalyticsPage() {
   const { user } = useAuth();
 
@@ -42,9 +47,9 @@ export function AnalyticsPage() {
     if (!allJobs || !allFlags) return null;
 
     const completed = allJobs.filter((j) => j.status === "approved");
-    const completedToday = completed.filter((j) => j.scheduledDate === today).length;
-    const completed7 = completed.filter((j) => j.scheduledDate >= sevenAgo).length;
-    const completed30 = completed.filter((j) => j.scheduledDate >= thirtyAgo).length;
+    const completedToday = completed.filter((j) => completionDate(j) === today).length;
+    const completed7 = completed.filter((j) => completionDate(j) >= sevenAgo).length;
+    const completed30 = completed.filter((j) => completionDate(j) >= thirtyAgo).length;
 
     // Rework rate (last 30 days): jobs that ever had rework requested
     const jobs30 = allJobs.filter(
@@ -75,7 +80,7 @@ export function AnalyticsPage() {
 
     // Top cleaners by completed jobs (last 30 days)
     const cleanerCompleted: Record<string, { name: string; count: number }> = {};
-    for (const j of completed.filter((j) => j.scheduledDate >= thirtyAgo)) {
+    for (const j of completed.filter((j) => completionDate(j) >= thirtyAgo)) {
       for (const c of j.cleaners as { _id: string; name: string }[]) {
         if (!cleanerCompleted[c._id]) {
           cleanerCompleted[c._id] = { name: c.name, count: 0 };

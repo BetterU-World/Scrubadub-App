@@ -43,8 +43,7 @@ export async function assertCompanyAccess(
 }
 
 const SUPER_ADMIN_EMAILS = [
-  "admin@scrubadub.com",
-  "ceo@scrubadub.com",
+  "dzbfyse@gmail.com",
 ];
 
 export function isSuperAdminEmail(email: string): boolean {
