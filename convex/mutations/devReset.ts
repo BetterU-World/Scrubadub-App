@@ -14,6 +14,9 @@ export const resetCompanyOpsData = mutation({
     let deletedRedFlags = 0;
     let deletedNotifications = 0;
     let deletedAuditLog = 0;
+    let deletedSharedJobs = 0;
+    let deletedPartnerContacts = 0;
+    let deletedOwnerConnections = 0;
 
     // 1. Jobs + their forms/formItems
     const jobs = await ctx.db
@@ -81,6 +84,44 @@ export const resetCompanyOpsData = mutation({
       deletedAuditLog++;
     }
 
+    // 4. Shared jobs (from or to this company)
+    const sharedFrom = await ctx.db
+      .query("sharedJobs")
+      .withIndex("by_fromCompanyId", (q) => q.eq("fromCompanyId", companyId))
+      .collect();
+    const sharedTo = await ctx.db
+      .query("sharedJobs")
+      .withIndex("by_toCompanyId", (q) => q.eq("toCompanyId", companyId))
+      .collect();
+    for (const s of [...sharedFrom, ...sharedTo]) {
+      await ctx.db.delete(s._id);
+      deletedSharedJobs++;
+    }
+
+    // 5. Partner contacts
+    const contacts = await ctx.db
+      .query("partnerContacts")
+      .withIndex("by_companyId", (q) => q.eq("companyId", companyId))
+      .collect();
+    for (const c of contacts) {
+      await ctx.db.delete(c._id);
+      deletedPartnerContacts++;
+    }
+
+    // 6. Owner connections (either side)
+    const connA = await ctx.db
+      .query("ownerConnections")
+      .withIndex("by_companyAId", (q) => q.eq("companyAId", companyId))
+      .collect();
+    const connB = await ctx.db
+      .query("ownerConnections")
+      .withIndex("by_companyBId", (q) => q.eq("companyBId", companyId))
+      .collect();
+    for (const c of [...connA, ...connB]) {
+      await ctx.db.delete(c._id);
+      deletedOwnerConnections++;
+    }
+
     return {
       deletedJobs,
       deletedForms,
@@ -88,6 +129,9 @@ export const resetCompanyOpsData = mutation({
       deletedRedFlags,
       deletedNotifications,
       deletedAuditLog,
+      deletedSharedJobs,
+      deletedPartnerContacts,
+      deletedOwnerConnections,
     };
   },
 });

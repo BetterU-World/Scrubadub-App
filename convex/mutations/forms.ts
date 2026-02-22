@@ -205,6 +205,34 @@ export const approve = mutation({
       });
     }
 
+    // ── Shared-job completion sync ──
+    if (job.sharedFromJobId) {
+      const sharedRecord = await ctx.db
+        .query("sharedJobs")
+        .withIndex("by_copiedJobId", (q) => q.eq("copiedJobId", form.jobId))
+        .first();
+      if (sharedRecord) {
+        const completionPatch: Record<string, any> = {
+          status: "completed",
+          completedAt: Date.now(),
+        };
+        if (sharedRecord.sharePackage) {
+          const items = await ctx.db
+            .query("formItems")
+            .withIndex("by_formId", (q) => q.eq("formId", args.formId))
+            .collect();
+          const total = items.length;
+          const done = items.filter((i) => i.completed).length;
+          completionPatch.checklistSummary = `${done}/${total} items completed`;
+          completionPatch.completionNotes = args.notes ?? "";
+          if (form.photoStorageIds && form.photoStorageIds.length > 0) {
+            completionPatch.photoStorageIds = form.photoStorageIds;
+          }
+        }
+        await ctx.db.patch(sharedRecord._id, completionPatch);
+      }
+    }
+
     await logAudit(ctx, {
       companyId: form.companyId,
       userId: owner._id,

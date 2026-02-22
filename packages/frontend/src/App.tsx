@@ -32,6 +32,7 @@ import { AnalyticsPage } from "@/pages/owner/AnalyticsPage";
 import { SubscribePage } from "@/pages/owner/SubscribePage";
 import { BillingSuccessPage } from "@/pages/owner/BillingSuccessPage";
 import { BillingCancelPage } from "@/pages/owner/BillingCancelPage";
+import { PartnersPage } from "@/pages/owner/PartnersPage";
 
 // Worker pages (cleaner + maintenance unified)
 import { WorkerJobListPage } from "@/pages/worker/WorkerJobListPage";
@@ -173,6 +174,7 @@ export default function App() {
                 <Route path="/red-flags" component={RedFlagsDashboard} />
                 <Route path="/performance" component={PerformancePage} />
                 <Route path="/analytics" component={AnalyticsPage} />
+                <Route path="/partners" component={PartnersPage} />
                 <Route path="/audit-log" component={AuditLogPage} />
                 <Route path="/subscribe" component={SubscribePage} />
                 <Route path="/billing/success" component={BillingSuccessPage} />
