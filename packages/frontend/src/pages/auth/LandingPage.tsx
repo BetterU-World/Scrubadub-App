@@ -1,10 +1,10 @@
 import { Link } from "wouter";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, Award, Building2, Eye } from "lucide-react";
 
 const plans = [
   {
     name: "Cleaning Owner",
-    price: "$49",
+    price: "$249",
     period: "/mo",
     description: "For cleaning business owners managing teams and properties.",
     features: [
@@ -18,7 +18,7 @@ const plans = [
   },
   {
     name: "STR Owner / Property Manager",
-    price: "$79",
+    price: "$499",
     period: "/mo",
     description: "For short-term rental owners and property managers.",
     features: [
@@ -29,6 +29,27 @@ const plans = [
       "Priority support",
     ],
     ownerType: "str",
+  },
+];
+
+const valueProps = [
+  {
+    icon: Award,
+    title: "Gold Standard Operations",
+    description:
+      "Standardized cleaning workflows, inspections, and maintenance tracking in one system.",
+  },
+  {
+    icon: Building2,
+    title: "Built for Real Cleaning Businesses",
+    description:
+      "Manage teams, properties, turnovers, and issues without spreadsheets or group chats.",
+  },
+  {
+    icon: Eye,
+    title: "Owner-Level Visibility",
+    description:
+      "Know what's done, what needs attention, and who completed every job — instantly.",
   },
 ];
 
@@ -67,7 +88,7 @@ export function LandingPage() {
         </p>
         <div className="mt-8 flex justify-center gap-3">
           <Link href="/signup" className="btn-primary px-6 py-2.5">
-            Get Started Free
+            Get Started
           </Link>
           <Link href="/login" className="btn-secondary px-6 py-2.5">
             Sign In
@@ -75,11 +96,45 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* Why Scrubadub */}
+      <section className="pb-16 px-4">
+        <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">
+          Why Scrubadub?
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
+          {valueProps.map((vp) => (
+            <div key={vp.title} className="card text-center">
+              <div className="inline-flex p-2 rounded-lg bg-primary-100 text-primary-600 mb-3">
+                <vp.icon className="w-5 h-5" />
+              </div>
+              <h3 className="font-semibold text-gray-900">{vp.title}</h3>
+              <p className="text-sm text-gray-500 mt-2">{vp.description}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Explanation */}
+      <section className="pb-16 px-4 text-center max-w-2xl mx-auto">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">
+          One Platform. Total Control.
+        </h2>
+        <p className="text-gray-500">
+          Scrubadub replaces scattered tools with one operational system for
+          cleaning companies and short-term rental owners. Schedule work, track
+          performance, handle maintenance, and train teams using the Gold
+          Standard system — all in one place.
+        </p>
+      </section>
+
       {/* Pricing */}
       <section className="pb-20 px-4">
-        <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">
+        <h2 className="text-2xl font-bold text-gray-900 text-center mb-2">
           Simple, Transparent Pricing
         </h2>
+        <p className="text-center text-sm text-gray-500 mb-8">
+          Built for professional operations, not basic scheduling.
+        </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
           {plans.map((plan) => (
             <div key={plan.ownerType} className="card flex flex-col">
