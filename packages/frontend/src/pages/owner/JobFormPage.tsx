@@ -7,7 +7,7 @@ import { requireUserId } from "@/lib/requireUserId";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useLocation, useParams, Link } from "wouter";
-import { Building2 } from "lucide-react";
+import { Building2, Users, Handshake } from "lucide-react";
 
 const JOB_TYPES = [
   { value: "standard", label: "Standard Clean" },
@@ -36,6 +36,11 @@ export function JobFormPage() {
     user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
   );
 
+  const connections = useQuery(
+    api.queries.partners.listConnections,
+    !isEditing && user ? { userId: user._id } : "skip"
+  );
+
   const existing = useQuery(
     api.queries.jobs.get,
     params.id && user ? { jobId: params.id as Id<"jobs">, userId: user._id } : "skip"
@@ -43,6 +48,7 @@ export function JobFormPage() {
 
   const createJob = useMutation(api.mutations.jobs.create);
   const updateJob = useMutation(api.mutations.jobs.update);
+  const shareJobMut = useMutation(api.mutations.partners.shareJob);
 
   const [propertyId, setPropertyId] = useState("");
   const [selectedCleaners, setSelectedCleaners] = useState<string[]>([]);
@@ -52,6 +58,8 @@ export function JobFormPage() {
   const [durationMinutes, setDurationMinutes] = useState(120);
   const [notes, setNotes] = useState("");
   const [requireConfirmation, setRequireConfirmation] = useState(true);
+  const [assignMode, setAssignMode] = useState<"my_cleaner" | "partner">("my_cleaner");
+  const [partnerCompanyId, setPartnerCompanyId] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -85,16 +93,22 @@ export function JobFormPage() {
     );
   };
 
+  const isPartnerMode = !isEditing && assignMode === "partner";
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const uid = requireUserId(user);
     if (!uid || !user!.companyId) return;
+    if (isPartnerMode && !partnerCompanyId) {
+      setError("Please select a partner company");
+      return;
+    }
     setError("");
     setLoading(true);
     try {
       const data = {
         propertyId: propertyId as Id<"properties">,
-        cleanerIds: selectedCleaners as Id<"users">[],
+        cleanerIds: (isPartnerMode ? [] : selectedCleaners) as Id<"users">[],
         type: type as any,
         scheduledDate,
         startTime: startTime || undefined,
@@ -109,8 +123,18 @@ export function JobFormPage() {
           companyId: user!.companyId,
           userId: uid,
           ...data,
-          requireConfirmation,
+          requireConfirmation: isPartnerMode ? false : requireConfirmation,
         });
+
+        if (isPartnerMode) {
+          await shareJobMut({
+            userId: uid,
+            jobId: id as Id<"jobs">,
+            toCompanyId: partnerCompanyId as Id<"companies">,
+            sharePackage: true,
+          });
+        }
+
         setLocation(`/jobs/${id}`);
       }
     } catch (err: any) {
@@ -183,42 +207,101 @@ export function JobFormPage() {
           <input type="number" className="input-field" value={durationMinutes} onChange={(e) => setDurationMinutes(parseInt(e.target.value) || 0)} min={15} step={15} required />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Assign {workerLabel}</label>
-          {workers.length === 0 ? (
-            <p className="text-sm text-gray-500">{emptyWorkerMsg}</p>
-          ) : (
-            <div className="space-y-2">
-              {workers.map((c) => (
-                <label key={c._id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selectedCleaners.includes(c._id)}
-                    onChange={() => toggleCleaner(c._id)}
-                    className="w-4 h-4 text-primary-600 rounded border-gray-300"
-                  />
-                  <span className="text-sm">{c.name}</span>
-                  <span className="text-xs text-gray-400">{c.email}</span>
-                </label>
-              ))}
+        {/* Assignment mode toggle (create only) */}
+        {!isEditing && connections && connections.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Assign To</label>
+            <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => { setAssignMode("my_cleaner"); setPartnerCompanyId(""); }}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+                  assignMode === "my_cleaner"
+                    ? "bg-primary-600 text-white"
+                    : "bg-white text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                <Users className="w-4 h-4" /> My {workerLabel}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setAssignMode("partner"); setSelectedCleaners([]); }}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+                  assignMode === "partner"
+                    ? "bg-primary-600 text-white"
+                    : "bg-white text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                <Handshake className="w-4 h-4" /> Partner Company
+              </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        <div>
-          <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={requireConfirmation}
-              onChange={(e) => setRequireConfirmation(e.target.checked)}
-              className="w-4 h-4 text-primary-600 rounded border-gray-300"
-            />
-            <div>
-              <span className="text-sm font-medium text-gray-700">Require cleaner confirmation</span>
-              <p className="text-xs text-gray-400">When unchecked, job is auto-confirmed</p>
-            </div>
-          </label>
-        </div>
+        {/* Partner company dropdown */}
+        {isPartnerMode && connections && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Partner Company</label>
+            <select
+              className="input-field"
+              value={partnerCompanyId}
+              onChange={(e) => setPartnerCompanyId(e.target.value)}
+              required
+            >
+              <option value="">Select a partner...</option>
+              {connections.map((conn) => (
+                <option key={conn._id} value={conn.companyId}>
+                  {conn.companyName}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-400 mt-1">
+              The partner will receive the job and assign their own cleaners.
+            </p>
+          </div>
+        )}
+
+        {/* Cleaner assignment (my_cleaner mode or editing) */}
+        {!isPartnerMode && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Assign {workerLabel}</label>
+            {workers.length === 0 ? (
+              <p className="text-sm text-gray-500">{emptyWorkerMsg}</p>
+            ) : (
+              <div className="space-y-2">
+                {workers.map((c) => (
+                  <label key={c._id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedCleaners.includes(c._id)}
+                      onChange={() => toggleCleaner(c._id)}
+                      className="w-4 h-4 text-primary-600 rounded border-gray-300"
+                    />
+                    <span className="text-sm">{c.name}</span>
+                    <span className="text-xs text-gray-400">{c.email}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {!isPartnerMode && (
+          <div>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={requireConfirmation}
+                onChange={(e) => setRequireConfirmation(e.target.checked)}
+                className="w-4 h-4 text-primary-600 rounded border-gray-300"
+              />
+              <div>
+                <span className="text-sm font-medium text-gray-700">Require cleaner confirmation</span>
+                <p className="text-xs text-gray-400">When unchecked, job is auto-confirmed</p>
+              </div>
+            </label>
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
@@ -227,9 +310,9 @@ export function JobFormPage() {
 
         <div className="flex justify-end gap-3 pt-4">
           <button type="button" onClick={() => setLocation(isEditing ? `/jobs/${params.id}` : "/jobs")} className="btn-secondary">Cancel</button>
-          <button type="submit" disabled={loading || !propertyId} className="btn-primary flex items-center gap-2">
+          <button type="submit" disabled={loading || !propertyId || (isPartnerMode && !partnerCompanyId)} className="btn-primary flex items-center gap-2">
             {loading && <LoadingSpinner size="sm" />}
-            {isEditing ? "Save Changes" : "Schedule Job"}
+            {isEditing ? "Save Changes" : isPartnerMode ? "Share to Partner" : "Schedule Job"}
           </button>
         </div>
       </form>
