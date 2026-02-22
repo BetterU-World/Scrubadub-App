@@ -195,7 +195,9 @@ export default defineSchema({
       v.literal("rework_requested"),
       v.literal("red_flag"),
       v.literal("invite"),
-      v.literal("job_shared")
+      v.literal("job_shared"),
+      v.literal("partner_request"),
+      v.literal("partner_accepted")
     ),
     title: v.string(),
     message: v.string(),
@@ -226,10 +228,17 @@ export default defineSchema({
   ownerConnections: defineTable({
     companyAId: v.id("companies"),
     companyBId: v.id("companies"),
+    status: v.optional(
+      v.union(v.literal("pending"), v.literal("active"), v.literal("declined"))
+    ),
+    initiatorCompanyId: v.optional(v.id("companies")),
     createdAt: v.number(),
+    respondedAt: v.optional(v.number()),
   })
     .index("by_companyAId", ["companyAId"])
-    .index("by_companyBId", ["companyBId"]),
+    .index("by_companyBId", ["companyBId"])
+    .index("by_companyBId_status", ["companyBId", "status"])
+    .index("by_companyAId_status", ["companyAId", "status"]),
 
   sharedJobs: defineTable({
     originalJobId: v.id("jobs"),

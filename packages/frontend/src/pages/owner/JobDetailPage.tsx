@@ -439,7 +439,7 @@ export function JobDetailPage() {
                   ))}
                 </select>
                 {connections?.length === 0 && (
-                  <p className="text-xs text-amber-600 mt-1">No connections yet. Go to Partners to connect first.</p>
+                  <p className="text-xs text-amber-600 mt-1">No active connections. Connect with a partner (must be accepted) before sharing jobs.</p>
                 )}
               </div>
               <label className="flex items-center gap-2 cursor-pointer">
