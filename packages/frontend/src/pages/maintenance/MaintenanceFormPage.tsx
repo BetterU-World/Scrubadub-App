@@ -35,6 +35,8 @@ export function MaintenanceFormPage() {
   const [noteText, setNoteText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [costEstimate, setCostEstimate] = useState("");
+  const [vendor, setVendor] = useState("");
 
   if (!user || job === undefined || form === undefined || formItems === undefined) {
     return <PageLoader />;
@@ -81,7 +83,13 @@ export function MaintenanceFormPage() {
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      await submitForm({ formId: form._id, userId: user!._id });
+      const parsedCost = parseFloat(costEstimate);
+      await submitForm({
+        formId: form._id,
+        userId: user!._id,
+        ...(Number.isFinite(parsedCost) && parsedCost > 0 ? { maintenanceCost: parsedCost } : {}),
+        ...(vendor.trim() ? { maintenanceVendor: vendor.trim() } : {}),
+      });
       setLocation(`/jobs/${job._id}`);
     } catch (err) {
       console.error(err);
@@ -168,6 +176,35 @@ export function MaintenanceFormPage() {
             }}
           />
         </label>
+      </div>
+
+      {/* Cost & Vendor */}
+      <div className="card mb-6 space-y-3">
+        <h3 className="font-semibold text-gray-900 text-sm">Cost & Vendor (Optional)</h3>
+        <div className="flex gap-3">
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-gray-500 mb-1">Estimated Cost ($)</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={costEstimate}
+              onChange={(e) => setCostEstimate(e.target.value)}
+              placeholder="0.00"
+              className="input text-sm w-full"
+            />
+          </div>
+          <div className="flex-1">
+            <label className="block text-xs font-medium text-gray-500 mb-1">Vendor / Who Fixed It</label>
+            <input
+              type="text"
+              value={vendor}
+              onChange={(e) => setVendor(e.target.value)}
+              placeholder="e.g. ABC Plumbing"
+              className="input text-sm w-full"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Submit */}

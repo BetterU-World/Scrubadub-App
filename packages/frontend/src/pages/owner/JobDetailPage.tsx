@@ -203,6 +203,20 @@ export function JobDetailPage() {
               </div>
             )}
 
+            {((job.form as any).maintenanceCost != null || (job.form as any).maintenanceVendor) && (
+              <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <p className="text-sm font-medium text-gray-700 mb-1">Maintenance Details</p>
+                <div className="flex gap-6 text-sm text-gray-600">
+                  {(job.form as any).maintenanceCost != null && (
+                    <span>Cost: <span className="font-medium">${(job.form as any).maintenanceCost.toFixed(2)}</span></span>
+                  )}
+                  {(job.form as any).maintenanceVendor && (
+                    <span>Vendor: <span className="font-medium">{(job.form as any).maintenanceVendor}</span></span>
+                  )}
+                </div>
+              </div>
+            )}
+
             {job.form.ownerNotes && (
               <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
                 <p className="text-sm font-medium text-yellow-800">Review notes:</p>

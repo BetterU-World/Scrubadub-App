@@ -126,6 +126,8 @@ export default defineSchema({
       v.literal("rework_requested")
     ),
     ownerNotes: v.optional(v.string()),
+    maintenanceCost: v.optional(v.number()),
+    maintenanceVendor: v.optional(v.string()),
   })
     .index("by_jobId", ["jobId"])
     .index("by_cleanerId", ["cleanerId"]),

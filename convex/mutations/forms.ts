@@ -263,7 +263,12 @@ export const requestRework = mutation({
 });
 
 export const submit = mutation({
-  args: { formId: v.id("forms"), userId: v.optional(v.id("users")) },
+  args: {
+    formId: v.id("forms"),
+    userId: v.optional(v.id("users")),
+    maintenanceCost: v.optional(v.number()),
+    maintenanceVendor: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx, args.userId);
     const form = await ctx.db.get(args.formId);
@@ -294,6 +299,8 @@ export const submit = mutation({
     await ctx.db.patch(args.formId, {
       status: "submitted",
       submittedAt: Date.now(),
+      ...(args.maintenanceCost != null ? { maintenanceCost: args.maintenanceCost } : {}),
+      ...(args.maintenanceVendor ? { maintenanceVendor: args.maintenanceVendor } : {}),
     });
 
     const job = await ctx.db.get(form.jobId);
