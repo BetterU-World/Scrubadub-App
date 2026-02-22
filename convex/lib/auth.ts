@@ -3,8 +3,8 @@ import { Id } from "../_generated/dataModel";
 
 /**
  * Central auth helper. Resolves the session user via:
- *  1. Convex auth identity (preferred, when proper auth provider is configured)
- *  2. Explicit userId parameter (current client-side auth fallback)
+ *  1. Explicit userId parameter (current client-side auth)
+ *  2. Convex auth identity (fallback, when auth provider is configured)
  *
  * Returns the full user document or throws.
  */
@@ -12,7 +12,12 @@ export async function getSessionUser(
   ctx: QueryCtx,
   providedUserId?: Id<"users">
 ) {
-  // Try Convex auth identity first (secure path)
+  // Prefer explicit userId when provided (client-side auth)
+  if (providedUserId) {
+    const user = await ctx.db.get(providedUserId);
+    if (user && user.status !== "inactive") return user;
+  }
+  // Fall back to Convex auth identity (when auth provider is configured)
   const identity = await ctx.auth.getUserIdentity();
   if (identity?.email) {
     const user = await ctx.db
@@ -21,19 +26,7 @@ export async function getSessionUser(
       .first();
     if (user && user.status !== "inactive") return user;
   }
-
-  // Fall back to provided userId (client-side auth)
-  if (!providedUserId) {
-    throw new Error("Authentication required");
-  }
-  const user = await ctx.db.get(providedUserId);
-  if (!user) {
-    throw new Error("Authentication required");
-  }
-  if (user.status === "inactive") {
-    throw new Error("Account deactivated");
-  }
-  return user;
+  throw new Error("Authentication required");
 }
 
 /** Verify the session user belongs to the given company. */
