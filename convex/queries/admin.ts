@@ -1,6 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireSuperAdmin } from "../lib/auth";
+import { requireSuperAdmin, isSuperAdminEmail } from "../lib/auth";
 
 export const getPlatformStats = query({
   args: { userId: v.id("users") },
@@ -85,7 +85,6 @@ export const getPlatformStats = query({
 export const isSuperAdmin = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
-    const { isSuperAdminEmail } = await import("../lib/auth");
     const user = await ctx.db.get(args.userId);
     if (!user) return false;
     return isSuperAdminEmail(user.email);
