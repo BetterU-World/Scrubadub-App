@@ -44,9 +44,9 @@ export const generatePublicRequestToken = action({
     companyId: v.id("companies"),
     userId: v.id("users"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ generated: boolean; token?: string }> => {
     // Verify the caller is an active owner of this company
-    const isOwner = await ctx.runQuery(
+    const isOwner: boolean = await ctx.runQuery(
       internal.clientPortalInternal.verifyOwner,
       { userId: args.userId, companyId: args.companyId }
     );
@@ -55,10 +55,10 @@ export const generatePublicRequestToken = action({
     }
 
     // Check if company already has a token
-    const company = await ctx.runQuery(
-      internal.clientPortalInternal.getCompany,
-      { companyId: args.companyId }
-    );
+    const company: { publicRequestToken?: string } | null =
+      await ctx.runQuery(internal.clientPortalInternal.getCompany, {
+        companyId: args.companyId,
+      });
     if (!company) {
       throw new Error("Company not found");
     }

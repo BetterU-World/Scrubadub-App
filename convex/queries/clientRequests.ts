@@ -3,6 +3,27 @@ import { v } from "convex/values";
 import { requireAuth } from "../lib/helpers";
 
 /**
+ * Public query – returns minimal branding info for a company given its
+ * publicRequestToken.  No auth required.  Returns null for invalid tokens
+ * so the UI can show an error state without leaking data.
+ */
+export const getCompanyByRequestToken = query({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    const company = await ctx.db
+      .query("companies")
+      .withIndex("by_publicRequestToken", (q) =>
+        q.eq("publicRequestToken", args.token)
+      )
+      .first();
+
+    if (!company) return null;
+
+    return { companyName: company.name };
+  },
+});
+
+/**
  * List all client requests for a company.
  * Requires authenticated user who belongs to the company.
  */
