@@ -47,7 +47,7 @@ export function JobFormPage() {
   const [selectedCleaners, setSelectedCleaners] = useState<string[]>([]);
   const [type, setType] = useState("standard");
   const [scheduledDate, setScheduledDate] = useState("");
-  const [startTime, setStartTime] = useState("");
+  const [startTime, setStartTime] = useState(isEditing ? "" : "10:00");
   const [durationMinutes, setDurationMinutes] = useState(120);
   const [notes, setNotes] = useState("");
   const [requireConfirmation, setRequireConfirmation] = useState(true);
