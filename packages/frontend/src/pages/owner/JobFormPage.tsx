@@ -6,7 +6,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { requireUserId } from "@/lib/requireUserId";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import { useLocation, useParams } from "wouter";
+import { useLocation, useParams, Link } from "wouter";
+import { Building2 } from "lucide-react";
 
 const JOB_TYPES = [
   { value: "standard", label: "Standard Clean" },
@@ -123,11 +124,30 @@ export function JobFormPage() {
     <div className="max-w-2xl mx-auto">
       <PageHeader title={isEditing ? "Edit Job" : "Schedule Job"} />
 
+      {!isEditing && activeProperties.length === 0 && (
+        <div className="card mb-6 border-amber-200 bg-amber-50">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-amber-100 text-amber-600">
+              <Building2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-gray-900">Create a property first</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Jobs are assigned to a property. Add your first property to start scheduling cleans and maintenance.
+              </p>
+              <Link href="/properties" className="btn-primary inline-block mt-3 text-sm px-4 py-2">
+                Add a Property
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>
       )}
 
-      <form onSubmit={handleSubmit} className="card space-y-4">
+      <form onSubmit={handleSubmit} className={`card space-y-4${!isEditing && activeProperties.length === 0 ? " opacity-50 pointer-events-none" : ""}`}>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Property</label>
           <select className="input-field" value={propertyId} onChange={(e) => setPropertyId(e.target.value)} required>
