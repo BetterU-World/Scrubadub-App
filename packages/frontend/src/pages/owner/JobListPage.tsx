@@ -47,7 +47,14 @@ function getWeekRange(): [string, string] {
 
 export function JobListPage() {
   const { user } = useAuth();
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("status") || "";
+  });
+  const [typeFilter] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("type") || "";
+  });
   const [dateRange, setDateRange] = useState<"all" | "today" | "week">("all");
   const [search, setSearch] = useState("");
   const [showReset, setShowReset] = useState(false);
@@ -65,6 +72,7 @@ export function JobListPage() {
   const searchLower = search.toLowerCase();
   const filteredJobs = [...jobs]
     .filter((job) => {
+      if (typeFilter && job.type !== typeFilter) return false;
       if (dateRange === "today") {
         if (job.scheduledDate !== getToday()) return false;
       } else if (dateRange === "week") {
@@ -82,7 +90,7 @@ export function JobListPage() {
     })
     .sort((a, b) => b.scheduledDate.localeCompare(a.scheduledDate));
 
-  const hasFilters = statusFilter || dateRange !== "all" || search;
+  const hasFilters = statusFilter || typeFilter || dateRange !== "all" || search;
 
   return (
     <div>
@@ -134,6 +142,17 @@ export function JobListPage() {
           />
         </div>
       </div>
+
+      {typeFilter && (
+        <div className="flex items-center gap-2 mb-3">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
+            Type: {typeFilter.replace(/_/g, " ")}
+          </span>
+          <Link href="/jobs" className="text-xs text-gray-500 hover:text-gray-700 underline">
+            Clear
+          </Link>
+        </div>
+      )}
 
       {/* Status pills */}
       <div className="flex flex-wrap gap-2 mb-6">

@@ -9,6 +9,8 @@ import {
   Users,
   ClipboardCheck,
   Flag,
+  Clock,
+  Wrench,
   Calendar,
   ArrowRight,
 } from "lucide-react";
@@ -54,6 +56,19 @@ export function DashboardPage() {
           value={stats?.openRedFlagCount ?? "—"}
           href="/red-flags"
           variant="danger"
+        />
+        <DashCard
+          icon={Clock}
+          label="Awaiting Approval"
+          value={stats?.awaitingApprovalCount ?? "—"}
+          href="/jobs?status=submitted"
+          variant="warning"
+        />
+        <DashCard
+          icon={Wrench}
+          label="Open Maintenance"
+          value={stats?.openMaintenanceCount ?? "—"}
+          href="/jobs?type=maintenance"
         />
       </div>
 
@@ -138,7 +153,7 @@ function DashCard({
   label: string;
   value: number | string;
   href: string;
-  variant?: "default" | "danger";
+  variant?: "default" | "danger" | "warning";
 }) {
   return (
     <Link href={href} className="card hover:shadow-md transition-shadow cursor-pointer block">
@@ -147,7 +162,9 @@ function DashCard({
           className={`p-2 rounded-lg ${
             variant === "danger"
               ? "bg-red-100 text-red-600"
-              : "bg-primary-100 text-primary-600"
+              : variant === "warning"
+                ? "bg-amber-100 text-amber-600"
+                : "bg-primary-100 text-primary-600"
           }`}
         >
           <Icon className="w-5 h-5" />

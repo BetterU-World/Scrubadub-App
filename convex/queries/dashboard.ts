@@ -57,11 +57,24 @@ export const getStats = query({
       )
       .collect();
 
+    const awaitingApprovalCount = allJobs.filter(
+      (j) => j.status === "submitted"
+    ).length;
+
+    const openMaintenanceCount = allJobs.filter(
+      (j) =>
+        j.type === "maintenance" &&
+        j.status !== "approved" &&
+        j.status !== "cancelled"
+    ).length;
+
     return {
       propertyCount: properties.filter((p) => p.active).length,
       employeeCount: employees.filter((e) => e.status === "active").length,
       activeJobCount: activeJobs.length,
       openRedFlagCount: openRedFlags.length,
+      awaitingApprovalCount,
+      openMaintenanceCount,
       upcomingJobs: enrichedJobs,
       recentRedFlags: openRedFlags.slice(0, 5),
     };
