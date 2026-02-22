@@ -350,7 +350,7 @@ export const startJob = mutation({
         .query("sharedJobs")
         .withIndex("by_copiedJobId", (q) => q.eq("copiedJobId", args.jobId))
         .first();
-      if (sharedRecord && sharedRecord.status === "pending") {
+      if (sharedRecord && sharedRecord.status === "accepted") {
         await ctx.db.patch(sharedRecord._id, { status: "in_progress" });
       }
     }
@@ -394,7 +394,10 @@ export const approveJob = mutation({
         .query("sharedJobs")
         .withIndex("by_copiedJobId", (q) => q.eq("copiedJobId", args.jobId))
         .first();
-      if (sharedRecord) {
+      if (
+        sharedRecord &&
+        (sharedRecord.status === "accepted" || sharedRecord.status === "in_progress")
+      ) {
         const completionPatch: Record<string, any> = {
           status: "completed" as const,
           completedAt: Date.now(),

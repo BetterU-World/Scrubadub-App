@@ -88,7 +88,9 @@ export async function createNotification(
       | "invite"
       | "job_shared"
       | "partner_request"
-      | "partner_accepted";
+      | "partner_accepted"
+      | "shared_job_accepted"
+      | "shared_job_rejected";
     title: string;
     message: string;
     relatedJobId?: Id<"jobs">;

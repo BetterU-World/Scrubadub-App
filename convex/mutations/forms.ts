@@ -211,7 +211,10 @@ export const approve = mutation({
         .query("sharedJobs")
         .withIndex("by_copiedJobId", (q) => q.eq("copiedJobId", form.jobId))
         .first();
-      if (sharedRecord) {
+      if (
+        sharedRecord &&
+        (sharedRecord.status === "accepted" || sharedRecord.status === "in_progress")
+      ) {
         const completionPatch: Record<string, any> = {
           status: "completed",
           completedAt: Date.now(),

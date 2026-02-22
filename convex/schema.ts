@@ -197,7 +197,9 @@ export default defineSchema({
       v.literal("invite"),
       v.literal("job_shared"),
       v.literal("partner_request"),
-      v.literal("partner_accepted")
+      v.literal("partner_accepted"),
+      v.literal("shared_job_accepted"),
+      v.literal("shared_job_rejected")
     ),
     title: v.string(),
     message: v.string(),
@@ -229,7 +231,12 @@ export default defineSchema({
     companyAId: v.id("companies"),
     companyBId: v.id("companies"),
     status: v.optional(
-      v.union(v.literal("pending"), v.literal("active"), v.literal("declined"))
+      v.union(
+        v.literal("pending"),
+        v.literal("active"),
+        v.literal("declined"),
+        v.literal("disconnected")
+      )
     ),
     initiatorCompanyId: v.optional(v.id("companies")),
     createdAt: v.number(),
@@ -248,9 +255,12 @@ export default defineSchema({
     sharePackage: v.boolean(),
     status: v.union(
       v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("rejected"),
       v.literal("in_progress"),
       v.literal("completed")
     ),
+    respondedAt: v.optional(v.number()),
     // Completion package fields (populated when sharePackage=true and job is completed)
     completionNotes: v.optional(v.string()),
     checklistSummary: v.optional(v.string()),
@@ -260,5 +270,6 @@ export default defineSchema({
     .index("by_originalJobId", ["originalJobId"])
     .index("by_copiedJobId", ["copiedJobId"])
     .index("by_fromCompanyId", ["fromCompanyId"])
-    .index("by_toCompanyId", ["toCompanyId"]),
+    .index("by_toCompanyId", ["toCompanyId"])
+    .index("by_toCompanyId_status", ["toCompanyId", "status"]),
 });

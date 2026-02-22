@@ -45,6 +45,7 @@ export function PartnersPage() {
   const connectByEmail = useMutation(api.mutations.partners.connectByEmail);
   const acceptConnection = useMutation(api.mutations.partners.acceptConnection);
   const declineConnection = useMutation(api.mutations.partners.declineConnection);
+  const disconnectConnectionMut = useMutation(api.mutations.partners.disconnectConnection);
 
   const [showAdd, setShowAdd] = useState(false);
   const [name, setName] = useState("");
@@ -136,6 +137,20 @@ export function PartnersPage() {
       showToast("Connection declined", "success");
     } catch (err: any) {
       showToast(err.message ?? "Failed to decline", "error");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDisconnect = async (connectionId: typeof connections[number]["_id"]) => {
+    if (!uid) return;
+    if (!window.confirm("Disconnect from this partner? You will no longer be able to share jobs.")) return;
+    setActionLoading(connectionId);
+    try {
+      await disconnectConnectionMut({ userId: uid, connectionId });
+      showToast("Partner disconnected", "success");
+    } catch (err: any) {
+      showToast(err.message ?? "Failed to disconnect", "error");
     } finally {
       setActionLoading(null);
     }
@@ -276,7 +291,16 @@ export function PartnersPage() {
                   <p className="font-medium text-gray-900">{conn.companyName}</p>
                   <p className="text-xs text-gray-400">Connected {new Date(conn.createdAt).toLocaleDateString()}</p>
                 </div>
-                <span className="badge bg-green-100 text-green-700">Connected</span>
+                <div className="flex items-center gap-2">
+                  <span className="badge bg-green-100 text-green-700">Connected</span>
+                  <button
+                    onClick={() => handleDisconnect(conn._id)}
+                    disabled={actionLoading === conn._id}
+                    className="text-xs text-gray-400 hover:text-red-500 underline"
+                  >
+                    Disconnect
+                  </button>
+                </div>
               </div>
             ))}
           </div>
