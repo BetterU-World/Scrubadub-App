@@ -37,11 +37,20 @@ export const list = query({
             return user ? { _id: user._id, name: user.name } : null;
           })
         );
+        // Check if any outgoing shared job was rejected
+        const sharedRecords = await ctx.db
+          .query("sharedJobs")
+          .withIndex("by_originalJobId", (q) => q.eq("originalJobId", job._id))
+          .collect();
+        const hasRejectedShare = sharedRecords.some(
+          (s) => s.fromCompanyId === args.companyId && s.status === "rejected"
+        );
         return {
           ...job,
           propertyName: property?.name ?? "Unknown",
           propertyAddress: property?.address ?? "",
           cleaners: cleaners.filter(Boolean),
+          hasRejectedShare,
         };
       })
     );
