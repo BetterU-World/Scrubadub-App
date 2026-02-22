@@ -61,6 +61,11 @@ export const removeContact = mutation({
 
 // ── Owner Connections ─────────────────────────────────────────────
 
+/** Status for a connection record (legacy rows have no status field → treat as active) */
+function connStatus(c: { status?: string }): string {
+  return c.status ?? "active";
+}
+
 export const connectByEmail = mutation({
   args: {
     userId: v.optional(v.id("users")),
@@ -90,28 +95,51 @@ export const connectByEmail = mutation({
       .query("ownerConnections")
       .withIndex("by_companyAId", (q) => q.eq("companyAId", owner.companyId))
       .collect();
-    const alreadyConnected = existingA.some(
+    const forwardMatch = existingA.find(
       (c) => c.companyBId === targetUser.companyId
     );
-    if (alreadyConnected) {
-      return { success: false as const, reason: "already_connected" };
-    }
+
     const existingB = await ctx.db
       .query("ownerConnections")
       .withIndex("by_companyAId", (q) => q.eq("companyAId", targetUser.companyId))
       .collect();
-    const alreadyConnectedReverse = existingB.some(
+    const reverseMatch = existingB.find(
       (c) => c.companyBId === owner.companyId
     );
-    if (alreadyConnectedReverse) {
-      return { success: false as const, reason: "already_connected" };
+
+    const existing = forwardMatch || reverseMatch;
+    if (existing) {
+      const st = connStatus(existing);
+      if (st === "active") return { success: false as const, reason: "already_connected" };
+      if (st === "pending") return { success: false as const, reason: "already_pending" };
+      // declined → remove old record so we can re-invite
+      await ctx.db.delete(existing._id);
     }
 
     const connId = await ctx.db.insert("ownerConnections", {
       companyAId: owner.companyId,
       companyBId: targetUser.companyId,
+      status: "pending",
+      initiatorCompanyId: owner.companyId,
       createdAt: Date.now(),
     });
+
+    // Notify recipient company's owners
+    const targetCompany = await ctx.db.get(targetUser.companyId);
+    const ownerCompany = await ctx.db.get(owner.companyId);
+    const recipientOwners = await ctx.db
+      .query("users")
+      .withIndex("by_companyId", (q) => q.eq("companyId", targetUser.companyId))
+      .collect();
+    for (const ro of recipientOwners.filter((u) => u.role === "owner")) {
+      await createNotification(ctx, {
+        companyId: targetUser.companyId,
+        userId: ro._id,
+        type: "partner_request",
+        title: "Partner Connection Request",
+        message: `${ownerCompany?.name ?? "A company"} wants to connect for job sharing`,
+      });
+    }
 
     await logAudit(ctx, {
       companyId: owner.companyId,
@@ -121,12 +149,115 @@ export const connectByEmail = mutation({
       entityId: connId,
     });
 
-    const targetCompany = await ctx.db.get(targetUser.companyId);
     return {
       success: true as const,
       connectionId: connId,
       companyName: targetCompany?.name ?? "Unknown",
     };
+  },
+});
+
+export const acceptConnection = mutation({
+  args: {
+    userId: v.optional(v.id("users")),
+    connectionId: v.id("ownerConnections"),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+    const conn = await ctx.db.get(args.connectionId);
+    if (!conn) throw new Error("Connection not found");
+    if (connStatus(conn) !== "pending") throw new Error("Connection is not pending");
+    if (conn.companyBId !== owner.companyId) throw new Error("Not authorized");
+
+    await ctx.db.patch(args.connectionId, {
+      status: "active",
+      respondedAt: Date.now(),
+    });
+
+    // Upsert partnerContacts for both sides
+    const initiatorCompany = await ctx.db.get(conn.companyAId);
+    const recipientCompany = await ctx.db.get(conn.companyBId);
+    const initiatorOwners = await ctx.db
+      .query("users")
+      .withIndex("by_companyId", (q) => q.eq("companyId", conn.companyAId))
+      .collect();
+    const initiatorOwner = initiatorOwners.find((u) => u.role === "owner");
+
+    // Add initiator as contact in recipient's company
+    if (initiatorOwner) {
+      const recipientContacts = await ctx.db
+        .query("partnerContacts")
+        .withIndex("by_companyId", (q) => q.eq("companyId", owner.companyId))
+        .collect();
+      if (!recipientContacts.some((c) => c.email === initiatorOwner.email)) {
+        await ctx.db.insert("partnerContacts", {
+          companyId: owner.companyId,
+          name: initiatorCompany?.name ?? initiatorOwner.name,
+          email: initiatorOwner.email,
+          createdAt: Date.now(),
+        });
+      }
+    }
+
+    // Add recipient as contact in initiator's company
+    const initiatorContacts = await ctx.db
+      .query("partnerContacts")
+      .withIndex("by_companyId", (q) => q.eq("companyId", conn.companyAId))
+      .collect();
+    if (!initiatorContacts.some((c) => c.email === owner.email)) {
+      await ctx.db.insert("partnerContacts", {
+        companyId: conn.companyAId,
+        name: recipientCompany?.name ?? owner.name,
+        email: owner.email,
+        createdAt: Date.now(),
+      });
+    }
+
+    // Notify initiator owners
+    for (const io of initiatorOwners.filter((u) => u.role === "owner")) {
+      await createNotification(ctx, {
+        companyId: conn.companyAId,
+        userId: io._id,
+        type: "partner_accepted",
+        title: "Connection Accepted",
+        message: `${recipientCompany?.name ?? "A partner"} accepted your connection request`,
+      });
+    }
+
+    await logAudit(ctx, {
+      companyId: owner.companyId,
+      userId: owner._id,
+      action: "accept_connection",
+      entityType: "ownerConnections",
+      entityId: args.connectionId,
+    });
+  },
+});
+
+export const declineConnection = mutation({
+  args: {
+    userId: v.optional(v.id("users")),
+    connectionId: v.id("ownerConnections"),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+    const conn = await ctx.db.get(args.connectionId);
+    if (!conn) throw new Error("Connection not found");
+    if (connStatus(conn) !== "pending") throw new Error("Connection is not pending");
+    if (conn.companyBId !== owner.companyId) throw new Error("Not authorized");
+
+    await ctx.db.patch(args.connectionId, {
+      status: "declined",
+      respondedAt: Date.now(),
+    });
+
+    await logAudit(ctx, {
+      companyId: owner.companyId,
+      userId: owner._id,
+      action: "decline_connection",
+      entityType: "ownerConnections",
+      entityId: args.connectionId,
+    });
   },
 });
 
@@ -147,7 +278,7 @@ export const shareJob = mutation({
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your job");
 
-    // Verify connection exists
+    // Verify an active connection exists
     const connectionsA = await ctx.db
       .query("ownerConnections")
       .withIndex("by_companyAId", (q) => q.eq("companyAId", owner.companyId))
@@ -157,8 +288,8 @@ export const shareJob = mutation({
       .withIndex("by_companyBId", (q) => q.eq("companyBId", owner.companyId))
       .collect();
     const allConnected = [
-      ...connectionsA.map((c) => c.companyBId),
-      ...connectionsB.map((c) => c.companyAId),
+      ...connectionsA.filter((c) => connStatus(c) === "active").map((c) => c.companyBId),
+      ...connectionsB.filter((c) => connStatus(c) === "active").map((c) => c.companyAId),
     ];
     if (!allConnected.includes(args.toCompanyId)) {
       throw new Error("Not connected to this company");
