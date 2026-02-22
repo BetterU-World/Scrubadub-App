@@ -1,13 +1,15 @@
 import { useState } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
+import { requireUserId } from "@/lib/requireUserId";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Link } from "wouter";
-import { ClipboardCheck, Plus, Calendar, MapPin, Users } from "lucide-react";
+import { ClipboardCheck, Plus, Calendar, MapPin, Users, Trash2 } from "lucide-react";
 
 const STATUS_FILTERS = [
   { value: "", label: "All" },
@@ -23,6 +25,9 @@ const STATUS_FILTERS = [
 export function JobListPage() {
   const { user } = useAuth();
   const [statusFilter, setStatusFilter] = useState("");
+  const [showReset, setShowReset] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const resetOps = useMutation(api.mutations.devReset.resetCompanyOpsData);
   const jobs = useQuery(
     api.queries.jobs.list,
     user?.companyId
@@ -40,9 +45,19 @@ export function JobListPage() {
         title="Jobs"
         description="Manage cleaning jobs"
         action={
-          <Link href="/jobs/new" className="btn-primary flex items-center gap-2">
-            <Plus className="w-4 h-4" /> Schedule Job
-          </Link>
+          <div className="flex gap-2">
+            {import.meta.env.DEV && (
+              <button
+                onClick={() => setShowReset(true)}
+                className="btn-secondary flex items-center gap-2 text-red-600 border-red-300 hover:bg-red-50 text-xs"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Reset Test Run
+              </button>
+            )}
+            <Link href="/jobs/new" className="btn-primary flex items-center gap-2">
+              <Plus className="w-4 h-4" /> Schedule Job
+            </Link>
+          </div>
         }
       />
 
@@ -108,6 +123,29 @@ export function JobListPage() {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={showReset}
+        onOpenChange={setShowReset}
+        title="Reset Test Run"
+        description="This will delete all jobs, forms, notifications, red flags, and audit logs for your company. Properties and employees will be preserved."
+        confirmLabel={resetting ? "Resetting..." : "Delete Test Data"}
+        confirmVariant="danger"
+        onConfirm={async () => {
+          const uid = requireUserId(user);
+          if (!uid) return;
+          setResetting(true);
+          try {
+            const result = await resetOps({ userId: uid });
+            console.log("Reset complete:", result);
+            setShowReset(false);
+          } catch (err: any) {
+            console.error("Reset failed:", err);
+          } finally {
+            setResetting(false);
+          }
+        }}
+      />
     </div>
   );
 }
