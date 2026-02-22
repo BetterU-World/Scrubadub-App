@@ -92,7 +92,7 @@ export const getForCleaner = query({
   },
   handler: async (ctx, args) => {
     const user = await assertCompanyAccess(ctx, args.userId, args.companyId);
-    if (user.role === "cleaner" && user._id !== args.cleanerId) {
+    if ((user.role === "cleaner" || user.role === "maintenance") && user._id !== args.cleanerId) {
       throw new Error("Access denied");
     }
 

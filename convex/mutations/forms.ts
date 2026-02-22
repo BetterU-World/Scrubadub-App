@@ -2,7 +2,7 @@ import { mutation, MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
 import { requireAuth, requireOwner, logAudit, createNotification } from "../lib/helpers";
-import { FORM_TEMPLATE } from "../lib/constants";
+import { FORM_TEMPLATE, MAINTENANCE_FORM_TEMPLATE } from "../lib/constants";
 
 export const createFromTemplate = mutation({
   args: {
@@ -32,8 +32,10 @@ export const createFromTemplate = mutation({
       status: "in_progress",
     });
 
+    const template = job.type === "maintenance" ? MAINTENANCE_FORM_TEMPLATE : FORM_TEMPLATE;
+
     let order = 0;
-    for (const section of FORM_TEMPLATE) {
+    for (const section of template) {
       for (const itemName of section.items) {
         await ctx.db.insert("formItems", {
           formId,

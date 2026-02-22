@@ -9,7 +9,7 @@ interface AuthUser {
   _id: Id<"users">;
   email: string;
   name: string;
-  role: "owner" | "cleaner";
+  role: "owner" | "cleaner" | "maintenance";
   companyId: Id<"companies">;
   companyName: string;
   status: string;

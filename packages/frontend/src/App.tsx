@@ -36,6 +36,11 @@ import { CleanerJobListPage } from "@/pages/cleaner/CleanerJobListPage";
 import { CleanerJobDetailPage } from "@/pages/cleaner/CleanerJobDetailPage";
 import { CleaningFormPage } from "@/pages/cleaner/CleaningFormPage";
 
+// Maintenance pages
+import { MaintenanceJobListPage } from "@/pages/maintenance/MaintenanceJobListPage";
+import { MaintenanceJobDetailPage } from "@/pages/maintenance/MaintenanceJobDetailPage";
+import { MaintenanceFormPage } from "@/pages/maintenance/MaintenanceFormPage";
+
 // Shared pages
 import { NotificationsPage } from "@/pages/shared/NotificationsPage";
 
@@ -178,6 +183,19 @@ export default function App() {
                   <Redirect to="/subscribe" />
                 </Route>
               </>
+            )
+          ) : user?.role === "maintenance" ? (
+            accessOk ? (
+              <>
+                <Route path="/" component={MaintenanceJobListPage} />
+                <Route path="/jobs/:id" component={MaintenanceJobDetailPage} />
+                <Route path="/jobs/:id/form" component={MaintenanceFormPage} />
+                <Route path="/calendar" component={CalendarPage} />
+              </>
+            ) : (
+              <Route>
+                <SubscriptionInactive />
+              </Route>
             )
           ) : accessOk ? (
             <>

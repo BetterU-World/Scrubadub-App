@@ -22,6 +22,7 @@ export function EmployeeListPage() {
   const [showInvite, setShowInvite] = useState(false);
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"cleaner" | "maintenance">("cleaner");
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteLink, setInviteLink] = useState("");
   const [copied, setCopied] = useState(false);
@@ -39,6 +40,7 @@ export function EmployeeListPage() {
         email: inviteEmail,
         name: inviteName,
         userId: user._id,
+        role: inviteRole,
       });
       setInviteLink(`${window.location.origin}/invite/${result.token}`);
     } catch (err: any) {
@@ -58,6 +60,7 @@ export function EmployeeListPage() {
     setShowInvite(false);
     setInviteName("");
     setInviteEmail("");
+    setInviteRole("cleaner");
     setInviteLink("");
     setError("");
   };
@@ -69,7 +72,7 @@ export function EmployeeListPage() {
         description="Manage your cleaning team"
         action={
           <button onClick={() => setShowInvite(true)} className="btn-primary flex items-center gap-2">
-            <UserPlus className="w-4 h-4" /> Invite Cleaner
+            <UserPlus className="w-4 h-4" /> Invite Employee
           </button>
         }
       />
@@ -80,7 +83,7 @@ export function EmployeeListPage() {
           title="No team members yet"
           description="Invite cleaners to join your team"
           action={
-            <button onClick={() => setShowInvite(true)} className="btn-primary">Invite Cleaner</button>
+            <button onClick={() => setShowInvite(true)} className="btn-primary">Invite Employee</button>
           }
         />
       ) : (
@@ -131,7 +134,7 @@ export function EmployeeListPage() {
           <Dialog.Overlay className="fixed inset-0 bg-black/40 z-50" />
           <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-lg p-6 w-full max-w-md z-50">
             <div className="flex items-center justify-between mb-4">
-              <Dialog.Title className="text-lg font-semibold">Invite Cleaner</Dialog.Title>
+              <Dialog.Title className="text-lg font-semibold">Invite Employee</Dialog.Title>
               <Dialog.Close className="p-1 text-gray-400 hover:text-gray-600 rounded">
                 <X className="w-5 h-5" />
               </Dialog.Close>
@@ -161,6 +164,13 @@ export function EmployeeListPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                   <input className="input-field" type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="jane@email.com" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                  <select className="input-field" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as any)}>
+                    <option value="cleaner">Cleaner</option>
+                    <option value="maintenance">Maintenance</option>
+                  </select>
                 </div>
                 <button
                   onClick={handleInvite}

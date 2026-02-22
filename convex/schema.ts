@@ -23,7 +23,7 @@ export default defineSchema({
     passwordHash: v.string(),
     name: v.string(),
     companyId: v.id("companies"),
-    role: v.union(v.literal("owner"), v.literal("cleaner")),
+    role: v.union(v.literal("owner"), v.literal("cleaner"), v.literal("maintenance")),
     status: v.union(
       v.literal("active"),
       v.literal("inactive"),

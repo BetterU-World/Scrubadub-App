@@ -14,6 +14,7 @@ export const inviteCleaner = action({
     email: v.string(),
     name: v.string(),
     userId: v.id("users"),
+    role: v.optional(v.union(v.literal("cleaner"), v.literal("maintenance"))),
   },
   handler: async (ctx, args): Promise<{ token: string; userId: Id<"users"> }> => {
     validateEmail(args.email);
@@ -24,6 +25,7 @@ export const inviteCleaner = action({
     });
 
     const email = args.email.toLowerCase();
+    const role = args.role ?? "cleaner";
 
     const existing = await ctx.runQuery(internal.authInternal.getUserByEmail, {
       email,
@@ -39,7 +41,7 @@ export const inviteCleaner = action({
         passwordHash: "",
         name: args.name,
         companyId: args.companyId,
-        role: "cleaner",
+        role,
         status: "pending",
         inviteToken: token,
       }
@@ -48,10 +50,10 @@ export const inviteCleaner = action({
     await ctx.runMutation(internal.authInternal.logAuditEntry, {
       companyId: args.companyId,
       userId: args.userId,
-      action: "invite_cleaner",
+      action: `invite_${role}`,
       entityType: "user",
       entityId: newUserId,
-      details: `Invited ${email}`,
+      details: `Invited ${email} as ${role}`,
     });
 
     return { token, userId: newUserId };

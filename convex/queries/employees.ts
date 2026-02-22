@@ -46,3 +46,16 @@ export const getCleaners = query({
     return users.filter((u) => u.role === "cleaner" && u.status === "active");
   },
 });
+
+export const getMaintenanceWorkers = query({
+  args: { companyId: v.id("companies"), userId: v.id("users") },
+  handler: async (ctx, args) => {
+    await assertCompanyAccess(ctx, args.userId, args.companyId);
+
+    const users = await ctx.db
+      .query("users")
+      .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
+      .collect();
+    return users.filter((u) => u.role === "maintenance" && u.status === "active");
+  },
+});

@@ -10,6 +10,7 @@ import {
   ScrollText,
   LogOut,
   BarChart3,
+  Wrench,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { clsx } from "clsx";
@@ -32,11 +33,17 @@ const cleanerNav = [
   { href: "/notifications", label: "Notifications", icon: Bell },
 ];
 
+const maintenanceNav = [
+  { href: "/", label: "Maintenance Jobs", icon: Wrench },
+  { href: "/calendar", label: "Calendar", icon: Calendar },
+  { href: "/notifications", label: "Notifications", icon: Bell },
+];
+
 export function Sidebar() {
   const [location] = useLocation();
   const { user, signOut } = useAuth();
 
-  const nav = user?.role === "owner" ? ownerNav : cleanerNav;
+  const nav = user?.role === "owner" ? ownerNav : user?.role === "maintenance" ? maintenanceNav : cleanerNav;
 
   return (
     <aside className="hidden md:flex md:flex-col md:w-64 bg-white border-r border-gray-200 min-h-screen">

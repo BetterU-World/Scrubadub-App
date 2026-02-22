@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   Flag,
   Bell,
+  Wrench,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { clsx } from "clsx";
@@ -25,11 +26,17 @@ const cleanerMobileNav = [
   { href: "/notifications", label: "Alerts", icon: Bell },
 ];
 
+const maintenanceMobileNav = [
+  { href: "/", label: "Jobs", icon: Wrench },
+  { href: "/calendar", label: "Calendar", icon: Calendar },
+  { href: "/notifications", label: "Alerts", icon: Bell },
+];
+
 export function MobileNav() {
   const [location] = useLocation();
   const { user } = useAuth();
 
-  const nav = user?.role === "owner" ? ownerMobileNav : cleanerMobileNav;
+  const nav = user?.role === "owner" ? ownerMobileNav : user?.role === "maintenance" ? maintenanceMobileNav : cleanerMobileNav;
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">

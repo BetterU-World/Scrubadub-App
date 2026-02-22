@@ -30,6 +30,10 @@ export function JobFormPage() {
     api.queries.employees.getCleaners,
     user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
   );
+  const maintenanceWorkers = useQuery(
+    api.queries.employees.getMaintenanceWorkers,
+    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+  );
 
   const existing = useQuery(
     api.queries.jobs.get,
@@ -62,7 +66,14 @@ export function JobFormPage() {
     }
   }, [existing]);
 
-  if (!user || properties === undefined || cleaners === undefined) return <PageLoader />;
+  if (!user || properties === undefined || cleaners === undefined || maintenanceWorkers === undefined) return <PageLoader />;
+
+  const isMaintenance = type === "maintenance";
+  const workers = isMaintenance ? maintenanceWorkers : cleaners;
+  const workerLabel = isMaintenance ? "Maintenance Workers" : "Cleaners";
+  const emptyWorkerMsg = isMaintenance
+    ? <>No active maintenance workers. <a href="/employees" className="text-primary-600">Invite workers first</a>.</>
+    : <>No active cleaners. <a href="/employees" className="text-primary-600">Invite cleaners first</a>.</>;
   if (isEditing && existing === undefined) return <PageLoader />;
 
   const activeProperties = properties.filter((p) => p.active);
@@ -129,7 +140,7 @@ export function JobFormPage() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Job Type</label>
-          <select className="input-field" value={type} onChange={(e) => setType(e.target.value)}>
+          <select className="input-field" value={type} onChange={(e) => { setType(e.target.value); setSelectedCleaners([]); }}>
             {JOB_TYPES.map((t) => (
               <option key={t.value} value={t.value}>{t.label}</option>
             ))}
@@ -153,12 +164,12 @@ export function JobFormPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Assign Cleaners</label>
-          {cleaners.length === 0 ? (
-            <p className="text-sm text-gray-500">No active cleaners. <a href="/employees" className="text-primary-600">Invite cleaners first</a>.</p>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Assign {workerLabel}</label>
+          {workers.length === 0 ? (
+            <p className="text-sm text-gray-500">{emptyWorkerMsg}</p>
           ) : (
             <div className="space-y-2">
-              {cleaners.map((c) => (
+              {workers.map((c) => (
                 <label key={c._id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
                   <input
                     type="checkbox"

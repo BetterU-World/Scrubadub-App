@@ -100,6 +100,18 @@ export const FORM_TEMPLATE = [
   },
 ];
 
+export const MAINTENANCE_FORM_TEMPLATE = [
+  {
+    section: "Maintenance Work",
+    items: [
+      "Issue identified and assessed",
+      "Repair or maintenance work completed",
+      "Area cleaned up after work",
+      "Issue fully resolved",
+    ],
+  },
+];
+
 export const MAX_REWORK_COUNT = 2;
 
 export const JOB_TYPE_LABELS: Record<string, string> = {
