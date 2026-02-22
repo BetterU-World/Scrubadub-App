@@ -178,6 +178,7 @@ export const getSharedJobStatus = query({
         _id: shared._id,
         toCompanyName: toCompany?.name ?? "Unknown",
         status: shared.status,
+        respondedAt: shared.respondedAt,
         sharePackage: shared.sharePackage,
         completionNotes: shared.completionNotes,
         checklistSummary: shared.checklistSummary,

@@ -25,6 +25,7 @@ import {
   RefreshCw,
   Share2,
   Package,
+  AlertTriangle,
 } from "lucide-react";
 
 export function JobDetailPage() {
@@ -390,10 +391,20 @@ export function JobDetailPage() {
             </h3>
             <div className="space-y-3">
               {sharedStatus.map((s) => (
-                <div key={s._id} className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                <div key={s._id} className={`p-3 rounded-lg border ${
+                  s.status === "rejected"
+                    ? "bg-red-50 border-red-200"
+                    : "bg-blue-50 border-blue-100"
+                }`}>
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-900">
-                      Shared to: {s.toCompanyName}
+                      {s.status === "rejected"
+                        ? <>
+                            <AlertTriangle className="w-4 h-4 text-red-500 inline mr-1" />
+                            Rejected by {s.toCompanyName}
+                          </>
+                        : <>Shared to: {s.toCompanyName}</>
+                      }
                     </span>
                     <span className={`badge ${
                       s.status === "completed" ? "bg-green-100 text-green-700" :
@@ -408,6 +419,35 @@ export function JobDetailPage() {
                        s.status === "rejected" ? "Rejected" : "Pending"}
                     </span>
                   </div>
+
+                  {/* Rejected: timestamp + action panel */}
+                  {s.status === "rejected" && (
+                    <>
+                      {s.respondedAt && (
+                        <p className="text-xs text-red-500 mt-1">
+                          Declined on {new Date(s.respondedAt).toLocaleString()}
+                        </p>
+                      )}
+                      <p className="text-sm text-red-600 mt-2">
+                        This partner declined the job. Choose a new partner or assign internally.
+                      </p>
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          onClick={() => setShowShare(true)}
+                          className="btn-secondary flex items-center gap-1.5 text-sm"
+                        >
+                          <Share2 className="w-4 h-4" /> Share to another partner
+                        </button>
+                        <button
+                          onClick={() => setShowReassign(true)}
+                          className="btn-primary flex items-center gap-1.5 text-sm"
+                        >
+                          <Users className="w-4 h-4" /> Assign to my cleaner
+                        </button>
+                      </div>
+                    </>
+                  )}
+
                   {s.completedAt && (
                     <p className="text-xs text-gray-500 mt-1">
                       Completed {new Date(s.completedAt).toLocaleString()}
@@ -446,7 +486,7 @@ export function JobDetailPage() {
                       )}
                     </div>
                   )}
-                  {s.sharePackage && s.status !== "completed" && (
+                  {s.sharePackage && s.status !== "completed" && s.status !== "rejected" && (
                     <p className="text-xs text-gray-400 mt-1">Completion package will be shared when done</p>
                   )}
                 </div>

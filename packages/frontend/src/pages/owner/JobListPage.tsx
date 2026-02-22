@@ -202,6 +202,11 @@ export function JobListPage() {
                           Shared from {(job as any).sharedFromCompanyName}
                         </span>
                       )}
+                      {(job as any).hasRejectedShare && (
+                        <span className="badge bg-red-100 text-red-700 text-[10px]">
+                          Partner Rejected
+                        </span>
+                      )}
                     </div>
                     <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500">
                       <span className="flex items-center gap-1">
