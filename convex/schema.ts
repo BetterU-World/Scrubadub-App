@@ -16,7 +16,11 @@ export default defineSchema({
     currentPeriodEnd: v.optional(v.number()),
     cancelAtPeriodEnd: v.optional(v.boolean()),
     subscriptionBecameInactiveAt: v.optional(v.number()),
-  }).index("by_stripeCustomerId", ["stripeCustomerId"]),
+    // Client portal – public booking-request link token
+    publicRequestToken: v.optional(v.string()),
+  })
+    .index("by_stripeCustomerId", ["stripeCustomerId"])
+    .index("by_publicRequestToken", ["publicRequestToken"]),
 
   users: defineTable({
     email: v.string(),
@@ -272,4 +276,33 @@ export default defineSchema({
     .index("by_fromCompanyId", ["fromCompanyId"])
     .index("by_toCompanyId", ["toCompanyId"])
     .index("by_toCompanyId_status", ["toCompanyId", "status"]),
+
+  // ── Client Portal (Phase 1) ───────────────────────────────────────
+
+  clientRequests: defineTable({
+    companyId: v.id("companies"),
+    createdAt: v.number(),
+    status: v.union(
+      v.literal("new"),
+      v.literal("accepted"),
+      v.literal("declined"),
+      v.literal("converted")
+    ),
+    requesterName: v.string(),
+    requesterEmail: v.string(),
+    requesterPhone: v.optional(v.string()),
+    propertySnapshot: v.object({
+      name: v.optional(v.string()),
+      address: v.optional(v.string()),
+      notes: v.optional(v.string()),
+    }),
+    requestedDate: v.optional(v.string()),
+    requestedStart: v.optional(v.string()),
+    requestedEnd: v.optional(v.string()),
+    timeWindow: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    source: v.literal("public_link"),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_companyId_status", ["companyId", "status"]),
 });

@@ -72,3 +72,10 @@ export const formStatusValidator = v.union(
   v.literal("approved"),
   v.literal("rework_requested")
 );
+
+export const clientRequestStatusValidator = v.union(
+  v.literal("new"),
+  v.literal("accepted"),
+  v.literal("declined"),
+  v.literal("converted")
+);
