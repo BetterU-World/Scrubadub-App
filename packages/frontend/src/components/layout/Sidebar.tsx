@@ -12,6 +12,7 @@ import {
   BarChart3,
   TrendingUp,
   Shield,
+  BookOpen,
 } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -29,12 +30,14 @@ const ownerNav = [
   { href: "/analytics", label: "Analytics", icon: TrendingUp },
   { href: "/notifications", label: "Notifications", icon: Bell },
   { href: "/audit-log", label: "Audit Log", icon: ScrollText },
+  { href: "/manuals", label: "Manuals", icon: BookOpen },
 ];
 
 const workerNav = [
   { href: "/", label: "My Jobs", icon: ClipboardCheck },
   { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/notifications", label: "Notifications", icon: Bell },
+  { href: "/manuals", label: "Manuals", icon: BookOpen },
 ];
 
 export function Sidebar() {

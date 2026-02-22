@@ -42,6 +42,8 @@ import { SuperAdminPage } from "@/pages/admin/SuperAdminPage";
 
 // Shared pages
 import { NotificationsPage } from "@/pages/shared/NotificationsPage";
+import { ManualsPage } from "@/pages/shared/ManualsPage";
+import { ManualViewerPage } from "@/pages/shared/ManualViewerPage";
 
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 
@@ -197,6 +199,8 @@ export default function App() {
             </Route>
           )}
           <Route path="/notifications" component={NotificationsPage} />
+          <Route path="/manuals/:slug" component={ManualViewerPage} />
+          <Route path="/manuals" component={ManualsPage} />
           <Route path="/admin" component={SuperAdminPage} />
           <Route path="/invite/:token" component={AcceptInvitePage} />
           <Route>
