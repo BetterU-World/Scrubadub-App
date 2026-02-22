@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,7 +14,13 @@ import {
   Wrench,
   Calendar,
   ArrowRight,
+  CheckCircle,
+  Circle,
+  Rocket,
+  BookOpen,
 } from "lucide-react";
+
+const LS_MANUAL_READ = "scrubadub_onboarding_manual_read";
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -30,6 +37,8 @@ export function DashboardPage() {
         title={`Welcome back, ${user.name.split(" ")[0]}`}
         description={user.companyName}
       />
+
+      <GettingStartedCard stats={stats} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <DashCard
@@ -137,6 +146,133 @@ export function DashboardPage() {
             <p className="text-sm text-gray-500">No open red flags</p>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function GettingStartedCard({ stats }: { stats: any }) {
+  const [manualRead, setManualRead] = useState(
+    () => localStorage.getItem(LS_MANUAL_READ) === "1"
+  );
+
+  const steps = [
+    {
+      label: "Create your first property",
+      href: "/properties",
+      done: (stats?.propertyCount ?? 0) > 0,
+    },
+    {
+      label: "Add your first team member",
+      href: "/employees",
+      done: (stats?.employeeCount ?? 0) > 1,
+    },
+    {
+      label: "Schedule your first job",
+      href: "/jobs/new",
+      done: (stats?.totalJobCount ?? 0) > 0,
+    },
+    {
+      label: "Read the Gold Standard manual",
+      href: "/manuals",
+      done: manualRead,
+    },
+  ];
+
+  const completed = steps.filter((s) => s.done).length;
+  const allDone = completed === steps.length;
+
+  if (allDone) {
+    return (
+      <div className="card mb-6 bg-primary-50 border-primary-200">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary-100 text-primary-600">
+              <Rocket className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900">
+                Onboarding complete! 🎉
+              </p>
+              <p className="text-sm text-gray-500">
+                You're all set up and ready to go.
+              </p>
+            </div>
+          </div>
+          {import.meta.env.DEV && (
+            <button
+              onClick={() => {
+                localStorage.removeItem(LS_MANUAL_READ);
+                setManualRead(false);
+              }}
+              className="text-xs text-red-500 hover:text-red-700 underline"
+            >
+              Reset onboarding
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card mb-6">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-primary-100 text-primary-600">
+            <Rocket className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-gray-900">Getting Started</h3>
+            <p className="text-sm text-gray-500">
+              {completed} of {steps.length} complete
+            </p>
+          </div>
+        </div>
+        {import.meta.env.DEV && (
+          <button
+            onClick={() => {
+              localStorage.removeItem(LS_MANUAL_READ);
+              setManualRead(false);
+            }}
+            className="text-xs text-red-500 hover:text-red-700 underline"
+          >
+            Reset onboarding
+          </button>
+        )}
+      </div>
+
+      {/* Progress bar */}
+      <div className="w-full h-1.5 bg-gray-100 rounded-full mb-4">
+        <div
+          className="h-1.5 bg-primary-500 rounded-full transition-all"
+          style={{ width: `${(completed / steps.length) * 100}%` }}
+        />
+      </div>
+
+      <div className="space-y-1">
+        {steps.map((step) => (
+          <Link
+            key={step.label}
+            href={step.href}
+            className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            {step.done ? (
+              <CheckCircle className="w-5 h-5 text-primary-500 flex-shrink-0" />
+            ) : (
+              <Circle className="w-5 h-5 text-gray-300 flex-shrink-0" />
+            )}
+            <span
+              className={`text-sm ${
+                step.done
+                  ? "text-gray-400 line-through"
+                  : "text-gray-700 font-medium"
+              }`}
+            >
+              {step.label}
+            </span>
+          </Link>
+        ))}
       </div>
     </div>
   );

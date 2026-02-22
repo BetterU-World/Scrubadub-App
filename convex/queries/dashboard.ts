@@ -72,6 +72,7 @@ export const getStats = query({
       propertyCount: properties.filter((p) => p.active).length,
       employeeCount: employees.filter((e) => e.status === "active").length,
       activeJobCount: activeJobs.length,
+      totalJobCount: allJobs.length,
       openRedFlagCount: openRedFlags.length,
       awaitingApprovalCount,
       openMaintenanceCount,

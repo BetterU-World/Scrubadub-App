@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { Link } from "wouter";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Users, Sparkles } from "lucide-react";
+import { Users, Sparkles, CheckCircle } from "lucide-react";
+
+const LS_MANUAL_READ = "scrubadub_onboarding_manual_read";
 
 const manuals = [
   {
@@ -18,6 +21,10 @@ const manuals = [
 ];
 
 export function ManualsPage() {
+  const [manualRead, setManualRead] = useState(
+    () => localStorage.getItem(LS_MANUAL_READ) === "1"
+  );
+
   return (
     <div>
       <PageHeader
@@ -42,6 +49,25 @@ export function ManualsPage() {
             </div>
           </Link>
         ))}
+      </div>
+
+      <div className="mt-6 max-w-2xl">
+        {manualRead ? (
+          <div className="flex items-center gap-2 text-sm text-primary-700">
+            <CheckCircle className="w-4 h-4" />
+            Manual marked as read
+          </div>
+        ) : (
+          <button
+            onClick={() => {
+              localStorage.setItem(LS_MANUAL_READ, "1");
+              setManualRead(true);
+            }}
+            className="btn-primary text-sm px-4 py-2"
+          >
+            Mark manual as read
+          </button>
+        )}
       </div>
     </div>
   );
