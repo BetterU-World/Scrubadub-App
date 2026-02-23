@@ -1,5 +1,6 @@
 import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
+import { slugify, SLUG_RE, RESERVED_SLUGS, randomSuffix } from "./lib/slugs";
 
 export const getUserByEmail = internalQuery({
   args: { email: v.string() },
@@ -14,9 +15,68 @@ export const getUserByEmail = internalQuery({
 export const createCompany = internalMutation({
   args: { name: v.string(), timezone: v.string() },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("companies", args);
+    const companyId = await ctx.db.insert("companies", args);
+
+    // Auto-provision a default mini-site for the new company
+    const existing = await ctx.db
+      .query("companySites")
+      .withIndex("by_companyId", (q) => q.eq("companyId", companyId))
+      .first();
+
+    if (!existing) {
+      const slug = await generateUniqueSlug(ctx, args.name);
+      await ctx.db.insert("companySites", {
+        companyId,
+        slug,
+        templateId: "A",
+        brandName: args.name,
+        bio: "",
+        serviceArea: "",
+      });
+    }
+
+    return companyId;
   },
 });
+
+/**
+ * Generate a unique slug from a company name.
+ * Tries the base slug first, then appends random suffixes.
+ * Falls back to a fully random slug after 10 attempts.
+ */
+async function generateUniqueSlug(
+  ctx: { db: any },
+  name: string
+): Promise<string> {
+  const base = slugify(name);
+
+  // Ensure base meets minimum length (3 chars)
+  const safeBase = base.length >= 3 ? base : `co-${base || randomSuffix(4)}`;
+
+  const candidates: string[] = [safeBase];
+  for (let i = 0; i < 9; i++) {
+    const suffix = randomSuffix(4);
+    const candidate = `${safeBase}-${suffix}`.slice(0, 50);
+    candidates.push(candidate);
+  }
+  // Last resort: fully random
+  candidates.push(randomSuffix(8));
+
+  for (const slug of candidates) {
+    if (!SLUG_RE.test(slug)) continue;
+    if (RESERVED_SLUGS.has(slug)) continue;
+
+    const taken = await ctx.db
+      .query("companySites")
+      .withIndex("by_slug", (q: any) => q.eq("slug", slug))
+      .first();
+
+    if (!taken) return slug;
+  }
+
+  // Should never reach here, but safety fallback
+  return `site-${randomSuffix(8)}`;
+}
 
 export const createUser = internalMutation({
   args: {

@@ -1,47 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwner } from "../lib/helpers";
-
-const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/;
-
-/** Reserved slugs that must not be claimed by any company. */
-const RESERVED_SLUGS = new Set([
-  "login",
-  "signup",
-  "admin",
-  "api",
-  "r",
-  "invite",
-  "forgot-password",
-  "reset-password",
-  "subscribe",
-  "billing",
-  "jobs",
-  "properties",
-  "employees",
-  "calendar",
-  "red-flags",
-  "performance",
-  "analytics",
-  "partners",
-  "requests",
-  "audit-log",
-  "notifications",
-  "manuals",
-  "site",
-  "cleaner-leads",
-]);
-
-function validateSlug(slug: string) {
-  if (!SLUG_RE.test(slug)) {
-    throw new Error(
-      "Slug must be 3–50 characters, lowercase letters, numbers, and hyphens only."
-    );
-  }
-  if (RESERVED_SLUGS.has(slug)) {
-    throw new Error("This slug is reserved. Please choose another.");
-  }
-}
+import { validateSlug } from "../lib/slugs";
 
 /**
  * Create or update the company's mini-site.
