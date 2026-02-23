@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Route, Switch, Redirect, useLocation } from "wouter";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -77,6 +78,19 @@ export default function App() {
   const { user, userId, isLoading, isAuthenticated } = useAuth();
   const [pathname] = useLocation();
   const storedUserId = localStorage.getItem("scrubadub_userId");
+
+  // ── Capture ?ref= param on first load ──
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("ref");
+    if (ref) {
+      localStorage.setItem("scrubadub_ref", ref);
+      params.delete("ref");
+      const qs = params.toString();
+      const newUrl = window.location.pathname + (qs ? `?${qs}` : "") + window.location.hash;
+      window.history.replaceState(null, "", newUrl);
+    }
+  }, []);
 
   const subscription = useQuery(
     api.queries.billing.getCompanySubscription,

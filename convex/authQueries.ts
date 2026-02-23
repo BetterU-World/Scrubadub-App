@@ -38,6 +38,7 @@ export const getCurrentUser = query({
       status: user.status,
       phone: user.phone,
       referralCode: user.referralCode,
+      referredByCode: user.referredByCode,
       isSuperadmin: SUPERADMIN_EMAILS.includes(user.email),
     };
   },
