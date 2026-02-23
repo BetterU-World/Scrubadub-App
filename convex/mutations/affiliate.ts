@@ -42,3 +42,25 @@ export const ensureReferralCode = mutation({
     throw new Error("Unable to generate a unique referral code. Please try again.");
   },
 });
+
+export const setReferredByCode = mutation({
+  args: { userId: v.id("users"), refCode: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) throw new Error("User not found");
+
+    // Already attributed — do nothing
+    if (user.referredByCode) return;
+
+    // Validate the referral code exists
+    const referrer = await ctx.db
+      .query("users")
+      .withIndex("by_referralCode", (q) => q.eq("referralCode", args.refCode))
+      .first();
+
+    if (!referrer) return; // invalid code — silently ignore
+    if (referrer._id === args.userId) return; // prevent self-referral
+
+    await ctx.db.patch(args.userId, { referredByCode: args.refCode });
+  },
+});

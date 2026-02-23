@@ -41,6 +41,7 @@ export default defineSchema({
     resetToken: v.optional(v.string()),
     resetTokenExpiry: v.optional(v.number()),
     referralCode: v.optional(v.string()),
+    referredByCode: v.optional(v.string()),
   })
     .index("by_email", ["email"])
     .index("by_companyId", ["companyId"])
