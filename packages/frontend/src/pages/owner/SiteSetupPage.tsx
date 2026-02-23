@@ -191,6 +191,12 @@ export function SiteSetupPage() {
         </div>
       )}
 
+      {site && !site.bio && !site.serviceArea && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm">
+          Your website is live &mdash; add details to improve it.
+        </div>
+      )}
+
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
           {error}
