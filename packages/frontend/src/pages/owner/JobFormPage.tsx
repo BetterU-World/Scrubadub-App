@@ -76,6 +76,7 @@ export function JobFormPage() {
       if (prefill.scheduledDate) setScheduledDate(prefill.scheduledDate);
       if (prefill.notes) setNotes(prefill.notes);
       if (prefill.requestId) setSourceRequestId(prefill.requestId);
+      if (prefill.propertyId) setPropertyId(prefill.propertyId);
     } catch {
       // ignore malformed data
     }

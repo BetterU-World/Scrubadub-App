@@ -84,3 +84,42 @@ export const updateRequestStatus = mutation({
     await ctx.db.patch(args.requestId, { status: args.status });
   },
 });
+
+/**
+ * Create a property from a client request's propertySnapshot.
+ * Auth-gated: caller must be an owner in the same company as the request.
+ * No-op if the request already has a propertyId.
+ */
+export const createPropertyFromRequest = mutation({
+  args: {
+    requestId: v.id("clientRequests"),
+    userId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+
+    const request = await ctx.db.get(args.requestId);
+    if (!request) throw new Error("Request not found");
+    if (request.companyId !== owner.companyId) throw new Error("Access denied");
+
+    // No-op if already linked
+    if (request.propertyId) return request.propertyId;
+
+    const snap = request.propertySnapshot ?? {};
+    const address = snap.address || "Address pending";
+
+    const propertyId = await ctx.db.insert("properties", {
+      companyId: request.companyId,
+      name: snap.name || address,
+      type: "residential" as const,
+      address,
+      amenities: [],
+      active: true,
+      ownerNotes: snap.notes || undefined,
+    });
+
+    await ctx.db.patch(args.requestId, { propertyId });
+
+    return propertyId;
+  },
+});

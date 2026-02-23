@@ -18,6 +18,8 @@ import {
   FileText,
   XCircle,
   Briefcase,
+  Building2,
+  Check,
 } from "lucide-react";
 
 export function RequestDetailPage() {
@@ -35,9 +37,13 @@ export function RequestDetailPage() {
   const updateStatus = useMutation(
     api.mutations.clientRequests.updateRequestStatus
   );
+  const createProperty = useMutation(
+    api.mutations.clientRequests.createPropertyFromRequest
+  );
 
   const [showDecline, setShowDecline] = useState(false);
   const [declining, setDeclining] = useState(false);
+  const [creatingProperty, setCreatingProperty] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error";
@@ -59,17 +65,32 @@ export function RequestDetailPage() {
     if (request.timeWindow) notesParts.push(`Time window: ${request.timeWindow}`);
     if (request.notes) notesParts.push(`---\n${request.notes}`);
 
-    sessionStorage.setItem(
-      "clientRequestPrefill",
-      JSON.stringify({
-        requestId: request._id,
-        scheduledDate: request.requestedDate || "",
-        address: request.propertySnapshot?.address || "",
-        propertyName: request.propertySnapshot?.name || "",
-        notes: notesParts.join("\n"),
-      })
-    );
+    const prefill: Record<string, string> = {
+      requestId: request._id,
+      scheduledDate: request.requestedDate || "",
+      address: request.propertySnapshot?.address || "",
+      propertyName: request.propertySnapshot?.name || "",
+      notes: notesParts.join("\n"),
+    };
+    if (request.propertyId) {
+      prefill.propertyId = request.propertyId;
+    }
+    sessionStorage.setItem("clientRequestPrefill", JSON.stringify(prefill));
     setLocation("/jobs/new");
+  };
+
+  const handleCreateProperty = async () => {
+    setCreatingProperty(true);
+    try {
+      await createProperty({ requestId: request._id, userId: user!._id });
+      setToast({ message: "Property created", type: "success" });
+      setTimeout(() => setToast(null), 3000);
+    } catch (err: any) {
+      setToast({ message: err.message || "Failed to create property", type: "error" });
+      setTimeout(() => setToast(null), 3000);
+    } finally {
+      setCreatingProperty(false);
+    }
   };
 
   const handleDecline = async () => {
@@ -176,6 +197,24 @@ export function RequestDetailPage() {
             <p className="text-sm text-gray-600">{request.notes}</p>
           </div>
         )}
+
+        {/* Property link section */}
+        <div className="border-t pt-3">
+          {request.propertyId ? (
+            <p className="flex items-center gap-2 text-sm text-primary-700">
+              <Check className="w-4 h-4" /> Property linked
+            </p>
+          ) : canAct && request.propertySnapshot?.address ? (
+            <button
+              onClick={handleCreateProperty}
+              disabled={creatingProperty}
+              className="btn-secondary flex items-center gap-2 text-sm"
+            >
+              <Building2 className="w-4 h-4" />
+              {creatingProperty ? "Creating..." : "Create Property"}
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {/* Back link */}
