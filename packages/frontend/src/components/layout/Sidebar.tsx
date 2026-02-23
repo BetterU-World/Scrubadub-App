@@ -17,6 +17,7 @@ import {
   Inbox,
   Globe,
   UserPlus,
+  Share2,
 } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -36,6 +37,7 @@ const ownerNav = [
   { href: "/requests", label: "Requests", icon: Inbox },
   { href: "/cleaner-leads", label: "Cleaner Leads", icon: UserPlus },
   { href: "/site", label: "My Site", icon: Globe },
+  { href: "/affiliate", label: "Affiliate", icon: Share2 },
   { href: "/notifications", label: "Notifications", icon: Bell },
   { href: "/audit-log", label: "Audit Log", icon: ScrollText },
   { href: "/manuals", label: "Manuals", icon: BookOpen },
@@ -44,6 +46,7 @@ const ownerNav = [
 const workerNav = [
   { href: "/", label: "My Jobs", icon: ClipboardCheck },
   { href: "/calendar", label: "Calendar", icon: Calendar },
+  { href: "/affiliate", label: "Affiliate", icon: Share2 },
   { href: "/notifications", label: "Notifications", icon: Bell },
   { href: "/manuals", label: "Manuals", icon: BookOpen },
 ];
