@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
-import { requireUserId } from "@/lib/requireUserId";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { Copy, ExternalLink, Share2, Users } from "lucide-react";
@@ -17,9 +16,8 @@ function getReferralBaseUrl(): string {
 
 export function AffiliatePage() {
   const { user } = useAuth();
-  const uid = requireUserId(user);
   const ensureReferralCode = useMutation(api.mutations.affiliate.ensureReferralCode);
-  const referrals = useQuery(api.queries.affiliate.getMyReferrals, uid ? { userId: uid } : "skip");
+  const referrals = useQuery(api.queries.affiliate.getMyReferrals);
 
   const [referralCode, setReferralCode] = useState<string | null>(
     user?.referralCode ?? null
@@ -33,14 +31,14 @@ export function AffiliatePage() {
       setReferralCode(user.referralCode);
       return;
     }
-    if (!uid || generating || referralCode) return;
+    if (!user || generating || referralCode) return;
 
     setGenerating(true);
-    ensureReferralCode({ userId: uid })
+    ensureReferralCode({})
       .then((code) => setReferralCode(code))
       .catch((err) => console.error("Failed to generate referral code:", err))
       .finally(() => setGenerating(false));
-  }, [uid, user?.referralCode, ensureReferralCode, generating, referralCode]);
+  }, [user, ensureReferralCode, generating, referralCode]);
 
   if (!user || generating || !referralCode) {
     return <PageLoader />;

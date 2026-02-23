@@ -1,10 +1,10 @@
 import { query } from "../_generated/server";
-import { v } from "convex/values";
+import { getSessionUser } from "../lib/auth";
 
 export const getMyReferrals = query({
-  args: { userId: v.id("users") },
-  handler: async (ctx, args) => {
-    const user = await ctx.db.get(args.userId);
+  args: {},
+  handler: async (ctx) => {
+    const user = await getSessionUser(ctx).catch(() => null);
     if (!user || !user.referralCode) return [];
 
     const referred = await ctx.db

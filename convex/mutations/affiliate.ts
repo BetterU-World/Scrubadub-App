@@ -1,5 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
+import { getSessionUser } from "../lib/auth";
 
 /**
  * Generate a URL-safe referral code (8-12 chars, lowercase a-z0-9).
@@ -15,10 +16,9 @@ function generateCode(): string {
 }
 
 export const ensureReferralCode = mutation({
-  args: { userId: v.id("users") },
-  handler: async (ctx, args) => {
-    const user = await ctx.db.get(args.userId);
-    if (!user) throw new Error("User not found");
+  args: {},
+  handler: async (ctx) => {
+    const user = await getSessionUser(ctx);
 
     // Already has a code — return it immediately
     if (user.referralCode) {
@@ -34,7 +34,7 @@ export const ensureReferralCode = mutation({
         .first();
 
       if (!existing) {
-        await ctx.db.patch(args.userId, { referralCode: code });
+        await ctx.db.patch(user._id, { referralCode: code });
         return code;
       }
     }
@@ -44,10 +44,9 @@ export const ensureReferralCode = mutation({
 });
 
 export const setReferredByCode = mutation({
-  args: { userId: v.id("users"), refCode: v.string() },
+  args: { refCode: v.string() },
   handler: async (ctx, args) => {
-    const user = await ctx.db.get(args.userId);
-    if (!user) throw new Error("User not found");
+    const user = await getSessionUser(ctx);
 
     // Already attributed — do nothing
     if (user.referredByCode) return;
@@ -59,8 +58,8 @@ export const setReferredByCode = mutation({
       .first();
 
     if (!referrer) return; // invalid code — silently ignore
-    if (referrer._id === args.userId) return; // prevent self-referral
+    if (referrer._id === user._id) return; // prevent self-referral
 
-    await ctx.db.patch(args.userId, { referredByCode: args.refCode });
+    await ctx.db.patch(user._id, { referredByCode: args.refCode });
   },
 });
