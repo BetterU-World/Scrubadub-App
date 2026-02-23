@@ -40,11 +40,13 @@ export default defineSchema({
     phone: v.optional(v.string()),
     resetToken: v.optional(v.string()),
     resetTokenExpiry: v.optional(v.number()),
+    referralCode: v.optional(v.string()),
   })
     .index("by_email", ["email"])
     .index("by_companyId", ["companyId"])
     .index("by_inviteToken", ["inviteToken"])
-    .index("by_resetToken", ["resetToken"]),
+    .index("by_resetToken", ["resetToken"])
+    .index("by_referralCode", ["referralCode"]),
 
   properties: defineTable({
     companyId: v.id("companies"),
