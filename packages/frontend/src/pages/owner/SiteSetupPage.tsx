@@ -4,7 +4,8 @@ import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import { Copy, ExternalLink, Check, Plus, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
+import { ShareKit } from "@/components/owner/ShareKit";
 
 export function SiteSetupPage() {
   const { user } = useAuth();
@@ -32,8 +33,6 @@ export function SiteSetupPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
-  const [copiedSite, setCopiedSite] = useState(false);
-  const [copiedRequest, setCopiedRequest] = useState(false);
 
   // Seed form when site data loads
   useEffect(() => {
@@ -53,18 +52,6 @@ export function SiteSetupPage() {
   }, [site]);
 
   if (!user || site === undefined) return <PageLoader />;
-
-  const siteUrl = `${window.location.origin}/${slug || "your-slug"}`;
-
-  // Look up publicRequestToken from company
-  const companySitePublic = useQuery(
-    api.queries.companySites.getBySlug,
-    site?.slug ? { slug: site.slug } : "skip"
-  );
-  const requestToken = companySitePublic?.publicRequestToken;
-  const requestUrl = requestToken
-    ? `${window.location.origin}/r/${requestToken}`
-    : null;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -95,20 +82,6 @@ export function SiteSetupPage() {
     }
   };
 
-  const handleCopySite = () => {
-    navigator.clipboard.writeText(siteUrl);
-    setCopiedSite(true);
-    setTimeout(() => setCopiedSite(false), 2000);
-  };
-
-  const handleCopyRequest = () => {
-    if (requestUrl) {
-      navigator.clipboard.writeText(requestUrl);
-      setCopiedRequest(true);
-      setTimeout(() => setCopiedRequest(false), 2000);
-    }
-  };
-
   const addService = () => {
     if (services.length < 8) {
       setServices([...services, ""]);
@@ -134,62 +107,6 @@ export function SiteSetupPage() {
         title="My Site"
         description="Set up your public mini-site so clients can find you"
       />
-
-      {/* Link sharing cards */}
-      {site && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-          <div className="card flex flex-col gap-2">
-            <p className="text-sm font-medium text-gray-700">Website link</p>
-            <p className="text-sm text-primary-600 truncate">{siteUrl}</p>
-            <div className="flex gap-2 mt-1">
-              <button
-                type="button"
-                onClick={handleCopySite}
-                className="btn-secondary flex items-center gap-1.5 text-sm"
-              >
-                {copiedSite ? (
-                  <Check className="w-4 h-4" />
-                ) : (
-                  <Copy className="w-4 h-4" />
-                )}
-                {copiedSite ? "Copied" : "Copy"}
-              </button>
-              <a
-                href={`/${site.slug}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-secondary flex items-center gap-1.5 text-sm"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Preview
-              </a>
-            </div>
-          </div>
-
-          {requestUrl && (
-            <div className="card flex flex-col gap-2">
-              <p className="text-sm font-medium text-gray-700">
-                Request link
-              </p>
-              <p className="text-sm text-primary-600 truncate">{requestUrl}</p>
-              <div className="flex gap-2 mt-1">
-                <button
-                  type="button"
-                  onClick={handleCopyRequest}
-                  className="btn-secondary flex items-center gap-1.5 text-sm"
-                >
-                  {copiedRequest ? (
-                    <Check className="w-4 h-4" />
-                  ) : (
-                    <Copy className="w-4 h-4" />
-                  )}
-                  {copiedRequest ? "Copied" : "Copy"}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {site && !site.bio && !site.serviceArea && (
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm">
@@ -443,6 +360,15 @@ export function SiteSetupPage() {
           </button>
         </div>
       </form>
+
+      {/* Share Kit */}
+      {site && (
+        <ShareKit
+          slug={site.slug}
+          publicRequestToken={site.publicRequestToken}
+          brandName={site.brandName}
+        />
+      )}
     </div>
   );
 }
