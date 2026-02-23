@@ -302,6 +302,7 @@ export default defineSchema({
     timeWindow: v.optional(v.string()),
     notes: v.optional(v.string()),
     source: v.literal("public_link"),
+    propertyId: v.optional(v.id("properties")),
   })
     .index("by_companyId", ["companyId"])
     .index("by_companyId_status", ["companyId", "status"]),
