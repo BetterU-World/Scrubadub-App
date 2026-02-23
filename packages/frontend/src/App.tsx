@@ -36,6 +36,7 @@ import { PartnersPage } from "@/pages/owner/PartnersPage";
 import { RequestListPage } from "@/pages/owner/RequestListPage";
 import { RequestDetailPage } from "@/pages/owner/RequestDetailPage";
 import { SiteSetupPage } from "@/pages/owner/SiteSetupPage";
+import { CleanerLeadsPage } from "@/pages/owner/CleanerLeadsPage";
 
 // Worker pages (cleaner + maintenance unified)
 import { WorkerJobListPage } from "@/pages/worker/WorkerJobListPage";
@@ -136,7 +137,7 @@ export default function App() {
     "/login", "/signup", "/forgot-password", "/reset-password",
     "/invite", "/subscribe", "/billing", "/properties", "/employees",
     "/jobs", "/calendar", "/red-flags", "/performance", "/analytics",
-    "/partners", "/requests", "/audit-log", "/notifications", "/manuals",
+    "/partners", "/requests", "/cleaner-leads", "/audit-log", "/notifications", "/manuals",
     "/admin", "/site",
   ];
   const isKnownRoute = pathname === "/" || knownPrefixes.some((p) => pathname.startsWith(p));
@@ -219,6 +220,7 @@ export default function App() {
                 <Route path="/partners" component={PartnersPage} />
                 <Route path="/requests/:id" component={RequestDetailPage} />
                 <Route path="/requests" component={RequestListPage} />
+                <Route path="/cleaner-leads" component={CleanerLeadsPage} />
                 <Route path="/audit-log" component={AuditLogPage} />
                 <Route path="/subscribe" component={SubscribePage} />
                 <Route path="/billing/success" component={BillingSuccessPage} />
