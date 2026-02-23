@@ -49,6 +49,7 @@ export function JobFormPage() {
   const createJob = useMutation(api.mutations.jobs.create);
   const updateJob = useMutation(api.mutations.jobs.update);
   const shareJobMut = useMutation(api.mutations.partners.shareJob);
+  const updateRequestStatus = useMutation(api.mutations.clientRequests.updateRequestStatus);
 
   const [propertyId, setPropertyId] = useState("");
   const [selectedCleaners, setSelectedCleaners] = useState<string[]>([]);
@@ -62,6 +63,23 @@ export function JobFormPage() {
   const [partnerCompanyId, setPartnerCompanyId] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sourceRequestId, setSourceRequestId] = useState<string | null>(null);
+
+  // Prefill from client request (via sessionStorage)
+  useEffect(() => {
+    if (isEditing) return;
+    const raw = sessionStorage.getItem("clientRequestPrefill");
+    if (!raw) return;
+    sessionStorage.removeItem("clientRequestPrefill");
+    try {
+      const prefill = JSON.parse(raw);
+      if (prefill.scheduledDate) setScheduledDate(prefill.scheduledDate);
+      if (prefill.notes) setNotes(prefill.notes);
+      if (prefill.requestId) setSourceRequestId(prefill.requestId);
+    } catch {
+      // ignore malformed data
+    }
+  }, [isEditing]);
 
   useEffect(() => {
     if (existing) {
@@ -132,6 +150,17 @@ export function JobFormPage() {
             jobId: id as Id<"jobs">,
             toCompanyId: partnerCompanyId as Id<"companies">,
             sharePackage: true,
+          });
+        }
+
+        // Mark source client request as converted
+        if (sourceRequestId) {
+          await updateRequestStatus({
+            requestId: sourceRequestId as Id<"clientRequests">,
+            userId: uid,
+            status: "converted",
+          }).catch(() => {
+            // non-blocking — job was created successfully
           });
         }
 
