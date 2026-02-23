@@ -35,6 +35,7 @@ import { BillingCancelPage } from "@/pages/owner/BillingCancelPage";
 import { PartnersPage } from "@/pages/owner/PartnersPage";
 import { RequestListPage } from "@/pages/owner/RequestListPage";
 import { RequestDetailPage } from "@/pages/owner/RequestDetailPage";
+import { SiteSetupPage } from "@/pages/owner/SiteSetupPage";
 
 // Worker pages (cleaner + maintenance unified)
 import { WorkerJobListPage } from "@/pages/worker/WorkerJobListPage";
@@ -51,6 +52,8 @@ import { ManualViewerPage } from "@/pages/shared/ManualViewerPage";
 
 // Public pages (no auth required)
 import { PublicRequestPage } from "@/pages/public/PublicRequestPage";
+import { PublicSitePage } from "@/pages/public/PublicSitePage";
+import { CleanerStubPage } from "@/pages/public/CleanerStubPage";
 
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 
@@ -127,6 +130,29 @@ export default function App() {
     );
   }
 
+  // Public mini-site routes: /:slug and /:slug/cleaner
+  // Match paths that look like a slug (not a known app route)
+  const knownPrefixes = [
+    "/login", "/signup", "/forgot-password", "/reset-password",
+    "/invite", "/subscribe", "/billing", "/properties", "/employees",
+    "/jobs", "/calendar", "/red-flags", "/performance", "/analytics",
+    "/partners", "/requests", "/audit-log", "/notifications", "/manuals",
+    "/admin", "/site",
+  ];
+  const isKnownRoute = pathname === "/" || knownPrefixes.some((p) => pathname.startsWith(p));
+  const slugMatch = !isKnownRoute && /^\/[a-z0-9][a-z0-9-]+/.test(pathname);
+
+  if (slugMatch) {
+    return (
+      <ErrorBoundary>
+        <Switch>
+          <Route path="/:slug/cleaner" component={CleanerStubPage} />
+          <Route path="/:slug" component={PublicSitePage} />
+        </Switch>
+      </ErrorBoundary>
+    );
+  }
+
   // --- GUARD 1: Auth still loading — show spinner, NEVER redirect ---
   if (isLoading) {
     return <>{devBanner}<PageLoader /></>;
@@ -197,6 +223,7 @@ export default function App() {
                 <Route path="/subscribe" component={SubscribePage} />
                 <Route path="/billing/success" component={BillingSuccessPage} />
                 <Route path="/billing/cancel" component={BillingCancelPage} />
+                <Route path="/site" component={SiteSetupPage} />
               </>
             ) : (
               <>
