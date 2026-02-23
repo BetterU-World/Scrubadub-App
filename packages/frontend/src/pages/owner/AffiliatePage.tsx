@@ -7,7 +7,13 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { Copy, ExternalLink, Share2 } from "lucide-react";
 
-const BASE_URL = "https://scrubscrubscrub.com/?ref=";
+function getReferralBaseUrl(): string {
+  const h = window.location.hostname;
+  if (h === "localhost" || h === "127.0.0.1") {
+    return `${window.location.protocol}//${window.location.host}/?ref=`;
+  }
+  return "https://scrubscrubscrub.com/?ref=";
+}
 
 export function AffiliatePage() {
   const { user } = useAuth();
@@ -39,7 +45,7 @@ export function AffiliatePage() {
     return <PageLoader />;
   }
 
-  const fullUrl = `${BASE_URL}${referralCode}`;
+  const fullUrl = `${getReferralBaseUrl()}${referralCode}`;
   const socialCaption = `Need a reliable cleaner or want to join our team? Check this out: ${fullUrl}`;
 
   function copyToClipboard(text: string, label: string) {
