@@ -42,6 +42,7 @@ export default defineSchema({
     resetTokenExpiry: v.optional(v.number()),
     referralCode: v.optional(v.string()),
     referredByCode: v.optional(v.string()),
+    referredByUserId: v.optional(v.id("users")),
   })
     .index("by_email", ["email"])
     .index("by_companyId", ["companyId"])
@@ -325,6 +326,18 @@ export default defineSchema({
     .index("by_companyId_status_createdAt", ["companyId", "status", "createdAt"]),
 
   // ── Client Portal (Phase 1) ───────────────────────────────────────
+
+  // ── Affiliate Attribution (revenue tracking) ────────────────────
+  affiliateAttributions: defineTable({
+    purchaserUserId: v.id("users"),
+    referrerUserId: v.id("users"),
+    stripeCustomerId: v.optional(v.string()),
+    stripeSubscriptionId: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_purchaserUserId", ["purchaserUserId"])
+    .index("by_referrerUserId", ["referrerUserId"])
+    .index("by_stripeSubscriptionId", ["stripeSubscriptionId"]),
 
   clientRequests: defineTable({
     companyId: v.id("companies"),

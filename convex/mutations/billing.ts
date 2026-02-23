@@ -66,3 +66,57 @@ export const syncSubscription = internalMutation({
     });
   },
 });
+
+/**
+ * Record affiliate attribution when a referred user subscribes.
+ * Called from Stripe webhook on subscription created events.
+ * Idempotent: skips if attribution for this subscription already exists.
+ */
+export const recordAttribution = internalMutation({
+  args: {
+    stripeCustomerId: v.string(),
+    stripeSubscriptionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // 1. Find the company by stripeCustomerId
+    const company = await ctx.db
+      .query("companies")
+      .withIndex("by_stripeCustomerId", (q) =>
+        q.eq("stripeCustomerId", args.stripeCustomerId)
+      )
+      .first();
+
+    if (!company) return;
+
+    // 2. Find the owner user of the company
+    const owner = await ctx.db
+      .query("users")
+      .withIndex("by_companyId", (q) => q.eq("companyId", company._id))
+      .filter((q) => q.eq(q.field("role"), "owner"))
+      .first();
+
+    if (!owner) return;
+
+    // 3. Check if user was referred
+    if (!owner.referredByUserId) return;
+
+    // 4. Idempotent: check if attribution already exists for this subscription
+    const existing = await ctx.db
+      .query("affiliateAttributions")
+      .withIndex("by_stripeSubscriptionId", (q) =>
+        q.eq("stripeSubscriptionId", args.stripeSubscriptionId)
+      )
+      .first();
+
+    if (existing) return;
+
+    // 5. Create the attribution record
+    await ctx.db.insert("affiliateAttributions", {
+      purchaserUserId: owner._id,
+      referrerUserId: owner.referredByUserId,
+      stripeCustomerId: args.stripeCustomerId,
+      stripeSubscriptionId: args.stripeSubscriptionId,
+      createdAt: Date.now(),
+    });
+  },
+});

@@ -87,5 +87,13 @@ export const handleWebhook = action({
       status: subObj.status,
       currentPeriodEnd: subObj.current_period_end * 1000, // Convert to ms
     });
+
+    // Record affiliate attribution on new subscription
+    if (event.type === "customer.subscription.created") {
+      await ctx.runMutation(internal.mutations.billing.recordAttribution, {
+        stripeCustomerId: subObj.customer,
+        stripeSubscriptionId: subObj.id,
+      });
+    }
   },
 });
