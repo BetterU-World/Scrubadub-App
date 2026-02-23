@@ -4,7 +4,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import { Copy, ExternalLink, Check } from "lucide-react";
+import { Copy, ExternalLink, Check, Plus, X } from "lucide-react";
 
 export function SiteSetupPage() {
   const { user } = useAuth();
@@ -24,11 +24,16 @@ export function SiteSetupPage() {
   const [serviceArea, setServiceArea] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
   const [heroImageUrl, setHeroImageUrl] = useState("");
+  const [services, setServices] = useState<string[]>([]);
+  const [publicEmail, setPublicEmail] = useState("");
+  const [publicPhone, setPublicPhone] = useState("");
+  const [metaDescription, setMetaDescription] = useState("");
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copiedSite, setCopiedSite] = useState(false);
+  const [copiedRequest, setCopiedRequest] = useState(false);
 
   // Seed form when site data loads
   useEffect(() => {
@@ -40,12 +45,26 @@ export function SiteSetupPage() {
       setServiceArea(site.serviceArea);
       setLogoUrl(site.logoUrl ?? "");
       setHeroImageUrl(site.heroImageUrl ?? "");
+      setServices(site.services ?? []);
+      setPublicEmail(site.publicEmail ?? "");
+      setPublicPhone(site.publicPhone ?? "");
+      setMetaDescription(site.metaDescription ?? "");
     }
   }, [site]);
 
   if (!user || site === undefined) return <PageLoader />;
 
   const siteUrl = `${window.location.origin}/${slug || "your-slug"}`;
+
+  // Look up publicRequestToken from company
+  const companySitePublic = useQuery(
+    api.queries.companySites.getBySlug,
+    site?.slug ? { slug: site.slug } : "skip"
+  );
+  const requestToken = companySitePublic?.publicRequestToken;
+  const requestUrl = requestToken
+    ? `${window.location.origin}/r/${requestToken}`
+    : null;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -63,6 +82,10 @@ export function SiteSetupPage() {
         serviceArea: serviceArea.trim(),
         logoUrl: logoUrl.trim() || undefined,
         heroImageUrl: heroImageUrl.trim() || undefined,
+        services: services.filter((s) => s.trim().length > 0),
+        publicEmail: publicEmail.trim() || undefined,
+        publicPhone: publicPhone.trim() || undefined,
+        metaDescription: metaDescription.trim() || undefined,
       });
       setSaved(true);
     } catch (err: any) {
@@ -72,10 +95,37 @@ export function SiteSetupPage() {
     }
   };
 
-  const handleCopy = () => {
+  const handleCopySite = () => {
     navigator.clipboard.writeText(siteUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopiedSite(true);
+    setTimeout(() => setCopiedSite(false), 2000);
+  };
+
+  const handleCopyRequest = () => {
+    if (requestUrl) {
+      navigator.clipboard.writeText(requestUrl);
+      setCopiedRequest(true);
+      setTimeout(() => setCopiedRequest(false), 2000);
+    }
+  };
+
+  const addService = () => {
+    if (services.length < 8) {
+      setServices([...services, ""]);
+      setSaved(false);
+    }
+  };
+
+  const updateService = (index: number, value: string) => {
+    const next = [...services];
+    next[index] = value.slice(0, 60);
+    setServices(next);
+    setSaved(false);
+  };
+
+  const removeService = (index: number) => {
+    setServices(services.filter((_, i) => i !== index));
+    setSaved(false);
   };
 
   return (
@@ -85,38 +135,59 @@ export function SiteSetupPage() {
         description="Set up your public mini-site so clients can find you"
       />
 
-      {/* Preview link */}
+      {/* Link sharing cards */}
       {site && (
-        <div className="card mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-700 mb-1">
-              Your public site
-            </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          <div className="card flex flex-col gap-2">
+            <p className="text-sm font-medium text-gray-700">Website link</p>
             <p className="text-sm text-primary-600 truncate">{siteUrl}</p>
+            <div className="flex gap-2 mt-1">
+              <button
+                type="button"
+                onClick={handleCopySite}
+                className="btn-secondary flex items-center gap-1.5 text-sm"
+              >
+                {copiedSite ? (
+                  <Check className="w-4 h-4" />
+                ) : (
+                  <Copy className="w-4 h-4" />
+                )}
+                {copiedSite ? "Copied" : "Copy"}
+              </button>
+              <a
+                href={`/${site.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-secondary flex items-center gap-1.5 text-sm"
+              >
+                <ExternalLink className="w-4 h-4" />
+                Preview
+              </a>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={handleCopy}
-              className="btn-secondary flex items-center gap-1.5 text-sm"
-            >
-              {copied ? (
-                <Check className="w-4 h-4" />
-              ) : (
-                <Copy className="w-4 h-4" />
-              )}
-              {copied ? "Copied" : "Copy"}
-            </button>
-            <a
-              href={`/${site.slug}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-secondary flex items-center gap-1.5 text-sm"
-            >
-              <ExternalLink className="w-4 h-4" />
-              Preview
-            </a>
-          </div>
+
+          {requestUrl && (
+            <div className="card flex flex-col gap-2">
+              <p className="text-sm font-medium text-gray-700">
+                Request link
+              </p>
+              <p className="text-sm text-primary-600 truncate">{requestUrl}</p>
+              <div className="flex gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={handleCopyRequest}
+                  className="btn-secondary flex items-center gap-1.5 text-sm"
+                >
+                  {copiedRequest ? (
+                    <Check className="w-4 h-4" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
+                  {copiedRequest ? "Copied" : "Copy"}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -152,7 +223,7 @@ export function SiteSetupPage() {
               required
               placeholder="my-cleaning-co"
               pattern="[a-z0-9][a-z0-9-]{1,48}[a-z0-9]"
-              title="3–50 chars, lowercase letters, numbers, hyphens"
+              title="3-50 chars, lowercase letters, numbers, hyphens"
             />
           </div>
         </div>
@@ -228,6 +299,80 @@ export function SiteSetupPage() {
           />
         </div>
 
+        {/* Services list */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Services{" "}
+            <span className="font-normal text-gray-400">
+              (optional, up to 8)
+            </span>
+          </label>
+          <div className="space-y-2">
+            {services.map((svc, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <input
+                  className="input-field flex-1"
+                  value={svc}
+                  onChange={(e) => updateService(i, e.target.value)}
+                  placeholder={`Service ${i + 1}`}
+                  maxLength={60}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeService(i)}
+                  className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-gray-100"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+          {services.length < 8 && (
+            <button
+              type="button"
+              onClick={addService}
+              className="mt-2 text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
+            >
+              <Plus className="w-4 h-4" />
+              Add service
+            </button>
+          )}
+        </div>
+
+        {/* Public contact */}
+        <fieldset className="space-y-4">
+          <legend className="text-sm font-medium text-gray-700">
+            Public contact info{" "}
+            <span className="font-normal text-gray-400">(optional)</span>
+          </legend>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email
+            </label>
+            <input
+              type="email"
+              className="input-field"
+              value={publicEmail}
+              onChange={(e) => { setPublicEmail(e.target.value); setSaved(false); }}
+              placeholder="hello@cleaningco.com"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Phone
+            </label>
+            <input
+              type="tel"
+              className="input-field"
+              value={publicPhone}
+              onChange={(e) => { setPublicPhone(e.target.value); setSaved(false); }}
+              placeholder="(555) 123-4567"
+            />
+          </div>
+        </fieldset>
+
         {/* Logo URL */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -256,6 +401,28 @@ export function SiteSetupPage() {
             onChange={(e) => { setHeroImageUrl(e.target.value); setSaved(false); }}
             placeholder="https://example.com/hero.jpg"
           />
+        </div>
+
+        {/* Meta description */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Meta description{" "}
+            <span className="font-normal text-gray-400">(optional, SEO)</span>
+          </label>
+          <textarea
+            className="input-field"
+            rows={2}
+            value={metaDescription}
+            onChange={(e) => {
+              setMetaDescription(e.target.value.slice(0, 160));
+              setSaved(false);
+            }}
+            placeholder="Short description for search engines..."
+            maxLength={160}
+          />
+          <p className="text-xs text-gray-400 mt-1">
+            {metaDescription.length}/160
+          </p>
         </div>
 
         {/* Submit */}
