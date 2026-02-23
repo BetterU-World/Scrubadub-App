@@ -33,6 +33,8 @@ import { SubscribePage } from "@/pages/owner/SubscribePage";
 import { BillingSuccessPage } from "@/pages/owner/BillingSuccessPage";
 import { BillingCancelPage } from "@/pages/owner/BillingCancelPage";
 import { PartnersPage } from "@/pages/owner/PartnersPage";
+import { RequestListPage } from "@/pages/owner/RequestListPage";
+import { RequestDetailPage } from "@/pages/owner/RequestDetailPage";
 
 // Worker pages (cleaner + maintenance unified)
 import { WorkerJobListPage } from "@/pages/worker/WorkerJobListPage";
@@ -189,6 +191,8 @@ export default function App() {
                 <Route path="/performance" component={PerformancePage} />
                 <Route path="/analytics" component={AnalyticsPage} />
                 <Route path="/partners" component={PartnersPage} />
+                <Route path="/requests/:id" component={RequestDetailPage} />
+                <Route path="/requests" component={RequestListPage} />
                 <Route path="/audit-log" component={AuditLogPage} />
                 <Route path="/subscribe" component={SubscribePage} />
                 <Route path="/billing/success" component={BillingSuccessPage} />
