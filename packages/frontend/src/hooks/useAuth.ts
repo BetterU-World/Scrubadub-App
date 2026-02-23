@@ -14,6 +14,7 @@ interface AuthUser {
   companyName: string;
   status: string;
   phone?: string;
+  referralCode?: string;
   isSuperadmin?: boolean;
 }
 

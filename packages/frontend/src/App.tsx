@@ -37,6 +37,7 @@ import { RequestListPage } from "@/pages/owner/RequestListPage";
 import { RequestDetailPage } from "@/pages/owner/RequestDetailPage";
 import { SiteSetupPage } from "@/pages/owner/SiteSetupPage";
 import { CleanerLeadsPage } from "@/pages/owner/CleanerLeadsPage";
+import { AffiliatePage } from "@/pages/owner/AffiliatePage";
 
 // Worker pages (cleaner + maintenance unified)
 import { WorkerJobListPage } from "@/pages/worker/WorkerJobListPage";
@@ -138,7 +139,7 @@ export default function App() {
     "/invite", "/subscribe", "/billing", "/properties", "/employees",
     "/jobs", "/calendar", "/red-flags", "/performance", "/analytics",
     "/partners", "/requests", "/cleaner-leads", "/audit-log", "/notifications", "/manuals",
-    "/admin", "/site",
+    "/admin", "/site", "/affiliate",
   ];
   const isKnownRoute = pathname === "/" || knownPrefixes.some((p) => pathname.startsWith(p));
   const slugMatch = !isKnownRoute && /^\/[a-z0-9][a-z0-9-]+/.test(pathname);
@@ -249,6 +250,7 @@ export default function App() {
               <SubscriptionInactive />
             </Route>
           )}
+          <Route path="/affiliate" component={AffiliatePage} />
           <Route path="/notifications" component={NotificationsPage} />
           <Route path="/manuals/:slug" component={ManualViewerPage} />
           <Route path="/manuals" component={ManualsPage} />
