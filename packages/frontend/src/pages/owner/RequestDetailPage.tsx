@@ -52,6 +52,26 @@ export function RequestDetailPage() {
 
   const canAct = request.status === "new" || request.status === "accepted";
 
+  const handleConvert = () => {
+    const notesParts: string[] = ["Client Request:"];
+    if (request.requesterName) notesParts.push(`Name: ${request.requesterName}`);
+    if (request.requesterEmail) notesParts.push(`Email: ${request.requesterEmail}`);
+    if (request.timeWindow) notesParts.push(`Time window: ${request.timeWindow}`);
+    if (request.notes) notesParts.push(`---\n${request.notes}`);
+
+    sessionStorage.setItem(
+      "clientRequestPrefill",
+      JSON.stringify({
+        requestId: request._id,
+        scheduledDate: request.requestedDate || "",
+        address: request.propertySnapshot?.address || "",
+        propertyName: request.propertySnapshot?.name || "",
+        notes: notesParts.join("\n"),
+      })
+    );
+    setLocation("/jobs/new");
+  };
+
   const handleDecline = async () => {
     setDeclining(true);
     try {
@@ -79,9 +99,8 @@ export function RequestDetailPage() {
           canAct ? (
             <div className="flex gap-2">
               <button
-                disabled
-                className="btn-primary flex items-center gap-2 opacity-50 cursor-not-allowed"
-                title="Coming soon"
+                onClick={handleConvert}
+                className="btn-primary flex items-center gap-2"
               >
                 <Briefcase className="w-4 h-4" /> Convert to Job
               </button>

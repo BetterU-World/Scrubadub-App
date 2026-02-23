@@ -63,13 +63,12 @@ export const createClientRequestByToken = mutation({
 /**
  * Update the status of a client request.
  * Auth-gated: caller must be an owner in the same company as the request.
- * Phase 3 allows only: "declined".
  */
 export const updateRequestStatus = mutation({
   args: {
     requestId: v.id("clientRequests"),
     userId: v.optional(v.id("users")),
-    status: v.union(v.literal("declined")),
+    status: v.union(v.literal("declined"), v.literal("converted")),
   },
   handler: async (ctx, args) => {
     const owner = await requireOwner(ctx, args.userId);
