@@ -277,6 +277,21 @@ export default defineSchema({
     .index("by_toCompanyId", ["toCompanyId"])
     .index("by_toCompanyId_status", ["toCompanyId", "status"]),
 
+  // ── Owner Mini Sites (v1) ────────────────────────────────────────
+
+  companySites: defineTable({
+    companyId: v.id("companies"),
+    slug: v.string(),
+    templateId: v.union(v.literal("A"), v.literal("B")),
+    brandName: v.string(),
+    bio: v.string(),
+    serviceArea: v.string(),
+    logoUrl: v.optional(v.string()),
+    heroImageUrl: v.optional(v.string()),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_slug", ["slug"]),
+
   // ── Client Portal (Phase 1) ───────────────────────────────────────
 
   clientRequests: defineTable({

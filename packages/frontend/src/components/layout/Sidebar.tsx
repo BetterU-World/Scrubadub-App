@@ -15,6 +15,7 @@ import {
   BookOpen,
   Handshake,
   Inbox,
+  Globe,
 } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -32,6 +33,7 @@ const ownerNav = [
   { href: "/analytics", label: "Analytics", icon: TrendingUp },
   { href: "/partners", label: "Partners", icon: Handshake },
   { href: "/requests", label: "Requests", icon: Inbox },
+  { href: "/site", label: "My Site", icon: Globe },
   { href: "/notifications", label: "Notifications", icon: Bell },
   { href: "/audit-log", label: "Audit Log", icon: ScrollText },
   { href: "/manuals", label: "Manuals", icon: BookOpen },
