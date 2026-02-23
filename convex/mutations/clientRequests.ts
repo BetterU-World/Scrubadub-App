@@ -1,5 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
+import { requireOwner } from "../lib/helpers";
 
 /**
  * Public mutation – called by external visitors via a company's public
@@ -56,5 +57,31 @@ export const createClientRequestByToken = mutation({
     });
 
     return requestId;
+  },
+});
+
+/**
+ * Update the status of a client request.
+ * Auth-gated: caller must be an owner in the same company as the request.
+ * Phase 3 allows only: "declined".
+ */
+export const updateRequestStatus = mutation({
+  args: {
+    requestId: v.id("clientRequests"),
+    userId: v.optional(v.id("users")),
+    status: v.union(v.literal("declined")),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+
+    const request = await ctx.db.get(args.requestId);
+    if (!request) {
+      throw new Error("Request not found");
+    }
+    if (request.companyId !== owner.companyId) {
+      throw new Error("Access denied");
+    }
+
+    await ctx.db.patch(args.requestId, { status: args.status });
   },
 });
