@@ -44,6 +44,14 @@ const stripeWebhook = httpAction(async (ctx, request) => {
         currentPeriodEnd: (subscription as any).current_period_end ?? 0,
         cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
       });
+
+      // Record affiliate attribution on new subscription
+      if (event.type === "customer.subscription.created") {
+        await ctx.runMutation(internal.mutations.billing.recordAttribution, {
+          stripeCustomerId: subscription.customer as string,
+          stripeSubscriptionId: subscription.id,
+        });
+      }
       break;
     }
     case "invoice.payment_succeeded":

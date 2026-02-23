@@ -60,6 +60,9 @@ export const setReferredByCode = mutation({
     if (!referrer) return; // invalid code — silently ignore
     if (referrer._id === user._id) return; // prevent self-referral
 
-    await ctx.db.patch(user._id, { referredByCode: args.refCode });
+    await ctx.db.patch(user._id, {
+      referredByCode: args.refCode,
+      referredByUserId: referrer._id,
+    });
   },
 });
