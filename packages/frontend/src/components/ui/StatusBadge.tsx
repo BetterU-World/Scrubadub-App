@@ -19,6 +19,9 @@ const statusStyles: Record<string, string> = {
   open: "bg-red-100 text-red-800",
   acknowledged: "bg-yellow-100 text-yellow-800",
   resolved: "bg-green-100 text-green-800",
+  reviewed: "bg-yellow-100 text-yellow-800",
+  contacted: "bg-indigo-100 text-indigo-800",
+  archived: "bg-gray-100 text-gray-600",
 };
 
 interface StatusBadgeProps {

@@ -292,6 +292,29 @@ export default defineSchema({
     .index("by_companyId", ["companyId"])
     .index("by_slug", ["slug"]),
 
+  // ── Cleaner Leads (v1) ──────────────────────────────────────────────
+
+  cleanerLeads: defineTable({
+    companyId: v.id("companies"),
+    createdAt: v.number(),
+    status: v.union(
+      v.literal("new"),
+      v.literal("reviewed"),
+      v.literal("contacted"),
+      v.literal("archived")
+    ),
+    name: v.string(),
+    email: v.string(),
+    phone: v.optional(v.string()),
+    city: v.optional(v.string()),
+    hasCar: v.optional(v.boolean()),
+    experience: v.optional(v.string()),
+    availability: v.optional(v.string()),
+    notes: v.optional(v.string()),
+  })
+    .index("by_companyId_createdAt", ["companyId", "createdAt"])
+    .index("by_companyId_status_createdAt", ["companyId", "status", "createdAt"]),
+
   // ── Client Portal (Phase 1) ───────────────────────────────────────
 
   clientRequests: defineTable({
