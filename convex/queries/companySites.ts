@@ -52,10 +52,18 @@ export const getMySite = query({
       throw new Error("Access denied");
     }
 
-    return await ctx.db
+    const site = await ctx.db
       .query("companySites")
       .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
       .first();
+
+    if (!site) return null;
+
+    const company = await ctx.db.get(args.companyId);
+    return {
+      ...site,
+      publicRequestToken: company?.publicRequestToken ?? null,
+    };
   },
 });
 

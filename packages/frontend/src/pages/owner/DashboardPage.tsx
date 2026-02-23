@@ -4,6 +4,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
+import { SuccessModal, shouldShowSuccessModal } from "@/components/owner/SuccessModal";
 import { Link } from "wouter";
 import {
   Building2,
@@ -29,10 +30,27 @@ export function DashboardPage() {
     user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
   );
 
+  // Success modal for first-time owners
+  const [showSuccess, setShowSuccess] = useState(shouldShowSuccessModal);
+  const mySite = useQuery(
+    api.queries.companySites.getMySite,
+    user?.companyId && user?.role === "owner" && showSuccess
+      ? { companyId: user.companyId, userId: user._id }
+      : "skip"
+  );
+
   if (!user) return <PageLoader />;
 
   return (
     <div>
+      {showSuccess && mySite && (
+        <SuccessModal
+          slug={mySite.slug}
+          publicRequestToken={mySite.publicRequestToken}
+          onDismiss={() => setShowSuccess(false)}
+        />
+      )}
+
       <PageHeader
         title={`Welcome back, ${user.name.split(" ")[0]}`}
         description={user.companyName}
