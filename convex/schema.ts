@@ -47,7 +47,8 @@ export default defineSchema({
     .index("by_companyId", ["companyId"])
     .index("by_inviteToken", ["inviteToken"])
     .index("by_resetToken", ["resetToken"])
-    .index("by_referralCode", ["referralCode"]),
+    .index("by_referralCode", ["referralCode"])
+    .index("by_referredByCode", ["referredByCode"]),
 
   properties: defineTable({
     companyId: v.id("companies"),
