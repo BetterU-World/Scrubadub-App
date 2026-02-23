@@ -333,11 +333,18 @@ export default defineSchema({
     referrerUserId: v.id("users"),
     stripeCustomerId: v.optional(v.string()),
     stripeSubscriptionId: v.optional(v.string()),
+    attributionType: v.optional(
+      v.union(v.literal("subscription_created"), v.literal("invoice_paid"))
+    ),
+    stripeInvoiceId: v.optional(v.string()),
+    amountCents: v.optional(v.number()),
+    currency: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_purchaserUserId", ["purchaserUserId"])
     .index("by_referrerUserId", ["referrerUserId"])
-    .index("by_stripeSubscriptionId", ["stripeSubscriptionId"]),
+    .index("by_stripeSubscriptionId", ["stripeSubscriptionId"])
+    .index("by_stripeInvoiceId", ["stripeInvoiceId"]),
 
   clientRequests: defineTable({
     companyId: v.id("companies"),

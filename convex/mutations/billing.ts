@@ -76,6 +76,12 @@ export const recordAttribution = internalMutation({
   args: {
     stripeCustomerId: v.string(),
     stripeSubscriptionId: v.string(),
+    attributionType: v.optional(
+      v.union(v.literal("subscription_created"), v.literal("invoice_paid"))
+    ),
+    stripeInvoiceId: v.optional(v.string()),
+    amountCents: v.optional(v.number()),
+    currency: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // 1. Find the company by stripeCustomerId
@@ -100,15 +106,26 @@ export const recordAttribution = internalMutation({
     // 3. Check if user was referred
     if (!owner.referredByUserId) return;
 
-    // 4. Idempotent: check if attribution already exists for this subscription
-    const existing = await ctx.db
-      .query("affiliateAttributions")
-      .withIndex("by_stripeSubscriptionId", (q) =>
-        q.eq("stripeSubscriptionId", args.stripeSubscriptionId)
-      )
-      .first();
-
-    if (existing) return;
+    // 4. Idempotent dedup
+    if (args.attributionType === "invoice_paid" && args.stripeInvoiceId) {
+      // Dedup by invoice ID for invoice_paid events
+      const existingInvoice = await ctx.db
+        .query("affiliateAttributions")
+        .withIndex("by_stripeInvoiceId", (q) =>
+          q.eq("stripeInvoiceId", args.stripeInvoiceId)
+        )
+        .first();
+      if (existingInvoice) return;
+    } else {
+      // Dedup by subscription ID for subscription_created events
+      const existingSub = await ctx.db
+        .query("affiliateAttributions")
+        .withIndex("by_stripeSubscriptionId", (q) =>
+          q.eq("stripeSubscriptionId", args.stripeSubscriptionId)
+        )
+        .first();
+      if (existingSub) return;
+    }
 
     // 5. Create the attribution record
     await ctx.db.insert("affiliateAttributions", {
@@ -116,6 +133,10 @@ export const recordAttribution = internalMutation({
       referrerUserId: owner.referredByUserId,
       stripeCustomerId: args.stripeCustomerId,
       stripeSubscriptionId: args.stripeSubscriptionId,
+      attributionType: args.attributionType,
+      stripeInvoiceId: args.stripeInvoiceId,
+      amountCents: args.amountCents,
+      currency: args.currency,
       createdAt: Date.now(),
     });
   },

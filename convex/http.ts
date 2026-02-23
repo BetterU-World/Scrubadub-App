@@ -50,6 +50,21 @@ const stripeWebhook = httpAction(async (ctx, request) => {
         await ctx.runMutation(internal.mutations.billing.recordAttribution, {
           stripeCustomerId: subscription.customer as string,
           stripeSubscriptionId: subscription.id,
+          attributionType: "subscription_created",
+        });
+      }
+      break;
+    }
+    case "invoice.paid": {
+      const invoice = event.data.object as Stripe.Invoice;
+      if (invoice.subscription) {
+        await ctx.runMutation(internal.mutations.billing.recordAttribution, {
+          stripeCustomerId: invoice.customer as string,
+          stripeSubscriptionId: invoice.subscription as string,
+          attributionType: "invoice_paid",
+          stripeInvoiceId: invoice.id,
+          amountCents: invoice.amount_paid,
+          currency: invoice.currency,
         });
       }
       break;
