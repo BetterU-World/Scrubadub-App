@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { requireUserId } from "@/lib/requireUserId";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
-import { Copy, ExternalLink, Share2 } from "lucide-react";
+import { Copy, ExternalLink, Share2, Users } from "lucide-react";
 
 function getReferralBaseUrl(): string {
   const h = window.location.hostname;
@@ -19,6 +19,7 @@ export function AffiliatePage() {
   const { user } = useAuth();
   const uid = requireUserId(user);
   const ensureReferralCode = useMutation(api.mutations.affiliate.ensureReferralCode);
+  const referrals = useQuery(api.queries.affiliate.getMyReferrals, uid ? { userId: uid } : "skip");
 
   const [referralCode, setReferralCode] = useState<string | null>(
     user?.referralCode ?? null
@@ -95,6 +96,40 @@ export function AffiliatePage() {
             {copied === "social" ? "Copied!" : "Copy social caption"}
           </button>
         </div>
+      </div>
+
+      {/* ── Your Referrals ── */}
+      <div className="bg-white rounded-lg shadow p-6 max-w-xl mt-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Users className="h-5 w-5 text-gray-500" />
+          <h2 className="text-lg font-semibold text-gray-900">
+            Your Referrals
+            {referrals && referrals.length > 0 && (
+              <span className="ml-2 text-sm font-normal text-gray-500">
+                ({referrals.length})
+              </span>
+            )}
+          </h2>
+        </div>
+
+        {referrals === undefined ? (
+          <p className="text-sm text-gray-400">Loading...</p>
+        ) : referrals.length === 0 ? (
+          <p className="text-sm text-gray-500">
+            No referrals yet — share your link!
+          </p>
+        ) : (
+          <ul className="divide-y divide-gray-100">
+            {referrals.map((r) => (
+              <li key={r.userId} className="py-3 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{r.name}</p>
+                  <p className="text-sm text-gray-500">{r.email}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );
