@@ -288,6 +288,11 @@ export default defineSchema({
     serviceArea: v.string(),
     logoUrl: v.optional(v.string()),
     heroImageUrl: v.optional(v.string()),
+    // v1 polish
+    services: v.optional(v.array(v.string())),
+    publicEmail: v.optional(v.string()),
+    publicPhone: v.optional(v.string()),
+    metaDescription: v.optional(v.string()),
   })
     .index("by_companyId", ["companyId"])
     .index("by_slug", ["slug"]),

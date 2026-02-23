@@ -29,6 +29,10 @@ export const getBySlug = query({
       logoUrl: site.logoUrl,
       heroImageUrl: site.heroImageUrl,
       publicRequestToken: company.publicRequestToken ?? null,
+      services: site.services ?? [],
+      publicEmail: site.publicEmail ?? null,
+      publicPhone: site.publicPhone ?? null,
+      metaDescription: site.metaDescription ?? null,
     };
   },
 });

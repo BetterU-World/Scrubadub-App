@@ -1,8 +1,54 @@
+import { useEffect } from "react";
 import { useParams } from "wouter";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import { MapPin } from "lucide-react";
+import { MapPin, Mail, Phone, CheckCircle } from "lucide-react";
+
+// ── SEO helper ────────────────────────────────────────────────────────
+
+function usePageMeta(meta: {
+  title: string;
+  description: string;
+  ogType?: string;
+} | null) {
+  useEffect(() => {
+    if (!meta) return;
+
+    const prev = document.title;
+    document.title = meta.title;
+
+    const tags: { name?: string; property?: string; content: string }[] = [
+      { name: "description", content: meta.description },
+      { property: "og:title", content: meta.title },
+      { property: "og:description", content: meta.description },
+      { property: "og:type", content: meta.ogType ?? "website" },
+    ];
+
+    const created: HTMLMetaElement[] = [];
+    for (const tag of tags) {
+      const selector = tag.property
+        ? `meta[property="${tag.property}"]`
+        : `meta[name="${tag.name}"]`;
+      let el = document.querySelector<HTMLMetaElement>(selector);
+      if (!el) {
+        el = document.createElement("meta");
+        if (tag.property) el.setAttribute("property", tag.property);
+        if (tag.name) el.setAttribute("name", tag.name);
+        document.head.appendChild(el);
+        created.push(el);
+      }
+      el.setAttribute("content", tag.content);
+    }
+
+    return () => {
+      document.title = prev;
+      created.forEach((el) => el.remove());
+    };
+  }, [meta?.title, meta?.description, meta?.ogType]);
+}
+
+// ── Page component ───────────────────────────────────────────────────
 
 export function PublicSitePage() {
   const params = useParams<{ slug: string }>();
@@ -11,6 +57,18 @@ export function PublicSitePage() {
   const site = useQuery(
     api.queries.companySites.getBySlug,
     slug ? { slug } : "skip"
+  );
+
+  // Set SEO tags when site data loads
+  usePageMeta(
+    site
+      ? {
+          title: `${site.brandName} | Scrubadub`,
+          description:
+            site.metaDescription ||
+            `Professional cleaning services in ${site.serviceArea}`,
+        }
+      : null
   );
 
   if (site === undefined) {
@@ -58,12 +116,75 @@ interface SiteData {
   serviceArea: string;
   logoUrl?: string | null;
   heroImageUrl?: string | null;
+  services: string[];
+  publicEmail?: string | null;
+  publicPhone?: string | null;
 }
 
 interface TemplateProps {
   site: SiteData;
   requestHref: string | null;
   cleanerHref: string;
+}
+
+// ── Shared sections ──────────────────────────────────────────────────
+
+function ServicesSection({ services }: { services: string[] }) {
+  if (services.length === 0) return null;
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+      <h2 className="text-lg font-semibold text-gray-900 mb-3">
+        Our Services
+      </h2>
+      <ul className="space-y-2">
+        {services.map((svc, i) => (
+          <li key={i} className="flex items-start gap-2 text-gray-700">
+            <CheckCircle className="w-4 h-4 text-primary-500 mt-0.5 flex-shrink-0" />
+            {svc}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function ContactSection({
+  email,
+  phone,
+}: {
+  email?: string | null;
+  phone?: string | null;
+}) {
+  if (!email && !phone) return null;
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+      <h2 className="text-lg font-semibold text-gray-900 mb-3">Contact</h2>
+      <div className="space-y-2 text-sm">
+        {email && (
+          <div className="flex items-center gap-2 text-gray-600">
+            <Mail className="w-4 h-4 text-gray-400" />
+            <a
+              href={`mailto:${email}`}
+              className="text-primary-600 hover:underline"
+            >
+              {email}
+            </a>
+          </div>
+        )}
+        {phone && (
+          <div className="flex items-center gap-2 text-gray-600">
+            <Phone className="w-4 h-4 text-gray-400" />
+            <a
+              href={`tel:${phone}`}
+              className="text-primary-600 hover:underline"
+            >
+              {phone}
+            </a>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // ── Template A: Clean & Minimal ───────────────────────────────────────
@@ -100,6 +221,12 @@ function TemplateA({ site, requestHref, cleanerHref }: TemplateProps) {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
           <p className="text-gray-700 whitespace-pre-line">{site.bio}</p>
         </div>
+
+        {/* Services */}
+        <ServicesSection services={site.services} />
+
+        {/* Contact */}
+        <ContactSection email={site.publicEmail} phone={site.publicPhone} />
 
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row gap-3">
@@ -165,6 +292,12 @@ function TemplateB({ site, requestHref, cleanerHref }: TemplateProps) {
           </h2>
           <p className="text-gray-700 whitespace-pre-line">{site.bio}</p>
         </div>
+
+        {/* Services */}
+        <ServicesSection services={site.services} />
+
+        {/* Contact */}
+        <ContactSection email={site.publicEmail} phone={site.publicPhone} />
 
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row gap-3 pb-12">

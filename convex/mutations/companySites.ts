@@ -29,6 +29,7 @@ const RESERVED_SLUGS = new Set([
   "notifications",
   "manuals",
   "site",
+  "cleaner-leads",
 ]);
 
 function validateSlug(slug: string) {
@@ -57,6 +58,10 @@ export const upsertSite = mutation({
     serviceArea: v.string(),
     logoUrl: v.optional(v.string()),
     heroImageUrl: v.optional(v.string()),
+    services: v.optional(v.array(v.string())),
+    publicEmail: v.optional(v.string()),
+    publicPhone: v.optional(v.string()),
+    metaDescription: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await requireOwner(ctx, args.userId);
@@ -82,6 +87,12 @@ export const upsertSite = mutation({
       throw new Error("This slug is already taken.");
     }
 
+    // Validate & sanitize services list
+    const services = (args.services ?? [])
+      .map((s) => s.trim().slice(0, 60))
+      .filter((s) => s.length > 0)
+      .slice(0, 8);
+
     const data = {
       companyId: args.companyId,
       slug,
@@ -91,7 +102,11 @@ export const upsertSite = mutation({
       serviceArea: args.serviceArea.trim(),
       logoUrl: args.logoUrl,
       heroImageUrl: args.heroImageUrl,
-    } as const;
+      services: services.length > 0 ? services : undefined,
+      publicEmail: args.publicEmail?.trim() || undefined,
+      publicPhone: args.publicPhone?.trim() || undefined,
+      metaDescription: args.metaDescription?.trim().slice(0, 160) || undefined,
+    };
 
     if (existing) {
       await ctx.db.patch(existing._id, data);
