@@ -84,6 +84,13 @@ export const recordAttribution = internalMutation({
     currency: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    console.log("[attribution:mutation] recordAttribution called", {
+      stripeCustomerId: args.stripeCustomerId,
+      attributionType: args.attributionType,
+      stripeInvoiceId: args.stripeInvoiceId,
+      stripeSubscriptionId: args.stripeSubscriptionId,
+    });
+
     // 1. Find the company by stripeCustomerId
     const company = await ctx.db
       .query("companies")
@@ -92,7 +99,14 @@ export const recordAttribution = internalMutation({
       )
       .first();
 
-    if (!company) return;
+    if (!company) {
+      console.warn("[attribution:mutation] EXIT — no company found for stripeCustomerId:", args.stripeCustomerId);
+      return;
+    }
+    console.log("[attribution:mutation] company found", {
+      companyId: company._id,
+      companyStripeCustomerId: company.stripeCustomerId,
+    });
 
     // 2. Find the owner user of the company
     const owner = await ctx.db
@@ -101,10 +115,20 @@ export const recordAttribution = internalMutation({
       .filter((q) => q.eq(q.field("role"), "owner"))
       .first();
 
-    if (!owner) return;
+    if (!owner) {
+      console.warn("[attribution:mutation] EXIT — no owner found for company:", company._id);
+      return;
+    }
+    console.log("[attribution:mutation] owner found", {
+      ownerId: owner._id,
+      referredByUserId: owner.referredByUserId ?? "NONE",
+    });
 
     // 3. Check if user was referred
-    if (!owner.referredByUserId) return;
+    if (!owner.referredByUserId) {
+      console.log("[attribution:mutation] EXIT — owner has no referredByUserId");
+      return;
+    }
 
     // 4. Idempotent dedup
     if (args.attributionType === "invoice_paid" && args.stripeInvoiceId) {
@@ -115,7 +139,10 @@ export const recordAttribution = internalMutation({
           q.eq("stripeInvoiceId", args.stripeInvoiceId)
         )
         .first();
-      if (existingInvoice) return;
+      if (existingInvoice) {
+        console.log("[attribution:mutation] EXIT — duplicate invoice_paid for invoiceId:", args.stripeInvoiceId);
+        return;
+      }
     } else {
       // Dedup by subscription ID for subscription_created events
       const existingSub = await ctx.db
@@ -124,11 +151,14 @@ export const recordAttribution = internalMutation({
           q.eq("stripeSubscriptionId", args.stripeSubscriptionId)
         )
         .first();
-      if (existingSub) return;
+      if (existingSub) {
+        console.log("[attribution:mutation] EXIT — duplicate subscription_created for subscriptionId:", args.stripeSubscriptionId);
+        return;
+      }
     }
 
     // 5. Create the attribution record
-    await ctx.db.insert("affiliateAttributions", {
+    const insertedId = await ctx.db.insert("affiliateAttributions", {
       purchaserUserId: owner._id,
       referrerUserId: owner.referredByUserId,
       stripeCustomerId: args.stripeCustomerId,
@@ -139,5 +169,6 @@ export const recordAttribution = internalMutation({
       currency: args.currency,
       createdAt: Date.now(),
     });
+    console.log("[attribution:mutation] SUCCESS — inserted affiliateAttribution:", insertedId);
   },
 });

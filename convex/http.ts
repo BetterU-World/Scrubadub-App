@@ -35,9 +35,13 @@ const stripeWebhook = httpAction(async (ctx, request) => {
     case "customer.subscription.updated":
     case "customer.subscription.deleted": {
       const subscription = event.data.object as Stripe.Subscription;
+      const subCustomerId =
+        typeof subscription.customer === "string"
+          ? subscription.customer
+          : subscription.customer?.id ?? "";
       const priceId = subscription.items?.data?.[0]?.price?.id ?? "";
       await ctx.runMutation(internal.mutations.billing.syncSubscription, {
-        stripeCustomerId: subscription.customer as string,
+        stripeCustomerId: subCustomerId,
         stripeSubscriptionId: subscription.id,
         stripePriceId: priceId,
         status: subscription.status,
@@ -48,7 +52,7 @@ const stripeWebhook = httpAction(async (ctx, request) => {
       // Record affiliate attribution on new subscription
       if (event.type === "customer.subscription.created") {
         await ctx.runMutation(internal.mutations.billing.recordAttribution, {
-          stripeCustomerId: subscription.customer as string,
+          stripeCustomerId: subCustomerId,
           stripeSubscriptionId: subscription.id,
           attributionType: "subscription_created",
         });
@@ -57,14 +61,47 @@ const stripeWebhook = httpAction(async (ctx, request) => {
     }
     case "invoice.paid": {
       const invoice = event.data.object as Stripe.Invoice;
-      if (invoice.subscription) {
-        await ctx.runMutation(internal.mutations.billing.recordAttribution, {
-          stripeCustomerId: invoice.customer as string,
-          stripeSubscriptionId: invoice.subscription as string,
-          attributionType: "invoice_paid",
+      // Extract string IDs — Stripe may expand these to full objects
+      const invoiceCustomerId =
+        typeof invoice.customer === "string"
+          ? invoice.customer
+          : invoice.customer?.id ?? null;
+      const invoiceSubscriptionId =
+        typeof invoice.subscription === "string"
+          ? invoice.subscription
+          : invoice.subscription?.id ?? null;
+
+      console.log("[attribution:http] invoice.paid received", {
+        eventId: event.id,
+        eventType: event.type,
+        invoiceId: invoice.id,
+        rawCustomerType: typeof invoice.customer,
+        rawCustomerValue: String(invoice.customer).slice(0, 80),
+        resolvedCustomerId: invoiceCustomerId,
+        rawSubscriptionType: typeof invoice.subscription,
+        resolvedSubscriptionId: invoiceSubscriptionId,
+        amountPaid: invoice.amount_paid,
+        currency: invoice.currency,
+      });
+
+      if (invoiceCustomerId && invoiceSubscriptionId) {
+        const attrArgs = {
+          stripeCustomerId: invoiceCustomerId,
+          stripeSubscriptionId: invoiceSubscriptionId,
+          attributionType: "invoice_paid" as const,
           stripeInvoiceId: invoice.id,
           amountCents: invoice.amount_paid,
           currency: invoice.currency,
+        };
+        console.log("[attribution:http] calling recordAttribution with", attrArgs);
+        await ctx.runMutation(
+          internal.mutations.billing.recordAttribution,
+          attrArgs,
+        );
+      } else {
+        console.warn("[attribution:http] skipping recordAttribution — missing customerId or subscriptionId", {
+          invoiceCustomerId,
+          invoiceSubscriptionId,
         });
       }
       break;
