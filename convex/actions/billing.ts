@@ -33,9 +33,7 @@ export const createCheckoutSession = action({
     const stripe: any = getStripe();
 
     // Create or retrieve Stripe customer
-    let customerId: string | undefined = data.stripeCustomerId as
-      | string
-      | undefined;
+    let customerId: string | undefined = data.stripeCustomerId;
 
     if (!customerId) {
       const customer: any = await stripe.customers.create({
@@ -99,7 +97,7 @@ export const createBillingPortalSession = action({
       process.env.APP_URL ?? "https://scrubadub-app-frontend.vercel.app";
 
     const session: any = await stripe.billingPortal.sessions.create({
-      customer: data.stripeCustomerId as string,
+      customer: data.stripeCustomerId,
       return_url: APP_URL,
     });
 
