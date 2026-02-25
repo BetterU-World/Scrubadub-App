@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { AffiliateRevenueTab } from "@/components/affiliate/AffiliateRevenueTab";
+import { AffiliateLedgerTab } from "@/components/affiliate/AffiliateLedgerTab";
 import { Copy, ExternalLink, Share2, Users } from "lucide-react";
 
 function getReferralBaseUrl(): string {
@@ -15,7 +16,7 @@ function getReferralBaseUrl(): string {
   return "https://scrubscrubscrub.com/?ref=";
 }
 
-type Tab = "referrals" | "revenue";
+type Tab = "referrals" | "revenue" | "ledger";
 
 export function AffiliatePage() {
   const { user, userId, isLoading } = useAuth();
@@ -67,6 +68,7 @@ export function AffiliatePage() {
   const tabs: { key: Tab; label: string }[] = [
     { key: "referrals", label: "Referrals" },
     { key: "revenue", label: "Revenue" },
+    { key: "ledger", label: "Ledger" },
   ];
 
   return (
@@ -169,6 +171,8 @@ export function AffiliatePage() {
       )}
 
       {activeTab === "revenue" && <AffiliateRevenueTab />}
+
+      {activeTab === "ledger" && <AffiliateLedgerTab />}
     </div>
   );
 }

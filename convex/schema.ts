@@ -346,6 +346,32 @@ export default defineSchema({
     .index("by_stripeSubscriptionId", ["stripeSubscriptionId"])
     .index("by_stripeInvoiceId", ["stripeInvoiceId"]),
 
+  // ── Affiliate Ledger (payout-ready foundation) ─────────────────
+  affiliateLedger: defineTable({
+    referrerUserId: v.id("users"),
+    periodType: v.union(v.literal("monthly"), v.literal("weekly")),
+    periodStart: v.number(),
+    periodEnd: v.number(),
+    attributedRevenueCents: v.number(),
+    commissionRate: v.number(),
+    commissionCents: v.number(),
+    status: v.union(
+      v.literal("open"),
+      v.literal("locked"),
+      v.literal("paid")
+    ),
+    createdAt: v.number(),
+    lockedAt: v.optional(v.number()),
+    paidAt: v.optional(v.number()),
+    notes: v.optional(v.string()),
+  })
+    .index("by_referrerUserId", ["referrerUserId"])
+    .index("by_referrerUserId_periodType_periodStart", [
+      "referrerUserId",
+      "periodType",
+      "periodStart",
+    ]),
+
   clientRequests: defineTable({
     companyId: v.id("companies"),
     createdAt: v.number(),
