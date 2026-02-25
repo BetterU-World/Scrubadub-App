@@ -364,6 +364,7 @@ export default defineSchema({
     lockedAt: v.optional(v.number()),
     paidAt: v.optional(v.number()),
     notes: v.optional(v.string()),
+    payoutBatchId: v.optional(v.id("affiliatePayoutBatches")),
   })
     .index("by_referrerUserId", ["referrerUserId"])
     .index("by_referrerUserId_periodType_periodStart", [
@@ -371,6 +372,21 @@ export default defineSchema({
       "periodType",
       "periodStart",
     ]),
+
+  // ── Affiliate Payout Batches (manual bookkeeping) ─────────────
+  affiliatePayoutBatches: defineTable({
+    createdAt: v.number(),
+    createdByUserId: v.id("users"),
+    method: v.string(),
+    notes: v.optional(v.string()),
+    totalCommissionCents: v.number(),
+    ledgerIds: v.array(v.id("affiliateLedger")),
+    status: v.union(v.literal("recorded"), v.literal("voided")),
+    voidedAt: v.optional(v.number()),
+  })
+    .index("by_createdAt", ["createdAt"])
+    .index("by_status", ["status"])
+    .index("by_createdByUserId_createdAt", ["createdByUserId", "createdAt"]),
 
   clientRequests: defineTable({
     companyId: v.id("companies"),
