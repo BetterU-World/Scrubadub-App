@@ -4,6 +4,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
+import { AffiliateRevenueTab } from "@/components/affiliate/AffiliateRevenueTab";
 import { Copy, ExternalLink, Share2, Users } from "lucide-react";
 
 function getReferralBaseUrl(): string {
@@ -13,6 +14,8 @@ function getReferralBaseUrl(): string {
   }
   return "https://scrubscrubscrub.com/?ref=";
 }
+
+type Tab = "referrals" | "revenue";
 
 export function AffiliatePage() {
   const { user } = useAuth();
@@ -24,6 +27,7 @@ export function AffiliatePage() {
   );
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>("referrals");
 
   // On mount: if no code yet, generate one
   useEffect(() => {
@@ -54,6 +58,11 @@ export function AffiliatePage() {
     });
   }
 
+  const tabs: { key: Tab; label: string }[] = [
+    { key: "referrals", label: "Referrals" },
+    { key: "revenue", label: "Revenue" },
+  ];
+
   return (
     <div>
       <PageHeader
@@ -61,74 +70,99 @@ export function AffiliatePage() {
         description="Share your referral link and earn rewards."
       />
 
-      <div className="bg-white rounded-lg shadow p-6 max-w-xl">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Your referral link
-        </label>
-        <div className="bg-gray-50 border border-gray-200 rounded-md px-4 py-3 text-sm font-mono text-gray-800 break-all select-all mb-4">
-          {fullUrl}
-        </div>
-
-        <div className="flex flex-wrap gap-3">
-          <button
-            onClick={() => copyToClipboard(fullUrl, "link")}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
-          >
-            <Copy className="h-4 w-4" />
-            {copied === "link" ? "Copied!" : "Copy link"}
-          </button>
-
-          <button
-            onClick={() => window.open(fullUrl, "_blank", "noopener,noreferrer")}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors"
-          >
-            <ExternalLink className="h-4 w-4" />
-            Open link
-          </button>
-
-          <button
-            onClick={() => copyToClipboard(socialCaption, "social")}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors"
-          >
-            <Share2 className="h-4 w-4" />
-            {copied === "social" ? "Copied!" : "Copy social caption"}
-          </button>
-        </div>
+      {/* Tab nav */}
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="-mb-px flex gap-6">
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setActiveTab(t.key)}
+              className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === t.key
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
       </div>
 
-      {/* ── Your Referrals ── */}
-      <div className="bg-white rounded-lg shadow p-6 max-w-xl mt-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Users className="h-5 w-5 text-gray-500" />
-          <h2 className="text-lg font-semibold text-gray-900">
-            Your Referrals
-            {referrals && referrals.length > 0 && (
-              <span className="ml-2 text-sm font-normal text-gray-500">
-                ({referrals.length})
-              </span>
+      {activeTab === "referrals" && (
+        <>
+          <div className="bg-white rounded-lg shadow p-6 max-w-xl">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Your referral link
+            </label>
+            <div className="bg-gray-50 border border-gray-200 rounded-md px-4 py-3 text-sm font-mono text-gray-800 break-all select-all mb-4">
+              {fullUrl}
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <button
+                onClick={() => copyToClipboard(fullUrl, "link")}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+              >
+                <Copy className="h-4 w-4" />
+                {copied === "link" ? "Copied!" : "Copy link"}
+              </button>
+
+              <button
+                onClick={() => window.open(fullUrl, "_blank", "noopener,noreferrer")}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Open link
+              </button>
+
+              <button
+                onClick={() => copyToClipboard(socialCaption, "social")}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors"
+              >
+                <Share2 className="h-4 w-4" />
+                {copied === "social" ? "Copied!" : "Copy social caption"}
+              </button>
+            </div>
+          </div>
+
+          {/* ── Your Referrals ── */}
+          <div className="bg-white rounded-lg shadow p-6 max-w-xl mt-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Users className="h-5 w-5 text-gray-500" />
+              <h2 className="text-lg font-semibold text-gray-900">
+                Your Referrals
+                {referrals && referrals.length > 0 && (
+                  <span className="ml-2 text-sm font-normal text-gray-500">
+                    ({referrals.length})
+                  </span>
+                )}
+              </h2>
+            </div>
+
+            {referrals === undefined ? (
+              <p className="text-sm text-gray-400">Loading...</p>
+            ) : referrals.length === 0 ? (
+              <p className="text-sm text-gray-500">
+                No referrals yet — share your link!
+              </p>
+            ) : (
+              <ul className="divide-y divide-gray-100">
+                {referrals.map((r) => (
+                  <li key={r.userId} className="py-3 flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{r.name}</p>
+                      <p className="text-sm text-gray-500">{r.email}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             )}
-          </h2>
-        </div>
+          </div>
+        </>
+      )}
 
-        {referrals === undefined ? (
-          <p className="text-sm text-gray-400">Loading...</p>
-        ) : referrals.length === 0 ? (
-          <p className="text-sm text-gray-500">
-            No referrals yet — share your link!
-          </p>
-        ) : (
-          <ul className="divide-y divide-gray-100">
-            {referrals.map((r) => (
-              <li key={r.userId} className="py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{r.name}</p>
-                  <p className="text-sm text-gray-500">{r.email}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      {activeTab === "revenue" && <AffiliateRevenueTab />}
     </div>
   );
 }
