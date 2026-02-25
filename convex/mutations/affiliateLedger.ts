@@ -94,6 +94,7 @@ export const lockLedgerPeriod = mutation({
   args: {
     userId: v.id("users"),
     ledgerId: v.id("affiliateLedger"),
+    notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await getSessionUser(ctx, args.userId);
@@ -111,11 +112,18 @@ export const lockLedgerPeriod = mutation({
       return entry; // no-op for locked/paid
     }
 
-    await ctx.db.patch(entry._id, {
+    const now = Date.now();
+    const patch: Record<string, unknown> = {
       status: "locked",
-      lockedAt: Date.now(),
-    });
+      lockedAt: now,
+    };
 
-    return { ...entry, status: "locked" as const, lockedAt: Date.now() };
+    if (args.notes !== undefined) {
+      patch.notes = args.notes.trim().slice(0, 280);
+    }
+
+    await ctx.db.patch(entry._id, patch);
+
+    return { ...entry, ...patch };
   },
 });
