@@ -30,9 +30,14 @@ function typeLabel(type: string | null): string {
 export function AffiliateRevenueTab() {
   const { user, userId, isLoading } = useAuth();
   const canRun = !isLoading && !!user && !!userId;
-  const queryArgs = canRun ? {} : undefined;
-  const summary = useQuery(api.queries.affiliateAttributions.getMyAttributionSummary, queryArgs);
-  const attributions = useQuery(api.queries.affiliateAttributions.listMyAttributions, queryArgs);
+  const summary = useQuery(
+    api.queries.affiliateAttributions.getMyAttributionSummary,
+    canRun ? { userId: userId! } : undefined,
+  );
+  const attributions = useQuery(
+    api.queries.affiliateAttributions.listMyAttributions,
+    canRun ? { userId: userId! } : undefined,
+  );
 
   if (isLoading) {
     return <p className="text-sm text-gray-400 py-4">Loading...</p>;
