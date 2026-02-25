@@ -15,6 +15,8 @@ import {
   Package,
   ChevronDown,
   ChevronUp,
+  Users,
+  Search,
 } from "lucide-react";
 
 /* ── Helpers ──────────────────────────────────────────────────────── */
@@ -95,6 +97,13 @@ function buildMonthOptions(count: number) {
 
 const PAYOUT_METHODS = ["Zelle", "CashApp", "Venmo", "Cash", "Other"] as const;
 
+const STATUS_FILTER_OPTIONS = [
+  { label: "All", value: "" },
+  { label: "Open", value: "open" },
+  { label: "Locked", value: "locked" },
+  { label: "Paid", value: "paid" },
+] as const;
+
 /* ── CSV helpers ──────────────────────────────────────────────────── */
 
 function escapeCsvField(val: string): string {
@@ -145,6 +154,85 @@ function buildCsvContent(rows: LedgerRow[]): string {
         r.paidAt ? formatISO(r.paidAt) : "",
         escapeCsvField(r.notes ?? ""),
         r.payoutBatchId ?? "",
+      ].join(",")
+    );
+  }
+  return lines.join("\n");
+}
+
+type BatchRow = {
+  _id: string;
+  createdAt: number;
+  method: string;
+  totalCommissionCents: number;
+  status: string;
+  ledgerIds: string[];
+  notes?: string;
+  voidedAt?: number;
+};
+
+function buildBatchCsvContent(batches: BatchRow[]): string {
+  const header = [
+    "Batch ID",
+    "Created",
+    "Method",
+    "Total ($)",
+    "Status",
+    "Entries",
+    "Notes",
+    "Voided At",
+  ];
+  const lines = [header.map(escapeCsvField).join(",")];
+  for (const b of batches) {
+    lines.push(
+      [
+        b._id,
+        formatISO(b.createdAt),
+        escapeCsvField(b.method),
+        centsToDecimal(b.totalCommissionCents),
+        b.status,
+        String(b.ledgerIds.length),
+        escapeCsvField(b.notes ?? ""),
+        b.voidedAt ? formatISO(b.voidedAt) : "",
+      ].join(",")
+    );
+  }
+  return lines.join("\n");
+}
+
+function buildBatchDetailCsvContent(
+  batch: BatchRow & {
+    ledgerRows: {
+      _id: string;
+      periodStart: number;
+      periodType: string;
+      commissionCents: number;
+      attributedRevenueCents: number;
+      status: string;
+      referrerUserId: string;
+    }[];
+  }
+): string {
+  const header = [
+    "Ledger ID",
+    "Period",
+    "Period Type",
+    "Revenue ($)",
+    "Commission ($)",
+    "Status",
+    "Referrer User ID",
+  ];
+  const lines = [header.map(escapeCsvField).join(",")];
+  for (const r of batch.ledgerRows) {
+    lines.push(
+      [
+        r._id,
+        formatISO(r.periodStart),
+        r.periodType,
+        centsToDecimal(r.attributedRevenueCents),
+        centsToDecimal(r.commissionCents),
+        r.status,
+        r.referrerUserId,
       ].join(",")
     );
   }
@@ -383,6 +471,12 @@ function BatchDetailModal({
   const [showVoid, setShowVoid] = useState(false);
   const [voidNotes, setVoidNotes] = useState("");
 
+  function handleExportBatchCsv() {
+    if (!batch) return;
+    const csv = buildBatchDetailCsvContent(batch as any);
+    downloadCsv(csv, `scrubadub-batch-${batch._id.slice(-6)}-${formatISO(Date.now())}.csv`);
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
@@ -435,9 +529,18 @@ function BatchDetailModal({
               )}
             </div>
 
-            <h4 className="text-sm font-medium text-gray-700 mb-2">
-              Ledger Entries ({batch.ledgerRows.length})
-            </h4>
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-sm font-medium text-gray-700">
+                Ledger Entries ({batch.ledgerRows.length})
+              </h4>
+              <button
+                onClick={handleExportBatchCsv}
+                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+              >
+                <Download className="h-3 w-3" />
+                Export CSV
+              </button>
+            </div>
             <table className="min-w-full divide-y divide-gray-200 text-sm mb-4">
               <thead className="bg-gray-50">
                 <tr>
@@ -608,18 +711,31 @@ function SummaryCards({
 function BatchListPanel({
   userId,
   onViewBatch,
+  batches,
 }: {
   userId: Id<"users">;
   onViewBatch: (batchId: Id<"affiliatePayoutBatches">) => void;
+  batches?: { rows: BatchRow[] } | null;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const batches = useQuery(
+
+  // Use global batches query when no pre-filtered batches are provided
+  const globalBatches = useQuery(
     api.queries.affiliatePayoutBatches.listPayoutBatches,
-    { userId, limit: 10 }
+    batches !== undefined ? "skip" : { userId, limit: 10 }
   );
 
-  if (batches === undefined) return null;
-  if (batches.rows.length === 0) return null;
+  const batchRows = batches?.rows ?? globalBatches?.rows;
+
+  if (batchRows === undefined) return null;
+  if (batchRows.length === 0) return null;
+
+  function handleExportBatchesCsv() {
+    if (!batchRows || batchRows.length === 0) return;
+    const csv = buildBatchCsvContent(batchRows as BatchRow[]);
+    const today = formatISO(Date.now());
+    downloadCsv(csv, `scrubadub-batches-${today}.csv`);
+  }
 
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -627,7 +743,7 @@ function BatchListPanel({
         onClick={() => setExpanded((v) => !v)}
         className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
       >
-        <span>Recent Payout Batches ({batches.rows.length})</span>
+        <span>Recent Payout Batches ({batchRows.length})</span>
         {expanded ? (
           <ChevronUp className="h-4 w-4" />
         ) : (
@@ -636,6 +752,15 @@ function BatchListPanel({
       </button>
       {expanded && (
         <div className="border-t border-gray-200">
+          <div className="flex justify-end px-4 py-2 border-b border-gray-100">
+            <button
+              onClick={handleExportBatchesCsv}
+              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+            >
+              <Download className="h-3 w-3" />
+              Export Batches CSV
+            </button>
+          </div>
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>
@@ -658,7 +783,7 @@ function BatchListPanel({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {batches.rows.map((b) => (
+              {batchRows.map((b) => (
                 <tr key={b._id}>
                   <td className="px-4 py-2 whitespace-nowrap">
                     {formatDate(b.createdAt)}
@@ -671,7 +796,7 @@ function BatchListPanel({
                   <td className="px-4 py-2">{b.ledgerIds.length}</td>
                   <td className="px-4 py-2">
                     <button
-                      onClick={() => onViewBatch(b._id)}
+                      onClick={() => onViewBatch(b._id as Id<"affiliatePayoutBatches">)}
                       className="text-xs text-blue-600 hover:text-blue-800"
                     >
                       View
@@ -682,6 +807,109 @@ function BatchListPanel({
             </tbody>
           </table>
         </div>
+      )}
+    </div>
+  );
+}
+
+/* ── View-As Affiliate Selector (super-admin only) ───────────────── */
+
+function ViewAsSelector({
+  userId,
+  selectedReferrer,
+  onSelect,
+}: {
+  userId: Id<"users">;
+  selectedReferrer: Id<"users"> | null;
+  onSelect: (referrerId: Id<"users"> | null) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+
+  const candidates = useQuery(
+    api.queries.adminAffiliates.listAffiliateCandidates,
+    { userId, search: search || undefined, limit: 20 }
+  );
+
+  return (
+    <div className="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3">
+      <div className="flex items-center gap-2 mb-2">
+        <Users className="h-4 w-4 text-indigo-600" />
+        <span className="text-sm font-medium text-indigo-800">
+          View as Affiliate
+        </span>
+        {selectedReferrer && (
+          <button
+            onClick={() => {
+              onSelect(null);
+              setSearch("");
+            }}
+            className="ml-auto text-xs text-indigo-600 hover:text-indigo-800 underline"
+          >
+            Back to my ledger
+          </button>
+        )}
+      </div>
+
+      {!selectedReferrer && (
+        <div className="relative">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setOpen(true);
+                }}
+                onFocus={() => setOpen(true)}
+                placeholder="Search affiliates by name or email..."
+                className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+          </div>
+
+          {open && candidates && candidates.length > 0 && (
+            <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+              {candidates.map((c) => (
+                <button
+                  key={c._id}
+                  onClick={() => {
+                    onSelect(c._id as Id<"users">);
+                    setOpen(false);
+                  }}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-indigo-50 flex items-center justify-between"
+                >
+                  <div>
+                    <span className="font-medium text-gray-900">
+                      {c.name}
+                    </span>
+                    <span className="text-gray-500 ml-2">{c.email}</span>
+                  </div>
+                  <span className="text-xs text-gray-400">
+                    {c.entryCount} entries
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {open && candidates && candidates.length === 0 && search && (
+            <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg px-3 py-3 text-sm text-gray-500">
+              No affiliates found matching "{search}"
+            </div>
+          )}
+        </div>
+      )}
+
+      {selectedReferrer && candidates && (
+        <p className="text-sm text-indigo-700">
+          Viewing ledger for:{" "}
+          <span className="font-medium">
+            {candidates.find((c) => c._id === selectedReferrer)?.name ?? selectedReferrer}
+          </span>
+        </p>
       )}
     </div>
   );
@@ -705,8 +933,45 @@ function AffiliateLedgerInner({
   const monthOptions = useMemo(() => buildMonthOptions(12), []);
 
   const [selectedMonth, setSelectedMonth] = useState(monthOptions[0].value);
+  const [statusFilter, setStatusFilter] = useState<string>("");
 
-  const ledger = useQuery(api.queries.affiliateLedger.getMyLedger, { userId });
+  // View-as state (super-admin only)
+  const [viewAsReferrer, setViewAsReferrer] = useState<Id<"users"> | null>(null);
+
+  const isViewingOther = isSuperAdmin && viewAsReferrer !== null;
+
+  // Ledger query: own vs admin view-as
+  const myLedger = useQuery(
+    api.queries.affiliateLedger.getMyLedger,
+    isViewingOther
+      ? "skip"
+      : {
+          userId,
+          status: (statusFilter || undefined) as any,
+        }
+  );
+
+  const adminLedger = useQuery(
+    api.queries.adminAffiliates.getLedgerForReferrer,
+    isViewingOther
+      ? {
+          userId,
+          referrerUserId: viewAsReferrer!,
+          status: (statusFilter || undefined) as any,
+        }
+      : "skip"
+  );
+
+  const ledger = isViewingOther ? adminLedger : myLedger;
+
+  // Batches for view-as mode
+  const referrerBatches = useQuery(
+    api.queries.adminAffiliates.listPayoutBatchesForReferrer,
+    isViewingOther
+      ? { userId, referrerUserId: viewAsReferrer!, limit: 10 }
+      : "skip"
+  );
+
   const upsertForPeriod = useMutation(
     api.mutations.affiliateLedger.upsertMyLedgerForPeriod
   );
@@ -785,6 +1050,11 @@ function AffiliateLedgerInner({
       return prev;
     });
   }, [ledger, lockedRows]);
+
+  // Clear selection when switching view-as target
+  useMemo(() => {
+    setSelectedIds(new Set());
+  }, [viewAsReferrer]);
 
   /* ── Refresh helpers ─────────────────────────────────────────────── */
 
@@ -969,12 +1239,25 @@ function AffiliateLedgerInner({
         />
       )}
 
+      {/* View-as selector (super-admin only) */}
+      {isSuperAdmin && (
+        <ViewAsSelector
+          userId={userId}
+          selectedReferrer={viewAsReferrer}
+          onSelect={setViewAsReferrer}
+        />
+      )}
+
       {/* Summary cards */}
       <SummaryCards rows={rows} />
 
       {/* Batch list (super-admin) */}
       {isSuperAdmin && (
-        <BatchListPanel userId={userId} onViewBatch={setViewingBatchId} />
+        <BatchListPanel
+          userId={userId}
+          onViewBatch={setViewingBatchId}
+          batches={isViewingOther ? referrerBatches : undefined}
+        />
       )}
 
       {/* Controls */}
@@ -997,41 +1280,63 @@ function AffiliateLedgerInner({
             </select>
           </div>
 
+          {/* Status filter */}
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Status</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {STATUS_FILTER_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {/* Refresh selected */}
-          <button
-            onClick={() => handleRefresh(selectedMonth, "selected")}
-            disabled={refreshing !== null}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${refreshing === "selected" ? "animate-spin" : ""}`}
-            />
-            {refreshing === "selected" ? "Refreshing..." : "Refresh Selected"}
-          </button>
+          {!isViewingOther && (
+            <button
+              onClick={() => handleRefresh(selectedMonth, "selected")}
+              disabled={refreshing !== null}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${refreshing === "selected" ? "animate-spin" : ""}`}
+              />
+              {refreshing === "selected" ? "Refreshing..." : "Refresh Selected"}
+            </button>
+          )}
 
           {/* Refresh current */}
-          <button
-            onClick={() => handleRefresh(monthOptions[0].value, "current")}
-            disabled={refreshing !== null}
-            className="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${refreshing === "current" ? "animate-spin" : ""}`}
-            />
-            Current
-          </button>
+          {!isViewingOther && (
+            <button
+              onClick={() => handleRefresh(monthOptions[0].value, "current")}
+              disabled={refreshing !== null}
+              className="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${refreshing === "current" ? "animate-spin" : ""}`}
+              />
+              Current
+            </button>
+          )}
 
           {/* Refresh previous */}
-          <button
-            onClick={() => handleRefresh(getPrevMonth(), "prev")}
-            disabled={refreshing !== null}
-            className="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${refreshing === "prev" ? "animate-spin" : ""}`}
-            />
-            Previous Month
-          </button>
+          {!isViewingOther && (
+            <button
+              onClick={() => handleRefresh(getPrevMonth(), "prev")}
+              disabled={refreshing !== null}
+              className="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${refreshing === "prev" ? "animate-spin" : ""}`}
+              />
+              Previous Month
+            </button>
+          )}
 
           {/* CSV export */}
           <button
@@ -1094,9 +1399,19 @@ function AffiliateLedgerInner({
       {/* Ledger table */}
       {rows.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-8 text-center">
-          <p className="text-sm text-gray-500">
-            No ledger entries yet. Use the controls above to generate period
-            snapshots.
+          <p className="text-sm text-gray-500 mb-2">
+            {statusFilter
+              ? `No ledger entries with status "${statusFilter}".`
+              : isViewingOther
+                ? "No ledger entries for this affiliate yet."
+                : "No ledger entries yet."}
+          </p>
+          <p className="text-xs text-gray-400">
+            {statusFilter
+              ? "Try selecting a different status filter or \"All\" to see all entries."
+              : isViewingOther
+                ? "Ledger entries are created when an affiliate's referrals generate revenue."
+                : "Use the controls above to generate period snapshots from your attribution data."}
           </p>
         </div>
       ) : (
