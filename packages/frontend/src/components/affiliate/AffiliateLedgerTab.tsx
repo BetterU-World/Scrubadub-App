@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
@@ -11,12 +11,20 @@ import {
   CheckCircle,
   Clock,
   Undo2,
+  Download,
+  Package,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 /* ── Helpers ──────────────────────────────────────────────────────── */
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
+}
+
+function centsToDecimal(cents: number): string {
+  return (cents / 100).toFixed(2);
 }
 
 function formatPeriodKey(periodStart: number): string {
@@ -42,11 +50,17 @@ function formatDate(ts: number): string {
   });
 }
 
+function formatISO(ts: number): string {
+  return new Date(ts).toISOString().slice(0, 10);
+}
+
 function statusBadge(status: string) {
   const styles: Record<string, string> = {
     open: "bg-yellow-100 text-yellow-800",
     locked: "bg-blue-100 text-blue-800",
     paid: "bg-green-100 text-green-800",
+    recorded: "bg-green-100 text-green-800",
+    voided: "bg-red-100 text-red-800",
   };
   return (
     <span
@@ -57,21 +71,94 @@ function statusBadge(status: string) {
   );
 }
 
-/** Build last N month options as { label, value: "YYYY-MM-01" }. */
 function buildMonthOptions(count: number) {
   const now = new Date();
   const options: { label: string; value: string }[] = [];
   for (let i = 0; i < count; i++) {
-    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    const d = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1)
+    );
     const y = d.getUTCFullYear();
     const m = String(d.getUTCMonth() + 1).padStart(2, "0");
     const label =
       i === 0
         ? `Current (${d.toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" })})`
-        : d.toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
+        : d.toLocaleDateString("en-US", {
+            month: "short",
+            year: "numeric",
+            timeZone: "UTC",
+          });
     options.push({ label, value: `${y}-${m}-01` });
   }
   return options;
+}
+
+const PAYOUT_METHODS = ["Zelle", "CashApp", "Venmo", "Cash", "Other"] as const;
+
+/* ── CSV helpers ──────────────────────────────────────────────────── */
+
+function escapeCsvField(val: string): string {
+  if (val.includes(",") || val.includes('"') || val.includes("\n")) {
+    return `"${val.replace(/"/g, '""')}"`;
+  }
+  return val;
+}
+
+type LedgerRow = {
+  _id: string;
+  periodType: string;
+  periodStart: number;
+  periodEnd: number;
+  status: string;
+  attributedRevenueCents: number;
+  commissionCents: number;
+  lockedAt?: number;
+  paidAt?: number;
+  notes?: string;
+  payoutBatchId?: string;
+};
+
+function buildCsvContent(rows: LedgerRow[]): string {
+  const header = [
+    "Period Type",
+    "Period Start",
+    "Period End",
+    "Status",
+    "Revenue ($)",
+    "Commission ($)",
+    "Locked At",
+    "Paid At",
+    "Notes",
+    "Payout Batch ID",
+  ];
+  const lines = [header.map(escapeCsvField).join(",")];
+  for (const r of rows) {
+    lines.push(
+      [
+        r.periodType,
+        formatISO(r.periodStart),
+        formatISO(r.periodEnd),
+        r.status,
+        centsToDecimal(r.attributedRevenueCents),
+        centsToDecimal(r.commissionCents),
+        r.lockedAt ? formatISO(r.lockedAt) : "",
+        r.paidAt ? formatISO(r.paidAt) : "",
+        escapeCsvField(r.notes ?? ""),
+        r.payoutBatchId ?? "",
+      ].join(",")
+    );
+  }
+  return lines.join("\n");
+}
+
+function downloadCsv(content: string, filename: string) {
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 /* ── Wrapper (auth gate) ──────────────────────────────────────────── */
@@ -115,7 +202,7 @@ function ConfirmModal({
   title: string;
   body: string;
   confirmLabel: string;
-  confirmColor: string; // tailwind bg-* classes
+  confirmColor: string;
   onCancel: () => void;
   onConfirm: (notes: string) => void;
   busy: boolean;
@@ -172,6 +259,259 @@ function ConfirmModal({
             {busy ? "Processing..." : confirmLabel}
           </button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Batch Payout Modal ───────────────────────────────────────────── */
+
+function BatchPayoutModal({
+  selectedCount,
+  totalCents,
+  onCancel,
+  onConfirm,
+  busy,
+}: {
+  selectedCount: number;
+  totalCents: number;
+  onCancel: () => void;
+  onConfirm: (method: string, notes: string) => void;
+  busy: boolean;
+}) {
+  const [method, setMethod] = useState<string>(PAYOUT_METHODS[0]);
+  const [notes, setNotes] = useState("");
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onCancel} />
+      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+        <button
+          onClick={onCancel}
+          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+        >
+          <X className="h-5 w-5" />
+        </button>
+
+        <div className="flex items-center gap-2 mb-3">
+          <Package className="h-5 w-5 text-green-600" />
+          <h3 className="text-lg font-semibold text-gray-900">
+            Record payout batch?
+          </h3>
+        </div>
+
+        <p className="text-sm text-gray-600 mb-2">
+          This marks {selectedCount} locked period{selectedCount > 1 ? "s" : ""}{" "}
+          as PAID ({formatCents(totalCents)} total commission).
+        </p>
+        <p className="text-xs text-gray-400 mb-4">
+          Manual bookkeeping only — no Stripe transfer occurs.
+        </p>
+
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Payment method
+        </label>
+        <select
+          value={method}
+          onChange={(e) => setMethod(e.target.value)}
+          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
+        >
+          {PAYOUT_METHODS.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+        </select>
+
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Notes{" "}
+          <span className="text-gray-400 font-normal">(optional)</span>
+        </label>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value.slice(0, 280))}
+          maxLength={280}
+          rows={3}
+          placeholder="e.g. Sent via Zelle on 2/25"
+          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 mb-1"
+        />
+        <p className="text-xs text-gray-400 mb-4 text-right">
+          {notes.length}/280
+        </p>
+
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onCancel}
+            disabled={busy}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onConfirm(method, notes)}
+            disabled={busy}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors disabled:opacity-50"
+          >
+            <CheckCircle className="h-4 w-4" />
+            {busy ? "Processing..." : "Confirm Payout"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Batch Detail Modal ───────────────────────────────────────────── */
+
+function BatchDetailModal({
+  userId,
+  batchId,
+  onClose,
+  onVoid,
+  voiding,
+}: {
+  userId: Id<"users">;
+  batchId: Id<"affiliatePayoutBatches">;
+  onClose: () => void;
+  onVoid: (batchId: Id<"affiliatePayoutBatches">, notes: string) => void;
+  voiding: boolean;
+}) {
+  const batch = useQuery(
+    api.queries.affiliatePayoutBatches.getPayoutBatch,
+    { userId, batchId }
+  );
+  const [showVoid, setShowVoid] = useState(false);
+  const [voidNotes, setVoidNotes] = useState("");
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 p-6 max-h-[80vh] overflow-y-auto">
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+        >
+          <X className="h-5 w-5" />
+        </button>
+
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Batch Details
+        </h3>
+
+        {batch === undefined ? (
+          <p className="text-sm text-gray-400">Loading...</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-3 text-sm mb-4">
+              <div>
+                <span className="text-gray-500">Method:</span>{" "}
+                <span className="font-medium">{batch.method}</span>
+              </div>
+              <div>
+                <span className="text-gray-500">Status:</span>{" "}
+                {statusBadge(batch.status)}
+              </div>
+              <div>
+                <span className="text-gray-500">Total:</span>{" "}
+                <span className="font-medium">
+                  {formatCents(batch.totalCommissionCents)}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500">Created:</span>{" "}
+                {formatDate(batch.createdAt)}
+              </div>
+              {batch.notes && (
+                <div className="col-span-2">
+                  <span className="text-gray-500">Notes:</span>{" "}
+                  {batch.notes}
+                </div>
+              )}
+              {batch.voidedAt && (
+                <div className="col-span-2">
+                  <span className="text-gray-500">Voided:</span>{" "}
+                  {formatDate(batch.voidedAt)}
+                </div>
+              )}
+            </div>
+
+            <h4 className="text-sm font-medium text-gray-700 mb-2">
+              Ledger Entries ({batch.ledgerRows.length})
+            </h4>
+            <table className="min-w-full divide-y divide-gray-200 text-sm mb-4">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
+                    Period
+                  </th>
+                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">
+                    Commission
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {batch.ledgerRows.map((r) => (
+                  <tr key={r._id}>
+                    <td className="px-3 py-2">
+                      {formatPeriodKey(r.periodStart)}
+                    </td>
+                    <td className="px-3 py-2 text-right font-medium">
+                      {formatCents(r.commissionCents)}
+                    </td>
+                    <td className="px-3 py-2">{statusBadge(r.status)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {batch.status === "recorded" && !showVoid && (
+              <button
+                onClick={() => setShowVoid(true)}
+                className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-red-700 bg-red-50 rounded hover:bg-red-100 transition-colors"
+              >
+                <Undo2 className="h-3 w-3" />
+                Void this batch
+              </button>
+            )}
+
+            {showVoid && (
+              <div className="border border-red-200 rounded-md p-3 mt-2">
+                <p className="text-sm text-red-700 mb-2">
+                  Voiding reverts all ledger entries to locked. Are you sure?
+                </p>
+                <textarea
+                  value={voidNotes}
+                  onChange={(e) =>
+                    setVoidNotes(e.target.value.slice(0, 280))
+                  }
+                  maxLength={280}
+                  rows={2}
+                  placeholder="Reason for voiding (optional)"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm mb-2"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowVoid(false)}
+                    disabled={voiding}
+                    className="px-3 py-1 text-sm text-gray-700 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => onVoid(batchId, voidNotes)}
+                    disabled={voiding}
+                    className="px-3 py-1 text-sm text-white bg-red-600 rounded hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {voiding ? "Voiding..." : "Confirm Void"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
@@ -263,6 +603,90 @@ function SummaryCards({
   );
 }
 
+/* ── Batch List Panel ─────────────────────────────────────────────── */
+
+function BatchListPanel({
+  userId,
+  onViewBatch,
+}: {
+  userId: Id<"users">;
+  onViewBatch: (batchId: Id<"affiliatePayoutBatches">) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const batches = useQuery(
+    api.queries.affiliatePayoutBatches.listPayoutBatches,
+    { userId, limit: 10 }
+  );
+
+  if (batches === undefined) return null;
+  if (batches.rows.length === 0) return null;
+
+  return (
+    <div className="bg-white rounded-lg shadow overflow-hidden">
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+      >
+        <span>Recent Payout Batches ({batches.rows.length})</span>
+        {expanded ? (
+          <ChevronUp className="h-4 w-4" />
+        ) : (
+          <ChevronDown className="h-4 w-4" />
+        )}
+      </button>
+      {expanded && (
+        <div className="border-t border-gray-200">
+          <table className="min-w-full divide-y divide-gray-200 text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">
+                  Date
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">
+                  Method
+                </th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">
+                  Total
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">
+                  Status
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">
+                  Entries
+                </th>
+                <th className="px-4 py-2"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {batches.rows.map((b) => (
+                <tr key={b._id}>
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    {formatDate(b.createdAt)}
+                  </td>
+                  <td className="px-4 py-2">{b.method}</td>
+                  <td className="px-4 py-2 text-right font-medium">
+                    {formatCents(b.totalCommissionCents)}
+                  </td>
+                  <td className="px-4 py-2">{statusBadge(b.status)}</td>
+                  <td className="px-4 py-2">{b.ledgerIds.length}</td>
+                  <td className="px-4 py-2">
+                    <button
+                      onClick={() => onViewBatch(b._id)}
+                      className="text-xs text-blue-600 hover:text-blue-800"
+                    >
+                      View
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Inner Component ──────────────────────────────────────────────── */
 
 type ModalTarget = {
@@ -295,10 +719,72 @@ function AffiliateLedgerInner({
   const undoPaid = useMutation(
     api.mutations.affiliateLedger.unmarkLedgerPaid
   );
+  const createBatch = useMutation(
+    api.mutations.affiliatePayoutBatches.createPayoutBatchAndMarkPaid
+  );
+  const voidBatch = useMutation(
+    api.mutations.affiliatePayoutBatches.voidPayoutBatchAndRevertPaid
+  );
 
-  const [refreshing, setRefreshing] = useState<string | null>(null); // tracks which button
+  const [refreshing, setRefreshing] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [modalTarget, setModalTarget] = useState<ModalTarget | null>(null);
+
+  // Selection state (locked rows only)
+  const [selectedIds, setSelectedIds] = useState<Set<Id<"affiliateLedger">>>(
+    () => new Set()
+  );
+
+  // Batch modals
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [viewingBatchId, setViewingBatchId] =
+    useState<Id<"affiliatePayoutBatches"> | null>(null);
+  const [batchBusy, setBatchBusy] = useState(false);
+
+  /* ── Selection helpers ───────────────────────────────────────────── */
+
+  const toggleSelection = useCallback((id: Id<"affiliateLedger">) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const lockedRows = useMemo(
+    () => (ledger?.rows ?? []).filter((r) => r.status === "locked"),
+    [ledger]
+  );
+
+  const selectAllLocked = useCallback(() => {
+    setSelectedIds(new Set(lockedRows.map((r) => r._id)));
+  }, [lockedRows]);
+
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+
+  const selectedCommissionCents = useMemo(() => {
+    if (!ledger) return 0;
+    let sum = 0;
+    for (const r of ledger.rows) {
+      if (selectedIds.has(r._id)) sum += r.commissionCents;
+    }
+    return sum;
+  }, [ledger, selectedIds]);
+
+  // Clean up stale selections when ledger updates
+  useMemo(() => {
+    if (!ledger) return;
+    const validLockedIds = new Set(lockedRows.map((r) => r._id));
+    setSelectedIds((prev) => {
+      const cleaned = new Set<Id<"affiliateLedger">>();
+      for (const id of prev) {
+        if (validLockedIds.has(id)) cleaned.add(id);
+      }
+      if (cleaned.size !== prev.size) return cleaned;
+      return prev;
+    });
+  }, [ledger, lockedRows]);
 
   /* ── Refresh helpers ─────────────────────────────────────────────── */
 
@@ -315,13 +801,15 @@ function AffiliateLedgerInner({
 
   function getPrevMonth(): string {
     const now = new Date();
-    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+    const d = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)
+    );
     const y = d.getUTCFullYear();
     const m = String(d.getUTCMonth() + 1).padStart(2, "0");
     return `${y}-${m}-01`;
   }
 
-  /* ── Modal confirm handler ───────────────────────────────────────── */
+  /* ── Row action modal handler ────────────────────────────────────── */
 
   async function handleModalConfirm(notes: string) {
     if (!modalTarget) return;
@@ -355,8 +843,6 @@ function AffiliateLedgerInner({
     }
   }
 
-  /* ── Modal config per action ─────────────────────────────────────── */
-
   function modalProps(target: ModalTarget) {
     const pl = target.periodLabel;
     if (target.action === "lock") {
@@ -386,6 +872,65 @@ function AffiliateLedgerInner({
     };
   }
 
+  /* ── Batch handlers ──────────────────────────────────────────────── */
+
+  async function handleBatchConfirm(method: string, notes: string) {
+    setBatchBusy(true);
+    try {
+      await createBatch({
+        userId,
+        ledgerIds: [...selectedIds],
+        method,
+        notes: notes.trim() || undefined,
+      });
+      clearSelection();
+    } catch (err) {
+      console.error("Failed to create batch:", err);
+    } finally {
+      setBatchBusy(false);
+      setShowBatchModal(false);
+    }
+  }
+
+  async function handleVoidBatch(
+    batchId: Id<"affiliatePayoutBatches">,
+    notes: string
+  ) {
+    setBatchBusy(true);
+    try {
+      await voidBatch({
+        userId,
+        batchId,
+        notes: notes.trim() || undefined,
+      });
+      setViewingBatchId(null);
+    } catch (err) {
+      console.error("Failed to void batch:", err);
+    } finally {
+      setBatchBusy(false);
+    }
+  }
+
+  /* ── CSV export ──────────────────────────────────────────────────── */
+
+  function handleExportVisible() {
+    if (!ledger) return;
+    const csv = buildCsvContent(ledger.rows as LedgerRow[]);
+    const today = formatISO(Date.now());
+    downloadCsv(csv, `scrubadub-ledger-${today}.csv`);
+  }
+
+  function handleExportSelected() {
+    if (!ledger) return;
+    const selected = ledger.rows.filter((r) =>
+      selectedIds.has(r._id)
+    ) as LedgerRow[];
+    if (selected.length === 0) return;
+    const csv = buildCsvContent(selected);
+    const today = formatISO(Date.now());
+    downloadCsv(csv, `scrubadub-ledger-selected-${today}.csv`);
+  }
+
   /* ── Render ──────────────────────────────────────────────────────── */
 
   if (ledger === undefined) {
@@ -396,7 +941,7 @@ function AffiliateLedgerInner({
 
   return (
     <div className="space-y-6">
-      {/* Confirmation modal */}
+      {/* Modals */}
       {modalTarget && (
         <ConfirmModal
           {...modalProps(modalTarget)}
@@ -405,9 +950,32 @@ function AffiliateLedgerInner({
           busy={busy}
         />
       )}
+      {showBatchModal && (
+        <BatchPayoutModal
+          selectedCount={selectedIds.size}
+          totalCents={selectedCommissionCents}
+          onCancel={() => setShowBatchModal(false)}
+          onConfirm={handleBatchConfirm}
+          busy={batchBusy}
+        />
+      )}
+      {viewingBatchId && (
+        <BatchDetailModal
+          userId={userId}
+          batchId={viewingBatchId}
+          onClose={() => setViewingBatchId(null)}
+          onVoid={handleVoidBatch}
+          voiding={batchBusy}
+        />
+      )}
 
       {/* Summary cards */}
       <SummaryCards rows={rows} />
+
+      {/* Batch list (super-admin) */}
+      {isSuperAdmin && (
+        <BatchListPanel userId={userId} onViewBatch={setViewingBatchId} />
+      )}
 
       {/* Controls */}
       <div className="bg-white rounded-lg shadow p-4">
@@ -438,9 +1006,7 @@ function AffiliateLedgerInner({
             <RefreshCw
               className={`h-4 w-4 ${refreshing === "selected" ? "animate-spin" : ""}`}
             />
-            {refreshing === "selected"
-              ? "Refreshing..."
-              : "Refresh Selected"}
+            {refreshing === "selected" ? "Refreshing..." : "Refresh Selected"}
           </button>
 
           {/* Refresh current */}
@@ -466,8 +1032,64 @@ function AffiliateLedgerInner({
             />
             Previous Month
           </button>
+
+          {/* CSV export */}
+          <button
+            onClick={handleExportVisible}
+            disabled={rows.length === 0}
+            className="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
+          >
+            <Download className="h-4 w-4" />
+            Export CSV
+          </button>
+          {selectedIds.size > 0 && (
+            <button
+              onClick={handleExportSelected}
+              className="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors"
+            >
+              <Download className="h-4 w-4" />
+              Export Selected ({selectedIds.size})
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Selection bar (super-admin, when locked rows exist) */}
+      {isSuperAdmin && lockedRows.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex flex-wrap items-center gap-3">
+          <span className="text-sm text-blue-800">
+            {selectedIds.size} selected
+            {selectedIds.size > 0 && (
+              <span className="ml-1 font-medium">
+                ({formatCents(selectedCommissionCents)})
+              </span>
+            )}
+          </span>
+          <button
+            onClick={selectAllLocked}
+            className="text-xs text-blue-600 hover:text-blue-800 underline"
+          >
+            Select all locked ({lockedRows.length})
+          </button>
+          {selectedIds.size > 0 && (
+            <>
+              <button
+                onClick={clearSelection}
+                className="text-xs text-blue-600 hover:text-blue-800 underline"
+              >
+                Clear
+              </button>
+              <button
+                onClick={() => setShowBatchModal(true)}
+                className="inline-flex items-center gap-1 px-3 py-1 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors"
+              >
+                <Package className="h-4 w-4" />
+                Record Payout Batch
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Ledger table */}
       {rows.length === 0 ? (
@@ -483,6 +1105,7 @@ function AffiliateLedgerInner({
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
+                  {isSuperAdmin && <th className="px-3 py-3 w-8"></th>}
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Period
                   </th>
@@ -507,7 +1130,24 @@ function AffiliateLedgerInner({
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
                 {rows.map((row) => (
-                  <tr key={row._id}>
+                  <tr
+                    key={row._id}
+                    className={
+                      selectedIds.has(row._id) ? "bg-blue-50/50" : ""
+                    }
+                  >
+                    {isSuperAdmin && (
+                      <td className="px-3 py-3">
+                        {row.status === "locked" && (
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.has(row._id)}
+                            onChange={() => toggleSelection(row._id)}
+                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                        )}
+                      </td>
+                    )}
                     <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
                       {formatPeriodKey(row.periodStart)}
                     </td>
@@ -518,7 +1158,17 @@ function AffiliateLedgerInner({
                       {formatCents(row.commissionCents)}
                     </td>
                     <td className="px-4 py-3">
-                      <div>{statusBadge(row.status)}</div>
+                      <div className="flex items-center gap-1.5">
+                        {statusBadge(row.status)}
+                        {row.status === "paid" && row.payoutBatchId && (
+                          <span
+                            className="text-[10px] text-gray-400"
+                            title={`Batch: ${row.payoutBatchId}`}
+                          >
+                            (batch)
+                          </span>
+                        )}
+                      </div>
                       {row.notes && (
                         <p
                           className="text-xs text-gray-400 mt-1 max-w-[200px] truncate"
@@ -530,7 +1180,9 @@ function AffiliateLedgerInner({
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
                       {row.paidAt ? (
-                        <span title={`Locked: ${row.lockedAt ? formatDate(row.lockedAt) : "—"}`}>
+                        <span
+                          title={`Locked: ${row.lockedAt ? formatDate(row.lockedAt) : "—"}`}
+                        >
                           Paid {formatDate(row.paidAt)}
                         </span>
                       ) : row.lockedAt ? (
@@ -547,7 +1199,9 @@ function AffiliateLedgerInner({
                               onClick={() =>
                                 setModalTarget({
                                   id: row._id,
-                                  periodLabel: formatPeriodLabel(row.periodStart),
+                                  periodLabel: formatPeriodLabel(
+                                    row.periodStart
+                                  ),
                                   action: "lock",
                                 })
                               }
@@ -562,7 +1216,9 @@ function AffiliateLedgerInner({
                               onClick={() =>
                                 setModalTarget({
                                   id: row._id,
-                                  periodLabel: formatPeriodLabel(row.periodStart),
+                                  periodLabel: formatPeriodLabel(
+                                    row.periodStart
+                                  ),
                                   action: "markPaid",
                                 })
                               }
@@ -577,7 +1233,9 @@ function AffiliateLedgerInner({
                               onClick={() =>
                                 setModalTarget({
                                   id: row._id,
-                                  periodLabel: formatPeriodLabel(row.periodStart),
+                                  periodLabel: formatPeriodLabel(
+                                    row.periodStart
+                                  ),
                                   action: "undoPaid",
                                 })
                               }
