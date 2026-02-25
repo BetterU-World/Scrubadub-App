@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, skip } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -22,7 +22,7 @@ export function AffiliatePage() {
   const ensureReferralCode = useMutation(api.mutations.affiliate.ensureReferralCode);
   const referrals = useQuery(
     api.queries.affiliate.getMyReferrals,
-    userId ? {} : "skip" as const,
+    userId ? {} : skip,
   );
 
   const [referralCode, setReferralCode] = useState<string | null>(

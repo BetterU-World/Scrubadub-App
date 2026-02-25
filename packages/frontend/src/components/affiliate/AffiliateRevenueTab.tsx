@@ -1,4 +1,4 @@
-import { useQuery } from "convex/react";
+import { useQuery, skip } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { DollarSign, Building2, FileText, TrendingUp } from "lucide-react";
@@ -29,7 +29,7 @@ function typeLabel(type: string | null): string {
 
 export function AffiliateRevenueTab() {
   const { userId, isLoading } = useAuth();
-  const queryArgs = userId ? {} : "skip" as const;
+  const queryArgs = userId ? {} : skip;
   const summary = useQuery(api.queries.affiliateAttributions.getMyAttributionSummary, queryArgs);
   const attributions = useQuery(api.queries.affiliateAttributions.listMyAttributions, queryArgs);
 
