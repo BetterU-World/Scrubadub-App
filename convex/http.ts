@@ -115,6 +115,15 @@ const stripeWebhook = httpAction(async (ctx, request) => {
     case "invoice.payment_failed":
       console.log(`Stripe invoice event: ${event.type}`, event.id);
       break;
+    case "charge.refunded":
+    case "invoice.voided": {
+      const obj = event.data.object as Record<string, unknown>;
+      console.warn(`[stripe:webhook] ${event.type} received — no commission reversal yet`, {
+        eventId: event.id,
+        objectId: obj.id ?? "unknown",
+      });
+      break;
+    }
     default:
       console.log(`Unhandled Stripe event type: ${event.type}`);
   }
