@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,9 +18,12 @@ function getReferralBaseUrl(): string {
 type Tab = "referrals" | "revenue";
 
 export function AffiliatePage() {
-  const { user } = useAuth();
+  const { user, userId, isLoading } = useAuth();
   const ensureReferralCode = useMutation(api.mutations.affiliate.ensureReferralCode);
-  const referrals = useQuery(api.queries.affiliate.getMyReferrals);
+  const referrals = useQuery(
+    api.queries.affiliate.getMyReferrals,
+    userId ? {} : "skip" as const,
+  );
 
   const [referralCode, setReferralCode] = useState<string | null>(
     user?.referralCode ?? null
@@ -28,23 +31,26 @@ export function AffiliatePage() {
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("referrals");
+  const hasBootstrapped = useRef(false);
 
-  // On mount: if no code yet, generate one
+  // On mount: if no code yet, generate one — only after auth is ready
   useEffect(() => {
+    if (isLoading || !userId) return;
     if (user?.referralCode) {
       setReferralCode(user.referralCode);
       return;
     }
-    if (!user || generating || referralCode) return;
+    if (hasBootstrapped.current || generating || referralCode) return;
 
+    hasBootstrapped.current = true;
     setGenerating(true);
     ensureReferralCode({})
       .then((code) => setReferralCode(code))
       .catch((err) => console.error("Failed to generate referral code:", err))
       .finally(() => setGenerating(false));
-  }, [user, ensureReferralCode, generating, referralCode]);
+  }, [user, userId, isLoading, ensureReferralCode, generating, referralCode]);
 
-  if (!user || generating || !referralCode) {
+  if (isLoading || !userId || generating || !referralCode) {
     return <PageLoader />;
   }
 
