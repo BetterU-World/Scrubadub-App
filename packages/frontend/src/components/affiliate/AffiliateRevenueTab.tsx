@@ -1,5 +1,6 @@
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
+import { useAuth } from "@/hooks/useAuth";
 import { DollarSign, Building2, FileText, TrendingUp } from "lucide-react";
 
 function formatCents(cents: number): string {
@@ -27,8 +28,18 @@ function typeLabel(type: string | null): string {
 }
 
 export function AffiliateRevenueTab() {
-  const summary = useQuery(api.queries.affiliateAttributions.getMyAttributionSummary, {});
-  const attributions = useQuery(api.queries.affiliateAttributions.listMyAttributions, {});
+  const { userId, isLoading } = useAuth();
+  const queryArgs = userId ? {} : "skip" as const;
+  const summary = useQuery(api.queries.affiliateAttributions.getMyAttributionSummary, queryArgs);
+  const attributions = useQuery(api.queries.affiliateAttributions.listMyAttributions, queryArgs);
+
+  if (isLoading) {
+    return <p className="text-sm text-gray-400 py-4">Loading...</p>;
+  }
+
+  if (!userId) {
+    return <p className="text-sm text-gray-500 py-4">Please sign in to view revenue data.</p>;
+  }
 
   if (summary === undefined || attributions === undefined) {
     return <p className="text-sm text-gray-400 py-4">Loading revenue data...</p>;
