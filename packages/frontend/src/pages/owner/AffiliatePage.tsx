@@ -50,7 +50,7 @@ export function AffiliatePage() {
       .finally(() => setGenerating(false));
   }, [user, userId, isLoading, ensureReferralCode, generating, referralCode]);
 
-  if (isLoading || !userId || generating || !referralCode) {
+  if (isLoading || !userId || !user || generating || !referralCode) {
     return <PageLoader />;
   }
 

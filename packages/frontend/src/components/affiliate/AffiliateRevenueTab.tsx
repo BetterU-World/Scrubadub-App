@@ -28,8 +28,9 @@ function typeLabel(type: string | null): string {
 }
 
 export function AffiliateRevenueTab() {
-  const { userId, isLoading } = useAuth();
-  const queryArgs = userId ? {} : undefined;
+  const { user, userId, isLoading } = useAuth();
+  const canRun = !isLoading && !!user && !!userId;
+  const queryArgs = canRun ? {} : undefined;
   const summary = useQuery(api.queries.affiliateAttributions.getMyAttributionSummary, queryArgs);
   const attributions = useQuery(api.queries.affiliateAttributions.listMyAttributions, queryArgs);
 
@@ -37,7 +38,7 @@ export function AffiliateRevenueTab() {
     return <p className="text-sm text-gray-400 py-4">Loading...</p>;
   }
 
-  if (!userId) {
+  if (!userId || !user) {
     return <p className="text-sm text-gray-500 py-4">Please sign in to view revenue data.</p>;
   }
 
