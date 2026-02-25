@@ -5,6 +5,7 @@ import { getSessionUser } from "../lib/auth";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+const AFFILIATE_RATE = 0.10;
 
 export const getMyAttributionSummary = query({
   args: { userId: v.optional(v.id("users")) },
@@ -56,6 +57,10 @@ export const getMyAttributionSummary = query({
       totalAttributedInvoices,
       totalReferredCompanies: referredCompanyIds.size,
       totalReferredUsers: referredUserIds.size,
+      commissionRate: AFFILIATE_RATE,
+      lifetimeCommissionCents: Math.round(lifetimeRevenueCents * AFFILIATE_RATE),
+      last30dCommissionCents: Math.round(last30dRevenueCents * AFFILIATE_RATE),
+      last7dCommissionCents: Math.round(last7dRevenueCents * AFFILIATE_RATE),
     };
   },
 });

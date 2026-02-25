@@ -1,7 +1,7 @@
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
-import { DollarSign, Building2, FileText, TrendingUp } from "lucide-react";
+import { DollarSign, Building2, FileText, TrendingUp, Percent } from "lucide-react";
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
@@ -55,7 +55,7 @@ export function AffiliateRevenueTab() {
 
   return (
     <div className="space-y-6">
-      {/* Stat cards */}
+      {/* Revenue stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           icon={<DollarSign className="h-5 w-5 text-green-600" />}
@@ -76,6 +76,25 @@ export function AffiliateRevenueTab() {
           icon={<Building2 className="h-5 w-5 text-orange-600" />}
           label="Referred Companies"
           value={String(summary.totalReferredCompanies)}
+        />
+      </div>
+
+      {/* Commission stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <StatCard
+          icon={<Percent className="h-5 w-5 text-emerald-600" />}
+          label="Lifetime Commission"
+          value={formatCents(summary.lifetimeCommissionCents)}
+        />
+        <StatCard
+          icon={<Percent className="h-5 w-5 text-emerald-600" />}
+          label="30-Day Commission"
+          value={formatCents(summary.last30dCommissionCents)}
+        />
+        <StatCard
+          icon={<Percent className="h-5 w-5 text-emerald-600" />}
+          label="7-Day Commission"
+          value={formatCents(summary.last7dCommissionCents)}
         />
       </div>
 
