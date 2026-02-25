@@ -81,8 +81,14 @@ export const handleWebhook = action({
 
     if (!subObj) return; // Invoice without subscription
 
+    // Normalize customer: Stripe may expand to full object
+    const customerId =
+      typeof subObj.customer === "string"
+        ? subObj.customer
+        : subObj.customer?.id ?? "";
+
     await ctx.runMutation(internal.authInternal.upsertSubscription, {
-      stripeCustomerId: subObj.customer,
+      stripeCustomerId: customerId,
       stripeSubscriptionId: subObj.id,
       status: subObj.status,
       currentPeriodEnd: subObj.current_period_end * 1000, // Convert to ms
@@ -91,8 +97,9 @@ export const handleWebhook = action({
     // Record affiliate attribution on new subscription
     if (event.type === "customer.subscription.created") {
       await ctx.runMutation(internal.mutations.billing.recordAttribution, {
-        stripeCustomerId: subObj.customer,
+        stripeCustomerId: customerId,
         stripeSubscriptionId: subObj.id,
+        attributionType: "subscription_created",
       });
     }
   },
