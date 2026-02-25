@@ -1,5 +1,6 @@
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
+import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { DollarSign, Building2, FileText, TrendingUp, Percent } from "lucide-react";
 
@@ -28,24 +29,28 @@ function typeLabel(type: string | null): string {
 }
 
 export function AffiliateRevenueTab() {
-  const { user, userId, isLoading } = useAuth();
-  const canRun = !isLoading && !!user && !!userId;
-  const summary = useQuery(
-    api.queries.affiliateAttributions.getMyAttributionSummary,
-    canRun ? { userId: userId! } : undefined,
-  );
-  const attributions = useQuery(
-    api.queries.affiliateAttributions.listMyAttributions,
-    canRun ? { userId: userId! } : undefined,
-  );
+  const { userId, isLoading } = useAuth();
 
   if (isLoading) {
     return <p className="text-sm text-gray-400 py-4">Loading...</p>;
   }
 
-  if (!userId || !user) {
+  if (!userId) {
     return <p className="text-sm text-gray-500 py-4">Please sign in to view revenue data.</p>;
   }
+
+  return <AffiliateRevenueInner userId={userId} />;
+}
+
+function AffiliateRevenueInner({ userId }: { userId: Id<"users"> }) {
+  const summary = useQuery(
+    api.queries.affiliateAttributions.getMyAttributionSummary,
+    { userId },
+  );
+  const attributions = useQuery(
+    api.queries.affiliateAttributions.listMyAttributions,
+    { userId },
+  );
 
   if (summary === undefined || attributions === undefined) {
     return <p className="text-sm text-gray-400 py-4">Loading revenue data...</p>;
