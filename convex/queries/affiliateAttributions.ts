@@ -8,7 +8,7 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const AFFILIATE_RATE = 0.10;
 
 export const getMyAttributionSummary = query({
-  args: { userId: v.optional(v.id("users")) },
+  args: { userId: v.id("users") },
   handler: async (ctx, args) => {
     const user = await getSessionUser(ctx, args.userId);
 
@@ -67,7 +67,7 @@ export const getMyAttributionSummary = query({
 
 export const listMyAttributions = query({
   args: {
-    userId: v.optional(v.id("users")),
+    userId: v.id("users"),
     cursor: v.optional(v.number()),
     limit: v.optional(v.number()),
   },
