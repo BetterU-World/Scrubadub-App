@@ -8,26 +8,31 @@ declare const process: { env: Record<string, string | undefined> };
 const http = httpRouter();
 
 const stripeWebhook = httpAction(async (ctx, request) => {
-  const signature = request.headers.get("stripe-signature");
-  if (!signature) {
-    return new Response("Missing stripe-signature header", { status: 400 });
-  }
-
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!webhookSecret) {
-    console.error("STRIPE_WEBHOOK_SECRET env var not set");
-    return new Response("Webhook secret not configured", { status: 500 });
-  }
-
   const payload = await request.text();
-
   let event: Stripe.Event;
-  try {
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
-    event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
-  } catch (err: any) {
-    console.error("Webhook signature verification failed:", err.message);
-    return new Response("Invalid signature", { status: 400 });
+
+  if (process.env.STRIPE_WEBHOOK_DEV_BYPASS === "true") {
+    console.log("[stripe:webhook] dev bypass enabled");
+    event = JSON.parse(payload) as Stripe.Event;
+  } else {
+    const signature = request.headers.get("stripe-signature");
+    if (!signature) {
+      return new Response("Missing stripe-signature header", { status: 400 });
+    }
+
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      console.error("STRIPE_WEBHOOK_SECRET env var not set");
+      return new Response("Webhook secret not configured", { status: 500 });
+    }
+
+    try {
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+      event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+    } catch (err: any) {
+      console.error("Webhook signature verification failed:", err.message);
+      return new Response("Invalid signature", { status: 400 });
+    }
   }
 
   switch (event.type) {
