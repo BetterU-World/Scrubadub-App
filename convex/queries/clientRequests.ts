@@ -36,7 +36,9 @@ export const getCompanyRequests = query({
         v.literal("new"),
         v.literal("accepted"),
         v.literal("declined"),
-        v.literal("converted")
+        v.literal("converted"),
+        v.literal("contacted"),
+        v.literal("archived")
       )
     ),
   },

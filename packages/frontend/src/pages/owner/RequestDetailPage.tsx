@@ -24,6 +24,8 @@ import {
   Copy,
   Star,
   MessageSquare,
+  PhoneOutgoing,
+  Archive,
 } from "lucide-react";
 
 export function RequestDetailPage() {
@@ -47,6 +49,9 @@ export function RequestDetailPage() {
 
   const generatePortalLink = useMutation(
     api.mutations.clientRequests.generateClientPortalLink
+  );
+  const archiveRequest = useMutation(
+    api.mutations.clientRequests.archiveClientRequest
   );
 
   const latestFeedback = useQuery(
@@ -77,7 +82,38 @@ export function RequestDetailPage() {
     );
   }
 
-  const canAct = request.status === "new" || request.status === "accepted";
+  const canAct = request.status === "new" || request.status === "accepted" || request.status === "contacted";
+  const canMarkContacted = request.status === "new";
+  const canArchive = request.status !== "archived";
+
+  const handleMarkContacted = async () => {
+    try {
+      await updateStatus({
+        requestId: request._id,
+        userId: user!._id,
+        status: "contacted",
+      });
+      setToast({ message: "Marked as contacted", type: "success" });
+      setTimeout(() => setToast(null), 3000);
+    } catch (err: any) {
+      setToast({ message: err.message || "Failed to update", type: "error" });
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
+
+  const handleArchive = async () => {
+    try {
+      await archiveRequest({
+        requestId: request._id,
+        userId: user!._id,
+      });
+      setToast({ message: "Request archived", type: "success" });
+      setTimeout(() => setToast(null), 3000);
+    } catch (err: any) {
+      setToast({ message: err.message || "Failed to archive", type: "error" });
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
 
   const handleConvert = () => {
     const notesParts: string[] = ["Client Request:"];
@@ -170,22 +206,40 @@ export function RequestDetailPage() {
       <PageHeader
         title={request.requesterName}
         action={
-          canAct ? (
-            <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            {canMarkContacted && (
               <button
-                onClick={handleConvert}
-                className="btn-primary flex items-center gap-2"
+                onClick={handleMarkContacted}
+                className="btn-secondary flex items-center gap-2"
               >
-                <Briefcase className="w-4 h-4" /> Convert to Job
+                <PhoneOutgoing className="w-4 h-4" /> Mark Contacted
               </button>
+            )}
+            {canAct && (
+              <>
+                <button
+                  onClick={handleConvert}
+                  className="btn-primary flex items-center gap-2"
+                >
+                  <Briefcase className="w-4 h-4" /> Convert to Job
+                </button>
+                <button
+                  onClick={() => setShowDecline(true)}
+                  className="btn-danger flex items-center gap-2"
+                >
+                  <XCircle className="w-4 h-4" /> Decline
+                </button>
+              </>
+            )}
+            {canArchive && (
               <button
-                onClick={() => setShowDecline(true)}
-                className="btn-danger flex items-center gap-2"
+                onClick={handleArchive}
+                className="btn-secondary flex items-center gap-2 text-gray-500"
               >
-                <XCircle className="w-4 h-4" /> Decline
+                <Archive className="w-4 h-4" /> Archive
               </button>
-            </div>
-          ) : undefined
+            )}
+          </div>
         }
       />
 
@@ -196,6 +250,16 @@ export function RequestDetailPage() {
           <span className="text-xs text-gray-400">
             Submitted {new Date(request.createdAt).toLocaleString()}
           </span>
+          {(request as any).contactedAt && (
+            <span className="text-xs text-gray-400">
+              Contacted {new Date((request as any).contactedAt).toLocaleString()}
+            </span>
+          )}
+          {(request as any).archivedAt && (
+            <span className="text-xs text-gray-400">
+              Archived {new Date((request as any).archivedAt).toLocaleString()}
+            </span>
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">

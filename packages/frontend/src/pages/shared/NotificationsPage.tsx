@@ -65,6 +65,11 @@ export function NotificationsPage() {
                       View Job
                   </Link>
                 )}
+                {(n as any).relatedClientRequestId && (
+                  <Link href={`/requests/${(n as any).relatedClientRequestId}`} className="text-xs text-primary-600 hover:text-primary-700 whitespace-nowrap">
+                      View Request
+                  </Link>
+                )}
               </div>
             </div>
           ))}

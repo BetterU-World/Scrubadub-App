@@ -12,9 +12,11 @@ import { Inbox, Calendar, MapPin } from "lucide-react";
 const STATUS_OPTIONS = [
   { value: "", label: "All" },
   { value: "new", label: "New" },
+  { value: "contacted", label: "Contacted" },
   { value: "accepted", label: "Accepted" },
   { value: "declined", label: "Declined" },
   { value: "converted", label: "Converted" },
+  { value: "archived", label: "Archived" },
 ];
 
 function timeAgo(ts: number): string {

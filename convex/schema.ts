@@ -221,12 +221,14 @@ export default defineSchema({
       v.literal("partner_request"),
       v.literal("partner_accepted"),
       v.literal("shared_job_accepted"),
-      v.literal("shared_job_rejected")
+      v.literal("shared_job_rejected"),
+      v.literal("new_client_request")
     ),
     title: v.string(),
     message: v.string(),
     read: v.boolean(),
     relatedJobId: v.optional(v.id("jobs")),
+    relatedClientRequestId: v.optional(v.id("clientRequests")),
   }).index("by_userId_read", ["userId", "read"]),
 
   auditLog: defineTable({
@@ -450,8 +452,12 @@ export default defineSchema({
       v.literal("new"),
       v.literal("accepted"),
       v.literal("declined"),
-      v.literal("converted")
+      v.literal("converted"),
+      v.literal("contacted"),
+      v.literal("archived")
     ),
+    contactedAt: v.optional(v.number()),
+    archivedAt: v.optional(v.number()),
     requesterName: v.string(),
     requesterEmail: v.string(),
     requesterPhone: v.optional(v.string()),
