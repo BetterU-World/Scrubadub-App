@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,6 +16,19 @@ export function NotificationsPage() {
   );
   const markAsRead = useMutation(api.mutations.notifications.markAsRead);
   const markAllAsRead = useMutation(api.mutations.notifications.markAllAsRead);
+  const markReadUpTo = useMutation(api.mutations.notifications.markReadUpTo);
+
+  // Auto-mark notifications as read when the page loads
+  const hasMarkedRef = useRef(false);
+  useEffect(() => {
+    if (hasMarkedRef.current || !user || !notifications || notifications.length === 0) return;
+    const hasUnread = notifications.some((n) => !n.read);
+    if (!hasUnread) return;
+    // notifications are sorted desc by _creationTime; first item is the latest
+    const latestTs = notifications[0]._creationTime;
+    hasMarkedRef.current = true;
+    markReadUpTo({ userId: user._id, seenThroughTs: latestTs });
+  }, [user, notifications, markReadUpTo]);
 
   if (!user || notifications === undefined) return <PageLoader />;
 
@@ -65,8 +79,8 @@ export function NotificationsPage() {
                       View Job
                   </Link>
                 )}
-                {(n as any).relatedClientRequestId && (
-                  <Link href={`/requests/${(n as any).relatedClientRequestId}`} className="text-xs text-primary-600 hover:text-primary-700 whitespace-nowrap">
+                {n.relatedClientRequestId && (
+                  <Link href={`/requests/${n.relatedClientRequestId}`} className="text-xs text-primary-600 hover:text-primary-700 whitespace-nowrap">
                       View Request
                   </Link>
                 )}
