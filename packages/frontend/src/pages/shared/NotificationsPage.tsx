@@ -18,16 +18,19 @@ export function NotificationsPage() {
   const markAllAsRead = useMutation(api.mutations.notifications.markAllAsRead);
   const markReadUpTo = useMutation(api.mutations.notifications.markReadUpTo);
 
-  // Auto-mark notifications as read when the page loads
-  const hasMarkedRef = useRef(false);
+  // Auto-mark notifications as read after they render (delayed so user sees them)
+  const autoMarkRef = useRef(false);
   useEffect(() => {
-    if (hasMarkedRef.current || !user || !notifications || notifications.length === 0) return;
+    if (autoMarkRef.current || !user || !notifications || notifications.length === 0) return;
     const hasUnread = notifications.some((n) => !n.read);
     if (!hasUnread) return;
     // notifications are sorted desc by _creationTime; first item is the latest
     const latestTs = notifications[0]._creationTime;
-    hasMarkedRef.current = true;
-    markReadUpTo({ userId: user._id, seenThroughTs: latestTs });
+    const timer = setTimeout(() => {
+      autoMarkRef.current = true;
+      markReadUpTo({ userId: user._id, seenThroughTs: latestTs });
+    }, 800);
+    return () => clearTimeout(timer);
   }, [user, notifications, markReadUpTo]);
 
   if (!user || notifications === undefined) return <PageLoader />;
