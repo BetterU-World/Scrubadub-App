@@ -1,4 +1,4 @@
-import { useState, useEffect, FormEvent } from "react";
+import { useState, useEffect, useRef, FormEvent } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,6 +16,24 @@ export function SiteSetupPage() {
   );
 
   const upsert = useMutation(api.mutations.companySites.upsertSite);
+  const ensureToken = useMutation(
+    api.mutations.companySites.ensurePublicRequestToken
+  );
+
+  // Auto-generate booking token when site exists but token is missing
+  const tokenEnsured = useRef(false);
+  const [tokenError, setTokenError] = useState("");
+  useEffect(() => {
+    if (!user || !site || site.publicRequestToken || tokenEnsured.current)
+      return;
+    tokenEnsured.current = true;
+    ensureToken({ userId: user._id, companyId: user.companyId }).catch(
+      (err: any) => {
+        tokenEnsured.current = false; // allow retry
+        setTokenError(err.message || "Failed to generate booking link");
+      }
+    );
+  }, [user, site]);
 
   // Form state
   const [slug, setSlug] = useState("");
@@ -123,6 +141,31 @@ export function SiteSetupPage() {
       {saved && (
         <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
           Site saved successfully.
+        </div>
+      )}
+
+      {tokenError && (
+        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-sm flex items-center justify-between">
+          <span>{tokenError}</span>
+          <button
+            type="button"
+            onClick={() => {
+              setTokenError("");
+              tokenEnsured.current = false;
+              ensureToken({
+                userId: user._id,
+                companyId: user.companyId,
+              }).catch((err: any) => {
+                tokenEnsured.current = false;
+                setTokenError(
+                  err.message || "Failed to generate booking link"
+                );
+              });
+            }}
+            className="text-yellow-800 underline hover:text-yellow-900 ml-3 whitespace-nowrap"
+          >
+            Retry
+          </button>
         </div>
       )}
 
