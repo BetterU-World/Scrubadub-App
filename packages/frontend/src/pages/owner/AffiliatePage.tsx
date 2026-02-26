@@ -8,6 +8,7 @@ import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { AffiliateRevenueTab } from "@/components/affiliate/AffiliateRevenueTab";
 import { AffiliateLedgerTab } from "@/components/affiliate/AffiliateLedgerTab";
 import { PayoutRequestsTab } from "@/components/affiliate/PayoutRequestsTab";
+import { StripePayoutsSection } from "@/components/affiliate/StripePayoutsSection";
 import { Copy, ExternalLink, Share2, Users } from "lucide-react";
 
 function getReferralBaseUrl(): string {
@@ -18,7 +19,7 @@ function getReferralBaseUrl(): string {
   return "https://scrubscrubscrub.com/?ref=";
 }
 
-type Tab = "referrals" | "revenue" | "ledger" | "requests";
+type Tab = "referrals" | "revenue" | "ledger" | "payouts" | "requests";
 
 export function AffiliatePage() {
   const { user, userId, isLoading } = useAuth();
@@ -120,6 +121,7 @@ function AffiliatePageInner({
     { key: "referrals", label: "Referrals" },
     { key: "revenue", label: "Revenue" },
     { key: "ledger", label: "Ledger" },
+    { key: "payouts", label: "Payouts" },
     ...(isSuperAdmin
       ? [{ key: "requests" as Tab, label: "Payout Requests" }]
       : []),
@@ -227,6 +229,8 @@ function AffiliatePageInner({
       {activeTab === "revenue" && <AffiliateRevenueTab />}
 
       {activeTab === "ledger" && <AffiliateLedgerTab />}
+
+      {activeTab === "payouts" && <StripePayoutsSection />}
 
       {activeTab === "requests" && <PayoutRequestsTab />}
     </div>

@@ -53,6 +53,7 @@ import { NotificationsPage } from "@/pages/shared/NotificationsPage";
 import { ManualsPage } from "@/pages/shared/ManualsPage";
 import { ManualViewerPage } from "@/pages/shared/ManualViewerPage";
 import { PayoutRequestPage } from "@/pages/shared/PayoutRequestPage";
+import { StripeReturnPage } from "@/pages/shared/StripeReturnPage";
 
 // Public pages (no auth required)
 import { PublicRequestPage } from "@/pages/public/PublicRequestPage";
@@ -265,6 +266,8 @@ export default function App() {
               <SubscriptionInactive />
             </Route>
           )}
+          <Route path="/affiliate/stripe/return" component={StripeReturnPage} />
+          <Route path="/affiliate/stripe/refresh" component={StripeReturnPage} />
           <Route path="/affiliate/payout-request/:requestId" component={PayoutRequestPage} />
           <Route path="/affiliate" component={AffiliatePage} />
           <Route path="/notifications" component={NotificationsPage} />
