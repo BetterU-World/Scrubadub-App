@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
+import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
@@ -21,23 +22,55 @@ type Tab = "referrals" | "revenue" | "ledger" | "requests";
 
 export function AffiliatePage() {
   const { user, userId, isLoading } = useAuth();
+
+  if (isLoading) return <PageLoader />;
+  if (!userId || !user) {
+    return (
+      <div className="py-8 text-center">
+        <p className="text-sm text-gray-500">Please sign in to access the Affiliate Portal.</p>
+      </div>
+    );
+  }
+
+  return <AffiliatePageInner userId={userId} user={user} />;
+}
+
+function AffiliatePageInner({
+  userId,
+  user,
+}: {
+  userId: Id<"users">;
+  user: { referralCode?: string; isSuperadmin?: boolean };
+}) {
   const ensureReferralCode = useMutation(api.mutations.affiliate.ensureReferralCode);
   const referrals = useQuery(
     api.queries.affiliate.getMyReferrals,
-    userId ? {} : undefined,
+    { userId },
   );
 
   const [referralCode, setReferralCode] = useState<string | null>(
     user?.referralCode ?? null
   );
   const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("referrals");
   const hasBootstrapped = useRef(false);
 
-  // On mount: if no code yet, generate one — only after auth is ready
+  function attemptEnsureCode() {
+    setGenerating(true);
+    setGenError(false);
+    ensureReferralCode({ userId })
+      .then((code) => setReferralCode(code))
+      .catch((err) => {
+        console.error("Failed to generate referral code:", err);
+        setGenError(true);
+      })
+      .finally(() => setGenerating(false));
+  }
+
+  // On mount: if no code yet, generate one
   useEffect(() => {
-    if (isLoading || !userId) return;
     if (user?.referralCode) {
       setReferralCode(user.referralCode);
       return;
@@ -45,16 +78,31 @@ export function AffiliatePage() {
     if (hasBootstrapped.current || generating || referralCode) return;
 
     hasBootstrapped.current = true;
-    setGenerating(true);
-    ensureReferralCode({})
-      .then((code) => setReferralCode(code))
-      .catch((err) => console.error("Failed to generate referral code:", err))
-      .finally(() => setGenerating(false));
-  }, [user, userId, isLoading, ensureReferralCode, generating, referralCode]);
+    attemptEnsureCode();
+  }, [user, generating, referralCode]);
 
-  if (isLoading || !userId || !user || generating || !referralCode) {
-    return <PageLoader />;
+  if (generating) return <PageLoader />;
+
+  if (genError && !referralCode) {
+    return (
+      <div className="py-8 text-center">
+        <p className="text-sm text-red-600 mb-3">
+          Failed to generate your referral code.
+        </p>
+        <button
+          onClick={() => {
+            hasBootstrapped.current = false;
+            attemptEnsureCode();
+          }}
+          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    );
   }
+
+  if (!referralCode) return <PageLoader />;
 
   const fullUrl = `${getReferralBaseUrl()}${referralCode}`;
   const socialCaption = `Need a reliable cleaner or want to join our team? Check this out: ${fullUrl}`;
