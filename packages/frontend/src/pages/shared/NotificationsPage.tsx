@@ -29,7 +29,7 @@ export function NotificationsPage() {
     const timer = setTimeout(() => {
       autoMarkRef.current = true;
       markReadUpTo({ userId: user._id, seenThroughTs: latestTs });
-    }, 800);
+    }, 1000);
     return () => clearTimeout(timer);
   }, [user, notifications, markReadUpTo]);
 
@@ -64,12 +64,12 @@ export function NotificationsPage() {
               onClick={() => {
                 if (!n.read) markAsRead({ notificationId: n._id, userId: user._id });
               }}
-              className={`card cursor-pointer transition-colors ${
-                n.read ? "opacity-60" : "border-primary-200 bg-primary-50/20"
+              className={`card cursor-pointer transition-all duration-500 ease-out ${
+                n.read ? "opacity-60 border-transparent bg-white" : "border-primary-200 bg-primary-50/20"
               }`}
             >
               <div className="flex items-start gap-3">
-                {!n.read && <div className="w-2 h-2 rounded-full bg-primary-500 mt-2 flex-shrink-0" />}
+                <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 transition-opacity duration-500 ease-out ${n.read ? "opacity-0" : "opacity-100 bg-primary-500"}`} />
                 <div className="flex-1">
                   <p className="font-medium text-sm">{n.title}</p>
                   <p className="text-sm text-gray-500 mt-0.5">{n.message}</p>
