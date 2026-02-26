@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useLocation, Link } from "wouter";
 import {
   LayoutDashboard,
@@ -20,51 +21,131 @@ import {
   Share2,
   MessageSquare,
   Kanban,
+  ChevronDown,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { clsx } from "clsx";
 
-const ownerNav = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/properties", label: "Properties", icon: Building2 },
-  { href: "/employees", label: "Employees", icon: Users },
-  { href: "/jobs", label: "Jobs", icon: ClipboardCheck },
-  { href: "/calendar", label: "Calendar", icon: Calendar },
-  { href: "/red-flags", label: "Red Flags", icon: Flag },
-  { href: "/performance", label: "Performance", icon: BarChart3 },
-  { href: "/analytics", label: "Analytics", icon: TrendingUp },
-  { href: "/partners", label: "Partners", icon: Handshake },
-  { href: "/requests", label: "Requests", icon: Inbox },
-  { href: "/requests/pipeline", label: "Pipeline", icon: Kanban },
-  { href: "/feedback", label: "Feedback", icon: MessageSquare },
-  { href: "/cleaner-leads", label: "Cleaner Leads", icon: UserPlus },
-  { href: "/site", label: "My Site", icon: Globe },
-  { href: "/affiliate", label: "Affiliate", icon: Share2 },
-  { href: "/notifications", label: "Notifications", icon: Bell },
-  { href: "/audit-log", label: "Audit Log", icon: ScrollText },
-  { href: "/manuals", label: "Manuals", icon: BookOpen },
+interface NavItem {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+}
+
+interface NavSection {
+  title: string;
+  items: NavItem[];
+}
+
+const ownerSections: NavSection[] = [
+  {
+    title: "Dashboard",
+    items: [
+      { href: "/", label: "Overview", icon: LayoutDashboard },
+      { href: "/properties", label: "Properties", icon: Building2 },
+      { href: "/employees", label: "Employees", icon: Users },
+      { href: "/jobs", label: "Jobs", icon: ClipboardCheck },
+      { href: "/calendar", label: "Calendar", icon: Calendar },
+      { href: "/red-flags", label: "Red Flags", icon: Flag },
+      { href: "/performance", label: "Performance", icon: BarChart3 },
+      { href: "/analytics", label: "Analytics", icon: TrendingUp },
+      { href: "/partners", label: "Partners", icon: Handshake },
+    ],
+  },
+  {
+    title: "Hub",
+    items: [
+      { href: "/requests", label: "Requests", icon: Inbox },
+      { href: "/requests/pipeline", label: "Pipeline", icon: Kanban },
+      { href: "/feedback", label: "Feedback", icon: MessageSquare },
+      { href: "/cleaner-leads", label: "Cleaner Leads", icon: UserPlus },
+      { href: "/affiliate", label: "Affiliate", icon: Share2 },
+      { href: "/notifications", label: "Notifications", icon: Bell },
+    ],
+  },
+  {
+    title: "Company",
+    items: [
+      { href: "/site", label: "My Site", icon: Globe },
+      { href: "/manuals", label: "Manuals", icon: BookOpen },
+      { href: "/audit-log", label: "Audit Log", icon: ScrollText },
+    ],
+  },
 ];
 
-const workerNav = [
-  { href: "/", label: "My Jobs", icon: ClipboardCheck },
-  { href: "/calendar", label: "Calendar", icon: Calendar },
-  { href: "/affiliate", label: "Affiliate", icon: Share2 },
-  { href: "/notifications", label: "Notifications", icon: Bell },
-  { href: "/manuals", label: "Manuals", icon: BookOpen },
+const workerSections: NavSection[] = [
+  {
+    title: "Dashboard",
+    items: [
+      { href: "/", label: "My Jobs", icon: ClipboardCheck },
+      { href: "/calendar", label: "Calendar", icon: Calendar },
+    ],
+  },
+  {
+    title: "Hub",
+    items: [
+      { href: "/affiliate", label: "Affiliate", icon: Share2 },
+      { href: "/notifications", label: "Notifications", icon: Bell },
+    ],
+  },
+  {
+    title: "Company",
+    items: [
+      { href: "/manuals", label: "Manuals", icon: BookOpen },
+    ],
+  },
 ];
+
+function CollapsibleSection({
+  title,
+  isOpen,
+  onToggle,
+  children,
+}: {
+  title: string;
+  isOpen: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <button
+        onClick={onToggle}
+        className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider hover:text-gray-600 transition-colors"
+      >
+        {title}
+        <ChevronDown
+          className={clsx(
+            "w-3.5 h-3.5 transition-transform",
+            isOpen && "rotate-180"
+          )}
+        />
+      </button>
+      {isOpen && <div className="space-y-1">{children}</div>}
+    </div>
+  );
+}
 
 export function Sidebar() {
   const [location] = useLocation();
   const { user, signOut } = useAuth();
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    Dashboard: true,
+  });
 
   const isSuperAdmin = useQuery(
     api.queries.admin.isSuperAdmin,
     user?._id ? { userId: user._id } : "skip"
   );
 
-  const nav = user?.role === "owner" ? ownerNav : workerNav;
+  const sections = user?.role === "owner" ? ownerSections : workerSections;
+
+  const toggleSection = (title: string) => {
+    setOpenSections((prev) => ({ ...prev, [title]: !prev[title] }));
+  };
 
   return (
     <aside className="hidden md:flex md:flex-col md:w-64 bg-white border-r border-gray-200 min-h-screen">
@@ -73,41 +154,56 @@ export function Sidebar() {
         <p className="text-sm text-gray-500 mt-1">{user?.companyName}</p>
       </div>
 
-      <nav className="flex-1 p-4 space-y-1">
-        {nav.map((item) => {
-          const isActive =
-            item.href === "/"
-              ? location === "/"
-              : location.startsWith(item.href);
-          return (
+      <nav className="flex-1 p-4 space-y-4 overflow-y-auto">
+        {sections.map((section) => (
+          <CollapsibleSection
+            key={section.title}
+            title={section.title}
+            isOpen={!!openSections[section.title]}
+            onToggle={() => toggleSection(section.title)}
+          >
+            {section.items.map((item) => {
+              const isActive =
+                item.href === "/"
+                  ? location === "/"
+                  : location.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={clsx(
+                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                    isActive
+                      ? "bg-primary-50 text-primary-700"
+                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  )}
+                >
+                  <item.icon className="w-5 h-5" />
+                  {item.label}
+                </Link>
+              );
+            })}
+          </CollapsibleSection>
+        ))}
+        {isSuperAdmin && (
+          <CollapsibleSection
+            title="Admin"
+            isOpen={!!openSections["Admin"]}
+            onToggle={() => toggleSection("Admin")}
+          >
             <Link
-              key={item.href}
-              href={item.href}
+              href="/admin"
               className={clsx(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-                isActive
+                location.startsWith("/admin")
                   ? "bg-primary-50 text-primary-700"
                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
               )}
             >
-              <item.icon className="w-5 h-5" />
-              {item.label}
+              <Shield className="w-5 h-5" />
+              Admin
             </Link>
-          );
-        })}
-        {isSuperAdmin && (
-          <Link
-            href="/admin"
-            className={clsx(
-              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors mt-2 border-t border-gray-100 pt-3",
-              location.startsWith("/admin")
-                ? "bg-primary-50 text-primary-700"
-                : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-            )}
-          >
-            <Shield className="w-5 h-5" />
-            Admin
-          </Link>
+          </CollapsibleSection>
         )}
       </nav>
 
