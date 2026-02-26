@@ -43,6 +43,19 @@ export default defineSchema({
     referralCode: v.optional(v.string()),
     referredByCode: v.optional(v.string()),
     referredByUserId: v.optional(v.id("users")),
+    // Stripe Connect (Express onboarding)
+    stripeConnectAccountId: v.optional(v.string()),
+    stripeConnectOnboardingStatus: v.optional(
+      v.union(
+        v.literal("not_started"),
+        v.literal("in_progress"),
+        v.literal("complete")
+      )
+    ),
+    stripeConnectPayoutsEnabled: v.optional(v.boolean()),
+    stripeConnectDetailsSubmitted: v.optional(v.boolean()),
+    stripeConnectRequirementsDue: v.optional(v.string()),
+    stripeConnectLastSyncAt: v.optional(v.number()),
   })
     .index("by_email", ["email"])
     .index("by_companyId", ["companyId"])
