@@ -182,6 +182,8 @@ type BatchRow = {
   ledgerIds: string[];
   notes?: string;
   voidedAt?: number;
+  payoutStatus?: string;
+  stripeTransferId?: string;
 };
 
 function buildBatchCsvContent(batches: BatchRow[]): string {
@@ -489,6 +491,7 @@ function BatchDetailModal({
   const [showStripeConfirm, setShowStripeConfirm] = useState(false);
   const [stripeBusy, setStripeBusy] = useState(false);
   const [stripeError, setStripeError] = useState<string | null>(null);
+  const [copiedTransferId, setCopiedTransferId] = useState(false);
 
   function handleExportBatchCsv() {
     if (!batch) return;
@@ -578,9 +581,21 @@ function BatchDetailModal({
                 </div>
               )}
               {batch.stripeTransferId && (
-                <div className="col-span-2">
+                <div className="col-span-2 flex items-center gap-2">
                   <span className="text-gray-500">Transfer ID:</span>{" "}
                   <span className="font-mono text-xs">{batch.stripeTransferId}</span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(batch.stripeTransferId!);
+                      setCopiedTransferId(true);
+                      setTimeout(() => setCopiedTransferId(false), 2000);
+                    }}
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs text-gray-500 bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+                    title="Copy transfer ID"
+                  >
+                    <Copy className="h-3 w-3" />
+                    {copiedTransferId ? "Copied" : "Copy"}
+                  </button>
                 </div>
               )}
               {batch.paidAt && (
@@ -591,34 +606,42 @@ function BatchDetailModal({
               )}
             </div>
 
-            {/* Stripe paid success banner */}
-            {payoutStatus === "paid" && batch.stripeTransferId && (
-              <div className="bg-green-50 border border-green-200 rounded-md px-3 py-2 mb-4 flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
-                <span className="text-sm text-green-800">
-                  Paid via Stripe (
-                  <span className="font-mono text-xs">{batch.stripeTransferId}</span>
-                  )
-                </span>
-              </div>
-            )}
-
-            {/* Stripe processing banner */}
+            {/* Stripe processing banner — block all manual actions */}
             {payoutStatus === "processing" && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-md px-3 py-2 mb-4 flex items-center gap-2">
-                <RefreshCw className="h-4 w-4 text-yellow-600 animate-spin flex-shrink-0" />
-                <span className="text-sm text-yellow-800">
-                  Stripe transfer processing...
-                </span>
+              <div className="bg-yellow-50 border border-yellow-200 rounded-md px-3 py-2 mb-4">
+                <div className="flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4 text-yellow-600 animate-spin flex-shrink-0" />
+                  <span className="text-sm text-yellow-800 font-medium">
+                    Stripe payout in progress
+                  </span>
+                </div>
+                <p className="text-xs text-yellow-700 mt-1 ml-6">
+                  Do not take manual actions while the transfer is processing.
+                </p>
               </div>
             )}
 
-            {/* Stripe failed banner */}
+            {/* Stripe paid banner — no manual payout needed */}
+            {payoutStatus === "paid" && batch.stripeTransferId && (
+              <div className="bg-green-50 border border-green-200 rounded-md px-3 py-2 mb-4">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                  <span className="text-sm text-green-800 font-medium">
+                    Paid via Stripe
+                  </span>
+                </div>
+                <p className="text-xs text-green-700 mt-1 ml-6">
+                  Manual payout not needed. Transfer ID: {batch.stripeTransferId}
+                </p>
+              </div>
+            )}
+
+            {/* Stripe failed banner — retry or void */}
             {payoutStatus === "failed" && (
               <div className="bg-red-50 border border-red-200 rounded-md px-3 py-2 mb-4">
                 <div className="flex items-center gap-2">
                   <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
-                  <span className="text-sm text-red-800">
+                  <span className="text-sm text-red-800 font-medium">
                     Stripe transfer failed
                   </span>
                 </div>
@@ -627,6 +650,9 @@ function BatchDetailModal({
                     {batch.payoutErrorMessage}
                   </p>
                 )}
+                <p className="text-xs text-red-700 mt-1 ml-6">
+                  No money was sent. You can retry the Stripe payment or void this batch.
+                </p>
               </div>
             )}
 
@@ -742,6 +768,11 @@ function BatchDetailModal({
                 <p className="text-sm text-red-700 mb-2">
                   Voiding reverts all ledger entries to locked. Are you sure?
                 </p>
+                {payoutStatus === "failed" && (
+                  <p className="text-xs text-red-600 mb-2">
+                    Note: voiding does not send or reverse money. It only reverts paid rows if this batch had paid them.
+                  </p>
+                )}
                 <textarea
                   value={voidNotes}
                   onChange={(e) =>
@@ -949,7 +980,12 @@ function BatchListPanel({
                   <td className="px-4 py-2 text-right font-medium">
                     {formatCents(b.totalCommissionCents)}
                   </td>
-                  <td className="px-4 py-2">{statusBadge(b.status)}</td>
+                  <td className="px-4 py-2">
+                    {statusBadge(b.status)}
+                    {b.payoutStatus && b.payoutStatus !== "recorded" && b.payoutStatus !== b.status && (
+                      <span className="ml-1">{statusBadge(b.payoutStatus)}</span>
+                    )}
+                  </td>
                   <td className="px-4 py-2">{b.ledgerIds.length}</td>
                   <td className="px-4 py-2">
                     <button

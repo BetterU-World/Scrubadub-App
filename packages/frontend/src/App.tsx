@@ -59,6 +59,7 @@ import { StripeReturnPage } from "@/pages/shared/StripeReturnPage";
 import { PublicRequestPage } from "@/pages/public/PublicRequestPage";
 import { PublicSitePage } from "@/pages/public/PublicSitePage";
 import { CleanerStubPage } from "@/pages/public/CleanerStubPage";
+import { ClientPortalPage } from "@/pages/public/ClientPortalPage";
 
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 
@@ -144,6 +145,14 @@ export default function App() {
     return (
       <ErrorBoundary>
         <Route path="/r/:token" component={PublicRequestPage} />
+      </ErrorBoundary>
+    );
+  }
+
+  if (pathname.startsWith("/c/")) {
+    return (
+      <ErrorBoundary>
+        <Route path="/c/:token" component={ClientPortalPage} />
       </ErrorBoundary>
     );
   }
