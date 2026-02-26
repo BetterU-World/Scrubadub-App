@@ -496,6 +496,24 @@ export default defineSchema({
     .index("by_companyId_status", ["companyId", "status"])
     .index("by_portalToken", ["portalToken"]),
 
+  // ── Manuals Library (v1) ────────────────────────────────────────
+  manuals: defineTable({
+    title: v.string(),
+    description: v.optional(v.string()),
+    category: v.union(
+      v.literal("cleaner"),
+      v.literal("owner"),
+      v.literal("app")
+    ),
+    roleVisibility: v.union(
+      v.literal("cleaner"),
+      v.literal("owner"),
+      v.literal("both")
+    ),
+    blobKey: v.string(),
+    createdAt: v.number(),
+  }).index("by_roleVisibility", ["roleVisibility"]),
+
   // ── Client Feedback (from portal) ────────────────────────────────
   clientFeedback: defineTable({
     clientRequestId: v.id("clientRequests"),
