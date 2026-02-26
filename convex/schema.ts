@@ -221,12 +221,14 @@ export default defineSchema({
       v.literal("partner_request"),
       v.literal("partner_accepted"),
       v.literal("shared_job_accepted"),
-      v.literal("shared_job_rejected")
+      v.literal("shared_job_rejected"),
+      v.literal("new_client_request")
     ),
     title: v.string(),
     message: v.string(),
     read: v.boolean(),
     relatedJobId: v.optional(v.id("jobs")),
+    relatedClientRequestId: v.optional(v.id("clientRequests")),
   }).index("by_userId_read", ["userId", "read"]),
 
   auditLog: defineTable({
@@ -450,8 +452,12 @@ export default defineSchema({
       v.literal("new"),
       v.literal("accepted"),
       v.literal("declined"),
-      v.literal("converted")
+      v.literal("converted"),
+      v.literal("contacted"),
+      v.literal("archived")
     ),
+    contactedAt: v.optional(v.number()),
+    archivedAt: v.optional(v.number()),
     requesterName: v.string(),
     requesterEmail: v.string(),
     requesterPhone: v.optional(v.string()),
@@ -472,6 +478,19 @@ export default defineSchema({
     portalEnabled: v.optional(v.boolean()),
     clientNotes: v.optional(v.string()),
     updatedByClientAt: v.optional(v.number()),
+    // Lead pipeline (CRM v1)
+    leadStage: v.optional(
+      v.union(
+        v.literal("new"),
+        v.literal("contacted"),
+        v.literal("quoted"),
+        v.literal("won"),
+        v.literal("lost")
+      )
+    ),
+    leadNotes: v.optional(v.string()),
+    nextFollowUpAt: v.optional(v.number()),
+    lastStageChangedAt: v.optional(v.number()),
   })
     .index("by_companyId", ["companyId"])
     .index("by_companyId_status", ["companyId", "status"])

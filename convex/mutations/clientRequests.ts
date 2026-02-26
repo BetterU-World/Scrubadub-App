@@ -60,6 +60,28 @@ export const createClientRequestByToken = mutation({
       source: "public_link",
     });
 
+    // Notify all active owners in this company
+    const owners = await ctx.db
+      .query("users")
+      .withIndex("by_companyId", (q) => q.eq("companyId", company._id))
+      .collect();
+
+    const activeOwners = owners.filter(
+      (u) => u.role === "owner" && u.status === "active"
+    );
+
+    for (const owner of activeOwners) {
+      await ctx.db.insert("notifications", {
+        companyId: company._id,
+        userId: owner._id,
+        type: "new_client_request",
+        title: "New booking request",
+        message: `${args.requesterName} submitted a new service request.`,
+        read: false,
+        relatedClientRequestId: requestId,
+      });
+    }
+
     return requestId;
   },
 });
@@ -72,7 +94,11 @@ export const updateRequestStatus = mutation({
   args: {
     requestId: v.id("clientRequests"),
     userId: v.optional(v.id("users")),
-    status: v.union(v.literal("declined"), v.literal("converted")),
+    status: v.union(
+      v.literal("declined"),
+      v.literal("converted"),
+      v.literal("contacted")
+    ),
   },
   handler: async (ctx, args) => {
     const owner = await requireOwner(ctx, args.userId);
@@ -85,7 +111,35 @@ export const updateRequestStatus = mutation({
       throw new Error("Access denied");
     }
 
-    await ctx.db.patch(args.requestId, { status: args.status });
+    const patch: Record<string, unknown> = { status: args.status };
+    if (args.status === "contacted") {
+      patch.contactedAt = Date.now();
+    }
+
+    await ctx.db.patch(args.requestId, patch);
+  },
+});
+
+/**
+ * Archive a client request.
+ * Owner-only; scoped to caller's company.
+ */
+export const archiveClientRequest = mutation({
+  args: {
+    requestId: v.id("clientRequests"),
+    userId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+
+    const request = await ctx.db.get(args.requestId);
+    if (!request) throw new Error("Request not found");
+    if (request.companyId !== owner.companyId) throw new Error("Access denied");
+
+    await ctx.db.patch(args.requestId, {
+      status: "archived",
+      archivedAt: Date.now(),
+    });
   },
 });
 
@@ -125,6 +179,93 @@ export const createPropertyFromRequest = mutation({
     await ctx.db.patch(args.requestId, { propertyId });
 
     return propertyId;
+  },
+});
+
+// ── Lead Pipeline mutations ─────────────────────────────────────
+
+const LEAD_STAGES = ["new", "contacted", "quoted", "won", "lost"] as const;
+
+/**
+ * Update the CRM lead stage for a request.
+ * Owner-only; scoped to company.
+ */
+export const updateLeadStage = mutation({
+  args: {
+    userId: v.id("users"),
+    requestId: v.id("clientRequests"),
+    leadStage: v.union(
+      v.literal("new"),
+      v.literal("contacted"),
+      v.literal("quoted"),
+      v.literal("won"),
+      v.literal("lost")
+    ),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+
+    const request = await ctx.db.get(args.requestId);
+    if (!request) throw new Error("Request not found");
+    if (request.companyId !== owner.companyId) throw new Error("Access denied");
+
+    const patch: Record<string, unknown> = {
+      leadStage: args.leadStage,
+      lastStageChangedAt: Date.now(),
+    };
+
+    // Sync contactedAt when moving to contacted stage
+    if (args.leadStage === "contacted" && !request.contactedAt) {
+      patch.contactedAt = Date.now();
+    }
+
+    await ctx.db.patch(args.requestId, patch);
+  },
+});
+
+/**
+ * Update internal lead notes for a request.
+ * Owner-only; scoped to company. Capped at 4000 chars.
+ */
+export const updateLeadNotes = mutation({
+  args: {
+    userId: v.id("users"),
+    requestId: v.id("clientRequests"),
+    leadNotes: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+
+    const request = await ctx.db.get(args.requestId);
+    if (!request) throw new Error("Request not found");
+    if (request.companyId !== owner.companyId) throw new Error("Access denied");
+
+    await ctx.db.patch(args.requestId, {
+      leadNotes: args.leadNotes.trim().slice(0, 4000) || undefined,
+    });
+  },
+});
+
+/**
+ * Update or clear next follow-up date for a request.
+ * Owner-only; scoped to company.
+ */
+export const updateNextFollowUp = mutation({
+  args: {
+    userId: v.id("users"),
+    requestId: v.id("clientRequests"),
+    nextFollowUpAt: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+
+    const request = await ctx.db.get(args.requestId);
+    if (!request) throw new Error("Request not found");
+    if (request.companyId !== owner.companyId) throw new Error("Access denied");
+
+    await ctx.db.patch(args.requestId, {
+      nextFollowUpAt: args.nextFollowUpAt ?? undefined,
+    });
   },
 });
 
