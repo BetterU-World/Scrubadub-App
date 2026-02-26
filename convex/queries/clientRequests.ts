@@ -87,6 +87,97 @@ export const getRequestById = query({
   },
 });
 
+// ── Lead Pipeline queries ─────────────────────────────────────
+
+/**
+ * List requests for the pipeline board.
+ * Owner-only; company-scoped. Treats missing leadStage as "new".
+ * Returns newest-first.
+ */
+export const listRequestsForPipeline = query({
+  args: {
+    userId: v.id("users"),
+    leadStage: v.optional(
+      v.union(
+        v.literal("new"),
+        v.literal("contacted"),
+        v.literal("quoted"),
+        v.literal("won"),
+        v.literal("lost")
+      )
+    ),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx, args.userId);
+    if (user.role !== "owner") throw new Error("Owner access required");
+
+    const requests = await ctx.db
+      .query("clientRequests")
+      .withIndex("by_companyId", (q) => q.eq("companyId", user.companyId))
+      .collect();
+
+    // Treat missing leadStage as "new"
+    const enriched = requests.map((r) => ({
+      ...r,
+      leadStage: (r as any).leadStage ?? "new",
+    }));
+
+    const filtered = args.leadStage
+      ? enriched.filter((r) => r.leadStage === args.leadStage)
+      : enriched;
+
+    return filtered.sort((a, b) => b.createdAt - a.createdAt);
+  },
+});
+
+/**
+ * List upcoming follow-ups for the owner.
+ * Returns requests with nextFollowUpAt set, not in terminal stages (won/lost/archived).
+ * dueOnly=true returns only overdue/today items.
+ */
+export const listFollowUps = query({
+  args: {
+    userId: v.id("users"),
+    dueOnly: v.optional(v.boolean()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx, args.userId);
+    if (user.role !== "owner") throw new Error("Owner access required");
+
+    const requests = await ctx.db
+      .query("clientRequests")
+      .withIndex("by_companyId", (q) => q.eq("companyId", user.companyId))
+      .collect();
+
+    const withFollowUp = requests.filter((r) => {
+      if (!(r as any).nextFollowUpAt) return false;
+      // Exclude terminal stages
+      const stage = (r as any).leadStage ?? "new";
+      if (stage === "won" || stage === "lost") return false;
+      if (r.status === "archived") return false;
+      return true;
+    });
+
+    let results = withFollowUp;
+    if (args.dueOnly) {
+      const now = Date.now();
+      results = withFollowUp.filter((r) => (r as any).nextFollowUpAt <= now);
+    }
+
+    // Sort soonest first
+    results.sort(
+      (a, b) => ((a as any).nextFollowUpAt ?? 0) - ((b as any).nextFollowUpAt ?? 0)
+    );
+
+    if (args.limit) {
+      results = results.slice(0, args.limit);
+    }
+
+    return results;
+  },
+});
+
 // ── Client Portal queries ─────────────────────────────────────
 
 /**

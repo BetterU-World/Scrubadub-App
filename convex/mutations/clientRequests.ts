@@ -182,6 +182,93 @@ export const createPropertyFromRequest = mutation({
   },
 });
 
+// ── Lead Pipeline mutations ─────────────────────────────────────
+
+const LEAD_STAGES = ["new", "contacted", "quoted", "won", "lost"] as const;
+
+/**
+ * Update the CRM lead stage for a request.
+ * Owner-only; scoped to company.
+ */
+export const updateLeadStage = mutation({
+  args: {
+    userId: v.id("users"),
+    requestId: v.id("clientRequests"),
+    leadStage: v.union(
+      v.literal("new"),
+      v.literal("contacted"),
+      v.literal("quoted"),
+      v.literal("won"),
+      v.literal("lost")
+    ),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+
+    const request = await ctx.db.get(args.requestId);
+    if (!request) throw new Error("Request not found");
+    if (request.companyId !== owner.companyId) throw new Error("Access denied");
+
+    const patch: Record<string, unknown> = {
+      leadStage: args.leadStage,
+      lastStageChangedAt: Date.now(),
+    };
+
+    // Sync contactedAt when moving to contacted stage
+    if (args.leadStage === "contacted" && !request.contactedAt) {
+      patch.contactedAt = Date.now();
+    }
+
+    await ctx.db.patch(args.requestId, patch);
+  },
+});
+
+/**
+ * Update internal lead notes for a request.
+ * Owner-only; scoped to company. Capped at 4000 chars.
+ */
+export const updateLeadNotes = mutation({
+  args: {
+    userId: v.id("users"),
+    requestId: v.id("clientRequests"),
+    leadNotes: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+
+    const request = await ctx.db.get(args.requestId);
+    if (!request) throw new Error("Request not found");
+    if (request.companyId !== owner.companyId) throw new Error("Access denied");
+
+    await ctx.db.patch(args.requestId, {
+      leadNotes: args.leadNotes.trim().slice(0, 4000) || undefined,
+    });
+  },
+});
+
+/**
+ * Update or clear next follow-up date for a request.
+ * Owner-only; scoped to company.
+ */
+export const updateNextFollowUp = mutation({
+  args: {
+    userId: v.id("users"),
+    requestId: v.id("clientRequests"),
+    nextFollowUpAt: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+
+    const request = await ctx.db.get(args.requestId);
+    if (!request) throw new Error("Request not found");
+    if (request.companyId !== owner.companyId) throw new Error("Access denied");
+
+    await ctx.db.patch(args.requestId, {
+      nextFollowUpAt: args.nextFollowUpAt ?? undefined,
+    });
+  },
+});
+
 // ── Client Portal mutations ─────────────────────────────────────
 
 function generateToken(): string {

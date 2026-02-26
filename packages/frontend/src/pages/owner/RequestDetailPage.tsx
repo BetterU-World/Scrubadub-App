@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -26,6 +26,9 @@ import {
   MessageSquare,
   PhoneOutgoing,
   Archive,
+  Save,
+  X,
+  AlertCircle,
 } from "lucide-react";
 
 export function RequestDetailPage() {
@@ -53,6 +56,15 @@ export function RequestDetailPage() {
   const archiveRequest = useMutation(
     api.mutations.clientRequests.archiveClientRequest
   );
+  const updateLeadStage = useMutation(
+    api.mutations.clientRequests.updateLeadStage
+  );
+  const updateLeadNotesMut = useMutation(
+    api.mutations.clientRequests.updateLeadNotes
+  );
+  const updateNextFollowUpMut = useMutation(
+    api.mutations.clientRequests.updateNextFollowUp
+  );
 
   const latestFeedback = useQuery(
     api.queries.clientRequests.getLatestFeedbackForRequest,
@@ -74,6 +86,29 @@ export function RequestDetailPage() {
     message: string;
     type: "success" | "error";
   } | null>(null);
+
+  // Lead pipeline state
+  const [leadNotesVal, setLeadNotesVal] = useState("");
+  const [leadNotesLoaded, setLeadNotesLoaded] = useState(false);
+  const [savingNotes, setSavingNotes] = useState(false);
+  const [followUpVal, setFollowUpVal] = useState("");
+  const [savingFollowUp, setSavingFollowUp] = useState(false);
+
+  // Sync lead notes / follow-up from server on first load
+  useEffect(() => {
+    if (request && !leadNotesLoaded) {
+      setLeadNotesVal((request as any).leadNotes ?? "");
+      if ((request as any).nextFollowUpAt) {
+        const d = new Date((request as any).nextFollowUpAt);
+        // Format as datetime-local value
+        const pad = (n: number) => String(n).padStart(2, "0");
+        setFollowUpVal(
+          `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+        );
+      }
+      setLeadNotesLoaded(true);
+    }
+  }, [request, leadNotesLoaded]);
 
   if (request === undefined) return <PageLoader />;
   if (request === null) {
@@ -331,6 +366,172 @@ export function RequestDetailPage() {
               {creatingProperty ? "Creating..." : "Create Property"}
             </button>
           ) : null}
+        </div>
+      </div>
+
+      {/* Lead Pipeline controls */}
+      <div className="card mt-4 space-y-4">
+        <h3 className="text-sm font-semibold text-gray-900">Lead Pipeline</h3>
+
+        {/* Stage selector */}
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            Lead Stage
+          </label>
+          <div className="flex gap-1.5 flex-wrap">
+            {(["new", "contacted", "quoted", "won", "lost"] as const).map(
+              (stage) => {
+                const current = (request as any).leadStage ?? "new";
+                const isActive = current === stage;
+                return (
+                  <button
+                    key={stage}
+                    onClick={async () => {
+                      try {
+                        await updateLeadStage({
+                          userId: user!._id,
+                          requestId: request._id,
+                          leadStage: stage,
+                        });
+                        setToast({ message: `Stage → ${stage}`, type: "success" });
+                        setTimeout(() => setToast(null), 2000);
+                      } catch (err: any) {
+                        setToast({ message: err.message || "Failed", type: "error" });
+                        setTimeout(() => setToast(null), 3000);
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${
+                      isActive
+                        ? "bg-primary-600 text-white"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
+                  >
+                    {stage}
+                  </button>
+                );
+              }
+            )}
+          </div>
+        </div>
+
+        {/* Lead Notes */}
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            Lead Notes (internal)
+          </label>
+          <textarea
+            className="input-field text-sm"
+            rows={3}
+            maxLength={4000}
+            placeholder="Internal notes about this lead..."
+            value={leadNotesVal}
+            onChange={(e) => setLeadNotesVal(e.target.value)}
+          />
+          <div className="flex items-center gap-2 mt-1.5">
+            <button
+              disabled={savingNotes}
+              onClick={async () => {
+                setSavingNotes(true);
+                try {
+                  await updateLeadNotesMut({
+                    userId: user!._id,
+                    requestId: request._id,
+                    leadNotes: leadNotesVal,
+                  });
+                  setToast({ message: "Notes saved", type: "success" });
+                  setTimeout(() => setToast(null), 2000);
+                } catch (err: any) {
+                  setToast({ message: err.message || "Failed", type: "error" });
+                  setTimeout(() => setToast(null), 3000);
+                } finally {
+                  setSavingNotes(false);
+                }
+              }}
+              className="btn-secondary flex items-center gap-1.5 text-xs py-1 px-2.5"
+            >
+              <Save className="w-3 h-3" />
+              {savingNotes ? "Saving..." : "Save Notes"}
+            </button>
+            <span className="text-xs text-gray-400">
+              {leadNotesVal.length}/4000
+            </span>
+          </div>
+        </div>
+
+        {/* Next Follow-up */}
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            Next Follow-up
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="datetime-local"
+              className="input-field text-sm flex-1"
+              value={followUpVal}
+              onChange={(e) => setFollowUpVal(e.target.value)}
+            />
+            <button
+              disabled={savingFollowUp}
+              onClick={async () => {
+                setSavingFollowUp(true);
+                try {
+                  const ts = followUpVal
+                    ? new Date(followUpVal).getTime()
+                    : undefined;
+                  await updateNextFollowUpMut({
+                    userId: user!._id,
+                    requestId: request._id,
+                    nextFollowUpAt: ts,
+                  });
+                  setToast({
+                    message: ts ? "Follow-up set" : "Follow-up cleared",
+                    type: "success",
+                  });
+                  setTimeout(() => setToast(null), 2000);
+                } catch (err: any) {
+                  setToast({ message: err.message || "Failed", type: "error" });
+                  setTimeout(() => setToast(null), 3000);
+                } finally {
+                  setSavingFollowUp(false);
+                }
+              }}
+              className="btn-secondary flex items-center gap-1.5 text-xs py-1 px-2.5"
+            >
+              <Save className="w-3 h-3" />
+              {savingFollowUp ? "..." : "Save"}
+            </button>
+            {followUpVal && (
+              <button
+                onClick={async () => {
+                  setFollowUpVal("");
+                  setSavingFollowUp(true);
+                  try {
+                    await updateNextFollowUpMut({
+                      userId: user!._id,
+                      requestId: request._id,
+                      nextFollowUpAt: undefined,
+                    });
+                    setToast({ message: "Follow-up cleared", type: "success" });
+                    setTimeout(() => setToast(null), 2000);
+                  } catch (err: any) {
+                    setToast({ message: err.message || "Failed", type: "error" });
+                    setTimeout(() => setToast(null), 3000);
+                  } finally {
+                    setSavingFollowUp(false);
+                  }
+                }}
+                className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                title="Clear follow-up"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          {(request as any).nextFollowUpAt && (request as any).nextFollowUpAt <= Date.now() && (
+            <p className="flex items-center gap-1 text-xs text-red-600 mt-1">
+              <AlertCircle className="w-3 h-3" /> Overdue
+            </p>
+          )}
         </div>
       </div>
 

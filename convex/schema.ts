@@ -478,6 +478,19 @@ export default defineSchema({
     portalEnabled: v.optional(v.boolean()),
     clientNotes: v.optional(v.string()),
     updatedByClientAt: v.optional(v.number()),
+    // Lead pipeline (CRM v1)
+    leadStage: v.optional(
+      v.union(
+        v.literal("new"),
+        v.literal("contacted"),
+        v.literal("quoted"),
+        v.literal("won"),
+        v.literal("lost")
+      )
+    ),
+    leadNotes: v.optional(v.string()),
+    nextFollowUpAt: v.optional(v.number()),
+    lastStageChangedAt: v.optional(v.number()),
   })
     .index("by_companyId", ["companyId"])
     .index("by_companyId_status", ["companyId", "status"])

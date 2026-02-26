@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { Inbox, Calendar, MapPin } from "lucide-react";
+import { Inbox, Calendar, MapPin, Kanban } from "lucide-react";
 
 const STATUS_OPTIONS = [
   { value: "", label: "All" },
@@ -54,6 +54,14 @@ export function RequestListPage() {
       <PageHeader
         title="Requests"
         description="Incoming service requests from clients"
+        action={
+          <Link
+            href="/requests/pipeline"
+            className="btn-secondary flex items-center gap-2 text-sm"
+          >
+            <Kanban className="w-4 h-4" /> Pipeline
+          </Link>
+        }
       />
 
       {/* Filters */}

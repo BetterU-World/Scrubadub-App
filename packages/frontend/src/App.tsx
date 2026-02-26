@@ -40,6 +40,7 @@ import { SiteSetupPage } from "@/pages/owner/SiteSetupPage";
 import { CleanerLeadsPage } from "@/pages/owner/CleanerLeadsPage";
 import { AffiliatePage } from "@/pages/owner/AffiliatePage";
 import { FeedbackInboxPage } from "@/pages/owner/FeedbackInboxPage";
+import { PipelinePage } from "@/pages/owner/PipelinePage";
 
 // Worker pages (cleaner + maintenance unified)
 import { WorkerJobListPage } from "@/pages/worker/WorkerJobListPage";
@@ -245,6 +246,7 @@ export default function App() {
                 <Route path="/performance" component={PerformancePage} />
                 <Route path="/analytics" component={AnalyticsPage} />
                 <Route path="/partners" component={PartnersPage} />
+                <Route path="/requests/pipeline" component={PipelinePage} />
                 <Route path="/requests/:id" component={RequestDetailPage} />
                 <Route path="/requests" component={RequestListPage} />
                 <Route path="/feedback" component={FeedbackInboxPage} />
