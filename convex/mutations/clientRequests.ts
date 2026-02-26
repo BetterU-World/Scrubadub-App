@@ -1,6 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwner } from "../lib/helpers";
+import { requireOwner, requireAuth } from "../lib/helpers";
 
 /**
  * Public mutation – called by external visitors via a company's public
@@ -26,6 +26,7 @@ export const createClientRequestByToken = mutation({
     requestedEnd: v.optional(v.string()),
     timeWindow: v.optional(v.string()),
     notes: v.optional(v.string()),
+    clientNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Resolve company from token – never trust a client-supplied companyId
@@ -53,6 +54,9 @@ export const createClientRequestByToken = mutation({
       requestedEnd: args.requestedEnd,
       timeWindow: args.timeWindow,
       notes: args.notes,
+      clientNotes: args.clientNotes
+        ? args.clientNotes.trim().slice(0, 2000)
+        : undefined,
       source: "public_link",
     });
 
@@ -244,6 +248,33 @@ export const submitClientFeedbackByToken = mutation({
       status: "new",
     });
 
+    return { ok: true };
+  },
+});
+
+/**
+ * Mark a feedback entry as reviewed.
+ * Owner-only; verifies feedback belongs to caller's company.
+ */
+export const markFeedbackReviewed = mutation({
+  args: {
+    userId: v.id("users"),
+    feedbackId: v.id("clientFeedback"),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx, args.userId);
+    if (user.role !== "owner") throw new Error("Owner access required");
+
+    const feedback = await ctx.db.get(args.feedbackId);
+    if (!feedback) throw new Error("Feedback not found");
+
+    // Verify ownership via the linked request
+    const request = await ctx.db.get(feedback.clientRequestId);
+    if (!request || request.companyId !== user.companyId) {
+      throw new Error("Access denied");
+    }
+
+    await ctx.db.patch(args.feedbackId, { status: "reviewed" });
     return { ok: true };
   },
 });

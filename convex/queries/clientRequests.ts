@@ -176,7 +176,41 @@ export const listClientFeedback = query({
         ...f,
         requesterName: req?.requesterName ?? "Unknown",
         requesterEmail: req?.requesterEmail ?? "",
+        requestSummary: req
+          ? [req.propertySnapshot?.address, req.requestedDate]
+              .filter(Boolean)
+              .join(" — ") || "Request"
+          : "Unknown request",
       };
     });
+  },
+});
+
+/**
+ * Get the latest feedback for a specific client request.
+ * Owner-only, scoped to caller's company.
+ */
+export const getLatestFeedbackForRequest = query({
+  args: {
+    userId: v.id("users"),
+    clientRequestId: v.id("clientRequests"),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx, args.userId);
+    if (user.role !== "owner") throw new Error("Owner access required");
+
+    const request = await ctx.db.get(args.clientRequestId);
+    if (!request) return null;
+    if (request.companyId !== user.companyId) throw new Error("Access denied");
+
+    const feedback = await ctx.db
+      .query("clientFeedback")
+      .withIndex("by_clientRequestId_createdAt", (q) =>
+        q.eq("clientRequestId", args.clientRequestId)
+      )
+      .order("desc")
+      .first();
+
+    return feedback;
   },
 });

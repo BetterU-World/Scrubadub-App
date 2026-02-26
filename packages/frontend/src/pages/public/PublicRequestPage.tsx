@@ -33,6 +33,7 @@ export function PublicRequestPage() {
   const [requestedDate, setRequestedDate] = useState("");
   const [timeWindow, setTimeWindow] = useState("");
   const [notes, setNotes] = useState("");
+  const [specialInstructions, setSpecialInstructions] = useState("");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -113,6 +114,7 @@ export function PublicRequestPage() {
         requestedDate: requestedDate || undefined,
         timeWindow: timeWindow || undefined,
         notes: notes.trim() || undefined,
+        clientNotes: specialInstructions.trim() || undefined,
       });
       setSubmitted(true);
     } catch (err: any) {
@@ -263,6 +265,22 @@ export function PublicRequestPage() {
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Anything else we should know?"
+          />
+        </div>
+
+        {/* Special instructions */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Special instructions{" "}
+            <span className="font-normal text-gray-400">(optional)</span>
+          </label>
+          <textarea
+            className="input-field"
+            rows={2}
+            value={specialInstructions}
+            onChange={(e) => setSpecialInstructions(e.target.value)}
+            placeholder="e.g. Gate code is 1234, please use side entrance..."
+            maxLength={2000}
           />
         </div>
 

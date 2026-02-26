@@ -22,6 +22,8 @@ import {
   Check,
   Link2,
   Copy,
+  Star,
+  MessageSquare,
 } from "lucide-react";
 
 export function RequestDetailPage() {
@@ -45,6 +47,16 @@ export function RequestDetailPage() {
 
   const generatePortalLink = useMutation(
     api.mutations.clientRequests.generateClientPortalLink
+  );
+
+  const latestFeedback = useQuery(
+    api.queries.clientRequests.getLatestFeedbackForRequest,
+    params.id && user
+      ? {
+          userId: user._id,
+          clientRequestId: params.id as Id<"clientRequests">,
+        }
+      : "skip"
   );
 
   const [showDecline, setShowDecline] = useState(false);
@@ -258,17 +270,16 @@ export function RequestDetailPage() {
         </div>
       </div>
 
-      {/* Client Portal link */}
+      {/* Client Feedback link */}
       <div className="card mt-4 space-y-3">
         <div className="flex items-center gap-2">
-          <Link2 className="w-4 h-4 text-gray-500" />
+          <MessageSquare className="w-4 h-4 text-gray-500" />
           <h3 className="text-sm font-semibold text-gray-900">
-            Client Portal Link
+            Client Feedback Link
           </h3>
         </div>
         <p className="text-sm text-gray-500">
-          Share a link so the client can view their request, add notes, and
-          leave feedback — no login required.
+          Send this after service to collect feedback. No login required.
         </p>
         {portalUrl ? (
           <div className="space-y-2">
@@ -289,8 +300,8 @@ export function RequestDetailPage() {
             disabled={generatingPortal}
             className="btn-primary flex items-center gap-2 text-sm"
           >
-            <Link2 className="w-4 h-4" />
-            {generatingPortal ? "Generating..." : "Generate Portal Link"}
+            <MessageSquare className="w-4 h-4" />
+            {generatingPortal ? "Generating..." : "Generate Feedback Link"}
           </button>
         )}
       </div>
@@ -308,6 +319,45 @@ export function RequestDetailPage() {
             <p className="text-xs text-gray-400">
               Updated by client{" "}
               {new Date(request.updatedByClientAt).toLocaleString()}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Latest feedback */}
+      {latestFeedback && (
+        <div className="card mt-4 space-y-2">
+          <div className="flex items-center gap-2">
+            <Star className="w-4 h-4 text-yellow-500" />
+            <h3 className="text-sm font-semibold text-gray-900">
+              Client Feedback
+            </h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex gap-0.5">
+              {[1, 2, 3, 4, 5].map((s) => (
+                <Star
+                  key={s}
+                  className={`w-4 h-4 ${
+                    s <= latestFeedback.rating
+                      ? "fill-yellow-400 text-yellow-400"
+                      : "text-gray-300"
+                  }`}
+                />
+              ))}
+            </div>
+            <span className="text-xs text-gray-400">
+              {new Date(latestFeedback.createdAt).toLocaleDateString()}
+            </span>
+          </div>
+          {latestFeedback.comment && (
+            <p className="text-sm text-gray-600">{latestFeedback.comment}</p>
+          )}
+          {(latestFeedback.contactName || latestFeedback.contactEmail) && (
+            <p className="text-xs text-gray-400">
+              {[latestFeedback.contactName, latestFeedback.contactEmail]
+                .filter(Boolean)
+                .join(" — ")}
             </p>
           )}
         </div>
