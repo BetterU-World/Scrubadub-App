@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,6 +20,8 @@ import {
   Send,
   Copy,
   ExternalLink,
+  AlertCircle,
+  Zap,
 } from "lucide-react";
 
 /* ── Helpers ──────────────────────────────────────────────────────── */
@@ -71,6 +73,8 @@ function statusBadge(status: string) {
     denied: "bg-red-100 text-red-800",
     cancelled: "bg-gray-100 text-gray-800",
     completed: "bg-green-100 text-green-800",
+    processing: "bg-yellow-100 text-yellow-800",
+    failed: "bg-red-100 text-red-800",
   };
   return (
     <span
@@ -477,14 +481,44 @@ function BatchDetailModal({
     api.queries.affiliatePayoutBatches.getPayoutBatch,
     { userId, batchId }
   );
+  const payViaStripe = useAction(
+    api.actions.stripePayouts.payPayoutBatchViaStripe
+  );
   const [showVoid, setShowVoid] = useState(false);
   const [voidNotes, setVoidNotes] = useState("");
+  const [showStripeConfirm, setShowStripeConfirm] = useState(false);
+  const [stripeBusy, setStripeBusy] = useState(false);
+  const [stripeError, setStripeError] = useState<string | null>(null);
 
   function handleExportBatchCsv() {
     if (!batch) return;
     const csv = buildBatchDetailCsvContent(batch as any);
     downloadCsv(csv, `scrubadub-batch-${batch._id.slice(-6)}-${formatISO(Date.now())}.csv`);
   }
+
+  async function handlePayViaStripe() {
+    setStripeBusy(true);
+    setStripeError(null);
+    try {
+      const result = await payViaStripe({ userId, batchId });
+      if (!result.ok) {
+        setStripeError(result.reason ?? "Payment failed");
+      }
+      setShowStripeConfirm(false);
+    } catch (err: any) {
+      setStripeError(err.message ?? "Unexpected error");
+    } finally {
+      setStripeBusy(false);
+    }
+  }
+
+  const payoutStatus = batch?.payoutStatus ?? (batch?.status === "voided" ? "voided" : "recorded");
+  const affiliateReady = batch?.affiliateStripe?.payoutsEnabled ?? false;
+  const canPayViaStripe =
+    batch?.status === "recorded" &&
+    (payoutStatus === "recorded" || payoutStatus === "failed") &&
+    !batch?.stripeTransferId &&
+    affiliateReady;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -536,7 +570,65 @@ function BatchDetailModal({
                   {formatDate(batch.voidedAt)}
                 </div>
               )}
+              {/* Stripe payout status row */}
+              {batch.payoutStatus && batch.payoutStatus !== "recorded" && (
+                <div className="col-span-2">
+                  <span className="text-gray-500">Payout:</span>{" "}
+                  {statusBadge(batch.payoutStatus)}
+                </div>
+              )}
+              {batch.stripeTransferId && (
+                <div className="col-span-2">
+                  <span className="text-gray-500">Transfer ID:</span>{" "}
+                  <span className="font-mono text-xs">{batch.stripeTransferId}</span>
+                </div>
+              )}
+              {batch.paidAt && (
+                <div className="col-span-2">
+                  <span className="text-gray-500">Paid:</span>{" "}
+                  {formatDate(batch.paidAt)}
+                </div>
+              )}
             </div>
+
+            {/* Stripe paid success banner */}
+            {payoutStatus === "paid" && batch.stripeTransferId && (
+              <div className="bg-green-50 border border-green-200 rounded-md px-3 py-2 mb-4 flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
+                <span className="text-sm text-green-800">
+                  Paid via Stripe (
+                  <span className="font-mono text-xs">{batch.stripeTransferId}</span>
+                  )
+                </span>
+              </div>
+            )}
+
+            {/* Stripe processing banner */}
+            {payoutStatus === "processing" && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-md px-3 py-2 mb-4 flex items-center gap-2">
+                <RefreshCw className="h-4 w-4 text-yellow-600 animate-spin flex-shrink-0" />
+                <span className="text-sm text-yellow-800">
+                  Stripe transfer processing...
+                </span>
+              </div>
+            )}
+
+            {/* Stripe failed banner */}
+            {payoutStatus === "failed" && (
+              <div className="bg-red-50 border border-red-200 rounded-md px-3 py-2 mb-4">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
+                  <span className="text-sm text-red-800">
+                    Stripe transfer failed
+                  </span>
+                </div>
+                {batch.payoutErrorMessage && (
+                  <p className="text-xs text-red-600 mt-1 ml-6">
+                    {batch.payoutErrorMessage}
+                  </p>
+                )}
+              </div>
+            )}
 
             <div className="flex items-center justify-between mb-2">
               <h4 className="text-sm font-medium text-gray-700">
@@ -579,14 +671,70 @@ function BatchDetailModal({
               </tbody>
             </table>
 
-            {batch.status === "recorded" && !showVoid && (
-              <button
-                onClick={() => setShowVoid(true)}
-                className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-red-700 bg-red-50 rounded hover:bg-red-100 transition-colors"
-              >
-                <Undo2 className="h-3 w-3" />
-                Void this batch
-              </button>
+            {/* Action buttons */}
+            <div className="flex flex-wrap gap-2">
+              {/* Pay via Stripe */}
+              {canPayViaStripe && !showVoid && !showStripeConfirm && (
+                <button
+                  onClick={() => setShowStripeConfirm(true)}
+                  disabled={stripeBusy}
+                  className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-white bg-indigo-600 rounded hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                >
+                  <Zap className="h-3 w-3" />
+                  {payoutStatus === "failed" ? "Retry Stripe Payment" : "Pay via Stripe"}
+                </button>
+              )}
+
+              {/* Void button */}
+              {batch.status === "recorded" && !showVoid && !showStripeConfirm && payoutStatus !== "paid" && payoutStatus !== "processing" && (
+                <button
+                  onClick={() => setShowVoid(true)}
+                  className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-red-700 bg-red-50 rounded hover:bg-red-100 transition-colors"
+                >
+                  <Undo2 className="h-3 w-3" />
+                  Void this batch
+                </button>
+              )}
+            </div>
+
+            {/* Stripe error message */}
+            {stripeError && !showStripeConfirm && (
+              <p className="text-xs text-red-600 mt-2">{stripeError}</p>
+            )}
+
+            {/* Stripe confirm dialog */}
+            {showStripeConfirm && (
+              <div className="border border-indigo-200 rounded-md p-3 mt-2">
+                <p className="text-sm text-indigo-800 mb-2 font-medium">
+                  This will send {formatCents(batch.totalCommissionCents)} in real funds via Stripe.
+                </p>
+                <p className="text-xs text-gray-600 mb-3">
+                  The transfer will be sent to the affiliate's connected Stripe account. This cannot be undone automatically.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      setShowStripeConfirm(false);
+                      setStripeError(null);
+                    }}
+                    disabled={stripeBusy}
+                    className="px-3 py-1 text-sm text-gray-700 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handlePayViaStripe}
+                    disabled={stripeBusy}
+                    className="inline-flex items-center gap-1 px-3 py-1 text-sm text-white bg-indigo-600 rounded hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    <Zap className="h-3 w-3" />
+                    {stripeBusy ? "Sending..." : "Confirm Payment"}
+                  </button>
+                </div>
+                {stripeError && (
+                  <p className="text-xs text-red-600 mt-2">{stripeError}</p>
+                )}
+              </div>
             )}
 
             {showVoid && (
