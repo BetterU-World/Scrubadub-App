@@ -31,3 +31,24 @@ export const markAllAsRead = mutation({
     }
   },
 });
+
+export const markReadUpTo = mutation({
+  args: { userId: v.id("users"), seenThroughTs: v.number() },
+  handler: async (ctx, args) => {
+    const user = await getSessionUser(ctx, args.userId);
+    if (user._id !== args.userId) throw new Error("Access denied");
+
+    const unread = await ctx.db
+      .query("notifications")
+      .withIndex("by_userId_read", (q) =>
+        q.eq("userId", args.userId).eq("read", false)
+      )
+      .collect();
+
+    for (const n of unread) {
+      if (n._creationTime <= args.seenThroughTs) {
+        await ctx.db.patch(n._id, { read: true });
+      }
+    }
+  },
+});

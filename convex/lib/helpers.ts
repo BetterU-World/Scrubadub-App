@@ -90,10 +90,12 @@ export async function createNotification(
       | "partner_request"
       | "partner_accepted"
       | "shared_job_accepted"
-      | "shared_job_rejected";
+      | "shared_job_rejected"
+      | "new_client_request";
     title: string;
     message: string;
     relatedJobId?: Id<"jobs">;
+    relatedClientRequestId?: Id<"clientRequests">;
   }
 ) {
   await ctx.db.insert("notifications", {
