@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { AffiliateRevenueTab } from "@/components/affiliate/AffiliateRevenueTab";
 import { AffiliateLedgerTab } from "@/components/affiliate/AffiliateLedgerTab";
+import { PayoutRequestsTab } from "@/components/affiliate/PayoutRequestsTab";
 import { Copy, ExternalLink, Share2, Users } from "lucide-react";
 
 function getReferralBaseUrl(): string {
@@ -16,7 +17,7 @@ function getReferralBaseUrl(): string {
   return "https://scrubscrubscrub.com/?ref=";
 }
 
-type Tab = "referrals" | "revenue" | "ledger";
+type Tab = "referrals" | "revenue" | "ledger" | "requests";
 
 export function AffiliatePage() {
   const { user, userId, isLoading } = useAuth();
@@ -65,10 +66,15 @@ export function AffiliatePage() {
     });
   }
 
+  const isSuperAdmin = user?.isSuperadmin ?? false;
+
   const tabs: { key: Tab; label: string }[] = [
     { key: "referrals", label: "Referrals" },
     { key: "revenue", label: "Revenue" },
     { key: "ledger", label: "Ledger" },
+    ...(isSuperAdmin
+      ? [{ key: "requests" as Tab, label: "Payout Requests" }]
+      : []),
   ];
 
   return (
@@ -173,6 +179,8 @@ export function AffiliatePage() {
       {activeTab === "revenue" && <AffiliateRevenueTab />}
 
       {activeTab === "ledger" && <AffiliateLedgerTab />}
+
+      {activeTab === "requests" && <PayoutRequestsTab />}
     </div>
   );
 }
