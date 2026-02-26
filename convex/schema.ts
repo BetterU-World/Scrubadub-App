@@ -387,7 +387,7 @@ export default defineSchema({
       "periodStart",
     ]),
 
-  // ── Affiliate Payout Batches (manual bookkeeping) ─────────────
+  // ── Affiliate Payout Batches (manual bookkeeping + Stripe) ──────
   affiliatePayoutBatches: defineTable({
     createdAt: v.number(),
     createdByUserId: v.id("users"),
@@ -397,6 +397,20 @@ export default defineSchema({
     ledgerIds: v.array(v.id("affiliateLedger")),
     status: v.union(v.literal("recorded"), v.literal("voided")),
     voidedAt: v.optional(v.number()),
+    // Stripe payout fields
+    stripeTransferId: v.optional(v.string()),
+    payoutStatus: v.optional(
+      v.union(
+        v.literal("recorded"),
+        v.literal("processing"),
+        v.literal("paid"),
+        v.literal("failed"),
+        v.literal("voided")
+      )
+    ),
+    payoutErrorMessage: v.optional(v.string()),
+    paidAt: v.optional(v.number()),
+    processingAt: v.optional(v.number()),
   })
     .index("by_createdAt", ["createdAt"])
     .index("by_status", ["status"])
