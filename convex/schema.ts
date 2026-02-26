@@ -467,7 +467,26 @@ export default defineSchema({
     notes: v.optional(v.string()),
     source: v.literal("public_link"),
     propertyId: v.optional(v.id("properties")),
+    // Client portal fields
+    portalToken: v.optional(v.string()),
+    portalEnabled: v.optional(v.boolean()),
+    clientNotes: v.optional(v.string()),
+    updatedByClientAt: v.optional(v.number()),
   })
     .index("by_companyId", ["companyId"])
-    .index("by_companyId_status", ["companyId", "status"]),
+    .index("by_companyId_status", ["companyId", "status"])
+    .index("by_portalToken", ["portalToken"]),
+
+  // ── Client Feedback (from portal) ────────────────────────────────
+  clientFeedback: defineTable({
+    clientRequestId: v.id("clientRequests"),
+    createdAt: v.number(),
+    rating: v.number(),
+    comment: v.optional(v.string()),
+    contactName: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
+    status: v.union(v.literal("new"), v.literal("reviewed")),
+  })
+    .index("by_clientRequestId_createdAt", ["clientRequestId", "createdAt"])
+    .index("by_status_createdAt", ["status", "createdAt"]),
 });

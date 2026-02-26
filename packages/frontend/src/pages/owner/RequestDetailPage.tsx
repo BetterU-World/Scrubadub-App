@@ -20,6 +20,8 @@ import {
   Briefcase,
   Building2,
   Check,
+  Link2,
+  Copy,
 } from "lucide-react";
 
 export function RequestDetailPage() {
@@ -41,9 +43,16 @@ export function RequestDetailPage() {
     api.mutations.clientRequests.createPropertyFromRequest
   );
 
+  const generatePortalLink = useMutation(
+    api.mutations.clientRequests.generateClientPortalLink
+  );
+
   const [showDecline, setShowDecline] = useState(false);
   const [declining, setDeclining] = useState(false);
   const [creatingProperty, setCreatingProperty] = useState(false);
+  const [portalUrl, setPortalUrl] = useState<string | null>(null);
+  const [generatingPortal, setGeneratingPortal] = useState(false);
+  const [copiedPortal, setCopiedPortal] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error";
@@ -91,6 +100,38 @@ export function RequestDetailPage() {
     } finally {
       setCreatingProperty(false);
     }
+  };
+
+  const handleGeneratePortalLink = async () => {
+    setGeneratingPortal(true);
+    try {
+      const result = await generatePortalLink({
+        userId: user!._id,
+        clientRequestId: request._id,
+      });
+      const h = window.location.hostname;
+      const base =
+        h === "localhost" || h === "127.0.0.1"
+          ? `${window.location.protocol}//${window.location.host}`
+          : "https://scrubscrubscrub.com";
+      setPortalUrl(`${base}/c/${result.token}`);
+    } catch (err: any) {
+      setToast({
+        message: err.message || "Failed to generate portal link",
+        type: "error",
+      });
+      setTimeout(() => setToast(null), 3000);
+    } finally {
+      setGeneratingPortal(false);
+    }
+  };
+
+  const handleCopyPortalUrl = () => {
+    if (!portalUrl) return;
+    navigator.clipboard.writeText(portalUrl).then(() => {
+      setCopiedPortal(true);
+      setTimeout(() => setCopiedPortal(false), 2000);
+    });
   };
 
   const handleDecline = async () => {
@@ -216,6 +257,61 @@ export function RequestDetailPage() {
           ) : null}
         </div>
       </div>
+
+      {/* Client Portal link */}
+      <div className="card mt-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Link2 className="w-4 h-4 text-gray-500" />
+          <h3 className="text-sm font-semibold text-gray-900">
+            Client Portal Link
+          </h3>
+        </div>
+        <p className="text-sm text-gray-500">
+          Share a link so the client can view their request, add notes, and
+          leave feedback — no login required.
+        </p>
+        {portalUrl ? (
+          <div className="space-y-2">
+            <div className="bg-gray-50 border border-gray-200 rounded-md px-3 py-2 text-sm font-mono text-gray-800 break-all select-all">
+              {portalUrl}
+            </div>
+            <button
+              onClick={handleCopyPortalUrl}
+              className="btn-secondary flex items-center gap-2 text-sm"
+            >
+              <Copy className="w-4 h-4" />
+              {copiedPortal ? "Copied!" : "Copy link"}
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={handleGeneratePortalLink}
+            disabled={generatingPortal}
+            className="btn-primary flex items-center gap-2 text-sm"
+          >
+            <Link2 className="w-4 h-4" />
+            {generatingPortal ? "Generating..." : "Generate Portal Link"}
+          </button>
+        )}
+      </div>
+
+      {/* Client notes (if any) */}
+      {request.clientNotes && (
+        <div className="card mt-4 space-y-2">
+          <h3 className="text-sm font-semibold text-gray-900">
+            Client Notes
+          </h3>
+          <p className="text-sm text-gray-600 whitespace-pre-wrap">
+            {request.clientNotes}
+          </p>
+          {request.updatedByClientAt && (
+            <p className="text-xs text-gray-400">
+              Updated by client{" "}
+              {new Date(request.updatedByClientAt).toLocaleString()}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Back link */}
       <button
