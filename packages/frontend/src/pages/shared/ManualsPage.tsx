@@ -1,74 +1,104 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { useQuery, useAction } from "convex/react";
+import { api } from "../../../../../convex/_generated/api";
+import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Users, Sparkles, CheckCircle } from "lucide-react";
+import { PageLoader } from "@/components/ui/LoadingSpinner";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { BookOpen, ExternalLink, Users, Sparkles, AppWindow } from "lucide-react";
 
-const LS_MANUAL_READ = "scrubadub_onboarding_manual_read";
+const CATEGORY_META: Record<string, { label: string; icon: typeof BookOpen }> = {
+  app: { label: "App Guides", icon: AppWindow },
+  cleaner: { label: "Cleaner Manuals", icon: Sparkles },
+  owner: { label: "Owner Manuals", icon: Users },
+};
 
-const manuals = [
-  {
-    slug: "owner",
-    title: "Owner Manual",
-    description: "Managing properties, employees, jobs, and reports.",
-    icon: Users,
-  },
-  {
-    slug: "cleaner",
-    title: "Cleaner Manual",
-    description: "Accepting jobs, completing forms, and daily workflow.",
-    icon: Sparkles,
-  },
-];
+const CATEGORY_ORDER = ["app", "cleaner", "owner"];
 
 export function ManualsPage() {
-  const [manualRead, setManualRead] = useState(
-    () => localStorage.getItem(LS_MANUAL_READ) === "1"
+  const { user } = useAuth();
+  const manuals = useQuery(
+    api.queries.manuals.getVisibleManuals,
+    user ? { userId: user._id } : "skip"
   );
+  const getSignedUrl = useAction(api.actions.manuals.getManualSignedUrl);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+
+  if (!user || manuals === undefined) return <PageLoader />;
+
+  const grouped: Record<string, typeof manuals> = {};
+  for (const m of manuals) {
+    (grouped[m.category] ??= []).push(m);
+  }
+
+  const handleOpen = async (manualId: typeof manuals[number]["_id"]) => {
+    setLoadingId(manualId);
+    try {
+      const { url } = await getSignedUrl({ userId: user._id, manualId });
+      window.open(url, "_blank");
+    } catch {
+      // action threw — access denied or not found
+    } finally {
+      setLoadingId(null);
+    }
+  };
 
   return (
     <div>
       <PageHeader
         title="Manuals"
-        description="Gold standard guides for using ScrubaDub"
+        description="Role-gated guides and reference documents"
       />
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
-        {manuals.map((m) => (
-          <Link
-            key={m.slug}
-            href={`/manuals/${m.slug}`}
-            className="card hover:shadow-md transition-shadow cursor-pointer block"
-          >
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-primary-100 text-primary-600">
-                <m.icon className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">{m.title}</h3>
-                <p className="text-sm text-gray-500 mt-1">{m.description}</p>
-              </div>
-            </div>
-          </Link>
-        ))}
-      </div>
 
-      <div className="mt-6 max-w-2xl">
-        {manualRead ? (
-          <div className="flex items-center gap-2 text-sm text-primary-700">
-            <CheckCircle className="w-4 h-4" />
-            Manual marked as read
-          </div>
-        ) : (
-          <button
-            onClick={() => {
-              localStorage.setItem(LS_MANUAL_READ, "1");
-              setManualRead(true);
-            }}
-            className="btn-primary text-sm px-4 py-2"
-          >
-            Mark manual as read
-          </button>
-        )}
-      </div>
+      {manuals.length === 0 ? (
+        <EmptyState
+          icon={BookOpen}
+          title="No manuals yet"
+          description="Manuals added by your admin will appear here."
+        />
+      ) : (
+        <div className="space-y-8 max-w-2xl">
+          {CATEGORY_ORDER.filter((cat) => grouped[cat]?.length).map((cat) => {
+            const meta = CATEGORY_META[cat] ?? { label: cat, icon: BookOpen };
+            const Icon = meta.icon;
+            return (
+              <section key={cat}>
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                  <Icon className="w-4 h-4" />
+                  {meta.label}
+                </h2>
+                <div className="space-y-2">
+                  {grouped[cat].map((m) => (
+                    <div
+                      key={m._id}
+                      className="card flex items-center justify-between gap-4"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-900 truncate">
+                          {m.title}
+                        </p>
+                        {m.description && (
+                          <p className="text-sm text-gray-500 mt-0.5 truncate">
+                            {m.description}
+                          </p>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleOpen(m._id)}
+                        disabled={loadingId === m._id}
+                        className="btn-secondary flex items-center gap-1.5 text-sm flex-shrink-0"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        {loadingId === m._id ? "Opening…" : "Open"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
