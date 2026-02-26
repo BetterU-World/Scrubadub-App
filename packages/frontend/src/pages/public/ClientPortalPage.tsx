@@ -10,6 +10,7 @@ import {
   Clock,
   FileText,
   CheckCircle,
+  MessageSquare,
 } from "lucide-react";
 
 export function ClientPortalPage() {
@@ -102,80 +103,22 @@ export function ClientPortalPage() {
         )}
       </div>
 
-      {/* Editable client notes */}
-      <ClientNotesSection token={token} initialNotes={portal.clientNotes} />
+      {/* Read-only instructions on file */}
+      {portal.clientNotes && (
+        <div className="card space-y-2 mb-6">
+          <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-gray-400" />
+            Instructions on file
+          </h2>
+          <p className="text-sm text-gray-600 whitespace-pre-wrap">
+            {portal.clientNotes}
+          </p>
+        </div>
+      )}
 
-      {/* Feedback form */}
+      {/* Feedback form — main CTA */}
       <FeedbackSection token={token} />
     </Shell>
-  );
-}
-
-// ── Client notes section ─────────────────────────────────────────
-
-function ClientNotesSection({
-  token,
-  initialNotes,
-}: {
-  token: string;
-  initialNotes: string;
-}) {
-  const updateNotes = useMutation(
-    api.mutations.clientRequests.updateClientNotesByToken
-  );
-  const [notes, setNotes] = useState(initialNotes);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState("");
-
-  const handleSave = async () => {
-    setSaving(true);
-    setError("");
-    setSaved(false);
-    try {
-      await updateNotes({ token, clientNotes: notes });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    } catch (err: any) {
-      setError(err.message || "Failed to save notes");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="card space-y-3 mb-6">
-      <h2 className="text-lg font-semibold text-gray-900">Your Notes</h2>
-      <p className="text-sm text-gray-500">
-        Add any additional details or updates for the cleaning team.
-      </p>
-      <textarea
-        className="input-field"
-        rows={4}
-        value={notes}
-        onChange={(e) => setNotes(e.target.value)}
-        placeholder="e.g. Gate code is 1234, please use side entrance..."
-        maxLength={2000}
-      />
-      <div className="flex items-center gap-3">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="btn-primary flex items-center gap-2"
-        >
-          {saving && <LoadingSpinner size="sm" />}
-          {saving ? "Saving..." : "Save notes"}
-        </button>
-        {saved && (
-          <span className="text-sm text-green-600 flex items-center gap-1">
-            <CheckCircle className="w-4 h-4" /> Saved
-          </span>
-        )}
-      </div>
-      {error && (
-        <p className="text-sm text-red-600">{error}</p>
-      )}
-    </div>
   );
 }
 
@@ -375,8 +318,9 @@ function Shell({
               className="h-8 w-8 rounded object-cover"
             />
           )}
-          <h1 className="text-lg font-bold text-gray-900">
-            Client Portal
+          <h1 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-primary-600" />
+            Share Your Feedback
             {companyName && (
               <span className="font-normal text-gray-500">
                 {" "}

@@ -18,6 +18,7 @@ import {
   Globe,
   UserPlus,
   Share2,
+  MessageSquare,
 } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -35,6 +36,7 @@ const ownerNav = [
   { href: "/analytics", label: "Analytics", icon: TrendingUp },
   { href: "/partners", label: "Partners", icon: Handshake },
   { href: "/requests", label: "Requests", icon: Inbox },
+  { href: "/feedback", label: "Feedback", icon: MessageSquare },
   { href: "/cleaner-leads", label: "Cleaner Leads", icon: UserPlus },
   { href: "/site", label: "My Site", icon: Globe },
   { href: "/affiliate", label: "Affiliate", icon: Share2 },
