@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useLocation, Link } from "wouter";
 import {
   LayoutDashboard,
@@ -99,6 +99,19 @@ const workerSections: NavSection[] = [
   },
 ];
 
+const SECTIONS_STORAGE_KEY = "scrubadub.sidebar.sections";
+const DEFAULT_SECTIONS: Record<string, boolean> = { Dashboard: true };
+
+function loadSections(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(SECTIONS_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    // ignore corrupt data
+  }
+  return DEFAULT_SECTIONS;
+}
+
 function CollapsibleSection({
   title,
   isOpen,
@@ -129,12 +142,24 @@ function CollapsibleSection({
   );
 }
 
-export function Sidebar() {
+interface SidebarProps {
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
+}
+
+export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   const [location] = useLocation();
   const { user, signOut } = useAuth();
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    Dashboard: true,
-  });
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(loadSections);
+
+  // Persist section state to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(SECTIONS_STORAGE_KEY, JSON.stringify(openSections));
+    } catch {
+      // storage full or unavailable
+    }
+  }, [openSections]);
 
   const isSuperAdmin = useQuery(
     api.queries.admin.isSuperAdmin,
@@ -147,8 +172,15 @@ export function Sidebar() {
     setOpenSections((prev) => ({ ...prev, [title]: !prev[title] }));
   };
 
-  return (
-    <aside className="hidden md:flex md:flex-col md:w-64 bg-white border-r border-gray-200 min-h-screen">
+  const handleNavClick = useCallback(() => {
+    // Auto-close sidebar on mobile after navigation
+    if (window.innerWidth < 768 && onMobileClose) {
+      onMobileClose();
+    }
+  }, [onMobileClose]);
+
+  const sidebarContent = (
+    <>
       <div className="p-6 border-b border-gray-200">
         <h1 className="text-xl font-bold text-primary-700">ScrubaDub</h1>
         <p className="text-sm text-gray-500 mt-1">{user?.companyName}</p>
@@ -171,6 +203,7 @@ export function Sidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={handleNavClick}
                   className={clsx(
                     "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                     isActive
@@ -193,6 +226,7 @@ export function Sidebar() {
           >
             <Link
               href="/admin"
+              onClick={handleNavClick}
               className={clsx(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                 location.startsWith("/admin")
@@ -227,6 +261,28 @@ export function Sidebar() {
           </button>
         </div>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar — always visible at md+ */}
+      <aside className="hidden md:flex md:flex-col md:w-64 bg-white border-r border-gray-200 min-h-screen">
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile sidebar overlay */}
+      {mobileOpen && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/50 z-40 md:hidden"
+            onClick={onMobileClose}
+          />
+          <aside className="fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 z-50 flex flex-col md:hidden">
+            {sidebarContent}
+          </aside>
+        </>
+      )}
+    </>
   );
 }
