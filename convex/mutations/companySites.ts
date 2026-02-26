@@ -3,6 +3,16 @@ import { v } from "convex/values";
 import { requireOwner } from "../lib/helpers";
 import { validateSlug } from "../lib/slugs";
 
+/** Generate a random hex token (no Node crypto required). */
+function generateRandomToken(length = 40): string {
+  const chars = "abcdef0123456789";
+  let token = "";
+  for (let i = 0; i < length; i++) {
+    token += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return token;
+}
+
 /**
  * Create or update the company's mini-site.
  * One site per company (upsert by companyId).
@@ -74,5 +84,34 @@ export const upsertSite = mutation({
     }
 
     return await ctx.db.insert("companySites", data);
+  },
+});
+
+/**
+ * Ensure the company has a publicRequestToken.
+ * If one exists, returns it. Otherwise generates and persists a new one.
+ * Owner-only; scoped to the owner's company.
+ */
+export const ensurePublicRequestToken = mutation({
+  args: {
+    userId: v.id("users"),
+    companyId: v.id("companies"),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireOwner(ctx, args.userId);
+    if (user.companyId !== args.companyId) {
+      throw new Error("Access denied");
+    }
+
+    const company = await ctx.db.get(args.companyId);
+    if (!company) throw new Error("Company not found");
+
+    if (company.publicRequestToken) {
+      return { token: company.publicRequestToken, generated: false };
+    }
+
+    const token = generateRandomToken();
+    await ctx.db.patch(args.companyId, { publicRequestToken: token });
+    return { token, generated: true };
   },
 });

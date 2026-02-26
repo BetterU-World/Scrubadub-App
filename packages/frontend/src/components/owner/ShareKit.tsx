@@ -8,6 +8,7 @@ import {
   Globe,
   ClipboardCheck,
   UserPlus,
+  Loader2,
 } from "lucide-react";
 import qrcode from "qrcode-generator";
 
@@ -37,17 +38,34 @@ export function ShareKit({ slug, publicRequestToken, brandName }: ShareKitProps)
           label="Website"
           url={siteUrl}
         />
-        {requestUrl && (
+        {requestUrl ? (
           <ShareRow
             icon={ClipboardCheck}
-            label="Request Service"
+            label="Booking Link"
             url={requestUrl}
             caption={`Need a clean? Request service from ${brandName} here: ${requestUrl}`}
           />
+        ) : (
+          <div className="border border-gray-200 rounded-lg p-3">
+            <div className="flex items-center gap-3">
+              <div className="p-1.5 rounded bg-gray-100 text-gray-400 flex-shrink-0">
+                <ClipboardCheck className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-700">
+                  Booking Link
+                </p>
+                <p className="text-xs text-gray-400 flex items-center gap-1">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Generating booking link&hellip;
+                </p>
+              </div>
+            </div>
+          </div>
         )}
         <ShareRow
           icon={UserPlus}
-          label="Work With Us"
+          label="Employee Application"
           url={cleanerUrl}
           caption={`Want to work with ${brandName}? Apply here: ${cleanerUrl}`}
         />
