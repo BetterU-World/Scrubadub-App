@@ -64,7 +64,7 @@ export function useAuth() {
     const refCode = localStorage.getItem(REF_KEY);
     if (!refCode) return;
     refApplied.current = true;
-    setReferredByCode({ refCode })
+    setReferredByCode({ userId, refCode })
       .catch(() => {})
       .finally(() => localStorage.removeItem(REF_KEY));
   }, [user, userId, setReferredByCode]);

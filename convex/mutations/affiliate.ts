@@ -16,9 +16,9 @@ function generateCode(): string {
 }
 
 export const ensureReferralCode = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const user = await getSessionUser(ctx);
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const user = await getSessionUser(ctx, args.userId);
 
     // Already has a code — return it immediately
     if (user.referralCode) {
@@ -44,9 +44,9 @@ export const ensureReferralCode = mutation({
 });
 
 export const setReferredByCode = mutation({
-  args: { refCode: v.string() },
+  args: { userId: v.id("users"), refCode: v.string() },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx);
+    const user = await getSessionUser(ctx, args.userId);
 
     // Already attributed — do nothing
     if (user.referredByCode) return;

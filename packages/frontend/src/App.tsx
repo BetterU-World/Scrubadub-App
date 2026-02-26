@@ -52,6 +52,7 @@ import { SuperAdminPage } from "@/pages/admin/SuperAdminPage";
 import { NotificationsPage } from "@/pages/shared/NotificationsPage";
 import { ManualsPage } from "@/pages/shared/ManualsPage";
 import { ManualViewerPage } from "@/pages/shared/ManualViewerPage";
+import { PayoutRequestPage } from "@/pages/shared/PayoutRequestPage";
 
 // Public pages (no auth required)
 import { PublicRequestPage } from "@/pages/public/PublicRequestPage";
@@ -264,6 +265,7 @@ export default function App() {
               <SubscriptionInactive />
             </Route>
           )}
+          <Route path="/affiliate/payout-request/:requestId" component={PayoutRequestPage} />
           <Route path="/affiliate" component={AffiliatePage} />
           <Route path="/notifications" component={NotificationsPage} />
           <Route path="/manuals/:slug" component={ManualViewerPage} />

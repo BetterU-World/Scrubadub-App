@@ -365,6 +365,7 @@ export default defineSchema({
     paidAt: v.optional(v.number()),
     notes: v.optional(v.string()),
     payoutBatchId: v.optional(v.id("affiliatePayoutBatches")),
+    payoutRequestId: v.optional(v.id("affiliatePayoutRequests")),
   })
     .index("by_referrerUserId", ["referrerUserId"])
     .index("by_referrerUserId_periodType_periodStart", [
@@ -387,6 +388,33 @@ export default defineSchema({
     .index("by_createdAt", ["createdAt"])
     .index("by_status", ["status"])
     .index("by_createdByUserId_createdAt", ["createdByUserId", "createdAt"]),
+
+  // ── Affiliate Payout Requests (affiliate-initiated) ──────────
+  affiliatePayoutRequests: defineTable({
+    referrerUserId: v.id("users"),
+    status: v.union(
+      v.literal("submitted"),
+      v.literal("approved"),
+      v.literal("denied"),
+      v.literal("cancelled"),
+      v.literal("completed")
+    ),
+    ledgerIds: v.array(v.id("affiliateLedger")),
+    totalCommissionCents: v.number(),
+    totalRevenueCents: v.number(),
+    notes: v.optional(v.string()),
+    adminNotes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    approvedAt: v.optional(v.number()),
+    deniedAt: v.optional(v.number()),
+    cancelledAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    payoutBatchId: v.optional(v.id("affiliatePayoutBatches")),
+  })
+    .index("by_referrerUserId_createdAt", ["referrerUserId", "createdAt"])
+    .index("by_status_createdAt", ["status", "createdAt"])
+    .index("by_payoutBatchId", ["payoutBatchId"]),
 
   clientRequests: defineTable({
     companyId: v.id("companies"),

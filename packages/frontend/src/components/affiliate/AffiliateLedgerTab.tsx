@@ -17,6 +17,9 @@ import {
   ChevronUp,
   Users,
   Search,
+  Send,
+  Copy,
+  ExternalLink,
 } from "lucide-react";
 
 /* ── Helpers ──────────────────────────────────────────────────────── */
@@ -63,6 +66,11 @@ function statusBadge(status: string) {
     paid: "bg-green-100 text-green-800",
     recorded: "bg-green-100 text-green-800",
     voided: "bg-red-100 text-red-800",
+    submitted: "bg-purple-100 text-purple-800",
+    approved: "bg-teal-100 text-teal-800",
+    denied: "bg-red-100 text-red-800",
+    cancelled: "bg-gray-100 text-gray-800",
+    completed: "bg-green-100 text-green-800",
   };
   return (
     <span
@@ -125,6 +133,7 @@ type LedgerRow = {
   paidAt?: number;
   notes?: string;
   payoutBatchId?: string;
+  payoutRequestId?: string;
 };
 
 function buildCsvContent(rows: LedgerRow[]): string {
@@ -915,6 +924,244 @@ function ViewAsSelector({
   );
 }
 
+/* ── Request Payout Modal (affiliate-initiated) ──────────────────── */
+
+function RequestPayoutModal({
+  rows,
+  onCancel,
+  onConfirm,
+  busy,
+}: {
+  rows: LedgerRow[];
+  onCancel: () => void;
+  onConfirm: (ledgerIds: string[], notes: string) => void;
+  busy: boolean;
+}) {
+  const [selected, setSelected] = useState<Set<string>>(
+    () => new Set(rows.map((r) => r._id))
+  );
+  const [notes, setNotes] = useState("");
+
+  const toggleRow = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const totalCommission = useMemo(() => {
+    let sum = 0;
+    for (const r of rows) {
+      if (selected.has(r._id)) sum += r.commissionCents;
+    }
+    return sum;
+  }, [rows, selected]);
+
+  const totalRevenue = useMemo(() => {
+    let sum = 0;
+    for (const r of rows) {
+      if (selected.has(r._id)) sum += r.attributedRevenueCents;
+    }
+    return sum;
+  }, [rows, selected]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onCancel} />
+      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-lg mx-4 p-6 max-h-[80vh] overflow-y-auto">
+        <button
+          onClick={onCancel}
+          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+        >
+          <X className="h-5 w-5" />
+        </button>
+
+        <div className="flex items-center gap-2 mb-3">
+          <Send className="h-5 w-5 text-purple-600" />
+          <h3 className="text-lg font-semibold text-gray-900">
+            Request Payout
+          </h3>
+        </div>
+
+        <p className="text-sm text-gray-600 mb-4">
+          Select the locked periods to include in your payout request. An admin
+          will review and process the payment.
+        </p>
+
+        <div className="border border-gray-200 rounded-md overflow-hidden mb-4">
+          <table className="min-w-full divide-y divide-gray-200 text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-3 py-2 w-8"></th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
+                  Period
+                </th>
+                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">
+                  Commission
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {rows.map((r) => (
+                <tr
+                  key={r._id}
+                  className={selected.has(r._id) ? "bg-purple-50/50" : ""}
+                >
+                  <td className="px-3 py-2">
+                    <input
+                      type="checkbox"
+                      checked={selected.has(r._id)}
+                      onChange={() => toggleRow(r._id)}
+                      className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    {formatPeriodKey(r.periodStart)}
+                  </td>
+                  <td className="px-3 py-2 text-right font-medium">
+                    {formatCents(r.commissionCents)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="bg-gray-50 rounded-md px-3 py-2 mb-4 text-sm">
+          <div className="flex justify-between">
+            <span className="text-gray-500">Periods selected:</span>
+            <span className="font-medium">{selected.size}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500">Total revenue:</span>
+            <span className="font-medium">{formatCents(totalRevenue)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500">Total commission:</span>
+            <span className="font-bold text-purple-700">
+              {formatCents(totalCommission)}
+            </span>
+          </div>
+        </div>
+
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Notes{" "}
+          <span className="text-gray-400 font-normal">(optional)</span>
+        </label>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value.slice(0, 280))}
+          maxLength={280}
+          rows={2}
+          placeholder="e.g. Preferred payment method: Zelle"
+          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 mb-1"
+        />
+        <p className="text-xs text-gray-400 mb-4 text-right">
+          {notes.length}/280
+        </p>
+
+        <div className="flex justify-end gap-3">
+          <button
+            onClick={onCancel}
+            disabled={busy}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onConfirm([...selected], notes)}
+            disabled={busy || selected.size === 0}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 transition-colors disabled:opacity-50"
+          >
+            <Send className="h-4 w-4" />
+            {busy ? "Submitting..." : "Submit Request"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── My Payout Requests (affiliate-side) ─────────────────────────── */
+
+function MyPayoutRequestsList({
+  userId,
+}: {
+  userId: Id<"users">;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const requests = useQuery(
+    api.queries.affiliatePayoutRequests.getMyPayoutRequests,
+    { userId, limit: 5 }
+  );
+
+  if (requests === undefined) return null;
+  if (requests.rows.length === 0) return null;
+
+  return (
+    <div className="bg-white rounded-lg shadow overflow-hidden">
+      <button
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+      >
+        <span>My Payout Requests ({requests.rows.length})</span>
+        {expanded ? (
+          <ChevronUp className="h-4 w-4" />
+        ) : (
+          <ChevronDown className="h-4 w-4" />
+        )}
+      </button>
+      {expanded && (
+        <div className="border-t border-gray-200">
+          <table className="min-w-full divide-y divide-gray-200 text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">
+                  Date
+                </th>
+                <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">
+                  Commission
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">
+                  Status
+                </th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">
+                  Periods
+                </th>
+                <th className="px-4 py-2"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {requests.rows.map((r) => (
+                <tr key={r._id}>
+                  <td className="px-4 py-2 whitespace-nowrap">
+                    {formatDate(r.createdAt)}
+                  </td>
+                  <td className="px-4 py-2 text-right font-medium">
+                    {formatCents(r.totalCommissionCents)}
+                  </td>
+                  <td className="px-4 py-2">{statusBadge(r.status)}</td>
+                  <td className="px-4 py-2">{r.ledgerIds.length}</td>
+                  <td className="px-4 py-2">
+                    <a
+                      href={`/affiliate/payout-request/${r._id}`}
+                      className="text-xs text-blue-600 hover:text-blue-800"
+                    >
+                      View
+                    </a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Inner Component ──────────────────────────────────────────────── */
 
 type ModalTarget = {
@@ -990,6 +1237,9 @@ function AffiliateLedgerInner({
   const voidBatch = useMutation(
     api.mutations.affiliatePayoutBatches.voidPayoutBatchAndRevertPaid
   );
+  const createPayoutRequest = useMutation(
+    api.mutations.affiliatePayoutRequests.createPayoutRequest
+  );
 
   const [refreshing, setRefreshing] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -1006,6 +1256,12 @@ function AffiliateLedgerInner({
     useState<Id<"affiliatePayoutBatches"> | null>(null);
   const [batchBusy, setBatchBusy] = useState(false);
 
+  // Payout request state (affiliate-side)
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [requestBusy, setRequestBusy] = useState(false);
+  const [lastRequestId, setLastRequestId] = useState<string | null>(null);
+  const [requestCopied, setRequestCopied] = useState(false);
+
   /* ── Selection helpers ───────────────────────────────────────────── */
 
   const toggleSelection = useCallback((id: Id<"affiliateLedger">) => {
@@ -1019,6 +1275,19 @@ function AffiliateLedgerInner({
 
   const lockedRows = useMemo(
     () => (ledger?.rows ?? []).filter((r) => r.status === "locked"),
+    [ledger]
+  );
+
+  // Eligible rows for payout request: locked, no batch, no existing request, commission > 0
+  const eligibleRequestRows = useMemo(
+    () =>
+      (ledger?.rows ?? []).filter(
+        (r) =>
+          r.status === "locked" &&
+          !r.payoutBatchId &&
+          !(r as any).payoutRequestId &&
+          r.commissionCents > 0
+      ) as LedgerRow[],
     [ledger]
   );
 
@@ -1181,6 +1450,33 @@ function AffiliateLedgerInner({
     }
   }
 
+  /* ── Payout request handler ──────────────────────────────────────── */
+
+  async function handleRequestConfirm(ledgerIds: string[], notes: string) {
+    setRequestBusy(true);
+    try {
+      const result = await createPayoutRequest({
+        userId,
+        ledgerIds: ledgerIds as Id<"affiliateLedger">[],
+        notes: notes.trim() || undefined,
+      });
+      setLastRequestId(result.requestId);
+      setShowRequestModal(false);
+    } catch (err) {
+      console.error("Failed to create payout request:", err);
+    } finally {
+      setRequestBusy(false);
+    }
+  }
+
+  function copyRequestLink(requestId: string) {
+    const link = `${window.location.origin}/affiliate/payout-request/${requestId}`;
+    navigator.clipboard.writeText(link).then(() => {
+      setRequestCopied(true);
+      setTimeout(() => setRequestCopied(false), 2000);
+    });
+  }
+
   /* ── CSV export ──────────────────────────────────────────────────── */
 
   function handleExportVisible() {
@@ -1237,6 +1533,44 @@ function AffiliateLedgerInner({
           onVoid={handleVoidBatch}
           voiding={batchBusy}
         />
+      )}
+      {showRequestModal && (
+        <RequestPayoutModal
+          rows={eligibleRequestRows}
+          onCancel={() => setShowRequestModal(false)}
+          onConfirm={handleRequestConfirm}
+          busy={requestBusy}
+        />
+      )}
+
+      {/* Request submitted banner */}
+      {lastRequestId && (
+        <div className="bg-purple-50 border border-purple-200 rounded-lg px-4 py-3 flex flex-wrap items-center gap-3">
+          <CheckCircle className="h-4 w-4 text-purple-600" />
+          <span className="text-sm text-purple-800">
+            Payout request submitted!
+          </span>
+          <button
+            onClick={() => copyRequestLink(lastRequestId)}
+            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-purple-700 bg-purple-100 rounded hover:bg-purple-200 transition-colors"
+          >
+            <Copy className="h-3 w-3" />
+            {requestCopied ? "Copied!" : "Copy request link"}
+          </button>
+          <a
+            href={`/affiliate/payout-request/${lastRequestId}`}
+            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-purple-700 bg-purple-100 rounded hover:bg-purple-200 transition-colors"
+          >
+            <ExternalLink className="h-3 w-3" />
+            View request
+          </a>
+          <button
+            onClick={() => setLastRequestId(null)}
+            className="ml-auto text-xs text-purple-500 hover:text-purple-700"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
       )}
 
       {/* View-as selector (super-admin only) */}
@@ -1354,6 +1688,17 @@ function AffiliateLedgerInner({
             >
               <Download className="h-4 w-4" />
               Export Selected ({selectedIds.size})
+            </button>
+          )}
+
+          {/* Request Payout (non-admin, own ledger only) */}
+          {!isSuperAdmin && !isViewingOther && eligibleRequestRows.length > 0 && (
+            <button
+              onClick={() => setShowRequestModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 transition-colors"
+            >
+              <Send className="h-4 w-4" />
+              Request Payout ({eligibleRequestRows.length})
             </button>
           )}
         </div>
@@ -1483,6 +1828,14 @@ function AffiliateLedgerInner({
                             (batch)
                           </span>
                         )}
+                        {row.status === "locked" && (row as any).payoutRequestId && (
+                          <span
+                            className="text-[10px] text-purple-400"
+                            title={`Request: ${(row as any).payoutRequestId}`}
+                          >
+                            (requested)
+                          </span>
+                        )}
                       </div>
                       {row.notes && (
                         <p
@@ -1569,6 +1922,11 @@ function AffiliateLedgerInner({
             </table>
           </div>
         </div>
+      )}
+
+      {/* My Payout Requests (non-admin, own ledger) */}
+      {!isSuperAdmin && !isViewingOther && (
+        <MyPayoutRequestsList userId={userId} />
       )}
     </div>
   );
