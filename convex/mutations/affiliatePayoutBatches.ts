@@ -34,6 +34,11 @@ export const createPayoutBatchAndMarkPaid = mutation({
           `Ledger entry ${id} is "${entry.status}" — only locked entries can be batched`
         );
       }
+      if (entry.payoutBatchId) {
+        throw new Error(
+          `Ledger entry ${id} already belongs to a payout batch`
+        );
+      }
       totalCommissionCents += entry.commissionCents;
       entries.push(entry);
     }
@@ -81,6 +86,13 @@ export const voidPayoutBatchAndRevertPaid = mutation({
 
     // Already voided — no-op
     if (batch.status === "voided") return batch;
+
+    // Block voiding while Stripe transfer is in progress
+    if (batch.payoutStatus === "processing") {
+      throw new Error(
+        "Cannot void a batch while a Stripe transfer is processing"
+      );
+    }
 
     const now = Date.now();
 
