@@ -1,11 +1,12 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import { useQuery, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { BookOpen, ExternalLink, Users, Sparkles, AppWindow } from "lucide-react";
+import { BookOpen, ExternalLink, Users, Sparkles, AppWindow, BookMarked } from "lucide-react";
 
 const CATEGORY_META: Record<string, { label: string; icon: typeof BookOpen }> = {
   app: { label: "App Guides", icon: AppWindow },
@@ -50,15 +51,49 @@ export function ManualsPage() {
         description="Role-gated guides and reference documents"
       />
 
-      {manuals.length === 0 ? (
-        <EmptyState
-          icon={BookOpen}
-          title="No manuals yet"
-          description="Manuals added by your admin will appear here."
-        />
-      ) : (
-        <div className="space-y-8 max-w-2xl">
-          {CATEGORY_ORDER.filter((cat) => grouped[cat]?.length).map((cat) => {
+      <div className="space-y-8 max-w-2xl">
+        {/* Static in-app guides */}
+        <section>
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+            <BookMarked className="w-4 h-4" />
+            Using Scrubadub
+          </h2>
+          <div className="space-y-2">
+            {user.role === "owner" && (
+              <Link
+                href="/manuals/owner"
+                className="card flex items-center justify-between gap-4 hover:shadow-md transition-shadow"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium text-gray-900 truncate">Owner App Guide</p>
+                  <p className="text-sm text-gray-500 mt-0.5 truncate">
+                    Managing properties, employees, jobs, and reports
+                  </p>
+                </div>
+                <span className="btn-secondary flex items-center gap-1.5 text-sm flex-shrink-0">
+                  <BookOpen className="w-4 h-4" /> Read
+                </span>
+              </Link>
+            )}
+            <Link
+              href="/manuals/cleaner"
+              className="card flex items-center justify-between gap-4 hover:shadow-md transition-shadow"
+            >
+              <div className="min-w-0">
+                <p className="font-medium text-gray-900 truncate">Cleaner App Guide</p>
+                <p className="text-sm text-gray-500 mt-0.5 truncate">
+                  Accepting jobs, completing forms, and daily workflow
+                </p>
+              </div>
+              <span className="btn-secondary flex items-center gap-1.5 text-sm flex-shrink-0">
+                <BookOpen className="w-4 h-4" /> Read
+              </span>
+            </Link>
+          </div>
+        </section>
+
+        {/* DB-backed PDF manuals */}
+        {CATEGORY_ORDER.filter((cat) => grouped[cat]?.length).map((cat) => {
             const meta = CATEGORY_META[cat] ?? { label: cat, icon: BookOpen };
             const Icon = meta.icon;
             return (
@@ -97,8 +132,7 @@ export function ManualsPage() {
               </section>
             );
           })}
-        </div>
-      )}
+      </div>
     </div>
   );
 }
