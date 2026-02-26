@@ -3,11 +3,11 @@ import { Link } from "wouter";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { LeadsHeader } from "@/components/ui/LeadsHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { Inbox, Calendar, MapPin, Kanban } from "lucide-react";
+import { Inbox, Calendar, MapPin } from "lucide-react";
 
 const STATUS_OPTIONS = [
   { value: "", label: "All" },
@@ -51,18 +51,7 @@ export function RequestListPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Requests"
-        description="Incoming service requests from clients"
-        action={
-          <Link
-            href="/requests/pipeline"
-            className="btn-secondary flex items-center gap-2 text-sm"
-          >
-            <Kanban className="w-4 h-4" /> Pipeline
-          </Link>
-        }
-      />
+      <LeadsHeader />
 
       {/* Filters */}
       <div className="flex gap-2 mb-4">
