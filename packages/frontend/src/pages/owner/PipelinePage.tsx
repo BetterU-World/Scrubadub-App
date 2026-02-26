@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { LeadsHeader } from "@/components/ui/LeadsHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
@@ -126,18 +126,7 @@ export function PipelinePage() {
 
   return (
     <div>
-      <PageHeader
-        title="Lead Pipeline"
-        description="Track requests from lead to close"
-        action={
-          <Link
-            href="/requests"
-            className="btn-secondary flex items-center gap-2 text-sm"
-          >
-            <Inbox className="w-4 h-4" /> All Requests
-          </Link>
-        }
-      />
+      <LeadsHeader />
 
       <FollowUpsWidget userId={user._id} />
 
