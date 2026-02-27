@@ -173,7 +173,7 @@ export function PropertyFormPage() {
           <input className="input-field" value={address} onChange={(e) => setAddress(e.target.value)} required placeholder="123 Main St, City, ST 12345" />
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Beds</label>
             <input
@@ -194,19 +194,6 @@ export function PropertyFormPage() {
               className="input-field"
               value={baths ?? ""}
               onChange={(e) => setBaths(e.target.value ? parseFloat(e.target.value) : undefined)}
-              placeholder="0"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Total Linen Sets
-            </label>
-            <input
-              type="number"
-              min={0}
-              className="input-field"
-              value={linenCount ?? ""}
-              onChange={(e) => setLinenCount(e.target.value ? parseInt(e.target.value, 10) : undefined)}
               placeholder="0"
             />
           </div>
@@ -291,18 +278,7 @@ export function PropertyFormPage() {
         {/* Linen & Supply Counts */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Linen & Supply Counts</label>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">Towels</label>
-              <input
-                type="number"
-                min={0}
-                className="input-field"
-                value={towelCount ?? ""}
-                onChange={(e) => setTowelCount(e.target.value ? parseInt(e.target.value, 10) : undefined)}
-                placeholder="0"
-              />
-            </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
               <label className="block text-xs text-gray-500 mb-1">Sheet Sets</label>
               <input
@@ -311,6 +287,28 @@ export function PropertyFormPage() {
                 className="input-field"
                 value={sheetSets ?? ""}
                 onChange={(e) => setSheetSets(e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Spare Sheet Sets</label>
+              <input
+                type="number"
+                min={0}
+                className="input-field"
+                value={linenCount ?? ""}
+                onChange={(e) => setLinenCount(e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Towels</label>
+              <input
+                type="number"
+                min={0}
+                className="input-field"
+                value={towelCount ?? ""}
+                onChange={(e) => setTowelCount(e.target.value ? parseInt(e.target.value, 10) : undefined)}
                 placeholder="0"
               />
             </div>

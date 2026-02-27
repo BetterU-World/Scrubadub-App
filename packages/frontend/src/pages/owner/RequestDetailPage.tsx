@@ -94,6 +94,8 @@ export function RequestDetailPage() {
   const [savingNotes, setSavingNotes] = useState(false);
   const [followUpVal, setFollowUpVal] = useState("");
   const [savingFollowUp, setSavingFollowUp] = useState(false);
+  const [contactingLoading, setContactingLoading] = useState(false);
+  const [archiving, setArchiving] = useState(false);
 
   // Sync lead notes / follow-up from server on first load
   useEffect(() => {
@@ -121,8 +123,6 @@ export function RequestDetailPage() {
   const canAct = request.status === "new" || request.status === "accepted" || request.status === "contacted";
   const canMarkContacted = request.status === "new";
   const canArchive = request.status !== "archived";
-
-  const [contactingLoading, setContactingLoading] = useState(false);
   const handleMarkContacted = async () => {
     setContactingLoading(true);
     try {
@@ -141,7 +141,6 @@ export function RequestDetailPage() {
     }
   };
 
-  const [archiving, setArchiving] = useState(false);
   const handleArchive = async () => {
     setArchiving(true);
     try {

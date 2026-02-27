@@ -134,7 +134,8 @@ function DetailsTab({ property }: { property: any }) {
   const hasStructuredAmenities =
     property.towelCount != null ||
     property.sheetSets != null ||
-    property.pillowCount != null;
+    property.pillowCount != null ||
+    property.linenCount != null;
 
   return (
     <div className="card space-y-6">
@@ -152,8 +153,8 @@ function DetailsTab({ property }: { property: any }) {
         </div>
       </div>
 
-      {(property.beds != null || property.baths != null || property.linenCount != null) && (
-        <div className="grid grid-cols-3 gap-4">
+      {(property.beds != null || property.baths != null) && (
+        <div className="grid grid-cols-2 gap-4">
           {property.beds != null && (
             <div className="bg-gray-50 rounded-lg p-3 text-center">
               <div className="text-2xl font-semibold text-gray-800">{property.beds}</div>
@@ -164,12 +165,6 @@ function DetailsTab({ property }: { property: any }) {
             <div className="bg-gray-50 rounded-lg p-3 text-center">
               <div className="text-2xl font-semibold text-gray-800">{property.baths}</div>
               <div className="text-xs text-gray-500 mt-1">Baths</div>
-            </div>
-          )}
-          {property.linenCount != null && (
-            <div className="bg-gray-50 rounded-lg p-3 text-center">
-              <div className="text-2xl font-semibold text-gray-800">{property.linenCount}</div>
-              <div className="text-xs text-gray-500 mt-1">Linen Sets</div>
             </div>
           )}
         </div>
@@ -220,21 +215,29 @@ function DetailsTab({ property }: { property: any }) {
           <h3 className="text-sm font-medium text-gray-500 mb-2">
             Linen & Supply Counts
           </h3>
-          <div className="grid grid-cols-3 gap-4">
-            {property.towelCount != null && (
-              <div className="bg-gray-50 rounded-lg p-3 text-center">
-                <div className="text-2xl font-semibold text-gray-800">
-                  {property.towelCount}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">Towels</div>
-              </div>
-            )}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {property.sheetSets != null && (
               <div className="bg-gray-50 rounded-lg p-3 text-center">
                 <div className="text-2xl font-semibold text-gray-800">
                   {property.sheetSets}
                 </div>
                 <div className="text-xs text-gray-500 mt-1">Sheet Sets</div>
+              </div>
+            )}
+            {property.linenCount != null && (
+              <div className="bg-gray-50 rounded-lg p-3 text-center">
+                <div className="text-2xl font-semibold text-gray-800">
+                  {property.linenCount}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">Spare Sheet Sets</div>
+              </div>
+            )}
+            {property.towelCount != null && (
+              <div className="bg-gray-50 rounded-lg p-3 text-center">
+                <div className="text-2xl font-semibold text-gray-800">
+                  {property.towelCount}
+                </div>
+                <div className="text-xs text-gray-500 mt-1">Towels</div>
               </div>
             )}
             {property.pillowCount != null && (
