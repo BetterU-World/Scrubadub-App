@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Link } from "wouter";
 import {
   UserPlus,
   Mail,
@@ -96,6 +97,11 @@ export function CleanerLeadsPage() {
       <PageHeader
         title="Cleaner Leads"
         description="Applications from your public site"
+        action={
+          <Link href="/employees?invite=true" className="btn-primary flex items-center gap-2">
+            <UserPlus className="w-4 h-4" /> Invite Employee
+          </Link>
+        }
       />
 
       {/* Filters */}
@@ -123,6 +129,13 @@ export function CleanerLeadsPage() {
             statusFilter
               ? "No leads match this filter."
               : "Cleaner applications from your public site will appear here."
+          }
+          action={
+            !statusFilter && (
+              <Link href="/employees?invite=true" className="btn-primary">
+                Invite your first cleaner
+              </Link>
+            )
           }
         />
       ) : (
@@ -276,7 +289,7 @@ export function CleanerLeadsPage() {
                         disabled={updating}
                         className="btn-secondary text-sm"
                       >
-                        Mark Reviewed
+                        {updating ? "Updating..." : "Mark Reviewed"}
                       </button>
                     )}
                     {(selectedLead.status === "new" ||
@@ -288,7 +301,7 @@ export function CleanerLeadsPage() {
                         disabled={updating}
                         className="btn-primary text-sm"
                       >
-                        Mark Contacted
+                        {updating ? "Updating..." : "Mark Contacted"}
                       </button>
                     )}
                     <button
@@ -298,7 +311,7 @@ export function CleanerLeadsPage() {
                       disabled={updating}
                       className="btn-secondary text-sm text-gray-500"
                     >
-                      Archive
+                      {updating ? "Archiving..." : "Archive"}
                     </button>
                   </div>
                 )}

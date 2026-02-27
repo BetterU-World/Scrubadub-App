@@ -37,14 +37,18 @@ export const list = query({
             return user ? { _id: user._id, name: user.name } : null;
           })
         );
-        // Check if any outgoing shared job was rejected
-        const sharedRecords = await ctx.db
-          .query("sharedJobs")
-          .withIndex("by_originalJobId", (q) => q.eq("originalJobId", job._id))
-          .collect();
-        const hasRejectedShare = sharedRecords.some(
-          (s) => s.fromCompanyId === args.companyId && s.status === "rejected"
-        );
+        // Check if any outgoing shared job was rejected — only relevant
+        // while the job is still in a denied/pending state (not after reassignment)
+        let hasRejectedShare = false;
+        if (job.acceptanceStatus === "denied" || job.status === "denied") {
+          const sharedRecords = await ctx.db
+            .query("sharedJobs")
+            .withIndex("by_originalJobId", (q) => q.eq("originalJobId", job._id))
+            .collect();
+          hasRejectedShare = sharedRecords.some(
+            (s) => s.fromCompanyId === args.companyId && s.status === "rejected"
+          );
+        }
         return {
           ...job,
           propertyName: property?.name ?? "Unknown",

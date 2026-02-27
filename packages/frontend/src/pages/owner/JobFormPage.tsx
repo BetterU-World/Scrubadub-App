@@ -136,6 +136,7 @@ export function JobFormPage() {
       };
       if (isEditing) {
         await updateJob({ jobId: params.id as Id<"jobs">, userId: uid, ...data });
+        sessionStorage.setItem("scrubadub_toast", "Job updated");
         setLocation(`/jobs/${params.id}`);
       } else {
         const id = await createJob({
@@ -165,6 +166,7 @@ export function JobFormPage() {
           });
         }
 
+        sessionStorage.setItem("scrubadub_toast", "Job scheduled");
         setLocation(`/jobs/${id}`);
       }
     } catch (err: any) {

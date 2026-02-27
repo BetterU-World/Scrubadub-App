@@ -79,6 +79,13 @@ export function RequestListPage() {
               ? "No requests match this filter."
               : "Requests from your public link will appear here."
           }
+          action={
+            !statusFilter && (
+              <Link href="/site" className="btn-primary">
+                Share your booking link
+              </Link>
+            )
+          }
         />
       ) : (
         <div className="space-y-3">

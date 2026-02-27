@@ -89,9 +89,11 @@ export function PropertyFormPage() {
       };
       if (isEditing) {
         await updateProperty({ propertyId: params.id as Id<"properties">, userId: user._id, ...data });
+        sessionStorage.setItem("scrubadub_toast", "Property updated");
         setLocation(`/properties/${params.id}`);
       } else {
         const id = await createProperty({ companyId: user.companyId, userId: user._id, ...data });
+        sessionStorage.setItem("scrubadub_toast", "Property created");
         setLocation(`/properties/${id}`);
       }
     } catch (err: any) {
