@@ -535,7 +535,7 @@ function ServicesSection({
               </p>
               {requestHref && (
                 <a
-                  href={requestHref}
+                  href={`${requestHref}?service=${encodeURIComponent(card.name)}`}
                   className="inline-flex items-center gap-1 text-sm font-medium text-primary-500 hover:text-primary-400"
                 >
                   Request quote <ArrowRight className="w-3.5 h-3.5" />

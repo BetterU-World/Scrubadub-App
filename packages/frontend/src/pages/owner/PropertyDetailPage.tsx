@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
@@ -28,6 +28,17 @@ export function PropertyDetailPage() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("details");
+  const [toast, setToast] = useState<string | null>(null);
+
+  // Read flash toast from sessionStorage (set by PropertyFormPage)
+  useEffect(() => {
+    const msg = sessionStorage.getItem("scrubadub_toast");
+    if (msg) {
+      sessionStorage.removeItem("scrubadub_toast");
+      setToast(msg);
+      setTimeout(() => setToast(null), 3000);
+    }
+  }, []);
 
   const property = useQuery(api.queries.properties.get,
     user ? { propertyId: params.id as Id<"properties">, userId: user._id } : "skip"
@@ -45,6 +56,11 @@ export function PropertyDetailPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium bg-green-600 text-white">
+          {toast}
+        </div>
+      )}
       <PageHeader
         title={property.name}
         action={

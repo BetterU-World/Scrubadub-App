@@ -24,8 +24,8 @@ export function SignupPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (password.length < 10) {
+      setError("Password must be at least 10 characters");
       return;
     }
     setLoading(true);
@@ -119,7 +119,7 @@ export function SignupPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 autoComplete="new-password"
-                placeholder="At least 6 characters"
+                placeholder="At least 10 characters"
               />
             </div>
 

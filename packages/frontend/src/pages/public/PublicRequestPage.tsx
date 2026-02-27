@@ -24,6 +24,12 @@ export function PublicRequestPage() {
     api.mutations.clientRequests.createClientRequestByToken
   );
 
+  // Read service pre-selection from query param
+  const [requestedService] = useState(() => {
+    const sp = new URLSearchParams(window.location.search);
+    return sp.get("service") ?? "";
+  });
+
   // Form state
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -32,7 +38,11 @@ export function PublicRequestPage() {
   const [propertyName, setPropertyName] = useState("");
   const [requestedDate, setRequestedDate] = useState("");
   const [timeWindow, setTimeWindow] = useState("");
-  const [notes, setNotes] = useState("");
+  const [notes, setNotes] = useState(() => {
+    const sp = new URLSearchParams(window.location.search);
+    const svc = sp.get("service");
+    return svc ? `Interested in: ${svc}` : "";
+  });
   const [specialInstructions, setSpecialInstructions] = useState("");
 
   const [loading, setLoading] = useState(false);
@@ -180,6 +190,13 @@ export function PublicRequestPage() {
             />
           </div>
         </fieldset>
+
+        {/* Pre-selected service */}
+        {requestedService && (
+          <div className="p-3 bg-primary-50 border border-primary-200 rounded-lg text-sm text-primary-800">
+            Requested service: <strong>{requestedService}</strong>
+          </div>
+        )}
 
         {/* Property info */}
         <fieldset className="space-y-4">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
@@ -71,6 +71,7 @@ export function JobDetailPage() {
   const [showRework, setShowRework] = useState(false);
   const [reworkNotes, setReworkNotes] = useState("");
   const [approveNotes, setApproveNotes] = useState("");
+  const [approving, setApproving] = useState(false);
   const [expandForm, setExpandForm] = useState(false);
   const [showReassign, setShowReassign] = useState(false);
   const [reassignCleanerId, setReassignCleanerId] = useState("");
@@ -82,6 +83,16 @@ export function JobDetailPage() {
   const [sharing, setSharing] = useState(false);
   const [expandPackage, setExpandPackage] = useState(false);
   const [sharedJobAction, setSharedJobAction] = useState(false);
+
+  // Read flash toast from sessionStorage (set by JobFormPage)
+  useEffect(() => {
+    const msg = sessionStorage.getItem("scrubadub_toast");
+    if (msg) {
+      sessionStorage.removeItem("scrubadub_toast");
+      setToast({ message: msg, type: "success" });
+      setTimeout(() => setToast(null), 3000);
+    }
+  }, []);
 
   if (job === undefined) return <PageLoader />;
   if (job === null) return <div className="text-center py-12 text-gray-500">Job not found</div>;
@@ -354,9 +365,11 @@ export function JobDetailPage() {
               </div>
               <div className="flex gap-3">
                 <button
+                  disabled={approving}
                   onClick={async () => {
                     const uid = requireUserId(user);
                     if (!uid || !job.form) return;
+                    setApproving(true);
                     try {
                       await approveForm({ formId: job.form._id, notes: approveNotes || undefined, userId: uid });
                       setToast({ message: "Job approved!", type: "success" });
@@ -364,11 +377,13 @@ export function JobDetailPage() {
                     } catch (err: any) {
                       setToast({ message: err.message ?? "Failed to approve", type: "error" });
                       setTimeout(() => setToast(null), 3000);
+                    } finally {
+                      setApproving(false);
                     }
                   }}
                   className="btn-primary flex items-center gap-2"
                 >
-                  <CheckCircle className="w-4 h-4" /> Approve
+                  <CheckCircle className="w-4 h-4" /> {approving ? "Approving..." : "Approve"}
                 </button>
                 {job.reworkCount < 2 && (
                   <button
@@ -653,8 +668,11 @@ export function JobDetailPage() {
                     });
                     setShowReassign(false);
                     setReassignCleanerId("");
+                    setToast({ message: "Job reassigned", type: "success" });
+                    setTimeout(() => setToast(null), 3000);
                   } catch (err: any) {
-                    console.error(err);
+                    setToast({ message: err.message ?? "Failed to reassign", type: "error" });
+                    setTimeout(() => setToast(null), 3000);
                   } finally {
                     setReassigning(false);
                   }

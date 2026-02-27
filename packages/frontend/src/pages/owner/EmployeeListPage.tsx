@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,7 +19,20 @@ export function EmployeeListPage() {
   const inviteCleaner = useAction(api.employeeActions.inviteCleaner);
   const updateStatus = useMutation(api.mutations.employees.updateEmployeeStatus);
 
-  const [showInvite, setShowInvite] = useState(false);
+  const [showInvite, setShowInvite] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("invite") === "true";
+  });
+
+  // Clean up URL param after opening
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("invite") === "true") {
+      params.delete("invite");
+      const qs = params.toString();
+      window.history.replaceState(null, "", window.location.pathname + (qs ? `?${qs}` : ""));
+    }
+  }, []);
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"cleaner" | "maintenance">("cleaner");
@@ -27,6 +40,7 @@ export function EmployeeListPage() {
   const [inviteLink, setInviteLink] = useState("");
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
+  const [toast, setToast] = useState<string | null>(null);
 
   if (!user || employees === undefined) return <PageLoader />;
 
@@ -43,6 +57,8 @@ export function EmployeeListPage() {
         role: inviteRole,
       });
       setInviteLink(`${window.location.origin}/invite/${result.token}`);
+      setToast("Invite sent successfully");
+      setTimeout(() => setToast(null), 3000);
     } catch (err: any) {
       setError(err.message || "Failed to invite");
     } finally {
@@ -185,6 +201,12 @@ export function EmployeeListPage() {
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
+
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium bg-green-600 text-white">
+          {toast}
+        </div>
+      )}
     </div>
   );
 }

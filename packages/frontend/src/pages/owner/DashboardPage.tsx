@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 
 const LS_MANUAL_READ = "scrubadub_onboarding_manual_read";
+const LS_ONBOARDING_DISMISSED = "scrubadub_onboarding_dismissed";
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -173,6 +174,9 @@ function GettingStartedCard({ stats }: { stats: any }) {
   const [manualRead, setManualRead] = useState(
     () => localStorage.getItem(LS_MANUAL_READ) === "1"
   );
+  const [dismissed, setDismissed] = useState(
+    () => localStorage.getItem(LS_ONBOARDING_DISMISSED) === "1"
+  );
 
   const steps = [
     {
@@ -200,37 +204,34 @@ function GettingStartedCard({ stats }: { stats: any }) {
   const completed = steps.filter((s) => s.done).length;
   const allDone = completed === steps.length;
 
-  if (allDone) {
-    return (
-      <div className="card mb-6 bg-primary-50 border-primary-200">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary-100 text-primary-600">
-              <Rocket className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="font-semibold text-gray-900">
-                Onboarding complete! 🎉
-              </p>
-              <p className="text-sm text-gray-500">
-                You're all set up and ready to go.
-              </p>
-            </div>
-          </div>
-          {import.meta.env.DEV && (
-            <button
-              onClick={() => {
-                localStorage.removeItem(LS_MANUAL_READ);
-                setManualRead(false);
-              }}
-              className="text-xs text-red-500 hover:text-red-700 underline"
-            >
-              Reset onboarding
-            </button>
-          )}
+  // Auto-dismiss when all steps are done
+  useEffect(() => {
+    if (allDone && !dismissed) {
+      localStorage.setItem(LS_ONBOARDING_DISMISSED, "1");
+      setDismissed(true);
+    }
+  }, [allDone, dismissed]);
+
+  // Hide widget if dismissed (persists across refreshes)
+  if (dismissed) {
+    if (import.meta.env.DEV) {
+      return (
+        <div className="mb-2 text-right">
+          <button
+            onClick={() => {
+              localStorage.removeItem(LS_ONBOARDING_DISMISSED);
+              localStorage.removeItem(LS_MANUAL_READ);
+              setDismissed(false);
+              setManualRead(false);
+            }}
+            className="text-xs text-red-500 hover:text-red-700 underline"
+          >
+            Reset onboarding
+          </button>
         </div>
-      </div>
-    );
+      );
+    }
+    return null;
   }
 
   return (

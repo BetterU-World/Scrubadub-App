@@ -121,7 +121,9 @@ export function RequestDetailPage() {
   const canMarkContacted = request.status === "new";
   const canArchive = request.status !== "archived";
 
+  const [contactingLoading, setContactingLoading] = useState(false);
   const handleMarkContacted = async () => {
+    setContactingLoading(true);
     try {
       await updateStatus({
         requestId: request._id,
@@ -133,10 +135,14 @@ export function RequestDetailPage() {
     } catch (err: any) {
       setToast({ message: err.message || "Failed to update", type: "error" });
       setTimeout(() => setToast(null), 3000);
+    } finally {
+      setContactingLoading(false);
     }
   };
 
+  const [archiving, setArchiving] = useState(false);
   const handleArchive = async () => {
+    setArchiving(true);
     try {
       await archiveRequest({
         requestId: request._id,
@@ -147,6 +153,8 @@ export function RequestDetailPage() {
     } catch (err: any) {
       setToast({ message: err.message || "Failed to archive", type: "error" });
       setTimeout(() => setToast(null), 3000);
+    } finally {
+      setArchiving(false);
     }
   };
 
@@ -245,9 +253,10 @@ export function RequestDetailPage() {
             {canMarkContacted && (
               <button
                 onClick={handleMarkContacted}
+                disabled={contactingLoading}
                 className="btn-secondary flex items-center gap-2"
               >
-                <PhoneOutgoing className="w-4 h-4" /> Mark Contacted
+                <PhoneOutgoing className="w-4 h-4" /> {contactingLoading ? "Contacting..." : "Mark Contacted"}
               </button>
             )}
             {canAct && (
@@ -269,9 +278,10 @@ export function RequestDetailPage() {
             {canArchive && (
               <button
                 onClick={handleArchive}
+                disabled={archiving}
                 className="btn-secondary flex items-center gap-2 text-gray-500"
               >
-                <Archive className="w-4 h-4" /> Archive
+                <Archive className="w-4 h-4" /> {archiving ? "Archiving..." : "Archive"}
               </button>
             )}
           </div>
