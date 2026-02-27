@@ -7,7 +7,7 @@ import { requireUserId } from "@/lib/requireUserId";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useLocation, useParams, Link } from "wouter";
-import { Building2, Users, Handshake } from "lucide-react";
+import { Building2, Users, Handshake, AlertCircle } from "lucide-react";
 
 const JOB_TYPES = [
   { value: "standard", label: "Standard Clean" },
@@ -64,6 +64,17 @@ export function JobFormPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [sourceRequestId, setSourceRequestId] = useState<string | null>(null);
+
+  // Availability lookup for the selected date
+  const cleanerAvailability = useQuery(
+    api.queries.availability.listCleanersWithAvailability,
+    user && scheduledDate ? { userId: user._id, date: scheduledDate } : "skip"
+  );
+  const unavailableSet = new Set(
+    (cleanerAvailability ?? [])
+      .filter((c: any) => c.isUnavailable)
+      .map((c: any) => c._id)
+  );
 
   // Prefill from client request (via sessionStorage)
   useEffect(() => {
@@ -301,18 +312,34 @@ export function JobFormPage() {
               <p className="text-sm text-gray-500">{emptyWorkerMsg}</p>
             ) : (
               <div className="space-y-2">
-                {workers.map((c) => (
-                  <label key={c._id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selectedCleaners.includes(c._id)}
-                      onChange={() => toggleCleaner(c._id)}
-                      className="w-4 h-4 text-primary-600 rounded border-gray-300"
-                    />
-                    <span className="text-sm">{c.name}</span>
-                    <span className="text-xs text-gray-400">{c.email}</span>
-                  </label>
-                ))}
+                {workers.map((c) => {
+                  const isOff = scheduledDate && unavailableSet.has(c._id);
+                  return (
+                    <label
+                      key={c._id}
+                      className={`flex items-center gap-3 p-2 rounded-lg ${isOff ? "opacity-50 cursor-not-allowed bg-gray-50" : "hover:bg-gray-50 cursor-pointer"}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedCleaners.includes(c._id)}
+                        onChange={() => {
+                          if (isOff) return;
+                          toggleCleaner(c._id);
+                        }}
+                        disabled={!!isOff}
+                        className="w-4 h-4 text-primary-600 rounded border-gray-300"
+                      />
+                      <span className="text-sm">{c.name}</span>
+                      <span className="text-xs text-gray-400">{c.email}</span>
+                      {isOff && (
+                        <span className="ml-auto flex items-center gap-1 text-xs text-amber-600">
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          Unavailable
+                        </span>
+                      )}
+                    </label>
+                  );
+                })}
               </div>
             )}
           </div>

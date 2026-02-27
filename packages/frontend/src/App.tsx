@@ -46,6 +46,7 @@ import { PipelinePage } from "@/pages/owner/PipelinePage";
 import { WorkerJobListPage } from "@/pages/worker/WorkerJobListPage";
 import { WorkerJobDetailPage } from "@/pages/worker/WorkerJobDetailPage";
 import { WorkerJobFormPage } from "@/pages/worker/WorkerJobFormPage";
+import { AvailabilityPage } from "@/pages/worker/AvailabilityPage";
 
 // Admin pages
 import { SuperAdminPage } from "@/pages/admin/SuperAdminPage";
@@ -273,6 +274,7 @@ export default function App() {
               <Route path="/jobs/:id" component={WorkerJobDetailPage} />
               <Route path="/jobs/:id/form" component={WorkerJobFormPage} />
               <Route path="/calendar" component={CalendarPage} />
+              <Route path="/availability" component={AvailabilityPage} />
             </>
           ) : (
             <Route>

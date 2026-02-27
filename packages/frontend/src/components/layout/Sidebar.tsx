@@ -22,6 +22,7 @@ import {
   MessageSquare,
   Kanban,
   ChevronDown,
+  Clock,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useQuery } from "convex/react";
@@ -82,6 +83,7 @@ const workerSections: NavSection[] = [
     items: [
       { href: "/", label: "My Jobs", icon: ClipboardCheck },
       { href: "/calendar", label: "Calendar", icon: Calendar },
+      { href: "/availability", label: "My Availability", icon: Clock },
     ],
   },
   {

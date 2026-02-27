@@ -49,6 +49,12 @@ export function JobDetailPage() {
     api.queries.employees.getCleaners,
     user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
   );
+  const cleanerAvailability = useQuery(
+    api.queries.availability.listCleanersWithAvailability,
+    user && job?.scheduledDate
+      ? { userId: user._id, date: job.scheduledDate }
+      : "skip"
+  );
   const connections = useQuery(
     api.queries.partners.listConnections,
     user ? { userId: user._id } : "skip"
@@ -641,21 +647,29 @@ export function JobDetailPage() {
           <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold mb-4">Reassign Job</h3>
             <select
-              className="input-field mb-4"
+              className="input-field mb-2"
               value={reassignCleanerId}
               onChange={(e) => setReassignCleanerId(e.target.value)}
             >
               <option value="">Select a cleaner...</option>
               {cleaners
                 ?.filter((c) => !job.cleanerIds.includes(c._id))
-                .map((c) => (
-                  <option key={c._id} value={c._id}>{c.name} ({c.email})</option>
-                ))}
+                .map((c) => {
+                  const isOff = cleanerAvailability?.find((a: any) => a._id === c._id)?.isUnavailable;
+                  return (
+                    <option key={c._id} value={c._id} disabled={!!isOff}>
+                      {c.name} ({c.email}){isOff ? " — Unavailable" : ""}
+                    </option>
+                  );
+                })}
             </select>
-            <div className="flex justify-end gap-3">
+            {reassignCleanerId && cleanerAvailability?.find((a: any) => a._id === reassignCleanerId)?.isUnavailable && (
+              <p className="text-xs text-amber-600 mb-4">This cleaner is marked unavailable for {job.scheduledDate}.</p>
+            )}
+            <div className="flex justify-end gap-3 mt-4">
               <button onClick={() => { setShowReassign(false); setReassignCleanerId(""); }} className="btn-secondary">Cancel</button>
               <button
-                disabled={!reassignCleanerId || reassigning}
+                disabled={!reassignCleanerId || reassigning || !!cleanerAvailability?.find((a: any) => a._id === reassignCleanerId)?.isUnavailable}
                 onClick={async () => {
                   const uid = requireUserId(user);
                   if (!reassignCleanerId || !uid) return;
