@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 
 const LS_MANUAL_READ = "scrubadub_onboarding_manual_read";
-const LS_ONBOARDING_DISMISSED = "scrubadub_onboarding_dismissed";
 
 export function DashboardPage() {
   const { user } = useAuth();
@@ -174,9 +173,6 @@ function GettingStartedCard({ stats }: { stats: any }) {
   const [manualRead, setManualRead] = useState(
     () => localStorage.getItem(LS_MANUAL_READ) === "1"
   );
-  const [dismissed, setDismissed] = useState(
-    () => localStorage.getItem(LS_ONBOARDING_DISMISSED) === "1"
-  );
 
   const steps = [
     {
@@ -202,37 +198,14 @@ function GettingStartedCard({ stats }: { stats: any }) {
   ];
 
   const completed = steps.filter((s) => s.done).length;
-  const allDone = completed === steps.length;
 
-  // Auto-dismiss when all steps are done
-  useEffect(() => {
-    if (allDone && !dismissed) {
-      localStorage.setItem(LS_ONBOARDING_DISMISSED, "1");
-      setDismissed(true);
-    }
-  }, [allDone, dismissed]);
+  // Hide widget once manuals are marked as read (persists via localStorage)
+  if (manualRead) return null;
 
-  // Hide widget if dismissed (persists across refreshes)
-  if (dismissed) {
-    if (import.meta.env.DEV) {
-      return (
-        <div className="mb-2 text-right">
-          <button
-            onClick={() => {
-              localStorage.removeItem(LS_ONBOARDING_DISMISSED);
-              localStorage.removeItem(LS_MANUAL_READ);
-              setDismissed(false);
-              setManualRead(false);
-            }}
-            className="text-xs text-red-500 hover:text-red-700 underline"
-          >
-            Reset onboarding
-          </button>
-        </div>
-      );
-    }
-    return null;
-  }
+  const handleMarkManualsRead = () => {
+    localStorage.setItem(LS_MANUAL_READ, "1");
+    setManualRead(true);
+  };
 
   return (
     <div className="card mb-6">
@@ -248,17 +221,6 @@ function GettingStartedCard({ stats }: { stats: any }) {
             </p>
           </div>
         </div>
-        {import.meta.env.DEV && (
-          <button
-            onClick={() => {
-              localStorage.removeItem(LS_MANUAL_READ);
-              setManualRead(false);
-            }}
-            className="text-xs text-red-500 hover:text-red-700 underline"
-          >
-            Reset onboarding
-          </button>
-        )}
       </div>
 
       {/* Progress bar */}
@@ -292,6 +254,16 @@ function GettingStartedCard({ stats }: { stats: any }) {
             </span>
           </Link>
         ))}
+      </div>
+
+      {/* Mark all manuals as read CTA */}
+      <div className="mt-4 pt-3 border-t">
+        <button
+          onClick={handleMarkManualsRead}
+          className="btn-primary w-full flex items-center justify-center gap-2 text-sm"
+        >
+          <BookOpen className="w-4 h-4" /> Mark all manuals as read
+        </button>
       </div>
     </div>
   );
