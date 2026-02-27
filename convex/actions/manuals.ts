@@ -36,19 +36,20 @@ export const getManualSignedUrl = action({
     }
 
     // Fetch private blob content (authenticated via token)
-    const blobResult = await get(blobRef, { access: "private", token });
-    if (!blobResult) {
-      throw new Error("Blob not found in storage");
+    const result = await get(blobRef, { access: "private", token });
+    if (!result || result.statusCode !== 200 || !result.stream) {
+      throw new Error("Blob not found or not accessible");
     }
 
-    // Proxy through Convex storage to get a short-lived public URL.
-    // Convex storage URLs are time-limited and require no client auth.
-    const arrayBuffer = await new Response(blobResult.body).arrayBuffer();
-    const blob = new Blob([arrayBuffer], {
-      type: blobResult.contentType || "application/pdf",
+    // Convert stream to Blob with correct content type
+    const contentType = result.blob.contentType ?? "application/pdf";
+    const response = new Response(result.stream, {
+      headers: { "Content-Type": contentType },
     });
+    const pdfBlob = await response.blob();
 
-    const storageId = await ctx.storage.store(blob);
+    // Proxy through Convex storage to get a short-lived public URL
+    const storageId = await ctx.storage.store(pdfBlob);
     const url = await ctx.storage.getUrl(storageId);
     if (!url) throw new Error("Failed to generate download URL");
 
