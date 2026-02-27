@@ -529,4 +529,20 @@ export default defineSchema({
   })
     .index("by_clientRequestId_createdAt", ["clientRequestId", "createdAt"])
     .index("by_status_createdAt", ["status", "createdAt"]),
+
+  // ── Cleaner Availability (weekly recurring) ──────────────────────
+  cleanerAvailability: defineTable({
+    cleanerId: v.id("users"),
+    dayOfWeek: v.number(), // 0=Sunday .. 6=Saturday
+    startMinutes: v.number(), // 0-1439
+    endMinutes: v.number(), // 0-1439
+    enabled: v.boolean(),
+  }).index("by_cleanerId_dayOfWeek", ["cleanerId", "dayOfWeek"]),
+
+  // ── Cleaner Availability Overrides (date-level) ──────────────────
+  cleanerAvailabilityOverrides: defineTable({
+    cleanerId: v.id("users"),
+    date: v.string(), // "YYYY-MM-DD"
+    unavailable: v.boolean(),
+  }).index("by_cleanerId_date", ["cleanerId", "date"]),
 });

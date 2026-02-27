@@ -8,6 +8,7 @@ import {
   Flag,
   Bell,
   Share2,
+  Clock,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { clsx } from "clsx";
@@ -24,7 +25,7 @@ const ownerMobileNav = [
 const workerMobileNav = [
   { href: "/", label: "Jobs", icon: ClipboardCheck },
   { href: "/calendar", label: "Calendar", icon: Calendar },
-  { href: "/affiliate", label: "Affiliate", icon: Share2 },
+  { href: "/availability", label: "Hours", icon: Clock },
   { href: "/notifications", label: "Alerts", icon: Bell },
 ];
 
