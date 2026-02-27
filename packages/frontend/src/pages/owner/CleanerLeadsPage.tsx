@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { PageLoader } from "@/components/ui/LoadingSpinner";
+import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Link } from "wouter";
+import * as Dialog from "@radix-ui/react-dialog";
 import {
   UserPlus,
   Mail,
@@ -17,6 +18,8 @@ import {
   Clock,
   Briefcase,
   X,
+  Copy,
+  Check,
 } from "lucide-react";
 
 const STATUS_OPTIONS = [
@@ -64,13 +67,82 @@ export function CleanerLeadsPage() {
     api.mutations.cleanerLeads.updateCleanerLeadStatus
   );
 
+  const inviteCleaner = useAction(api.employeeActions.inviteCleaner);
+
   const [updating, setUpdating] = useState(false);
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error";
   } | null>(null);
 
+  // Invite modal state
+  const [showInvite, setShowInvite] = useState(false);
+  const [inviteName, setInviteName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"cleaner" | "maintenance">("cleaner");
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteLink, setInviteLink] = useState("");
+  const [inviteError, setInviteError] = useState("");
+  const [copied, setCopied] = useState(false);
+
   if (!user || leads === undefined) return <PageLoader />;
+
+  const openInviteForLead = (lead: { name: string; email: string }) => {
+    setInviteName(lead.name);
+    setInviteEmail(lead.email);
+    setInviteRole("cleaner");
+    setInviteLink("");
+    setInviteError("");
+    setCopied(false);
+    setShowInvite(true);
+  };
+
+  const openInviteBlank = () => {
+    setInviteName("");
+    setInviteEmail("");
+    setInviteRole("cleaner");
+    setInviteLink("");
+    setInviteError("");
+    setCopied(false);
+    setShowInvite(true);
+  };
+
+  const resetInviteDialog = () => {
+    setShowInvite(false);
+    setInviteName("");
+    setInviteEmail("");
+    setInviteRole("cleaner");
+    setInviteLink("");
+    setInviteError("");
+  };
+
+  const handleInvite = async () => {
+    if (!user.companyId) return;
+    setInviteError("");
+    setInviteLoading(true);
+    try {
+      const result = await inviteCleaner({
+        companyId: user.companyId,
+        email: inviteEmail,
+        name: inviteName,
+        userId: user._id,
+        role: inviteRole,
+      });
+      setInviteLink(`${window.location.origin}/invite/${result.token}`);
+      setToast({ message: "Invite link generated", type: "success" });
+      setTimeout(() => setToast(null), 3000);
+    } catch (err: any) {
+      setInviteError(err.message || "Failed to generate invite");
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(inviteLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handleStatusChange = async (
     leadId: Id<"cleanerLeads">,
@@ -98,9 +170,9 @@ export function CleanerLeadsPage() {
         title="Cleaner Leads"
         description="Applications from your public site"
         action={
-          <Link href="/employees?invite=true" className="btn-primary flex items-center gap-2">
+          <button onClick={openInviteBlank} className="btn-primary flex items-center gap-2">
             <UserPlus className="w-4 h-4" /> Invite Employee
-          </Link>
+          </button>
         }
       />
 
@@ -132,9 +204,9 @@ export function CleanerLeadsPage() {
           }
           action={
             !statusFilter && (
-              <Link href="/employees?invite=true" className="btn-primary">
+              <button onClick={openInviteBlank} className="btn-primary">
                 Invite your first cleaner
-              </Link>
+              </button>
             )
           }
         />
@@ -278,6 +350,16 @@ export function CleanerLeadsPage() {
                   </div>
                 )}
 
+                {/* Invite action */}
+                <div className="border-t pt-4">
+                  <button
+                    onClick={() => openInviteForLead(selectedLead)}
+                    className="btn-primary w-full flex items-center justify-center gap-2 text-sm"
+                  >
+                    <UserPlus className="w-4 h-4" /> Generate Invite Link
+                  </button>
+                </div>
+
                 {/* Status actions */}
                 {selectedLead.status !== "archived" && (
                   <div className="border-t pt-4 flex flex-wrap gap-2">
@@ -320,6 +402,64 @@ export function CleanerLeadsPage() {
           </div>
         </div>
       )}
+
+      {/* Invite modal */}
+      <Dialog.Root open={showInvite} onOpenChange={(open) => { if (!open) resetInviteDialog(); else setShowInvite(true); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/40 z-50" />
+          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-lg p-6 w-full max-w-md z-50">
+            <div className="flex items-center justify-between mb-4">
+              <Dialog.Title className="text-lg font-semibold">Invite Employee</Dialog.Title>
+              <Dialog.Close className="p-1 text-gray-400 hover:text-gray-600 rounded">
+                <X className="w-5 h-5" />
+              </Dialog.Close>
+            </div>
+
+            {inviteLink ? (
+              <div>
+                <p className="text-sm text-gray-600 mb-3">Share this link with {inviteName}:</p>
+                <div className="flex gap-2">
+                  <input className="input-field text-sm" value={inviteLink} readOnly />
+                  <button onClick={copyLink} className="btn-secondary flex items-center gap-1">
+                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    {copied ? "Copied" : "Copy"}
+                  </button>
+                </div>
+                <button onClick={resetInviteDialog} className="btn-primary w-full mt-4">Done</button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {inviteError && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{inviteError}</div>
+                )}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                  <input className="input-field" value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="Jane Doe" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <input className="input-field" type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="jane@email.com" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                  <select className="input-field" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as any)}>
+                    <option value="cleaner">Cleaner</option>
+                    <option value="maintenance">Maintenance</option>
+                  </select>
+                </div>
+                <button
+                  onClick={handleInvite}
+                  disabled={!inviteName || !inviteEmail || inviteLoading}
+                  className="btn-primary w-full flex items-center justify-center gap-2"
+                >
+                  {inviteLoading && <LoadingSpinner size="sm" />}
+                  Generate Invite Link
+                </button>
+              </div>
+            )}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
 
       {/* Toast */}
       {toast && (
