@@ -63,7 +63,7 @@ export const setWeeklyAvailability = mutation({
   },
 });
 
-/** Cleaner sets an override for a specific date (next 14 days only) */
+/** Cleaner sets an override for a specific date (must be >= 14 days from today) */
 export const setAvailabilityOverride = mutation({
   args: {
     userId: v.id("users"),
@@ -76,15 +76,17 @@ export const setAvailabilityOverride = mutation({
       throw new Error("Only cleaners can set availability overrides");
     }
 
-    // Validate date is within next 14 days
+    // Validate date is at least 14 days in the future
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const target = new Date(args.date + "T12:00:00");
     const diffDays = Math.round(
       (target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
     );
-    if (diffDays < 0 || diffDays > 14) {
-      throw new Error("Override date must be within the next 14 days");
+    if (diffDays < 14) {
+      throw new Error(
+        "Overrides require at least 2 weeks notice. Please choose a date 14 or more days from today."
+      );
     }
 
     // Upsert
