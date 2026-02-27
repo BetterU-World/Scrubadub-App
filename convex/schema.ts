@@ -85,6 +85,8 @@ export default defineSchema({
     beds: v.optional(v.number()),
     baths: v.optional(v.number()),
     linenCount: v.optional(v.number()),
+    hasStandaloneTub: v.optional(v.boolean()),
+    showerGlassDoorCount: v.optional(v.number()),
     maintenanceNotes: v.optional(v.string()),
     ownerNotes: v.optional(v.string()),
     active: v.boolean(),
@@ -471,6 +473,7 @@ export default defineSchema({
     requestedEnd: v.optional(v.string()),
     timeWindow: v.optional(v.string()),
     notes: v.optional(v.string()),
+    requestedService: v.optional(v.string()),
     source: v.literal("public_link"),
     propertyId: v.optional(v.id("properties")),
     // Client portal fields

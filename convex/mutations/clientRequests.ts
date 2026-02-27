@@ -26,6 +26,7 @@ export const createClientRequestByToken = mutation({
     requestedEnd: v.optional(v.string()),
     timeWindow: v.optional(v.string()),
     notes: v.optional(v.string()),
+    requestedService: v.optional(v.string()),
     clientNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -54,6 +55,7 @@ export const createClientRequestByToken = mutation({
       requestedEnd: args.requestedEnd,
       timeWindow: args.timeWindow,
       notes: args.notes,
+      requestedService: args.requestedService || undefined,
       clientNotes: args.clientNotes
         ? args.clientNotes.trim().slice(0, 2000)
         : undefined,

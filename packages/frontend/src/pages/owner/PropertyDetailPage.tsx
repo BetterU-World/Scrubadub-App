@@ -29,6 +29,7 @@ export function PropertyDetailPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("details");
   const [toast, setToast] = useState<string | null>(null);
+  const [toggling, setToggling] = useState(false);
 
   // Read flash toast from sessionStorage (set by PropertyFormPage)
   useEffect(() => {
@@ -66,8 +67,14 @@ export function PropertyDetailPage() {
         action={
           <div className="flex gap-2">
             <button
+              disabled={toggling}
               onClick={async () => {
-                await toggleActive({ propertyId: property._id, userId: user!._id });
+                setToggling(true);
+                try {
+                  await toggleActive({ propertyId: property._id, userId: user!._id });
+                } finally {
+                  setToggling(false);
+                }
               }}
               className="btn-secondary flex items-center gap-2"
             >
@@ -122,6 +129,8 @@ export function PropertyDetailPage() {
 }
 
 function DetailsTab({ property }: { property: any }) {
+  const hasBathroomDetails =
+    property.hasStandaloneTub || property.showerGlassDoorCount != null;
   const hasStructuredAmenities =
     property.towelCount != null ||
     property.sheetSets != null ||
@@ -160,9 +169,25 @@ function DetailsTab({ property }: { property: any }) {
           {property.linenCount != null && (
             <div className="bg-gray-50 rounded-lg p-3 text-center">
               <div className="text-2xl font-semibold text-gray-800">{property.linenCount}</div>
-              <div className="text-xs text-gray-500 mt-1">Linens</div>
+              <div className="text-xs text-gray-500 mt-1">Linen Sets</div>
             </div>
           )}
+        </div>
+      )}
+
+      {hasBathroomDetails && (
+        <div>
+          <h3 className="text-sm font-medium text-gray-500 mb-2">Bathroom Details</h3>
+          <div className="flex flex-wrap gap-3">
+            {property.hasStandaloneTub && (
+              <span className="badge bg-blue-100 text-blue-700">Standalone Tub</span>
+            )}
+            {property.showerGlassDoorCount != null && (
+              <span className="badge bg-blue-100 text-blue-700">
+                {property.showerGlassDoorCount} Shower Glass Door{property.showerGlassDoorCount !== 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
         </div>
       )}
 

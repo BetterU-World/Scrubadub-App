@@ -29,6 +29,7 @@ import {
   Save,
   X,
   AlertCircle,
+  Sparkles,
 } from "lucide-react";
 
 export function RequestDetailPage() {
@@ -349,6 +350,12 @@ export function RequestDetailPage() {
             <div className="flex items-center gap-2 text-gray-600">
               <Clock className="w-4 h-4 text-gray-400" />
               {request.timeWindow}
+            </div>
+          )}
+          {(request as any).requestedService && (
+            <div className="flex items-center gap-2 text-gray-600">
+              <Sparkles className="w-4 h-4 text-gray-400" />
+              {(request as any).requestedService}
             </div>
           )}
         </div>

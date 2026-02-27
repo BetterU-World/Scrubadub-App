@@ -7,7 +7,7 @@ import { LeadsHeader } from "@/components/ui/LeadsHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { Inbox, Calendar, MapPin } from "lucide-react";
+import { Inbox, Calendar, MapPin, Sparkles } from "lucide-react";
 
 const STATUS_OPTIONS = [
   { value: "", label: "All" },
@@ -114,6 +114,12 @@ export function RequestListPage() {
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3.5 h-3.5" />
                         {req.requestedDate}
+                      </span>
+                    )}
+                    {(req as any).requestedService && (
+                      <span className="flex items-center gap-1">
+                        <Sparkles className="w-3.5 h-3.5" />
+                        {(req as any).requestedService}
                       </span>
                     )}
                   </div>
