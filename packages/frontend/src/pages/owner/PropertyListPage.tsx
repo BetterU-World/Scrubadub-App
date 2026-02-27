@@ -50,9 +50,17 @@ export function PropertyListPage() {
                   <MapPin className="w-3.5 h-3.5" />
                   {property.address}
                 </div>
-                <p className="text-sm text-gray-500 capitalize">
-                  {property.type.replace(/_/g, " ")}
-                </p>
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <span className="capitalize">{property.type.replace(/_/g, " ")}</span>
+                  {(property.beds != null || property.baths != null) && (
+                    <span className="text-gray-400">
+                      {[
+                        property.beds != null ? `${property.beds} bed${property.beds !== 1 ? "s" : ""}` : null,
+                        property.baths != null ? `${property.baths} bath${property.baths !== 1 ? "s" : ""}` : null,
+                      ].filter(Boolean).join(" / ")}
+                    </span>
+                  )}
+                </div>
                 {property.amenities.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-3">
                     {property.amenities.slice(0, 3).map((a) => (

@@ -6,9 +6,19 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
 const TIME_WINDOWS = [
   { value: "", label: "No preference" },
-  { value: "morning", label: "Morning (8am–12pm)" },
-  { value: "afternoon", label: "Afternoon (12pm–5pm)" },
-  { value: "evening", label: "Evening (5pm–8pm)" },
+  { value: "morning", label: "Morning (8am\u201312pm)" },
+  { value: "afternoon", label: "Afternoon (12pm\u20135pm)" },
+  { value: "evening", label: "Evening (5pm\u20138pm)" },
+];
+
+const SERVICE_OPTIONS = [
+  { value: "", label: "Select a service..." },
+  { value: "Standard Clean", label: "Standard Clean" },
+  { value: "Deep Clean", label: "Deep Clean" },
+  { value: "Turnover", label: "Turnover" },
+  { value: "Move In/Out", label: "Move In / Move Out" },
+  { value: "Maintenance", label: "Maintenance" },
+  { value: "Other", label: "Other" },
 ];
 
 export function PublicRequestPage() {
@@ -25,7 +35,7 @@ export function PublicRequestPage() {
   );
 
   // Read service pre-selection from query param
-  const [requestedService] = useState(() => {
+  const [serviceFromParam] = useState(() => {
     const sp = new URLSearchParams(window.location.search);
     return sp.get("service") ?? "";
   });
@@ -38,10 +48,25 @@ export function PublicRequestPage() {
   const [propertyName, setPropertyName] = useState("");
   const [requestedDate, setRequestedDate] = useState("");
   const [timeWindow, setTimeWindow] = useState("");
+  const [selectedService, setSelectedService] = useState(() => {
+    if (!serviceFromParam) return "";
+    // Try to match to a known service option
+    const match = SERVICE_OPTIONS.find(
+      (o) => o.value.toLowerCase() === serviceFromParam.toLowerCase()
+    );
+    return match ? match.value : "Other";
+  });
   const [notes, setNotes] = useState(() => {
     const sp = new URLSearchParams(window.location.search);
     const svc = sp.get("service");
-    return svc ? `Interested in: ${svc}` : "";
+    // If param doesn't match a known option, prefill notes with it
+    if (svc) {
+      const match = SERVICE_OPTIONS.find(
+        (o) => o.value.toLowerCase() === svc.toLowerCase()
+      );
+      if (!match) return `Interested in: ${svc}`;
+    }
+    return "";
   });
   const [specialInstructions, setSpecialInstructions] = useState("");
 
@@ -112,6 +137,12 @@ export function PublicRequestPage() {
     setError("");
     setLoading(true);
     try {
+      // Resolve the final service value
+      const finalService =
+        selectedService === "Other"
+          ? serviceFromParam || undefined
+          : selectedService || undefined;
+
       await createRequest({
         token,
         requesterName: name.trim(),
@@ -124,6 +155,7 @@ export function PublicRequestPage() {
         requestedDate: requestedDate || undefined,
         timeWindow: timeWindow || undefined,
         notes: notes.trim() || undefined,
+        requestedService: finalService,
         clientNotes: specialInstructions.trim() || undefined,
       });
       setSubmitted(true);
@@ -191,12 +223,35 @@ export function PublicRequestPage() {
           </div>
         </fieldset>
 
-        {/* Pre-selected service */}
-        {requestedService && (
-          <div className="p-3 bg-primary-50 border border-primary-200 rounded-lg text-sm text-primary-800">
-            Requested service: <strong>{requestedService}</strong>
+        {/* Service selection */}
+        <fieldset className="space-y-4">
+          <legend className="text-sm font-semibold text-gray-900">
+            Service type
+          </legend>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              What do you need?
+            </label>
+            <select
+              className="input-field"
+              value={selectedService}
+              onChange={(e) => setSelectedService(e.target.value)}
+            >
+              {SERVICE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </div>
-        )}
+
+          {serviceFromParam && selectedService === "Other" && (
+            <div className="p-3 bg-primary-50 border border-primary-200 rounded-lg text-sm text-primary-800">
+              Requested: <strong>{serviceFromParam}</strong>
+            </div>
+          )}
+        </fieldset>
 
         {/* Property info */}
         <fieldset className="space-y-4">
@@ -317,7 +372,7 @@ export function PublicRequestPage() {
   );
 }
 
-/** Minimal page shell — no sidebar, no auth chrome. */
+/** Minimal page shell \u2014 no sidebar, no auth chrome. */
 function Shell({
   companyName,
   children,

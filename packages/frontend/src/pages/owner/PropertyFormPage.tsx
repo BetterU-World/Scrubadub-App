@@ -15,6 +15,19 @@ const PROPERTY_TYPES = [
   { value: "office", label: "Office" },
 ] as const;
 
+const AMENITY_PRESETS = [
+  "Washer/Dryer",
+  "Hot Tub",
+  "Pool",
+  "BBQ Grill",
+  "Pets Allowed",
+  "Stairs",
+  "Elevator",
+  "Oceanfront",
+  "Smart Lock",
+  "Garage",
+];
+
 export function PropertyFormPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
@@ -41,6 +54,8 @@ export function PropertyFormPage() {
   const [towelCount, setTowelCount] = useState<number | undefined>(undefined);
   const [sheetSets, setSheetSets] = useState<number | undefined>(undefined);
   const [pillowCount, setPillowCount] = useState<number | undefined>(undefined);
+  const [hasStandaloneTub, setHasStandaloneTub] = useState(false);
+  const [showerGlassDoorCount, setShowerGlassDoorCount] = useState<number | undefined>(undefined);
   const [maintenanceNotes, setMaintenanceNotes] = useState("");
   const [ownerNotes, setOwnerNotes] = useState("");
   const [error, setError] = useState("");
@@ -59,6 +74,8 @@ export function PropertyFormPage() {
       setTowelCount(existing.towelCount ?? undefined);
       setSheetSets(existing.sheetSets ?? undefined);
       setPillowCount(existing.pillowCount ?? undefined);
+      setHasStandaloneTub((existing as any).hasStandaloneTub ?? false);
+      setShowerGlassDoorCount((existing as any).showerGlassDoorCount ?? undefined);
       setMaintenanceNotes(existing.maintenanceNotes ?? "");
       setOwnerNotes(existing.ownerNotes ?? "");
     }
@@ -84,6 +101,8 @@ export function PropertyFormPage() {
         towelCount: towelCount ?? undefined,
         sheetSets: sheetSets ?? undefined,
         pillowCount: pillowCount ?? undefined,
+        hasStandaloneTub: hasStandaloneTub || undefined,
+        showerGlassDoorCount: showerGlassDoorCount ?? undefined,
         maintenanceNotes: maintenanceNotes || undefined,
         ownerNotes: ownerNotes || undefined,
       };
@@ -103,7 +122,13 @@ export function PropertyFormPage() {
     }
   };
 
-  const addAmenity = () => {
+  const toggleAmenity = (a: string) => {
+    setAmenities((prev) =>
+      prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]
+    );
+  };
+
+  const addCustomAmenity = () => {
     const trimmed = amenityInput.trim();
     if (trimmed && !amenities.includes(trimmed)) {
       setAmenities([...amenities, trimmed]);
@@ -114,6 +139,9 @@ export function PropertyFormPage() {
   const removeAmenity = (a: string) => {
     setAmenities(amenities.filter((x) => x !== a));
   };
+
+  // Custom amenities that aren't in the preset list
+  const customAmenities = amenities.filter((a) => !AMENITY_PRESETS.includes(a));
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -170,7 +198,9 @@ export function PropertyFormPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Linen Count</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Total Linen Sets
+            </label>
             <input
               type="number"
               min={0}
@@ -182,26 +212,71 @@ export function PropertyFormPage() {
           </div>
         </div>
 
+        {/* Bathroom details */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Bathroom Details</label>
+          <div className="grid grid-cols-2 gap-4">
+            <label className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors">
+              <input
+                type="checkbox"
+                checked={hasStandaloneTub}
+                onChange={(e) => setHasStandaloneTub(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+              <span className="text-sm text-gray-700">Standalone Tub</span>
+            </label>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Shower Glass Doors</label>
+              <input
+                type="number"
+                min={0}
+                className="input-field"
+                value={showerGlassDoorCount ?? ""}
+                onChange={(e) => setShowerGlassDoorCount(e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                placeholder="0"
+              />
+            </div>
+          </div>
+        </div>
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Access Instructions</label>
           <textarea className="input-field" rows={3} value={accessInstructions} onChange={(e) => setAccessInstructions(e.target.value)} placeholder="Lockbox code, key location, etc." />
         </div>
 
+        {/* Amenities with presets */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Amenities</label>
-          <div className="flex gap-2 mb-2">
+          <label className="block text-sm font-medium text-gray-700 mb-2">Amenities</label>
+          <div className="flex flex-wrap gap-2 mb-3">
+            {AMENITY_PRESETS.map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => toggleAmenity(preset)}
+                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  amenities.includes(preset)
+                    ? "bg-primary-100 text-primary-700 ring-1 ring-primary-300"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {amenities.includes(preset) ? "\u2713 " : ""}{preset}
+              </button>
+            ))}
+          </div>
+          {/* Custom amenity input */}
+          <div className="flex gap-2">
             <input
-              className="input-field"
+              className="input-field text-sm"
               value={amenityInput}
               onChange={(e) => setAmenityInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addAmenity(); } }}
-              placeholder="Add amenity (e.g., Pool, Hot Tub)"
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomAmenity(); } }}
+              placeholder="Other amenity..."
             />
-            <button type="button" onClick={addAmenity} className="btn-secondary whitespace-nowrap">Add</button>
+            <button type="button" onClick={addCustomAmenity} className="btn-secondary whitespace-nowrap text-sm">Add</button>
           </div>
-          {amenities.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {amenities.map((a) => (
+          {customAmenities.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-2">
+              {customAmenities.map((a) => (
                 <span key={a} className="badge bg-primary-100 text-primary-700 flex items-center gap-1">
                   {a}
                   <button type="button" onClick={() => removeAmenity(a)}>
@@ -213,12 +288,12 @@ export function PropertyFormPage() {
           )}
         </div>
 
-        {/* Structured Amenity Counts */}
+        {/* Linen & Supply Counts */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Linen & Supply Counts</label>
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Towel Count</label>
+              <label className="block text-xs text-gray-500 mb-1">Towels</label>
               <input
                 type="number"
                 min={0}
@@ -240,7 +315,7 @@ export function PropertyFormPage() {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Pillow Count</label>
+              <label className="block text-xs text-gray-500 mb-1">Pillows</label>
               <input
                 type="number"
                 min={0}
