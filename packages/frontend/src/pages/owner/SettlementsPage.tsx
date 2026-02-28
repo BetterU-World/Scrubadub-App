@@ -92,7 +92,7 @@ export function SettlementsPage() {
                     {s.direction === "owing" ? `You owe ${s.counterpartyName}` : `${s.counterpartyName} owes you`}
                   </p>
                   <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <Link href={`/jobs/${s.originalJobId}`} className="hover:text-blue-600 flex items-center gap-1">
+                    <Link href={`/jobs/${s.viewableJobId}`} className="hover:text-blue-600 flex items-center gap-1">
                       <ExternalLink className="w-3 h-3" /> {s.jobLabel}
                     </Link>
                     <span>&middot;</span>
