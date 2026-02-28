@@ -4,7 +4,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
-import { CheckCircle, ExternalLink } from "lucide-react";
+import { CheckCircle, ExternalLink, Settings } from "lucide-react";
 
 export function StripePayoutsSection() {
   const { user, userId, isLoading } = useAuth();
@@ -54,7 +54,7 @@ function StripePayoutsInner({ userId }: { userId: Id<"users"> }) {
         <h2 className="text-lg font-semibold text-gray-900 mb-3">
           Stripe Payouts
         </h2>
-        <div className="bg-green-50 border border-green-200 rounded-md px-4 py-3">
+        <div className="bg-green-50 border border-green-200 rounded-md px-4 py-3 mb-4">
           <div className="flex items-center gap-2">
             <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
             <div>
@@ -67,6 +67,19 @@ function StripePayoutsInner({ userId }: { userId: Id<"users"> }) {
             </div>
           </div>
         </div>
+
+        <button
+          onClick={handleConnect}
+          disabled={loading}
+          className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
+        >
+          <Settings className="h-4 w-4" />
+          {loading ? "Redirecting..." : "Update Stripe details"}
+        </button>
+
+        {error && (
+          <p className="mt-2 text-sm text-red-600">{error}</p>
+        )}
       </div>
     );
   }
