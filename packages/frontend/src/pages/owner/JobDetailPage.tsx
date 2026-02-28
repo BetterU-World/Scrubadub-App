@@ -26,6 +26,7 @@ import {
   Share2,
   Package,
   AlertTriangle,
+  DollarSign,
 } from "lucide-react";
 
 export function JobDetailPage() {
@@ -73,6 +74,14 @@ export function JobDetailPage() {
   const acceptSharedJobMut = useMutation(api.mutations.partners.acceptSharedJob);
   const rejectSharedJobMut = useMutation(api.mutations.partners.rejectSharedJob);
 
+  // Settlements
+  const settlement = useQuery(
+    api.queries.settlements.getSettlementForJob,
+    user && job && !job.sharedFromJobId ? { userId: user._id, originalJobId: params.id as Id<"jobs"> } : "skip"
+  );
+  const upsertSettlement = useMutation(api.mutations.settlements.upsertSettlementForSharedJob);
+  const markSettlementPaid = useMutation(api.mutations.settlements.markSettlementPaid);
+
   const [showCancel, setShowCancel] = useState(false);
   const [showRework, setShowRework] = useState(false);
   const [reworkNotes, setReworkNotes] = useState("");
@@ -89,6 +98,10 @@ export function JobDetailPage() {
   const [sharing, setSharing] = useState(false);
   const [expandPackage, setExpandPackage] = useState(false);
   const [sharedJobAction, setSharedJobAction] = useState(false);
+  const [settlementAmount, setSettlementAmount] = useState("");
+  const [settlementSaving, setSettlementSaving] = useState(false);
+  const [settlementPayMethod, setSettlementPayMethod] = useState("");
+  const [showSettlementPay, setShowSettlementPay] = useState(false);
 
   // Read flash toast from sessionStorage (set by JobFormPage)
   useEffect(() => {
@@ -512,6 +525,191 @@ export function JobDetailPage() {
                   )}
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Partner Settlement card (Owner1 view: when job has an accepted/completed partner) */}
+        {sharedStatus && sharedStatus.some((s) => s.status === "accepted" || s.status === "completed" || s.status === "in_progress") && (
+          <div className="card border-amber-200">
+            <h3 className="font-semibold text-amber-700 flex items-center gap-2 mb-3">
+              <DollarSign className="w-5 h-5" /> Partner Settlement
+            </h3>
+
+            {settlement === undefined ? (
+              <p className="text-sm text-gray-400">Loading...</p>
+            ) : settlement === null ? (
+              /* No settlement yet — create */
+              <div className="space-y-3">
+                <p className="text-sm text-gray-600">
+                  Create a settlement to track what you owe the partner for this job.
+                </p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Amount ($)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="input-field max-w-xs"
+                    placeholder="0.00"
+                    value={settlementAmount}
+                    onChange={(e) => setSettlementAmount(e.target.value)}
+                  />
+                </div>
+                <button
+                  disabled={settlementSaving || !settlementAmount || Number(settlementAmount) <= 0}
+                  onClick={async () => {
+                    const uid = requireUserId(user);
+                    const partner = sharedStatus!.find((s) => s.status === "accepted" || s.status === "completed" || s.status === "in_progress");
+                    if (!uid || !partner) return;
+                    setSettlementSaving(true);
+                    try {
+                      await upsertSettlement({
+                        userId: uid,
+                        originalJobId: params.id as Id<"jobs">,
+                        toCompanyId: partner.toCompanyId,
+                        amountCents: Math.round(Number(settlementAmount) * 100),
+                      });
+                      setToast({ message: "Settlement created", type: "success" });
+                      setTimeout(() => setToast(null), 3000);
+                    } catch (err: any) {
+                      setToast({ message: err.message ?? "Failed", type: "error" });
+                      setTimeout(() => setToast(null), 3000);
+                    } finally {
+                      setSettlementSaving(false);
+                    }
+                  }}
+                  className="btn-primary text-sm"
+                >
+                  {settlementSaving ? "Creating..." : "Create Settlement"}
+                </button>
+              </div>
+            ) : settlement.status === "open" ? (
+              /* Open settlement — show amount, update, mark paid */
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">Amount owed to {settlement.toCompanyName}</p>
+                    <p className="text-xl font-bold text-gray-900">${(settlement.amountCents / 100).toFixed(2)}</p>
+                  </div>
+                  <span className="badge bg-amber-100 text-amber-700">Open</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    className="input-field max-w-[120px] text-sm"
+                    placeholder={(settlement.amountCents / 100).toFixed(2)}
+                    value={settlementAmount}
+                    onChange={(e) => setSettlementAmount(e.target.value)}
+                  />
+                  <button
+                    disabled={settlementSaving || !settlementAmount || Number(settlementAmount) <= 0}
+                    onClick={async () => {
+                      const uid = requireUserId(user);
+                      if (!uid) return;
+                      setSettlementSaving(true);
+                      try {
+                        await upsertSettlement({
+                          userId: uid,
+                          originalJobId: params.id as Id<"jobs">,
+                          toCompanyId: settlement.toCompanyId,
+                          amountCents: Math.round(Number(settlementAmount) * 100),
+                        });
+                        setSettlementAmount("");
+                        setToast({ message: "Amount updated", type: "success" });
+                        setTimeout(() => setToast(null), 3000);
+                      } catch (err: any) {
+                        setToast({ message: err.message ?? "Failed", type: "error" });
+                        setTimeout(() => setToast(null), 3000);
+                      } finally {
+                        setSettlementSaving(false);
+                      }
+                    }}
+                    className="btn-secondary text-sm"
+                  >
+                    Update
+                  </button>
+                  <button
+                    onClick={() => setShowSettlementPay(true)}
+                    className="btn-primary text-sm flex items-center gap-1"
+                  >
+                    <CheckCircle className="w-4 h-4" /> Mark Paid
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Paid settlement */
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-500">Paid to {settlement.toCompanyName}</p>
+                    <p className="text-xl font-bold text-gray-900">${(settlement.amountCents / 100).toFixed(2)}</p>
+                  </div>
+                  <span className="badge bg-green-100 text-green-700">Paid</span>
+                </div>
+                {settlement.paidAt && (
+                  <p className="text-xs text-gray-500">
+                    Paid on {new Date(settlement.paidAt).toLocaleDateString()}
+                    {settlement.paidMethod && ` via ${settlement.paidMethod}`}
+                  </p>
+                )}
+                {settlement.note && (
+                  <p className="text-xs text-gray-500">Note: {settlement.note}</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Mark settlement paid dialog */}
+        {showSettlementPay && settlement && (
+          <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm">
+              <h3 className="text-lg font-semibold mb-4">Mark Settlement Paid</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment method (optional)</label>
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder="e.g. Zelle, ACH, Cash..."
+                    value={settlementPayMethod}
+                    onChange={(e) => setSettlementPayMethod(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 mt-4">
+                <button onClick={() => { setShowSettlementPay(false); setSettlementPayMethod(""); }} className="btn-secondary">Cancel</button>
+                <button
+                  disabled={settlementSaving}
+                  onClick={async () => {
+                    const uid = requireUserId(user);
+                    if (!uid) return;
+                    setSettlementSaving(true);
+                    try {
+                      await markSettlementPaid({
+                        userId: uid,
+                        settlementId: settlement._id,
+                        paidMethod: settlementPayMethod || undefined,
+                      });
+                      setShowSettlementPay(false);
+                      setSettlementPayMethod("");
+                      setToast({ message: "Settlement marked as paid", type: "success" });
+                      setTimeout(() => setToast(null), 3000);
+                    } catch (err: any) {
+                      setToast({ message: err.message ?? "Failed", type: "error" });
+                      setTimeout(() => setToast(null), 3000);
+                    } finally {
+                      setSettlementSaving(false);
+                    }
+                  }}
+                  className="btn-primary"
+                >
+                  {settlementSaving ? "Saving..." : "Confirm Paid"}
+                </button>
+              </div>
             </div>
           </div>
         )}

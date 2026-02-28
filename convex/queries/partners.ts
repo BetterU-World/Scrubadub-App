@@ -176,6 +176,7 @@ export const getSharedJobStatus = query({
       const toCompany = await ctx.db.get(shared.toCompanyId);
       results.push({
         _id: shared._id,
+        toCompanyId: shared.toCompanyId,
         toCompanyName: toCompany?.name ?? "Unknown",
         status: shared.status,
         respondedAt: shared.respondedAt,
