@@ -13,6 +13,7 @@ import {
   BarChart3,
   TrendingUp,
   Shield,
+  Settings,
   BookOpen,
   Handshake,
   Inbox,
@@ -73,6 +74,7 @@ const ownerSections: NavSection[] = [
       { href: "/site", label: "My Site", icon: Globe },
       { href: "/manuals", label: "Manuals", icon: BookOpen },
       { href: "/audit-log", label: "Audit Log", icon: ScrollText },
+      { href: "/owner/settings", label: "Settings", icon: Settings },
     ],
   },
 ];
