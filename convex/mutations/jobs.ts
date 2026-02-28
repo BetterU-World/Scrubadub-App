@@ -279,13 +279,14 @@ export const reassignJob = mutation({
     });
 
     // Notify the new cleaner
-    const property = await ctx.db.get(job.propertyId);
+    const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
+    const propertyName = property?.name ?? job.propertySnapshot?.name ?? "a property";
     await createNotification(ctx, {
       companyId: job.companyId,
       userId: args.newCleanerId,
       type: "job_reassigned",
       title: "Job Assigned to You",
-      message: `You've been assigned to clean ${property?.name ?? "a property"} on ${job.scheduledDate}`,
+      message: `You've been assigned to clean ${propertyName} on ${job.scheduledDate}`,
       relatedJobId: args.jobId,
     });
 
@@ -502,7 +503,8 @@ export const completeJob = mutation({
       await ctx.db.patch(form._id, { status: "submitted", submittedAt: Date.now() });
     }
 
-    const property = await ctx.db.get(job.propertyId);
+    const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
+    const propName = property?.name ?? job.propertySnapshot?.name ?? "a property";
     const owners = await ctx.db
       .query("users")
       .withIndex("by_companyId", (q) => q.eq("companyId", job.companyId))
@@ -513,7 +515,7 @@ export const completeJob = mutation({
         userId: owner._id,
         type: "job_submitted",
         title: "Job Completed",
-        message: `${user.name} completed cleaning ${property?.name ?? "a property"} on ${job.scheduledDate}`,
+        message: `${user.name} completed cleaning ${propName} on ${job.scheduledDate}`,
         relatedJobId: args.jobId,
       });
     }

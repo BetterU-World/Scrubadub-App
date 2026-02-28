@@ -122,7 +122,7 @@ export function JobDetailPage() {
   return (
     <div className="max-w-3xl mx-auto">
       <PageHeader
-        title={job.property?.name ?? "Job Details"}
+        title={job.property?.name ?? (job as any).propertySnapshot?.name ?? "Job Details"}
         action={
           <div className="flex gap-2">
             {!job.sharedFromJobId && canCancel && (
@@ -192,7 +192,7 @@ export function JobDetailPage() {
               <Clock className="w-4 h-4 text-gray-400" /> {job.durationMinutes} minutes
             </div>
             <div className="flex items-center gap-2 text-gray-600">
-              <MapPin className="w-4 h-4 text-gray-400" /> {job.property?.address}
+              <MapPin className="w-4 h-4 text-gray-400" /> {job.property?.address ?? (job as any).propertySnapshot?.address}
             </div>
             <div className="flex items-center gap-2 text-gray-600">
               <Users className="w-4 h-4 text-gray-400" />

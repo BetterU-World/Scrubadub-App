@@ -69,7 +69,7 @@ export const listMySettlements = query({
           note: s.note,
           counterpartyName: toCompany?.name ?? "Unknown",
           direction: "owing",
-          jobLabel: property?.name ?? job?.scheduledDate ?? "Job",
+          jobLabel: property?.name ?? job?.propertySnapshot?.name ?? job?.scheduledDate ?? "Job",
         });
       }
     }
@@ -110,7 +110,7 @@ export const listMySettlements = query({
           note: s.note,
           counterpartyName: fromCompany?.name ?? "Unknown",
           direction: "owed",
-          jobLabel: property?.name ?? job?.scheduledDate ?? "Job",
+          jobLabel: property?.name ?? job?.propertySnapshot?.name ?? job?.scheduledDate ?? "Job",
         });
       }
     }

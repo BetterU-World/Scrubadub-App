@@ -100,7 +100,7 @@ export default defineSchema({
 
   jobs: defineTable({
     companyId: v.id("companies"),
-    propertyId: v.id("properties"),
+    propertyId: v.optional(v.id("properties")),
     cleanerIds: v.array(v.id("users")),
     type: v.union(
       v.literal("standard"),
@@ -138,6 +138,20 @@ export default defineSchema({
     // Shared-job fields (set on the copy created in the partner's company)
     sharedFromJobId: v.optional(v.id("jobs")),
     sharedFromCompanyName: v.optional(v.string()),
+    // Property snapshot for shared jobs (Owner2 sees property info without owning the record)
+    propertySnapshot: v.optional(v.object({
+      name: v.optional(v.string()),
+      type: v.optional(v.string()),
+      address: v.optional(v.string()),
+      accessInstructions: v.optional(v.string()),
+      beds: v.optional(v.number()),
+      baths: v.optional(v.number()),
+      amenities: v.optional(v.array(v.string())),
+      towelCount: v.optional(v.number()),
+      sheetSets: v.optional(v.number()),
+      pillowCount: v.optional(v.number()),
+      ownerNotes: v.optional(v.string()),
+    })),
   })
     .index("by_companyId_status", ["companyId", "status"])
     .index("by_companyId_scheduledDate", ["companyId", "scheduledDate"])

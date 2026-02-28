@@ -70,7 +70,7 @@ export function CleanerJobDetailPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <PageHeader title={job.property?.name ?? "Job Details"} />
+      <PageHeader title={job.property?.name ?? (job as any).propertySnapshot?.name ?? "Job Details"} />
 
       <div className="space-y-4">
         <div className="card space-y-4">
@@ -93,16 +93,16 @@ export function CleanerJobDetailPage() {
               <Clock className="w-4 h-4 text-gray-400" /> {job.durationMinutes} minutes
             </div>
             <div className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-gray-400" /> {job.property?.address}
+              <MapPin className="w-4 h-4 text-gray-400" /> {job.property?.address ?? (job as any).propertySnapshot?.address}
             </div>
           </div>
 
-          {job.property?.accessInstructions && (
+          {(job.property?.accessInstructions || (job as any).propertySnapshot?.accessInstructions) && (
             <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
               <p className="text-sm font-medium text-yellow-800 flex items-center gap-1">
                 <Key className="w-4 h-4" /> Access Instructions
               </p>
-              <p className="text-sm text-yellow-700 mt-1">{job.property.accessInstructions}</p>
+              <p className="text-sm text-yellow-700 mt-1">{job.property?.accessInstructions ?? (job as any).propertySnapshot?.accessInstructions}</p>
             </div>
           )}
 
