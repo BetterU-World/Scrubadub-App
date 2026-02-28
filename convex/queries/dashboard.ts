@@ -42,10 +42,10 @@ export const getStats = query({
 
     const enrichedJobs = await Promise.all(
       upcomingJobs.map(async (job) => {
-        const property = await ctx.db.get(job.propertyId);
+        const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
         return {
           ...job,
-          propertyName: property?.name ?? "Unknown Property",
+          propertyName: property?.name ?? job.propertySnapshot?.name ?? "Unknown Property",
         };
       })
     );

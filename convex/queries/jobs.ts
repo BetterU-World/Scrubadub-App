@@ -30,7 +30,7 @@ export const list = query({
 
     return Promise.all(
       jobs.map(async (job) => {
-        const property = await ctx.db.get(job.propertyId);
+        const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
         const cleaners = await Promise.all(
           job.cleanerIds.map(async (id) => {
             const user = await ctx.db.get(id);
@@ -51,8 +51,8 @@ export const list = query({
         }
         return {
           ...job,
-          propertyName: property?.name ?? "Unknown",
-          propertyAddress: property?.address ?? "",
+          propertyName: property?.name ?? job.propertySnapshot?.name ?? "Unknown",
+          propertyAddress: property?.address ?? job.propertySnapshot?.address ?? "",
           cleaners: cleaners.filter(Boolean),
           hasRejectedShare,
         };
@@ -69,7 +69,7 @@ export const get = query({
     if (!job) return null;
     if (job.companyId !== user.companyId) throw new Error("Access denied");
 
-    const property = await ctx.db.get(job.propertyId);
+    const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
     const cleaners = await Promise.all(
       job.cleanerIds.map(async (id) => {
         const u = await ctx.db.get(id);
@@ -122,11 +122,11 @@ export const getForCleaner = query({
 
     return Promise.all(
       myJobs.map(async (job) => {
-        const property = await ctx.db.get(job.propertyId);
+        const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
         return {
           ...job,
-          propertyName: property?.name ?? "Unknown",
-          propertyAddress: property?.address ?? "",
+          propertyName: property?.name ?? job.propertySnapshot?.name ?? "Unknown",
+          propertyAddress: property?.address ?? job.propertySnapshot?.address ?? "",
         };
       })
     );
@@ -159,7 +159,7 @@ export const getCalendarJobs = query({
 
     return Promise.all(
       filtered.map(async (job) => {
-        const property = await ctx.db.get(job.propertyId);
+        const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
         const cleaners = await Promise.all(
           job.cleanerIds.map(async (id) => {
             const user = await ctx.db.get(id);
@@ -168,7 +168,7 @@ export const getCalendarJobs = query({
         );
         return {
           ...job,
-          propertyName: property?.name ?? "Unknown",
+          propertyName: property?.name ?? job.propertySnapshot?.name ?? "Unknown",
           cleaners: cleaners.filter(Boolean),
         };
       })

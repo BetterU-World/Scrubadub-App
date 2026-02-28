@@ -429,29 +429,29 @@ export const shareJob = mutation({
       throw new Error("Job already shared to this company");
     }
 
-    // Get property snapshot for the copied job
-    const property = await ctx.db.get(job.propertyId);
+    // Build a read-only property snapshot for the copied job
+    // (Owner2 sees property info without owning a property record)
+    const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
     const fromCompany = await ctx.db.get(owner.companyId);
     const toCompany = await ctx.db.get(args.toCompanyId);
 
-    // Create a snapshot property in the target company
-    const snapshotPropertyId = await ctx.db.insert("properties", {
-      companyId: args.toCompanyId,
+    const propertySnapshot = {
       name: property?.name ?? "Shared Property",
       type: property?.type ?? "residential",
       address: property?.address ?? "See original job notes",
       accessInstructions: property?.accessInstructions,
-      amenities: property?.amenities ?? [],
       beds: property?.beds,
       baths: property?.baths,
+      amenities: property?.amenities,
+      towelCount: property?.towelCount,
+      sheetSets: property?.sheetSets,
+      pillowCount: property?.pillowCount,
       ownerNotes: `Shared from ${fromCompany?.name ?? "partner"}. ${property?.ownerNotes ?? ""}`.trim(),
-      active: true,
-    });
+    };
 
-    // Create the copied job in the target company
+    // Create the copied job in the target company (no propertyId — snapshot only)
     const copiedJobId = await ctx.db.insert("jobs", {
       companyId: args.toCompanyId,
-      propertyId: snapshotPropertyId,
       cleanerIds: [], // Owner2 assigns their own cleaners
       type: job.type,
       status: "scheduled",
@@ -464,6 +464,7 @@ export const shareJob = mutation({
       reworkCount: 0,
       sharedFromJobId: args.jobId,
       sharedFromCompanyName: fromCompany?.name ?? "Partner",
+      propertySnapshot,
     });
 
     // Create the sharedJobs record
