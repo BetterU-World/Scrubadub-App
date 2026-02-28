@@ -24,6 +24,7 @@ export const listMySettlements = query({
       fromCompanyId: any;
       toCompanyId: any;
       originalJobId: any;
+      viewableJobId: any;
       amountCents: number;
       currency: string;
       status: string;
@@ -57,6 +58,7 @@ export const listMySettlements = query({
           fromCompanyId: s.fromCompanyId,
           toCompanyId: s.toCompanyId,
           originalJobId: s.originalJobId,
+          viewableJobId: s.originalJobId,
           amountCents: s.amountCents,
           currency: s.currency,
           status: s.status,
@@ -87,11 +89,17 @@ export const listMySettlements = query({
         const property = job?.propertyId
           ? await ctx.db.get(job.propertyId)
           : null;
+        // Resolve the copied job ID so Owner2 can link to their own copy
+        const sharedJob = s.sharedJobId
+          ? await ctx.db.get(s.sharedJobId)
+          : null;
+        const viewableJobId = sharedJob?.copiedJobId ?? s.originalJobId;
         results.push({
           _id: s._id,
           fromCompanyId: s.fromCompanyId,
           toCompanyId: s.toCompanyId,
           originalJobId: s.originalJobId,
+          viewableJobId,
           amountCents: s.amountCents,
           currency: s.currency,
           status: s.status,
