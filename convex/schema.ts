@@ -551,4 +551,27 @@ export default defineSchema({
     date: v.string(), // "YYYY-MM-DD"
     unavailable: v.boolean(),
   }).index("by_cleanerId_date", ["cleanerId", "date"]),
+
+  // ── Owner↔Owner Settlements (shared job payments) ──────────────────
+  companySettlements: defineTable({
+    fromCompanyId: v.id("companies"),
+    toCompanyId: v.id("companies"),
+    originalJobId: v.id("jobs"),
+    sharedJobId: v.optional(v.id("sharedJobs")),
+    amountCents: v.number(),
+    currency: v.string(),
+    status: v.union(
+      v.literal("open"),
+      v.literal("paid"),
+      v.literal("void")
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    paidAt: v.optional(v.number()),
+    paidMethod: v.optional(v.string()),
+    note: v.optional(v.string()),
+  })
+    .index("by_fromCompany_status", ["fromCompanyId", "status"])
+    .index("by_toCompany_status", ["toCompanyId", "status"])
+    .index("by_originalJobId", ["originalJobId"]),
 });
