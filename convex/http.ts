@@ -111,6 +111,24 @@ const stripeWebhook = httpAction(async (ctx, request) => {
       }
       break;
     }
+    case "checkout.session.completed": {
+      const session = event.data.object as Stripe.Checkout.Session;
+      console.log(`[stripe:webhook] checkout.session.completed`, {
+        sessionId: session.id,
+        paymentStatus: session.payment_status,
+        mode: session.mode,
+      });
+      break;
+    }
+    case "account.updated": {
+      const account = event.data.object as Stripe.Account;
+      console.log(`[stripe:webhook] account.updated`, {
+        accountId: account.id,
+        payoutsEnabled: account.payouts_enabled,
+        detailsSubmitted: account.details_submitted,
+      });
+      break;
+    }
     case "invoice.payment_succeeded":
     case "invoice.payment_failed":
       console.log(`Stripe invoice event: ${event.type}`, event.id);

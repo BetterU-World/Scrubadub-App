@@ -41,6 +41,7 @@ import { CleanerLeadsPage } from "@/pages/owner/CleanerLeadsPage";
 import { AffiliatePage } from "@/pages/owner/AffiliatePage";
 import { FeedbackInboxPage } from "@/pages/owner/FeedbackInboxPage";
 import { PipelinePage } from "@/pages/owner/PipelinePage";
+import { StripeConnectPage } from "@/pages/owner/StripeConnectPage";
 
 // Worker pages (cleaner + maintenance unified)
 import { WorkerJobListPage } from "@/pages/worker/WorkerJobListPage";
@@ -167,7 +168,7 @@ export default function App() {
     "/invite", "/subscribe", "/billing", "/properties", "/employees",
     "/jobs", "/calendar", "/red-flags", "/performance", "/analytics",
     "/partners", "/requests", "/feedback", "/cleaner-leads", "/audit-log", "/notifications", "/manuals",
-    "/admin", "/site", "/affiliate", "/availability",
+    "/admin", "/site", "/affiliate", "/availability", "/owner",
   ];
   const isKnownRoute = pathname === "/" || knownPrefixes.some((p) => pathname.startsWith(p));
   const slugMatch = !isKnownRoute && /^\/[a-z0-9][a-z0-9-]+/.test(pathname);
@@ -257,6 +258,7 @@ export default function App() {
                 <Route path="/billing/success" component={BillingSuccessPage} />
                 <Route path="/billing/cancel" component={BillingCancelPage} />
                 <Route path="/site" component={SiteSetupPage} />
+                <Route path="/owner/settings/billing" component={StripeConnectPage} />
               </>
             ) : (
               <>

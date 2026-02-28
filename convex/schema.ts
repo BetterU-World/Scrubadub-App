@@ -16,6 +16,9 @@ export default defineSchema({
     currentPeriodEnd: v.optional(v.number()),
     cancelAtPeriodEnd: v.optional(v.boolean()),
     subscriptionBecameInactiveAt: v.optional(v.number()),
+    // Stripe Connect (company-level Express account)
+    stripeConnectAccountId: v.optional(v.string()),
+    stripeConnectOnboardedAt: v.optional(v.number()),
     // Client portal – public booking-request link token
     publicRequestToken: v.optional(v.string()),
   })
