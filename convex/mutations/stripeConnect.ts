@@ -19,6 +19,22 @@ export const setStripeConnectAccount = internalMutation({
 });
 
 /**
+ * Internal mutation: store affiliate Stripe Connect account ID on user.
+ */
+export const setAffiliateStripeAccount = internalMutation({
+  args: {
+    userId: v.id("users"),
+    affiliateStripeAccountId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.userId, {
+      affiliateStripeAccountId: args.affiliateStripeAccountId,
+      affiliateStripeOnboardedAt: Date.now(),
+    });
+  },
+});
+
+/**
  * Internal mutation: sync Stripe Connect status flags on user record.
  */
 export const syncStripeConnectFields = internalMutation({

@@ -36,3 +36,37 @@ export const getUserForStripeConnect = internalQuery({
     };
   },
 });
+
+/**
+ * Public query: returns the caller's affiliate Stripe Connect state.
+ */
+export const getAffiliateConnectStatus = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const user = await getSessionUser(ctx, args.userId);
+    return {
+      affiliateStripeAccountId: user.affiliateStripeAccountId ?? null,
+      affiliateStripeOnboardedAt: user.affiliateStripeOnboardedAt ?? null,
+    };
+  },
+});
+
+/**
+ * Internal query: fetch user + company data for affiliate connect logic.
+ */
+export const getUserAndCompanyForAffiliateConnect = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user || user.status === "inactive") return null;
+    const company = await ctx.db.get(user.companyId);
+    return {
+      _id: user._id,
+      email: user.email,
+      role: user.role,
+      companyId: user.companyId,
+      affiliateStripeAccountId: user.affiliateStripeAccountId ?? null,
+      companyStripeConnectAccountId: company?.stripeConnectAccountId ?? null,
+    };
+  },
+});

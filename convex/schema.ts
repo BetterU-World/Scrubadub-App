@@ -59,6 +59,9 @@ export default defineSchema({
     stripeConnectDetailsSubmitted: v.optional(v.boolean()),
     stripeConnectRequirementsDue: v.optional(v.string()),
     stripeConnectLastSyncAt: v.optional(v.number()),
+    // Affiliate Stripe Connect (may reuse company Connect account)
+    affiliateStripeAccountId: v.optional(v.string()),
+    affiliateStripeOnboardedAt: v.optional(v.number()),
   })
     .index("by_email", ["email"])
     .index("by_companyId", ["companyId"])
