@@ -147,6 +147,31 @@ const stripeWebhook = httpAction(async (ctx, request) => {
         );
         console.log("[stripe:webhook] settlement marked paid:", meta.settlementId);
       }
+
+      // Handle cleaner payout payments
+      if (
+        meta.type === "cleaner_payout" &&
+        meta.cleanerPaymentId &&
+        session.payment_status === "paid"
+      ) {
+        const paymentIntentId =
+          typeof session.payment_intent === "string"
+            ? session.payment_intent
+            : (session.payment_intent as any)?.id ?? undefined;
+
+        await ctx.runMutation(
+          internal.mutations.cleanerPayments.markCleanerPaidViaStripe,
+          {
+            cleanerPaymentId: meta.cleanerPaymentId as any,
+            stripeCheckoutSessionId: session.id,
+            stripePaymentIntentId: paymentIntentId,
+            payerUserId: meta.payerUserId
+              ? (meta.payerUserId as any)
+              : undefined,
+          },
+        );
+        console.log("[stripe:webhook] cleaner payment marked paid:", meta.cleanerPaymentId);
+      }
       break;
     }
     case "account.updated": {
