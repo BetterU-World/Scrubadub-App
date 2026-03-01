@@ -160,7 +160,7 @@ export function OwnerSettingsPage() {
           <div className="flex-1 min-w-0">
             <p className="font-medium text-gray-900">Settlements</p>
             <p className="text-sm text-gray-500">
-              Track what you owe / are owed.
+              Payouts, settlement payments, and status.
             </p>
           </div>
           <ChevronRight className="w-4 h-4 text-gray-400" />
