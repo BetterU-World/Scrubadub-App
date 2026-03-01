@@ -67,6 +67,11 @@ import { PublicRequestPage } from "@/pages/public/PublicRequestPage";
 import { PublicSitePage } from "@/pages/public/PublicSitePage";
 import { CleanerStubPage } from "@/pages/public/CleanerStubPage";
 import { ClientPortalPage } from "@/pages/public/ClientPortalPage";
+import { TermsPage } from "@/pages/public/TermsPage";
+import { PrivacyPage } from "@/pages/public/PrivacyPage";
+import { ContactPage } from "@/pages/public/ContactPage";
+
+import { Footer } from "@/components/layout/Footer";
 
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 
@@ -172,6 +177,7 @@ export default function App() {
     "/jobs", "/calendar", "/red-flags", "/performance", "/analytics",
     "/partners", "/requests", "/feedback", "/cleaner-leads", "/audit-log", "/notifications", "/manuals",
     "/admin", "/site", "/affiliate", "/availability", "/owner",
+    "/terms", "/privacy", "/contact",
   ];
   const isKnownRoute = pathname === "/" || knownPrefixes.some((p) => pathname.startsWith(p));
   const slugMatch = !isKnownRoute && /^\/[a-z0-9][a-z0-9-]+/.test(pathname);
@@ -210,10 +216,14 @@ export default function App() {
           <Route path="/forgot-password" component={ForgotPasswordPage} />
           <Route path="/reset-password/:token" component={ResetPasswordPage} />
           <Route path="/invite/:token" component={AcceptInvitePage} />
+          <Route path="/terms" component={TermsPage} />
+          <Route path="/privacy" component={PrivacyPage} />
+          <Route path="/contact" component={ContactPage} />
           <Route>
             <Redirect to="/" />
           </Route>
         </Switch>
+        <Footer />
       </ErrorBoundary>
     );
   }
@@ -298,6 +308,9 @@ export default function App() {
           <Route path="/manuals" component={ManualsPage} />
           <Route path="/admin" component={SuperAdminPage} />
           <Route path="/invite/:token" component={AcceptInvitePage} />
+          <Route path="/terms" component={TermsPage} />
+          <Route path="/privacy" component={PrivacyPage} />
+          <Route path="/contact" component={ContactPage} />
           <Route>
             <Redirect to="/" />
           </Route>

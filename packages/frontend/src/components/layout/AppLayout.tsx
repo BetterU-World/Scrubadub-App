@@ -2,6 +2,7 @@ import { ReactNode, useState, useCallback } from "react";
 import { Sidebar } from "./Sidebar";
 import { MobileNav } from "./MobileNav";
 import { Header } from "./Header";
+import { Footer } from "./Footer";
 import { LiveJobBanner } from "../LiveJobBanner";
 
 interface AppLayoutProps {
@@ -21,6 +22,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         <LiveJobBanner />
         <Header onMenuToggle={toggleSidebar} />
         <main className="flex-1 p-4 md:p-6 pb-20 md:pb-6">{children}</main>
+        <Footer />
       </div>
       <MobileNav />
     </div>

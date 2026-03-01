@@ -188,7 +188,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   const sidebarContent = (
     <>
       <div className="p-6 border-b border-gray-200">
-        <h1 className="text-xl font-bold text-primary-700">ScrubaDub</h1>
+        <h1 className="text-xl font-bold text-primary-700">The Scrub App</h1>
         <p className="text-sm text-gray-500 mt-1">{user?.companyName}</p>
       </div>
 

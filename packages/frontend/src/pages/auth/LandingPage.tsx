@@ -111,7 +111,7 @@ export function LandingPage() {
       {/* Nav */}
       <nav className="bg-white border-b border-gray-200">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-          <span className="text-xl font-bold text-primary-700">ScrubaDub</span>
+          <span className="text-xl font-bold text-primary-700">The Scrub App</span>
           <div className="flex items-center gap-3">
             <Link
               href="/login"
@@ -164,7 +164,7 @@ export function LandingPage() {
           ))}
         </div>
         <p className="mt-8 text-gray-500 text-center max-w-2xl mx-auto">
-          Scrubadub replaces scattered communication, spreadsheets, and
+          The Scrub App replaces scattered communication, spreadsheets, and
           guesswork with one operational system built specifically for cleaning
           businesses and short-term rental operators.
         </p>
@@ -173,7 +173,7 @@ export function LandingPage() {
       {/* Why Scrubadub */}
       <section className="pb-16 px-4">
         <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">
-          Why Scrubadub?
+          Why The Scrub App?
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
           {valueProps.map((vp) => (
@@ -194,7 +194,7 @@ export function LandingPage() {
           One Platform. Total Control.
         </h2>
         <p className="text-gray-500">
-          Scrubadub replaces scattered tools with one operational system for
+          The Scrub App replaces scattered tools with one operational system for
           cleaning companies and short-term rental owners. Schedule work, track
           performance, handle maintenance, and train teams using the Gold
           Standard system — all in one place.
@@ -269,9 +269,9 @@ export function LandingPage() {
           Built From Real Cleaning Operations
         </h2>
         <p className="text-gray-500">
-          Scrubadub wasn't designed in a boardroom. It was built alongside real
-          cleaning teams solving real operational problems — from turnovers and
-          inspections to maintenance coordination and team accountability.
+          The Scrub App wasn't designed in a boardroom. It was built alongside
+          real cleaning teams solving real operational problems — from turnovers
+          and inspections to maintenance coordination and team accountability.
         </p>
       </section>
 
