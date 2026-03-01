@@ -4,9 +4,9 @@ import { ArrowLeft } from "lucide-react";
 import ownerMd from "@/manuals/owner.md?raw";
 import cleanerMd from "@/manuals/cleaner.md?raw";
 
-const MANUALS: Record<string, { title: string; content: string }> = {
-  owner: { title: "Owner Manual", content: ownerMd },
-  cleaner: { title: "Cleaner Manual", content: cleanerMd },
+const MANUALS: Record<string, { title: string; content: string; lastUpdated: string }> = {
+  owner: { title: "Owner Manual", content: ownerMd, lastUpdated: "March 1, 2025" },
+  cleaner: { title: "Cleaner Manual", content: cleanerMd, lastUpdated: "March 1, 2025" },
 };
 
 export function ManualViewerPage() {
@@ -34,6 +34,9 @@ export function ManualViewerPage() {
       >
         <ArrowLeft className="w-4 h-4" /> Back to Manuals
       </Link>
+      <div className="mb-4 text-xs text-gray-400">
+        Last updated: {manual.lastUpdated}
+      </div>
       <article className="prose prose-gray max-w-none sm:max-w-2xl mx-auto">
         <Markdown>{manual.content}</Markdown>
       </article>
