@@ -171,6 +171,8 @@ export function ManualsPage() {
       />
 
       <div className="space-y-8 max-w-2xl">
+        <p className="text-xs text-gray-400">Last updated: March 1, 2025</p>
+
         {/* Static in-app guides */}
         <section>
           <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
@@ -236,6 +238,9 @@ export function ManualsPage() {
                             {m.description}
                           </p>
                         )}
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          Uploaded {new Date(m.createdAt).toLocaleDateString()}
+                        </p>
                       </div>
                       <button
                         onClick={() => handleOpen(m._id)}

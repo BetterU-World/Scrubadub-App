@@ -99,6 +99,118 @@ Check the **bell icon** or the Notifications page to stay up to date.
 
 The **Audit Log** records all significant actions in your account for accountability and transparency.
 
+## Shared Jobs (Owner ↔ Owner)
+
+Scrubadub lets you share jobs with partner owners so you can collaborate on properties across companies.
+
+### How Sharing Works
+
+1. Open a job you've created and tap **Share**.
+2. Select a connected partner from your **Partners** list.
+3. The partner receives the job in their **Incoming Shared Jobs** inbox and can **Accept** or **Reject** it.
+
+### Property Snapshot
+
+When you share a job, Scrubadub copies a **read-only snapshot** of the property details (name, address, beds, baths, amenities, and notes) into the shared job. This means:
+
+- Your partner sees only the snapshot — they **cannot** access or browse your property records.
+- No property data leaks between companies. The snapshot is a one-time copy embedded in the shared job.
+- If you later update the original property, the snapshot on the shared job does **not** change.
+
+### Editing a Shared Job
+
+When your partner edits a shared job they received:
+
+- The **property selector is hidden** — the property snapshot is read-only.
+- They can change the assigned cleaners, job type, date, time, duration, and notes.
+- They cannot reassign the job to a different property.
+
+### Shared Job Statuses
+
+Shared jobs move through: **Pending → Accepted → In Progress → Completed** (or **Rejected**).
+
+- If rejected, you'll be notified and can share the job to another partner or assign it to your own cleaner.
+- When the partner completes the job, you can review the completion package (checklist summary, notes, and photos if enabled).
+
+---
+
+## Settlements V2
+
+Settlements track the money owed between you and your partners for shared jobs.
+
+### OPEN vs PAID Tabs
+
+Navigate to **Settlements** to see two tabs:
+
+- **OPEN** — Settlements that still need payment.
+- **PAID** — Settlements that have been completed.
+
+Each settlement shows the partner company, associated job, and amount.
+
+### Paying a Settlement
+
+You have two options to pay an open settlement:
+
+- **Pay via Scrubadub** — Redirects you to a secure Stripe Checkout page. Once payment completes, the settlement automatically flips to **PAID** (no manual step needed). A receipt link will appear on the paid settlement.
+- **Mark Paid** — Record an off-platform payment (Zelle, ACH, Cash, etc.). Enter the payment method and an optional note, then confirm.
+
+### After Payment
+
+Once a settlement is paid:
+
+- It moves to the **PAID** tab.
+- The settlement shows who paid and when.
+- There is **no "owes you" messaging** after payment — the balance is cleared.
+
+---
+
+## Stripe Connect
+
+Stripe Connect lets you receive payments from partners directly through Scrubadub.
+
+### Setting Up
+
+1. Go to **Settings** and open the **Billing** section.
+2. Click **Set up Stripe Connect** to begin Express onboarding.
+3. Stripe will walk you through identity verification and bank account setup.
+4. Once complete, your company is ready to receive settlement payments.
+
+### Platform Fee
+
+- A flat **$2.00 platform fee** is charged per settlement payment made via Scrubadub.
+- The fee is capped at the settlement amount (so a $1.50 settlement would incur only a $1.50 fee, not $2.00).
+
+### Money Flow
+
+When Owner 1 pays a settlement to Owner 2 via Scrubadub:
+
+1. Owner 1 pays the full settlement amount at Stripe Checkout.
+2. Owner 2 receives the settlement amount **minus** the $2.00 platform fee.
+3. The platform fee goes to Scrubadub.
+
+---
+
+## Cleaner Availability
+
+Your cleaners can set their own availability so the scheduling system respects their working hours.
+
+### Weekly Schedule
+
+Each cleaner sets a recurring weekly schedule with available hours per day. When you schedule a job, the system shows which cleaners are available on that date.
+
+### Day Overrides
+
+Cleaners can mark specific dates as unavailable (for vacations, personal days, etc.) or explicitly available. **Overrides require at least 14 days' notice.** Once the 14-day window passes, the override is locked and cannot be changed.
+
+### How Scheduling Uses Availability
+
+- When you assign cleaners to a job, the system shows each cleaner's availability status for that date.
+- Cleaners who have never set availability are treated as available by default.
+- Cleaners with a weekly schedule are shown as unavailable only if they have no blocks for that day of the week.
+- Day overrides take priority over the weekly schedule.
+
+---
+
 ## Tips for Success
 
 - **Review submitted jobs promptly** to keep your team moving.
@@ -107,5 +219,7 @@ The **Audit Log** records all significant actions in your account for accountabi
 - **Monitor performance metrics** to reward great work and provide support where needed.
 
 ---
+
+*Last updated: March 1, 2025*
 
 *Need help? Contact support at support@scrubadub.app*

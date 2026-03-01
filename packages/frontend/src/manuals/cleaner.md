@@ -75,6 +75,26 @@ Check the **bell icon** regularly to stay on top of your schedule.
 - **Read rework notes carefully** if a job needs corrections.
 - **Check your calendar daily** to stay prepared for upcoming jobs.
 
+## Availability
+
+You can set your own availability so your owner knows when you're free to work.
+
+### Weekly Schedule
+
+Go to **Availability** to set your recurring weekly hours. For each day of the week, toggle whether you're available and set your start and end times. Click **Save Schedule** to save all seven days at once.
+
+### Day Overrides
+
+Need to take a specific day off or mark yourself available on a day you're normally off?
+
+- Use the **Day Overrides** section to set a date as **Unavailable** or **Available**.
+- **Overrides require at least 14 days' notice.** You cannot change availability for dates less than two weeks away.
+- Once the 14-day window passes, the override is locked and shown as read-only.
+
+Your upcoming overrides are listed at the bottom of the page so you can review what's coming up.
+
+---
+
 ## Frequently Asked Questions
 
 **Q: What if I can't make a confirmed job?**
@@ -87,5 +107,7 @@ A: Follow your owner's requirements. Photos help demonstrate quality and protect
 A: Your owner tracks performance metrics. Ask them for feedback if you'd like to know how you're doing.
 
 ---
+
+*Last updated: March 1, 2025*
 
 *Need help? Contact your manager or reach out to support at support@scrubadub.app*
