@@ -593,7 +593,8 @@ export default defineSchema({
     stripeTransferId: v.optional(v.string()),
   })
     .index("by_jobId", ["jobId"])
-    .index("by_companyId", ["companyId"]),
+    .index("by_companyId", ["companyId"])
+    .index("by_cleanerUserId", ["cleanerUserId"]),
 
   // ── Owner↔Owner Settlements (shared job payments) ──────────────────
   companySettlements: defineTable({

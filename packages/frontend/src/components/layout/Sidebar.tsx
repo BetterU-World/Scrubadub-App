@@ -24,6 +24,7 @@ import {
   Kanban,
   ChevronDown,
   Clock,
+  Banknote,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useQuery } from "convex/react";
@@ -64,6 +65,7 @@ const ownerSections: NavSection[] = [
       { href: "/requests/pipeline", label: "Pipeline", icon: Kanban },
       { href: "/feedback", label: "Feedback", icon: MessageSquare },
       { href: "/cleaner-leads", label: "Cleaner Leads", icon: UserPlus },
+      { href: "/owner/payments", label: "Payments", icon: Banknote },
       { href: "/affiliate", label: "Affiliate", icon: Share2 },
       { href: "/notifications", label: "Notifications", icon: Bell },
     ],
@@ -91,6 +93,7 @@ const workerSections: NavSection[] = [
   {
     title: "Hub",
     items: [
+      { href: "/payments", label: "Payments", icon: Banknote },
       { href: "/affiliate", label: "Affiliate", icon: Share2 },
       { href: "/notifications", label: "Notifications", icon: Bell },
     ],

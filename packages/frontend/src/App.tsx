@@ -45,6 +45,8 @@ import { StripeConnectPage } from "@/pages/owner/StripeConnectPage";
 import { OwnerSettingsPage } from "@/pages/owner/OwnerSettingsPage";
 import { CompanyProfilePage } from "@/pages/owner/CompanyProfilePage";
 import { SettlementsPage } from "@/pages/owner/SettlementsPage";
+import { PaymentsHubPage } from "@/pages/owner/PaymentsHubPage";
+import { CleanerPaymentsPage } from "@/pages/owner/CleanerPaymentsPage";
 
 // Worker pages (cleaner + maintenance unified)
 import { WorkerJobListPage } from "@/pages/worker/WorkerJobListPage";
@@ -52,6 +54,7 @@ import { WorkerJobDetailPage } from "@/pages/worker/WorkerJobDetailPage";
 import { WorkerJobFormPage } from "@/pages/worker/WorkerJobFormPage";
 import { AvailabilityPage } from "@/pages/worker/AvailabilityPage";
 import { CleanerSettingsPage } from "@/pages/worker/CleanerSettingsPage";
+import { WorkerPaymentsPage } from "@/pages/worker/WorkerPaymentsPage";
 
 // Admin pages
 import { SuperAdminPage } from "@/pages/admin/SuperAdminPage";
@@ -177,7 +180,7 @@ export default function App() {
     "/invite", "/subscribe", "/billing", "/properties", "/employees",
     "/jobs", "/calendar", "/red-flags", "/performance", "/analytics",
     "/partners", "/requests", "/feedback", "/cleaner-leads", "/audit-log", "/notifications", "/manuals",
-    "/admin", "/site", "/affiliate", "/availability", "/owner", "/settings",
+    "/admin", "/site", "/affiliate", "/availability", "/owner", "/settings", "/payments",
     "/terms", "/privacy", "/contact",
   ];
   const isKnownRoute = pathname === "/" || knownPrefixes.some((p) => pathname.startsWith(p));
@@ -272,6 +275,8 @@ export default function App() {
                 <Route path="/billing/success" component={BillingSuccessPage} />
                 <Route path="/billing/cancel" component={BillingCancelPage} />
                 <Route path="/site" component={SiteSetupPage} />
+                <Route path="/owner/payments" component={PaymentsHubPage} />
+                <Route path="/owner/cleaner-payments" component={CleanerPaymentsPage} />
                 <Route path="/owner/settlements" component={SettlementsPage} />
                 <Route path="/owner/settings/billing" component={StripeConnectPage} />
                 <Route path="/owner/settings/company" component={CompanyProfilePage} />
@@ -294,6 +299,7 @@ export default function App() {
               <Route path="/jobs/:id/form" component={WorkerJobFormPage} />
               <Route path="/calendar" component={CalendarPage} />
               <Route path="/availability" component={AvailabilityPage} />
+              <Route path="/payments" component={WorkerPaymentsPage} />
               <Route path="/settings" component={CleanerSettingsPage} />
             </>
           ) : (
