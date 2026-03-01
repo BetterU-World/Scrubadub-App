@@ -133,9 +133,9 @@ export function JobDetailPage() {
                 <Share2 className="w-4 h-4" /> Share Job
               </button>
             )}
-            {((job as any).acceptanceStatus === "denied" || (job as any).acceptanceStatus === "pending") && (
+            {((job as any).acceptanceStatus === "denied" || (job as any).acceptanceStatus === "pending" || (job.sharedFromJobId && job.cleanerIds.length === 0)) && (
               <button onClick={() => setShowReassign(true)} className="btn-secondary flex items-center gap-2">
-                <RefreshCw className="w-4 h-4" /> Reassign
+                <RefreshCw className="w-4 h-4" /> {job.sharedFromJobId && job.cleanerIds.length === 0 ? "Assign Cleaner" : "Reassign"}
               </button>
             )}
             {canCancel && (
