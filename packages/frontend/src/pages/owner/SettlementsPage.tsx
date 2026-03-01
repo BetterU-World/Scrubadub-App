@@ -225,7 +225,7 @@ export function SettlementsPage() {
                         className="btn-primary text-sm px-3 py-1.5 flex items-center gap-1"
                       >
                         <CreditCard className="w-4 h-4" />
-                        {payingId === s._id ? "Loading…" : "Pay via Scrubadub"}
+                        {payingId === s._id ? "Loading…" : "Pay via The Scrub App"}
                       </button>
                       <button
                         onClick={() => setShowPayDialog(s._id)}

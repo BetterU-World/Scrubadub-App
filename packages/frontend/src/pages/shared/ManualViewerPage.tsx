@@ -5,8 +5,8 @@ import ownerMd from "@/manuals/owner.md?raw";
 import cleanerMd from "@/manuals/cleaner.md?raw";
 
 const MANUALS: Record<string, { title: string; content: string; lastUpdated: string }> = {
-  owner: { title: "Owner Manual", content: ownerMd, lastUpdated: "March 1, 2025" },
-  cleaner: { title: "Cleaner Manual", content: cleanerMd, lastUpdated: "March 1, 2025" },
+  owner: { title: "Owner Manual", content: ownerMd, lastUpdated: "March 1, 2026" },
+  cleaner: { title: "Cleaner Manual", content: cleanerMd, lastUpdated: "March 1, 2026" },
 };
 
 export function ManualViewerPage() {

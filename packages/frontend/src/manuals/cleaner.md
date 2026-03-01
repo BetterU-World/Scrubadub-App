@@ -1,6 +1,6 @@
 # Cleaner Manual
 
-Welcome to ScrubaDub! This manual covers everything you need to know about using the app for your day-to-day cleaning work.
+Welcome to The Scrub App (powered by Scrubadub Solutions)! This manual covers everything you need to know about using the app for your day-to-day cleaning work.
 
 ---
 
@@ -108,6 +108,6 @@ A: Your owner tracks performance metrics. Ask them for feedback if you'd like to
 
 ---
 
-*Last updated: March 1, 2025*
+*Last updated: March 1, 2026*
 
 *Need help? Contact your manager or reach out to support at support@scrubadub.app*
