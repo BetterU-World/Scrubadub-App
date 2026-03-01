@@ -43,6 +43,7 @@ import { FeedbackInboxPage } from "@/pages/owner/FeedbackInboxPage";
 import { PipelinePage } from "@/pages/owner/PipelinePage";
 import { StripeConnectPage } from "@/pages/owner/StripeConnectPage";
 import { OwnerSettingsPage } from "@/pages/owner/OwnerSettingsPage";
+import { CompanyProfilePage } from "@/pages/owner/CompanyProfilePage";
 import { SettlementsPage } from "@/pages/owner/SettlementsPage";
 
 // Worker pages (cleaner + maintenance unified)
@@ -262,6 +263,7 @@ export default function App() {
                 <Route path="/site" component={SiteSetupPage} />
                 <Route path="/owner/settlements" component={SettlementsPage} />
                 <Route path="/owner/settings/billing" component={StripeConnectPage} />
+                <Route path="/owner/settings/company" component={CompanyProfilePage} />
                 <Route path="/owner/settings" component={OwnerSettingsPage} />
               </>
             ) : (

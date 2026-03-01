@@ -20,18 +20,19 @@ export const getBySlug = query({
     const company = await ctx.db.get(site.companyId);
     if (!company) return null;
 
+    // Fallback: site-level fields take priority, company profile as default
     return {
       slug: site.slug,
       templateId: site.templateId,
       brandName: site.brandName,
       bio: site.bio,
-      serviceArea: site.serviceArea,
+      serviceArea: site.serviceArea || company.serviceAreaText || "",
       logoUrl: site.logoUrl,
       heroImageUrl: site.heroImageUrl,
       publicRequestToken: company.publicRequestToken ?? null,
       services: site.services ?? [],
-      publicEmail: site.publicEmail ?? null,
-      publicPhone: site.publicPhone ?? null,
+      publicEmail: site.publicEmail || company.contactEmail || null,
+      publicPhone: site.publicPhone || company.contactPhone || null,
       metaDescription: site.metaDescription ?? null,
     };
   },

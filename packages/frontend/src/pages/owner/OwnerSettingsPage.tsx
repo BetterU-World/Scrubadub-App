@@ -17,7 +17,6 @@ import {
 
 /* ── Disabled "coming soon" items ────────────────────────────── */
 const disabledItems = [
-  { label: "Company Profile", description: "Coming soon", icon: Building2 },
   { label: "Notifications", description: "Coming soon", icon: Bell },
 ];
 
@@ -132,6 +131,23 @@ export function OwnerSettingsPage() {
             <ChevronRight className="w-4 h-4 text-gray-400" />
           </Link>
         )}
+
+        {/* ── Company Profile card ──────────────────────────── */}
+        <Link
+          href="/owner/settings/company"
+          className="card flex items-center gap-4 hover:bg-gray-50 transition-colors"
+        >
+          <div className="p-2 rounded-lg bg-primary-50 text-primary-600">
+            <Building2 className="w-5 h-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-gray-900">Company Profile</p>
+            <p className="text-sm text-gray-500">
+              Contact info and defaults for your microsites.
+            </p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-gray-400" />
+        </Link>
 
         {/* ── Settlements card ─────────────────────────────── */}
         <Link
