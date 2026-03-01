@@ -656,7 +656,7 @@ export function JobDetailPage() {
                     className="btn-primary text-sm flex items-center gap-1"
                   >
                     <CreditCard className="w-4 h-4" />
-                    {stripePayLoading ? "Loading…" : "Pay via Scrubadub"}
+                    {stripePayLoading ? "Loading…" : "Pay via The Scrub App"}
                   </button>
                   <button
                     onClick={() => setShowSettlementPay(true)}

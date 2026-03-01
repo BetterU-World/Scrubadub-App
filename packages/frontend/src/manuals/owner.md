@@ -1,6 +1,6 @@
 # Owner Manual
 
-Welcome to ScrubaDub! This manual covers everything you need to manage your cleaning business.
+Welcome to The Scrub App (powered by Scrubadub Solutions)! This manual covers everything you need to manage your cleaning business.
 
 ---
 
@@ -101,7 +101,7 @@ The **Audit Log** records all significant actions in your account for accountabi
 
 ## Shared Jobs (Owner ↔ Owner)
 
-Scrubadub lets you share jobs with partner owners so you can collaborate on properties across companies.
+The Scrub App lets you share jobs with partner owners so you can collaborate on properties across companies.
 
 ### How Sharing Works
 
@@ -111,7 +111,7 @@ Scrubadub lets you share jobs with partner owners so you can collaborate on prop
 
 ### Property Snapshot
 
-When you share a job, Scrubadub copies a **read-only snapshot** of the property details (name, address, beds, baths, amenities, and notes) into the shared job. This means:
+When you share a job, The Scrub App copies a **read-only snapshot** of the property details (name, address, beds, baths, amenities, and notes) into the shared job. This means:
 
 - Your partner sees only the snapshot — they **cannot** access or browse your property records.
 - No property data leaks between companies. The snapshot is a one-time copy embedded in the shared job.
@@ -151,7 +151,7 @@ Each settlement shows the partner company, associated job, and amount.
 
 You have two options to pay an open settlement:
 
-- **Pay via Scrubadub** — Redirects you to a secure Stripe Checkout page. Once payment completes, the settlement automatically flips to **PAID** (no manual step needed). A receipt link will appear on the paid settlement.
+- **Pay via The Scrub App** — Redirects you to a secure Stripe Checkout page. Once payment completes, the settlement automatically flips to **PAID** (no manual step needed). A receipt link will appear on the paid settlement.
 - **Mark Paid** — Record an off-platform payment (Zelle, ACH, Cash, etc.). Enter the payment method and an optional note, then confirm.
 
 ### After Payment
@@ -166,7 +166,7 @@ Once a settlement is paid:
 
 ## Stripe Connect
 
-Stripe Connect lets you receive payments from partners directly through Scrubadub.
+Stripe Connect lets you receive payments from partners directly through The Scrub App.
 
 ### Setting Up
 
@@ -177,16 +177,16 @@ Stripe Connect lets you receive payments from partners directly through Scrubadu
 
 ### Platform Fee
 
-- A flat **$2.00 platform fee** is charged per settlement payment made via Scrubadub.
+- A flat **$2.00 platform fee** is charged per settlement payment made via The Scrub App.
 - The fee is capped at the settlement amount (so a $1.50 settlement would incur only a $1.50 fee, not $2.00).
 
 ### Money Flow
 
-When Owner 1 pays a settlement to Owner 2 via Scrubadub:
+When Owner 1 pays a settlement to Owner 2 via The Scrub App:
 
 1. Owner 1 pays the full settlement amount at Stripe Checkout.
 2. Owner 2 receives the settlement amount **minus** the $2.00 platform fee.
-3. The platform fee goes to Scrubadub.
+3. The platform fee goes to Scrubadub Solutions.
 
 ---
 
@@ -211,6 +211,42 @@ Cleaners can mark specific dates as unavailable (for vacations, personal days, e
 
 ---
 
+## Affiliate Program
+
+The Scrub App includes a built-in affiliate program that lets you earn commission by referring new users.
+
+### Getting Started
+
+Navigate to **Affiliate** in the sidebar to open the Affiliate Portal. When you first visit, a unique referral code is generated for you automatically. Your referral link is displayed on the **Referrals** tab — copy it and share it with anyone who might benefit from The Scrub App.
+
+### What Gets Tracked
+
+The Affiliate Portal has four tabs (plus an admin-only tab):
+
+- **Referrals** — Lists everyone who signed up using your referral link. You can also copy a ready-made social caption to share on messaging apps or social media.
+- **Revenue** — Shows attributed revenue from your referrals, with lifetime, 30-day, and 7-day summaries. Commission is calculated at a **10% rate** on attributed invoice payments.
+- **Ledger** — Breaks down your earnings into monthly or weekly periods. Each period shows attributed revenue, commission earned, and a status: **Open** (still accumulating), **Locked** (finalized and ready for payout), or **Paid** (commission distributed).
+- **Payouts** — Connect your Stripe account to receive payouts electronically. Click **Connect Stripe for Affiliate Payouts** to begin Express onboarding. If your company already has a Stripe Connect account (from Settlements), it may be reused automatically.
+
+### Requesting a Payout
+
+Once one or more ledger periods are **Locked**, you can submit a payout request:
+
+1. Go to the **Ledger** tab and select the locked periods you want to cash out.
+2. Click **Request Payout**, add an optional note, and submit.
+3. An administrator will review your request and either approve, deny (with a reason), or complete it as a payout batch.
+
+Payouts can be processed via Stripe transfer (if you've connected your account) or recorded manually using Zelle, CashApp, Venmo, Cash, or another method.
+
+### Current Limitations
+
+- Commission rate is fixed at 10% — there are no tiered or custom rates at this time.
+- Ledger periods must be locked by an administrator before you can request a payout.
+- Stripe payout transfers are initiated by an administrator, not triggered automatically.
+- Attribution is tracked only for direct referrals (the person who used your link).
+
+---
+
 ## Tips for Success
 
 - **Review submitted jobs promptly** to keep your team moving.
@@ -220,6 +256,6 @@ Cleaners can mark specific dates as unavailable (for vacations, personal days, e
 
 ---
 
-*Last updated: March 1, 2025*
+*Last updated: March 1, 2026*
 
 *Need help? Contact support at support@scrubadub.app*

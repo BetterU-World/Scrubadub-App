@@ -171,13 +171,13 @@ export function ManualsPage() {
       />
 
       <div className="space-y-8 max-w-2xl">
-        <p className="text-xs text-gray-400">Last updated: March 1, 2025</p>
+        <p className="text-xs text-gray-400">Last updated: March 1, 2026</p>
 
         {/* Static in-app guides */}
         <section>
           <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
             <BookMarked className="w-4 h-4" />
-            Using Scrubadub
+            Using The Scrub App
           </h2>
           <div className="space-y-2">
             {user.role === "owner" && (
