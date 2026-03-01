@@ -99,6 +99,7 @@ const workerSections: NavSection[] = [
     title: "Company",
     items: [
       { href: "/manuals", label: "Manuals", icon: BookOpen },
+      { href: "/settings", label: "Settings", icon: Settings },
     ],
   },
 ];
