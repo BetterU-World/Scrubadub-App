@@ -1,4 +1,4 @@
-import { mutation } from "../_generated/server";
+import { mutation, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { assertOwnerRole } from "../lib/auth";
 
@@ -115,5 +115,50 @@ export const markSettlementPaid = mutation({
     });
 
     return args.settlementId;
+  },
+});
+
+/**
+ * Internal mutation: mark a settlement as paid via Stripe (called from webhook).
+ * Idempotent — if already paid, no-op.
+ */
+export const markSettlementPaidViaStripe = internalMutation({
+  args: {
+    settlementId: v.id("companySettlements"),
+    stripeCheckoutSessionId: v.string(),
+    stripePaymentIntentId: v.optional(v.string()),
+    stripeApplicationFeeCents: v.optional(v.number()),
+    stripeDestinationAccountId: v.optional(v.string()),
+    stripeReceiptUrl: v.optional(v.string()),
+    payerUserId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    const settlement = await ctx.db.get(args.settlementId);
+    if (!settlement) {
+      console.warn("[settlement:webhook] settlement not found:", args.settlementId);
+      return;
+    }
+
+    // Idempotent: if already paid, no-op
+    if (settlement.status === "paid") {
+      console.log("[settlement:webhook] already paid, skipping:", args.settlementId);
+      return;
+    }
+
+    const now = Date.now();
+    await ctx.db.patch(args.settlementId, {
+      status: "paid",
+      paidAt: now,
+      updatedAt: now,
+      paidMethod: "scrubadub_stripe",
+      paidByUserId: args.payerUserId,
+      stripeCheckoutSessionId: args.stripeCheckoutSessionId,
+      stripePaymentIntentId: args.stripePaymentIntentId,
+      stripeApplicationFeeCents: args.stripeApplicationFeeCents,
+      stripeDestinationAccountId: args.stripeDestinationAccountId,
+      stripeReceiptUrl: args.stripeReceiptUrl,
+    });
+
+    console.log("[settlement:webhook] marked paid via Stripe:", args.settlementId);
   },
 });

@@ -587,8 +587,15 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
     paidAt: v.optional(v.number()),
+    paidByUserId: v.optional(v.id("users")),
     paidMethod: v.optional(v.string()),
     note: v.optional(v.string()),
+    // Stripe settlement payment fields
+    stripeCheckoutSessionId: v.optional(v.string()),
+    stripePaymentIntentId: v.optional(v.string()),
+    stripeApplicationFeeCents: v.optional(v.number()),
+    stripeDestinationAccountId: v.optional(v.string()),
+    stripeReceiptUrl: v.optional(v.string()),
   })
     .index("by_fromCompany_status", ["fromCompanyId", "status"])
     .index("by_toCompany_status", ["toCompanyId", "status"])

@@ -113,11 +113,40 @@ const stripeWebhook = httpAction(async (ctx, request) => {
     }
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
+      const meta = session.metadata ?? {};
       console.log(`[stripe:webhook] checkout.session.completed`, {
         sessionId: session.id,
         paymentStatus: session.payment_status,
         mode: session.mode,
+        type: meta.type,
+        settlementId: meta.settlementId,
       });
+
+      // Handle settlement payments
+      if (
+        meta.type === "settlement_payment" &&
+        meta.settlementId &&
+        session.payment_status === "paid"
+      ) {
+        const paymentIntentId =
+          typeof session.payment_intent === "string"
+            ? session.payment_intent
+            : (session.payment_intent as any)?.id ?? undefined;
+
+        await ctx.runMutation(
+          internal.mutations.settlements.markSettlementPaidViaStripe,
+          {
+            settlementId: meta.settlementId as any,
+            stripeCheckoutSessionId: session.id,
+            stripePaymentIntentId: paymentIntentId,
+            stripeDestinationAccountId: meta.recipientCompanyId,
+            payerUserId: meta.payerUserId
+              ? (meta.payerUserId as any)
+              : undefined,
+          },
+        );
+        console.log("[stripe:webhook] settlement marked paid:", meta.settlementId);
+      }
       break;
     }
     case "account.updated": {
