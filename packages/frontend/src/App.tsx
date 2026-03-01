@@ -51,6 +51,7 @@ import { WorkerJobListPage } from "@/pages/worker/WorkerJobListPage";
 import { WorkerJobDetailPage } from "@/pages/worker/WorkerJobDetailPage";
 import { WorkerJobFormPage } from "@/pages/worker/WorkerJobFormPage";
 import { AvailabilityPage } from "@/pages/worker/AvailabilityPage";
+import { CleanerSettingsPage } from "@/pages/worker/CleanerSettingsPage";
 
 // Admin pages
 import { SuperAdminPage } from "@/pages/admin/SuperAdminPage";
@@ -176,7 +177,7 @@ export default function App() {
     "/invite", "/subscribe", "/billing", "/properties", "/employees",
     "/jobs", "/calendar", "/red-flags", "/performance", "/analytics",
     "/partners", "/requests", "/feedback", "/cleaner-leads", "/audit-log", "/notifications", "/manuals",
-    "/admin", "/site", "/affiliate", "/availability", "/owner",
+    "/admin", "/site", "/affiliate", "/availability", "/owner", "/settings",
     "/terms", "/privacy", "/contact",
   ];
   const isKnownRoute = pathname === "/" || knownPrefixes.some((p) => pathname.startsWith(p));
@@ -293,6 +294,7 @@ export default function App() {
               <Route path="/jobs/:id/form" component={WorkerJobFormPage} />
               <Route path="/calendar" component={CalendarPage} />
               <Route path="/availability" component={AvailabilityPage} />
+              <Route path="/settings" component={CleanerSettingsPage} />
             </>
           ) : (
             <Route>
