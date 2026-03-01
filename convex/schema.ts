@@ -143,6 +143,8 @@ export default defineSchema({
     // Shared-job fields (set on the copy created in the partner's company)
     sharedFromJobId: v.optional(v.id("jobs")),
     sharedFromCompanyName: v.optional(v.string()),
+    // Cleaner payment pointer
+    cleanerPaymentId: v.optional(v.id("cleanerPayments")),
     // Property snapshot for shared jobs (Owner2 sees property info without owning the record)
     propertySnapshot: v.optional(v.object({
       name: v.optional(v.string()),
@@ -570,6 +572,28 @@ export default defineSchema({
     date: v.string(), // "YYYY-MM-DD"
     unavailable: v.boolean(),
   }).index("by_cleanerId_date", ["cleanerId", "date"]),
+
+  // ── Cleaner Payments (owner → cleaner, per-job) ────────────────────
+  cleanerPayments: defineTable({
+    companyId: v.id("companies"),
+    jobId: v.id("jobs"),
+    cleanerUserId: v.id("users"),
+    amountCents: v.number(),
+    method: v.union(v.literal("in_app"), v.literal("outside_app")),
+    status: v.union(
+      v.literal("OPEN"),
+      v.literal("PAID"),
+      v.literal("CANCELED")
+    ),
+    createdAt: v.number(),
+    paidAt: v.optional(v.number()),
+    paidByUserId: v.optional(v.id("users")),
+    stripeCheckoutSessionId: v.optional(v.string()),
+    stripePaymentIntentId: v.optional(v.string()),
+    stripeTransferId: v.optional(v.string()),
+  })
+    .index("by_jobId", ["jobId"])
+    .index("by_companyId", ["companyId"]),
 
   // ── Owner↔Owner Settlements (shared job payments) ──────────────────
   companySettlements: defineTable({
