@@ -19,6 +19,11 @@ export default defineSchema({
     // Stripe Connect (company-level Express account)
     stripeConnectAccountId: v.optional(v.string()),
     stripeConnectOnboardedAt: v.optional(v.number()),
+    // Company profile defaults (feed microsites via fallback)
+    companyDisplayName: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    serviceAreaText: v.optional(v.string()),
     // Client portal – public booking-request link token
     publicRequestToken: v.optional(v.string()),
   })
