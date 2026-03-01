@@ -1,4 +1,4 @@
-import { query } from "../_generated/server";
+import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { assertOwnerRole } from "../lib/auth";
 
@@ -33,6 +33,7 @@ export const listMySettlements = query({
       paidAt?: number;
       paidMethod?: string;
       note?: string;
+      stripeReceiptUrl?: string;
       counterpartyName: string;
       direction: "owing" | "owed";
       jobLabel: string;
@@ -67,6 +68,7 @@ export const listMySettlements = query({
           paidAt: s.paidAt,
           paidMethod: s.paidMethod,
           note: s.note,
+          stripeReceiptUrl: s.stripeReceiptUrl,
           counterpartyName: toCompany?.name ?? "Unknown",
           direction: "owing",
           jobLabel: property?.name ?? job?.propertySnapshot?.name ?? job?.scheduledDate ?? "Job",
@@ -108,6 +110,7 @@ export const listMySettlements = query({
           paidAt: s.paidAt,
           paidMethod: s.paidMethod,
           note: s.note,
+          stripeReceiptUrl: s.stripeReceiptUrl,
           counterpartyName: fromCompany?.name ?? "Unknown",
           direction: "owed",
           jobLabel: property?.name ?? job?.propertySnapshot?.name ?? job?.scheduledDate ?? "Job",
@@ -146,6 +149,41 @@ export const getSettlementForJob = query({
     return {
       ...settlement,
       toCompanyName: toCompany?.name ?? "Unknown",
+    };
+  },
+});
+
+/**
+ * Internal query: fetch settlement + recipient company data for the payment action.
+ * Not auth-gated — callers are internal actions that do their own auth.
+ */
+export const getSettlementForPayment = internalQuery({
+  args: { settlementId: v.id("companySettlements") },
+  handler: async (ctx, args) => {
+    const settlement = await ctx.db.get(args.settlementId);
+    if (!settlement) return null;
+
+    const toCompany = await ctx.db.get(settlement.toCompanyId);
+    if (!toCompany) return null;
+
+    const job = await ctx.db.get(settlement.originalJobId);
+    const property = job?.propertyId ? await ctx.db.get(job.propertyId) : null;
+    const jobLabel =
+      property?.name ??
+      job?.propertySnapshot?.name ??
+      job?.scheduledDate ??
+      "Job";
+
+    return {
+      _id: settlement._id,
+      fromCompanyId: settlement.fromCompanyId,
+      toCompanyId: settlement.toCompanyId,
+      amountCents: settlement.amountCents,
+      currency: settlement.currency,
+      status: settlement.status,
+      recipientCompanyName: toCompany.name,
+      recipientStripeAccountId: toCompany.stripeConnectAccountId ?? null,
+      jobLabel,
     };
   },
 });
