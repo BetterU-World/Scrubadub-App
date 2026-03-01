@@ -23,9 +23,20 @@ export function JobFormPage() {
   const params = useParams<{ id?: string }>();
   const isEditing = !!params.id;
 
+  const existing = useQuery(
+    api.queries.jobs.get,
+    params.id && user ? { jobId: params.id as Id<"jobs">, userId: user._id } : "skip"
+  );
+
+  // Detect shared/copied job: has propertySnapshot but no owned propertyId
+  const isSharedJob = !!(
+    isEditing && existing &&
+    (existing.sharedFromJobId || (existing.propertySnapshot && !existing.propertyId))
+  );
+
   const properties = useQuery(
     api.queries.properties.list,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId && !isSharedJob ? { companyId: user.companyId, userId: user._id } : "skip"
   );
   const cleaners = useQuery(
     api.queries.employees.getCleaners,
@@ -39,11 +50,6 @@ export function JobFormPage() {
   const connections = useQuery(
     api.queries.partners.listConnections,
     !isEditing && user ? { userId: user._id } : "skip"
-  );
-
-  const existing = useQuery(
-    api.queries.jobs.get,
-    params.id && user ? { jobId: params.id as Id<"jobs">, userId: user._id } : "skip"
   );
 
   const createJob = useMutation(api.mutations.jobs.create);
@@ -95,7 +101,7 @@ export function JobFormPage() {
 
   useEffect(() => {
     if (existing) {
-      setPropertyId(existing.propertyId);
+      setPropertyId(existing.propertyId ?? "");
       setSelectedCleaners(existing.cleanerIds);
       setType(existing.type);
       setScheduledDate(existing.scheduledDate);
@@ -105,7 +111,7 @@ export function JobFormPage() {
     }
   }, [existing]);
 
-  if (!user || properties === undefined || cleaners === undefined || maintenanceWorkers === undefined) return <PageLoader />;
+  if (!user || (!isSharedJob && properties === undefined) || cleaners === undefined || maintenanceWorkers === undefined) return <PageLoader />;
 
   const isMaintenance = type === "maintenance";
   const workers = isMaintenance ? maintenanceWorkers : cleaners;
@@ -115,7 +121,7 @@ export function JobFormPage() {
     : <>No active cleaners. <a href="/employees" className="text-primary-600">Invite cleaners first</a>.</>;
   if (isEditing && existing === undefined) return <PageLoader />;
 
-  const activeProperties = properties.filter((p) => p.active);
+  const activeProperties = (properties ?? []).filter((p) => p.active);
 
   const toggleCleaner = (id: string) => {
     setSelectedCleaners((prev) =>
@@ -137,7 +143,7 @@ export function JobFormPage() {
     setLoading(true);
     try {
       const data = {
-        propertyId: propertyId as Id<"properties">,
+        ...(!isSharedJob && propertyId ? { propertyId: propertyId as Id<"properties"> } : {}),
         cleanerIds: (isPartnerMode ? [] : selectedCleaners) as Id<"users">[],
         type: type as any,
         scheduledDate,
@@ -215,15 +221,34 @@ export function JobFormPage() {
       )}
 
       <form onSubmit={handleSubmit} className={`card space-y-4${!isEditing && activeProperties.length === 0 ? " opacity-50 pointer-events-none" : ""}`}>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Property</label>
-          <select className="input-field" value={propertyId} onChange={(e) => setPropertyId(e.target.value)} required>
-            <option value="">Select a property</option>
-            {activeProperties.map((p) => (
-              <option key={p._id} value={p._id}>{p.name} — {p.address}</option>
-            ))}
-          </select>
-        </div>
+        {isSharedJob && existing?.propertySnapshot ? (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Property (shared)</label>
+            <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
+              <p className="font-medium">{existing.propertySnapshot.name}</p>
+              {existing.propertySnapshot.address && (
+                <p className="text-gray-500 mt-0.5">{existing.propertySnapshot.address}</p>
+              )}
+              {(existing.propertySnapshot.beds != null || existing.propertySnapshot.baths != null) && (
+                <p className="text-gray-400 mt-0.5 text-xs">
+                  {existing.propertySnapshot.beds != null && `${existing.propertySnapshot.beds} bed`}
+                  {existing.propertySnapshot.beds != null && existing.propertySnapshot.baths != null && " · "}
+                  {existing.propertySnapshot.baths != null && `${existing.propertySnapshot.baths} bath`}
+                </p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Property</label>
+            <select className="input-field" value={propertyId} onChange={(e) => setPropertyId(e.target.value)} required>
+              <option value="">Select a property</option>
+              {activeProperties.map((p) => (
+                <option key={p._id} value={p._id}>{p.name} — {p.address}</option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Job Type</label>
@@ -369,7 +394,7 @@ export function JobFormPage() {
 
         <div className="flex justify-end gap-3 pt-4">
           <button type="button" onClick={() => setLocation(isEditing ? `/jobs/${params.id}` : "/jobs")} className="btn-secondary">Cancel</button>
-          <button type="submit" disabled={loading || !propertyId || (isPartnerMode && !partnerCompanyId)} className="btn-primary flex items-center gap-2">
+          <button type="submit" disabled={loading || (!isSharedJob && !propertyId) || (isPartnerMode && !partnerCompanyId)} className="btn-primary flex items-center gap-2">
             {loading && <LoadingSpinner size="sm" />}
             {isEditing ? "Save Changes" : isPartnerMode ? "Share to Partner" : "Schedule Job"}
           </button>
