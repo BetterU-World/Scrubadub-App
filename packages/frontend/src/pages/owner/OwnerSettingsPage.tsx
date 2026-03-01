@@ -149,18 +149,18 @@ export function OwnerSettingsPage() {
           <ChevronRight className="w-4 h-4 text-gray-400" />
         </Link>
 
-        {/* ── Settlements card ─────────────────────────────── */}
+        {/* ── Payments card ──────────────────────────────── */}
         <Link
-          href="/owner/settlements"
+          href="/owner/payments"
           className="card flex items-center gap-4 hover:bg-gray-50 transition-colors"
         >
           <div className="p-2 rounded-lg bg-primary-50 text-primary-600">
             <Banknote className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-gray-900">Settlements</p>
+            <p className="font-medium text-gray-900">Payments</p>
             <p className="text-sm text-gray-500">
-              Payouts, settlement payments, and status.
+              Partner settlements and cleaner payments.
             </p>
           </div>
           <ChevronRight className="w-4 h-4 text-gray-400" />
