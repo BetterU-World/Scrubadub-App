@@ -7,9 +7,12 @@ export const list = query({
     companyId: v.id("companies"),
     userId: v.id("users"),
     status: v.optional(v.string()),
+    sort: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await assertCompanyAccess(ctx, args.userId, args.companyId);
+
+    const sort = args.sort || "soonest";
 
     let jobs;
     if (args.status) {
@@ -26,6 +29,36 @@ export const list = query({
           q.eq("companyId", args.companyId)
         )
         .collect();
+    }
+
+    // Apply sort — the dataset is already loaded via index scan, so this is
+    // a lightweight in-memory sort over a single company's jobs.
+    switch (sort) {
+      case "created_desc":
+        jobs.sort((a, b) => b._creationTime - a._creationTime);
+        break;
+      case "created_asc":
+        jobs.sort((a, b) => a._creationTime - b._creationTime);
+        break;
+      case "updated_desc": {
+        const latest = (j: (typeof jobs)[number]) =>
+          Math.max(
+            j._creationTime,
+            j.completedAt ?? 0,
+            j.startedAt ?? 0,
+            j.arrivedAt ?? 0,
+            j.acceptedAt ?? 0,
+            j.deniedAt ?? 0,
+          );
+        jobs.sort((a, b) => latest(b) - latest(a));
+        break;
+      }
+      // "soonest" (default) — ascending scheduledDate.
+      // Without status filter the index already provides this order;
+      // with a status filter we need an explicit sort.
+      default:
+        jobs.sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate));
+        break;
     }
 
     return Promise.all(

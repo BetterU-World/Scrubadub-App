@@ -7,7 +7,14 @@ import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Link } from "wouter";
-import { ClipboardCheck, Plus, Calendar, Users, Search } from "lucide-react";
+import { ClipboardCheck, Plus, Calendar, Users, Search, ArrowUpDown } from "lucide-react";
+
+const SORT_OPTIONS = [
+  { value: "soonest", label: "Soonest scheduled" },
+  { value: "updated_desc", label: "Recently updated" },
+  { value: "created_desc", label: "Recently created" },
+  { value: "created_asc", label: "Oldest created" },
+] as const;
 
 const STATUS_FILTERS = [
   { value: "", label: "All" },
@@ -55,10 +62,11 @@ export function JobListPage() {
   });
   const [dateRange, setDateRange] = useState<"all" | "today" | "week">("all");
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState("soonest");
   const jobs = useQuery(
     api.queries.jobs.list,
     user?.companyId
-      ? { companyId: user.companyId, userId: user._id, status: statusFilter || undefined }
+      ? { companyId: user.companyId, userId: user._id, status: statusFilter || undefined, sort }
       : "skip"
   );
 
@@ -83,7 +91,7 @@ export function JobListPage() {
       }
       return true;
     })
-    .sort((a, b) => b.scheduledDate.localeCompare(a.scheduledDate));
+;
 
   const hasFilters = statusFilter || typeFilter || dateRange !== "all" || search;
 
@@ -125,6 +133,18 @@ export function JobListPage() {
             placeholder="Search property or cleaner…"
             className="input-field pl-8 py-1.5 text-sm w-full"
           />
+        </div>
+        <div className="relative">
+          <ArrowUpDown className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+            className="input-field pl-8 pr-3 py-1.5 text-sm appearance-none"
+          >
+            {SORT_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
         </div>
       </div>
 
