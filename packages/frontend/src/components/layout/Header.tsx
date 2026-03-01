@@ -19,7 +19,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
           <Menu className="w-5 h-5" />
         </button>
         <h1 className="text-lg font-bold text-primary-700 md:hidden">
-          ScrubaDub
+          The Scrub App
         </h1>
       </div>
 

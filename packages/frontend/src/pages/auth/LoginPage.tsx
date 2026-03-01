@@ -28,7 +28,7 @@ export function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary-700">ScrubaDub</h1>
+          <h1 className="text-3xl font-bold text-primary-700">The Scrub App</h1>
           <p className="text-gray-500 mt-2">
             Cleaning operations, simplified
           </p>

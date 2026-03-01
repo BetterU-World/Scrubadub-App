@@ -971,7 +971,7 @@ function FooterSection({
 
         <div className="border-t border-gray-800 mt-8 pt-6 text-center text-xs text-gray-500">
           &copy; {new Date().getFullYear()} {brandName}. All rights reserved.
-          Powered by ScrubaDub.
+          Powered by The Scrub App.
         </div>
       </div>
     </footer>
