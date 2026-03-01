@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
@@ -27,6 +27,7 @@ import {
   Package,
   AlertTriangle,
   DollarSign,
+  CreditCard,
 } from "lucide-react";
 
 export function JobDetailPage() {
@@ -81,6 +82,7 @@ export function JobDetailPage() {
   );
   const upsertSettlement = useMutation(api.mutations.settlements.upsertSettlementForSharedJob);
   const markSettlementPaid = useMutation(api.mutations.settlements.markSettlementPaid);
+  const createSettlementCheckout = useAction(api.actions.settlements.createSettlementPayCheckout);
 
   const [showCancel, setShowCancel] = useState(false);
   const [showRework, setShowRework] = useState(false);
@@ -102,6 +104,7 @@ export function JobDetailPage() {
   const [settlementSaving, setSettlementSaving] = useState(false);
   const [settlementPayMethod, setSettlementPayMethod] = useState("");
   const [showSettlementPay, setShowSettlementPay] = useState(false);
+  const [stripePayLoading, setStripePayLoading] = useState(false);
 
   // Read flash toast from sessionStorage (set by JobFormPage)
   useEffect(() => {
@@ -632,8 +635,32 @@ export function JobDetailPage() {
                     Update
                   </button>
                   <button
-                    onClick={() => setShowSettlementPay(true)}
+                    disabled={stripePayLoading}
+                    onClick={async () => {
+                      const uid = requireUserId(user);
+                      if (!uid || !settlement) return;
+                      setStripePayLoading(true);
+                      try {
+                        const result = await createSettlementCheckout({
+                          userId: uid,
+                          settlementId: settlement._id,
+                        });
+                        if (result?.url) window.location.href = result.url;
+                      } catch (err: any) {
+                        setToast({ message: err.message ?? "Failed to start payment", type: "error" });
+                        setTimeout(() => setToast(null), 4000);
+                      } finally {
+                        setStripePayLoading(false);
+                      }
+                    }}
                     className="btn-primary text-sm flex items-center gap-1"
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    {stripePayLoading ? "Loading…" : "Pay via Scrubadub"}
+                  </button>
+                  <button
+                    onClick={() => setShowSettlementPay(true)}
+                    className="btn-secondary text-sm flex items-center gap-1"
                   >
                     <CheckCircle className="w-4 h-4" /> Mark Paid
                   </button>
@@ -650,9 +677,15 @@ export function JobDetailPage() {
                   <span className="badge bg-green-100 text-green-700">Paid</span>
                 </div>
                 {settlement.paidAt && (
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500 flex items-center gap-1">
                     Paid on {new Date(settlement.paidAt).toLocaleDateString()}
-                    {settlement.paidMethod && ` via ${settlement.paidMethod}`}
+                    {settlement.paidMethod === "scrubadub_stripe" ? (
+                      <span className="inline-flex items-center gap-1 ml-1">
+                        <CreditCard className="w-3 h-3" /> via Scrubadub
+                      </span>
+                    ) : settlement.paidMethod ? (
+                      <span> via {settlement.paidMethod}</span>
+                    ) : null}
                   </p>
                 )}
                 {settlement.note && (
