@@ -1,10 +1,12 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { assertCompanyAccess } from "../lib/auth";
+import { withPerfLog } from "../lib/perfLog";
 
 export const getStats = query({
   args: { companyId: v.id("companies"), userId: v.id("users") },
   handler: async (ctx, args) => {
+    return await withPerfLog(ctx, "dashboard:getStats", async () => {
     await assertCompanyAccess(ctx, args.userId, args.companyId);
 
     const properties = await ctx.db
@@ -79,5 +81,6 @@ export const getStats = query({
       upcomingJobs: enrichedJobs,
       recentRedFlags: openRedFlags.slice(0, 5),
     };
+    });
   },
 });

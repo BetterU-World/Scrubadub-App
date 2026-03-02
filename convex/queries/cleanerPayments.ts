@@ -1,6 +1,7 @@
 import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { assertOwnerRole, getSessionUser } from "../lib/auth";
+import { withPerfLog } from "../lib/perfLog";
 
 /**
  * Get cleaner payment record for a specific job (used in JobDetailPage).
@@ -96,46 +97,48 @@ export const listCleanerPaymentsForCompany = query({
     status: v.optional(v.union(v.literal("OPEN"), v.literal("PAID"))),
   },
   handler: async (ctx, args) => {
-    const owner = await assertOwnerRole(ctx, args.userId);
+    return await withPerfLog(ctx, "cleanerPayments:listForCompany", async () => {
+      const owner = await assertOwnerRole(ctx, args.userId);
 
-    const payments = await ctx.db
-      .query("cleanerPayments")
-      .withIndex("by_companyId", (q) => q.eq("companyId", owner.companyId))
-      .collect();
+      const payments = await ctx.db
+        .query("cleanerPayments")
+        .withIndex("by_companyId", (q) => q.eq("companyId", owner.companyId))
+        .collect();
 
-    const filtered = args.status
-      ? payments.filter((p) => p.status === args.status)
-      : payments;
+      const filtered = args.status
+        ? payments.filter((p) => p.status === args.status)
+        : payments;
 
-    // Enrich with cleaner name + job label
-    const results = [];
-    for (const p of filtered) {
-      const cleaner = await ctx.db.get(p.cleanerUserId);
-      const job = await ctx.db.get(p.jobId);
-      const property = job?.propertyId ? await ctx.db.get(job.propertyId) : null;
-      const jobLabel =
-        property?.name ??
-        (job as any)?.propertySnapshot?.name ??
-        job?.scheduledDate ??
-        "Job";
-      results.push({
-        _id: p._id,
-        jobId: p.jobId,
-        cleanerUserId: p.cleanerUserId,
-        cleanerName: cleaner?.name ?? "Unknown",
-        cleanerStripeAccountId: cleaner?.stripeConnectAccountId ?? null,
-        amountCents: p.amountCents,
-        method: p.method,
-        status: p.status,
-        createdAt: p.createdAt,
-        paidAt: p.paidAt,
-        jobLabel,
-      });
-    }
+      // Enrich with cleaner name + job label
+      const results = [];
+      for (const p of filtered) {
+        const cleaner = await ctx.db.get(p.cleanerUserId);
+        const job = await ctx.db.get(p.jobId);
+        const property = job?.propertyId ? await ctx.db.get(job.propertyId) : null;
+        const jobLabel =
+          property?.name ??
+          (job as any)?.propertySnapshot?.name ??
+          job?.scheduledDate ??
+          "Job";
+        results.push({
+          _id: p._id,
+          jobId: p.jobId,
+          cleanerUserId: p.cleanerUserId,
+          cleanerName: cleaner?.name ?? "Unknown",
+          cleanerStripeAccountId: cleaner?.stripeConnectAccountId ?? null,
+          amountCents: p.amountCents,
+          method: p.method,
+          status: p.status,
+          createdAt: p.createdAt,
+          paidAt: p.paidAt,
+          jobLabel,
+        });
+      }
 
-    // Sort by createdAt descending
-    results.sort((a, b) => b.createdAt - a.createdAt);
-    return results;
+      // Sort by createdAt descending
+      results.sort((a, b) => b.createdAt - a.createdAt);
+      return results;
+    });
   },
 });
 
@@ -187,56 +190,58 @@ export const listMyCleanerPayments = query({
 export const listUnpaidJobsForCompany = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
-    const owner = await assertOwnerRole(ctx, args.userId);
+    return await withPerfLog(ctx, "cleanerPayments:listUnpaid", async () => {
+      const owner = await assertOwnerRole(ctx, args.userId);
 
-    const jobs = await ctx.db
-      .query("jobs")
-      .withIndex("by_companyId_status", (q) => q.eq("companyId", owner.companyId))
-      .collect();
+      const jobs = await ctx.db
+        .query("jobs")
+        .withIndex("by_companyId_status", (q) => q.eq("companyId", owner.companyId))
+        .collect();
 
-    const results = [];
-    for (const job of jobs) {
-      // Skip cancelled/denied or unassigned jobs
-      if (job.status === "cancelled" || job.status === "denied") continue;
-      if (job.cleanerIds.length === 0) continue;
+      const results = [];
+      for (const job of jobs) {
+        // Skip cancelled/denied or unassigned jobs
+        if (job.status === "cancelled" || job.status === "denied") continue;
+        if (job.cleanerIds.length === 0) continue;
 
-      // Skip already-paid jobs (via direct pointer or batch join table)
-      if (job.cleanerPaymentId) {
-        const payment = await ctx.db.get(job.cleanerPaymentId);
-        if (payment && payment.status === "PAID") continue;
+        // Skip already-paid jobs (via direct pointer or batch join table)
+        if (job.cleanerPaymentId) {
+          const payment = await ctx.db.get(job.cleanerPaymentId);
+          if (payment && payment.status === "PAID") continue;
+        }
+        const batchLink = await ctx.db
+          .query("cleanerPaymentJobs")
+          .withIndex("by_jobId", (q) => q.eq("jobId", job._id))
+          .first();
+        if (batchLink) {
+          const batchPayment = await ctx.db.get(batchLink.cleanerPaymentId);
+          if (batchPayment && batchPayment.status === "PAID") continue;
+        }
+
+        const cleaner = await ctx.db.get(job.cleanerIds[0]);
+        const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
+        const propName =
+          property?.name ??
+          (job as any).propertySnapshot?.name ??
+          "Job";
+
+        results.push({
+          _id: job._id,
+          jobId: job._id,
+          status: job.status,
+          cleanerUserId: job.cleanerIds[0],
+          cleanerName: cleaner?.name ?? "Unknown",
+          cleanerStripeAccountId: cleaner?.stripeConnectAccountId ?? null,
+          jobLabel: `${propName} — ${job.scheduledDate}`,
+          plannedPayCents: job.plannedCleanerPayCents ?? null,
+          scheduledDate: job.scheduledDate,
+          isEligible: ["submitted", "approved"].includes(job.status),
+        });
       }
-      const batchLink = await ctx.db
-        .query("cleanerPaymentJobs")
-        .withIndex("by_jobId", (q) => q.eq("jobId", job._id))
-        .first();
-      if (batchLink) {
-        const batchPayment = await ctx.db.get(batchLink.cleanerPaymentId);
-        if (batchPayment && batchPayment.status === "PAID") continue;
-      }
 
-      const cleaner = await ctx.db.get(job.cleanerIds[0]);
-      const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
-      const propName =
-        property?.name ??
-        (job as any).propertySnapshot?.name ??
-        "Job";
-
-      results.push({
-        _id: job._id,
-        jobId: job._id,
-        status: job.status,
-        cleanerUserId: job.cleanerIds[0],
-        cleanerName: cleaner?.name ?? "Unknown",
-        cleanerStripeAccountId: cleaner?.stripeConnectAccountId ?? null,
-        jobLabel: `${propName} — ${job.scheduledDate}`,
-        plannedPayCents: job.plannedCleanerPayCents ?? null,
-        scheduledDate: job.scheduledDate,
-        isEligible: ["submitted", "approved"].includes(job.status),
-      });
-    }
-
-    results.sort((a, b) => b.scheduledDate.localeCompare(a.scheduledDate));
-    return results;
+      results.sort((a, b) => b.scheduledDate.localeCompare(a.scheduledDate));
+      return results;
+    });
   },
 });
 

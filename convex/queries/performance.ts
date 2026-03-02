@@ -1,6 +1,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { assertCompanyAccess } from "../lib/auth";
+import { withPerfLog } from "../lib/perfLog";
 
 export const getCleanerStats = query({
   args: {
@@ -101,6 +102,7 @@ export const getLeaderboard = query({
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
+    return await withPerfLog(ctx, "performance:leaderboard", async () => {
     await assertCompanyAccess(ctx, args.userId, args.companyId);
 
     const allUsers = await ctx.db
@@ -205,5 +207,6 @@ export const getLeaderboard = query({
     );
 
     return leaderboard.sort((a, b) => b.averageScore - a.averageScore);
+    });
   },
 });
