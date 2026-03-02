@@ -143,6 +143,8 @@ export default defineSchema({
     // Shared-job fields (set on the copy created in the partner's company)
     sharedFromJobId: v.optional(v.id("jobs")),
     sharedFromCompanyName: v.optional(v.string()),
+    // Planned cleaner pay amount (owner-set, before actual payment)
+    plannedCleanerPayCents: v.optional(v.number()),
     // Cleaner payment pointer
     cleanerPaymentId: v.optional(v.id("cleanerPayments")),
     // Property snapshot for shared jobs (Owner2 sees property info without owning the record)

@@ -16,17 +16,24 @@ import {
 
 type Tab = "OPEN" | "PAID";
 
+interface OpenItem {
+  _id: string;
+  jobId: string;
+  status: string;
+  cleanerUserId: string;
+  cleanerName: string;
+  cleanerStripeAccountId: string | null;
+  jobLabel: string;
+  plannedPayCents: number | null;
+  scheduledDate: string;
+  isEligible: boolean;
+}
+
 interface CleanerGroup {
   cleanerUserId: string;
   cleanerName: string;
   cleanerStripeAccountId: string | null;
-  items: Array<{
-    _id: string;
-    jobId: string;
-    amountCents: number | undefined;
-    jobLabel: string;
-    createdAt: number;
-  }>;
+  items: OpenItem[];
   totalCents: number;
 }
 
@@ -35,56 +42,56 @@ export function CleanerPaymentsPage() {
   const [tab, setTab] = useState<Tab>("OPEN");
   const [batchLoading, setBatchLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // Local edited amounts keyed by payment _id (dollars string)
+  // Local edited amounts keyed by job _id (dollars string)
   const [editedAmounts, setEditedAmounts] = useState<Record<string, string>>({});
   const [savingAmounts, setSavingAmounts] = useState<Record<string, boolean>>({});
 
-  const payments = useQuery(
+  // OPEN tab: source from jobs (shows items even before cleanerPayment exists)
+  const unpaidJobs = useQuery(
+    api.queries.cleanerPayments.listUnpaidJobsForCompany,
+    user?._id && tab === "OPEN" ? { userId: user._id } : "skip",
+  );
+
+  // PAID tab: source from cleanerPayments records
+  const paidPayments = useQuery(
     api.queries.cleanerPayments.listCleanerPaymentsForCompany,
-    user?._id ? { userId: user._id, status: tab } : "skip",
+    user?._id && tab === "PAID" ? { userId: user._id, status: "PAID" as const } : "skip",
   );
 
   const createBatch = useMutation(api.mutations.cleanerPayments.createCleanerPaymentBatch);
   const markBatchOutside = useMutation(api.mutations.cleanerPayments.markCleanerBatchPaidOutside);
   const createCheckout = useAction(api.actions.cleanerPayments.createCleanerPaymentCheckout);
-  const updateAmount = useMutation(api.mutations.cleanerPayments.updateCleanerPaymentAmount);
+  const updatePlannedPay = useMutation(api.mutations.jobs.updatePlannedCleanerPay);
 
   if (!user) return <PageLoader />;
 
-  /** Get the effective amount for an item (edited local value or server value) */
-  function getEffectiveCents(item: { _id: string; amountCents: number | undefined }): number | null {
+  /** Get the effective planned pay for a job (edited local value or server value) */
+  function getEffectiveCents(item: OpenItem): number | null {
     const edited = editedAmounts[item._id];
     if (edited !== undefined) {
       const v = parseFloat(edited);
       return v > 0 ? Math.round(v * 100) : null;
     }
-    return item.amountCents ?? null;
+    return item.plannedPayCents;
   }
 
-  // Group OPEN payments by cleaner
-  function groupByCleaner(items: NonNullable<typeof payments>): CleanerGroup[] {
+  // Group unpaid jobs by cleaner
+  function groupByCleaner(items: OpenItem[]): CleanerGroup[] {
     const map = new Map<string, CleanerGroup>();
-    for (const p of items) {
-      const key = p.cleanerUserId;
+    for (const item of items) {
+      const key = item.cleanerUserId;
       if (!map.has(key)) {
         map.set(key, {
           cleanerUserId: key,
-          cleanerName: p.cleanerName,
-          cleanerStripeAccountId: p.cleanerStripeAccountId,
+          cleanerName: item.cleanerName,
+          cleanerStripeAccountId: item.cleanerStripeAccountId,
           items: [],
           totalCents: 0,
         });
       }
-      const g = map.get(key)!;
-      g.items.push({
-        _id: p._id,
-        jobId: p.jobId,
-        amountCents: p.amountCents,
-        jobLabel: p.jobLabel,
-        createdAt: p.createdAt,
-      });
+      map.get(key)!.items.push(item);
     }
-    // Compute totals from effective (edited or server) values
+    // Compute totals from effective values
     for (const g of map.values()) {
       g.totalCents = g.items.reduce((sum, item) => {
         const c = getEffectiveCents(item);
@@ -94,33 +101,33 @@ export function CleanerPaymentsPage() {
     return Array.from(map.values());
   }
 
-  /** Whether every item in the group has a valid amount (> 0) */
-  function allItemsHaveAmount(group: CleanerGroup): boolean {
+  /** Whether every item in the group has a valid amount and is eligible for payout */
+  function groupIsPayReady(group: CleanerGroup): boolean {
     return group.items.every((item) => {
       const c = getEffectiveCents(item);
-      return c != null && c >= 100;
+      return c != null && c >= 100 && item.isEligible;
     });
   }
 
-  /** Save an edited amount to the server */
-  const saveAmount = useCallback(
-    async (paymentId: string, dollars: string) => {
+  /** Save an edited planned pay to the server */
+  const savePlannedPay = useCallback(
+    async (jobId: string, dollars: string) => {
       const cents = Math.round(parseFloat(dollars) * 100);
       if (!cents || cents < 100) return;
-      setSavingAmounts((prev) => ({ ...prev, [paymentId]: true }));
+      setSavingAmounts((prev) => ({ ...prev, [jobId]: true }));
       try {
-        await updateAmount({
+        await updatePlannedPay({
           userId: user!._id,
-          cleanerPaymentId: paymentId as Id<"cleanerPayments">,
+          jobId: jobId as Id<"jobs">,
           amountCents: cents,
         });
       } catch (e: any) {
         setError(e.message ?? "Failed to save amount");
       } finally {
-        setSavingAmounts((prev) => ({ ...prev, [paymentId]: false }));
+        setSavingAmounts((prev) => ({ ...prev, [jobId]: false }));
       }
     },
-    [updateAmount, user],
+    [updatePlannedPay, user],
   );
 
   async function handleBatchStripe(group: CleanerGroup) {
@@ -162,6 +169,11 @@ export function CleanerPaymentsPage() {
     }
   }
 
+  const isLoading = tab === "OPEN" ? unpaidJobs === undefined : paidPayments === undefined;
+  const isEmpty = tab === "OPEN"
+    ? unpaidJobs !== undefined && unpaidJobs.length === 0
+    : paidPayments !== undefined && paidPayments.length === 0;
+
   return (
     <div>
       <PageHeader
@@ -193,17 +205,23 @@ export function CleanerPaymentsPage() {
         </div>
       )}
 
-      {payments === undefined ? (
+      {isLoading ? (
         <PageLoader />
-      ) : payments.length === 0 ? (
+      ) : isEmpty ? (
         <p className="text-sm text-gray-500 py-8 text-center">
           No {tab === "OPEN" ? "open" : "paid"} cleaner payments.
         </p>
-      ) : tab === "OPEN" ? (
-        /* ── OPEN tab: grouped by cleaner with batch actions ── */
+      ) : tab === "OPEN" && unpaidJobs ? (
+        /* ── OPEN tab: grouped by cleaner, sourced from jobs ── */
         <div className="space-y-4">
-          {groupByCleaner(payments).map((group) => {
-            const allReady = allItemsHaveAmount(group);
+          {groupByCleaner(unpaidJobs as OpenItem[]).map((group) => {
+            const payReady = groupIsPayReady(group);
+            const allHaveAmounts = group.items.every((item) => {
+              const c = getEffectiveCents(item);
+              return c != null && c >= 100;
+            });
+            const someNotEligible = group.items.some((item) => !item.isEligible);
+
             return (
               <div key={group.cleanerUserId} className="card">
                 <div className="flex items-center justify-between mb-3">
@@ -217,9 +235,15 @@ export function CleanerPaymentsPage() {
                   <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
                     {group.cleanerStripeAccountId && (
                       <button
-                        disabled={batchLoading !== null || !allReady}
+                        disabled={batchLoading !== null || !payReady}
                         onClick={() => handleBatchStripe(group)}
-                        title={!allReady ? "Set amounts for all jobs first" : undefined}
+                        title={
+                          !allHaveAmounts
+                            ? "Set amounts for all jobs first"
+                            : someNotEligible
+                              ? "All jobs must be submitted/approved before paying"
+                              : undefined
+                        }
                         className="btn-primary text-sm px-3 py-1.5 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <CreditCard className="w-4 h-4" />
@@ -227,9 +251,15 @@ export function CleanerPaymentsPage() {
                       </button>
                     )}
                     <button
-                      disabled={batchLoading !== null || !allReady}
+                      disabled={batchLoading !== null || !payReady}
                       onClick={() => handleBatchOutside(group)}
-                      title={!allReady ? "Set amounts for all jobs first" : undefined}
+                      title={
+                        !allHaveAmounts
+                          ? "Set amounts for all jobs first"
+                          : someNotEligible
+                            ? "All jobs must be submitted/approved before paying"
+                            : undefined
+                      }
                       className="btn-secondary text-sm px-3 py-1.5 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <CheckCircle className="w-4 h-4" />
@@ -239,13 +269,13 @@ export function CleanerPaymentsPage() {
                 </div>
                 <div className="space-y-1.5">
                   {group.items.map((item) => {
-                    const hasSavedAmount = item.amountCents != null;
+                    const hasPlannedPay = item.plannedPayCents != null;
                     const localVal = editedAmounts[item._id];
                     const displayDollars =
                       localVal !== undefined
                         ? localVal
-                        : hasSavedAmount
-                          ? (item.amountCents! / 100).toFixed(2)
+                        : hasPlannedPay
+                          ? (item.plannedPayCents! / 100).toFixed(2)
                           : "";
                     const isSaving = savingAmounts[item._id] ?? false;
 
@@ -258,10 +288,12 @@ export function CleanerPaymentsPage() {
                           >
                             <ExternalLink className="w-3 h-3" /> {item.jobLabel}
                           </Link>
-                          <span className="text-gray-400">{new Date(item.createdAt).toLocaleDateString()}</span>
+                          {!item.isEligible && (
+                            <span className="text-xs text-gray-400">({item.status})</span>
+                          )}
                         </div>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
-                          {!hasSavedAmount && localVal === undefined && (
+                          {!hasPlannedPay && localVal === undefined && (
                             <span className="text-amber-600 flex items-center gap-1 text-xs mr-1">
                               <AlertCircle className="w-3 h-3" /> Amount needed
                             </span>
@@ -280,7 +312,7 @@ export function CleanerPaymentsPage() {
                             onBlur={() => {
                               const val = editedAmounts[item._id];
                               if (val !== undefined && parseFloat(val) >= 1) {
-                                saveAmount(item._id, val);
+                                savePlannedPay(item._id, val);
                               }
                             }}
                             disabled={isSaving}
@@ -295,10 +327,10 @@ export function CleanerPaymentsPage() {
             );
           })}
         </div>
-      ) : (
+      ) : paidPayments ? (
         /* ── PAID tab: flat list ── */
         <div className="space-y-3">
-          {payments.map((p) => (
+          {paidPayments.map((p) => (
             <div
               key={p._id}
               className="card flex items-center justify-between gap-4"
@@ -349,7 +381,7 @@ export function CleanerPaymentsPage() {
             </div>
           ))}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

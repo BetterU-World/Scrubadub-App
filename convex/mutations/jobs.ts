@@ -548,3 +548,32 @@ export const completeJob = mutation({
     });
   },
 });
+
+/**
+ * Set or update the planned cleaner pay amount on a job (owner-gated).
+ * Can be set anytime once a cleaner is assigned.
+ */
+export const updatePlannedCleanerPay = mutation({
+  args: {
+    userId: v.id("users"),
+    jobId: v.id("jobs"),
+    amountCents: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+
+    if (args.amountCents < 100) {
+      throw new Error("Minimum planned pay is $1.00");
+    }
+
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.companyId !== owner.companyId) {
+      throw new Error("Job not found or does not belong to your company");
+    }
+    if (job.cleanerIds.length === 0) {
+      throw new Error("No cleaner assigned to this job");
+    }
+
+    await ctx.db.patch(args.jobId, { plannedCleanerPayCents: args.amountCents });
+  },
+});

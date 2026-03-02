@@ -83,6 +83,7 @@ export function JobDetailPage() {
   const createCleanerPayment = useMutation(api.mutations.cleanerPayments.createCleanerPayment);
   const markCleanerPaidOutside = useMutation(api.mutations.cleanerPayments.markCleanerPaidOutside);
   const createCleanerPaymentCheckout = useAction(api.actions.cleanerPayments.createCleanerPaymentCheckout);
+  const updatePlannedCleanerPay = useMutation(api.mutations.jobs.updatePlannedCleanerPay);
 
   // Settlements
   const settlement = useQuery(
@@ -115,8 +116,10 @@ export function JobDetailPage() {
   const [showSettlementPay, setShowSettlementPay] = useState(false);
   const [stripePayLoading, setStripePayLoading] = useState(false);
   const [cleanerPayAmount, setCleanerPayAmount] = useState("");
+  const [cleanerPayAmountInit, setCleanerPayAmountInit] = useState(false);
   const [cleanerPaySaving, setCleanerPaySaving] = useState(false);
   const [cleanerStripeLoading, setCleanerStripeLoading] = useState(false);
+  const [plannedPaySaving, setPlannedPaySaving] = useState(false);
 
   // Read flash toast from sessionStorage (set by JobFormPage)
   useEffect(() => {
@@ -127,6 +130,14 @@ export function JobDetailPage() {
       setTimeout(() => setToast(null), 3000);
     }
   }, []);
+
+  // Pre-fill cleaner pay amount from planned pay
+  useEffect(() => {
+    if (job && !cleanerPayAmountInit && (job as any).plannedCleanerPayCents) {
+      setCleanerPayAmount(((job as any).plannedCleanerPayCents / 100).toFixed(2));
+      setCleanerPayAmountInit(true);
+    }
+  }, [job, cleanerPayAmountInit]);
 
   if (job === undefined) return <PageLoader />;
   if (job === null) return <div className="text-center py-12 text-gray-500">Job not found</div>;
@@ -432,11 +443,12 @@ export function JobDetailPage() {
           </div>
         )}
 
-        {/* Cleaner Payment panel */}
-        {cleanerPaymentData && cleanerPaymentData.cleanerUserId && (() => {
+        {/* Cleaner Payment panel — Owner view */}
+        {user?.role === "owner" && cleanerPaymentData && cleanerPaymentData.cleanerUserId && (() => {
           const { payment, cleanerName, cleanerStripeAccountId } = cleanerPaymentData;
           const isPaid = payment?.status === "PAID";
-          const isOpen = payment?.status === "OPEN";
+          const isCheckoutInProgress = payment?.status === "OPEN" && payment?.amountCents != null && payment?.method != null;
+          const isEligible = ["submitted", "approved"].includes(job.status);
 
           return (
             <div className="card border-emerald-200">
@@ -451,7 +463,7 @@ export function JobDetailPage() {
                     <div>
                       <p className="text-sm text-gray-500">Paid to {cleanerName}</p>
                       <p className="text-xl font-bold text-gray-900">
-                        ${(payment!.amountCents / 100).toFixed(2)}
+                        ${((payment!.amountCents ?? 0) / 100).toFixed(2)}
                       </p>
                     </div>
                     <span className="badge bg-green-100 text-green-700">Paid</span>
@@ -469,8 +481,8 @@ export function JobDetailPage() {
                     </p>
                   )}
                 </div>
-              ) : isOpen && payment!.amountCents != null ? (
-                /* Checkout in progress (has amount set) */
+              ) : isCheckoutInProgress ? (
+                /* Checkout in progress */
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
@@ -486,90 +498,161 @@ export function JobDetailPage() {
                   </p>
                 </div>
               ) : (
-                /* No payment yet — show form */
+                /* Planned pay + pay actions (when eligible) */
                 <div className="space-y-3">
                   <p className="text-sm text-gray-600">
                     Pay {cleanerName} for this job.
                   </p>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Amount ($)</label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="1"
-                      className="input-field max-w-xs"
-                      placeholder="0.00"
-                      value={cleanerPayAmount}
-                      onChange={(e) => setCleanerPayAmount(e.target.value)}
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {isEligible ? "Amount ($)" : "Planned Pay ($)"}
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="1"
+                        className="input-field max-w-xs"
+                        placeholder="0.00"
+                        value={cleanerPayAmount}
+                        onChange={(e) => setCleanerPayAmount(e.target.value)}
+                      />
+                      {!isEligible && (
+                        <button
+                          disabled={plannedPaySaving || !cleanerPayAmount || Number(cleanerPayAmount) < 1}
+                          onClick={async () => {
+                            const uid = requireUserId(user);
+                            if (!uid) return;
+                            setPlannedPaySaving(true);
+                            try {
+                              const amountCents = Math.round(Number(cleanerPayAmount) * 100);
+                              await updatePlannedCleanerPay({
+                                userId: uid,
+                                jobId: params.id as Id<"jobs">,
+                                amountCents,
+                              });
+                              setToast({ message: "Planned pay saved", type: "success" });
+                              setTimeout(() => setToast(null), 3000);
+                            } catch (err: any) {
+                              setToast({ message: err.message ?? "Failed to save", type: "error" });
+                              setTimeout(() => setToast(null), 4000);
+                            } finally {
+                              setPlannedPaySaving(false);
+                            }
+                          }}
+                          className="btn-secondary text-sm"
+                        >
+                          {plannedPaySaving ? "Saving..." : "Save"}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {cleanerStripeAccountId && (
+                  {isEligible ? (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {cleanerStripeAccountId && (
+                        <button
+                          disabled={cleanerStripeLoading || cleanerPaySaving || !cleanerPayAmount || Number(cleanerPayAmount) < 1}
+                          onClick={async () => {
+                            const uid = requireUserId(user);
+                            if (!uid) return;
+                            setCleanerStripeLoading(true);
+                            try {
+                              const amountCents = Math.round(Number(cleanerPayAmount) * 100);
+                              // Also persist as planned pay
+                              await updatePlannedCleanerPay({
+                                userId: uid,
+                                jobId: params.id as Id<"jobs">,
+                                amountCents,
+                              });
+                              const paymentId = await createCleanerPayment({
+                                userId: uid,
+                                jobId: params.id as Id<"jobs">,
+                                amountCents,
+                              });
+                              const result = await createCleanerPaymentCheckout({
+                                userId: uid,
+                                cleanerPaymentId: paymentId,
+                              });
+                              if (result?.url) window.location.href = result.url;
+                            } catch (err: any) {
+                              setToast({ message: err.message ?? "Failed to start payment", type: "error" });
+                              setTimeout(() => setToast(null), 4000);
+                            } finally {
+                              setCleanerStripeLoading(false);
+                            }
+                          }}
+                          className="btn-primary text-sm flex items-center gap-1"
+                        >
+                          <CreditCard className="w-4 h-4" />
+                          {cleanerStripeLoading ? "Loading..." : "Pay via The Scrub App"}
+                        </button>
+                      )}
                       <button
-                        disabled={cleanerStripeLoading || cleanerPaySaving || !cleanerPayAmount || Number(cleanerPayAmount) < 1}
+                        disabled={cleanerPaySaving || cleanerStripeLoading || !cleanerPayAmount || Number(cleanerPayAmount) < 1}
                         onClick={async () => {
                           const uid = requireUserId(user);
                           if (!uid) return;
-                          setCleanerStripeLoading(true);
+                          setCleanerPaySaving(true);
                           try {
                             const amountCents = Math.round(Number(cleanerPayAmount) * 100);
-                            const paymentId = await createCleanerPayment({
+                            await updatePlannedCleanerPay({
                               userId: uid,
                               jobId: params.id as Id<"jobs">,
                               amountCents,
                             });
-                            const result = await createCleanerPaymentCheckout({
+                            await markCleanerPaidOutside({
                               userId: uid,
-                              cleanerPaymentId: paymentId,
+                              jobId: params.id as Id<"jobs">,
+                              amountCents,
                             });
-                            if (result?.url) window.location.href = result.url;
+                            setCleanerPayAmount("");
+                            setToast({ message: "Payment recorded", type: "success" });
+                            setTimeout(() => setToast(null), 3000);
                           } catch (err: any) {
-                            setToast({ message: err.message ?? "Failed to start payment", type: "error" });
-                            setTimeout(() => setToast(null), 4000);
+                            setToast({ message: err.message ?? "Failed", type: "error" });
+                            setTimeout(() => setToast(null), 3000);
                           } finally {
-                            setCleanerStripeLoading(false);
+                            setCleanerPaySaving(false);
                           }
                         }}
-                        className="btn-primary text-sm flex items-center gap-1"
+                        className="btn-secondary text-sm flex items-center gap-1"
                       >
-                        <CreditCard className="w-4 h-4" />
-                        {cleanerStripeLoading ? "Loading..." : "Pay via The Scrub App"}
+                        <CheckCircle className="w-4 h-4" />
+                        {cleanerPaySaving ? "Saving..." : "Mark Paid Outside App"}
                       </button>
-                    )}
-                    <button
-                      disabled={cleanerPaySaving || cleanerStripeLoading || !cleanerPayAmount || Number(cleanerPayAmount) < 1}
-                      onClick={async () => {
-                        const uid = requireUserId(user);
-                        if (!uid) return;
-                        setCleanerPaySaving(true);
-                        try {
-                          const amountCents = Math.round(Number(cleanerPayAmount) * 100);
-                          await markCleanerPaidOutside({
-                            userId: uid,
-                            jobId: params.id as Id<"jobs">,
-                            amountCents,
-                          });
-                          setCleanerPayAmount("");
-                          setToast({ message: "Payment recorded", type: "success" });
-                          setTimeout(() => setToast(null), 3000);
-                        } catch (err: any) {
-                          setToast({ message: err.message ?? "Failed", type: "error" });
-                          setTimeout(() => setToast(null), 3000);
-                        } finally {
-                          setCleanerPaySaving(false);
-                        }
-                      }}
-                      className="btn-secondary text-sm flex items-center gap-1"
-                    >
-                      <CheckCircle className="w-4 h-4" />
-                      {cleanerPaySaving ? "Saving..." : "Mark Paid Outside App"}
-                    </button>
-                  </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-400">
+                      Payment actions become available after the job is submitted.
+                    </p>
+                  )}
                 </div>
               )}
             </div>
           );
         })()}
+
+        {/* Cleaner Payment panel — Cleaner view (read-only planned pay) */}
+        {user?.role !== "owner" && job.cleanerIds?.includes(user?._id as any) && (
+          <div className="card border-emerald-200">
+            <h3 className="font-semibold text-emerald-700 flex items-center gap-2 mb-3">
+              <DollarSign className="w-5 h-5" /> Your Pay
+            </h3>
+            {(job as any).plannedCleanerPayCents ? (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-500">Planned pay for this job</p>
+                  <p className="text-xl font-bold text-gray-900">
+                    ${((job as any).plannedCleanerPayCents / 100).toFixed(2)}
+                  </p>
+                </div>
+                <span className="badge bg-blue-100 text-blue-700">Planned</span>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">Pay amount will be set by your manager.</p>
+            )}
+          </div>
+        )}
 
         {/* Shared job status (Owner1 view: shows who the job is shared to) */}
         {sharedStatus && sharedStatus.length > 0 && (

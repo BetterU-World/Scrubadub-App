@@ -8,8 +8,8 @@ import { DollarSign, CreditCard } from "lucide-react";
 export function WorkerPaymentsPage() {
   const { user } = useAuth();
 
-  const payments = useQuery(
-    api.queries.cleanerPayments.listMyCleanerPayments,
+  const jobs = useQuery(
+    api.queries.cleanerPayments.listCleanerJobsWithPaymentStatus,
     user?._id ? { userId: user._id } : "skip",
   );
 
@@ -19,23 +19,26 @@ export function WorkerPaymentsPage() {
     <div>
       <PageHeader
         title="My Payments"
-        description="Payments you've received for completed jobs"
+        description="Payments for your assigned jobs"
       />
 
-      {payments === undefined ? (
+      {jobs === undefined ? (
         <PageLoader />
-      ) : payments.length === 0 ? (
+      ) : jobs.length === 0 ? (
         <p className="text-sm text-gray-500 py-8 text-center">
-          No payments yet.
+          No jobs yet.
         </p>
       ) : (
         <div className="space-y-3">
-          {payments.map((p) => {
-            const isPaid = p.status === "PAID";
+          {jobs.map((j) => {
+            const isPaid = j.paymentStatus === "PAID";
+            const displayAmount = isPaid
+              ? j.amountCents
+              : j.plannedPayCents;
 
             return (
               <div
-                key={p._id}
+                key={j._id}
                 className="card flex items-center justify-between gap-4"
               >
                 <div className="flex items-center gap-3 min-w-0">
@@ -50,17 +53,15 @@ export function WorkerPaymentsPage() {
                   </div>
                   <div className="min-w-0">
                     <p className="font-medium text-gray-900 truncate">
-                      {p.jobLabel}
+                      {j.jobLabel}
                     </p>
                     <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
-                      <span>
-                        {new Date(p.createdAt).toLocaleDateString()}
-                      </span>
-                      {p.paidAt && (
+                      <span className="capitalize">{j.status.replace("_", " ")}</span>
+                      {j.paidAt && (
                         <>
                           <span>&middot;</span>
                           <span>
-                            Paid {new Date(p.paidAt).toLocaleDateString()}
+                            Paid {new Date(j.paidAt).toLocaleDateString()}
                           </span>
                         </>
                       )}
@@ -68,7 +69,7 @@ export function WorkerPaymentsPage() {
                         <>
                           <span>&middot;</span>
                           <span className="inline-flex items-center gap-1">
-                            {p.method === "in_app" ? (
+                            {j.method === "in_app" ? (
                               <>
                                 <CreditCard className="w-3 h-3" />
                                 via The Scrub App
@@ -85,21 +86,21 @@ export function WorkerPaymentsPage() {
 
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <span className="font-semibold text-gray-900">
-                    {p.amountCents != null
-                      ? `$${(p.amountCents / 100).toFixed(2)}`
+                    {displayAmount != null
+                      ? `$${(displayAmount / 100).toFixed(2)}`
                       : "—"}
                   </span>
                   {isPaid ? (
                     <span className="badge bg-green-100 text-green-700">
                       Paid
                     </span>
-                  ) : p.amountCents == null ? (
-                    <span className="badge bg-gray-100 text-gray-600">
-                      Amount pending
+                  ) : displayAmount != null ? (
+                    <span className="badge bg-blue-100 text-blue-700">
+                      Planned
                     </span>
                   ) : (
-                    <span className="badge bg-amber-100 text-amber-700">
-                      Not paid yet
+                    <span className="badge bg-gray-100 text-gray-600">
+                      Amount pending
                     </span>
                   )}
                 </div>

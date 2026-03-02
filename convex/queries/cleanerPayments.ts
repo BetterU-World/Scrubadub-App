@@ -165,3 +165,110 @@ export const listMyCleanerPayments = query({
     return results;
   },
 });
+
+/**
+ * List unpaid jobs for a company (owner view, for OPEN tab).
+ * Sources from jobs table — shows items even before a cleanerPayments record exists.
+ */
+export const listUnpaidJobsForCompany = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const owner = await assertOwnerRole(ctx, args.userId);
+
+    const jobs = await ctx.db
+      .query("jobs")
+      .withIndex("by_companyId_status", (q) => q.eq("companyId", owner.companyId))
+      .collect();
+
+    const results = [];
+    for (const job of jobs) {
+      // Skip cancelled/denied or unassigned jobs
+      if (job.status === "cancelled" || job.status === "denied") continue;
+      if (job.cleanerIds.length === 0) continue;
+
+      // Skip already-paid jobs
+      if (job.cleanerPaymentId) {
+        const payment = await ctx.db.get(job.cleanerPaymentId);
+        if (payment && payment.status === "PAID") continue;
+      }
+
+      const cleaner = await ctx.db.get(job.cleanerIds[0]);
+      const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
+      const propName =
+        property?.name ??
+        (job as any).propertySnapshot?.name ??
+        "Job";
+
+      results.push({
+        _id: job._id,
+        jobId: job._id,
+        status: job.status,
+        cleanerUserId: job.cleanerIds[0],
+        cleanerName: cleaner?.name ?? "Unknown",
+        cleanerStripeAccountId: cleaner?.stripeConnectAccountId ?? null,
+        jobLabel: `${propName} — ${job.scheduledDate}`,
+        plannedPayCents: job.plannedCleanerPayCents ?? null,
+        scheduledDate: job.scheduledDate,
+        isEligible: ["submitted", "approved"].includes(job.status),
+      });
+    }
+
+    results.sort((a, b) => b.scheduledDate.localeCompare(a.scheduledDate));
+    return results;
+  },
+});
+
+/**
+ * List all jobs for a cleaner with their payment status (cleaner view).
+ * Combines job data with cleanerPayment records.
+ */
+export const listCleanerJobsWithPaymentStatus = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const user = await getSessionUser(ctx, args.userId);
+
+    const jobs = await ctx.db
+      .query("jobs")
+      .withIndex("by_companyId_status", (q) => q.eq("companyId", user.companyId))
+      .collect();
+
+    const results = [];
+    for (const job of jobs) {
+      if (!job.cleanerIds.includes(args.userId)) continue;
+      if (job.status === "cancelled" || job.status === "denied") continue;
+
+      // Look up payment record if exists
+      let payment = null;
+      if (job.cleanerPaymentId) {
+        payment = await ctx.db.get(job.cleanerPaymentId);
+      }
+
+      const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
+      const propName =
+        property?.name ??
+        (job as any).propertySnapshot?.name ??
+        "Job";
+
+      results.push({
+        _id: job._id,
+        jobId: job._id,
+        jobLabel: `${propName} — ${job.scheduledDate}`,
+        scheduledDate: job.scheduledDate,
+        status: job.status,
+        plannedPayCents: job.plannedCleanerPayCents ?? null,
+        paymentStatus: payment?.status ?? null,
+        amountCents: payment?.amountCents ?? null,
+        method: payment?.method ?? null,
+        paidAt: payment?.paidAt ?? null,
+      });
+    }
+
+    // Paid last, then by date descending
+    results.sort((a, b) => {
+      if (a.paymentStatus === "PAID" && b.paymentStatus !== "PAID") return 1;
+      if (a.paymentStatus !== "PAID" && b.paymentStatus === "PAID") return -1;
+      return b.scheduledDate.localeCompare(a.scheduledDate);
+    });
+    return results;
+  },
+});
