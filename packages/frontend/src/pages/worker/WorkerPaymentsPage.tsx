@@ -32,9 +32,12 @@ export function WorkerPaymentsPage() {
         <div className="space-y-3">
           {jobs.map((j) => {
             const isPaid = j.paymentStatus === "PAID";
+            const isBatch = (j as any).isBatchPayment === true;
             const displayAmount = isPaid
               ? j.amountCents
               : j.plannedPayCents;
+            // Legacy batch: paid in batch but no per-job amount stored
+            const isLegacyBatch = isPaid && isBatch && j.amountCents == null;
 
             return (
               <div
@@ -80,15 +83,23 @@ export function WorkerPaymentsPage() {
                           </span>
                         </>
                       )}
+                      {isBatch && (
+                        <>
+                          <span>&middot;</span>
+                          <span className="text-xs text-gray-400">Paid in batch</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <span className="font-semibold text-gray-900">
-                    {displayAmount != null
-                      ? `$${(displayAmount / 100).toFixed(2)}`
-                      : "—"}
+                    {isLegacyBatch
+                      ? "—"
+                      : displayAmount != null
+                        ? `$${(displayAmount / 100).toFixed(2)}`
+                        : "—"}
                   </span>
                   {isPaid ? (
                     <span className="badge bg-green-100 text-green-700">

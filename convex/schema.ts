@@ -602,6 +602,7 @@ export default defineSchema({
   cleanerPaymentJobs: defineTable({
     cleanerPaymentId: v.id("cleanerPayments"),
     jobId: v.id("jobs"),
+    amountCents: v.optional(v.number()), // per-job line item amount at time of batch
   })
     .index("by_cleanerPaymentId", ["cleanerPaymentId"])
     .index("by_jobId", ["jobId"]),
