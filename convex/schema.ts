@@ -578,8 +578,8 @@ export default defineSchema({
     companyId: v.id("companies"),
     jobId: v.id("jobs"),
     cleanerUserId: v.id("users"),
-    amountCents: v.number(),
-    method: v.union(v.literal("in_app"), v.literal("outside_app")),
+    amountCents: v.optional(v.number()),
+    method: v.optional(v.union(v.literal("in_app"), v.literal("outside_app"))),
     status: v.union(
       v.literal("OPEN"),
       v.literal("PAID"),

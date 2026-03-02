@@ -85,11 +85,17 @@ export function WorkerPaymentsPage() {
 
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <span className="font-semibold text-gray-900">
-                    ${(p.amountCents / 100).toFixed(2)}
+                    {p.amountCents != null
+                      ? `$${(p.amountCents / 100).toFixed(2)}`
+                      : "—"}
                   </span>
                   {isPaid ? (
                     <span className="badge bg-green-100 text-green-700">
                       Paid
+                    </span>
+                  ) : p.amountCents == null ? (
+                    <span className="badge bg-gray-100 text-gray-600">
+                      Amount pending
                     </span>
                   ) : (
                     <span className="badge bg-amber-100 text-amber-700">
