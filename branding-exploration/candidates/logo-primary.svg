@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 512" width="1080" height="512">
+  <!--
+    SCRUB Primary Logo — Symbol + Wordmark (Horizontal Lockup)
+
+    Layout:
+      [S mark 512×512] — 48px gap — [SCRUB wordmark]
+      Total width: 1080  |  Height: 512
+
+    Typography:
+      Sans-serif font stack starting with Inter. Letterforms are set
+      in all-caps at 600 weight with generous letter-spacing (+0.06em)
+      for a modern SaaS feel reminiscent of Linear / Vercel branding.
+
+    Colors:
+      Mark container: #22C55E
+      S glyph:        #FFFFFF
+      Wordmark:       #0F172A (Neutral Dark)
+  -->
+
+  <!-- S mark -->
+  <rect width="512" height="512" rx="112" fill="#22C55E"/>
+  <path
+    d="M 320,112 C 432,112 420,240 256,256 C 92,272 80,400 192,400"
+    fill="none"
+    stroke="#FFFFFF"
+    stroke-width="64"
+    stroke-linecap="round"
+  />
+
+  <!-- Wordmark -->
+  <text
+    x="600"
+    y="310"
+    font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif"
+    font-size="200"
+    font-weight="600"
+    letter-spacing="0.06em"
+    fill="#0F172A"
+  >SCRUB</text>
+</svg>

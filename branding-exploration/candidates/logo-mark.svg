@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!--
+    SCRUB Logo Mark — Geometric Abstract "S"
+
+    Geometry:
+      A single cubic-bezier S-curve centered in a rounded super-ellipse
+      container. The path is rotationally symmetric about the center point
+      (256, 256), giving the mark visual stability at any orientation.
+
+      Two mirrored cubic bezier arcs produce a thick, confident S with
+      round endcaps. The stroke weight is tuned for legibility at 16×16
+      favicon size while remaining elegant at display scale.
+
+    Colors:
+      Container: #22C55E (Primary Green)
+      S glyph:   #FFFFFF (White)
+  -->
+
+  <!-- Rounded square container -->
+  <rect width="512" height="512" rx="112" fill="#22C55E"/>
+
+  <!-- Abstract S — rotationally symmetric cubic bezier path -->
+  <path
+    d="M 320,112 C 432,112 420,240 256,256 C 92,272 80,400 192,400"
+    fill="none"
+    stroke="#FFFFFF"
+    stroke-width="64"
+    stroke-linecap="round"
+  />
+</svg>

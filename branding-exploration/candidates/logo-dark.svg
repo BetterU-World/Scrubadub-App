@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 512" width="1080" height="512">
+  <!--
+    SCRUB Logo — Dark Variant (for light backgrounds)
+
+    Full dark treatment for use on white or light surfaces.
+    The mark container uses Deep Green for a richer, more grounded
+    presence, while the wordmark uses Neutral Dark for contrast.
+
+    Colors:
+      Mark container: #15803D (Deep Green)
+      S glyph:        #FFFFFF (White)
+      Wordmark:       #0F172A (Neutral Dark)
+  -->
+
+  <!-- Deep green rounded square container -->
+  <rect width="512" height="512" rx="112" fill="#15803D"/>
+
+  <!-- White S glyph -->
+  <path
+    d="M 320,112 C 432,112 420,240 256,256 C 92,272 80,400 192,400"
+    fill="none"
+    stroke="#FFFFFF"
+    stroke-width="64"
+    stroke-linecap="round"
+  />
+
+  <!-- Dark wordmark for light backgrounds -->
+  <text
+    x="600"
+    y="310"
+    font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif"
+    font-size="200"
+    font-weight="600"
+    letter-spacing="0.06em"
+    fill="#0F172A"
+  >SCRUB</text>
+</svg>
