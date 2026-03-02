@@ -162,3 +162,154 @@ export const markSettlementPaidViaStripe = internalMutation({
     console.log("[settlement:webhook] marked paid via Stripe:", args.settlementId);
   },
 });
+
+/**
+ * Batch: create a settlement batch for multiple open settlements to the same partner.
+ * Returns the batch ID so the action can create a Stripe checkout.
+ */
+export const createSettlementBatch = mutation({
+  args: {
+    userId: v.id("users"),
+    settlementIds: v.array(v.id("companySettlements")),
+  },
+  handler: async (ctx, args) => {
+    const owner = await assertOwnerRole(ctx, args.userId);
+
+    if (args.settlementIds.length === 0) throw new Error("No settlements selected");
+
+    let toCompanyId: any = null;
+    let totalAmountCents = 0;
+    let currency = "usd";
+
+    for (const sId of args.settlementIds) {
+      const s = await ctx.db.get(sId);
+      if (!s) throw new Error("Settlement not found");
+      if (s.fromCompanyId !== owner.companyId) throw new Error("Access denied");
+      if (s.status !== "open") throw new Error("One or more settlements is not open");
+      if (!toCompanyId) {
+        toCompanyId = s.toCompanyId;
+        currency = s.currency;
+      } else if (String(toCompanyId) !== String(s.toCompanyId)) {
+        throw new Error("All settlements in a batch must be to the same partner");
+      }
+      totalAmountCents += s.amountCents;
+    }
+
+    const now = Date.now();
+    const batchId = await ctx.db.insert("settlementBatches", {
+      fromCompanyId: owner.companyId,
+      toCompanyId,
+      totalAmountCents,
+      currency,
+      status: "OPEN",
+      createdAt: now,
+      paidByUserId: args.userId,
+    });
+
+    for (const sId of args.settlementIds) {
+      await ctx.db.insert("settlementBatchItems", { batchId, settlementId: sId });
+    }
+
+    return batchId;
+  },
+});
+
+/**
+ * Batch: mark multiple settlements to the same partner as paid outside app.
+ */
+export const markSettlementBatchPaidOutside = mutation({
+  args: {
+    userId: v.id("users"),
+    settlementIds: v.array(v.id("companySettlements")),
+    paidMethod: v.optional(v.string()),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const owner = await assertOwnerRole(ctx, args.userId);
+
+    if (args.settlementIds.length === 0) throw new Error("No settlements selected");
+
+    let toCompanyId: any = null;
+    for (const sId of args.settlementIds) {
+      const s = await ctx.db.get(sId);
+      if (!s) throw new Error("Settlement not found");
+      if (s.fromCompanyId !== owner.companyId) throw new Error("Access denied");
+      if (s.status !== "open") throw new Error("One or more settlements is not open");
+      if (!toCompanyId) toCompanyId = s.toCompanyId;
+      else if (String(toCompanyId) !== String(s.toCompanyId)) {
+        throw new Error("All settlements must be to the same partner");
+      }
+    }
+
+    const now = Date.now();
+    for (const sId of args.settlementIds) {
+      await ctx.db.patch(sId, {
+        status: "paid" as const,
+        paidAt: now,
+        updatedAt: now,
+        paidMethod: args.paidMethod || "outside_app",
+        note: args.note,
+      });
+    }
+
+    return { count: args.settlementIds.length };
+  },
+});
+
+/**
+ * Internal mutation: mark a settlement batch as paid via Stripe (called from webhook).
+ * Idempotently marks the batch + all linked settlements as paid.
+ */
+export const markSettlementBatchPaidViaStripe = internalMutation({
+  args: {
+    batchId: v.id("settlementBatches"),
+    stripeCheckoutSessionId: v.string(),
+    stripePaymentIntentId: v.optional(v.string()),
+    payerUserId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    const batch = await ctx.db.get(args.batchId);
+    if (!batch) {
+      console.warn("[settlementBatch:webhook] batch not found:", args.batchId);
+      return;
+    }
+
+    if (batch.status === "PAID") {
+      console.log("[settlementBatch:webhook] already paid, skipping:", args.batchId);
+      return;
+    }
+
+    const now = Date.now();
+    await ctx.db.patch(args.batchId, {
+      status: "PAID",
+      paidAt: now,
+      paidMethod: "scrubadub_stripe",
+      stripeCheckoutSessionId: args.stripeCheckoutSessionId,
+      stripePaymentIntentId: args.stripePaymentIntentId,
+      paidByUserId: args.payerUserId,
+    });
+
+    // Mark all linked settlements as paid
+    const items = await ctx.db
+      .query("settlementBatchItems")
+      .withIndex("by_batchId", (q) => q.eq("batchId", args.batchId))
+      .collect();
+
+    for (const item of items) {
+      const s = await ctx.db.get(item.settlementId);
+      if (s && s.status === "open") {
+        await ctx.db.patch(item.settlementId, {
+          status: "paid",
+          paidAt: now,
+          updatedAt: now,
+          paidMethod: "scrubadub_stripe",
+          paidByUserId: args.payerUserId,
+          stripeCheckoutSessionId: args.stripeCheckoutSessionId,
+          stripePaymentIntentId: args.stripePaymentIntentId,
+        });
+      }
+    }
+
+    console.log("[settlementBatch:webhook] batch marked paid:", args.batchId, "settlements:", items.length);
+  },
+});

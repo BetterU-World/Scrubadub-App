@@ -107,7 +107,9 @@ export const listCleanerPaymentsForCompany = query({
       results.push({
         _id: p._id,
         jobId: p.jobId,
+        cleanerUserId: p.cleanerUserId,
         cleanerName: cleaner?.name ?? "Unknown",
+        cleanerStripeAccountId: cleaner?.stripeConnectAccountId ?? null,
         amountCents: p.amountCents,
         method: p.method,
         status: p.status,
