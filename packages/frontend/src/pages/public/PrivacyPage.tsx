@@ -12,7 +12,7 @@ export function PrivacyPage() {
         </p>
 
         <p>
-          This Privacy Policy describes how The Scrub App (powered by Scrubadub
+          This Privacy Policy describes how SCRUB (powered by Scrubadub
           Solutions) ("we", "us", "our") collects, uses, and protects your
           information when you use our websites, mobile applications, and related
           services (the "Service").

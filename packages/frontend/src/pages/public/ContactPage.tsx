@@ -8,7 +8,7 @@ export function ContactPage() {
           Contact Us
         </h1>
         <p className="text-sm text-gray-400 mb-8">
-          The Scrub App (powered by Scrubadub Solutions)
+          SCRUB (powered by Scrubadub Solutions)
         </p>
 
         <p>

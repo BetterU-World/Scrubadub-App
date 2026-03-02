@@ -390,7 +390,7 @@ export function CleanerPaymentsPage() {
                       {p.method === "in_app" ? (
                         <>
                           <CreditCard className="w-3 h-3" />
-                          via The Scrub App
+                          via SCRUB
                         </>
                       ) : (
                         "Paid outside app"

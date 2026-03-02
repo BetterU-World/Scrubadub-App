@@ -1,6 +1,6 @@
 # Cleaner Manual
 
-Welcome to The Scrub App (powered by Scrubadub Solutions)! This manual covers everything you need to know about using the app for your day-to-day cleaning work.
+Welcome to SCRUB (powered by Scrubadub Solutions)! This manual covers everything you need to know about using the app for your day-to-day cleaning work.
 
 ---
 
