@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
+import { toFriendlyMessage } from "@/lib/friendlyError";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { CreditCard, Building2, Home } from "lucide-react";
@@ -47,7 +48,8 @@ export function SubscribePage() {
       const url = await createCheckout({ userId: user._id, tier });
       if (url) window.location.href = url;
     } catch (e: any) {
-      alert(e.message ?? "Something went wrong");
+      console.error("Checkout error:", e);
+      alert(toFriendlyMessage(e, "Payment didn\u2019t go through. You weren\u2019t charged."));
     } finally {
       setLoading(null);
     }

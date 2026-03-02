@@ -3,6 +3,7 @@ import { useParams } from "wouter";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { toFriendlyMessage } from "@/lib/friendlyError";
 
 const TIME_WINDOWS = [
   { value: "", label: "No preference" },
@@ -91,10 +92,10 @@ export function PublicRequestPage() {
       <Shell>
         <div className="card text-center py-12">
           <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            Invalid request link
+            This link has expired
           </h2>
           <p className="text-gray-500">
-            This link is no longer valid. Please contact the company directly.
+            Ask your provider to resend a new link.
           </p>
         </div>
       </Shell>
@@ -160,7 +161,7 @@ export function PublicRequestPage() {
       });
       setSubmitted(true);
     } catch (err: any) {
-      setError(err.message || "Something went wrong. Please try again.");
+      setError(toFriendlyMessage(err, "Something went wrong. Please try again."));
     } finally {
       setLoading(false);
     }

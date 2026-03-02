@@ -3,6 +3,7 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
+import { toFriendlyMessage } from "@/lib/friendlyError";
 import { requireUserId } from "@/lib/requireUserId";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
@@ -575,8 +576,9 @@ export function JobDetailPage() {
                               });
                               if (result?.url) window.location.href = result.url;
                             } catch (err: any) {
-                              setToast({ message: err.message ?? "Failed to start payment", type: "error" });
-                              setTimeout(() => setToast(null), 4000);
+                              console.error("Checkout error:", err);
+                              setToast({ message: toFriendlyMessage(err, "Payment didn\u2019t go through. You weren\u2019t charged."), type: "error" });
+                              setTimeout(() => setToast(null), 5000);
                             } finally {
                               setCleanerStripeLoading(false);
                             }
@@ -881,8 +883,9 @@ export function JobDetailPage() {
                         });
                         if (result?.url) window.location.href = result.url;
                       } catch (err: any) {
-                        setToast({ message: err.message ?? "Failed to start payment", type: "error" });
-                        setTimeout(() => setToast(null), 4000);
+                        console.error("Checkout error:", err);
+                        setToast({ message: toFriendlyMessage(err, "Payment didn\u2019t go through. You weren\u2019t charged."), type: "error" });
+                        setTimeout(() => setToast(null), 5000);
                       } finally {
                         setStripePayLoading(false);
                       }
