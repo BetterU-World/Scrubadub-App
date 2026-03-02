@@ -39,11 +39,10 @@ export function ClientPortalPage() {
       <Shell>
         <div className="card text-center py-12">
           <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            Invalid or expired link
+            This link has expired
           </h2>
           <p className="text-gray-500">
-            This portal link is no longer valid. Please contact the company
-            directly.
+            Ask your provider to resend a new link.
           </p>
         </div>
       </Shell>

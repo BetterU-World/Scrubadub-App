@@ -3,6 +3,7 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
+import { toFriendlyMessage } from "@/lib/friendlyError";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { Link } from "wouter";
@@ -147,7 +148,8 @@ export function CleanerPaymentsPage() {
       });
       if (result?.url) window.location.href = result.url;
     } catch (e: any) {
-      setError(e.message ?? "Failed to start batch payment");
+      console.error("Checkout error:", e);
+      setError(toFriendlyMessage(e, "Payment didn\u2019t go through. You weren\u2019t charged."));
     } finally {
       setBatchLoading(null);
     }
@@ -164,7 +166,7 @@ export function CleanerPaymentsPage() {
         totalAmountCents: group.totalCents,
       });
     } catch (e: any) {
-      setError(e.message ?? "Failed to mark batch paid");
+      setError(toFriendlyMessage(e, "Failed to mark batch paid"));
     } finally {
       setBatchLoading(null);
     }
