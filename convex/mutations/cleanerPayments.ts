@@ -24,7 +24,7 @@ export const createCleanerPayment = mutation({
       throw new Error("Job not found or does not belong to your company");
     }
 
-    // Check not already paid
+    // Check not already paid — primary pointer + index cross-check
     if (job.cleanerPaymentId) {
       const existing = await ctx.db.get(job.cleanerPaymentId);
       if (existing && existing.status === "PAID") {
@@ -41,6 +41,26 @@ export const createCleanerPayment = mutation({
           paidByUserId: args.userId,
         });
         return existing._id;
+      }
+    }
+    // Cross-check via index (catches payments not linked via job pointer)
+    const existingByIndex = await ctx.db
+      .query("cleanerPayments")
+      .withIndex("by_jobId", (q) => q.eq("jobId", args.jobId))
+      .filter((q) => q.eq(q.field("status"), "PAID"))
+      .first();
+    if (existingByIndex) {
+      throw new Error("This job already has a completed payment");
+    }
+    // Cross-check via batch join table
+    const batchLink = await ctx.db
+      .query("cleanerPaymentJobs")
+      .withIndex("by_jobId", (q) => q.eq("jobId", args.jobId))
+      .first();
+    if (batchLink) {
+      const linkedPayment = await ctx.db.get(batchLink.cleanerPaymentId);
+      if (linkedPayment && linkedPayment.status === "PAID") {
+        throw new Error("This job already has a completed payment");
       }
     }
 
@@ -90,7 +110,7 @@ export const markCleanerPaidOutside = mutation({
       throw new Error("Job not found or does not belong to your company");
     }
 
-    // Check not already paid
+    // Check not already paid — primary pointer + index cross-check
     if (job.cleanerPaymentId) {
       const existing = await ctx.db.get(job.cleanerPaymentId);
       if (existing && existing.status === "PAID") {
@@ -107,6 +127,26 @@ export const markCleanerPaidOutside = mutation({
           paidByUserId: args.userId,
         });
         return existing._id;
+      }
+    }
+    // Cross-check via index (catches payments not linked via job pointer)
+    const existingByIndex = await ctx.db
+      .query("cleanerPayments")
+      .withIndex("by_jobId", (q) => q.eq("jobId", args.jobId))
+      .filter((q) => q.eq(q.field("status"), "PAID"))
+      .first();
+    if (existingByIndex) {
+      throw new Error("This job already has a completed payment");
+    }
+    // Cross-check via batch join table
+    const batchLink = await ctx.db
+      .query("cleanerPaymentJobs")
+      .withIndex("by_jobId", (q) => q.eq("jobId", args.jobId))
+      .first();
+    if (batchLink) {
+      const linkedPayment = await ctx.db.get(batchLink.cleanerPaymentId);
+      if (linkedPayment && linkedPayment.status === "PAID") {
+        throw new Error("This job already has a completed payment");
       }
     }
 
@@ -211,6 +251,7 @@ export const createCleanerPaymentBatch = mutation({
     // Validate all jobs belong to company, same cleaner, unpaid
     let cleanerId: any = null;
     const toCancel: Array<any> = [];
+    const jobAmounts: Array<{ jobId: typeof args.jobIds[0]; amountCents: number }> = [];
     for (const jobId of args.jobIds) {
       const job = await ctx.db.get(jobId);
       if (!job || job.companyId !== owner.companyId) {
@@ -226,12 +267,34 @@ export const createCleanerPaymentBatch = mutation({
           toCancel.push(existing._id);
         }
       }
+      // Cross-check via index (catches payments not linked via job pointer)
+      const paidByIndex = await ctx.db
+        .query("cleanerPayments")
+        .withIndex("by_jobId", (q) => q.eq("jobId", jobId))
+        .filter((q) => q.eq(q.field("status"), "PAID"))
+        .first();
+      if (paidByIndex) {
+        throw new Error("One or more jobs already have a completed payment");
+      }
+      // Also check via cleanerPaymentJobs join table
+      const batchLink = await ctx.db
+        .query("cleanerPaymentJobs")
+        .withIndex("by_jobId", (q) => q.eq("jobId", jobId))
+        .first();
+      if (batchLink) {
+        const linkedPayment = await ctx.db.get(batchLink.cleanerPaymentId);
+        if (linkedPayment && linkedPayment.status === "PAID") {
+          throw new Error("One or more jobs already have a completed payment");
+        }
+      }
       const jCleaner = job.cleanerIds[0];
       if (!jCleaner) throw new Error("One or more jobs has no assigned cleaner");
       if (!cleanerId) cleanerId = jCleaner;
       else if (String(cleanerId) !== String(jCleaner)) {
         throw new Error("All jobs in a batch must be for the same cleaner");
       }
+      // Track per-job amount from planned pay
+      jobAmounts.push({ jobId, amountCents: job.plannedCleanerPayCents ?? 0 });
     }
     // Cancel auto-created individual records before creating batch
     for (const id of toCancel) {
@@ -250,9 +313,13 @@ export const createCleanerPaymentBatch = mutation({
       paidByUserId: args.userId,
     });
 
-    // Create join entries + link each job
-    for (const jobId of args.jobIds) {
-      await ctx.db.insert("cleanerPaymentJobs", { cleanerPaymentId: paymentId, jobId });
+    // Create join entries with per-job amounts + link each job
+    for (const { jobId, amountCents } of jobAmounts) {
+      await ctx.db.insert("cleanerPaymentJobs", {
+        cleanerPaymentId: paymentId,
+        jobId,
+        amountCents: amountCents > 0 ? amountCents : undefined,
+      });
       await ctx.db.patch(jobId, { cleanerPaymentId: paymentId });
     }
 
@@ -277,6 +344,7 @@ export const markCleanerBatchPaidOutside = mutation({
 
     let cleanerId: any = null;
     const toCancel: Array<any> = [];
+    const jobAmounts: Array<{ jobId: typeof args.jobIds[0]; amountCents: number }> = [];
     for (const jobId of args.jobIds) {
       const job = await ctx.db.get(jobId);
       if (!job || job.companyId !== owner.companyId) {
@@ -291,12 +359,34 @@ export const markCleanerBatchPaidOutside = mutation({
           toCancel.push(existing._id);
         }
       }
+      // Cross-check via index (catches payments not linked via job pointer)
+      const paidByIndex = await ctx.db
+        .query("cleanerPayments")
+        .withIndex("by_jobId", (q) => q.eq("jobId", jobId))
+        .filter((q) => q.eq(q.field("status"), "PAID"))
+        .first();
+      if (paidByIndex) {
+        throw new Error("One or more jobs already paid");
+      }
+      // Also check via cleanerPaymentJobs join table
+      const batchLink = await ctx.db
+        .query("cleanerPaymentJobs")
+        .withIndex("by_jobId", (q) => q.eq("jobId", jobId))
+        .first();
+      if (batchLink) {
+        const linkedPayment = await ctx.db.get(batchLink.cleanerPaymentId);
+        if (linkedPayment && linkedPayment.status === "PAID") {
+          throw new Error("One or more jobs already paid");
+        }
+      }
       const jCleaner = job.cleanerIds[0];
       if (!jCleaner) throw new Error("One or more jobs has no assigned cleaner");
       if (!cleanerId) cleanerId = jCleaner;
       else if (String(cleanerId) !== String(jCleaner)) {
         throw new Error("All jobs must be for the same cleaner");
       }
+      // Track per-job amount from planned pay
+      jobAmounts.push({ jobId, amountCents: job.plannedCleanerPayCents ?? 0 });
     }
     for (const id of toCancel) {
       await ctx.db.patch(id, { status: "CANCELED" });
@@ -315,8 +405,13 @@ export const markCleanerBatchPaidOutside = mutation({
       paidByUserId: args.userId,
     });
 
-    for (const jobId of args.jobIds) {
-      await ctx.db.insert("cleanerPaymentJobs", { cleanerPaymentId: paymentId, jobId });
+    // Create join entries with per-job amounts + link each job
+    for (const { jobId, amountCents } of jobAmounts) {
+      await ctx.db.insert("cleanerPaymentJobs", {
+        cleanerPaymentId: paymentId,
+        jobId,
+        amountCents: amountCents > 0 ? amountCents : undefined,
+      });
       await ctx.db.patch(jobId, { cleanerPaymentId: paymentId });
     }
 

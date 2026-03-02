@@ -23,11 +23,25 @@ export const getCleanerPaymentForJob = query({
 
     const cleaner = await ctx.db.get(cleanerId);
 
-    // Look up existing payment
-    const payment = await ctx.db
+    // Look up existing payment (direct record or via batch join table)
+    let payment = await ctx.db
       .query("cleanerPayments")
       .withIndex("by_jobId", (q) => q.eq("jobId", args.jobId))
       .first();
+
+    // Also check batch join table for payments linked via cleanerPaymentJobs
+    if (!payment || (payment.status !== "PAID")) {
+      const batchLink = await ctx.db
+        .query("cleanerPaymentJobs")
+        .withIndex("by_jobId", (q) => q.eq("jobId", args.jobId))
+        .first();
+      if (batchLink) {
+        const batchPayment = await ctx.db.get(batchLink.cleanerPaymentId);
+        if (batchPayment && batchPayment.status === "PAID") {
+          payment = batchPayment;
+        }
+      }
+    }
 
     return {
       payment: payment ?? null,
@@ -186,10 +200,18 @@ export const listUnpaidJobsForCompany = query({
       if (job.status === "cancelled" || job.status === "denied") continue;
       if (job.cleanerIds.length === 0) continue;
 
-      // Skip already-paid jobs
+      // Skip already-paid jobs (via direct pointer or batch join table)
       if (job.cleanerPaymentId) {
         const payment = await ctx.db.get(job.cleanerPaymentId);
         if (payment && payment.status === "PAID") continue;
+      }
+      const batchLink = await ctx.db
+        .query("cleanerPaymentJobs")
+        .withIndex("by_jobId", (q) => q.eq("jobId", job._id))
+        .first();
+      if (batchLink) {
+        const batchPayment = await ctx.db.get(batchLink.cleanerPaymentId);
+        if (batchPayment && batchPayment.status === "PAID") continue;
       }
 
       const cleaner = await ctx.db.get(job.cleanerIds[0]);
@@ -243,11 +265,31 @@ export const listCleanerJobsWithPaymentStatus = query({
         payment = await ctx.db.get(job.cleanerPaymentId);
       }
 
+      // For batch payments, look up per-job amount from join table
+      let perJobAmountCents: number | null = null;
+      let isBatchPayment = false;
+      if (payment) {
+        const batchLink = await ctx.db
+          .query("cleanerPaymentJobs")
+          .withIndex("by_jobId", (q) => q.eq("jobId", job._id))
+          .first();
+        if (batchLink) {
+          isBatchPayment = true;
+          // Use per-job amount if stored, otherwise fallback to planned pay
+          perJobAmountCents = batchLink.amountCents ?? job.plannedCleanerPayCents ?? null;
+        }
+      }
+
       const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
       const propName =
         property?.name ??
         (job as any).propertySnapshot?.name ??
         "Job";
+
+      // For batch payments, use per-job amount; for single payments, use payment amount
+      const displayAmountCents = isBatchPayment
+        ? perJobAmountCents
+        : (payment?.amountCents ?? null);
 
       results.push({
         _id: job._id,
@@ -257,9 +299,10 @@ export const listCleanerJobsWithPaymentStatus = query({
         status: job.status,
         plannedPayCents: job.plannedCleanerPayCents ?? null,
         paymentStatus: payment?.status ?? null,
-        amountCents: payment?.amountCents ?? null,
+        amountCents: displayAmountCents,
         method: payment?.method ?? null,
         paidAt: payment?.paidAt ?? null,
+        isBatchPayment,
       });
     }
 

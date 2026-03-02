@@ -42,6 +42,7 @@ export function CleanerPaymentsPage() {
   const [tab, setTab] = useState<Tab>("OPEN");
   const [batchLoading, setBatchLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [readyToPayOnly, setReadyToPayOnly] = useState(true);
   // Local edited amounts keyed by job _id (dollars string)
   const [editedAmounts, setEditedAmounts] = useState<Record<string, string>>({});
   const [savingAmounts, setSavingAmounts] = useState<Record<string, boolean>>({});
@@ -170,8 +171,13 @@ export function CleanerPaymentsPage() {
   }
 
   const isLoading = tab === "OPEN" ? unpaidJobs === undefined : paidPayments === undefined;
+  const filteredUnpaid = unpaidJobs
+    ? readyToPayOnly
+      ? (unpaidJobs as OpenItem[]).filter((j) => j.isEligible)
+      : unpaidJobs
+    : undefined;
   const isEmpty = tab === "OPEN"
-    ? unpaidJobs !== undefined && unpaidJobs.length === 0
+    ? filteredUnpaid !== undefined && filteredUnpaid.length === 0
     : paidPayments !== undefined && paidPayments.length === 0;
 
   return (
@@ -199,6 +205,23 @@ export function CleanerPaymentsPage() {
         </nav>
       </div>
 
+      {tab === "OPEN" && (
+        <div className="mb-4 flex items-center gap-2">
+          <label className="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              className="sr-only peer"
+              checked={readyToPayOnly}
+              onChange={(e) => setReadyToPayOnly(e.target.checked)}
+            />
+            <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
+          </label>
+          <span className="text-sm text-gray-600">
+            Show only Ready to Pay
+          </span>
+        </div>
+      )}
+
       {error && (
         <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 text-sm">
           {error}
@@ -214,7 +237,11 @@ export function CleanerPaymentsPage() {
       ) : tab === "OPEN" && unpaidJobs ? (
         /* ── OPEN tab: grouped by cleaner, sourced from jobs ── */
         <div className="space-y-4">
-          {groupByCleaner(unpaidJobs as OpenItem[]).map((group) => {
+          {groupByCleaner(
+            readyToPayOnly
+              ? (unpaidJobs as OpenItem[]).filter((j) => j.isEligible)
+              : (unpaidJobs as OpenItem[])
+          ).map((group) => {
             const payReady = groupIsPayReady(group);
             const allHaveAmounts = group.items.every((item) => {
               const c = getEffectiveCents(item);
