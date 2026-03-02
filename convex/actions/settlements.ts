@@ -7,6 +7,9 @@ import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { getStripeClientOrNull } from "../lib/stripe";
 
+const CHECKOUT_LIMIT = 3;
+const CHECKOUT_WINDOW_MS = 60_000; // 60 seconds
+
 /**
  * Flat platform fee in cents.  Simple constant — no settings UI yet.
  */
@@ -23,6 +26,13 @@ export const createSettlementPayCheckout = action({
     settlementId: v.id("companySettlements"),
   },
   handler: async (ctx, args) => {
+    // Rate limit: 3 checkout creations per 60s per user
+    await ctx.runMutation(internal.rateLimitInternal.enforce, {
+      key: `u:${args.userId}:createSettlementPayCheckout`,
+      limit: CHECKOUT_LIMIT,
+      windowMs: CHECKOUT_WINDOW_MS,
+    });
+
     const stripe = getStripeClientOrNull();
     if (!stripe) throw new Error("Stripe is not configured");
 
@@ -112,6 +122,13 @@ export const createSettlementBatchCheckout = action({
     batchId: v.id("settlementBatches"),
   },
   handler: async (ctx, args) => {
+    // Rate limit: 3 checkout creations per 60s per user
+    await ctx.runMutation(internal.rateLimitInternal.enforce, {
+      key: `u:${args.userId}:createSettlementBatchCheckout`,
+      limit: CHECKOUT_LIMIT,
+      windowMs: CHECKOUT_WINDOW_MS,
+    });
+
     const stripe = getStripeClientOrNull();
     if (!stripe) throw new Error("Stripe is not configured");
 

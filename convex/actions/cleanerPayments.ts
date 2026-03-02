@@ -7,6 +7,9 @@ import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { getStripeClientOrNull } from "../lib/stripe";
 
+const CHECKOUT_LIMIT = 3;
+const CHECKOUT_WINDOW_MS = 60_000; // 60 seconds
+
 const PLATFORM_FEE_CENTS = 200; // $2
 
 /**
@@ -20,6 +23,13 @@ export const createCleanerPaymentCheckout = action({
     cleanerPaymentId: v.id("cleanerPayments"),
   },
   handler: async (ctx, args) => {
+    // Rate limit: 3 checkout creations per 60s per user
+    await ctx.runMutation(internal.rateLimitInternal.enforce, {
+      key: `u:${args.userId}:createCleanerPaymentCheckout`,
+      limit: CHECKOUT_LIMIT,
+      windowMs: CHECKOUT_WINDOW_MS,
+    });
+
     const stripe = getStripeClientOrNull();
     if (!stripe) throw new Error("Stripe is not configured");
 

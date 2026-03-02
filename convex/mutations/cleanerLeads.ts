@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwner } from "../lib/helpers";
+import { checkRateLimit } from "../lib/rateLimit";
 
 /**
  * Public mutation – called by external visitors via a company's mini-site
@@ -21,6 +22,13 @@ export const createCleanerLeadBySlug = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Rate limit: 3 public form submissions per 10 min per email
+    await checkRateLimit(ctx, {
+      key: `e:${args.email.trim().toLowerCase()}:createCleanerLead`,
+      limit: 3,
+      windowMs: 600_000,
+    });
+
     const normalizedSlug = args.slug.trim().toLowerCase();
 
     // Resolve company from slug via companySites

@@ -1,6 +1,7 @@
 import { mutation, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { assertOwnerRole } from "../lib/auth";
+import { checkRateLimit } from "../lib/rateLimit";
 
 /**
  * Create a cleaner payment record with status OPEN (for Stripe checkout flow).
@@ -99,6 +100,13 @@ export const markCleanerPaidOutside = mutation({
     amountCents: v.number(),
   },
   handler: async (ctx, args) => {
+    // Rate limit: 10 mark-paid-outside per 60s per user
+    await checkRateLimit(ctx, {
+      key: `u:${args.userId}:markCleanerPaidOutside`,
+      limit: 10,
+      windowMs: 60_000,
+    });
+
     const owner = await assertOwnerRole(ctx, args.userId);
 
     if (args.amountCents < 100) {
@@ -243,6 +251,13 @@ export const createCleanerPaymentBatch = mutation({
     totalAmountCents: v.number(),
   },
   handler: async (ctx, args) => {
+    // Rate limit: 2 batch pay creations per 60s per user
+    await checkRateLimit(ctx, {
+      key: `u:${args.userId}:createCleanerPaymentBatch`,
+      limit: 2,
+      windowMs: 60_000,
+    });
+
     const owner = await assertOwnerRole(ctx, args.userId);
 
     if (args.jobIds.length === 0) throw new Error("No jobs selected");
@@ -337,6 +352,13 @@ export const markCleanerBatchPaidOutside = mutation({
     totalAmountCents: v.number(),
   },
   handler: async (ctx, args) => {
+    // Rate limit: 10 mark-paid-outside per 60s per user
+    await checkRateLimit(ctx, {
+      key: `u:${args.userId}:markCleanerBatchPaidOutside`,
+      limit: 10,
+      windowMs: 60_000,
+    });
+
     const owner = await assertOwnerRole(ctx, args.userId);
 
     if (args.jobIds.length === 0) throw new Error("No jobs selected");
