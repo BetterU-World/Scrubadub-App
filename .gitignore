@@ -4,3 +4,7 @@ dist/
 .env.local
 .DS_Store
 *.log
+
+# local backups
+packages/frontend/.env.local.BACKUP
+packages/frontend/NUL
