@@ -664,4 +664,11 @@ export default defineSchema({
   })
     .index("by_batchId", ["batchId"])
     .index("by_settlementId", ["settlementId"]),
+
+  // ── Rate Limits (server-side sliding window) ──────────────────────
+  rateLimits: defineTable({
+    key: v.string(),
+    windowStartMs: v.number(),
+    count: v.number(),
+  }).index("by_key", ["key"]),
 });

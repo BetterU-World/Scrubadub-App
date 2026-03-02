@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwner, requireAuth } from "../lib/helpers";
+import { checkRateLimit } from "../lib/rateLimit";
 
 /**
  * Public mutation – called by external visitors via a company's public
@@ -30,6 +31,18 @@ export const createClientRequestByToken = mutation({
     clientNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Rate limit: 3 public form submissions per 10 min per token/email
+    await checkRateLimit(ctx, {
+      key: `t:${args.token}:createClientRequest`,
+      limit: 3,
+      windowMs: 600_000,
+    });
+    await checkRateLimit(ctx, {
+      key: `e:${args.requesterEmail.trim().toLowerCase()}:createClientRequest`,
+      limit: 3,
+      windowMs: 600_000,
+    });
+
     // Resolve company from token – never trust a client-supplied companyId
     const company = await ctx.db
       .query("companies")
@@ -364,6 +377,13 @@ export const submitClientFeedbackByToken = mutation({
     contactEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    // Rate limit: 3 public form submissions per 10 min per token
+    await checkRateLimit(ctx, {
+      key: `t:${args.token}:submitClientFeedback`,
+      limit: 3,
+      windowMs: 600_000,
+    });
+
     const request = await ctx.db
       .query("clientRequests")
       .withIndex("by_portalToken", (q) => q.eq("portalToken", args.token))
