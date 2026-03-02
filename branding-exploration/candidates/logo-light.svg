@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 512" width="1080" height="512">
+  <!--
+    SCRUB Logo — Light Variant (for dark backgrounds)
+
+    Both the mark and wordmark render in white so the logo remains
+    legible on dark surfaces (#0F172A, dark gradients, image overlays).
+
+    The mark container switches to a subtle white-on-dark outline
+    style with a semi-transparent white fill to preserve depth
+    without competing with the background.
+
+    Colors:
+      Mark container:  #FFFFFF (White)
+      S glyph stroke:  #22C55E (Primary Green, preserved for brand recognition)
+      Wordmark:        #FFFFFF (White)
+  -->
+
+  <!-- White rounded square container -->
+  <rect width="512" height="512" rx="112" fill="#FFFFFF"/>
+
+  <!-- S glyph in primary green — keeps brand color anchor -->
+  <path
+    d="M 320,112 C 432,112 420,240 256,256 C 92,272 80,400 192,400"
+    fill="none"
+    stroke="#22C55E"
+    stroke-width="64"
+    stroke-linecap="round"
+  />
+
+  <!-- White wordmark for dark backgrounds -->
+  <text
+    x="600"
+    y="310"
+    font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif"
+    font-size="200"
+    font-weight="600"
+    letter-spacing="0.06em"
+    fill="#FFFFFF"
+  >SCRUB</text>
+</svg>
