@@ -112,7 +112,7 @@ export function LandingPage() {
       <nav className="bg-white border-b border-gray-200">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
           <span className="flex items-center gap-2">
-            <img src="/scrubadub.svg" alt="SCRUB" className="w-7 h-7" />
+            <img src="/favicon-96x96.png" alt="SCRUB" className="w-7 h-7" />
             <span className="text-xl font-bold text-primary-700">SCRUB</span>
           </span>
           <div className="flex items-center gap-3">
