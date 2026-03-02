@@ -1,6 +1,7 @@
 import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { assertOwnerRole } from "../lib/auth";
+import { withPerfLog } from "../lib/perfLog";
 
 /**
  * List settlements for the current owner's company.
@@ -15,6 +16,7 @@ export const listMySettlements = query({
     ),
   },
   handler: async (ctx, args) => {
+    return await withPerfLog(ctx, "settlements:list", async () => {
     const owner = await assertOwnerRole(ctx, args.userId);
     const companyId = owner.companyId;
     const role = args.role ?? "all";
@@ -121,6 +123,7 @@ export const listMySettlements = query({
     // Sort by createdAt descending
     results.sort((a, b) => b.createdAt - a.createdAt);
     return results;
+    });
   },
 });
 

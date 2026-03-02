@@ -1,6 +1,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { assertCompanyAccess, getSessionUser } from "../lib/auth";
+import { withPerfLog } from "../lib/perfLog";
 
 export const listByCompany = query({
   args: {
@@ -9,36 +10,38 @@ export const listByCompany = query({
     status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await assertCompanyAccess(ctx, args.userId, args.companyId);
+    return await withPerfLog(ctx, "redFlags:listByCompany", async () => {
+      await assertCompanyAccess(ctx, args.userId, args.companyId);
 
-    let flags;
-    if (args.status) {
-      flags = await ctx.db
-        .query("redFlags")
-        .withIndex("by_companyId_status", (q) =>
-          q.eq("companyId", args.companyId).eq("status", args.status as any)
-        )
-        .collect();
-    } else {
-      flags = await ctx.db
-        .query("redFlags")
-        .withIndex("by_companyId_status", (q) =>
-          q.eq("companyId", args.companyId)
-        )
-        .collect();
-    }
+      let flags;
+      if (args.status) {
+        flags = await ctx.db
+          .query("redFlags")
+          .withIndex("by_companyId_status", (q) =>
+            q.eq("companyId", args.companyId).eq("status", args.status as any)
+          )
+          .collect();
+      } else {
+        flags = await ctx.db
+          .query("redFlags")
+          .withIndex("by_companyId_status", (q) =>
+            q.eq("companyId", args.companyId)
+          )
+          .collect();
+      }
 
-    return Promise.all(
-      flags.map(async (flag) => {
-        const property = await ctx.db.get(flag.propertyId);
-        const job = await ctx.db.get(flag.jobId);
-        return {
-          ...flag,
-          propertyName: property?.name ?? "Unknown",
-          jobDate: job?.scheduledDate ?? "Unknown",
-        };
-      })
-    );
+      return Promise.all(
+        flags.map(async (flag) => {
+          const property = await ctx.db.get(flag.propertyId);
+          const job = await ctx.db.get(flag.jobId);
+          return {
+            ...flag,
+            propertyName: property?.name ?? "Unknown",
+            jobDate: job?.scheduledDate ?? "Unknown",
+          };
+        })
+      );
+    });
   },
 });
 
