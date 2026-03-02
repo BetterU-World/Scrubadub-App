@@ -187,3 +187,34 @@ export const getSettlementForPayment = internalQuery({
     };
   },
 });
+
+/**
+ * Internal query: fetch settlement batch + recipient data for the batch checkout action.
+ */
+export const getSettlementBatchForPayment = internalQuery({
+  args: { batchId: v.id("settlementBatches") },
+  handler: async (ctx, args) => {
+    const batch = await ctx.db.get(args.batchId);
+    if (!batch) return null;
+
+    const toCompany = await ctx.db.get(batch.toCompanyId);
+    if (!toCompany) return null;
+
+    const items = await ctx.db
+      .query("settlementBatchItems")
+      .withIndex("by_batchId", (q) => q.eq("batchId", args.batchId))
+      .collect();
+
+    return {
+      _id: batch._id,
+      fromCompanyId: batch.fromCompanyId,
+      toCompanyId: batch.toCompanyId,
+      totalAmountCents: batch.totalAmountCents,
+      currency: batch.currency,
+      status: batch.status,
+      recipientCompanyName: toCompany.name,
+      recipientStripeAccountId: toCompany.stripeConnectAccountId ?? null,
+      settlementCount: items.length,
+    };
+  },
+});

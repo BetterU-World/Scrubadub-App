@@ -596,6 +596,14 @@ export default defineSchema({
     .index("by_companyId", ["companyId"])
     .index("by_cleanerUserId", ["cleanerUserId"]),
 
+  // ── Cleaner Payment ↔ Job join table (batch support) ──────────────
+  cleanerPaymentJobs: defineTable({
+    cleanerPaymentId: v.id("cleanerPayments"),
+    jobId: v.id("jobs"),
+  })
+    .index("by_cleanerPaymentId", ["cleanerPaymentId"])
+    .index("by_jobId", ["jobId"]),
+
   // ── Owner↔Owner Settlements (shared job payments) ──────────────────
   companySettlements: defineTable({
     fromCompanyId: v.id("companies"),
@@ -625,4 +633,32 @@ export default defineSchema({
     .index("by_fromCompany_status", ["fromCompanyId", "status"])
     .index("by_toCompany_status", ["toCompanyId", "status"])
     .index("by_originalJobId", ["originalJobId"]),
+
+  // ── Settlement Batches (batch pay multiple settlements to same partner) ──
+  settlementBatches: defineTable({
+    fromCompanyId: v.id("companies"),
+    toCompanyId: v.id("companies"),
+    totalAmountCents: v.number(),
+    currency: v.string(),
+    status: v.union(
+      v.literal("OPEN"),
+      v.literal("PAID"),
+      v.literal("CANCELED")
+    ),
+    createdAt: v.number(),
+    paidAt: v.optional(v.number()),
+    paidByUserId: v.optional(v.id("users")),
+    paidMethod: v.optional(v.string()),
+    stripeCheckoutSessionId: v.optional(v.string()),
+    stripePaymentIntentId: v.optional(v.string()),
+  })
+    .index("by_fromCompanyId", ["fromCompanyId"]),
+
+  // ── Settlement Batch ↔ Settlement join table ──────────────────────
+  settlementBatchItems: defineTable({
+    batchId: v.id("settlementBatches"),
+    settlementId: v.id("companySettlements"),
+  })
+    .index("by_batchId", ["batchId"])
+    .index("by_settlementId", ["settlementId"]),
 });

@@ -102,3 +102,88 @@ export const createSettlementPayCheckout = action({
     return { url: session.url };
   },
 });
+
+/**
+ * Create a Stripe Checkout Session for a batch of settlements to the same partner.
+ */
+export const createSettlementBatchCheckout = action({
+  args: {
+    userId: v.id("users"),
+    batchId: v.id("settlementBatches"),
+  },
+  handler: async (ctx, args) => {
+    const stripe = getStripeClientOrNull();
+    if (!stripe) throw new Error("Stripe is not configured");
+
+    const payer = await ctx.runQuery(
+      internal.queries.companyStripeConnect.getOwnerAndCompany,
+      { userId: args.userId },
+    );
+    if (!payer) throw new Error("Owner or company not found");
+
+    const data = await ctx.runQuery(
+      internal.queries.settlements.getSettlementBatchForPayment,
+      { batchId: args.batchId },
+    );
+    if (!data) throw new Error("Settlement batch not found");
+
+    if (data.fromCompanyId !== payer.companyId) {
+      throw new Error("Only the owing company can pay this batch");
+    }
+
+    if (data.status !== "OPEN") {
+      throw new Error("Batch is not open");
+    }
+
+    if (!data.recipientStripeAccountId) {
+      throw new Error(
+        "Recipient company has not connected Stripe yet.",
+      );
+    }
+
+    const amountCents = data.totalAmountCents;
+    const feeCents = Math.min(PLATFORM_FEE_CENTS, amountCents);
+    const appUrl = process.env.APP_URL ?? "http://localhost:5173";
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      line_items: [
+        {
+          price_data: {
+            currency: data.currency,
+            product_data: {
+              name: `Settlements — ${data.recipientCompanyName}`,
+              description: `Batch payment for ${data.settlementCount} settlement(s)`,
+            },
+            unit_amount: amountCents,
+          },
+          quantity: 1,
+        },
+      ],
+      payment_intent_data: {
+        application_fee_amount: feeCents,
+        transfer_data: {
+          destination: data.recipientStripeAccountId,
+        },
+        metadata: {
+          type: "settlement_batch",
+          batchId: String(args.batchId),
+          payerCompanyId: String(payer.companyId),
+          recipientCompanyId: String(data.toCompanyId),
+          payerUserId: String(args.userId),
+        },
+      },
+      metadata: {
+        type: "settlement_batch",
+        batchId: String(args.batchId),
+        payerCompanyId: String(payer.companyId),
+        recipientCompanyId: String(data.toCompanyId),
+        payerUserId: String(args.userId),
+      },
+      success_url: `${appUrl}/owner/settlements?payment=success`,
+      cancel_url: `${appUrl}/owner/settlements?payment=cancel`,
+    });
+
+    return { url: session.url };
+  },
+});
