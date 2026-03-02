@@ -19,10 +19,11 @@ export function LoadingSpinner({ size = "md", className }: LoadingSpinnerProps) 
   );
 }
 
-export function PageLoader() {
+export function PageLoader({ text = "Scrubbing…" }: { text?: string } = {}) {
   return (
-    <div className="flex items-center justify-center min-h-[50vh]">
+    <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3">
       <LoadingSpinner size="lg" />
+      <p className="text-sm text-gray-400">{text}</p>
     </div>
   );
 }
