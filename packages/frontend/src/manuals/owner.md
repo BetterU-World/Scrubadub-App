@@ -1,6 +1,6 @@
 # Owner Manual
 
-Welcome to The Scrub App (powered by Scrubadub Solutions)! This manual covers everything you need to manage your cleaning business.
+Welcome to SCRUB (powered by Scrubadub Solutions)! This manual covers everything you need to manage your cleaning business.
 
 ---
 
@@ -101,7 +101,7 @@ The **Audit Log** records all significant actions in your account for accountabi
 
 ## Shared Jobs (Owner ↔ Owner)
 
-The Scrub App lets you share jobs with partner owners so you can collaborate on properties across companies.
+SCRUB lets you share jobs with partner owners so you can collaborate on properties across companies.
 
 ### How Sharing Works
 
@@ -111,7 +111,7 @@ The Scrub App lets you share jobs with partner owners so you can collaborate on 
 
 ### Property Snapshot
 
-When you share a job, The Scrub App copies a **read-only snapshot** of the property details (name, address, beds, baths, amenities, and notes) into the shared job. This means:
+When you share a job, SCRUB copies a **read-only snapshot** of the property details (name, address, beds, baths, amenities, and notes) into the shared job. This means:
 
 - Your partner sees only the snapshot — they **cannot** access or browse your property records.
 - No property data leaks between companies. The snapshot is a one-time copy embedded in the shared job.
@@ -151,7 +151,7 @@ Each settlement shows the partner company, associated job, and amount.
 
 You have two options to pay an open settlement:
 
-- **Pay via The Scrub App** — Redirects you to a secure Stripe Checkout page. Once payment completes, the settlement automatically flips to **PAID** (no manual step needed). A receipt link will appear on the paid settlement.
+- **Pay via SCRUB** — Redirects you to a secure Stripe Checkout page. Once payment completes, the settlement automatically flips to **PAID** (no manual step needed). A receipt link will appear on the paid settlement.
 - **Mark Paid** — Record an off-platform payment (Zelle, ACH, Cash, etc.). Enter the payment method and an optional note, then confirm.
 
 ### After Payment
@@ -166,7 +166,7 @@ Once a settlement is paid:
 
 ## Stripe Connect
 
-Stripe Connect lets you receive payments from partners directly through The Scrub App.
+Stripe Connect lets you receive payments from partners directly through SCRUB.
 
 ### Setting Up
 
@@ -177,12 +177,12 @@ Stripe Connect lets you receive payments from partners directly through The Scru
 
 ### Platform Fee
 
-- A flat **$2.00 platform fee** is charged per settlement payment made via The Scrub App.
+- A flat **$2.00 platform fee** is charged per settlement payment made via SCRUB.
 - The fee is capped at the settlement amount (so a $1.50 settlement would incur only a $1.50 fee, not $2.00).
 
 ### Money Flow
 
-When Owner 1 pays a settlement to Owner 2 via The Scrub App:
+When Owner 1 pays a settlement to Owner 2 via SCRUB:
 
 1. Owner 1 pays the full settlement amount at Stripe Checkout.
 2. Owner 2 receives the settlement amount **minus** the $2.00 platform fee.
@@ -213,11 +213,11 @@ Cleaners can mark specific dates as unavailable (for vacations, personal days, e
 
 ## Affiliate Program
 
-The Scrub App includes a built-in affiliate program that lets you earn commission by referring new users.
+SCRUB includes a built-in affiliate program that lets you earn commission by referring new users.
 
 ### Getting Started
 
-Navigate to **Affiliate** in the sidebar to open the Affiliate Portal. When you first visit, a unique referral code is generated for you automatically. Your referral link is displayed on the **Referrals** tab — copy it and share it with anyone who might benefit from The Scrub App.
+Navigate to **Affiliate** in the sidebar to open the Affiliate Portal. When you first visit, a unique referral code is generated for you automatically. Your referral link is displayed on the **Referrals** tab — copy it and share it with anyone who might benefit from SCRUB.
 
 ### What Gets Tracked
 

@@ -12,7 +12,7 @@ export function TermsPage() {
         </p>
 
         <p>
-          These Terms of Service ("Terms") govern your use of The Scrub App
+          These Terms of Service ("Terms") govern your use of SCRUB
           (powered by Scrubadub Solutions) ("we", "us", "our"), including all
           related websites, mobile applications, and services (collectively, the
           "Service"). By creating an account or using the Service you agree to

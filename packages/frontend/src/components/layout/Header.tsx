@@ -18,9 +18,10 @@ export function Header({ onMenuToggle }: HeaderProps) {
         >
           <Menu className="w-5 h-5" />
         </button>
-        <h1 className="text-lg font-bold text-primary-700 md:hidden">
-          The Scrub App
-        </h1>
+        <div className="flex items-center gap-2 md:hidden">
+          <img src="/scrubadub.svg" alt="SCRUB" className="w-6 h-6" />
+          <h1 className="text-lg font-bold text-primary-700">SCRUB</h1>
+        </div>
       </div>
 
       <div className="flex items-center gap-2">

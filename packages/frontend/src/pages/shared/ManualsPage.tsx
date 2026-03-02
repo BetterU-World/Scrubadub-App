@@ -177,7 +177,7 @@ export function ManualsPage() {
         <section>
           <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
             <BookMarked className="w-4 h-4" />
-            Using The Scrub App
+            Using SCRUB
           </h2>
           <div className="space-y-2">
             {user.role === "owner" && (

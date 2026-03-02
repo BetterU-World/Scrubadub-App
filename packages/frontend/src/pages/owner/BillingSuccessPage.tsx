@@ -11,7 +11,7 @@ export function BillingSuccessPage() {
         You're all set!
       </h1>
       <p className="text-gray-500 mb-6">
-        Your subscription is now active. Welcome to The Scrub App!
+        Your subscription is now active. Welcome to SCRUB!
       </p>
       <Link href="/" className="btn-primary">
         Go to Dashboard

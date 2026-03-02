@@ -84,7 +84,7 @@ export function CleanerSettingsPage() {
               </div>
             </div>
             <p className="text-sm text-gray-500 mb-3">
-              Your Stripe account is connected. Your employer can pay you for jobs through The Scrub App.
+              Your Stripe account is connected. Your employer can pay you for jobs through SCRUB.
             </p>
             <button
               onClick={handleConnect}

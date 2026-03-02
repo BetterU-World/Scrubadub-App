@@ -473,7 +473,7 @@ export function JobDetailPage() {
                       Paid on {new Date(payment!.paidAt).toLocaleDateString()}
                       {payment!.method === "in_app" ? (
                         <span className="inline-flex items-center gap-1 ml-1">
-                          <CreditCard className="w-3 h-3" /> via The Scrub App
+                          <CreditCard className="w-3 h-3" /> via SCRUB
                         </span>
                       ) : (
                         <span> — paid outside app</span>
@@ -584,7 +584,7 @@ export function JobDetailPage() {
                           className="btn-primary text-sm flex items-center gap-1"
                         >
                           <CreditCard className="w-4 h-4" />
-                          {cleanerStripeLoading ? "Loading..." : "Pay via The Scrub App"}
+                          {cleanerStripeLoading ? "Loading..." : "Pay via SCRUB"}
                         </button>
                       )}
                       <button
@@ -890,7 +890,7 @@ export function JobDetailPage() {
                     className="btn-primary text-sm flex items-center gap-1"
                   >
                     <CreditCard className="w-4 h-4" />
-                    {stripePayLoading ? "Loading…" : "Pay via The Scrub App"}
+                    {stripePayLoading ? "Loading…" : "Pay via SCRUB"}
                   </button>
                   <button
                     onClick={() => setShowSettlementPay(true)}
