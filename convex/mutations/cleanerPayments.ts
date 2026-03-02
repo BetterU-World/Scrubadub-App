@@ -30,9 +30,17 @@ export const createCleanerPayment = mutation({
       if (existing && existing.status === "PAID") {
         throw new Error("This job already has a completed payment");
       }
-      // If OPEN or CANCELED, allow creating a new one
       if (existing && existing.status === "OPEN") {
-        throw new Error("A payment checkout is already in progress for this job");
+        if (existing.amountCents != null && existing.method != null) {
+          throw new Error("A payment checkout is already in progress for this job");
+        }
+        // Auto-created record — set amount and reuse it
+        await ctx.db.patch(existing._id, {
+          amountCents: args.amountCents,
+          method: "in_app",
+          paidByUserId: args.userId,
+        });
+        return existing._id;
       }
     }
 
@@ -87,6 +95,18 @@ export const markCleanerPaidOutside = mutation({
       const existing = await ctx.db.get(job.cleanerPaymentId);
       if (existing && existing.status === "PAID") {
         throw new Error("This job already has a completed payment");
+      }
+      // Reuse existing OPEN record (auto-created or stale)
+      if (existing && existing.status === "OPEN") {
+        const now = Date.now();
+        await ctx.db.patch(existing._id, {
+          amountCents: args.amountCents,
+          method: "outside_app",
+          status: "PAID",
+          paidAt: now,
+          paidByUserId: args.userId,
+        });
+        return existing._id;
       }
     }
 
@@ -190,6 +210,7 @@ export const createCleanerPaymentBatch = mutation({
 
     // Validate all jobs belong to company, same cleaner, unpaid
     let cleanerId: any = null;
+    const toCancel: Array<any> = [];
     for (const jobId of args.jobIds) {
       const job = await ctx.db.get(jobId);
       if (!job || job.companyId !== owner.companyId) {
@@ -197,8 +218,12 @@ export const createCleanerPaymentBatch = mutation({
       }
       if (job.cleanerPaymentId) {
         const existing = await ctx.db.get(job.cleanerPaymentId);
-        if (existing && (existing.status === "PAID" || existing.status === "OPEN")) {
-          throw new Error("One or more jobs already have a payment");
+        if (existing && existing.status === "PAID") {
+          throw new Error("One or more jobs already have a completed payment");
+        }
+        // Cancel existing OPEN records (auto-created) so we can batch
+        if (existing && existing.status === "OPEN") {
+          toCancel.push(existing._id);
         }
       }
       const jCleaner = job.cleanerIds[0];
@@ -207,6 +232,10 @@ export const createCleanerPaymentBatch = mutation({
       else if (String(cleanerId) !== String(jCleaner)) {
         throw new Error("All jobs in a batch must be for the same cleaner");
       }
+    }
+    // Cancel auto-created individual records before creating batch
+    for (const id of toCancel) {
+      await ctx.db.patch(id, { status: "CANCELED" });
     }
 
     const now = Date.now();
@@ -247,6 +276,7 @@ export const markCleanerBatchPaidOutside = mutation({
     if (args.totalAmountCents < 100) throw new Error("Minimum payment is $1.00");
 
     let cleanerId: any = null;
+    const toCancel: Array<any> = [];
     for (const jobId of args.jobIds) {
       const job = await ctx.db.get(jobId);
       if (!job || job.companyId !== owner.companyId) {
@@ -257,6 +287,9 @@ export const markCleanerBatchPaidOutside = mutation({
         if (existing && existing.status === "PAID") {
           throw new Error("One or more jobs already paid");
         }
+        if (existing && existing.status === "OPEN") {
+          toCancel.push(existing._id);
+        }
       }
       const jCleaner = job.cleanerIds[0];
       if (!jCleaner) throw new Error("One or more jobs has no assigned cleaner");
@@ -264,6 +297,9 @@ export const markCleanerBatchPaidOutside = mutation({
       else if (String(cleanerId) !== String(jCleaner)) {
         throw new Error("All jobs must be for the same cleaner");
       }
+    }
+    for (const id of toCancel) {
+      await ctx.db.patch(id, { status: "CANCELED" });
     }
 
     const now = Date.now();
@@ -285,5 +321,31 @@ export const markCleanerBatchPaidOutside = mutation({
     }
 
     return paymentId;
+  },
+});
+
+/**
+ * Update the amountCents on an OPEN cleaner payment (owner-gated).
+ * Used from the CleanerPayments page to set/edit amounts on auto-created records.
+ */
+export const updateCleanerPaymentAmount = mutation({
+  args: {
+    userId: v.id("users"),
+    cleanerPaymentId: v.id("cleanerPayments"),
+    amountCents: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const owner = await assertOwnerRole(ctx, args.userId);
+
+    if (args.amountCents < 100) {
+      throw new Error("Minimum payment is $1.00");
+    }
+
+    const payment = await ctx.db.get(args.cleanerPaymentId);
+    if (!payment) throw new Error("Payment not found");
+    if (payment.companyId !== owner.companyId) throw new Error("Not your company");
+    if (payment.status !== "OPEN") throw new Error("Can only edit amount on OPEN payments");
+
+    await ctx.db.patch(args.cleanerPaymentId, { amountCents: args.amountCents });
   },
 });

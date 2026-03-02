@@ -520,6 +520,25 @@ export const completeJob = mutation({
       });
     }
 
+    // Auto-create OPEN cleaner payment if none exists (idempotent)
+    const existingPayment = await ctx.db
+      .query("cleanerPayments")
+      .withIndex("by_jobId", (q) => q.eq("jobId", args.jobId))
+      .first();
+    if (!existingPayment) {
+      const cleanerId = job.cleanerIds[0];
+      if (cleanerId) {
+        const paymentId = await ctx.db.insert("cleanerPayments", {
+          companyId: job.companyId,
+          jobId: args.jobId,
+          cleanerUserId: cleanerId,
+          status: "OPEN",
+          createdAt: Date.now(),
+        });
+        await ctx.db.patch(args.jobId, { cleanerPaymentId: paymentId });
+      }
+    }
+
     await logAudit(ctx, {
       companyId: job.companyId,
       userId: user._id,

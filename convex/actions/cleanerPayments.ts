@@ -53,6 +53,9 @@ export const createCleanerPaymentCheckout = action({
     }
 
     const amountCents = data.amountCents;
+    if (!amountCents || amountCents < 100) {
+      throw new Error("Payment amount must be set (min $1.00) before checkout");
+    }
     // Cap fee so we never charge more fee than the payment amount
     const feeCents = Math.min(PLATFORM_FEE_CENTS, amountCents);
 

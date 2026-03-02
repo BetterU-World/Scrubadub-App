@@ -469,14 +469,14 @@ export function JobDetailPage() {
                     </p>
                   )}
                 </div>
-              ) : isOpen ? (
-                /* Checkout in progress */
+              ) : isOpen && payment!.amountCents != null ? (
+                /* Checkout in progress (has amount set) */
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-gray-500">Payment to {cleanerName}</p>
                       <p className="text-xl font-bold text-gray-900">
-                        ${(payment!.amountCents / 100).toFixed(2)}
+                        ${(payment!.amountCents! / 100).toFixed(2)}
                       </p>
                     </div>
                     <span className="badge bg-amber-100 text-amber-700">Checkout Started</span>
