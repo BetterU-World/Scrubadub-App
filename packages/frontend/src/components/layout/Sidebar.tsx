@@ -192,7 +192,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center gap-2">
           <img src="/favicon-96x96.png" alt="SCRUB" className="w-7 h-7" />
-          <h1 className="text-xl font-bold text-primary-700 font-logo tracking-wide">SCRUB</h1>
+          <h1 className="text-2xl font-extrabold text-primary-700 font-logo tracking-[0.06em]">SCRUB</h1>
         </div>
         <p className="text-sm text-gray-500 mt-1">{user?.companyName}</p>
       </div>

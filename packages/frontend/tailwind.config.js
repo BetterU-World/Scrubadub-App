@@ -4,7 +4,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        logo: ['"Space Grotesk"', 'sans-serif'],
+        logo: ['"Manrope"', 'sans-serif'],
       },
       colors: {
         primary: {
