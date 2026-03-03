@@ -6,6 +6,15 @@ export default {
       fontFamily: {
         logo: ['"Manrope"', 'sans-serif'],
       },
+      keyframes: {
+        'page-in': {
+          from: { opacity: '0', transform: 'translateY(4px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
+      },
+      animation: {
+        'page-in': 'page-in 150ms ease-out both',
+      },
       colors: {
         primary: {
           50: "#ecfdf5",
