@@ -1,6 +1,6 @@
 "use node";
 
-import { action } from "./_generated/server";
+import { action, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { generateSecureToken } from "./lib/tokens";
@@ -10,10 +10,10 @@ import { generateSecureToken } from "./lib/tokens";
  * doesn't have one yet.  Safe to re-run — skips companies that
  * already have a token.
  *
- * Run via CLI or dashboard:
+ * Internal only — run via CLI or dashboard:
  *   npx convex run clientPortalActions:backfillPublicRequestTokens
  */
-export const backfillPublicRequestTokens = action({
+export const backfillPublicRequestTokens = internalAction({
   args: {},
   handler: async (ctx) => {
     const companyIds = await ctx.runQuery(

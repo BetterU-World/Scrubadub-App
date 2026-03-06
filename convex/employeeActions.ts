@@ -17,6 +17,15 @@ export const inviteCleaner = action({
     role: v.optional(v.union(v.literal("cleaner"), v.literal("maintenance"))),
   },
   handler: async (ctx, args): Promise<{ token: string; userId: Id<"users"> }> => {
+    // Verify the caller is an active owner of the target company
+    const isOwner: boolean = await ctx.runQuery(
+      internal.clientPortalInternal.verifyOwner,
+      { userId: args.userId, companyId: args.companyId }
+    );
+    if (!isOwner) {
+      throw new Error("Owner access required");
+    }
+
     validateEmail(args.email);
     validateName(args.name);
 
