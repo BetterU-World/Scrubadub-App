@@ -5,8 +5,19 @@ import { v } from "convex/values";
 const SUPERADMIN_EMAILS: string[] = ["dzbfyse@gmail.com"];
 
 export const getCompanySubscription = query({
-  args: { companyId: v.id("companies") },
+  args: { companyId: v.id("companies"), userId: v.optional(v.id("users")) },
   handler: async (ctx, args) => {
+    // Auth: caller must belong to this company
+    if (args.userId) {
+      const caller = await ctx.db.get(args.userId);
+      if (!caller || caller.status === "inactive" || caller.companyId !== args.companyId) {
+        return null;
+      }
+    } else {
+      // No userId provided — deny access
+      return null;
+    }
+
     const company = await ctx.db.get(args.companyId);
     if (!company) return null;
 

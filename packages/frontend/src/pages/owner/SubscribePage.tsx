@@ -28,7 +28,7 @@ export function SubscribePage() {
   const { user } = useAuth();
   const subscription = useQuery(
     api.queries.billing.getCompanySubscription,
-    user?.companyId ? { companyId: user.companyId } : "skip"
+    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
   );
   const createCheckout = useAction(api.actions.billing.createCheckoutSession);
   const createPortal = useAction(
