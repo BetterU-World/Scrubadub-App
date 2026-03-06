@@ -2,7 +2,12 @@
 
 import crypto from "crypto";
 
-const TOKEN_PEPPER = process.env.TOKEN_PEPPER ?? "scrubadub-default-pepper-change-me";
+const TOKEN_PEPPER = process.env.TOKEN_PEPPER;
+if (!TOKEN_PEPPER) {
+  throw new Error(
+    "TOKEN_PEPPER environment variable is required. Set it in your Convex deployment environment variables."
+  );
+}
 
 /** Generate a cryptographically secure random token (hex). Only call from "use node" actions. */
 export function generateSecureToken(bytes = 32): string {
