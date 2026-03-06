@@ -122,7 +122,7 @@ export const signIn = action({
 
 export const requestPasswordReset = action({
   args: { email: v.string() },
-  handler: async (ctx, args): Promise<{ success: boolean; token?: string }> => {
+  handler: async (ctx, args): Promise<{ success: boolean }> => {
     const email = args.email.toLowerCase();
 
     const user = await ctx.runQuery(internal.authInternal.getUserByEmail, {
@@ -143,8 +143,12 @@ export const requestPasswordReset = action({
       resetTokenExpiry: expiry,
     });
 
-    // In production, send token via email. For now, return it.
-    return { success: true, token };
+    // TODO: Send token via email (e.g. Resend, SendGrid, SES).
+    // The raw token must be included in the email reset link, NOT returned to the client.
+    // Reset link format: ${APP_URL}/reset-password/${token}
+    console.log("[auth] Password reset token generated for user (token NOT returned to client)");
+
+    return { success: true };
   },
 });
 
