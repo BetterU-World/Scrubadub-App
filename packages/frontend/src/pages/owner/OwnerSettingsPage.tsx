@@ -5,7 +5,6 @@ import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import {
-  CreditCard,
   Building2,
   Bell,
   ChevronRight,
@@ -32,9 +31,6 @@ export function OwnerSettingsPage() {
   const createAccountLink = useAction(
     api.actions.companyStripeConnect.createCompanyStripeAccountLink,
   );
-  const createTestCheckout = useAction(
-    api.actions.companyStripeConnect.createCompanyStripeTestCheckout,
-  );
 
   const [loading, setLoading] = useState<string | null>(null);
 
@@ -47,21 +43,7 @@ export function OwnerSettingsPage() {
       const result = await createAccountLink({ userId: user._id });
       if (result?.url) window.location.href = result.url;
     } catch {
-      // Fall back to billing page on error
       window.location.href = "/owner/settings/billing";
-    } finally {
-      setLoading(null);
-    }
-  };
-
-  const handleTestCheckout = async () => {
-    if (!user) return;
-    setLoading("test");
-    try {
-      const result = await createTestCheckout({ userId: user._id });
-      if (result?.url) window.location.href = result.url;
-    } catch {
-      // Silently fail — user can retry from billing page
     } finally {
       setLoading(null);
     }
@@ -71,7 +53,10 @@ export function OwnerSettingsPage() {
     <div>
       <PageHeader title="Settings" />
       <div className="max-w-lg space-y-2">
-        {/* ── Stripe Connect card ──────────────────────────── */}
+        {/* ── Billing & Subscription (paying for Scrubadub) ──── */}
+        <BillingSection />
+
+        {/* ── Stripe Connect / Payouts (receiving money) ─────── */}
         {isConnected ? (
           <div className="card">
             <div className="flex items-center gap-3 mb-3">
@@ -80,38 +65,21 @@ export function OwnerSettingsPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-gray-900">
-                  Stripe Connect &mdash; Connected
+                  Payouts &mdash; Connected
                 </p>
                 <p className="text-sm text-gray-500">
-                  This account receives payments for your company.
+                  Your Stripe account receives payments from customers.
                 </p>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={handleManageStripe}
-                disabled={loading !== null}
-                className="btn-secondary text-sm flex items-center gap-1.5"
-              >
-                <ExternalLink className="w-3.5 h-3.5" />
-                {loading === "manage" ? "Opening…" : "Manage Stripe details"}
-              </button>
-              <button
-                onClick={handleTestCheckout}
-                disabled={loading !== null}
-                className="btn-secondary text-sm flex items-center gap-1.5"
-              >
-                <CreditCard className="w-3.5 h-3.5" />
-                {loading === "test" ? "Redirecting…" : "Run $1 test"}
-              </button>
-              <Link
-                href="/owner/settings/billing"
-                className="btn-secondary text-sm flex items-center gap-1.5"
-              >
-                <ChevronRight className="w-3.5 h-3.5" />
-                View billing
-              </Link>
-            </div>
+            <button
+              onClick={handleManageStripe}
+              disabled={loading !== null}
+              className="btn-secondary text-sm flex items-center gap-1.5"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              {loading === "manage" ? "Opening…" : "Manage Payout Account"}
+            </button>
           </div>
         ) : (
           <Link
@@ -123,10 +91,10 @@ export function OwnerSettingsPage() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-medium text-gray-900">
-                Stripe Connect &mdash; Not connected
+                Payouts &mdash; Not connected
               </p>
               <p className="text-sm text-gray-500">
-                Connect Stripe to start receiving payments.
+                Connect Stripe to start receiving payments from customers.
               </p>
             </div>
             <ChevronRight className="w-4 h-4 text-gray-400" />
@@ -166,9 +134,6 @@ export function OwnerSettingsPage() {
           </div>
           <ChevronRight className="w-4 h-4 text-gray-400" />
         </Link>
-
-        {/* ── Billing & Subscription ─────────────────────── */}
-        <BillingSection />
 
         {/* ── Disabled items ───────────────────────────────── */}
         {disabledItems.map((item) => (

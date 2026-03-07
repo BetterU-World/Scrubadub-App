@@ -8,9 +8,22 @@ import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 
+/**
+ * Owner subscription price ID — set via STRIPE_OWNER_PRICE_ID env var
+ * in the Convex dashboard.  Falls back to the legacy cleaning_owner
+ * test-mode ID so existing dev environments keep working.
+ */
+function getOwnerPriceId(): string {
+  return (
+    process.env.STRIPE_OWNER_PRICE_ID ??
+    "price_1T1qhM9bHruUzqYi7qMlyhFq"
+  );
+}
+
+/** @deprecated kept only for backward-compat with webhook price→tier mapping */
 const PRICE_IDS = {
-  cleaning_owner: "price_1T1qhM9bHruUzqYi7qMlyhFq",
-  str_owner: "price_1T1qhu9bHruUZqYiR0lus6To",
+  cleaning_owner: process.env.STRIPE_OWNER_PRICE_ID ?? "price_1T1qhM9bHruUzqYi7qMlyhFq",
+  str_owner: process.env.STRIPE_OWNER_PRICE_ID ?? "price_1T1qhM9bHruUzqYi7qMlyhFq",
 } as const;
 
 function getStripe() {
@@ -56,7 +69,7 @@ export const createCheckoutSession = action({
     const session: any = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
-      line_items: [{ price: PRICE_IDS[args.tier as keyof typeof PRICE_IDS], quantity: 1 }],
+      line_items: [{ price: getOwnerPriceId(), quantity: 1 }],
       subscription_data: {
         trial_period_days: 14,
         metadata: {

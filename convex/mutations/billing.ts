@@ -1,10 +1,22 @@
 import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 
-const PRICE_TO_TIER: Record<string, "cleaning_owner" | "str_owner"> = {
-  price_1T1qhM9bHruUzqYi7qMlyhFq: "cleaning_owner",
-  price_1T1qhu9bHruUZqYiR0lus6To: "str_owner",
-};
+/**
+ * Maps Stripe price IDs → internal tier.
+ * All owner plans now resolve to "cleaning_owner".
+ * The env-driven ID is included at runtime so production price IDs
+ * are always recognised by the webhook handler.
+ */
+function getPriceToTier(): Record<string, "cleaning_owner" | "str_owner"> {
+  const envPrice = process.env.STRIPE_OWNER_PRICE_ID;
+  return {
+    // Legacy hardcoded IDs (safe to keep for historical subscriptions)
+    price_1T1qhM9bHruUzqYi7qMlyhFq: "cleaning_owner",
+    price_1T1qhu9bHruUZqYiR0lus6To: "cleaning_owner",
+    // Env-driven price ID (production)
+    ...(envPrice ? { [envPrice]: "cleaning_owner" as const } : {}),
+  };
+}
 
 const ACTIVE_STATUSES = ["active", "trialing"];
 
@@ -44,7 +56,7 @@ export const syncSubscription = internalMutation({
       return;
     }
 
-    const tier = PRICE_TO_TIER[args.stripePriceId];
+    const tier = getPriceToTier()[args.stripePriceId];
     const isActive = ACTIVE_STATUSES.includes(args.status);
 
     // Track when subscription first becomes inactive

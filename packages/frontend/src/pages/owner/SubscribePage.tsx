@@ -5,24 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toFriendlyMessage } from "@/lib/friendlyError";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
-import { CreditCard, Building2, Home } from "lucide-react";
-
-const PLANS = [
-  {
-    tier: "cleaning_owner" as const,
-    name: "Cleaning Owner",
-    price: "$249",
-    icon: Home,
-    description: "For residential and commercial cleaning businesses",
-  },
-  {
-    tier: "str_owner" as const,
-    name: "STR Owner",
-    price: "$499",
-    icon: Building2,
-    description: "For short-term rental property managers",
-  },
-];
+import { CreditCard } from "lucide-react";
 
 export function SubscribePage() {
   const { user } = useAuth();
@@ -42,10 +25,13 @@ export function SubscribePage() {
     subscription?.subscriptionStatus === "trialing" ||
     subscription?.subscriptionStatus === "active";
 
-  const handleSubscribe = async (tier: "cleaning_owner" | "str_owner") => {
-    setLoading(tier);
+  const handleSubscribe = async () => {
+    setLoading("checkout");
     try {
-      const url = await createCheckout({ userId: user._id, tier });
+      const url = await createCheckout({
+        userId: user._id,
+        tier: "cleaning_owner",
+      });
       if (url) window.location.href = url;
     } catch (e: any) {
       console.error("Checkout error:", e);
@@ -68,8 +54,6 @@ export function SubscribePage() {
   };
 
   if (isActive) {
-    const tierLabel =
-      subscription?.tier === "str_owner" ? "STR Owner" : "Cleaning Owner";
     return (
       <div>
         <PageHeader
@@ -82,7 +66,7 @@ export function SubscribePage() {
               <CreditCard className="w-5 h-5" />
             </div>
             <div>
-              <p className="font-semibold text-gray-900">{tierLabel} Plan</p>
+              <p className="font-semibold text-gray-900">Scrubadub Pro</p>
               <p className="text-sm text-gray-500 capitalize">
                 Status: {subscription?.subscriptionStatus}
               </p>
@@ -103,35 +87,35 @@ export function SubscribePage() {
   return (
     <div>
       <PageHeader
-        title="Choose a Plan"
+        title="Subscribe"
         description="Start your 14-day free trial today"
       />
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl">
-        {PLANS.map((plan) => (
-          <div key={plan.tier} className="card flex flex-col">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 rounded-lg bg-primary-100 text-primary-600">
-                <plan.icon className="w-5 h-5" />
-              </div>
-              <h3 className="font-semibold text-gray-900">{plan.name}</h3>
+      <div className="max-w-md">
+        <div className="card flex flex-col">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 rounded-lg bg-primary-100 text-primary-600">
+              <CreditCard className="w-5 h-5" />
             </div>
-            <p className="text-sm text-gray-500 mb-4">{plan.description}</p>
-            <p className="text-2xl font-bold text-gray-900 mb-1">
-              {plan.price}
-              <span className="text-sm font-normal text-gray-500">/mo</span>
-            </p>
-            <p className="text-xs text-gray-400 mb-4">
-              14-day free trial included
-            </p>
-            <button
-              onClick={() => handleSubscribe(plan.tier)}
-              disabled={loading !== null}
-              className="btn-primary w-full mt-auto"
-            >
-              {loading === plan.tier ? "Redirecting..." : "Start Free Trial"}
-            </button>
+            <h3 className="font-semibold text-gray-900">Scrubadub Pro</h3>
           </div>
-        ))}
+          <p className="text-sm text-gray-500 mb-4">
+            Full access to Scrubadub for your cleaning business.
+          </p>
+          <p className="text-2xl font-bold text-gray-900 mb-1">
+            $249
+            <span className="text-sm font-normal text-gray-500">/mo</span>
+          </p>
+          <p className="text-xs text-gray-400 mb-4">
+            14-day free trial included
+          </p>
+          <button
+            onClick={handleSubscribe}
+            disabled={loading !== null}
+            className="btn-primary w-full mt-auto"
+          >
+            {loading === "checkout" ? "Redirecting..." : "Start Free Trial"}
+          </button>
+        </div>
       </div>
     </div>
   );
