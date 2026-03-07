@@ -1,12 +1,11 @@
 import { useState, FormEvent } from "react";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { CheckCircle } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
 export function PostCheckoutSetupPage() {
-  const [, setLocation] = useLocation();
   const [name, setName] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [password, setPassword] = useState("");
@@ -53,7 +52,7 @@ export function PostCheckoutSetupPage() {
         companyName,
       });
       localStorage.setItem("scrubadub_userId", String(result.userId));
-      setLocation("/");
+      window.location.assign("/");
     } catch (err: any) {
       setError(err.message || "Setup failed. Please try again.");
     } finally {
