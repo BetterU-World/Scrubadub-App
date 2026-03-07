@@ -15,7 +15,7 @@ export async function getSessionUser(
   // Prefer explicit userId when provided (client-side auth)
   if (providedUserId) {
     const user = await ctx.db.get(providedUserId);
-    if (user && user.status !== "inactive") return user;
+    if (user && user.status === "active") return user;
   }
   // Fall back to Convex auth identity (when auth provider is configured)
   const identity = await ctx.auth.getUserIdentity();
@@ -24,7 +24,7 @@ export async function getSessionUser(
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", identity.email!))
       .first();
-    if (user && user.status !== "inactive") return user;
+    if (user && user.status === "active") return user;
   }
   throw new Error("Authentication required");
 }

@@ -3,14 +3,13 @@ import { v } from "convex/values";
 import { requireOwner } from "../lib/helpers";
 import { validateSlug } from "../lib/slugs";
 
-/** Generate a random hex token (no Node crypto required). */
+/** Generate a cryptographically random hex token (Web Crypto API). */
 function generateRandomToken(length = 40): string {
-  const chars = "abcdef0123456789";
-  let token = "";
-  for (let i = 0; i < length; i++) {
-    token += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return token;
+  const bytes = new Uint8Array(Math.ceil(length / 2));
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0"))
+    .join("")
+    .slice(0, length);
 }
 
 /**

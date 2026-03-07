@@ -12,6 +12,12 @@ export const getCleanerStats = query({
   handler: async (ctx, args) => {
     await assertCompanyAccess(ctx, args.userId, args.companyId);
 
+    // Verify the cleaner belongs to the same company
+    const cleaner = await ctx.db.get(args.cleanerId);
+    if (!cleaner || cleaner.companyId !== args.companyId) {
+      throw new Error("Access denied");
+    }
+
     const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
 
