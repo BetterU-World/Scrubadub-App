@@ -3,18 +3,21 @@ import { v } from "convex/values";
 
 /**
  * Maps Stripe price IDs → internal tier.
- * All owner plans now resolve to "cleaning_owner".
- * The env-driven ID is included at runtime so production price IDs
- * are always recognised by the webhook handler.
+ * All owner plans resolve to "cleaning_owner".
+ * Includes the current STRIPE_PRICE_SCRUB_PRO plus legacy IDs
+ * so historical subscriptions are still recognised by webhooks.
  */
 function getPriceToTier(): Record<string, "cleaning_owner" | "str_owner"> {
-  const envPrice = process.env.STRIPE_PRICE_CLEANING_OWNER;
+  const scrubPro = process.env.STRIPE_PRICE_SCRUB_PRO;
+  const legacyCleaning = process.env.STRIPE_PRICE_CLEANING_OWNER;
   return {
-    // Legacy hardcoded IDs (safe to keep for historical subscriptions)
+    // Legacy hardcoded IDs (kept for historical webhook events)
     price_1T1qhM9bHruUzqYi7qMlyhFq: "cleaning_owner",
     price_1T1qhu9bHruUZqYiR0lus6To: "cleaning_owner",
-    // Env-driven price ID (production)
-    ...(envPrice ? { [envPrice]: "cleaning_owner" as const } : {}),
+    // Legacy env-driven price ID (if still set)
+    ...(legacyCleaning ? { [legacyCleaning]: "cleaning_owner" as const } : {}),
+    // Current price ID (production)
+    ...(scrubPro ? { [scrubPro]: "cleaning_owner" as const } : {}),
   };
 }
 
