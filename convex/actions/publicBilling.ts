@@ -15,10 +15,11 @@ import {
 } from "../lib/validation";
 
 function getOwnerPriceId(): string {
-  return (
-    process.env.STRIPE_PRICE_CLEANING_OWNER ??
-    "price_1T1qhM9bHruUzqYi7qMlyhFq"
-  );
+  const priceId = process.env.STRIPE_PRICE_CLEANING_OWNER;
+  if (!priceId) {
+    throw new Error("STRIPE_PRICE_CLEANING_OWNER env var not set");
+  }
+  return priceId;
 }
 
 function getStripe() {
