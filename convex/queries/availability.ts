@@ -35,7 +35,13 @@ export const getCleanerAvailabilityForDate = query({
     date: v.string(),
   },
   handler: async (ctx, args) => {
-    await requireOwner(ctx, args.userId);
+    const owner = await requireOwner(ctx, args.userId);
+
+    // Verify the cleaner belongs to the caller's company
+    const cleaner = await ctx.db.get(args.cleanerId);
+    if (!cleaner || cleaner.companyId !== owner.companyId) {
+      throw new Error("Access denied");
+    }
 
     // Check day-level override first
     const override = await ctx.db

@@ -91,6 +91,7 @@ export const createUser = internalMutation({
       v.literal("pending")
     ),
     inviteToken: v.optional(v.string()),
+    inviteTokenExpiry: v.optional(v.float64()),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("users", args);

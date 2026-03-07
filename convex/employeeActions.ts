@@ -5,7 +5,7 @@ import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { hashPassword } from "./lib/password";
-import { generateSecureToken } from "./lib/tokens";
+import { generateSecureToken, INVITE_TOKEN_EXPIRY_MS } from "./lib/tokens";
 import { validatePassword, validateEmail, validateName } from "./lib/validation";
 
 export const inviteCleaner = action({
@@ -53,6 +53,7 @@ export const inviteCleaner = action({
         role,
         status: "pending",
         inviteToken: token,
+        inviteTokenExpiry: Date.now() + INVITE_TOKEN_EXPIRY_MS,
       }
     );
 
@@ -89,6 +90,9 @@ export const acceptInvite = action({
 
     if (!user) throw new Error("Invalid or expired invite link");
     if (user.status !== "pending") throw new Error("Invite already used");
+    if (user.inviteTokenExpiry && user.inviteTokenExpiry < Date.now()) {
+      throw new Error("Invalid or expired invite link");
+    }
 
     const passwordHash = await hashPassword(args.password);
 
