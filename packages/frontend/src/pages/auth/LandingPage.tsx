@@ -12,40 +12,23 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
-const plans = [
-  {
-    name: "Cleaning Owner",
-    price: "$249",
-    period: "/mo",
-    description: "For cleaning business owners managing teams and properties.",
-    subtitle:
-      "Perfect for cleaning companies managing multiple clients or properties.",
-    features: [
-      "Unlimited properties",
-      "Team scheduling & job tracking",
-      "Quality checklists & photo proof",
-      "Red flag alerts",
-      "Performance analytics",
-    ],
-    ownerType: "cleaning",
-  },
-  {
-    name: "STR Owner / Property Manager",
-    price: "$499",
-    period: "/mo",
-    description: "For short-term rental owners and property managers.",
-    subtitle:
-      "For hosts and property managers who need reliable turnovers and maintenance tracking.",
-    features: [
-      "Everything in Cleaning Owner",
-      "Turnover & move-in/out jobs",
-      "Multi-property calendar",
-      "Maintenance job tracking",
-      "Priority support",
-    ],
-    ownerType: "str",
-  },
-];
+const plan = {
+  name: "Scrubadub Pro",
+  price: "$249",
+  period: "/mo",
+  description:
+    "For cleaning business owners and property managers running real operations.",
+  subtitle:
+    "Everything you need to schedule, track, and manage your cleaning team.",
+  features: [
+    "Unlimited properties",
+    "Team scheduling & job tracking",
+    "Quality checklists & photo proof",
+    "Red flag alerts & maintenance tracking",
+    "Performance analytics",
+    "14-day free trial included",
+  ],
+};
 
 const valueProps = [
   {
@@ -233,36 +216,34 @@ export function LandingPage() {
         <p className="text-center text-sm text-gray-500 mb-8">
           Built for professional operations, not basic scheduling.
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
-          {plans.map((plan) => (
-            <div key={plan.ownerType} className="card flex flex-col">
-              <h3 className="text-lg font-semibold text-gray-900">
-                {plan.name}
-              </h3>
-              <p className="text-sm text-gray-500 mt-1">{plan.description}</p>
-              <div className="mt-4">
-                <span className="text-3xl font-bold text-gray-900">
-                  {plan.price}
-                </span>
-                <span className="text-gray-500">{plan.period}</span>
-              </div>
-              <p className="text-xs text-gray-400 mt-1">{plan.subtitle}</p>
-              <ul className="mt-4 space-y-2 flex-1">
-                {plan.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
-                    <CheckCircle className="w-4 h-4 text-primary-500 mt-0.5 flex-shrink-0" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Link
-                href={`/signup?ownerType=${plan.ownerType}`}
-                className="btn-primary w-full text-center mt-6"
-              >
-                Start Operating Smarter
-              </Link>
+        <div className="max-w-md mx-auto">
+          <div className="card flex flex-col">
+            <h3 className="text-lg font-semibold text-gray-900">
+              {plan.name}
+            </h3>
+            <p className="text-sm text-gray-500 mt-1">{plan.description}</p>
+            <div className="mt-4">
+              <span className="text-3xl font-bold text-gray-900">
+                {plan.price}
+              </span>
+              <span className="text-gray-500">{plan.period}</span>
             </div>
-          ))}
+            <p className="text-xs text-gray-400 mt-1">{plan.subtitle}</p>
+            <ul className="mt-4 space-y-2 flex-1">
+              {plan.features.map((f) => (
+                <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
+                  <CheckCircle className="w-4 h-4 text-primary-500 mt-0.5 flex-shrink-0" />
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <Link
+              href="/signup"
+              className="btn-primary w-full text-center mt-6"
+            >
+              Start Operating Smarter
+            </Link>
+          </div>
         </div>
       </section>
 

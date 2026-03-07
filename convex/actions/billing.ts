@@ -9,21 +9,21 @@ import { internal } from "../_generated/api";
 import { v } from "convex/values";
 
 /**
- * Owner subscription price ID — set via STRIPE_OWNER_PRICE_ID env var
- * in the Convex dashboard.  Falls back to the legacy cleaning_owner
- * test-mode ID so existing dev environments keep working.
+ * Owner subscription price ID — set via STRIPE_PRICE_CLEANING_OWNER env var
+ * in the Convex dashboard.  Falls back to the legacy test-mode ID so
+ * existing dev environments keep working.
  */
 function getOwnerPriceId(): string {
   return (
-    process.env.STRIPE_OWNER_PRICE_ID ??
+    process.env.STRIPE_PRICE_CLEANING_OWNER ??
     "price_1T1qhM9bHruUzqYi7qMlyhFq"
   );
 }
 
-/** @deprecated kept only for backward-compat with webhook price→tier mapping */
+/** @deprecated kept only so the tier arg still compiles; both resolve to same price */
 const PRICE_IDS = {
-  cleaning_owner: process.env.STRIPE_OWNER_PRICE_ID ?? "price_1T1qhM9bHruUzqYi7qMlyhFq",
-  str_owner: process.env.STRIPE_OWNER_PRICE_ID ?? "price_1T1qhM9bHruUzqYi7qMlyhFq",
+  cleaning_owner: process.env.STRIPE_PRICE_CLEANING_OWNER ?? "price_1T1qhM9bHruUzqYi7qMlyhFq",
+  str_owner: process.env.STRIPE_PRICE_CLEANING_OWNER ?? "price_1T1qhM9bHruUzqYi7qMlyhFq",
 } as const;
 
 function getStripe() {
