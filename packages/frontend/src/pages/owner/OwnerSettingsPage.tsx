@@ -14,6 +14,7 @@ import {
   ExternalLink,
   Banknote,
 } from "lucide-react";
+import { BillingSection } from "@/components/settings/BillingSection";
 
 /* ── Disabled "coming soon" items ────────────────────────────── */
 const disabledItems = [
@@ -165,6 +166,9 @@ export function OwnerSettingsPage() {
           </div>
           <ChevronRight className="w-4 h-4 text-gray-400" />
         </Link>
+
+        {/* ── Billing & Subscription ─────────────────────── */}
+        <BillingSection />
 
         {/* ── Disabled items ───────────────────────────────── */}
         {disabledItems.map((item) => (
