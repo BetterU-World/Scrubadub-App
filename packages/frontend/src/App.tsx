@@ -74,6 +74,8 @@ import { ClientPortalPage } from "@/pages/public/ClientPortalPage";
 import { TermsPage } from "@/pages/public/TermsPage";
 import { PrivacyPage } from "@/pages/public/PrivacyPage";
 import { ContactPage } from "@/pages/public/ContactPage";
+import { GetStartedPage } from "@/pages/public/GetStartedPage";
+import { PostCheckoutSetupPage } from "@/pages/public/PostCheckoutSetupPage";
 
 import { Footer } from "@/components/layout/Footer";
 
@@ -181,7 +183,7 @@ export default function App() {
     "/jobs", "/calendar", "/red-flags", "/performance", "/analytics",
     "/partners", "/requests", "/feedback", "/cleaner-leads", "/audit-log", "/notifications", "/manuals",
     "/admin", "/site", "/affiliate", "/availability", "/owner", "/settings", "/payments",
-    "/terms", "/privacy", "/contact",
+    "/terms", "/privacy", "/contact", "/get-started", "/setup",
   ];
   const isKnownRoute = pathname === "/" || knownPrefixes.some((p) => pathname.startsWith(p));
   const slugMatch = !isKnownRoute && /^\/[a-z0-9][a-z0-9-]+/.test(pathname);
@@ -217,6 +219,8 @@ export default function App() {
           <Route path="/" component={LandingPage} />
           <Route path="/login" component={LoginPage} />
           <Route path="/signup" component={SignupPage} />
+          <Route path="/get-started" component={GetStartedPage} />
+          <Route path="/setup" component={PostCheckoutSetupPage} />
           <Route path="/forgot-password" component={ForgotPasswordPage} />
           <Route path="/reset-password/:token" component={ResetPasswordPage} />
           <Route path="/invite/:token" component={AcceptInvitePage} />

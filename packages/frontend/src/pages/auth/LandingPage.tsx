@@ -106,10 +106,10 @@ export function LandingPage() {
               Login
             </Link>
             <Link
-              href="/signup"
+              href="/get-started"
               className="btn-primary px-4 py-1.5 text-sm"
             >
-              Sign Up
+              Get Started
             </Link>
           </div>
         </div>
@@ -125,7 +125,7 @@ export function LandingPage() {
           your entire cleaning team from one simple dashboard.
         </p>
         <div className="mt-8 flex justify-center gap-3">
-          <Link href="/signup" className="btn-primary px-6 py-2.5">
+          <Link href="/get-started" className="btn-primary px-6 py-2.5">
             Get Started
           </Link>
           <Link href="/login" className="btn-secondary px-6 py-2.5">
@@ -238,7 +238,7 @@ export function LandingPage() {
               ))}
             </ul>
             <Link
-              href="/signup"
+              href="/get-started"
               className="btn-primary w-full text-center mt-6"
             >
               Start Operating Smarter
@@ -265,8 +265,8 @@ export function LandingPage() {
           Ready to run your operations the Gold Standard way?
         </h2>
         <div className="flex justify-center gap-3">
-          <Link href="/signup" className="btn-primary px-6 py-2.5">
-            Create Your Account
+          <Link href="/get-started" className="btn-primary px-6 py-2.5">
+            Get Started
           </Link>
           <Link href="/login" className="btn-secondary px-6 py-2.5">
             Sign In
