@@ -8,7 +8,7 @@ import { v } from "convex/values";
  * are always recognised by the webhook handler.
  */
 function getPriceToTier(): Record<string, "cleaning_owner" | "str_owner"> {
-  const envPrice = process.env.STRIPE_OWNER_PRICE_ID;
+  const envPrice = process.env.STRIPE_PRICE_CLEANING_OWNER;
   return {
     // Legacy hardcoded IDs (safe to keep for historical subscriptions)
     price_1T1qhM9bHruUzqYi7qMlyhFq: "cleaning_owner",
