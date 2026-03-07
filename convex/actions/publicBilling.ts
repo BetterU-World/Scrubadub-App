@@ -15,9 +15,9 @@ import {
 } from "../lib/validation";
 
 function getOwnerPriceId(): string {
-  const priceId = process.env.STRIPE_PRICE_CLEANING_OWNER;
+  const priceId = process.env.STRIPE_PRICE_SCRUB_PRO;
   if (!priceId) {
-    throw new Error("STRIPE_PRICE_CLEANING_OWNER env var not set");
+    throw new Error("STRIPE_PRICE_SCRUB_PRO env var not set");
   }
   return priceId;
 }
