@@ -79,7 +79,7 @@ export async function sendInviteEmail(
   inviterName?: string
 ): Promise<boolean> {
   const resend = getResendClient();
-  const inviteLink = `${getAppUrl()}/accept-invite/${inviteToken}`;
+  const inviteLink = `${getAppUrl()}/invite/${inviteToken}`;
 
   const invitedBy = inviterName ? ` by ${inviterName}` : "";
 
