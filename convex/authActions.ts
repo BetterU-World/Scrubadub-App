@@ -12,6 +12,7 @@ import {
 } from "./lib/password";
 import { generateSecureToken, hashToken, RESET_TOKEN_EXPIRY_MS } from "./lib/tokens";
 import { validatePassword, validateEmail, validateName } from "./lib/validation";
+import { sendPasswordResetEmail } from "./lib/email";
 
 /**
  * Actions
@@ -143,10 +144,11 @@ export const requestPasswordReset = action({
       resetTokenExpiry: expiry,
     });
 
-    // TODO: Send token via email (e.g. Resend, SendGrid, SES).
-    // The raw token must be included in the email reset link, NOT returned to the client.
-    // Reset link format: ${APP_URL}/reset-password/${token}
-    console.log("[auth] Password reset token generated for user (token NOT returned to client)");
+    // Send the raw token via email (NOT returned to client)
+    const emailSent = await sendPasswordResetEmail(email, token);
+    if (!emailSent) {
+      console.error("[auth] Password reset email failed to send for user, but returning success to prevent enumeration");
+    }
 
     return { success: true };
   },

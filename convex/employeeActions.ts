@@ -7,6 +7,7 @@ import type { Id } from "./_generated/dataModel";
 import { hashPassword } from "./lib/password";
 import { generateSecureToken, INVITE_TOKEN_EXPIRY_MS } from "./lib/tokens";
 import { validatePassword, validateEmail, validateName } from "./lib/validation";
+import { sendInviteEmail } from "./lib/email";
 
 export const inviteCleaner = action({
   args: {
@@ -16,7 +17,7 @@ export const inviteCleaner = action({
     userId: v.id("users"),
     role: v.optional(v.union(v.literal("cleaner"), v.literal("maintenance"))),
   },
-  handler: async (ctx, args): Promise<{ token: string; userId: Id<"users"> }> => {
+  handler: async (ctx, args): Promise<{ token: string; userId: Id<"users">; emailSent: boolean }> => {
     // Verify the caller is an active owner of the target company
     const isOwner: boolean = await ctx.runQuery(
       internal.clientPortalInternal.verifyOwner,
@@ -66,7 +67,13 @@ export const inviteCleaner = action({
       details: `Invited ${email} as ${role}`,
     });
 
-    return { token, userId: newUserId };
+    // Send invite email (non-blocking — invite creation succeeds regardless)
+    const emailSent = await sendInviteEmail(email, token);
+    if (!emailSent) {
+      console.error(`[employee] Invite email failed to send to ${email}, but invite was created successfully`);
+    }
+
+    return { token, userId: newUserId, emailSent };
   },
 });
 
