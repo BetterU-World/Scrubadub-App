@@ -43,17 +43,20 @@ export async function sendPasswordResetEmail(
     const { error } = await resend.emails.send({
       from: getFromEmail(),
       to: email,
-      subject: "Reset your Scrubadub password",
+      subject: "Reset your SCRUB password",
       html: `
-        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-          <h2>Reset your password</h2>
-          <p>We received a request to reset your Scrubadub password. Click the link below to set a new password:</p>
-          <p style="margin: 24px 0;">
-            <a href="${resetLink}" style="background-color: #2563eb; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; display: inline-block;">
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <img src="${getAppUrl()}/favicon-96x96.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
+          </div>
+          <h2 style="text-align: center; color: #111; font-size: 22px; margin: 0 0 16px;">Reset your password</h2>
+          <p style="color: #374151; font-size: 15px; line-height: 1.6;">You requested a password reset for your SCRUB account. Click the button below to set a new password:</p>
+          <p style="text-align: center; margin: 28px 0;">
+            <a href="${resetLink}" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
               Reset Password
             </a>
           </p>
-          <p style="color: #6b7280; font-size: 14px;">This link expires in 1 hour. If you didn't request this, you can safely ignore this email.</p>
+          <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">This link expires in 1 hour. If you did not request this, you can safely ignore this email.</p>
         </div>
       `,
     });
@@ -87,17 +90,20 @@ export async function sendInviteEmail(
     const { error } = await resend.emails.send({
       from: getFromEmail(),
       to: email,
-      subject: "You've been invited to Scrubadub",
+      subject: "You've been invited to SCRUB",
       html: `
-        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-          <h2>You're invited to Scrubadub</h2>
-          <p>You've been invited${invitedBy} to join a team on Scrubadub. Click the link below to set up your account:</p>
-          <p style="margin: 24px 0;">
-            <a href="${inviteLink}" style="background-color: #2563eb; color: #ffffff; padding: 12px 24px; border-radius: 6px; text-decoration: none; display: inline-block;">
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <img src="${getAppUrl()}/favicon-96x96.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
+          </div>
+          <h2 style="text-align: center; color: #111; font-size: 22px; margin: 0 0 16px;">You've been invited to SCRUB</h2>
+          <p style="color: #374151; font-size: 15px; line-height: 1.6;">You've been invited${invitedBy} to join a team on SCRUB. Click the button below to set up your account:</p>
+          <p style="text-align: center; margin: 28px 0;">
+            <a href="${inviteLink}" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
               Accept Invite
             </a>
           </p>
-          <p style="color: #6b7280; font-size: 14px;">This link expires in 72 hours. If you weren't expecting this invite, you can safely ignore this email.</p>
+          <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">This link expires in 72 hours. If you weren't expecting this invite, you can safely ignore this email.</p>
         </div>
       `,
     });
