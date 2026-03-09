@@ -1,4 +1,5 @@
 import { mutation, MutationCtx } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
 import { requireAuth, requireOwner, logAudit, createNotification } from "../lib/helpers";
@@ -194,6 +195,9 @@ export const approve = mutation({
     });
     await ctx.db.patch(form.jobId, { status: "approved", completedAt: Date.now() });
 
+    const approveProperty = job.propertyId ? await ctx.db.get(job.propertyId) : null;
+    const approvePropertyName = approveProperty?.name ?? job.propertySnapshot?.name ?? "a property";
+
     for (const cid of job.cleanerIds) {
       await createNotification(ctx, {
         companyId: form.companyId,
@@ -203,6 +207,15 @@ export const approve = mutation({
         message: `Owner approved cleaning for ${job.scheduledDate}`,
         relatedJobId: form.jobId,
       });
+
+      // Send job approved email to cleaner
+      const cleaner = await ctx.db.get(cid);
+      if (cleaner?.email) {
+        await ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendJobApproved, {
+          email: cleaner.email,
+          propertyName: approvePropertyName,
+        });
+      }
     }
 
     // ── Shared-job completion sync ──
@@ -338,6 +351,10 @@ export const submit = mutation({
     if (job) {
       await ctx.db.patch(form.jobId, { status: "submitted" });
 
+      const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
+      const propName = property?.name ?? job.propertySnapshot?.name ?? "a property";
+      const now = Date.now();
+
       const owners = await ctx.db
         .query("users")
         .withIndex("by_companyId", (q) => q.eq("companyId", form.companyId))
@@ -351,6 +368,16 @@ export const submit = mutation({
           message: `${user.name} submitted cleaning form for ${job.scheduledDate}`,
           relatedJobId: form.jobId,
         });
+
+        // Send job completed email to owner
+        if (owner.email) {
+          await ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendJobCompleted, {
+            email: owner.email,
+            propertyName: propName,
+            cleanerName: user.name,
+            completedAt: now,
+          });
+        }
       }
     }
 
