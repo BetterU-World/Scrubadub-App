@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
+import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
@@ -40,6 +41,7 @@ interface CleanerGroup {
 
 export function CleanerPaymentsPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("OPEN");
   const [batchLoading, setBatchLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -185,23 +187,23 @@ export function CleanerPaymentsPage() {
   return (
     <div>
       <PageHeader
-        title="Cleaner Payments"
-        description="Payments to your cleaners for completed jobs"
+        title={t("payments.cleanerPayments")}
+        description={t("payments.cleanerPaymentsDesc")}
       />
 
       <div className="border-b border-gray-200 mb-6">
         <nav className="-mb-px flex gap-6">
-          {(["OPEN", "PAID"] as Tab[]).map((t) => (
+          {(["OPEN", "PAID"] as Tab[]).map((tabKey) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
+              key={tabKey}
+              onClick={() => setTab(tabKey)}
               className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
-                tab === t
+                tab === tabKey
                   ? "border-blue-600 text-blue-600"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
               }`}
             >
-              {t === "OPEN" ? "Open" : "Paid"}
+              {tabKey === "OPEN" ? t("payments.open") : t("payments.paid")}
             </button>
           ))}
         </nav>
@@ -219,7 +221,7 @@ export function CleanerPaymentsPage() {
             <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
           </label>
           <span className="text-sm text-gray-600">
-            Show only Ready to Pay
+            {t("payments.showReadyToPayOnly")}
           </span>
         </div>
       )}
@@ -234,7 +236,7 @@ export function CleanerPaymentsPage() {
         <PageLoader />
       ) : isEmpty ? (
         <p className="text-sm text-gray-500 py-8 text-center">
-          No {tab === "OPEN" ? "open" : "paid"} cleaner payments.
+          {tab === "OPEN" ? t("payments.noCleanerPaymentsOpen") : t("payments.noCleanerPaymentsPaid")}
         </p>
       ) : tab === "OPEN" && unpaidJobs ? (
         /* ── OPEN tab: grouped by cleaner, sourced from jobs ── */
@@ -257,8 +259,8 @@ export function CleanerPaymentsPage() {
                   <div>
                     <p className="font-semibold text-gray-900">{group.cleanerName}</p>
                     <p className="text-sm text-gray-500">
-                      {group.items.length} unpaid job{group.items.length !== 1 ? "s" : ""} &middot;{" "}
-                      Total: {group.totalCents > 0 ? `$${(group.totalCents / 100).toFixed(2)}` : "—"}
+                      {t("payments.unpaidJobs", { count: group.items.length })} &middot;{" "}
+                      {t("payments.totalOwed", { amount: group.totalCents > 0 ? `$${(group.totalCents / 100).toFixed(2)}` : "—" })}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
@@ -268,15 +270,15 @@ export function CleanerPaymentsPage() {
                         onClick={() => handleBatchStripe(group)}
                         title={
                           !allHaveAmounts
-                            ? "Set amounts for all jobs first"
+                            ? t("payments.setAmountsFirst")
                             : someNotEligible
-                              ? "All jobs must be submitted/approved before paying"
+                              ? t("payments.jobsMustBeApproved")
                               : undefined
                         }
                         className="btn-primary text-sm px-3 py-1.5 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <CreditCard className="w-4 h-4" />
-                        {batchLoading === group.cleanerUserId ? "Loading..." : "Pay All via App"}
+                        {batchLoading === group.cleanerUserId ? t("common.loading") : t("payments.payAllViaApp")}
                       </button>
                     )}
                     <button
@@ -284,15 +286,15 @@ export function CleanerPaymentsPage() {
                       onClick={() => handleBatchOutside(group)}
                       title={
                         !allHaveAmounts
-                          ? "Set amounts for all jobs first"
+                          ? t("payments.setAmountsFirst")
                           : someNotEligible
-                            ? "All jobs must be submitted/approved before paying"
+                            ? t("payments.jobsMustBeApproved")
                             : undefined
                       }
                       className="btn-secondary text-sm px-3 py-1.5 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <CheckCircle className="w-4 h-4" />
-                      {batchLoading === group.cleanerUserId ? "Saving..." : "Mark All Paid Outside"}
+                      {batchLoading === group.cleanerUserId ? t("common.saving") : t("payments.markAllPaidOutside")}
                     </button>
                   </div>
                 </div>
@@ -324,7 +326,7 @@ export function CleanerPaymentsPage() {
                         <div className="flex items-center gap-1.5 flex-shrink-0">
                           {!hasPlannedPay && localVal === undefined && (
                             <span className="text-amber-600 flex items-center gap-1 text-xs mr-1">
-                              <AlertCircle className="w-3 h-3" /> Amount needed
+                              <AlertCircle className="w-3 h-3" /> {t("payments.amountNeeded")}
                             </span>
                           )}
                           <span className="text-gray-500">$</span>
@@ -346,7 +348,7 @@ export function CleanerPaymentsPage() {
                             }}
                             disabled={isSaving}
                           />
-                          {isSaving && <span className="text-xs text-gray-400">saving...</span>}
+                          {isSaving && <span className="text-xs text-gray-400">{t("common.saving")}</span>}
                         </div>
                       </div>
                     );
@@ -384,7 +386,7 @@ export function CleanerPaymentsPage() {
                     {p.paidAt && (
                       <>
                         <span>&middot;</span>
-                        <span>Paid {new Date(p.paidAt).toLocaleDateString()}</span>
+                        <span>{t("payments.paymentDate", { date: new Date(p.paidAt).toLocaleDateString() })}</span>
                       </>
                     )}
                     <span>&middot;</span>
@@ -392,10 +394,10 @@ export function CleanerPaymentsPage() {
                       {p.method === "in_app" ? (
                         <>
                           <CreditCard className="w-3 h-3" />
-                          via SCRUB
+                          {t("payments.viaScrub")}
                         </>
                       ) : (
-                        "Paid outside app"
+                        t("payments.paidOutsideApp")
                       )}
                     </span>
                   </div>
@@ -405,7 +407,7 @@ export function CleanerPaymentsPage() {
                 <span className="font-semibold text-gray-900">
                   ${((p.amountCents ?? 0) / 100).toFixed(2)}
                 </span>
-                <span className="badge bg-green-100 text-green-700">Paid</span>
+                <span className="badge bg-green-100 text-green-700">{t("status.paid")}</span>
               </div>
             </div>
           ))}

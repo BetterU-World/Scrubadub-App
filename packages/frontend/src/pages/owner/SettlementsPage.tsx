@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
+import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
@@ -32,6 +33,7 @@ interface PartnerGroup {
 
 export function SettlementsPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("open");
   const [markingId, setMarkingId] = useState<Id<"companySettlements"> | null>(null);
   const [payingId, setPayingId] = useState<Id<"companySettlements"> | null>(null);
@@ -153,30 +155,30 @@ export function SettlementsPage() {
 
   function formatPaidMethod(method?: string) {
     if (!method) return null;
-    if (method === "scrubadub_stripe") return "Paid via Scrubadub";
+    if (method === "scrubadub_stripe") return t("settlements.paidViaScrubadub");
     return method;
   }
 
   return (
     <div>
       <PageHeader
-        title="Settlements"
-        description="Track payments owed between partner companies"
+        title={t("settlements.title")}
+        description={t("settlements.description")}
       />
 
       <div className="border-b border-gray-200 mb-6">
         <nav className="-mb-px flex gap-6">
-          {(["open", "paid"] as Tab[]).map((t) => (
+          {(["open", "paid"] as Tab[]).map((tabKey) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`pb-3 text-sm font-medium border-b-2 transition-colors capitalize ${
-                tab === t
+              key={tabKey}
+              onClick={() => setTab(tabKey)}
+              className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
+                tab === tabKey
                   ? "border-blue-600 text-blue-600"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
               }`}
             >
-              {t}
+              {tabKey === "open" ? t("settlements.open") : t("settlements.paid")}
             </button>
           ))}
         </nav>
@@ -192,7 +194,7 @@ export function SettlementsPage() {
         <PageLoader />
       ) : settlements.length === 0 ? (
         <p className="text-sm text-gray-500 py-8 text-center">
-          No {tab} settlements.
+          {t("settlements.noSettlements", { tab: tab === "open" ? t("settlements.open").toLowerCase() : t("settlements.paid").toLowerCase() })}
         </p>
       ) : tab === "open" ? (
         /* ── OPEN tab: grouped by partner with batch actions ── */
@@ -205,10 +207,10 @@ export function SettlementsPage() {
                   <div className="flex items-center justify-between mb-3">
                     <div>
                       <p className="font-semibold text-gray-900">
-                        You owe {group.counterpartyName}
+                        {t("settlements.youOwe", { name: group.counterpartyName })}
                       </p>
                       <p className="text-sm text-gray-500">
-                        {group.items.length} settlement{group.items.length !== 1 ? "s" : ""} &middot; Total: ${(group.totalCents / 100).toFixed(2)}
+                        {t("settlements.settlementCount", { count: group.items.length })} &middot; {t("settlements.totalOwed", { amount: `$${(group.totalCents / 100).toFixed(2)}` })}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0 flex-wrap justify-end">
@@ -220,7 +222,7 @@ export function SettlementsPage() {
                             className="btn-primary text-sm px-3 py-1.5 flex items-center gap-1"
                           >
                             <CreditCard className="w-4 h-4" />
-                            {batchLoading === group.toCompanyId ? "Loading..." : "Pay All via App"}
+                            {batchLoading === group.toCompanyId ? t("common.loading") : t("settlements.payAllViaApp")}
                           </button>
                           <button
                             disabled={batchLoading !== null}
@@ -228,7 +230,7 @@ export function SettlementsPage() {
                             className="btn-secondary text-sm px-3 py-1.5 flex items-center gap-1"
                           >
                             <CheckCircle className="w-4 h-4" />
-                            {batchLoading === group.toCompanyId ? "Saving..." : "Mark All Paid Outside"}
+                            {batchLoading === group.toCompanyId ? t("common.saving") : t("settlements.markAllPaidOutside")}
                           </button>
                         </>
                       )}
@@ -256,13 +258,13 @@ export function SettlementsPage() {
                                 className="btn-primary text-xs px-2 py-1 flex items-center gap-1"
                               >
                                 <CreditCard className="w-3 h-3" />
-                                {payingId === item._id ? "..." : "Pay via App"}
+                                {payingId === item._id ? "..." : t("settlements.payViaApp")}
                               </button>
                               <button
                                 onClick={() => setShowPayDialog(item._id)}
                                 className="btn-secondary text-xs px-2 py-1 flex items-center gap-1"
                               >
-                                <CheckCircle className="w-3 h-3" /> Mark Paid
+                                <CheckCircle className="w-3 h-3" /> {t("settlements.markPaid")}
                               </button>
                             </>
                           )}
@@ -281,7 +283,7 @@ export function SettlementsPage() {
                     </div>
                     <div className="min-w-0">
                       <p className="font-medium text-gray-900 truncate">
-                        {s.counterpartyName} owes you
+                        {t("settlements.owesYou", { name: s.counterpartyName })}
                       </p>
                       <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
                         <Link href={`/jobs/${s.viewableJobId}`} className="hover:text-blue-600 flex items-center gap-1">
@@ -304,8 +306,8 @@ export function SettlementsPage() {
           {settlements.map((s) => {
             const isOwing = s.direction === "owing";
             const headline = isOwing
-              ? `Paid to ${s.counterpartyName}`
-              : `Paid by ${s.counterpartyName}`;
+              ? t("settlements.paidTo", { name: s.counterpartyName })
+              : t("settlements.paidBy", { name: s.counterpartyName });
             const methodLabel = formatPaidMethod(s.paidMethod);
 
             return (
@@ -325,7 +327,7 @@ export function SettlementsPage() {
                       {s.paidAt && (
                         <>
                           <span>&middot;</span>
-                          <span>Paid {new Date(s.paidAt).toLocaleDateString()}</span>
+                          <span>{t("settlements.paidDate", { date: new Date(s.paidAt).toLocaleDateString() })}</span>
                         </>
                       )}
                       {methodLabel && (
@@ -341,7 +343,7 @@ export function SettlementsPage() {
                         <>
                           <span>&middot;</span>
                           <a href={s.stripeReceiptUrl} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 flex items-center gap-1">
-                            <Receipt className="w-3 h-3" /> Receipt
+                            <Receipt className="w-3 h-3" /> {t("settlements.receipt")}
                           </a>
                         </>
                       )}
@@ -350,7 +352,7 @@ export function SettlementsPage() {
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <span className="font-semibold text-gray-900">${(s.amountCents / 100).toFixed(2)}</span>
-                  <span className="badge bg-green-100 text-green-700">Paid</span>
+                  <span className="badge bg-green-100 text-green-700">{t("status.paid")}</span>
                 </div>
               </div>
             );
@@ -362,28 +364,28 @@ export function SettlementsPage() {
       {showPayDialog && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm">
-            <h3 className="text-lg font-semibold mb-4">Mark Settlement Paid</h3>
+            <h3 className="text-lg font-semibold mb-4">{t("settlements.markSettlementPaid")}</h3>
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Payment method (optional)
+                  {t("settlements.paymentMethod")}
                 </label>
                 <input
                   type="text"
                   className="input-field"
-                  placeholder="e.g. Zelle, ACH, Cash..."
+                  placeholder={t("settlements.paymentMethodPlaceholder")}
                   value={paidMethod}
                   onChange={(e) => setPaidMethod(e.target.value)}
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Note (optional)
+                  {t("settlements.noteOptional")}
                 </label>
                 <input
                   type="text"
                   className="input-field"
-                  placeholder="Any notes..."
+                  placeholder={t("settlements.notePlaceholder")}
                   value={paidNote}
                   onChange={(e) => setPaidNote(e.target.value)}
                 />
@@ -394,14 +396,14 @@ export function SettlementsPage() {
                 onClick={() => { setShowPayDialog(null); setPaidMethod(""); setPaidNote(""); }}
                 className="btn-secondary"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 disabled={markingId !== null}
                 onClick={() => handleMarkPaid(showPayDialog)}
                 className="btn-primary"
               >
-                {markingId ? "Saving..." : "Confirm Paid"}
+                {markingId ? t("common.saving") : t("settlements.confirmPaid")}
               </button>
             </div>
           </div>
