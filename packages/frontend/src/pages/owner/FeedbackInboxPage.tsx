@@ -13,6 +13,7 @@ import {
   User,
   CheckCircle,
   FileText,
+  Globe,
 } from "lucide-react";
 
 const STATUS_OPTIONS = [
@@ -66,14 +67,32 @@ export function FeedbackInboxPage() {
   const markReviewed = useMutation(
     api.mutations.clientRequests.markFeedbackReviewed
   );
+  const toggleFeatured = useMutation(
+    api.mutations.clientRequests.toggleFeedbackFeaturedOnSite
+  );
 
   const [updating, setUpdating] = useState<Id<"clientFeedback"> | null>(null);
+  const [togglingFeatured, setTogglingFeatured] = useState<Id<"clientFeedback"> | null>(null);
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error";
   } | null>(null);
 
   if (!user || feedback === undefined) return <PageLoader />;
+
+  const handleToggleFeatured = async (feedbackId: Id<"clientFeedback">, currentlyFeatured: boolean) => {
+    setTogglingFeatured(feedbackId);
+    try {
+      await toggleFeatured({ userId: user._id, feedbackId, featured: !currentlyFeatured });
+      setToast({ message: currentlyFeatured ? "Removed from mini site" : "Featured on mini site", type: "success" });
+      setTimeout(() => setToast(null), 3000);
+    } catch (err: any) {
+      setToast({ message: err.message || "Failed to update", type: "error" });
+      setTimeout(() => setToast(null), 3000);
+    } finally {
+      setTogglingFeatured(null);
+    }
+  };
 
   const handleMarkReviewed = async (feedbackId: Id<"clientFeedback">) => {
     setUpdating(feedbackId);
@@ -178,6 +197,22 @@ export function FeedbackInboxPage() {
                   <span className="text-xs text-gray-400 whitespace-nowrap">
                     {timeAgo(fb.createdAt)}
                   </span>
+                  <button
+                    onClick={() => handleToggleFeatured(fb._id, !!(fb as any).featuredOnSite)}
+                    disabled={togglingFeatured === fb._id}
+                    className={`text-xs flex items-center gap-1 px-2 py-1 rounded border transition-colors ${
+                      (fb as any).featuredOnSite
+                        ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                        : "bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100"
+                    }`}
+                  >
+                    <Globe className="w-3.5 h-3.5" />
+                    {togglingFeatured === fb._id
+                      ? "..."
+                      : (fb as any).featuredOnSite
+                        ? "On mini site"
+                        : "Show on site"}
+                  </button>
                   {fb.status === "new" && (
                     <button
                       onClick={() => handleMarkReviewed(fb._id)}

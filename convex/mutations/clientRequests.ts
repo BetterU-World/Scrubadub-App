@@ -438,3 +438,30 @@ export const markFeedbackReviewed = mutation({
     return { ok: true };
   },
 });
+
+/**
+ * Toggle whether a feedback entry is featured on the public mini site.
+ * Owner-only; verifies feedback belongs to caller's company.
+ */
+export const toggleFeedbackFeaturedOnSite = mutation({
+  args: {
+    userId: v.id("users"),
+    feedbackId: v.id("clientFeedback"),
+    featured: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx, args.userId);
+    if (user.role !== "owner") throw new Error("Owner access required");
+
+    const feedback = await ctx.db.get(args.feedbackId);
+    if (!feedback) throw new Error("Feedback not found");
+
+    const request = await ctx.db.get(feedback.clientRequestId);
+    if (!request || request.companyId !== user.companyId) {
+      throw new Error("Access denied");
+    }
+
+    await ctx.db.patch(args.feedbackId, { featuredOnSite: args.featured });
+    return { ok: true };
+  },
+});

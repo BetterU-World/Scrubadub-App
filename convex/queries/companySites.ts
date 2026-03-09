@@ -115,9 +115,9 @@ export const getReviewedFeedbackBySlug = query({
       .order("desc")
       .collect();
 
-    // Filter to this company's requests
+    // Filter to this company's requests AND explicitly featured on site
     const companyFeedback = allFeedback.filter((f) =>
-      requestIds.has(f.clientRequestId)
+      requestIds.has(f.clientRequestId) && f.featuredOnSite === true
     );
 
     const cap = args.limit ?? 6;

@@ -555,6 +555,7 @@ export default defineSchema({
     contactName: v.optional(v.string()),
     contactEmail: v.optional(v.string()),
     status: v.union(v.literal("new"), v.literal("reviewed")),
+    featuredOnSite: v.optional(v.boolean()),
   })
     .index("by_clientRequestId_createdAt", ["clientRequestId", "createdAt"])
     .index("by_status_createdAt", ["status", "createdAt"]),

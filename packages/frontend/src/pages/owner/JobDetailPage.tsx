@@ -121,6 +121,7 @@ export function JobDetailPage() {
   const [cleanerPaySaving, setCleanerPaySaving] = useState(false);
   const [cleanerStripeLoading, setCleanerStripeLoading] = useState(false);
   const [plannedPaySaving, setPlannedPaySaving] = useState(false);
+  const [editingPlannedPay, setEditingPlannedPay] = useState(false);
 
   // Read flash toast from sessionStorage (set by JobFormPage)
   useEffect(() => {
@@ -504,50 +505,84 @@ export function JobDetailPage() {
                   <p className="text-sm text-gray-600">
                     Pay {cleanerName} for this job.
                   </p>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {isEligible ? "Amount ($)" : "Planned Pay ($)"}
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        step="0.01"
-                        min="1"
-                        className="input-field max-w-xs"
-                        placeholder="0.00"
-                        value={cleanerPayAmount}
-                        onChange={(e) => setCleanerPayAmount(e.target.value)}
-                      />
-                      {!isEligible && (
+
+                  {/* Planned pay: saved state (non-eligible, has amount, not editing) */}
+                  {!isEligible && (job as any).plannedCleanerPayCents && !editingPlannedPay ? (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Planned Pay ($)</label>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 max-w-xs">
+                          <DollarSign className="w-4 h-4" />
+                          <span className="font-medium text-gray-700">
+                            {((job as any).plannedCleanerPayCents / 100).toFixed(2)}
+                          </span>
+                        </div>
+                        <span className="text-xs font-medium text-green-600 flex items-center gap-1">
+                          <CheckCircle className="w-3.5 h-3.5" /> Saved
+                        </span>
                         <button
-                          disabled={plannedPaySaving || !cleanerPayAmount || Number(cleanerPayAmount) < 1}
-                          onClick={async () => {
-                            const uid = requireUserId(user);
-                            if (!uid) return;
-                            setPlannedPaySaving(true);
-                            try {
-                              const amountCents = Math.round(Number(cleanerPayAmount) * 100);
-                              await updatePlannedCleanerPay({
-                                userId: uid,
-                                jobId: params.id as Id<"jobs">,
-                                amountCents,
-                              });
-                              setToast({ message: "Planned pay saved", type: "success" });
-                              setTimeout(() => setToast(null), 3000);
-                            } catch (err: any) {
-                              setToast({ message: err.message ?? "Failed to save", type: "error" });
-                              setTimeout(() => setToast(null), 4000);
-                            } finally {
-                              setPlannedPaySaving(false);
-                            }
+                          onClick={() => {
+                            setEditingPlannedPay(true);
+                            setCleanerPayAmount(((job as any).plannedCleanerPayCents / 100).toFixed(2));
                           }}
-                          className="btn-secondary text-sm"
+                          className="btn-secondary text-xs flex items-center gap-1"
                         >
-                          {plannedPaySaving ? "Saving..." : "Save"}
+                          <Pencil className="w-3 h-3" /> Change
                         </button>
-                      )}
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Payment actions become available after the job is submitted.
+                      </p>
                     </div>
-                  </div>
+                  ) : (
+                    /* Editable amount input (when eligible, or planned pay not set, or editing) */
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {isEligible ? "Amount ($)" : "Planned Pay ($)"}
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="1"
+                          className="input-field max-w-xs"
+                          placeholder="0.00"
+                          value={cleanerPayAmount}
+                          onChange={(e) => setCleanerPayAmount(e.target.value)}
+                        />
+                        {!isEligible && (
+                          <button
+                            disabled={plannedPaySaving || !cleanerPayAmount || Number(cleanerPayAmount) < 1}
+                            onClick={async () => {
+                              const uid = requireUserId(user);
+                              if (!uid) return;
+                              setPlannedPaySaving(true);
+                              try {
+                                const amountCents = Math.round(Number(cleanerPayAmount) * 100);
+                                await updatePlannedCleanerPay({
+                                  userId: uid,
+                                  jobId: params.id as Id<"jobs">,
+                                  amountCents,
+                                });
+                                setEditingPlannedPay(false);
+                                setToast({ message: "Planned pay saved", type: "success" });
+                                setTimeout(() => setToast(null), 3000);
+                              } catch (err: any) {
+                                setToast({ message: err.message ?? "Failed to save", type: "error" });
+                                setTimeout(() => setToast(null), 4000);
+                              } finally {
+                                setPlannedPaySaving(false);
+                              }
+                            }}
+                            className="btn-secondary text-sm"
+                          >
+                            {plannedPaySaving ? "Saving..." : "Save"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {isEligible ? (
                     <div className="flex items-center gap-2 flex-wrap">
                       {cleanerStripeAccountId && (
@@ -607,12 +642,11 @@ export function JobDetailPage() {
                               jobId: params.id as Id<"jobs">,
                               amountCents,
                             });
-                            setCleanerPayAmount("");
-                            setToast({ message: "Payment recorded", type: "success" });
+                            setToast({ message: "Cleaner marked as paid", type: "success" });
                             setTimeout(() => setToast(null), 3000);
                           } catch (err: any) {
-                            setToast({ message: err.message ?? "Failed", type: "error" });
-                            setTimeout(() => setToast(null), 3000);
+                            setToast({ message: toFriendlyMessage(err, "Failed to record payment"), type: "error" });
+                            setTimeout(() => setToast(null), 4000);
                           } finally {
                             setCleanerPaySaving(false);
                           }
@@ -623,11 +657,11 @@ export function JobDetailPage() {
                         {cleanerPaySaving ? "Saving..." : "Mark Paid Outside App"}
                       </button>
                     </div>
-                  ) : (
+                  ) : !((job as any).plannedCleanerPayCents && !editingPlannedPay) ? (
                     <p className="text-xs text-gray-400">
                       Payment actions become available after the job is submitted.
                     </p>
-                  )}
+                  ) : null}
                 </div>
               )}
             </div>
