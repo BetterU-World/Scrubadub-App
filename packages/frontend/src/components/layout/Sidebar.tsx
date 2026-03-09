@@ -21,7 +21,6 @@ import {
   UserPlus,
   Share2,
   MessageSquare,
-  Kanban,
   ChevronDown,
   Clock,
   Banknote,
@@ -62,7 +61,6 @@ const ownerSections: NavSection[] = [
     title: "Hub",
     items: [
       { href: "/requests", label: "Requests", icon: Inbox },
-      { href: "/requests/pipeline", label: "Pipeline", icon: Kanban },
       { href: "/feedback", label: "Feedback", icon: MessageSquare },
       { href: "/cleaner-leads", label: "Cleaner Leads", icon: UserPlus },
       { href: "/owner/payments", label: "Payments", icon: Banknote },
