@@ -8,6 +8,20 @@ import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useParams, Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
+
+const AMENITY_KEYS: Record<string, string> = {
+  "Washer/Dryer": "properties.amenityPresets.washerDryer",
+  "Hot Tub": "properties.amenityPresets.hotTub",
+  "Pool": "properties.amenityPresets.pool",
+  "BBQ Grill": "properties.amenityPresets.bbqGrill",
+  "Pets Allowed": "properties.amenityPresets.petsAllowed",
+  "Stairs": "properties.amenityPresets.stairs",
+  "Elevator": "properties.amenityPresets.elevator",
+  "Oceanfront": "properties.amenityPresets.oceanfront",
+  "Smart Lock": "properties.amenityPresets.smartLock",
+  "Garage": "properties.amenityPresets.garage",
+};
+
 import {
   MapPin,
   Key,
@@ -145,7 +159,7 @@ function DetailsTab({ property }: { property: any }) {
       <div className="flex items-center gap-2">
         <StatusBadge status={property.active ? "active" : "inactive"} />
         <span className="text-sm text-gray-500 capitalize">
-          {property.type.replace(/_/g, " ")}
+          {t(`properties.propertyTypes.${property.type}`, property.type.replace(/_/g, " "))}
         </span>
       </div>
 
@@ -206,7 +220,7 @@ function DetailsTab({ property }: { property: any }) {
           <div className="flex flex-wrap gap-2">
             {property.amenities.map((a: string) => (
               <span key={a} className="badge bg-primary-100 text-primary-700">
-                {a}
+                {AMENITY_KEYS[a] ? t(AMENITY_KEYS[a]) : a}
               </span>
             ))}
           </div>

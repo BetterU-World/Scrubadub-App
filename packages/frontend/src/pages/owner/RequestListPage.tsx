@@ -9,20 +9,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Inbox, Calendar, MapPin, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
-
-function useTimeAgo() {
-  const { t } = useTranslation();
-  return (ts: number): string => {
-    const diff = Date.now() - ts;
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return t("time.justNow");
-    if (mins < 60) return t("time.minutesAgo", { count: mins });
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return t("time.hoursAgo", { count: hrs });
-    const days = Math.floor(hrs / 24);
-    return t("time.daysAgo", { count: days });
-  };
-}
+import { useTimeAgo } from "@/hooks/useTimeAgo";
 
 export function RequestListPage() {
   const { user } = useAuth();

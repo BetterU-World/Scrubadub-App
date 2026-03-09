@@ -108,7 +108,7 @@ export function RedFlagsDashboard() {
                         flag.severity === "medium" ? "bg-orange-100 text-orange-800" :
                         "bg-yellow-100 text-yellow-800"
                       } capitalize`}>
-                        {flag.severity}
+                        {t(`severity.${flag.severity}`, flag.severity)}
                       </span>
                       <span className="text-sm font-medium capitalize">{flag.category}</span>
                       <StatusBadge status={flag.status} />

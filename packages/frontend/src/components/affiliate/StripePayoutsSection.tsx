@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useAction } from "convex/react";
+import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,6 +17,7 @@ export function StripePayoutsSection() {
 }
 
 function StripePayoutsInner({ userId }: { userId: Id<"users"> }) {
+  const { t } = useTranslation();
   const status = useQuery(api.queries.stripeConnect.getAffiliateConnectStatus, {
     userId,
   });
@@ -42,7 +44,7 @@ function StripePayoutsInner({ userId }: { userId: Id<"users"> }) {
         window.location.href = result.url;
       }
     } catch (err: any) {
-      setError(err.message ?? "Failed to start onboarding");
+      setError(err.message ?? t("affiliate.failedOnboarding"));
     } finally {
       setLoading(false);
     }
@@ -52,14 +54,14 @@ function StripePayoutsInner({ userId }: { userId: Id<"users"> }) {
     return (
       <div className="bg-white rounded-lg shadow p-6 max-w-xl">
         <h2 className="text-lg font-semibold text-gray-900 mb-3">
-          Stripe Payouts
+          {t("affiliate.stripePayouts")}
         </h2>
         <div className="bg-green-50 border border-green-200 rounded-md px-4 py-3 mb-4">
           <div className="flex items-center gap-2">
             <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
             <div>
               <p className="text-sm text-green-800 font-medium">
-                Stripe Connected
+                {t("affiliate.stripeConnected")}
               </p>
               <p className="text-xs text-green-700">
                 ...{accountIdSuffix}
@@ -74,7 +76,7 @@ function StripePayoutsInner({ userId }: { userId: Id<"users"> }) {
           className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
         >
           <Settings className="h-4 w-4" />
-          {loading ? "Redirecting..." : "Update Stripe details"}
+          {loading ? t("affiliate.redirecting") : t("affiliate.updateStripeDetails")}
         </button>
 
         {error && (
@@ -87,11 +89,10 @@ function StripePayoutsInner({ userId }: { userId: Id<"users"> }) {
   return (
     <div className="bg-white rounded-lg shadow p-6 max-w-xl">
       <h2 className="text-lg font-semibold text-gray-900 mb-3">
-        Stripe Payouts
+        {t("affiliate.stripePayouts")}
       </h2>
       <p className="text-sm text-gray-600 mb-4">
-        Connect your Stripe account to receive affiliate payouts directly to
-        your bank account.
+        {t("affiliate.connectStripeDesc")}
       </p>
 
       <button
@@ -100,7 +101,7 @@ function StripePayoutsInner({ userId }: { userId: Id<"users"> }) {
         className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
       >
         <ExternalLink className="h-4 w-4" />
-        {loading ? "Redirecting..." : "Connect Stripe for Affiliate Payouts"}
+        {loading ? t("affiliate.redirecting") : t("affiliate.connectStripeBtn")}
       </button>
 
       {error && (

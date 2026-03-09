@@ -1,4 +1,5 @@
 import { useQuery } from "convex/react";
+import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -7,6 +8,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ScrollText } from "lucide-react";
 
 export function AuditLogPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const logs = useQuery(
     api.queries.auditLog.list,
@@ -17,19 +19,19 @@ export function AuditLogPage() {
 
   return (
     <div>
-      <PageHeader title="Audit Log" description="Track all actions in your company" />
+      <PageHeader title={t("auditLog.title")} description={t("auditLog.description")} />
 
       {logs.length === 0 ? (
-        <EmptyState icon={ScrollText} title="No activity yet" description="Actions will appear here as your team uses the platform" />
+        <EmptyState icon={ScrollText} title={t("auditLog.noActivity")} description={t("auditLog.noActivityDesc")} />
       ) : (
         <div className="card overflow-hidden">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Time</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">User</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Action</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 hidden sm:table-cell">Details</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t("auditLog.time")}</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t("auditLog.user")}</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t("auditLog.action")}</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500 hidden sm:table-cell">{t("auditLog.details")}</th>
               </tr>
             </thead>
             <tbody>

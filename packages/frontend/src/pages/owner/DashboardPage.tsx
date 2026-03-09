@@ -119,7 +119,7 @@ export function DashboardPage() {
                         {job.propertyName}
                       </p>
                       <p className="text-xs text-gray-500 mt-0.5">
-                        {job.scheduledDate} · {job.type.replace(/_/g, " ")}
+                        {job.scheduledDate} · {t(`jobTypes.${job.type}`, job.type.replace(/_/g, " "))}
                       </p>
                     </div>
                     <span className="badge bg-blue-100 text-blue-800 capitalize text-xs">

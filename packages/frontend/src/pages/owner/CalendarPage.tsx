@@ -169,7 +169,7 @@ export function CalendarPage() {
 
   const today = new Date();
 
-  const formatJobType = (type: string) => type.replace(/_/g, " ");
+  const formatJobType = (type: string) => t(`jobTypes.${type}`, type.replace(/_/g, " "));
 
   // Color helper based on job status first, then acceptanceStatus
   const getJobColor = (job: any) => {

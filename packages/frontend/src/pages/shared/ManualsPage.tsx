@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { useQuery, useAction, useMutation } from "convex/react";
+import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -8,10 +9,10 @@ import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BookOpen, ExternalLink, Users, Sparkles, AppWindow, BookMarked, Upload, X } from "lucide-react";
 
-const CATEGORY_META: Record<string, { label: string; icon: typeof BookOpen }> = {
-  app: { label: "App Guides", icon: AppWindow },
-  cleaner: { label: "Cleaner Manuals", icon: Sparkles },
-  owner: { label: "Owner Manuals", icon: Users },
+const CATEGORY_META: Record<string, { labelKey: string; icon: typeof BookOpen }> = {
+  app: { labelKey: "manuals.categoryApp", icon: AppWindow },
+  cleaner: { labelKey: "manuals.categoryCleaner", icon: Sparkles },
+  owner: { labelKey: "manuals.categoryOwner", icon: Users },
 };
 
 const CATEGORY_ORDER = ["app", "cleaner", "owner"];
@@ -23,6 +24,7 @@ function SeedManualsModal({
   userId: string;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const seedManuals = useMutation(api.mutations.manuals.seedManuals);
   const [json, setJson] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -37,12 +39,12 @@ function SeedManualsModal({
     try {
       parsed = JSON.parse(json);
     } catch {
-      setError("Invalid JSON");
+      setError(t("manuals.invalidJson"));
       return;
     }
 
     if (!Array.isArray(parsed) || parsed.length === 0) {
-      setError("Expected a non-empty JSON array");
+      setError(t("manuals.expectedArray"));
       return;
     }
 
@@ -82,14 +84,14 @@ function SeedManualsModal({
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
       <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Seed Manuals</h2>
+          <h2 className="text-lg font-semibold text-gray-900">{t("manuals.seedManuals")}</h2>
           <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <p className="text-sm text-gray-500 mb-3">
-          Paste a JSON array. Each object needs: title, category, roleVisibility, blobKey.
+          {t("manuals.seedModalDesc")}
         </p>
 
         <textarea
@@ -104,19 +106,19 @@ function SeedManualsModal({
         )}
         {result && (
           <p className="mt-2 text-sm text-green-700">
-            Done — {result.inserted} inserted, {result.updated} updated.
+            {t("manuals.seedDone", { inserted: result.inserted, updated: result.updated })}
           </p>
         )}
 
         <div className="flex justify-end gap-2 mt-4">
-          <button onClick={onClose} className="btn-secondary text-sm">Cancel</button>
+          <button onClick={onClose} className="btn-secondary text-sm">{t("common.cancel")}</button>
           <button
             onClick={handleSeed}
             disabled={seeding || !json.trim()}
             className="btn-primary text-sm flex items-center gap-1.5"
           >
             <Upload className="w-4 h-4" />
-            {seeding ? "Seeding…" : "Seed"}
+            {seeding ? t("manuals.seeding") : t("manuals.seed")}
           </button>
         </div>
       </div>
@@ -125,6 +127,7 @@ function SeedManualsModal({
 }
 
 export function ManualsPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const manuals = useQuery(
     api.queries.manuals.getVisibleManuals,
@@ -156,28 +159,28 @@ export function ManualsPage() {
   return (
     <div>
       <PageHeader
-        title="Manuals"
-        description="Role-gated guides and reference documents"
+        title={t("manuals.title")}
+        description={t("manuals.description")}
         action={
           user.isSuperadmin && (
             <button
               onClick={() => setShowSeed(true)}
               className="btn-secondary flex items-center gap-1.5 text-sm"
             >
-              <Upload className="w-4 h-4" /> Seed Manuals
+              <Upload className="w-4 h-4" /> {t("manuals.seedManuals")}
             </button>
           )
         }
       />
 
       <div className="space-y-8 max-w-2xl">
-        <p className="text-xs text-gray-400">Last updated: March 1, 2026</p>
+        <p className="text-xs text-gray-400">{t("manuals.lastUpdated", { date: "March 1, 2026" })}</p>
 
         {/* Static in-app guides */}
         <section>
           <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
             <BookMarked className="w-4 h-4" />
-            Using SCRUB
+            {t("manuals.usingApp")}
           </h2>
           <div className="space-y-2">
             {user.role === "owner" && (
@@ -186,13 +189,13 @@ export function ManualsPage() {
                 className="card flex items-center justify-between gap-4 hover:shadow-md transition-shadow"
               >
                 <div className="min-w-0">
-                  <p className="font-medium text-gray-900 truncate">Owner App Guide</p>
+                  <p className="font-medium text-gray-900 truncate">{t("manuals.ownerGuide")}</p>
                   <p className="text-sm text-gray-500 mt-0.5 truncate">
-                    Managing properties, employees, jobs, and reports
+                    {t("manuals.ownerGuideDesc")}
                   </p>
                 </div>
                 <span className="btn-secondary flex items-center gap-1.5 text-sm flex-shrink-0">
-                  <BookOpen className="w-4 h-4" /> Read
+                  <BookOpen className="w-4 h-4" /> {t("manuals.read")}
                 </span>
               </Link>
             )}
@@ -201,13 +204,13 @@ export function ManualsPage() {
               className="card flex items-center justify-between gap-4 hover:shadow-md transition-shadow"
             >
               <div className="min-w-0">
-                <p className="font-medium text-gray-900 truncate">Cleaner App Guide</p>
+                <p className="font-medium text-gray-900 truncate">{t("manuals.cleanerGuide")}</p>
                 <p className="text-sm text-gray-500 mt-0.5 truncate">
-                  Accepting jobs, completing forms, and daily workflow
+                  {t("manuals.cleanerGuideDesc")}
                 </p>
               </div>
               <span className="btn-secondary flex items-center gap-1.5 text-sm flex-shrink-0">
-                <BookOpen className="w-4 h-4" /> Read
+                <BookOpen className="w-4 h-4" /> {t("manuals.read")}
               </span>
             </Link>
           </div>
@@ -215,13 +218,13 @@ export function ManualsPage() {
 
         {/* DB-backed PDF manuals */}
         {CATEGORY_ORDER.filter((cat) => grouped[cat]?.length).map((cat) => {
-            const meta = CATEGORY_META[cat] ?? { label: cat, icon: BookOpen };
+            const meta = CATEGORY_META[cat] ?? { labelKey: cat, icon: BookOpen };
             const Icon = meta.icon;
             return (
               <section key={cat}>
                 <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
                   <Icon className="w-4 h-4" />
-                  {meta.label}
+                  {t(meta.labelKey)}
                 </h2>
                 <div className="space-y-2">
                   {grouped[cat].map((m) => (
@@ -239,7 +242,7 @@ export function ManualsPage() {
                           </p>
                         )}
                         <p className="text-xs text-gray-400 mt-0.5">
-                          Uploaded {new Date(m.createdAt).toLocaleDateString()}
+                          {t("manuals.uploaded", { date: new Date(m.createdAt).toLocaleDateString() })}
                         </p>
                       </div>
                       <button
@@ -248,7 +251,7 @@ export function ManualsPage() {
                         className="btn-secondary flex items-center gap-1.5 text-sm flex-shrink-0"
                       >
                         <ExternalLink className="w-4 h-4" />
-                        {loadingId === m._id ? "Opening…" : "Open"}
+                        {loadingId === m._id ? t("manuals.opening") : t("manuals.open")}
                       </button>
                     </div>
                   ))}

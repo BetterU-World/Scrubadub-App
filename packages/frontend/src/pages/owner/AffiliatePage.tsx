@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
+import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
@@ -22,13 +23,14 @@ function getReferralBaseUrl(): string {
 type Tab = "referrals" | "revenue" | "ledger" | "payouts" | "requests";
 
 export function AffiliatePage() {
+  const { t } = useTranslation();
   const { user, userId, isLoading } = useAuth();
 
   if (isLoading) return <PageLoader />;
   if (!userId || !user) {
     return (
       <div className="py-8 text-center">
-        <p className="text-sm text-gray-500">Please sign in to access the Affiliate Portal.</p>
+        <p className="text-sm text-gray-500">{t("affiliate.signInRequired")}</p>
       </div>
     );
   }
@@ -43,6 +45,7 @@ function AffiliatePageInner({
   userId: Id<"users">;
   user: { referralCode?: string; isSuperadmin?: boolean };
 }) {
+  const { t } = useTranslation();
   const ensureReferralCode = useMutation(api.mutations.affiliate.ensureReferralCode);
   const referrals = useQuery(
     api.queries.affiliate.getMyReferrals,
@@ -88,7 +91,7 @@ function AffiliatePageInner({
     return (
       <div className="py-8 text-center">
         <p className="text-sm text-red-600 mb-3">
-          Failed to generate your referral code.
+          {t("affiliate.failedToGenerate")}
         </p>
         <button
           onClick={() => {
@@ -97,7 +100,7 @@ function AffiliatePageInner({
           }}
           className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
         >
-          Retry
+          {t("affiliate.retry")}
         </button>
       </div>
     );
@@ -106,7 +109,7 @@ function AffiliatePageInner({
   if (!referralCode) return <PageLoader />;
 
   const fullUrl = `${getReferralBaseUrl()}${referralCode}`;
-  const socialCaption = `Need a reliable cleaner or want to join our team? Check this out: ${fullUrl}`;
+  const socialCaption = `${t("affiliate.socialCaption")} ${fullUrl}`;
 
   function copyToClipboard(text: string, label: string) {
     navigator.clipboard.writeText(text).then(() => {
@@ -118,36 +121,36 @@ function AffiliatePageInner({
   const isSuperAdmin = user?.isSuperadmin ?? false;
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: "referrals", label: "Referrals" },
-    { key: "revenue", label: "Revenue" },
-    { key: "ledger", label: "Ledger" },
-    { key: "payouts", label: "Payouts" },
+    { key: "referrals", label: t("affiliate.referrals") },
+    { key: "revenue", label: t("affiliate.revenue") },
+    { key: "ledger", label: t("affiliate.ledger") },
+    { key: "payouts", label: t("affiliate.payouts") },
     ...(isSuperAdmin
-      ? [{ key: "requests" as Tab, label: "Payout Requests" }]
+      ? [{ key: "requests" as Tab, label: t("affiliate.payoutRequests") }]
       : []),
   ];
 
   return (
     <div>
       <PageHeader
-        title="Affiliate Portal"
-        description="Share your referral link and earn rewards."
+        title={t("affiliate.title")}
+        description={t("affiliate.description")}
       />
 
       {/* Tab nav */}
       <div className="border-b border-gray-200 mb-6">
         <nav className="-mb-px flex gap-6">
-          {tabs.map((t) => (
+          {tabs.map((tab) => (
             <button
-              key={t.key}
-              onClick={() => setActiveTab(t.key)}
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
               className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === t.key
+                activeTab === tab.key
                   ? "border-blue-600 text-blue-600"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
               }`}
             >
-              {t.label}
+              {tab.label}
             </button>
           ))}
         </nav>
@@ -157,7 +160,7 @@ function AffiliatePageInner({
         <>
           <div className="bg-white rounded-lg shadow p-6 max-w-xl">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Your referral link
+              {t("affiliate.yourReferralLink")}
             </label>
             <div className="bg-gray-50 border border-gray-200 rounded-md px-4 py-3 text-sm font-mono text-gray-800 break-all select-all mb-4">
               {fullUrl}
@@ -169,7 +172,7 @@ function AffiliatePageInner({
                 className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
               >
                 <Copy className="h-4 w-4" />
-                {copied === "link" ? "Copied!" : "Copy link"}
+                {copied === "link" ? t("affiliate.copied") : t("affiliate.copyLink")}
               </button>
 
               <button
@@ -177,7 +180,7 @@ function AffiliatePageInner({
                 className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors"
               >
                 <ExternalLink className="h-4 w-4" />
-                Open link
+                {t("affiliate.openLink")}
               </button>
 
               <button
@@ -185,7 +188,7 @@ function AffiliatePageInner({
                 className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors"
               >
                 <Share2 className="h-4 w-4" />
-                {copied === "social" ? "Copied!" : "Copy social caption"}
+                {copied === "social" ? t("affiliate.copied") : t("affiliate.copySocialCaption")}
               </button>
             </div>
           </div>
@@ -195,7 +198,7 @@ function AffiliatePageInner({
             <div className="flex items-center gap-2 mb-4">
               <Users className="h-5 w-5 text-gray-500" />
               <h2 className="text-lg font-semibold text-gray-900">
-                Your Referrals
+                {t("affiliate.yourReferrals")}
                 {referrals && referrals.length > 0 && (
                   <span className="ml-2 text-sm font-normal text-gray-500">
                     ({referrals.length})
@@ -205,10 +208,10 @@ function AffiliatePageInner({
             </div>
 
             {referrals === undefined ? (
-              <p className="text-sm text-gray-400">Loading...</p>
+              <p className="text-sm text-gray-400">{t("common.loading")}</p>
             ) : referrals.length === 0 ? (
               <p className="text-sm text-gray-500">
-                No referrals yet — share your link!
+                {t("affiliate.noReferralsYet")}
               </p>
             ) : (
               <ul className="divide-y divide-gray-100">

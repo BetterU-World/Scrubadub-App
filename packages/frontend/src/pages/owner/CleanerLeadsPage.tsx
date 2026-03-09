@@ -3,6 +3,7 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
+import { useTimeAgo } from "@/hooks/useTimeAgo";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -21,28 +22,20 @@ import {
   Copy,
   Check,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const STATUS_OPTIONS = [
-  { value: "", label: "All" },
-  { value: "new", label: "New" },
-  { value: "reviewed", label: "Reviewed" },
-  { value: "contacted", label: "Contacted" },
-  { value: "archived", label: "Archived" },
+  { value: "", labelKey: "cleanerLeads.all" },
+  { value: "new", labelKey: "status.new" },
+  { value: "reviewed", labelKey: "status.reviewed" },
+  { value: "contacted", labelKey: "status.contacted" },
+  { value: "archived", labelKey: "status.archived" },
 ];
-
-function timeAgo(ts: number): string {
-  const diff = Date.now() - ts;
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
-}
 
 export function CleanerLeadsPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
+  const timeAgo = useTimeAgo();
   const [statusFilter, setStatusFilter] = useState("");
   const [selectedId, setSelectedId] = useState<Id<"cleanerLeads"> | null>(null);
 
@@ -129,10 +122,10 @@ export function CleanerLeadsPage() {
         role: inviteRole,
       });
       setInviteLink(`${window.location.origin}/invite/${result.token}`);
-      setToast({ message: "Invite link generated", type: "success" });
+      setToast({ message: t("cleanerLeads.inviteLinkGenerated"), type: "success" });
       setTimeout(() => setToast(null), 3000);
     } catch (err: any) {
-      setInviteError(err.message || "Failed to generate invite");
+      setInviteError(err.message || t("cleanerLeads.failedToGenerate"));
     } finally {
       setInviteLoading(false);
     }
@@ -151,11 +144,11 @@ export function CleanerLeadsPage() {
     setUpdating(true);
     try {
       await updateStatus({ leadId, userId: user._id, status });
-      setToast({ message: `Marked as ${status}`, type: "success" });
+      setToast({ message: t("cleanerLeads.markedAs", { status }), type: "success" });
       setTimeout(() => setToast(null), 3000);
     } catch (err: any) {
       setToast({
-        message: err.message || "Failed to update",
+        message: err.message || t("cleanerLeads.failedToUpdate"),
         type: "error",
       });
       setTimeout(() => setToast(null), 3000);
@@ -167,11 +160,11 @@ export function CleanerLeadsPage() {
   return (
     <div>
       <PageHeader
-        title="Cleaner Leads"
-        description="Applications from your public site"
+        title={t("cleanerLeads.title")}
+        description={t("cleanerLeads.description")}
         action={
           <button onClick={openInviteBlank} className="btn-primary flex items-center gap-2">
-            <UserPlus className="w-4 h-4" /> Invite Employee
+            <UserPlus className="w-4 h-4" /> {t("cleanerLeads.inviteEmployee")}
           </button>
         }
       />
@@ -188,7 +181,7 @@ export function CleanerLeadsPage() {
                 : "badge bg-gray-100 text-gray-600 cursor-pointer hover:bg-gray-200"
             }
           >
-            {opt.label}
+            {t(opt.labelKey)}
           </button>
         ))}
       </div>
@@ -196,16 +189,16 @@ export function CleanerLeadsPage() {
       {leads.length === 0 ? (
         <EmptyState
           icon={UserPlus}
-          title="No leads yet"
+          title={t("cleanerLeads.noLeadsYet")}
           description={
             statusFilter
-              ? "No leads match this filter."
-              : "Cleaner applications from your public site will appear here."
+              ? t("cleanerLeads.noLeadsFilter")
+              : t("cleanerLeads.noLeadsEmpty")
           }
           action={
             !statusFilter && (
               <button onClick={openInviteBlank} className="btn-primary">
-                Invite your first cleaner
+                {t("cleanerLeads.inviteFirstCleaner")}
               </button>
             )
           }
@@ -264,7 +257,7 @@ export function CleanerLeadsPage() {
           <div className="relative w-full max-w-md bg-white shadow-xl overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">
-                Lead Details
+                {t("cleanerLeads.leadDetails")}
               </h2>
               <button
                 onClick={() => setSelectedId(null)}
@@ -280,7 +273,7 @@ export function CleanerLeadsPage() {
               </div>
             ) : selectedLead === null ? (
               <div className="text-center py-12 text-gray-500">
-                Lead not found
+                {t("cleanerLeads.leadNotFound")}
               </div>
             ) : (
               <div className="p-4 space-y-4">
@@ -292,7 +285,7 @@ export function CleanerLeadsPage() {
                 </div>
 
                 <div className="text-xs text-gray-400">
-                  Applied {new Date(selectedLead.createdAt).toLocaleString()}
+                  {t("cleanerLeads.applied", { date: new Date(selectedLead.createdAt).toLocaleString() })}
                 </div>
 
                 <div className="space-y-3 text-sm">
@@ -321,8 +314,8 @@ export function CleanerLeadsPage() {
                     <div className="flex items-center gap-2 text-gray-600">
                       <Car className="w-4 h-4 text-gray-400" />
                       {selectedLead.hasCar
-                        ? "Has reliable transportation"
-                        : "No car"}
+                        ? t("cleanerLeads.hasTransportation")
+                        : t("cleanerLeads.noCar")}
                     </div>
                   )}
                   {selectedLead.experience && (
@@ -342,7 +335,7 @@ export function CleanerLeadsPage() {
                 {selectedLead.notes && (
                   <div className="border-t pt-3">
                     <p className="text-sm font-medium text-gray-700 mb-1">
-                      Notes
+                      {t("common.notes")}
                     </p>
                     <p className="text-sm text-gray-600">
                       {selectedLead.notes}
@@ -356,7 +349,7 @@ export function CleanerLeadsPage() {
                     onClick={() => openInviteForLead(selectedLead)}
                     className="btn-primary w-full flex items-center justify-center gap-2 text-sm"
                   >
-                    <UserPlus className="w-4 h-4" /> Generate Invite Link
+                    <UserPlus className="w-4 h-4" /> {t("cleanerLeads.generateInviteLink")}
                   </button>
                 </div>
 
@@ -371,7 +364,7 @@ export function CleanerLeadsPage() {
                         disabled={updating}
                         className="btn-secondary text-sm"
                       >
-                        {updating ? "Updating..." : "Mark Reviewed"}
+                        {updating ? t("cleanerLeads.updating") : t("cleanerLeads.markReviewed")}
                       </button>
                     )}
                     {(selectedLead.status === "new" ||
@@ -383,7 +376,7 @@ export function CleanerLeadsPage() {
                         disabled={updating}
                         className="btn-primary text-sm"
                       >
-                        {updating ? "Updating..." : "Mark Contacted"}
+                        {updating ? t("cleanerLeads.updating") : t("cleanerLeads.markContacted")}
                       </button>
                     )}
                     <button
@@ -393,7 +386,7 @@ export function CleanerLeadsPage() {
                       disabled={updating}
                       className="btn-secondary text-sm text-gray-500"
                     >
-                      {updating ? "Archiving..." : "Archive"}
+                      {updating ? t("cleanerLeads.archiving") : t("cleanerLeads.archive")}
                     </button>
                   </div>
                 )}
@@ -409,7 +402,7 @@ export function CleanerLeadsPage() {
           <Dialog.Overlay className="fixed inset-0 bg-black/40 z-50" />
           <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-lg p-6 w-full max-w-md z-50">
             <div className="flex items-center justify-between mb-4">
-              <Dialog.Title className="text-lg font-semibold">Invite Employee</Dialog.Title>
+              <Dialog.Title className="text-lg font-semibold">{t("cleanerLeads.inviteEmployee")}</Dialog.Title>
               <Dialog.Close className="p-1 text-gray-400 hover:text-gray-600 rounded">
                 <X className="w-5 h-5" />
               </Dialog.Close>
@@ -417,15 +410,15 @@ export function CleanerLeadsPage() {
 
             {inviteLink ? (
               <div>
-                <p className="text-sm text-gray-600 mb-3">Share this link with {inviteName}:</p>
+                <p className="text-sm text-gray-600 mb-3">{t("cleanerLeads.shareLink", { name: inviteName })}</p>
                 <div className="flex gap-2">
                   <input className="input-field text-sm" value={inviteLink} readOnly />
                   <button onClick={copyLink} className="btn-secondary flex items-center gap-1">
                     {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    {copied ? "Copied" : "Copy"}
+                    {copied ? t("employees.copied") : t("employees.copy")}
                   </button>
                 </div>
-                <button onClick={resetInviteDialog} className="btn-primary w-full mt-4">Done</button>
+                <button onClick={resetInviteDialog} className="btn-primary w-full mt-4">{t("cleanerLeads.done")}</button>
               </div>
             ) : (
               <div className="space-y-4">
@@ -433,18 +426,18 @@ export function CleanerLeadsPage() {
                   <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{inviteError}</div>
                 )}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("cleanerLeads.name")}</label>
                   <input className="input-field" value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="Jane Doe" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("cleanerLeads.email")}</label>
                   <input className="input-field" type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="jane@email.com" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("cleanerLeads.role")}</label>
                   <select className="input-field" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as any)}>
-                    <option value="cleaner">Cleaner</option>
-                    <option value="maintenance">Maintenance</option>
+                    <option value="cleaner">{t("cleanerLeads.roleCleaner")}</option>
+                    <option value="maintenance">{t("cleanerLeads.roleMaintenance")}</option>
                   </select>
                 </div>
                 <button
@@ -453,7 +446,7 @@ export function CleanerLeadsPage() {
                   className="btn-primary w-full flex items-center justify-center gap-2"
                 >
                   {inviteLoading && <LoadingSpinner size="sm" />}
-                  Generate Invite Link
+                  {t("cleanerLeads.generateInviteLink")}
                 </button>
               </div>
             )}
