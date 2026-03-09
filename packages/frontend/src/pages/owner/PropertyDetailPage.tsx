@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useParams, Link, useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import {
   MapPin,
   Key,
@@ -27,6 +28,7 @@ export function PropertyDetailPage() {
   const params = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<Tab>("details");
   const [toast, setToast] = useState<string | null>(null);
   const [toggling, setToggling] = useState(false);
@@ -53,7 +55,7 @@ export function PropertyDetailPage() {
 
   if (property === undefined) return <PageLoader />;
   if (property === null)
-    return <div className="text-center py-12 text-gray-500">Property not found</div>;
+    return <div className="text-center py-12 text-gray-500">{t("properties.notFound")}</div>;
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -83,10 +85,10 @@ export function PropertyDetailPage() {
               ) : (
                 <ToggleLeft className="w-4 h-4" />
               )}
-              {property.active ? "Deactivate" : "Activate"}
+              {property.active ? t("properties.deactivate") : t("properties.activate")}
             </button>
             <Link href={`/properties/${property._id}/edit`} className="btn-primary flex items-center gap-2">
-              <Pencil className="w-4 h-4" /> Edit
+              <Pencil className="w-4 h-4" /> {t("common.edit")}
             </Link>
           </div>
         }
@@ -102,7 +104,7 @@ export function PropertyDetailPage() {
               : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
           }`}
         >
-          Details
+          {t("properties.details")}
         </button>
         <button
           onClick={() => setActiveTab("history")}
@@ -113,7 +115,7 @@ export function PropertyDetailPage() {
           }`}
         >
           <Clock className="w-4 h-4" />
-          History
+          {t("properties.history")}
         </button>
       </div>
 
@@ -129,6 +131,7 @@ export function PropertyDetailPage() {
 }
 
 function DetailsTab({ property }: { property: any }) {
+  const { t } = useTranslation();
   const hasBathroomDetails =
     property.hasStandaloneTub || property.showerGlassDoorCount != null;
   const hasStructuredAmenities =
@@ -158,13 +161,13 @@ function DetailsTab({ property }: { property: any }) {
           {property.beds != null && (
             <div className="bg-gray-50 rounded-lg p-3 text-center">
               <div className="text-2xl font-semibold text-gray-800">{property.beds}</div>
-              <div className="text-xs text-gray-500 mt-1">Beds</div>
+              <div className="text-xs text-gray-500 mt-1">{t("properties.beds")}</div>
             </div>
           )}
           {property.baths != null && (
             <div className="bg-gray-50 rounded-lg p-3 text-center">
               <div className="text-2xl font-semibold text-gray-800">{property.baths}</div>
-              <div className="text-xs text-gray-500 mt-1">Baths</div>
+              <div className="text-xs text-gray-500 mt-1">{t("properties.baths")}</div>
             </div>
           )}
         </div>
@@ -172,14 +175,14 @@ function DetailsTab({ property }: { property: any }) {
 
       {hasBathroomDetails && (
         <div>
-          <h3 className="text-sm font-medium text-gray-500 mb-2">Bathroom Details</h3>
+          <h3 className="text-sm font-medium text-gray-500 mb-2">{t("properties.bathroomDetails")}</h3>
           <div className="flex flex-wrap gap-3">
             {property.hasStandaloneTub && (
-              <span className="badge bg-blue-100 text-blue-700">Standalone Tub</span>
+              <span className="badge bg-blue-100 text-blue-700">{t("properties.standaloneTub")}</span>
             )}
             {property.showerGlassDoorCount != null && (
               <span className="badge bg-blue-100 text-blue-700">
-                {property.showerGlassDoorCount} Shower Glass Door{property.showerGlassDoorCount !== 1 ? "s" : ""}
+                {property.showerGlassDoorCount} {property.showerGlassDoorCount !== 1 ? t("properties.showerGlassDoors") : t("properties.showerGlassDoor")}
               </span>
             )}
           </div>
@@ -189,7 +192,7 @@ function DetailsTab({ property }: { property: any }) {
       {property.accessInstructions && (
         <div>
           <h3 className="text-sm font-medium text-gray-500 mb-1 flex items-center gap-1">
-            <Key className="w-4 h-4" /> Access Instructions
+            <Key className="w-4 h-4" /> {t("properties.accessInstructions")}
           </h3>
           <p className="text-gray-700 whitespace-pre-wrap">
             {property.accessInstructions}
@@ -199,7 +202,7 @@ function DetailsTab({ property }: { property: any }) {
 
       {property.amenities.length > 0 && (
         <div>
-          <h3 className="text-sm font-medium text-gray-500 mb-2">Amenities</h3>
+          <h3 className="text-sm font-medium text-gray-500 mb-2">{t("properties.amenities")}</h3>
           <div className="flex flex-wrap gap-2">
             {property.amenities.map((a: string) => (
               <span key={a} className="badge bg-primary-100 text-primary-700">
@@ -213,7 +216,7 @@ function DetailsTab({ property }: { property: any }) {
       {hasStructuredAmenities && (
         <div>
           <h3 className="text-sm font-medium text-gray-500 mb-2">
-            Linen & Supply Counts
+            {t("properties.linenSupplyCounts")}
           </h3>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {property.sheetSets != null && (
@@ -221,7 +224,7 @@ function DetailsTab({ property }: { property: any }) {
                 <div className="text-2xl font-semibold text-gray-800">
                   {property.sheetSets}
                 </div>
-                <div className="text-xs text-gray-500 mt-1">Sheet Sets</div>
+                <div className="text-xs text-gray-500 mt-1">{t("properties.sheetSets")}</div>
               </div>
             )}
             {property.linenCount != null && (
@@ -229,7 +232,7 @@ function DetailsTab({ property }: { property: any }) {
                 <div className="text-2xl font-semibold text-gray-800">
                   {property.linenCount}
                 </div>
-                <div className="text-xs text-gray-500 mt-1">Spare Sheet Sets</div>
+                <div className="text-xs text-gray-500 mt-1">{t("properties.spareSheetSets")}</div>
               </div>
             )}
             {property.towelCount != null && (
@@ -237,7 +240,7 @@ function DetailsTab({ property }: { property: any }) {
                 <div className="text-2xl font-semibold text-gray-800">
                   {property.towelCount}
                 </div>
-                <div className="text-xs text-gray-500 mt-1">Towels</div>
+                <div className="text-xs text-gray-500 mt-1">{t("properties.towels")}</div>
               </div>
             )}
             {property.pillowCount != null && (
@@ -245,7 +248,7 @@ function DetailsTab({ property }: { property: any }) {
                 <div className="text-2xl font-semibold text-gray-800">
                   {property.pillowCount}
                 </div>
-                <div className="text-xs text-gray-500 mt-1">Pillows</div>
+                <div className="text-xs text-gray-500 mt-1">{t("properties.pillows")}</div>
               </div>
             )}
           </div>
@@ -255,7 +258,7 @@ function DetailsTab({ property }: { property: any }) {
       {property.maintenanceNotes && (
         <div>
           <h3 className="text-sm font-medium text-gray-500 mb-1 flex items-center gap-1">
-            <Wrench className="w-4 h-4" /> Maintenance Notes
+            <Wrench className="w-4 h-4" /> {t("properties.maintenanceNotes")}
           </h3>
           <p className="text-gray-700 whitespace-pre-wrap">
             {property.maintenanceNotes}
@@ -266,7 +269,7 @@ function DetailsTab({ property }: { property: any }) {
       {property.ownerNotes && (
         <div>
           <h3 className="text-sm font-medium text-gray-500 mb-1 flex items-center gap-1">
-            <Lock className="w-4 h-4" /> Owner Notes
+            <Lock className="w-4 h-4" /> {t("properties.ownerNotes")}
           </h3>
           <p className="text-gray-700 whitespace-pre-wrap">
             {property.ownerNotes}
@@ -284,6 +287,7 @@ function HistoryTab({
   propertyId: Id<"properties">;
   history: any;
 }) {
+  const { t } = useTranslation();
   if (history === undefined) return <PageLoader />;
 
   return (
@@ -294,7 +298,7 @@ function HistoryTab({
           <div className="flex items-center justify-center gap-2 mb-1">
             <Briefcase className="w-4 h-4 text-gray-400" />
             <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-              Total Jobs
+              {t("properties.totalJobs")}
             </span>
           </div>
           <div className="text-2xl font-semibold text-gray-800">
@@ -305,7 +309,7 @@ function HistoryTab({
           <div className="flex items-center justify-center gap-2 mb-1">
             <Flag className="w-4 h-4 text-red-400" />
             <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-              Total Red Flags
+              {t("properties.totalRedFlags")}
             </span>
           </div>
           <div className="text-2xl font-semibold text-gray-800">
@@ -316,7 +320,7 @@ function HistoryTab({
           <div className="flex items-center justify-center gap-2 mb-1">
             <AlertTriangle className="w-4 h-4 text-orange-400" />
             <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-              Open Red Flags
+              {t("properties.openRedFlags")}
             </span>
           </div>
           <div className="text-2xl font-semibold text-orange-600">
@@ -328,7 +332,7 @@ function HistoryTab({
       {/* Timeline */}
       {history.timeline.length === 0 ? (
         <div className="card text-center py-8 text-gray-500">
-          No history yet for this property.
+          {t("properties.noHistory")}
         </div>
       ) : (
         <div className="space-y-3">
@@ -348,6 +352,7 @@ function HistoryTab({
 }
 
 function JobTimelineItem({ item }: { item: any }) {
+  const { t } = useTranslation();
   const data = item.data;
   return (
     <div className="card flex items-start gap-3">
@@ -357,13 +362,13 @@ function JobTimelineItem({ item }: { item: any }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-medium text-gray-800">
-            {data.title || "Cleaning Job"}
+            {data.title || t("properties.cleaningJob")}
           </span>
           <StatusBadge status={data.status} />
         </div>
         {data.cleanerName && (
           <p className="text-sm text-gray-500 mt-0.5">
-            Cleaner: {data.cleanerName}
+            {t("properties.cleaner", { name: data.cleanerName })}
           </p>
         )}
         <p className="text-xs text-gray-400 mt-1">{item.date}</p>
@@ -373,6 +378,7 @@ function JobTimelineItem({ item }: { item: any }) {
 }
 
 function RedFlagTimelineItem({ item }: { item: any }) {
+  const { t } = useTranslation();
   const data = item.data;
 
   const severityStyles: Record<string, string> = {
@@ -390,7 +396,7 @@ function RedFlagTimelineItem({ item }: { item: any }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-medium text-gray-800">
-            {data.title || "Red Flag"}
+            {data.title || t("properties.redFlag")}
           </span>
           <StatusBadge status={data.status} />
           {data.severity && (

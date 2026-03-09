@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "convex/react";
+import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -30,24 +31,25 @@ function ScoreBadge({ score }: { score: number }) {
 }
 
 function RankCell({ rank }: { rank: number }) {
+  const { t } = useTranslation();
   if (rank === 1) {
     return (
       <span className="inline-flex items-center gap-1 font-bold text-yellow-600">
-        <Trophy className="w-4 h-4" /> 1st
+        <Trophy className="w-4 h-4" /> {t("performance.first")}
       </span>
     );
   }
   if (rank === 2) {
     return (
       <span className="inline-flex items-center gap-1 font-bold text-gray-400">
-        <Trophy className="w-4 h-4" /> 2nd
+        <Trophy className="w-4 h-4" /> {t("performance.second")}
       </span>
     );
   }
   if (rank === 3) {
     return (
       <span className="inline-flex items-center gap-1 font-bold text-amber-700">
-        <Trophy className="w-4 h-4" /> 3rd
+        <Trophy className="w-4 h-4" /> {t("performance.third")}
       </span>
     );
   }
@@ -56,6 +58,7 @@ function RankCell({ rank }: { rank: number }) {
 
 export function PerformancePage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const leaderboard = useQuery(
     api.queries.performance.getLeaderboard,
     user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
@@ -98,15 +101,15 @@ export function PerformancePage() {
   return (
     <div>
       <PageHeader
-        title="Team Performance"
-        description="Cleaner leaderboard and performance metrics"
+        title={t("performance.title")}
+        description={t("performance.description")}
       />
 
       {sortedData.length === 0 ? (
         <EmptyState
           icon={BarChart3}
-          title="No performance data yet"
-          description="Performance metrics will appear here once cleaners complete jobs"
+          title={t("performance.noDataYet")}
+          description={t("performance.noDataDesc")}
         />
       ) : (
         <div className="card overflow-hidden">
@@ -115,17 +118,17 @@ export function PerformancePage() {
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">
-                    Rank
+                    {t("performance.rank")}
                   </th>
                   <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">
-                    Cleaner
+                    {t("performance.cleanerCol")}
                   </th>
                   <th
                     className="text-left py-3 px-4 text-sm font-medium text-gray-500 cursor-pointer select-none hover:text-gray-700"
                     onClick={() => handleSort("totalJobs")}
                   >
                     <span className="inline-flex items-center gap-1">
-                      Jobs Done <SortIcon column="totalJobs" />
+                      {t("performance.jobsDone")} <SortIcon column="totalJobs" />
                     </span>
                   </th>
                   <th
@@ -133,7 +136,7 @@ export function PerformancePage() {
                     onClick={() => handleSort("averageScore")}
                   >
                     <span className="inline-flex items-center gap-1">
-                      Avg Score <SortIcon column="averageScore" />
+                      {t("performance.avgScore")} <SortIcon column="averageScore" />
                     </span>
                   </th>
                   <th
@@ -141,7 +144,7 @@ export function PerformancePage() {
                     onClick={() => handleSort("averageTimeMinutes")}
                   >
                     <span className="inline-flex items-center gap-1">
-                      Avg Time <SortIcon column="averageTimeMinutes" />
+                      {t("performance.avgTime")} <SortIcon column="averageTimeMinutes" />
                     </span>
                   </th>
                   <th
@@ -149,7 +152,7 @@ export function PerformancePage() {
                     onClick={() => handleSort("consistencyScore")}
                   >
                     <span className="inline-flex items-center gap-1">
-                      Consistency <SortIcon column="consistencyScore" />
+                      {t("performance.consistency")} <SortIcon column="consistencyScore" />
                     </span>
                   </th>
                   <th
@@ -157,7 +160,7 @@ export function PerformancePage() {
                     onClick={() => handleSort("redFlagCount")}
                   >
                     <span className="inline-flex items-center gap-1">
-                      Red Flags <SortIcon column="redFlagCount" />
+                      {t("performance.redFlagsCol")} <SortIcon column="redFlagCount" />
                     </span>
                   </th>
                 </tr>
@@ -193,7 +196,7 @@ export function PerformancePage() {
                       </td>
                       <td className="py-3 px-4 text-sm text-gray-700">
                         {entry.averageTimeMinutes > 0
-                          ? `${entry.averageTimeMinutes} min`
+                          ? t("performance.minSuffix", { count: entry.averageTimeMinutes })
                           : "--"}
                       </td>
                       <td className="py-3 px-4 text-sm text-gray-700">

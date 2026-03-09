@@ -7,12 +7,13 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useLocation, useParams } from "wouter";
 import { X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const PROPERTY_TYPES = [
-  { value: "residential", label: "Residential" },
-  { value: "commercial", label: "Commercial" },
-  { value: "vacation_rental", label: "Vacation Rental" },
-  { value: "office", label: "Office" },
+  { value: "residential", labelKey: "properties.propertyTypes.residential" },
+  { value: "commercial", labelKey: "properties.propertyTypes.commercial" },
+  { value: "vacation_rental", labelKey: "properties.propertyTypes.vacation_rental" },
+  { value: "office", labelKey: "properties.propertyTypes.office" },
 ] as const;
 
 const AMENITY_PRESETS = [
@@ -28,8 +29,22 @@ const AMENITY_PRESETS = [
   "Garage",
 ];
 
+const AMENITY_KEYS: Record<string, string> = {
+  "Washer/Dryer": "properties.amenityPresets.washerDryer",
+  "Hot Tub": "properties.amenityPresets.hotTub",
+  "Pool": "properties.amenityPresets.pool",
+  "BBQ Grill": "properties.amenityPresets.bbqGrill",
+  "Pets Allowed": "properties.amenityPresets.petsAllowed",
+  "Stairs": "properties.amenityPresets.stairs",
+  "Elevator": "properties.amenityPresets.elevator",
+  "Oceanfront": "properties.amenityPresets.oceanfront",
+  "Smart Lock": "properties.amenityPresets.smartLock",
+  "Garage": "properties.amenityPresets.garage",
+};
+
 export function PropertyFormPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const params = useParams<{ id?: string }>();
   const isEditing = !!params.id;
@@ -108,15 +123,15 @@ export function PropertyFormPage() {
       };
       if (isEditing) {
         await updateProperty({ propertyId: params.id as Id<"properties">, userId: user._id, ...data });
-        sessionStorage.setItem("scrubadub_toast", "Property updated");
+        sessionStorage.setItem("scrubadub_toast", t("properties.propertyUpdated"));
         setLocation(`/properties/${params.id}`);
       } else {
         const id = await createProperty({ companyId: user.companyId, userId: user._id, ...data });
-        sessionStorage.setItem("scrubadub_toast", "Property created");
+        sessionStorage.setItem("scrubadub_toast", t("properties.propertyCreated"));
         setLocation(`/properties/${id}`);
       }
     } catch (err: any) {
-      setError(err.message || "Failed to save property");
+      setError(err.message || t("properties.failedToSave"));
     } finally {
       setLoading(false);
     }
@@ -145,7 +160,7 @@ export function PropertyFormPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <PageHeader title={isEditing ? "Edit Property" : "New Property"} />
+      <PageHeader title={isEditing ? t("properties.editProperty") : t("properties.newProperty")} />
 
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
@@ -155,27 +170,27 @@ export function PropertyFormPage() {
 
       <form onSubmit={handleSubmit} className="card space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Property Name</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("properties.propertyName")}</label>
           <input className="input-field" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Beach House #1" />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("common.type")}</label>
           <select className="input-field" value={type} onChange={(e) => setType(e.target.value)}>
-            {PROPERTY_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>{t.label}</option>
+            {PROPERTY_TYPES.map((pt) => (
+              <option key={pt.value} value={pt.value}>{t(pt.labelKey)}</option>
             ))}
           </select>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("properties.address")}</label>
           <input className="input-field" value={address} onChange={(e) => setAddress(e.target.value)} required placeholder="123 Main St, City, ST 12345" />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Beds</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("properties.beds")}</label>
             <input
               type="number"
               min={0}
@@ -186,7 +201,7 @@ export function PropertyFormPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Baths</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("properties.baths")}</label>
             <input
               type="number"
               min={0}
@@ -201,7 +216,7 @@ export function PropertyFormPage() {
 
         {/* Bathroom details */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Bathroom Details</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">{t("properties.bathroomDetails")}</label>
           <div className="grid grid-cols-2 gap-4">
             <label className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors">
               <input
@@ -210,10 +225,10 @@ export function PropertyFormPage() {
                 onChange={(e) => setHasStandaloneTub(e.target.checked)}
                 className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
               />
-              <span className="text-sm text-gray-700">Standalone Tub</span>
+              <span className="text-sm text-gray-700">{t("properties.standaloneTub")}</span>
             </label>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Shower Glass Doors</label>
+              <label className="block text-xs text-gray-500 mb-1">{t("properties.showerGlassDoors")}</label>
               <input
                 type="number"
                 min={0}
@@ -227,13 +242,13 @@ export function PropertyFormPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Access Instructions</label>
-          <textarea className="input-field" rows={3} value={accessInstructions} onChange={(e) => setAccessInstructions(e.target.value)} placeholder="Lockbox code, key location, etc." />
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("properties.accessInstructions")}</label>
+          <textarea className="input-field" rows={3} value={accessInstructions} onChange={(e) => setAccessInstructions(e.target.value)} placeholder={t("properties.lockboxPlaceholder")} />
         </div>
 
         {/* Amenities with presets */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Amenities</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">{t("properties.amenities")}</label>
           <div className="flex flex-wrap gap-2 mb-3">
             {AMENITY_PRESETS.map((preset) => (
               <button
@@ -246,7 +261,7 @@ export function PropertyFormPage() {
                     : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                 }`}
               >
-                {amenities.includes(preset) ? "\u2713 " : ""}{preset}
+                {amenities.includes(preset) ? "\u2713 " : ""}{AMENITY_KEYS[preset] ? t(AMENITY_KEYS[preset]) : preset}
               </button>
             ))}
           </div>
@@ -257,9 +272,9 @@ export function PropertyFormPage() {
               value={amenityInput}
               onChange={(e) => setAmenityInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomAmenity(); } }}
-              placeholder="Other amenity..."
+              placeholder={t("properties.otherAmenity")}
             />
-            <button type="button" onClick={addCustomAmenity} className="btn-secondary whitespace-nowrap text-sm">Add</button>
+            <button type="button" onClick={addCustomAmenity} className="btn-secondary whitespace-nowrap text-sm">{t("properties.add")}</button>
           </div>
           {customAmenities.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-2">
@@ -277,10 +292,10 @@ export function PropertyFormPage() {
 
         {/* Linen & Supply Counts */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Linen & Supply Counts</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">{t("properties.linenSupplyCounts")}</label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Sheet Sets</label>
+              <label className="block text-xs text-gray-500 mb-1">{t("properties.sheetSets")}</label>
               <input
                 type="number"
                 min={0}
@@ -291,7 +306,7 @@ export function PropertyFormPage() {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Spare Sheet Sets</label>
+              <label className="block text-xs text-gray-500 mb-1">{t("properties.spareSheetSets")}</label>
               <input
                 type="number"
                 min={0}
@@ -302,7 +317,7 @@ export function PropertyFormPage() {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Towels</label>
+              <label className="block text-xs text-gray-500 mb-1">{t("properties.towels")}</label>
               <input
                 type="number"
                 min={0}
@@ -313,7 +328,7 @@ export function PropertyFormPage() {
               />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Pillows</label>
+              <label className="block text-xs text-gray-500 mb-1">{t("properties.pillows")}</label>
               <input
                 type="number"
                 min={0}
@@ -327,26 +342,26 @@ export function PropertyFormPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Maintenance Notes</label>
-          <textarea className="input-field" rows={3} value={maintenanceNotes} onChange={(e) => setMaintenanceNotes(e.target.value)} placeholder="Any ongoing maintenance issues or notes" />
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("properties.maintenanceNotes")}</label>
+          <textarea className="input-field" rows={3} value={maintenanceNotes} onChange={(e) => setMaintenanceNotes(e.target.value)} placeholder={t("properties.maintenancePlaceholder")} />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Owner Notes</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("properties.ownerNotes")}</label>
           <textarea
             className="input-field"
             rows={3}
             value={ownerNotes}
             onChange={(e) => setOwnerNotes(e.target.value)}
-            placeholder="Private notes visible only to the property owner"
+            placeholder={t("properties.ownerNotesPlaceholder")}
           />
         </div>
 
         <div className="flex justify-end gap-3 pt-4">
-          <button type="button" onClick={() => setLocation(isEditing ? `/properties/${params.id}` : "/properties")} className="btn-secondary">Cancel</button>
+          <button type="button" onClick={() => setLocation(isEditing ? `/properties/${params.id}` : "/properties")} className="btn-secondary">{t("common.cancel")}</button>
           <button type="submit" disabled={loading} className="btn-primary flex items-center gap-2">
             {loading && <LoadingSpinner size="sm" />}
-            {isEditing ? "Save Changes" : "Create Property"}
+            {isEditing ? t("properties.saveChanges") : t("properties.createProperty")}
           </button>
         </div>
       </form>

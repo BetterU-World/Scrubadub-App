@@ -4,6 +4,8 @@ import { useQuery, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { useTranslation } from "react-i18next";
+import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 import {
   Building2,
   Bell,
@@ -12,15 +14,12 @@ import {
   Link2,
   ExternalLink,
   Banknote,
+  Globe,
 } from "lucide-react";
 import { BillingSection } from "@/components/settings/BillingSection";
 
-/* ── Disabled "coming soon" items ────────────────────────────── */
-const disabledItems = [
-  { label: "Notifications", description: "Coming soon", icon: Bell },
-];
-
 export function OwnerSettingsPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
 
   const connectStatus = useQuery(
@@ -51,7 +50,7 @@ export function OwnerSettingsPage() {
 
   return (
     <div>
-      <PageHeader title="Settings" />
+      <PageHeader title={t("settings.title")} />
       <div className="max-w-lg space-y-2">
         {/* ── Billing & Subscription (paying for Scrubadub) ──── */}
         <BillingSection />
@@ -65,10 +64,10 @@ export function OwnerSettingsPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-gray-900">
-                  Payouts &mdash; Connected
+                  {t("settings.payoutsConnected")}
                 </p>
                 <p className="text-sm text-gray-500">
-                  Your Stripe account receives payments from customers.
+                  {t("settings.payoutsConnectedDesc")}
                 </p>
               </div>
             </div>
@@ -78,7 +77,7 @@ export function OwnerSettingsPage() {
               className="btn-secondary text-sm flex items-center gap-1.5"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              {loading === "manage" ? "Opening…" : "Manage Payout Account"}
+              {loading === "manage" ? t("settings.opening") : t("settings.managePayoutAccount")}
             </button>
           </div>
         ) : (
@@ -91,10 +90,10 @@ export function OwnerSettingsPage() {
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-medium text-gray-900">
-                Payouts &mdash; Not connected
+                {t("settings.payoutsNotConnected")}
               </p>
               <p className="text-sm text-gray-500">
-                Connect Stripe to start receiving payments from customers.
+                {t("settings.payoutsNotConnectedDesc")}
               </p>
             </div>
             <ChevronRight className="w-4 h-4 text-gray-400" />
@@ -110,9 +109,9 @@ export function OwnerSettingsPage() {
             <Building2 className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-gray-900">Company Profile</p>
+            <p className="font-medium text-gray-900">{t("settings.companyProfile")}</p>
             <p className="text-sm text-gray-500">
-              Contact info and defaults for your microsites.
+              {t("settings.companyProfileDesc")}
             </p>
           </div>
           <ChevronRight className="w-4 h-4 text-gray-400" />
@@ -127,29 +126,38 @@ export function OwnerSettingsPage() {
             <Banknote className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-gray-900">Payments</p>
+            <p className="font-medium text-gray-900">{t("settings.paymentsLabel")}</p>
             <p className="text-sm text-gray-500">
-              Partner settlements and cleaner payments.
+              {t("settings.paymentsDesc")}
             </p>
           </div>
           <ChevronRight className="w-4 h-4 text-gray-400" />
         </Link>
 
         {/* ── Disabled items ───────────────────────────────── */}
-        {disabledItems.map((item) => (
-          <div
-            key={item.label}
-            className="card flex items-center gap-4 opacity-50 cursor-not-allowed"
-          >
-            <div className="p-2 rounded-lg bg-gray-100 text-gray-400">
-              <item.icon className="w-5 h-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-gray-400">{item.label}</p>
-              <p className="text-sm text-gray-400">{item.description}</p>
-            </div>
+        <div
+          className="card flex items-center gap-4 opacity-50 cursor-not-allowed"
+        >
+          <div className="p-2 rounded-lg bg-gray-100 text-gray-400">
+            <Bell className="w-5 h-5" />
           </div>
-        ))}
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-gray-400">{t("settings.notifications")}</p>
+            <p className="text-sm text-gray-400">{t("settings.comingSoon")}</p>
+          </div>
+        </div>
+
+        {/* Language */}
+        <div className="card flex items-center gap-4">
+          <div className="p-2 rounded-lg bg-primary-50 text-primary-600">
+            <Globe className="w-5 h-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-gray-900">{t("settings.language")}</p>
+            <p className="text-sm text-gray-500">{t("settings.languageDesc")}</p>
+          </div>
+          <LanguageSwitcher />
+        </div>
       </div>
     </div>
   );

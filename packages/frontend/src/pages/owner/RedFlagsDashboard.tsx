@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
+import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,6 +18,7 @@ type ActiveAction =
 
 export function RedFlagsDashboard() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [statusFilter, setStatusFilter] = useState("open");
   const [activeAction, setActiveAction] = useState<ActiveAction>(null);
 
@@ -63,14 +65,14 @@ export function RedFlagsDashboard() {
 
   return (
     <div>
-      <PageHeader title="Red Flags" description="Track and resolve issues reported during cleaning" />
+      <PageHeader title={t("redFlags.title")} description={t("redFlags.description")} />
 
       <div className="flex gap-2 mb-6">
         {[
-          { value: "open", label: "Open" },
-          { value: "acknowledged", label: "Acknowledged" },
-          { value: "resolved", label: "Resolved" },
-          { value: "", label: "All" },
+          { value: "open", label: t("redFlags.filterOpen") },
+          { value: "acknowledged", label: t("redFlags.filterAcknowledged") },
+          { value: "resolved", label: t("redFlags.filterResolved") },
+          { value: "", label: t("redFlags.filterAll") },
         ].map((f) => (
           <button
             key={f.value}
@@ -87,7 +89,7 @@ export function RedFlagsDashboard() {
       </div>
 
       {flags.length === 0 ? (
-        <EmptyState icon={Flag} title="No red flags" description="No issues match the selected filter" />
+        <EmptyState icon={Flag} title={t("redFlags.noRedFlags")} description={t("redFlags.noMatchFilter")} />
       ) : (
         <div className="space-y-3">
           {flags.map((flag) => {
@@ -114,7 +116,7 @@ export function RedFlagsDashboard() {
                     <p className="text-sm text-gray-700">{flag.note}</p>
                     {flag.ownerNote && (
                       <p className="text-xs text-gray-500 italic mt-1">
-                        Owner note: {flag.ownerNote}
+                        {t("redFlags.ownerNote", { note: flag.ownerNote })}
                       </p>
                     )}
                     <p className="text-xs text-gray-400 mt-1">
@@ -125,7 +127,7 @@ export function RedFlagsDashboard() {
                         href={`/jobs/${flag.maintenanceJobId}`}
                         className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 mt-1"
                       >
-                        <Wrench className="w-3 h-3" /> View Maintenance Job
+                        <Wrench className="w-3 h-3" /> {t("redFlags.viewMaintenanceJob")}
                       </Link>
                     )}
                   </div>
@@ -141,7 +143,7 @@ export function RedFlagsDashboard() {
                         }
                         className="btn-secondary text-sm flex items-center gap-1"
                       >
-                        <Eye className="w-3.5 h-3.5" /> Acknowledge
+                        <Eye className="w-3.5 h-3.5" /> {t("redFlags.acknowledge")}
                       </button>
                     )}
                     {(flag.status === "open" || flag.status === "acknowledged") && (
@@ -156,7 +158,7 @@ export function RedFlagsDashboard() {
                           }
                           className="btn-primary text-sm flex items-center gap-1"
                         >
-                          <CheckCircle className="w-3.5 h-3.5" /> Resolve
+                          <CheckCircle className="w-3.5 h-3.5" /> {t("redFlags.resolve")}
                         </button>
                         {!flag.maintenanceJobId && (
                           <button
@@ -169,7 +171,7 @@ export function RedFlagsDashboard() {
                             }
                             className="btn-secondary text-sm flex items-center gap-1"
                           >
-                            <Wrench className="w-3.5 h-3.5" /> Create Job
+                            <Wrench className="w-3.5 h-3.5" /> {t("redFlags.createJob")}
                           </button>
                         )}
                       </>
@@ -181,7 +183,7 @@ export function RedFlagsDashboard() {
                 {isStatusAction && (activeAction.type === "acknowledge" || activeAction.type === "resolve") && (
                   <div className="mt-3 pt-3 border-t border-gray-100">
                     <label className="block text-xs font-medium text-gray-500 mb-1">
-                      Add a note (optional)
+                      {t("redFlags.addNote")}
                     </label>
                     <div className="flex gap-2">
                       <input
@@ -190,7 +192,7 @@ export function RedFlagsDashboard() {
                         onChange={(e) =>
                           setActiveAction({ ...activeAction, ownerNote: e.target.value })
                         }
-                        placeholder="Enter a note..."
+                        placeholder={t("redFlags.enterNote")}
                         className="input text-sm flex-1"
                         autoFocus
                       />
@@ -204,13 +206,13 @@ export function RedFlagsDashboard() {
                         }
                         className="btn-primary text-sm"
                       >
-                        Confirm
+                        {t("common.confirm")}
                       </button>
                       <button
                         onClick={() => setActiveAction(null)}
                         className="btn-secondary text-sm"
                       >
-                        Cancel
+                        {t("common.cancel")}
                       </button>
                     </div>
                   </div>
@@ -221,7 +223,7 @@ export function RedFlagsDashboard() {
                   <div className="mt-3 pt-3 border-t border-gray-100 space-y-3">
                     <div>
                       <label className="block text-xs font-medium text-gray-500 mb-1">
-                        Scheduled Date *
+                        {t("redFlags.scheduledDate")}
                       </label>
                       <input
                         type="date"
@@ -235,12 +237,12 @@ export function RedFlagsDashboard() {
 
                     <div>
                       <label className="block text-xs font-medium text-gray-500 mb-1">
-                        Assign Maintenance Worker(s) *
+                        {t("redFlags.assignWorkers")}
                       </label>
                       {maintenanceWorkers === undefined ? (
-                        <p className="text-xs text-gray-400">Loading maintenance workers...</p>
+                        <p className="text-xs text-gray-400">{t("redFlags.loadingWorkers")}</p>
                       ) : maintenanceWorkers.length === 0 ? (
-                        <p className="text-xs text-gray-400">No maintenance workers available</p>
+                        <p className="text-xs text-gray-400">{t("redFlags.noWorkersAvailable")}</p>
                       ) : (
                         <div className="flex flex-wrap gap-x-4 gap-y-1">
                           {maintenanceWorkers.map((worker) => (
@@ -266,7 +268,7 @@ export function RedFlagsDashboard() {
                     <div className="flex gap-3">
                       <div className="flex-1">
                         <label className="block text-xs font-medium text-gray-500 mb-1">
-                          Notes (optional)
+                          {t("redFlags.notesOptional")}
                         </label>
                         <input
                           type="text"
@@ -274,13 +276,13 @@ export function RedFlagsDashboard() {
                           onChange={(e) =>
                             setActiveAction({ ...activeAction, notes: e.target.value })
                           }
-                          placeholder="Any additional notes..."
+                          placeholder={t("redFlags.notesPlaceholder")}
                           className="input text-sm w-full"
                         />
                       </div>
                       <div className="w-32">
                         <label className="block text-xs font-medium text-gray-500 mb-1">
-                          Duration (min)
+                          {t("redFlags.durationMin")}
                         </label>
                         <input
                           type="number"
@@ -300,13 +302,13 @@ export function RedFlagsDashboard() {
                         disabled={!activeAction.scheduledDate || activeAction.cleanerIds.length === 0}
                         className="btn-primary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Create Maintenance Job
+                        {t("redFlags.createMaintenanceJob")}
                       </button>
                       <button
                         onClick={() => setActiveAction(null)}
                         className="btn-secondary text-sm"
                       >
-                        Cancel
+                        {t("common.cancel")}
                       </button>
                     </div>
                   </div>
