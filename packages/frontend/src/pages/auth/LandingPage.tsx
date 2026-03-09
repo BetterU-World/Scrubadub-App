@@ -10,6 +10,7 @@ import {
   Home,
   Users,
   ShieldCheck,
+  Globe,
 } from "lucide-react";
 
 const plan = {
@@ -26,6 +27,7 @@ const plan = {
     "Quality checklists & photo proof",
     "Red flag alerts & maintenance tracking",
     "Performance analytics",
+    "Available in English and Spanish",
     "14-day free trial included",
   ],
 };
@@ -42,6 +44,12 @@ const valueProps = [
     title: "Built for Real Cleaning Businesses",
     description:
       "Manage teams, properties, turnovers, and issues without spreadsheets or group chats.",
+  },
+  {
+    icon: Globe,
+    title: "Bilingual by Default",
+    description:
+      "Run your entire operation in English and Spanish — every workflow, checklist, and notification in the language that works best.",
   },
   {
     icon: Eye,
@@ -77,7 +85,8 @@ const steps = [
     num: "2",
     icon: Users,
     title: "Assign Your Team",
-    description: "Cleaners and maintenance receive clear job workflows.",
+    description:
+      "Cleaners and maintenance receive clear job workflows — in English or Spanish.",
   },
   {
     num: "3",
@@ -118,11 +127,11 @@ export function LandingPage() {
       {/* Hero */}
       <section className="py-16 sm:py-24 text-center px-4">
         <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 max-w-2xl mx-auto leading-tight">
-          Gold Standard Cleaning Operations
+          Gold Standard Cleaning Operations — In English and Spanish
         </h1>
         <p className="mt-4 text-lg text-gray-500 max-w-xl mx-auto">
-          Schedule jobs, track quality with photo-verified checklists, and manage
-          your entire cleaning team from one simple dashboard.
+          Schedule jobs, track quality, and manage your entire cleaning team on
+          one bilingual platform built for real operations.
         </p>
         <div className="mt-8 flex justify-center gap-3">
           <Link href="/get-started" className="btn-primary px-6 py-2.5">
@@ -151,8 +160,8 @@ export function LandingPage() {
         </div>
         <p className="mt-8 text-gray-500 text-center max-w-2xl mx-auto">
           SCRUB replaces scattered communication, spreadsheets, and
-          guesswork with one operational system built specifically for cleaning
-          businesses and short-term rental operators.
+          guesswork with one bilingual operational system built specifically for
+          cleaning businesses and short-term rental operators.
         </p>
       </section>
 
@@ -161,7 +170,7 @@ export function LandingPage() {
         <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">
           Why SCRUB?
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
           {valueProps.map((vp) => (
             <div key={vp.title} className="card text-center">
               <div className="inline-flex p-2 rounded-lg bg-primary-100 text-primary-600 mb-3">
@@ -177,13 +186,13 @@ export function LandingPage() {
       {/* Explanation */}
       <section className="pb-16 px-4 text-center max-w-2xl mx-auto">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">
-          One Platform. Total Control.
+          One Bilingual Platform. Total Control.
         </h2>
         <p className="text-gray-500">
           SCRUB replaces scattered tools with one operational system for
           cleaning companies and short-term rental owners. Schedule work, track
           performance, handle maintenance, and train teams using the Gold
-          Standard system — all in one place.
+          Standard system — all in one place, in English and Spanish.
         </p>
       </section>
 
@@ -254,7 +263,7 @@ export function LandingPage() {
         </h2>
         <p className="text-gray-500">
           SCRUB wasn't designed in a boardroom. It was built alongside
-          real cleaning teams solving real operational problems — from turnovers
+          real bilingual cleaning teams solving real operational problems — from turnovers
           and inspections to maintenance coordination and team accountability.
         </p>
       </section>
@@ -262,7 +271,7 @@ export function LandingPage() {
       {/* Final CTA */}
       <section className="pb-20 px-4 text-center">
         <h2 className="text-2xl font-bold text-gray-900 mb-6">
-          Ready to run your operations the Gold Standard way?
+          Ready to run your bilingual operations the Gold Standard way?
         </h2>
         <div className="flex justify-center gap-3">
           <Link href="/get-started" className="btn-primary px-6 py-2.5">
