@@ -1,4 +1,5 @@
 import { clsx } from "clsx";
+import { useTranslation } from "react-i18next";
 
 interface LoadingSpinnerProps {
   size?: "sm" | "md" | "lg";
@@ -19,11 +20,12 @@ export function LoadingSpinner({ size = "md", className }: LoadingSpinnerProps) 
   );
 }
 
-export function PageLoader({ text = "Scrubbing…" }: { text?: string } = {}) {
+export function PageLoader({ text }: { text?: string } = {}) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3">
       <LoadingSpinner size="lg" />
-      <p className="text-sm text-gray-400">{text}</p>
+      <p className="text-sm text-gray-400">{text ?? t("common.scrubbing")}</p>
     </div>
   );
 }

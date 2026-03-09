@@ -5,9 +5,11 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { Link } from "wouter";
 import { Handshake, Users, ChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function PaymentsHubPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const openSettlements = useQuery(
     api.queries.settlements.listMySettlements,
@@ -27,8 +29,8 @@ export function PaymentsHubPage() {
   return (
     <div>
       <PageHeader
-        title="Payments"
-        description="Manage partner settlements and cleaner payments"
+        title={t("payments.title")}
+        description={t("payments.description")}
       />
 
       <div className="max-w-lg space-y-2">
@@ -41,15 +43,15 @@ export function PaymentsHubPage() {
             <Handshake className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-gray-900">Partner Settlements</p>
+            <p className="font-medium text-gray-900">{t("payments.partnerSettlements")}</p>
             <p className="text-sm text-gray-500">
-              Payments between partner companies for shared jobs
+              {t("payments.partnerSettlementsDesc")}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             {openSettlementsCount > 0 && (
               <span className="badge bg-amber-100 text-amber-700">
-                {openSettlementsCount} open
+                {t("payments.countOpen", { count: openSettlementsCount })}
               </span>
             )}
             <ChevronRight className="w-4 h-4 text-gray-400" />
@@ -65,15 +67,15 @@ export function PaymentsHubPage() {
             <Users className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-gray-900">Cleaner Payments</p>
+            <p className="font-medium text-gray-900">{t("payments.cleanerPayments")}</p>
             <p className="text-sm text-gray-500">
-              Payments to your cleaners for completed jobs
+              {t("payments.cleanerPaymentsDesc")}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             {openCleanerCount > 0 && (
               <span className="badge bg-amber-100 text-amber-700">
-                {openCleanerCount} open
+                {t("payments.countOpen", { count: openCleanerCount })}
               </span>
             )}
             <ChevronRight className="w-4 h-4 text-gray-400" />

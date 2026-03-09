@@ -15,22 +15,20 @@ import {
   FileText,
   Globe,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
-const STATUS_OPTIONS = [
-  { value: "", label: "All" },
-  { value: "new", label: "New" },
-  { value: "reviewed", label: "Reviewed" },
-];
-
-function timeAgo(ts: number): string {
-  const diff = Date.now() - ts;
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
+function useTimeAgo() {
+  const { t } = useTranslation();
+  return (ts: number): string => {
+    const diff = Date.now() - ts;
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return t("time.justNow");
+    if (mins < 60) return t("time.minutesAgo", { count: mins });
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return t("time.hoursAgo", { count: hrs });
+    const days = Math.floor(hrs / 24);
+    return t("time.daysAgo", { count: days });
+  };
 }
 
 function StarRating({ rating }: { rating: number }) {
@@ -52,7 +50,15 @@ function StarRating({ rating }: { rating: number }) {
 
 export function FeedbackInboxPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
+  const timeAgo = useTimeAgo();
   const [statusFilter, setStatusFilter] = useState("");
+
+  const statusOptions = [
+    { value: "", label: t("requests.all") },
+    { value: "new", label: t("status.new") },
+    { value: "reviewed", label: t("status.reviewed") },
+  ];
 
   const feedback = useQuery(
     api.queries.clientRequests.listClientFeedback,
@@ -84,10 +90,10 @@ export function FeedbackInboxPage() {
     setTogglingFeatured(feedbackId);
     try {
       await toggleFeatured({ userId: user._id, feedbackId, featured: !currentlyFeatured });
-      setToast({ message: currentlyFeatured ? "Removed from mini site" : "Featured on mini site", type: "success" });
+      setToast({ message: currentlyFeatured ? t("feedback.removedFromSite") : t("feedback.featuredOnSite"), type: "success" });
       setTimeout(() => setToast(null), 3000);
     } catch (err: any) {
-      setToast({ message: err.message || "Failed to update", type: "error" });
+      setToast({ message: err.message || t("feedback.failedToUpdate"), type: "error" });
       setTimeout(() => setToast(null), 3000);
     } finally {
       setTogglingFeatured(null);
@@ -98,11 +104,11 @@ export function FeedbackInboxPage() {
     setUpdating(feedbackId);
     try {
       await markReviewed({ userId: user._id, feedbackId });
-      setToast({ message: "Marked as reviewed", type: "success" });
+      setToast({ message: t("feedback.markedAsReviewed"), type: "success" });
       setTimeout(() => setToast(null), 3000);
     } catch (err: any) {
       setToast({
-        message: err.message || "Failed to update",
+        message: err.message || t("feedback.failedToUpdate"),
         type: "error",
       });
       setTimeout(() => setToast(null), 3000);
@@ -114,13 +120,13 @@ export function FeedbackInboxPage() {
   return (
     <div>
       <PageHeader
-        title="Feedback"
-        description="Client feedback from post-service links"
+        title={t("feedback.title")}
+        description={t("feedback.description")}
       />
 
       {/* Filters */}
       <div className="flex gap-2 mb-4">
-        {STATUS_OPTIONS.map((opt) => (
+        {statusOptions.map((opt) => (
           <button
             key={opt.value}
             onClick={() => setStatusFilter(opt.value)}
@@ -138,11 +144,11 @@ export function FeedbackInboxPage() {
       {feedback.length === 0 ? (
         <EmptyState
           icon={MessageSquare}
-          title="No feedback yet"
+          title={t("feedback.noFeedbackYet")}
           description={
             statusFilter
-              ? "No feedback matches this filter."
-              : "Client feedback from your feedback links will appear here."
+              ? t("feedback.noFeedbackFilter")
+              : t("feedback.noFeedbackEmpty")
           }
         />
       ) : (
@@ -163,7 +169,7 @@ export function FeedbackInboxPage() {
                           : "bg-gray-100 text-gray-600"
                       }`}
                     >
-                      {fb.status === "new" ? "New" : "Reviewed"}
+                      {fb.status === "new" ? t("status.new") : t("status.reviewed")}
                     </span>
                   </div>
 
@@ -210,8 +216,8 @@ export function FeedbackInboxPage() {
                     {togglingFeatured === fb._id
                       ? "..."
                       : (fb as any).featuredOnSite
-                        ? "On mini site"
-                        : "Show on site"}
+                        ? t("feedback.onMiniSite")
+                        : t("feedback.showOnSite")}
                   </button>
                   {fb.status === "new" && (
                     <button
@@ -220,7 +226,7 @@ export function FeedbackInboxPage() {
                       className="btn-secondary text-xs flex items-center gap-1"
                     >
                       <CheckCircle className="w-3.5 h-3.5" />
-                      {updating === fb._id ? "..." : "Mark reviewed"}
+                      {updating === fb._id ? "..." : t("feedback.markReviewed")}
                     </button>
                   )}
                 </div>
@@ -230,7 +236,7 @@ export function FeedbackInboxPage() {
               {(fb.contactName || fb.contactEmail) && (
                 <div className="border-t pt-2 text-xs text-gray-500">
                   <span className="font-medium text-gray-600">
-                    Feedback contact:
+                    {t("feedback.feedbackContact")}
                   </span>{" "}
                   {[fb.contactName, fb.contactEmail]
                     .filter(Boolean)

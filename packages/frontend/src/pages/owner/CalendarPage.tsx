@@ -23,15 +23,23 @@ import {
   addDays,
   subDays,
 } from "date-fns";
+import { useTranslation } from "react-i18next";
 
 type ViewMode = "month" | "week" | "day";
 
 export function CalendarPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
   const [cleanerFilter, setCleanerFilter] = useState<string>("all");
+
+  const viewModeLabels: Record<ViewMode, string> = {
+    month: t("calendar.month"),
+    week: t("calendar.week"),
+    day: t("calendar.day"),
+  };
 
   // Compute date range based on view mode
   const { rangeStart, rangeEnd } = useMemo(() => {
@@ -176,9 +184,14 @@ export function CalendarPage() {
   // Whether the job title should have strikethrough
   const isJobStrikethrough = (job: any) => job.status === "cancelled";
 
+  const dayHeaders = [
+    t("calendar.sun"), t("calendar.mon"), t("calendar.tue"),
+    t("calendar.wed"), t("calendar.thu"), t("calendar.fri"), t("calendar.sat"),
+  ];
+
   return (
     <div>
-      <PageHeader title="Calendar" />
+      <PageHeader title={t("calendar.title")} />
 
       {/* View Mode Tabs */}
       <div className="flex items-center gap-1 mb-4 bg-gray-100 rounded-lg p-1 w-fit">
@@ -192,7 +205,7 @@ export function CalendarPage() {
                 : "text-gray-600 hover:text-gray-900"
             }`}
           >
-            {mode}
+            {viewModeLabels[mode]}
           </button>
         ))}
       </div>
@@ -201,7 +214,7 @@ export function CalendarPage() {
       <div className="flex flex-wrap gap-3 mb-4">
         <div className="flex items-center gap-2">
           <label htmlFor="property-filter" className="text-sm font-medium text-gray-700">
-            Property
+            {t("calendar.property")}
           </label>
           <select
             id="property-filter"
@@ -209,7 +222,7 @@ export function CalendarPage() {
             onChange={(e) => setPropertyFilter(e.target.value)}
             className="input-field py-1.5 text-sm min-w-[180px]"
           >
-            <option value="all">All Properties</option>
+            <option value="all">{t("calendar.allProperties")}</option>
             {properties?.map((p) => (
               <option key={p._id} value={p._id}>
                 {p.name}
@@ -220,7 +233,7 @@ export function CalendarPage() {
         {user.role === "owner" && (
           <div className="flex items-center gap-2">
             <label htmlFor="cleaner-filter" className="text-sm font-medium text-gray-700">
-              Cleaner
+              {t("calendar.cleaner")}
             </label>
             <select
               id="cleaner-filter"
@@ -228,7 +241,7 @@ export function CalendarPage() {
               onChange={(e) => setCleanerFilter(e.target.value)}
               className="input-field py-1.5 text-sm min-w-[180px]"
             >
-              <option value="all">All Cleaners</option>
+              <option value="all">{t("calendar.allCleaners")}</option>
               {cleaners?.map((c) => (
                 <option key={c._id} value={c._id}>
                   {c.name}
@@ -255,7 +268,7 @@ export function CalendarPage() {
               onClick={navigateToday}
               className="btn-secondary text-xs px-2 py-1"
             >
-              Today
+              {t("calendar.today")}
             </button>
           </div>
           <button
@@ -275,6 +288,8 @@ export function CalendarPage() {
             jobsByDate={jobsByDate}
             getJobColor={getJobColor}
             isJobStrikethrough={isJobStrikethrough}
+            dayHeaders={dayHeaders}
+            t={t}
           />
         )}
 
@@ -286,6 +301,7 @@ export function CalendarPage() {
             jobsByDate={jobsByDate}
             getJobColor={getJobColor}
             isJobStrikethrough={isJobStrikethrough}
+            t={t}
           />
         )}
 
@@ -297,6 +313,7 @@ export function CalendarPage() {
             jobs={jobsByDate[format(currentDate, "yyyy-MM-dd")] || []}
             formatJobType={formatJobType}
             isJobStrikethrough={isJobStrikethrough}
+            t={t}
           />
         )}
       </div>
@@ -305,23 +322,23 @@ export function CalendarPage() {
       <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-gray-500">
         <div className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-3 rounded bg-green-100 border border-green-200" />
-          Accepted
+          {t("status.accepted")}
         </div>
         <div className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-3 rounded bg-gray-100 border border-gray-200" />
-          Pending
+          {t("status.pending")}
         </div>
         <div className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-3 rounded bg-gray-200 border border-gray-300" />
-          Completed
+          {t("status.completed")}
         </div>
         <div className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-3 rounded bg-gray-100 border border-gray-200" />
-          <span className="line-through">Cancelled</span>
+          <span className="line-through">{t("status.cancelled")}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="inline-block w-2 h-2 rounded-full bg-primary-500" />
-          Today
+          {t("calendar.today")}
         </div>
       </div>
     </div>
@@ -337,12 +354,14 @@ interface MonthViewProps {
   jobsByDate: Record<string, any[]>;
   getJobColor: (job: any) => string;
   isJobStrikethrough: (job: any) => boolean;
+  dayHeaders: string[];
+  t: (key: string, opts?: any) => string;
 }
 
-function MonthView({ days, currentDate, today, jobsByDate, getJobColor, isJobStrikethrough }: MonthViewProps) {
+function MonthView({ days, currentDate, today, jobsByDate, getJobColor, isJobStrikethrough, dayHeaders, t }: MonthViewProps) {
   return (
     <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
-      {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
+      {dayHeaders.map((d) => (
         <div
           key={d}
           className="bg-gray-50 p-2 text-center text-xs font-medium text-gray-500"
@@ -383,7 +402,7 @@ function MonthView({ days, currentDate, today, jobsByDate, getJobColor, isJobStr
               ))}
               {dayJobs.length > 3 && (
                 <span className="text-xs text-gray-400">
-                  +{dayJobs.length - 3} more
+                  {t("calendar.more", { count: dayJobs.length - 3 })}
                 </span>
               )}
             </div>
@@ -402,9 +421,10 @@ interface WeekViewProps {
   jobsByDate: Record<string, any[]>;
   getJobColor: (job: any) => string;
   isJobStrikethrough: (job: any) => boolean;
+  t: (key: string) => string;
 }
 
-function WeekView({ days, today, jobsByDate, getJobColor, isJobStrikethrough }: WeekViewProps) {
+function WeekView({ days, today, jobsByDate, getJobColor, isJobStrikethrough, t }: WeekViewProps) {
   return (
     <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
       {/* Day headers */}
@@ -480,7 +500,7 @@ function WeekView({ days, today, jobsByDate, getJobColor, isJobStrikethrough }: 
               })}
               {dayJobs.length === 0 && (
                 <div className="text-xs text-gray-300 text-center pt-4">
-                  No jobs
+                  {t("calendar.noJobs")}
                 </div>
               )}
             </div>
@@ -499,9 +519,10 @@ interface DayViewProps {
   jobs: any[];
   formatJobType: (type: string) => string;
   isJobStrikethrough: (job: any) => boolean;
+  t: (key: string) => string;
 }
 
-function DayView({ date, today, jobs, formatJobType, isJobStrikethrough }: DayViewProps) {
+function DayView({ date, today, jobs, formatJobType, isJobStrikethrough, t }: DayViewProps) {
   const isToday = isSameDay(date, today);
 
   return (
@@ -509,12 +530,12 @@ function DayView({ date, today, jobs, formatJobType, isJobStrikethrough }: DayVi
       {isToday && (
         <div className="flex items-center gap-1.5 text-sm text-primary-600 font-medium mb-4">
           <span className="w-2 h-2 rounded-full bg-primary-500" />
-          Today
+          {t("calendar.today")}
         </div>
       )}
       {jobs.length === 0 ? (
         <div className="text-center py-12 text-gray-400">
-          <p className="text-lg">No jobs scheduled</p>
+          <p className="text-lg">{t("calendar.noJobsScheduled")}</p>
           <p className="text-sm mt-1">
             {format(date, "EEEE, MMMM d, yyyy")}
           </p>

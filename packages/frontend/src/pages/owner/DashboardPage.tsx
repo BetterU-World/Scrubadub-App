@@ -20,11 +20,13 @@ import {
   Rocket,
   BookOpen,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const LS_MANUAL_READ = "scrubadub_onboarding_manual_read";
 
 export function DashboardPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const stats = useQuery(
     api.queries.dashboard.getStats,
     user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
@@ -52,7 +54,7 @@ export function DashboardPage() {
       )}
 
       <PageHeader
-        title={`Welcome back, ${user.name.split(" ")[0]}`}
+        title={t("dashboard.welcomeBack", { name: user.name.split(" ")[0] })}
         description={user.companyName}
       />
 
@@ -61,39 +63,39 @@ export function DashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <DashCard
           icon={Building2}
-          label="Properties"
+          label={t("dashboard.properties")}
           value={stats?.propertyCount ?? "—"}
           href="/properties"
         />
         <DashCard
           icon={Users}
-          label="Team Members"
+          label={t("dashboard.teamMembers")}
           value={stats?.employeeCount ?? "—"}
           href="/employees"
         />
         <DashCard
           icon={ClipboardCheck}
-          label="Active Jobs"
+          label={t("dashboard.activeJobs")}
           value={stats?.activeJobCount ?? "—"}
           href="/jobs"
         />
         <DashCard
           icon={Flag}
-          label="Open Red Flags"
+          label={t("dashboard.openRedFlags")}
           value={stats?.openRedFlagCount ?? "—"}
           href="/red-flags"
           variant="danger"
         />
         <DashCard
           icon={Clock}
-          label="Awaiting Approval"
+          label={t("dashboard.awaitingApproval")}
           value={stats?.awaitingApprovalCount ?? "—"}
           href="/jobs?status=submitted"
           variant="warning"
         />
         <DashCard
           icon={Wrench}
-          label="Open Maintenance"
+          label={t("dashboard.openMaintenance")}
           value={stats?.openMaintenanceCount ?? "—"}
           href="/jobs?type=maintenance"
         />
@@ -102,9 +104,9 @@ export function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="card">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-gray-900">Upcoming Jobs</h3>
+            <h3 className="font-semibold text-gray-900">{t("dashboard.upcomingJobs")}</h3>
             <Link href="/jobs" className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1">
-              View all <ArrowRight className="w-4 h-4" />
+              {t("common.viewAll")} <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
           {stats?.upcomingJobs && stats.upcomingJobs.length > 0 ? (
@@ -128,15 +130,15 @@ export function DashboardPage() {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-500">No upcoming jobs scheduled</p>
+            <p className="text-sm text-gray-500">{t("dashboard.noUpcomingJobs")}</p>
           )}
         </div>
 
         <div className="card">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-gray-900">Recent Red Flags</h3>
+            <h3 className="font-semibold text-gray-900">{t("dashboard.recentRedFlags")}</h3>
             <Link href="/red-flags" className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1">
-              View all <ArrowRight className="w-4 h-4" />
+              {t("common.viewAll")} <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
           {stats?.recentRedFlags && stats.recentRedFlags.length > 0 ? (
@@ -161,7 +163,7 @@ export function DashboardPage() {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-gray-500">No open red flags</p>
+            <p className="text-sm text-gray-500">{t("dashboard.noOpenRedFlags")}</p>
           )}
         </div>
       </div>
@@ -170,28 +172,29 @@ export function DashboardPage() {
 }
 
 function GettingStartedCard({ stats }: { stats: any }) {
+  const { t } = useTranslation();
   const [manualRead, setManualRead] = useState(
     () => localStorage.getItem(LS_MANUAL_READ) === "1"
   );
 
   const steps = [
     {
-      label: "Create your first property",
+      label: t("dashboard.createFirstProperty"),
       href: "/properties",
       done: (stats?.propertyCount ?? 0) > 0,
     },
     {
-      label: "Add your first team member",
+      label: t("dashboard.addFirstTeamMember"),
       href: "/employees",
       done: (stats?.employeeCount ?? 0) > 1,
     },
     {
-      label: "Schedule your first job",
+      label: t("dashboard.scheduleFirstJob"),
       href: "/jobs/new",
       done: (stats?.totalJobCount ?? 0) > 0,
     },
     {
-      label: "Read the Gold Standard manual",
+      label: t("dashboard.readGoldStandard"),
       href: "/manuals",
       done: manualRead,
     },
@@ -215,9 +218,9 @@ function GettingStartedCard({ stats }: { stats: any }) {
             <Rocket className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-semibold text-gray-900">Getting Started</h3>
+            <h3 className="font-semibold text-gray-900">{t("dashboard.gettingStarted")}</h3>
             <p className="text-sm text-gray-500">
-              {completed} of {steps.length} complete
+              {t("dashboard.ofComplete", { completed, total: steps.length })}
             </p>
           </div>
         </div>
@@ -262,7 +265,7 @@ function GettingStartedCard({ stats }: { stats: any }) {
           onClick={handleMarkManualsRead}
           className="btn-primary w-full flex items-center justify-center gap-2 text-sm"
         >
-          <BookOpen className="w-4 h-4" /> Mark all manuals as read
+          <BookOpen className="w-4 h-4" /> {t("dashboard.markManualsRead")}
         </button>
       </div>
     </div>
