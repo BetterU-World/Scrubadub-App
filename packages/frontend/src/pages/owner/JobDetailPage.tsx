@@ -451,6 +451,7 @@ export function JobDetailPage() {
           const isPaid = payment?.status === "PAID";
           const isCheckoutInProgress = payment?.status === "OPEN" && payment?.amountCents != null && payment?.method != null;
           const isEligible = ["submitted", "approved"].includes(job.status);
+          const isRejectedOrCancelled = job.status === "cancelled" || job.status === "denied" || (job as any).acceptanceStatus === "denied";
 
           return (
             <div className="card border-emerald-200">
@@ -458,7 +459,17 @@ export function JobDetailPage() {
                 <DollarSign className="w-5 h-5" /> Cleaner Payment
               </h3>
 
-              {isPaid ? (
+              {isRejectedOrCancelled && !isPaid ? (
+                /* Rejected or cancelled — no payment actions */
+                <div className="flex items-center gap-2 py-2">
+                  <AlertTriangle className="w-4 h-4 text-gray-400" />
+                  <p className="text-sm text-gray-500">
+                    {job.status === "cancelled"
+                      ? "Payments unavailable for cancelled jobs."
+                      : "Payments unavailable for rejected jobs."}
+                  </p>
+                </div>
+              ) : isPaid ? (
                 /* Already paid */
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">

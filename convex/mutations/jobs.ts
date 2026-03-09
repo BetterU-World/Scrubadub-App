@@ -570,6 +570,9 @@ export const updatePlannedCleanerPay = mutation({
     if (!job || job.companyId !== owner.companyId) {
       throw new Error("Job not found or does not belong to your company");
     }
+    if (job.status === "cancelled" || job.status === "denied") {
+      throw new Error("Cannot set planned pay for cancelled or rejected jobs");
+    }
     if (job.cleanerIds.length === 0) {
       throw new Error("No cleaner assigned to this job");
     }
