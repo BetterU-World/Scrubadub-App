@@ -6,6 +6,7 @@ import { LeadsHeader } from "@/components/ui/LeadsHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useTranslation } from "react-i18next";
+import { useTimeAgo } from "@/hooks/useTimeAgo";
 import {
   Inbox,
   MapPin,
@@ -22,20 +23,6 @@ const STAGES = [
   { value: "won", labelKey: "status.won", color: "bg-green-50 border-green-200" },
   { value: "lost", labelKey: "status.lost", color: "bg-gray-50 border-gray-200" },
 ] as const;
-
-function useTimeAgo() {
-  const { t } = useTranslation();
-  return (ts: number): string => {
-    const diff = Date.now() - ts;
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return t("time.justNow");
-    if (mins < 60) return t("time.minutesAgo", { count: mins });
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return t("time.hoursAgo", { count: hrs });
-    const days = Math.floor(hrs / 24);
-    return t("time.daysAgo", { count: days });
-  };
-}
 
 function FollowUpBadge({ nextFollowUpAt }: { nextFollowUpAt: number }) {
   const { t } = useTranslation();

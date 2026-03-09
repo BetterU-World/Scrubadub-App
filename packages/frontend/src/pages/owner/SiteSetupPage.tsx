@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, FormEvent } from "react";
 import { useQuery, useMutation } from "convex/react";
+import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -8,6 +9,7 @@ import { Plus, X } from "lucide-react";
 import { ShareKit } from "@/components/owner/ShareKit";
 
 export function SiteSetupPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
 
   const site = useQuery(
@@ -30,7 +32,7 @@ export function SiteSetupPage() {
     ensureToken({ userId: user._id, companyId: user.companyId }).catch(
       (err: any) => {
         tokenEnsured.current = false; // allow retry
-        setTokenError(err.message || "Failed to generate booking link");
+        setTokenError(err.message || t("siteBuilder.failedToGenerateLink"));
       }
     );
   }, [user, site]);
@@ -122,13 +124,13 @@ export function SiteSetupPage() {
   return (
     <div>
       <PageHeader
-        title="My Site"
-        description="Set up your public mini-site so clients can find you"
+        title={t("siteBuilder.title")}
+        description={t("siteBuilder.description")}
       />
 
       {site && !site.bio && !site.serviceArea && (
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm">
-          Your website is live &mdash; add details to improve it.
+          {t("siteBuilder.siteLiveHint")}
         </div>
       )}
 
@@ -140,7 +142,7 @@ export function SiteSetupPage() {
 
       {saved && (
         <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
-          Site saved successfully.
+          {t("siteBuilder.siteSaved")}
         </div>
       )}
 
@@ -158,13 +160,13 @@ export function SiteSetupPage() {
               }).catch((err: any) => {
                 tokenEnsured.current = false;
                 setTokenError(
-                  err.message || "Failed to generate booking link"
+                  err.message || t("siteBuilder.failedToGenerateLink")
                 );
               });
             }}
             className="text-yellow-800 underline hover:text-yellow-900 ml-3 whitespace-nowrap"
           >
-            Retry
+            {t("siteBuilder.retry")}
           </button>
         </div>
       )}
@@ -173,7 +175,7 @@ export function SiteSetupPage() {
         {/* Slug */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Slug (URL path)
+            {t("siteBuilder.slug")}
           </label>
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-400">
@@ -189,7 +191,7 @@ export function SiteSetupPage() {
               required
               placeholder="my-cleaning-co"
               pattern="[a-z0-9][a-z0-9-]{1,48}[a-z0-9]"
-              title="3-50 chars, lowercase letters, numbers, hyphens"
+              title={t("siteBuilder.slugHint")}
             />
           </div>
         </div>
@@ -197,25 +199,25 @@ export function SiteSetupPage() {
         {/* Template */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Template
+            {t("siteBuilder.template")}
           </label>
           <div className="flex gap-3">
-            {(["A", "B"] as const).map((t) => (
+            {(["A", "B"] as const).map((tpl) => (
               <button
-                key={t}
+                key={tpl}
                 type="button"
-                onClick={() => { setTemplateId(t); setSaved(false); }}
+                onClick={() => { setTemplateId(tpl); setSaved(false); }}
                 className={
-                  templateId === t
+                  templateId === tpl
                     ? "flex-1 p-4 border-2 border-primary-500 rounded-lg bg-primary-50 text-center"
                     : "flex-1 p-4 border-2 border-gray-200 rounded-lg hover:border-gray-300 text-center"
                 }
               >
                 <div className="text-sm font-semibold text-gray-900">
-                  Template {t}
+                  {t(tpl === "A" ? "siteBuilder.templateA" : "siteBuilder.templateB")}
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
-                  {t === "A" ? "Clean & minimal" : "Bold with hero image"}
+                  {t(tpl === "A" ? "siteBuilder.templateADesc" : "siteBuilder.templateBDesc")}
                 </div>
               </button>
             ))}
@@ -225,7 +227,7 @@ export function SiteSetupPage() {
         {/* Brand name */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Brand name
+            {t("siteBuilder.brandName")}
           </label>
           <input
             className="input-field"
@@ -239,7 +241,7 @@ export function SiteSetupPage() {
         {/* Bio */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Bio
+            {t("siteBuilder.bio")}
           </label>
           <textarea
             className="input-field"
@@ -247,14 +249,14 @@ export function SiteSetupPage() {
             value={bio}
             onChange={(e) => { setBio(e.target.value); setSaved(false); }}
             required
-            placeholder="Tell potential clients about your business..."
+            placeholder={t("siteBuilder.bioPlaceholder")}
           />
         </div>
 
         {/* Service area */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Service area
+            {t("siteBuilder.serviceArea")}
           </label>
           <input
             className="input-field"
@@ -268,9 +270,9 @@ export function SiteSetupPage() {
         {/* Services list */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Services{" "}
+            {t("siteBuilder.services")}{" "}
             <span className="font-normal text-gray-400">
-              (optional, up to 8)
+              ({t("siteBuilder.servicesHint")})
             </span>
           </label>
           <div className="space-y-2">
@@ -300,7 +302,7 @@ export function SiteSetupPage() {
               className="mt-2 text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
             >
               <Plus className="w-4 h-4" />
-              Add service
+              {t("siteBuilder.addService")}
             </button>
           )}
         </div>
@@ -308,13 +310,13 @@ export function SiteSetupPage() {
         {/* Public contact */}
         <fieldset className="space-y-4">
           <legend className="text-sm font-medium text-gray-700">
-            Public contact info{" "}
-            <span className="font-normal text-gray-400">(optional)</span>
+            {t("siteBuilder.publicContact")}{" "}
+            <span className="font-normal text-gray-400">({t("siteBuilder.optional")})</span>
           </legend>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email
+              {t("siteBuilder.email")}
             </label>
             <input
               type="email"
@@ -327,7 +329,7 @@ export function SiteSetupPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Phone
+              {t("siteBuilder.phone")}
             </label>
             <input
               type="tel"
@@ -342,8 +344,8 @@ export function SiteSetupPage() {
         {/* Logo URL */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Logo URL{" "}
-            <span className="font-normal text-gray-400">(optional)</span>
+            {t("siteBuilder.logoUrl")}{" "}
+            <span className="font-normal text-gray-400">({t("siteBuilder.optional")})</span>
           </label>
           <input
             type="url"
@@ -357,8 +359,8 @@ export function SiteSetupPage() {
         {/* Hero image URL */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Hero image URL{" "}
-            <span className="font-normal text-gray-400">(optional)</span>
+            {t("siteBuilder.heroImageUrl")}{" "}
+            <span className="font-normal text-gray-400">({t("siteBuilder.optional")})</span>
           </label>
           <input
             type="url"
@@ -372,8 +374,8 @@ export function SiteSetupPage() {
         {/* Meta description */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Meta description{" "}
-            <span className="font-normal text-gray-400">(optional, SEO)</span>
+            {t("siteBuilder.metaDescription")}{" "}
+            <span className="font-normal text-gray-400">({t("siteBuilder.metaSeo")})</span>
           </label>
           <textarea
             className="input-field"
@@ -383,7 +385,7 @@ export function SiteSetupPage() {
               setMetaDescription(e.target.value.slice(0, 160));
               setSaved(false);
             }}
-            placeholder="Short description for search engines..."
+            placeholder={t("siteBuilder.metaPlaceholder")}
             maxLength={160}
           />
           <p className="text-xs text-gray-400 mt-1">
@@ -399,7 +401,7 @@ export function SiteSetupPage() {
             className="btn-primary w-full flex items-center justify-center gap-2"
           >
             {saving && <LoadingSpinner size="sm" />}
-            {site ? "Save changes" : "Create site"}
+            {site ? t("siteBuilder.saveChanges") : t("siteBuilder.createSite")}
           </button>
         </div>
       </form>

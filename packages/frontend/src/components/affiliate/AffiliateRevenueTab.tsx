@@ -1,4 +1,5 @@
 import { useQuery } from "convex/react";
+import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
@@ -29,20 +30,22 @@ function typeLabel(type: string | null): string {
 }
 
 export function AffiliateRevenueTab() {
+  const { t } = useTranslation();
   const { userId, isLoading } = useAuth();
 
   if (isLoading) {
-    return <p className="text-sm text-gray-400 py-4">Loading...</p>;
+    return <p className="text-sm text-gray-400 py-4">{t("common.loading")}</p>;
   }
 
   if (!userId) {
-    return <p className="text-sm text-gray-500 py-4">Please sign in to view revenue data.</p>;
+    return <p className="text-sm text-gray-500 py-4">{t("affiliate.signInForRevenue")}</p>;
   }
 
   return <AffiliateRevenueInner userId={userId} />;
 }
 
 function AffiliateRevenueInner({ userId }: { userId: Id<"users"> }) {
+  const { t } = useTranslation();
   const summary = useQuery(
     api.queries.affiliateAttributions.getMyAttributionSummary,
     { userId },
@@ -53,7 +56,7 @@ function AffiliateRevenueInner({ userId }: { userId: Id<"users"> }) {
   );
 
   if (summary === undefined || attributions === undefined) {
-    return <p className="text-sm text-gray-400 py-4">Loading revenue data...</p>;
+    return <p className="text-sm text-gray-400 py-4">{t("affiliate.loadingRevenue")}</p>;
   }
 
   const hasData = summary.lifetimeRevenueCents > 0 || (attributions.rows.length > 0);
@@ -64,22 +67,22 @@ function AffiliateRevenueInner({ userId }: { userId: Id<"users"> }) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           icon={<DollarSign className="h-5 w-5 text-green-600" />}
-          label="Lifetime Revenue"
+          label={t("affiliate.lifetimeRevenue")}
           value={formatCents(summary.lifetimeRevenueCents)}
         />
         <StatCard
           icon={<TrendingUp className="h-5 w-5 text-blue-600" />}
-          label="Last 30 Days"
+          label={t("affiliate.last30Days")}
           value={formatCents(summary.last30dRevenueCents)}
         />
         <StatCard
           icon={<FileText className="h-5 w-5 text-purple-600" />}
-          label="Last 7 Days"
+          label={t("affiliate.last7Days")}
           value={formatCents(summary.last7dRevenueCents)}
         />
         <StatCard
           icon={<Building2 className="h-5 w-5 text-orange-600" />}
-          label="Referred Companies"
+          label={t("affiliate.referredCompanies")}
           value={String(summary.totalReferredCompanies)}
         />
       </div>
@@ -88,17 +91,17 @@ function AffiliateRevenueInner({ userId }: { userId: Id<"users"> }) {
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard
           icon={<Percent className="h-5 w-5 text-emerald-600" />}
-          label="Lifetime Commission"
+          label={t("affiliate.lifetimeCommission")}
           value={formatCents(summary.lifetimeCommissionCents)}
         />
         <StatCard
           icon={<Percent className="h-5 w-5 text-emerald-600" />}
-          label="30-Day Commission"
+          label={t("affiliate.thirtyDayCommission")}
           value={formatCents(summary.last30dCommissionCents)}
         />
         <StatCard
           icon={<Percent className="h-5 w-5 text-emerald-600" />}
-          label="7-Day Commission"
+          label={t("affiliate.sevenDayCommission")}
           value={formatCents(summary.last7dCommissionCents)}
         />
       </div>
@@ -107,7 +110,7 @@ function AffiliateRevenueInner({ userId }: { userId: Id<"users"> }) {
       {!hasData ? (
         <div className="bg-white rounded-lg shadow p-8 text-center">
           <p className="text-sm text-gray-500">
-            No revenue attributed yet. Share your referral link to start earning attribution.
+            {t("affiliate.noRevenueYet")}
           </p>
         </div>
       ) : (
@@ -116,12 +119,12 @@ function AffiliateRevenueInner({ userId }: { userId: Id<"users"> }) {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Currency</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice ID</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("affiliate.date")}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("affiliate.company")}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("affiliate.type")}</th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{t("affiliate.amount")}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("affiliate.currency")}</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{t("affiliate.invoiceId")}</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
@@ -141,7 +144,7 @@ function AffiliateRevenueInner({ userId }: { userId: Id<"users"> }) {
                             : "bg-blue-100 text-blue-800"
                         }`}
                       >
-                        {typeLabel(row.attributionType)}
+                        {row.attributionType === "invoice_paid" ? t("affiliate.invoicePaid") : row.attributionType === "subscription_created" ? t("affiliate.subscription") : (row.attributionType ?? "—")}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-900 text-right whitespace-nowrap font-medium">

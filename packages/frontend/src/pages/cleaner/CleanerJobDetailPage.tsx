@@ -162,7 +162,7 @@ export function CleanerJobDetailPage() {
                     setToast({ message: t("jobs.jobAccepted"), type: "success" });
                     setTimeout(() => setToast(null), 3000);
                   } catch (err: any) {
-                    setToast({ message: err.message ?? "Failed to accept", type: "error" });
+                    setToast({ message: err.message ?? t("common.failedToAccept"), type: "error" });
                     setTimeout(() => setToast(null), 3000);
                   } finally {
                     setAccepting(false);
@@ -268,7 +268,7 @@ export function CleanerJobDetailPage() {
                     setToast({ message: t("jobs.jobDenied"), type: "success" });
                     setTimeout(() => setToast(null), 3000);
                   } catch (err: any) {
-                    setToast({ message: err.message ?? "Failed to deny", type: "error" });
+                    setToast({ message: err.message ?? t("common.failedToDeny"), type: "error" });
                     setTimeout(() => setToast(null), 3000);
                   } finally {
                     setDenying(false);
@@ -309,7 +309,7 @@ export function CleanerJobDetailPage() {
                     setToast({ message: t("jobs.jobCancelled"), type: "success" });
                     setTimeout(() => setToast(null), 3000);
                   } catch (err: any) {
-                    setToast({ message: err.message ?? "Failed to cancel", type: "error" });
+                    setToast({ message: err.message ?? t("common.failedToCancel"), type: "error" });
                     setTimeout(() => setToast(null), 3000);
                   } finally {
                     setCleanerCancelling(false);

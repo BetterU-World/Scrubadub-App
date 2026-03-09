@@ -53,7 +53,7 @@ export function PropertyListPage() {
                   {property.address}
                 </div>
                 <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <span className="capitalize">{property.type.replace(/_/g, " ")}</span>
+                  <span className="capitalize">{t(`properties.propertyTypes.${property.type}`, property.type.replace(/_/g, " "))}</span>
                   {(property.beds != null || property.baths != null) && (
                     <span className="text-gray-400">
                       {[

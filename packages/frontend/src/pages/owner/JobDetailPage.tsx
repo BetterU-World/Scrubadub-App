@@ -197,7 +197,7 @@ export function JobDetailPage() {
             {(job as any).acceptanceStatus && (
               <StatusBadge status={(job as any).acceptanceStatus} />
             )}
-            <span className="text-sm text-gray-500 capitalize">{job.type.replace(/_/g, " ")}</span>
+            <span className="text-sm text-gray-500 capitalize">{t(`jobTypes.${job.type}`, job.type.replace(/_/g, " "))}</span>
             {job.reworkCount > 0 && (
               <span className="badge bg-orange-100 text-orange-700">{t("jobs.reworkNum", { count: job.reworkCount })}</span>
             )}
@@ -259,7 +259,7 @@ export function JobDetailPage() {
                       setToast({ message: t("jobs.sharedJobAccepted"), type: "success" });
                       setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
-                      setToast({ message: err.message ?? "Failed", type: "error" });
+                      setToast({ message: err.message ?? t("common.failed"), type: "error" });
                       setTimeout(() => setToast(null), 3000);
                     } finally {
                       setSharedJobAction(false);
@@ -280,7 +280,7 @@ export function JobDetailPage() {
                       setToast({ message: t("jobs.sharedJobRejected"), type: "success" });
                       setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
-                      setToast({ message: err.message ?? "Failed", type: "error" });
+                      setToast({ message: err.message ?? t("common.failed"), type: "error" });
                       setTimeout(() => setToast(null), 3000);
                     } finally {
                       setSharedJobAction(false);
@@ -424,7 +424,7 @@ export function JobDetailPage() {
                       setToast({ message: t("jobs.jobApproved"), type: "success" });
                       setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
-                      setToast({ message: err.message ?? "Failed to approve", type: "error" });
+                      setToast({ message: err.message ?? t("common.failedToApprove"), type: "error" });
                       setTimeout(() => setToast(null), 3000);
                     } finally {
                       setApproving(false);
@@ -581,7 +581,7 @@ export function JobDetailPage() {
                                 setToast({ message: t("jobs.saved"), type: "success" });
                                 setTimeout(() => setToast(null), 3000);
                               } catch (err: any) {
-                                setToast({ message: err.message ?? "Failed to save", type: "error" });
+                                setToast({ message: err.message ?? t("common.failedToSave"), type: "error" });
                                 setTimeout(() => setToast(null), 4000);
                               } finally {
                                 setPlannedPaySaving(false);
@@ -625,7 +625,7 @@ export function JobDetailPage() {
                               if (result?.url) window.location.href = result.url;
                             } catch (err: any) {
                               console.error("Checkout error:", err);
-                              setToast({ message: toFriendlyMessage(err, "Payment didn\u2019t go through. You weren\u2019t charged."), type: "error" });
+                              setToast({ message: toFriendlyMessage(err, t("common.paymentDidNotGoThrough")), type: "error" });
                               setTimeout(() => setToast(null), 5000);
                             } finally {
                               setCleanerStripeLoading(false);
@@ -658,7 +658,7 @@ export function JobDetailPage() {
                             setToast({ message: t("jobs.cleanerMarkedPaid"), type: "success" });
                             setTimeout(() => setToast(null), 3000);
                           } catch (err: any) {
-                            setToast({ message: toFriendlyMessage(err, "Failed to record payment"), type: "error" });
+                            setToast({ message: toFriendlyMessage(err, t("common.failedToRecordPayment")), type: "error" });
                             setTimeout(() => setToast(null), 4000);
                           } finally {
                             setCleanerPaySaving(false);
@@ -867,7 +867,7 @@ export function JobDetailPage() {
                       setToast({ message: t("jobs.settlementCreated"), type: "success" });
                       setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
-                      setToast({ message: err.message ?? "Failed", type: "error" });
+                      setToast({ message: err.message ?? t("common.failed"), type: "error" });
                       setTimeout(() => setToast(null), 3000);
                     } finally {
                       setSettlementSaving(false);
@@ -915,7 +915,7 @@ export function JobDetailPage() {
                         setToast({ message: t("jobs.amountUpdated"), type: "success" });
                         setTimeout(() => setToast(null), 3000);
                       } catch (err: any) {
-                        setToast({ message: err.message ?? "Failed", type: "error" });
+                        setToast({ message: err.message ?? t("common.failed"), type: "error" });
                         setTimeout(() => setToast(null), 3000);
                       } finally {
                         setSettlementSaving(false);
@@ -939,7 +939,7 @@ export function JobDetailPage() {
                         if (result?.url) window.location.href = result.url;
                       } catch (err: any) {
                         console.error("Checkout error:", err);
-                        setToast({ message: toFriendlyMessage(err, "Payment didn\u2019t go through. You weren\u2019t charged."), type: "error" });
+                        setToast({ message: toFriendlyMessage(err, t("common.paymentDidNotGoThrough")), type: "error" });
                         setTimeout(() => setToast(null), 5000);
                       } finally {
                         setStripePayLoading(false);
@@ -970,7 +970,7 @@ export function JobDetailPage() {
                 </div>
                 {settlement.paidAt && (
                   <p className="text-xs text-gray-500 flex items-center gap-1">
-                    Paid on {new Date(settlement.paidAt).toLocaleDateString()}
+                    {t("payments.paidOn")} {new Date(settlement.paidAt).toLocaleDateString()}
                     {settlement.paidMethod === "scrubadub_stripe" ? (
                       <span className="inline-flex items-center gap-1 ml-1">
                         <CreditCard className="w-3 h-3" /> via Scrubadub
@@ -1024,7 +1024,7 @@ export function JobDetailPage() {
                       setToast({ message: t("jobs.settlementPaid"), type: "success" });
                       setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
-                      setToast({ message: err.message ?? "Failed", type: "error" });
+                      setToast({ message: err.message ?? t("common.failed"), type: "error" });
                       setTimeout(() => setToast(null), 3000);
                     } finally {
                       setSettlementSaving(false);
@@ -1080,7 +1080,7 @@ export function JobDetailPage() {
                     setToast({ message: t("jobs.reworkRequested"), type: "success" });
                     setTimeout(() => setToast(null), 3000);
                   } catch (err: any) {
-                    setToast({ message: err.message ?? "Failed to request rework", type: "error" });
+                    setToast({ message: err.message ?? t("common.failedToRequestRework"), type: "error" });
                     setTimeout(() => setToast(null), 3000);
                   }
                 }}
@@ -1149,7 +1149,7 @@ export function JobDetailPage() {
                     setToast({ message: t("jobs.jobShared"), type: "success" });
                     setTimeout(() => setToast(null), 3000);
                   } catch (err: any) {
-                    setToast({ message: err.message ?? "Failed to share job", type: "error" });
+                    setToast({ message: err.message ?? t("common.failedToShareJob"), type: "error" });
                     setTimeout(() => setToast(null), 3000);
                   } finally {
                     setSharing(false);
@@ -1208,7 +1208,7 @@ export function JobDetailPage() {
                     setToast({ message: t("jobs.jobReassigned"), type: "success" });
                     setTimeout(() => setToast(null), 3000);
                   } catch (err: any) {
-                    setToast({ message: err.message ?? "Failed to reassign", type: "error" });
+                    setToast({ message: err.message ?? t("common.failedToReassign"), type: "error" });
                     setTimeout(() => setToast(null), 3000);
                   } finally {
                     setReassigning(false);

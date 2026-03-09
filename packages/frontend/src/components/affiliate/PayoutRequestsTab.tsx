@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { useMutation, useQuery } from "convex/react";
+import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
@@ -67,15 +68,16 @@ const STATUS_FILTERS = [
 /* ── Wrapper ──────────────────────────────────────────────────────── */
 
 export function PayoutRequestsTab() {
+  const { t } = useTranslation();
   const { userId, isLoading, user } = useAuth();
 
   if (isLoading) {
-    return <p className="text-sm text-gray-400 py-4">Loading...</p>;
+    return <p className="text-sm text-gray-400 py-4">{t("common.loading")}</p>;
   }
   if (!userId || !user?.isSuperadmin) {
     return (
       <p className="text-sm text-gray-500 py-4">
-        Super-admin access required.
+        {t("affiliate.superAdminRequired")}
       </p>
     );
   }
@@ -94,6 +96,7 @@ function RequestDetailModal({
   requestId: Id<"affiliatePayoutRequests">;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const request = useQuery(
     api.queries.affiliatePayoutRequests.getPayoutRequestAdmin,
     { userId, requestId }
@@ -171,69 +174,69 @@ function RequestDetailModal({
         </button>
 
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Payout Request Details
+          {t("affiliate.payoutRequestDetails")}
         </h3>
 
         {request === undefined ? (
-          <p className="text-sm text-gray-400">Loading...</p>
+          <p className="text-sm text-gray-400">{t("common.loading")}</p>
         ) : (
           <>
             {/* Info grid */}
             <div className="grid grid-cols-2 gap-3 text-sm mb-4">
               <div>
-                <span className="text-gray-500">Affiliate:</span>{" "}
+                <span className="text-gray-500">{t("affiliate.affiliateLabel")}</span>{" "}
                 <span className="font-medium">{request.referrerName}</span>
                 <span className="text-gray-400 ml-1 text-xs">
                   ({request.referrerEmail})
                 </span>
               </div>
               <div>
-                <span className="text-gray-500">Status:</span>{" "}
+                <span className="text-gray-500">{t("affiliate.statusLabel")}</span>{" "}
                 {statusBadge(request.status)}
               </div>
               <div>
-                <span className="text-gray-500">Commission:</span>{" "}
+                <span className="text-gray-500">{t("affiliate.commissionLabel")}</span>{" "}
                 <span className="font-bold">
                   {formatCents(request.totalCommissionCents)}
                 </span>
               </div>
               <div>
-                <span className="text-gray-500">Revenue:</span>{" "}
+                <span className="text-gray-500">{t("affiliate.revenueLabel")}</span>{" "}
                 <span className="font-medium">
                   {formatCents(request.totalRevenueCents)}
                 </span>
               </div>
               <div>
-                <span className="text-gray-500">Submitted:</span>{" "}
+                <span className="text-gray-500">{t("affiliate.submittedLabel")}</span>{" "}
                 {formatDate(request.createdAt)}
               </div>
               {request.approvedAt && (
                 <div>
-                  <span className="text-gray-500">Approved:</span>{" "}
+                  <span className="text-gray-500">{t("affiliate.approvedLabel")}</span>{" "}
                   {formatDate(request.approvedAt)}
                 </div>
               )}
               {request.completedAt && (
                 <div>
-                  <span className="text-gray-500">Completed:</span>{" "}
+                  <span className="text-gray-500">{t("affiliate.completedLabel")}</span>{" "}
                   {formatDate(request.completedAt)}
                 </div>
               )}
               {request.deniedAt && (
                 <div>
-                  <span className="text-gray-500">Denied:</span>{" "}
+                  <span className="text-gray-500">{t("affiliate.deniedLabel")}</span>{" "}
                   {formatDate(request.deniedAt)}
                 </div>
               )}
               {request.notes && (
                 <div className="col-span-2">
-                  <span className="text-gray-500">Affiliate notes:</span>{" "}
+                  <span className="text-gray-500">{t("affiliate.affiliateNotes")}</span>{" "}
                   {request.notes}
                 </div>
               )}
               {request.adminNotes && (
                 <div className="col-span-2">
-                  <span className="text-gray-500">Admin notes:</span>{" "}
+                  <span className="text-gray-500">{t("affiliate.adminNotes")}</span>{" "}
                   {request.adminNotes}
                 </div>
               )}
@@ -245,15 +248,10 @@ function RequestDetailModal({
                 <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
                 <div className="text-sm text-amber-800">
                   <p className="font-medium">
-                    {request.invalidLedgerIds.length} ledger{" "}
-                    {request.invalidLedgerIds.length === 1
-                      ? "entry is"
-                      : "entries are"}{" "}
-                    no longer eligible
+                    {t("affiliate.invalidEntries", { count: request.invalidLedgerIds.length })}
                   </p>
                   <p className="text-xs text-amber-600 mt-0.5">
-                    Some entries may have been paid, moved to another batch, or
-                    are no longer locked. Cannot convert to batch until resolved.
+                    {t("affiliate.invalidEntriesDesc")}
                   </p>
                 </div>
               </div>
@@ -261,22 +259,22 @@ function RequestDetailModal({
 
             {/* Ledger entries table */}
             <h4 className="text-sm font-medium text-gray-700 mb-2">
-              Ledger Entries ({request.ledgerRows.length})
+              {t("affiliate.ledgerEntries")} ({request.ledgerRows.length})
             </h4>
             <table className="min-w-full divide-y divide-gray-200 text-sm mb-4">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
-                    Period
+                    {t("affiliate.period")}
                   </th>
                   <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">
-                    Revenue
+                    {t("affiliate.revenueLabel")}
                   </th>
                   <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">
-                    Commission
+                    {t("affiliate.commissionLabel")}
                   </th>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
-                    Status
+                    {t("affiliate.statusLabel")}
                   </th>
                 </tr>
               </thead>
@@ -294,7 +292,7 @@ function RequestDetailModal({
                         {formatPeriodKey(r.periodStart)}
                         {isInvalid && (
                           <span className="ml-1 text-[10px] text-red-500">
-                            (invalid)
+                            ({t("affiliate.invalid")})
                           </span>
                         )}
                       </td>
@@ -322,7 +320,7 @@ function RequestDetailModal({
                     className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-teal-700 bg-teal-50 rounded-md hover:bg-teal-100 transition-colors"
                   >
                     <CheckCircle className="h-3.5 w-3.5" />
-                    Approve
+                    {t("affiliate.approve")}
                   </button>
                 )}
                 {canDeny && (
@@ -331,7 +329,7 @@ function RequestDetailModal({
                     className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 rounded-md hover:bg-red-100 transition-colors"
                   >
                     <XCircle className="h-3.5 w-3.5" />
-                    Deny
+                    {t("affiliate.deny")}
                   </button>
                 )}
                 {canComplete && (
@@ -340,7 +338,7 @@ function RequestDetailModal({
                     className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 rounded-md hover:bg-green-100 transition-colors"
                   >
                     <Package className="h-3.5 w-3.5" />
-                    Convert to Batch
+                    {t("affiliate.convertToBatch")}
                   </button>
                 )}
               </div>
@@ -358,16 +356,16 @@ function RequestDetailModal({
                 }`}
               >
                 <p className="text-sm font-medium text-gray-700 mb-2">
-                  {action === "approve" && "Approve this request?"}
-                  {action === "deny" && "Deny this request?"}
+                  {action === "approve" && t("affiliate.approveQuestion")}
+                  {action === "deny" && t("affiliate.denyQuestion")}
                   {action === "complete" &&
-                    "Convert to payout batch and mark paid?"}
+                    t("affiliate.convertQuestion")}
                 </p>
 
                 {action === "complete" && (
                   <>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Payment method
+                      {t("affiliate.paymentMethod")}
                     </label>
                     <select
                       value={method}
@@ -385,8 +383,8 @@ function RequestDetailModal({
 
                 <label className="block text-xs font-medium text-gray-700 mb-1">
                   {action === "deny"
-                    ? "Reason (required)"
-                    : "Notes (optional)"}
+                    ? t("affiliate.reasonRequired")
+                    : t("affiliate.notesOptional")}
                 </label>
                 <textarea
                   value={adminNotes}
@@ -411,7 +409,7 @@ function RequestDetailModal({
                     disabled={busy}
                     className="px-3 py-1 text-sm text-gray-700 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50"
                   >
-                    Cancel
+                    {t("common.cancel")}
                   </button>
                   <button
                     onClick={handleAction}
@@ -427,12 +425,12 @@ function RequestDetailModal({
                     }`}
                   >
                     {busy
-                      ? "Processing..."
+                      ? t("affiliate.processing")
                       : action === "approve"
-                        ? "Confirm Approve"
+                        ? t("affiliate.confirmApprove")
                         : action === "deny"
-                          ? "Confirm Deny"
-                          : "Confirm & Create Batch"}
+                          ? t("affiliate.confirmDeny")
+                          : t("affiliate.confirmCreateBatch")}
                   </button>
                 </div>
               </div>
@@ -451,6 +449,7 @@ function PayoutRequestsInner({
 }: {
   userId: Id<"users">;
 }) {
+  const { t } = useTranslation();
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [viewingRequestId, setViewingRequestId] =
     useState<Id<"affiliatePayoutRequests"> | null>(null);
@@ -483,7 +482,7 @@ function PayoutRequestsInner({
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4">
         <div className="flex items-center gap-3">
-          <label className="text-xs text-gray-500">Status:</label>
+          <label className="text-xs text-gray-500">{t("affiliate.statusLabel")}</label>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -497,7 +496,7 @@ function PayoutRequestsInner({
           </select>
           {submittedCount > 0 && !statusFilter && (
             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
-              {submittedCount} pending
+              {t("affiliate.pendingCount", { count: submittedCount })}
             </span>
           )}
         </div>
@@ -505,17 +504,17 @@ function PayoutRequestsInner({
 
       {/* Requests table */}
       {requests === undefined ? (
-        <p className="text-sm text-gray-400 py-4">Loading...</p>
+        <p className="text-sm text-gray-400 py-4">{t("common.loading")}</p>
       ) : requests.rows.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-8 text-center">
           <Send className="h-8 w-8 text-gray-300 mx-auto mb-2" />
           <p className="text-sm text-gray-500 mb-1">
             {statusFilter
-              ? `No payout requests with status "${statusFilter}".`
-              : "No payout requests yet."}
+              ? t("affiliate.noPayoutRequestsFiltered", { status: statusFilter })
+              : t("affiliate.noPayoutRequestsYet")}
           </p>
           <p className="text-xs text-gray-400">
-            Affiliates can submit payout requests from their Ledger tab.
+            {t("affiliate.payoutRequestsHint")}
           </p>
         </div>
       ) : (
@@ -525,19 +524,19 @@ function PayoutRequestsInner({
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
+                    {t("affiliate.date")}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Affiliate
+                    {t("affiliate.affiliateLabel")}
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Commission
+                    {t("affiliate.commissionLabel")}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
+                    {t("affiliate.statusLabel")}
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Periods
+                    {t("affiliate.periods")}
                   </th>
                   <th className="px-4 py-3"></th>
                 </tr>
@@ -579,7 +578,7 @@ function PayoutRequestsInner({
                         }
                         className="text-xs text-blue-600 hover:text-blue-800"
                       >
-                        View
+                        {t("affiliate.view")}
                       </button>
                     </td>
                   </tr>
