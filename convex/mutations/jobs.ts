@@ -253,6 +253,61 @@ export const denyJob = mutation({
   },
 });
 
+/**
+ * Cleaner cancels a job they previously accepted — allowed until work has started.
+ * Resets the job so the owner can reassign.
+ */
+export const cleanerCancelJob = mutation({
+  args: { jobId: v.id("jobs"), reason: v.optional(v.string()), userId: v.optional(v.id("users")) },
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx, args.userId);
+    const job = await ctx.db.get(args.jobId);
+    if (!job) throw new Error("Job not found");
+    if (!job.cleanerIds.includes(user._id)) throw new Error("Not assigned to this job");
+
+    // Only allow cancellation before work has started
+    if (job.status === "in_progress" || job.status === "submitted" || job.status === "approved") {
+      throw new Error("Cannot cancel a job that has already started");
+    }
+    if (job.status === "cancelled" || job.status === "denied") {
+      throw new Error("Job is already cancelled or denied");
+    }
+
+    await ctx.db.patch(args.jobId, {
+      status: "denied",
+      acceptanceStatus: "denied",
+      deniedAt: Date.now(),
+      denyReason: args.reason ?? "Cleaner cancelled after accepting",
+      acceptedAt: undefined,
+      arrivedAt: undefined,
+    });
+
+    const owners = await ctx.db
+      .query("users")
+      .withIndex("by_companyId", (q) => q.eq("companyId", job.companyId))
+      .collect();
+    for (const owner of owners.filter((u) => u.role === "owner")) {
+      await createNotification(ctx, {
+        companyId: job.companyId,
+        userId: owner._id,
+        type: "job_denied",
+        title: "Job Cancelled by Cleaner",
+        message: `${user.name} cancelled the job for ${job.scheduledDate}${args.reason ? `: ${args.reason}` : ""}`,
+        relatedJobId: args.jobId,
+      });
+    }
+
+    await logAudit(ctx, {
+      companyId: job.companyId,
+      userId: user._id,
+      action: "deny_job",
+      entityType: "job",
+      entityId: args.jobId,
+      details: args.reason ?? "Cleaner cancelled after accepting",
+    });
+  },
+});
+
 export const reassignJob = mutation({
   args: {
     jobId: v.id("jobs"),
@@ -264,6 +319,7 @@ export const reassignJob = mutation({
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
+    if (job.status === "cancelled") throw new Error("Cancelled jobs cannot be reassigned");
 
     const newCleaner = await ctx.db.get(args.newCleanerId);
     if (!newCleaner || newCleaner.companyId !== owner.companyId)

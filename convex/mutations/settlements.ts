@@ -40,6 +40,14 @@ export const upsertSettlementForSharedJob = mutation({
       throw new Error("No shared job record found for this job and partner");
     }
 
+    // Block settlements for rejected or cancelled shared jobs
+    if (sharedJob.status === "rejected") {
+      throw new Error("Cannot create settlement for a rejected shared job");
+    }
+    if (job.status === "cancelled") {
+      throw new Error("Cannot create settlement for a cancelled job");
+    }
+
     // Check for existing settlement (idempotent upsert)
     const existing = await ctx.db
       .query("companySettlements")
