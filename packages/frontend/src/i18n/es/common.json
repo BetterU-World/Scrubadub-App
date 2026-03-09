@@ -360,6 +360,8 @@
     "hidePackage": "Ocultar",
     "checklist": "Lista de verificación",
     "completionNotes": "Notas",
+    "photos": "Fotos",
+    "photo": "Foto",
     "photosShared": "{{count}} foto(s) compartida(s)",
     "noPhotosShared": "Sin fotos compartidas",
     "packageWhenDone": "El paquete de finalización se compartirá al terminar",

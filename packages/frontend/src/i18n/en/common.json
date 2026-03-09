@@ -360,6 +360,8 @@
     "hidePackage": "Hide",
     "checklist": "Checklist",
     "completionNotes": "Notes",
+    "photos": "Photos",
+    "photo": "Photo",
     "photosShared": "{{count}} photo(s) shared",
     "noPhotosShared": "No photos shared",
     "packageWhenDone": "Completion package will be shared when done",
