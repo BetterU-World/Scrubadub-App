@@ -158,7 +158,7 @@ export function JobDetailPage() {
                 <Share2 className="w-4 h-4" /> Share Job
               </button>
             )}
-            {((job as any).acceptanceStatus === "denied" || (job as any).acceptanceStatus === "pending" || (job.sharedFromJobId && job.cleanerIds.length === 0)) && (
+            {job.status !== "cancelled" && ((job as any).acceptanceStatus === "denied" || (job as any).acceptanceStatus === "pending" || (job.sharedFromJobId && job.cleanerIds.length === 0)) && (
               <button onClick={() => setShowReassign(true)} className="btn-secondary flex items-center gap-2">
                 <RefreshCw className="w-4 h-4" /> {job.sharedFromJobId && job.cleanerIds.length === 0 ? "Assign Cleaner" : "Reassign"}
               </button>
@@ -746,23 +746,31 @@ export function JobDetailPage() {
                           Declined on {new Date(s.respondedAt).toLocaleString()}
                         </p>
                       )}
-                      <p className="text-sm text-red-600 mt-2">
-                        This partner declined the job. Choose a new partner or assign internally.
-                      </p>
-                      <div className="flex gap-2 mt-3">
-                        <button
-                          onClick={() => setShowShare(true)}
-                          className="btn-secondary flex items-center gap-1.5 text-sm"
-                        >
-                          <Share2 className="w-4 h-4" /> Share to another partner
-                        </button>
-                        <button
-                          onClick={() => setShowReassign(true)}
-                          className="btn-primary flex items-center gap-1.5 text-sm"
-                        >
-                          <Users className="w-4 h-4" /> Assign to my cleaner
-                        </button>
-                      </div>
+                      {job.status === "cancelled" ? (
+                        <p className="text-sm text-gray-500 mt-2">
+                          Cancelled jobs cannot be reassigned.
+                        </p>
+                      ) : (
+                        <>
+                          <p className="text-sm text-red-600 mt-2">
+                            This partner declined the job. Choose a new partner or assign internally.
+                          </p>
+                          <div className="flex gap-2 mt-3">
+                            <button
+                              onClick={() => setShowShare(true)}
+                              className="btn-secondary flex items-center gap-1.5 text-sm"
+                            >
+                              <Share2 className="w-4 h-4" /> Share to another partner
+                            </button>
+                            <button
+                              onClick={() => setShowReassign(true)}
+                              className="btn-primary flex items-center gap-1.5 text-sm"
+                            >
+                              <Users className="w-4 h-4" /> Assign to my cleaner
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </>
                   )}
 

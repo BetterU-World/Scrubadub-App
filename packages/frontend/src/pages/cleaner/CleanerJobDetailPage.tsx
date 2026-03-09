@@ -24,8 +24,13 @@ export function CleanerJobDetailPage() {
   const completeJob = useMutation(api.mutations.jobs.completeJob);
   const createForm = useMutation(api.mutations.forms.createFromTemplate);
 
+  const cleanerCancelJob = useMutation(api.mutations.jobs.cleanerCancelJob);
+
   const [showDeny, setShowDeny] = useState(false);
   const [denyReason, setDenyReason] = useState("");
+  const [showCleanerCancel, setShowCleanerCancel] = useState(false);
+  const [cleanerCancelReason, setCleanerCancelReason] = useState("");
+  const [cleanerCancelling, setCleanerCancelling] = useState(false);
   const [showComplete, setShowComplete] = useState(false);
   const [completionNotes, setCompletionNotes] = useState("");
   const [completing, setCompleting] = useState(false);
@@ -41,6 +46,7 @@ export function CleanerJobDetailPage() {
   const canArrive = (job.status === "confirmed" || job.status === "scheduled") && !job.arrivedAt;
   const hasArrived = !!job.arrivedAt;
   const canStart = (job.status === "confirmed" || job.status === "rework_requested");
+  const canCleanerCancel = job.status === "confirmed" && acceptance === "accepted" && !job.startedAt;
   const isInProgress = job.status === "in_progress";
   const hasForm = !!job.form;
 
@@ -182,6 +188,15 @@ export function CleanerJobDetailPage() {
             </button>
           )}
 
+          {canCleanerCancel && (
+            <button
+              onClick={() => setShowCleanerCancel(true)}
+              className="btn-danger w-full flex items-center justify-center gap-2 py-2 text-sm"
+            >
+              <XCircle className="w-4 h-4" /> Cancel Job
+            </button>
+          )}
+
           {canStart && (
             <button
               onClick={handleStartJob}
@@ -260,6 +275,47 @@ export function CleanerJobDetailPage() {
                 className="btn-danger"
               >
                 {denying ? "Denying..." : "Deny Job"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cleaner cancel dialog */}
+      {showCleanerCancel && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">Cancel Job</h3>
+            <p className="text-sm text-gray-500 mb-3">Are you sure you want to cancel this job? The owner will be notified.</p>
+            <textarea
+              className="input-field mb-4"
+              rows={3}
+              value={cleanerCancelReason}
+              onChange={(e) => setCleanerCancelReason(e.target.value)}
+              placeholder="Reason for cancelling (optional)"
+            />
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setShowCleanerCancel(false)} className="btn-secondary">Go Back</button>
+              <button
+                disabled={cleanerCancelling}
+                onClick={async () => {
+                  if (!user) return;
+                  setCleanerCancelling(true);
+                  try {
+                    await cleanerCancelJob({ jobId: job._id, reason: cleanerCancelReason || undefined, userId: user._id });
+                    setShowCleanerCancel(false);
+                    setToast({ message: "Job cancelled", type: "success" });
+                    setTimeout(() => setToast(null), 3000);
+                  } catch (err: any) {
+                    setToast({ message: err.message ?? "Failed to cancel", type: "error" });
+                    setTimeout(() => setToast(null), 3000);
+                  } finally {
+                    setCleanerCancelling(false);
+                  }
+                }}
+                className="btn-danger"
+              >
+                {cleanerCancelling ? "Cancelling..." : "Cancel Job"}
               </button>
             </div>
           </div>
