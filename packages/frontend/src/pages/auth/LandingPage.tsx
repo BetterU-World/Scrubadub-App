@@ -11,6 +11,9 @@ import {
   Users,
   ShieldCheck,
   Globe,
+  Inbox,
+  BookOpen,
+  ClipboardCheck,
 } from "lucide-react";
 
 const plan = {
@@ -27,7 +30,9 @@ const plan = {
     "Quality checklists & photo proof",
     "Red flag alerts & maintenance tracking",
     "Performance analytics",
+    "Cleaner payments & partner settlements",
     "Available in English and Spanish",
+    "Affiliate rewards program",
     "14-day free trial included",
   ],
 };
@@ -56,6 +61,18 @@ const valueProps = [
     title: "Owner-Level Visibility",
     description:
       "Know what's done, what needs attention, and who completed every job — instantly.",
+  },
+  {
+    icon: Inbox,
+    title: "Client Requests & Booking",
+    description:
+      "Let clients submit requests and funnel new work directly into your operation.",
+  },
+  {
+    icon: BookOpen,
+    title: "Built-In Training & SOPs",
+    description:
+      "Keep your team aligned with built-in Gold Standard manuals and workflows.",
   },
 ];
 
@@ -89,10 +106,17 @@ const steps = [
   },
   {
     num: "3",
+    icon: ClipboardCheck,
+    title: "Verify the Work",
+    description:
+      "Photo-verified checklists confirm every job meets the Gold Standard.",
+  },
+  {
+    num: "4",
     icon: ShieldCheck,
     title: "Stay in Control",
     description:
-      "Track progress, approve work, and catch issues instantly.",
+      "Track progress, catch issues, and keep your operation running tight.",
   },
 ];
 
@@ -169,7 +193,7 @@ export function LandingPage() {
         <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">
           Why SCRUB?
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {valueProps.map((vp) => (
             <div key={vp.title} className="card text-center">
               <div className="inline-flex p-2 rounded-lg bg-primary-100 text-primary-600 mb-3">
@@ -200,7 +224,7 @@ export function LandingPage() {
         <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">
           How It Works
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
           {steps.map((s) => (
             <div key={s.num} className="card text-center">
               <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary-600 text-white text-sm font-bold mb-3">
@@ -213,6 +237,49 @@ export function LandingPage() {
               <p className="text-sm text-gray-500 mt-2">{s.description}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Who It's For */}
+      <section className="pb-16 px-4">
+        <h2 className="text-2xl font-bold text-gray-900 text-center mb-2">
+          Who SCRUB Is Built For
+        </h2>
+        <p className="text-center text-sm text-gray-500 mb-8 max-w-xl mx-auto">
+          SCRUB works best for cleaning operations that manage real teams, real
+          properties, and real accountability.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
+          <div className="card">
+            <h3 className="font-semibold text-gray-900 mb-2">
+              Cleaning Companies
+            </h3>
+            <ul className="space-y-1.5 text-sm text-gray-500">
+              <li>Manage teams across multiple properties</li>
+              <li>Standardize training and inspections</li>
+              <li>Track job quality with photo verification</li>
+            </ul>
+          </div>
+          <div className="card">
+            <h3 className="font-semibold text-gray-900 mb-2">
+              Short-Term Rental Operators
+            </h3>
+            <ul className="space-y-1.5 text-sm text-gray-500">
+              <li>Coordinate turnovers and maintenance</li>
+              <li>Keep properties guest-ready</li>
+              <li>Catch issues before the next booking</li>
+            </ul>
+          </div>
+          <div className="card">
+            <h3 className="font-semibold text-gray-900 mb-2">
+              Growing Cleaning Teams
+            </h3>
+            <ul className="space-y-1.5 text-sm text-gray-500">
+              <li>Replace spreadsheets and group chats</li>
+              <li>Keep cleaners accountable and organized</li>
+              <li>Run operations from one platform</li>
+            </ul>
+          </div>
         </div>
       </section>
 
