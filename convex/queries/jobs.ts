@@ -123,11 +123,20 @@ export const get = query({
       .withIndex("by_jobId", (q) => q.eq("jobId", args.jobId))
       .collect();
 
+    // Resolve photo URLs for form photos so the owner can display them
+    let photoUrls: string[] = [];
+    if (form?.photoStorageIds && form.photoStorageIds.length > 0) {
+      const urls = await Promise.all(
+        form.photoStorageIds.map((id) => ctx.storage.getUrl(id))
+      );
+      photoUrls = urls.filter((u): u is string => u !== null);
+    }
+
     return {
       ...job,
       property: property ?? null,
       cleaners: cleaners.filter(Boolean),
-      form: form ?? null,
+      form: form ? { ...form, photoUrls } : null,
       redFlags,
     };
   },

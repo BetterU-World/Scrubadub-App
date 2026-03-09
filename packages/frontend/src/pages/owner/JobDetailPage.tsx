@@ -29,6 +29,7 @@ import {
   AlertTriangle,
   DollarSign,
   CreditCard,
+  ImagePlus,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -371,6 +372,26 @@ export function JobDetailPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Photos section */}
+            {(job.form as any).photoUrls && (job.form as any).photoUrls.length > 0 && (
+              <div className="mt-4">
+                <p className="text-sm font-medium text-gray-700 flex items-center gap-2 mb-2">
+                  <ImagePlus className="w-4 h-4 text-gray-400" /> {t("jobs.photos")} ({(job.form as any).photoUrls.length})
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {(job.form as any).photoUrls.map((url: string, idx: number) => (
+                    <a key={idx} href={url} target="_blank" rel="noopener noreferrer">
+                      <img
+                        src={url}
+                        alt={`${t("jobs.photo")} ${idx + 1}`}
+                        className="w-full h-32 object-cover rounded-lg border border-gray-200 hover:opacity-90 transition-opacity"
+                      />
+                    </a>
+                  ))}
+                </div>
               </div>
             )}
 
