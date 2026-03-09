@@ -3,8 +3,11 @@ import { useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Link, useLocation, useParams } from "wouter";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { useTranslation } from "react-i18next";
+import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 
 export function ResetPasswordPage() {
+  const { t } = useTranslation();
   const params = useParams<{ token: string }>();
   const [, setLocation] = useLocation();
   const [password, setPassword] = useState("");
@@ -20,11 +23,11 @@ export function ResetPasswordPage() {
     setError("");
 
     if (password.length < 10) {
-      setError("Password must be at least 10 characters");
+      setError(t("auth.passwordMinLength"));
       return;
     }
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
+      setError(t("auth.passwordsNoMatch"));
       return;
     }
 
@@ -43,17 +46,20 @@ export function ResetPasswordPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="absolute top-4 right-4">
+        <LanguageSwitcher />
+      </div>
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <img src="/favicon-96x96.png" alt="SCRUB" className="w-12 h-12 mx-auto mb-3" />
           <h1 className="text-3xl font-bold text-primary-700">SCRUB</h1>
           <p className="text-gray-500 mt-2">
-            Set a new password
+            {t("auth.resetPasswordSubtitle")}
           </p>
         </div>
 
         <div className="card">
-          <h2 className="text-xl font-semibold mb-6">Reset Password</h2>
+          <h2 className="text-xl font-semibold mb-6">{t("auth.resetPassword")}</h2>
 
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
@@ -64,12 +70,12 @@ export function ResetPasswordPage() {
           {success ? (
             <div className="space-y-4">
               <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
-                Password reset! Sign in now.
+                {t("auth.resetSuccess")}
               </div>
               <p className="text-center text-sm text-gray-500">
-                Redirecting to login...{" "}
+                {t("auth.redirectingToLogin")}{" "}
                 <Link href="/login" className="text-primary-600 font-medium hover:text-primary-700">
-                    Go now
+                    {t("auth.goNow")}
                 </Link>
               </p>
             </div>
@@ -78,7 +84,7 @@ export function ResetPasswordPage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    New Password
+                    {t("auth.newPassword")}
                   </label>
                   <input
                     type="password"
@@ -87,13 +93,13 @@ export function ResetPasswordPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     autoComplete="new-password"
-                    placeholder="At least 10 characters"
+                    placeholder={t("auth.passwordNewPlaceholder")}
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Confirm Password
+                    {t("auth.confirmPassword")}
                   </label>
                   <input
                     type="password"
@@ -102,7 +108,7 @@ export function ResetPasswordPage() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                     autoComplete="new-password"
-                    placeholder="Re-enter your new password"
+                    placeholder={t("auth.passwordConfirmPlaceholder")}
                   />
                 </div>
 
@@ -112,13 +118,13 @@ export function ResetPasswordPage() {
                   className="btn-primary w-full flex items-center justify-center gap-2"
                 >
                   {loading && <LoadingSpinner size="sm" />}
-                  Reset Password
+                  {t("auth.resetPassword")}
                 </button>
               </form>
 
               <p className="mt-4 text-center text-sm text-gray-500">
                 <Link href="/login" className="text-primary-600 font-medium hover:text-primary-700">
-                    Back to sign in
+                    {t("auth.backToSignIn")}
                 </Link>
               </p>
             </>

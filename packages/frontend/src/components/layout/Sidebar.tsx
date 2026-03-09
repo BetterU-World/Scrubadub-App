@@ -30,88 +30,103 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { clsx } from "clsx";
+import { useTranslation } from "react-i18next";
 
 interface NavItem {
   href: string;
-  label: string;
+  labelKey: string;
   icon: LucideIcon;
 }
 
 interface NavSection {
-  title: string;
+  titleKey: string;
   items: NavItem[];
 }
 
 const ownerSections: NavSection[] = [
   {
-    title: "Dashboard",
+    titleKey: "nav.dashboard",
     items: [
-      { href: "/", label: "Overview", icon: LayoutDashboard },
-      { href: "/properties", label: "Properties", icon: Building2 },
-      { href: "/employees", label: "Employees", icon: Users },
-      { href: "/jobs", label: "Jobs", icon: ClipboardCheck },
-      { href: "/calendar", label: "Calendar", icon: Calendar },
-      { href: "/red-flags", label: "Red Flags", icon: Flag },
-      { href: "/performance", label: "Performance", icon: BarChart3 },
-      { href: "/analytics", label: "Analytics", icon: TrendingUp },
-      { href: "/partners", label: "Partners", icon: Handshake },
+      { href: "/", labelKey: "nav.overview", icon: LayoutDashboard },
+      { href: "/properties", labelKey: "nav.properties", icon: Building2 },
+      { href: "/employees", labelKey: "nav.employees", icon: Users },
+      { href: "/jobs", labelKey: "nav.jobs", icon: ClipboardCheck },
+      { href: "/calendar", labelKey: "nav.calendar", icon: Calendar },
+      { href: "/red-flags", labelKey: "nav.redFlags", icon: Flag },
+      { href: "/performance", labelKey: "nav.performance", icon: BarChart3 },
+      { href: "/analytics", labelKey: "nav.analytics", icon: TrendingUp },
+      { href: "/partners", labelKey: "nav.partners", icon: Handshake },
     ],
   },
   {
-    title: "Hub",
+    titleKey: "nav.hub",
     items: [
-      { href: "/requests", label: "Requests", icon: Inbox },
-      { href: "/feedback", label: "Feedback", icon: MessageSquare },
-      { href: "/cleaner-leads", label: "Cleaner Leads", icon: UserPlus },
-      { href: "/owner/payments", label: "Payments", icon: Banknote },
-      { href: "/affiliate", label: "Affiliate", icon: Share2 },
-      { href: "/notifications", label: "Notifications", icon: Bell },
+      { href: "/requests", labelKey: "nav.requests", icon: Inbox },
+      { href: "/feedback", labelKey: "nav.feedback", icon: MessageSquare },
+      { href: "/cleaner-leads", labelKey: "nav.cleanerLeads", icon: UserPlus },
+      { href: "/owner/payments", labelKey: "nav.payments", icon: Banknote },
+      { href: "/affiliate", labelKey: "nav.affiliate", icon: Share2 },
+      { href: "/notifications", labelKey: "nav.notifications", icon: Bell },
     ],
   },
   {
-    title: "Company",
+    titleKey: "nav.company",
     items: [
-      { href: "/site", label: "My Site", icon: Globe },
-      { href: "/manuals", label: "Manuals", icon: BookOpen },
-      { href: "/audit-log", label: "Audit Log", icon: ScrollText },
-      { href: "/owner/settings", label: "Settings", icon: Settings },
+      { href: "/site", labelKey: "nav.mySite", icon: Globe },
+      { href: "/manuals", labelKey: "nav.manuals", icon: BookOpen },
+      { href: "/audit-log", labelKey: "nav.auditLog", icon: ScrollText },
+      { href: "/owner/settings", labelKey: "nav.settings", icon: Settings },
     ],
   },
 ];
 
 const workerSections: NavSection[] = [
   {
-    title: "Dashboard",
+    titleKey: "nav.dashboard",
     items: [
-      { href: "/", label: "My Jobs", icon: ClipboardCheck },
-      { href: "/calendar", label: "Calendar", icon: Calendar },
-      { href: "/availability", label: "My Availability", icon: Clock },
+      { href: "/", labelKey: "nav.myJobs", icon: ClipboardCheck },
+      { href: "/calendar", labelKey: "nav.calendar", icon: Calendar },
+      { href: "/availability", labelKey: "nav.myAvailability", icon: Clock },
     ],
   },
   {
-    title: "Hub",
+    titleKey: "nav.hub",
     items: [
-      { href: "/payments", label: "Payments", icon: Banknote },
-      { href: "/affiliate", label: "Affiliate", icon: Share2 },
-      { href: "/notifications", label: "Notifications", icon: Bell },
+      { href: "/payments", labelKey: "nav.payments", icon: Banknote },
+      { href: "/affiliate", labelKey: "nav.affiliate", icon: Share2 },
+      { href: "/notifications", labelKey: "nav.notifications", icon: Bell },
     ],
   },
   {
-    title: "Company",
+    titleKey: "nav.company",
     items: [
-      { href: "/manuals", label: "Manuals", icon: BookOpen },
-      { href: "/settings", label: "Settings", icon: Settings },
+      { href: "/manuals", labelKey: "nav.manuals", icon: BookOpen },
+      { href: "/settings", labelKey: "nav.settings", icon: Settings },
     ],
   },
 ];
 
 const SECTIONS_STORAGE_KEY = "scrubadub.sidebar.sections";
-const DEFAULT_SECTIONS: Record<string, boolean> = { Dashboard: true };
+const DEFAULT_SECTIONS: Record<string, boolean> = { "nav.dashboard": true };
 
 function loadSections(): Record<string, boolean> {
   try {
     const raw = localStorage.getItem(SECTIONS_STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Migrate old keys (plain English titles) to new i18n keys
+      const migrated: Record<string, boolean> = {};
+      const migration: Record<string, string> = {
+        Dashboard: "nav.dashboard",
+        Hub: "nav.hub",
+        Company: "nav.company",
+        Admin: "nav.admin",
+      };
+      for (const [key, val] of Object.entries(parsed)) {
+        migrated[migration[key] ?? key] = val as boolean;
+      }
+      return migrated;
+    }
   } catch {
     // ignore corrupt data
   }
@@ -156,6 +171,7 @@ interface SidebarProps {
 export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   const [location] = useLocation();
   const { user, signOut } = useAuth();
+  const { t } = useTranslation();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(loadSections);
 
   // Persist section state to localStorage
@@ -174,8 +190,8 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
 
   const sections = user?.role === "owner" ? ownerSections : workerSections;
 
-  const toggleSection = (title: string) => {
-    setOpenSections((prev) => ({ ...prev, [title]: !prev[title] }));
+  const toggleSection = (titleKey: string) => {
+    setOpenSections((prev) => ({ ...prev, [titleKey]: !prev[titleKey] }));
   };
 
   const handleNavClick = useCallback(() => {
@@ -198,10 +214,10 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
       <nav className="flex-1 p-4 space-y-4 overflow-y-auto">
         {sections.map((section) => (
           <CollapsibleSection
-            key={section.title}
-            title={section.title}
-            isOpen={!!openSections[section.title]}
-            onToggle={() => toggleSection(section.title)}
+            key={section.titleKey}
+            title={t(section.titleKey)}
+            isOpen={!!openSections[section.titleKey]}
+            onToggle={() => toggleSection(section.titleKey)}
           >
             {section.items.map((item) => {
               const isActive =
@@ -221,7 +237,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
                   )}
                 >
                   <item.icon className="w-5 h-5" />
-                  {item.label}
+                  {t(item.labelKey)}
                 </Link>
               );
             })}
@@ -229,9 +245,9 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
         ))}
         {isSuperAdmin && (
           <CollapsibleSection
-            title="Admin"
-            isOpen={!!openSections["Admin"]}
-            onToggle={() => toggleSection("Admin")}
+            title={t("nav.admin")}
+            isOpen={!!openSections["nav.admin"]}
+            onToggle={() => toggleSection("nav.admin")}
           >
             <Link
               href="/admin"
@@ -244,7 +260,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
               )}
             >
               <Shield className="w-5 h-5" />
-              Admin
+              {t("nav.admin")}
             </Link>
           </CollapsibleSection>
         )}
@@ -264,7 +280,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
           <button
             onClick={signOut}
             className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
-            title="Sign out"
+            title={t("auth.signOut")}
           >
             <LogOut className="w-4 h-4" />
           </button>

@@ -2,11 +2,14 @@ import { useState, FormEvent } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Link, useLocation } from "wouter";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { useTranslation } from "react-i18next";
+import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 
 /** @deprecated ownerType param kept for backward-compat with old landing links */
 
 export function SignupPage() {
   const { signUp } = useAuth();
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -19,7 +22,7 @@ export function SignupPage() {
     e.preventDefault();
     setError("");
     if (password.length < 10) {
-      setError("Password must be at least 10 characters");
+      setError(t("auth.passwordMinLength"));
       return;
     }
     setLoading(true);
@@ -35,17 +38,20 @@ export function SignupPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="absolute top-4 right-4">
+        <LanguageSwitcher />
+      </div>
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <img src="/favicon-96x96.png" alt="SCRUB" className="w-12 h-12 mx-auto mb-3" />
           <h1 className="text-3xl font-bold text-primary-700">SCRUB</h1>
           <p className="text-gray-500 mt-2">
-            Start managing your cleaning operations
+            {t("auth.signupSubtitle")}
           </p>
         </div>
 
         <div className="card">
-          <h2 className="text-xl font-semibold mb-6">Create Account</h2>
+          <h2 className="text-xl font-semibold mb-6">{t("auth.createAccount")}</h2>
 
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
@@ -56,7 +62,7 @@ export function SignupPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Your Name
+                {t("auth.yourName")}
               </label>
               <input
                 type="text"
@@ -64,13 +70,13 @@ export function SignupPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                placeholder="Jane Smith"
+                placeholder={t("auth.namePlaceholder")}
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Company Name
+                {t("auth.companyName")}
               </label>
               <input
                 type="text"
@@ -78,13 +84,13 @@ export function SignupPage() {
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 required
-                placeholder="Sparkle Clean LLC"
+                placeholder={t("auth.companyPlaceholder")}
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
+                {t("auth.email")}
               </label>
               <input
                 type="email"
@@ -93,13 +99,13 @@ export function SignupPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoComplete="email"
-                placeholder="you@company.com"
+                placeholder={t("auth.emailPlaceholder")}
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Password
+                {t("auth.password")}
               </label>
               <input
                 type="password"
@@ -108,7 +114,7 @@ export function SignupPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 autoComplete="new-password"
-                placeholder="At least 10 characters"
+                placeholder={t("auth.passwordNewPlaceholder")}
               />
             </div>
 
@@ -118,14 +124,14 @@ export function SignupPage() {
               className="btn-primary w-full flex items-center justify-center gap-2"
             >
               {loading && <LoadingSpinner size="sm" />}
-              Create Account
+              {t("auth.createAccount")}
             </button>
           </form>
 
           <p className="mt-4 text-center text-sm text-gray-500">
-            Already have an account?{" "}
+            {t("auth.haveAccount")}{" "}
             <Link href="/login" className="text-primary-600 font-medium hover:text-primary-700">
-                Sign in
+                {t("auth.signIn")}
             </Link>
           </p>
         </div>
