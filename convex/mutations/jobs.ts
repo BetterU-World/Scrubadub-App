@@ -1,4 +1,5 @@
 import { mutation } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { requireOwner, requireAuth, logAudit, createNotification } from "../lib/helpers";
 import { requireActiveSubscription } from "../lib/subscriptionGating";
@@ -50,6 +51,17 @@ export const create = mutation({
         message: `You've been assigned to clean ${property?.name ?? "a property"} on ${args.scheduledDate}`,
         relatedJobId: jobId,
       });
+
+      // Send job assigned email
+      const cleaner = await ctx.db.get(cleanerId);
+      if (cleaner?.email) {
+        await ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendJobAssigned, {
+          email: cleaner.email,
+          propertyName: property?.name ?? "a property",
+          scheduledDate: args.scheduledDate,
+          startTime: args.startTime,
+        });
+      }
     }
 
     await logAudit(ctx, {
@@ -346,6 +358,16 @@ export const reassignJob = mutation({
       relatedJobId: args.jobId,
     });
 
+    // Send job assigned email to new cleaner
+    if (newCleaner.email) {
+      await ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendJobAssigned, {
+        email: newCleaner.email,
+        propertyName,
+        scheduledDate: job.scheduledDate,
+        startTime: job.startTime,
+      });
+    }
+
     await logAudit(ctx, {
       companyId: owner.companyId,
       userId: owner._id,
@@ -434,6 +456,9 @@ export const approveJob = mutation({
       await ctx.db.patch(form._id, { status: "approved", ownerNotes: args.notes });
     }
 
+    const approveProperty = job.propertyId ? await ctx.db.get(job.propertyId) : null;
+    const approvePropertyName = approveProperty?.name ?? job.propertySnapshot?.name ?? "a property";
+
     for (const cleanerId of job.cleanerIds) {
       await createNotification(ctx, {
         companyId: job.companyId,
@@ -443,6 +468,15 @@ export const approveJob = mutation({
         message: `Your work for ${job.scheduledDate} has been approved${args.notes ? `: ${args.notes}` : ""}`,
         relatedJobId: args.jobId,
       });
+
+      // Send job approved email to cleaner
+      const cleaner = await ctx.db.get(cleanerId);
+      if (cleaner?.email) {
+        await ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendJobApproved, {
+          email: cleaner.email,
+          propertyName: approvePropertyName,
+        });
+      }
     }
 
     // ── Shared-job completion sync ──
@@ -565,6 +599,7 @@ export const completeJob = mutation({
       .query("users")
       .withIndex("by_companyId", (q) => q.eq("companyId", job.companyId))
       .collect();
+    const now = Date.now();
     for (const owner of owners.filter((u) => u.role === "owner")) {
       await createNotification(ctx, {
         companyId: job.companyId,
@@ -574,6 +609,16 @@ export const completeJob = mutation({
         message: `${user.name} completed cleaning ${propName} on ${job.scheduledDate}`,
         relatedJobId: args.jobId,
       });
+
+      // Send job completed email to owner
+      if (owner.email) {
+        await ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendJobCompleted, {
+          email: owner.email,
+          propertyName: propName,
+          cleanerName: user.name,
+          completedAt: now,
+        });
+      }
     }
 
     // Auto-create OPEN cleaner payment if none exists (idempotent)

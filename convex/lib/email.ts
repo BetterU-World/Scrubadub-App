@@ -76,6 +76,152 @@ export async function sendPasswordResetEmail(
  * Send an invite email for cleaner/maintenance onboarding.
  * Returns true if sent successfully, false otherwise.
  */
+/**
+ * Send a "job assigned" email to a cleaner.
+ */
+export async function sendJobAssignedEmail(
+  email: string,
+  propertyName: string,
+  scheduledDate: string,
+  startTime?: string
+): Promise<boolean> {
+  const resend = getResendClient();
+  const appUrl = getAppUrl();
+  const timeInfo = startTime ? ` at ${startTime}` : "";
+
+  try {
+    const { error } = await resend.emails.send({
+      from: getFromEmail(),
+      to: email,
+      subject: "New Cleaning Job Assigned",
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <img src="${appUrl}/favicon-96x96.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
+          </div>
+          <h2 style="text-align: center; color: #111; font-size: 22px; margin: 0 0 16px;">New Cleaning Job Assigned</h2>
+          <p style="color: #374151; font-size: 15px; line-height: 1.6;">You've been assigned a new cleaning job:</p>
+          <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+            <tr><td style="color: #6b7280; font-size: 14px; padding: 6px 0;">Property</td><td style="color: #111; font-size: 14px; padding: 6px 0; text-align: right; font-weight: 500;">${propertyName}</td></tr>
+            <tr><td style="color: #6b7280; font-size: 14px; padding: 6px 0;">Date</td><td style="color: #111; font-size: 14px; padding: 6px 0; text-align: right; font-weight: 500;">${scheduledDate}${timeInfo}</td></tr>
+          </table>
+          <p style="text-align: center; margin: 28px 0;">
+            <a href="${appUrl}" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
+              Open SCRUB
+            </a>
+          </p>
+          <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">Log in to SCRUB to view job details and get started.</p>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error("[email] Failed to send job assigned email:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[email] Error sending job assigned email:", err);
+    return false;
+  }
+}
+
+/**
+ * Send a "job completed" email to the owner.
+ */
+export async function sendJobCompletedEmail(
+  email: string,
+  propertyName: string,
+  cleanerName: string,
+  completedAt: number
+): Promise<boolean> {
+  const resend = getResendClient();
+  const appUrl = getAppUrl();
+  const completionTime = new Date(completedAt).toLocaleString("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+
+  try {
+    const { error } = await resend.emails.send({
+      from: getFromEmail(),
+      to: email,
+      subject: "Cleaning Job Completed",
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <img src="${appUrl}/favicon-96x96.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
+          </div>
+          <h2 style="text-align: center; color: #111; font-size: 22px; margin: 0 0 16px;">Cleaning Job Completed</h2>
+          <p style="color: #374151; font-size: 15px; line-height: 1.6;">A cleaning job has been completed and is ready for your review.</p>
+          <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+            <tr><td style="color: #6b7280; font-size: 14px; padding: 6px 0;">Property</td><td style="color: #111; font-size: 14px; padding: 6px 0; text-align: right; font-weight: 500;">${propertyName}</td></tr>
+            <tr><td style="color: #6b7280; font-size: 14px; padding: 6px 0;">Cleaner</td><td style="color: #111; font-size: 14px; padding: 6px 0; text-align: right; font-weight: 500;">${cleanerName}</td></tr>
+            <tr><td style="color: #6b7280; font-size: 14px; padding: 6px 0;">Completed</td><td style="color: #111; font-size: 14px; padding: 6px 0; text-align: right; font-weight: 500;">${completionTime}</td></tr>
+          </table>
+          <p style="color: #374151; font-size: 14px; line-height: 1.6;">Photos and checklist details are available in SCRUB.</p>
+          <p style="text-align: center; margin: 28px 0;">
+            <a href="${appUrl}" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
+              Review in SCRUB
+            </a>
+          </p>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error("[email] Failed to send job completed email:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[email] Error sending job completed email:", err);
+    return false;
+  }
+}
+
+/**
+ * Send a "job approved" email to the cleaner.
+ */
+export async function sendJobApprovedEmail(
+  email: string,
+  propertyName: string
+): Promise<boolean> {
+  const resend = getResendClient();
+  const appUrl = getAppUrl();
+
+  try {
+    const { error } = await resend.emails.send({
+      from: getFromEmail(),
+      to: email,
+      subject: "Cleaning Job Approved",
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <img src="${appUrl}/favicon-96x96.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
+          </div>
+          <h2 style="text-align: center; color: #111; font-size: 22px; margin: 0 0 16px;">Cleaning Job Approved</h2>
+          <p style="color: #374151; font-size: 15px; line-height: 1.6;">Great work! Your cleaning job at <strong>${propertyName}</strong> has been reviewed and approved by the owner.</p>
+          <p style="text-align: center; margin: 28px 0;">
+            <a href="${appUrl}" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
+              Open SCRUB
+            </a>
+          </p>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error("[email] Failed to send job approved email:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[email] Error sending job approved email:", err);
+    return false;
+  }
+}
+
 export async function sendInviteEmail(
   email: string,
   inviteToken: string,
