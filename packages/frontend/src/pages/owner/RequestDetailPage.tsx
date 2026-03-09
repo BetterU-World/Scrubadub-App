@@ -31,9 +31,11 @@ import {
   AlertCircle,
   Sparkles,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function RequestDetailPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const params = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
 
@@ -116,7 +118,7 @@ export function RequestDetailPage() {
   if (request === undefined) return <PageLoader />;
   if (request === null) {
     return (
-      <div className="text-center py-12 text-gray-500">Request not found</div>
+      <div className="text-center py-12 text-gray-500">{t("requests.requestNotFound")}</div>
     );
   }
 
@@ -131,7 +133,7 @@ export function RequestDetailPage() {
         userId: user!._id,
         status: "contacted",
       });
-      setToast({ message: "Marked as contacted", type: "success" });
+      setToast({ message: t("requests.markedAsContacted"), type: "success" });
       setTimeout(() => setToast(null), 3000);
     } catch (err: any) {
       setToast({ message: err.message || "Failed to update", type: "error" });
@@ -148,7 +150,7 @@ export function RequestDetailPage() {
         requestId: request._id,
         userId: user!._id,
       });
-      setToast({ message: "Request archived", type: "success" });
+      setToast({ message: t("requests.requestArchived"), type: "success" });
       setTimeout(() => setToast(null), 3000);
     } catch (err: any) {
       setToast({ message: err.message || "Failed to archive", type: "error" });
@@ -183,7 +185,7 @@ export function RequestDetailPage() {
     setCreatingProperty(true);
     try {
       await createProperty({ requestId: request._id, userId: user!._id });
-      setToast({ message: "Property created", type: "success" });
+      setToast({ message: t("requests.propertyCreated"), type: "success" });
       setTimeout(() => setToast(null), 3000);
     } catch (err: any) {
       setToast({ message: err.message || "Failed to create property", type: "error" });
@@ -234,7 +236,7 @@ export function RequestDetailPage() {
         status: "declined",
       });
       setShowDecline(false);
-      setToast({ message: "Request declined", type: "success" });
+      setToast({ message: t("requests.requestDeclined"), type: "success" });
       setTimeout(() => setToast(null), 3000);
     } catch (err: any) {
       setToast({ message: err.message || "Failed to decline", type: "error" });
@@ -256,7 +258,7 @@ export function RequestDetailPage() {
                 disabled={contactingLoading}
                 className="btn-secondary flex items-center gap-2"
               >
-                <PhoneOutgoing className="w-4 h-4" /> {contactingLoading ? "Contacting..." : "Mark Contacted"}
+                <PhoneOutgoing className="w-4 h-4" /> {contactingLoading ? t("requests.contacting") : t("requests.markContacted")}
               </button>
             )}
             {canAct && (
@@ -265,13 +267,13 @@ export function RequestDetailPage() {
                   onClick={handleConvert}
                   className="btn-primary flex items-center gap-2"
                 >
-                  <Briefcase className="w-4 h-4" /> Convert to Job
+                  <Briefcase className="w-4 h-4" /> {t("requests.convertToJob")}
                 </button>
                 <button
                   onClick={() => setShowDecline(true)}
                   className="btn-danger flex items-center gap-2"
                 >
-                  <XCircle className="w-4 h-4" /> Decline
+                  <XCircle className="w-4 h-4" /> {t("requests.decline")}
                 </button>
               </>
             )}
@@ -281,7 +283,7 @@ export function RequestDetailPage() {
                 disabled={archiving}
                 className="btn-secondary flex items-center gap-2 text-gray-500"
               >
-                <Archive className="w-4 h-4" /> {archiving ? "Archiving..." : "Archive"}
+                <Archive className="w-4 h-4" /> {archiving ? t("requests.archiving") : t("requests.archive")}
               </button>
             )}
           </div>
@@ -293,16 +295,16 @@ export function RequestDetailPage() {
         <div className="flex items-center gap-2 flex-wrap">
           <StatusBadge status={request.status} />
           <span className="text-xs text-gray-400">
-            Submitted {new Date(request.createdAt).toLocaleString()}
+            {t("requests.submitted")} {new Date(request.createdAt).toLocaleString()}
           </span>
           {(request as any).contactedAt && (
             <span className="text-xs text-gray-400">
-              Contacted {new Date((request as any).contactedAt).toLocaleString()}
+              {t("requests.contacted")} {new Date((request as any).contactedAt).toLocaleString()}
             </span>
           )}
           {(request as any).archivedAt && (
             <span className="text-xs text-gray-400">
-              Archived {new Date((request as any).archivedAt).toLocaleString()}
+              {t("requests.archived")} {new Date((request as any).archivedAt).toLocaleString()}
             </span>
           )}
         </div>
@@ -361,7 +363,7 @@ export function RequestDetailPage() {
 
         {request.notes && (
           <div className="border-t pt-3">
-            <p className="text-sm font-medium text-gray-700 mb-1">Notes</p>
+            <p className="text-sm font-medium text-gray-700 mb-1">{t("common.notes")}</p>
             <p className="text-sm text-gray-600">{request.notes}</p>
           </div>
         )}
@@ -370,7 +372,7 @@ export function RequestDetailPage() {
         <div className="border-t pt-3">
           {request.propertyId ? (
             <p className="flex items-center gap-2 text-sm text-primary-700">
-              <Check className="w-4 h-4" /> Property linked
+              <Check className="w-4 h-4" /> {t("requests.propertyLinked")}
             </p>
           ) : canAct && request.propertySnapshot?.address ? (
             <button
@@ -379,7 +381,7 @@ export function RequestDetailPage() {
               className="btn-secondary flex items-center gap-2 text-sm"
             >
               <Building2 className="w-4 h-4" />
-              {creatingProperty ? "Creating..." : "Create Property"}
+              {creatingProperty ? t("requests.creating") : t("requests.createProperty")}
             </button>
           ) : null}
         </div>
@@ -387,12 +389,12 @@ export function RequestDetailPage() {
 
       {/* Lead Pipeline controls */}
       <div className="card mt-4 space-y-4">
-        <h3 className="text-sm font-semibold text-gray-900">Lead Pipeline</h3>
+        <h3 className="text-sm font-semibold text-gray-900">{t("requests.leadPipeline")}</h3>
 
         {/* Stage selector */}
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">
-            Lead Stage
+            {t("requests.leadStage")}
           </label>
           <div className="flex gap-1.5 flex-wrap">
             {(["new", "contacted", "quoted", "won", "lost"] as const).map(
@@ -409,7 +411,7 @@ export function RequestDetailPage() {
                           requestId: request._id,
                           leadStage: stage,
                         });
-                        setToast({ message: `Stage → ${stage}`, type: "success" });
+                        setToast({ message: t("requests.stageUpdated", { stage }), type: "success" });
                         setTimeout(() => setToast(null), 2000);
                       } catch (err: any) {
                         setToast({ message: err.message || "Failed", type: "error" });
@@ -433,13 +435,13 @@ export function RequestDetailPage() {
         {/* Lead Notes */}
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">
-            Lead Notes (internal)
+            {t("requests.leadNotesInternal")}
           </label>
           <textarea
             className="input-field text-sm"
             rows={3}
             maxLength={4000}
-            placeholder="Internal notes about this lead..."
+            placeholder={t("requests.leadNotesPlaceholder")}
             value={leadNotesVal}
             onChange={(e) => setLeadNotesVal(e.target.value)}
           />
@@ -454,7 +456,7 @@ export function RequestDetailPage() {
                     requestId: request._id,
                     leadNotes: leadNotesVal,
                   });
-                  setToast({ message: "Notes saved", type: "success" });
+                  setToast({ message: t("requests.notesSaved"), type: "success" });
                   setTimeout(() => setToast(null), 2000);
                 } catch (err: any) {
                   setToast({ message: err.message || "Failed", type: "error" });
@@ -466,7 +468,7 @@ export function RequestDetailPage() {
               className="btn-secondary flex items-center gap-1.5 text-xs py-1 px-2.5"
             >
               <Save className="w-3 h-3" />
-              {savingNotes ? "Saving..." : "Save Notes"}
+              {savingNotes ? t("common.saving") : t("requests.saveNotes")}
             </button>
             <span className="text-xs text-gray-400">
               {leadNotesVal.length}/4000
@@ -477,7 +479,7 @@ export function RequestDetailPage() {
         {/* Next Follow-up */}
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">
-            Next Follow-up
+            {t("requests.nextFollowUp")}
           </label>
           <div className="flex items-center gap-2">
             <input
@@ -500,7 +502,7 @@ export function RequestDetailPage() {
                     nextFollowUpAt: ts,
                   });
                   setToast({
-                    message: ts ? "Follow-up set" : "Follow-up cleared",
+                    message: ts ? t("requests.followUpSet") : t("requests.followUpCleared"),
                     type: "success",
                   });
                   setTimeout(() => setToast(null), 2000);
@@ -514,7 +516,7 @@ export function RequestDetailPage() {
               className="btn-secondary flex items-center gap-1.5 text-xs py-1 px-2.5"
             >
               <Save className="w-3 h-3" />
-              {savingFollowUp ? "..." : "Save"}
+              {savingFollowUp ? "..." : t("common.save")}
             </button>
             {followUpVal && (
               <button
@@ -527,7 +529,7 @@ export function RequestDetailPage() {
                       requestId: request._id,
                       nextFollowUpAt: undefined,
                     });
-                    setToast({ message: "Follow-up cleared", type: "success" });
+                    setToast({ message: t("requests.followUpCleared"), type: "success" });
                     setTimeout(() => setToast(null), 2000);
                   } catch (err: any) {
                     setToast({ message: err.message || "Failed", type: "error" });
@@ -537,7 +539,7 @@ export function RequestDetailPage() {
                   }
                 }}
                 className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
-                title="Clear follow-up"
+                title={t("requests.clearFollowUp")}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -545,7 +547,7 @@ export function RequestDetailPage() {
           </div>
           {(request as any).nextFollowUpAt && (request as any).nextFollowUpAt <= Date.now() && (
             <p className="flex items-center gap-1 text-xs text-red-600 mt-1">
-              <AlertCircle className="w-3 h-3" /> Overdue
+              <AlertCircle className="w-3 h-3" /> {t("requests.overdue")}
             </p>
           )}
         </div>
@@ -556,11 +558,11 @@ export function RequestDetailPage() {
         <div className="flex items-center gap-2">
           <MessageSquare className="w-4 h-4 text-gray-500" />
           <h3 className="text-sm font-semibold text-gray-900">
-            Client Feedback Link
+            {t("requests.clientFeedbackLink")}
           </h3>
         </div>
         <p className="text-sm text-gray-500">
-          Send this after service to collect feedback. No login required.
+          {t("requests.clientFeedbackLinkDesc")}
         </p>
         {portalUrl ? (
           <div className="space-y-2">
@@ -572,7 +574,7 @@ export function RequestDetailPage() {
               className="btn-secondary flex items-center gap-2 text-sm"
             >
               <Copy className="w-4 h-4" />
-              {copiedPortal ? "Copied!" : "Copy link"}
+              {copiedPortal ? t("requests.copied") : t("requests.copyLink")}
             </button>
           </div>
         ) : (
@@ -582,7 +584,7 @@ export function RequestDetailPage() {
             className="btn-primary flex items-center gap-2 text-sm"
           >
             <MessageSquare className="w-4 h-4" />
-            {generatingPortal ? "Generating..." : "Generate Feedback Link"}
+            {generatingPortal ? t("requests.generating") : t("requests.generateFeedbackLink")}
           </button>
         )}
       </div>
@@ -591,14 +593,14 @@ export function RequestDetailPage() {
       {request.clientNotes && (
         <div className="card mt-4 space-y-2">
           <h3 className="text-sm font-semibold text-gray-900">
-            Client Notes
+            {t("requests.clientNotes")}
           </h3>
           <p className="text-sm text-gray-600 whitespace-pre-wrap">
             {request.clientNotes}
           </p>
           {request.updatedByClientAt && (
             <p className="text-xs text-gray-400">
-              Updated by client{" "}
+              {t("requests.updatedByClient")}{" "}
               {new Date(request.updatedByClientAt).toLocaleString()}
             </p>
           )}
@@ -611,7 +613,7 @@ export function RequestDetailPage() {
           <div className="flex items-center gap-2">
             <Star className="w-4 h-4 text-yellow-500" />
             <h3 className="text-sm font-semibold text-gray-900">
-              Client Feedback
+              {t("requests.clientFeedback")}
             </h3>
           </div>
           <div className="flex items-center gap-2">
@@ -649,16 +651,16 @@ export function RequestDetailPage() {
         onClick={() => setLocation("/requests")}
         className="mt-4 text-sm text-primary-600 hover:underline"
       >
-        &larr; Back to requests
+        &larr; {t("requests.backToRequests")}
       </button>
 
       {/* Decline dialog */}
       <ConfirmDialog
         open={showDecline}
         onOpenChange={setShowDecline}
-        title="Decline request"
-        description={`Decline the request from ${request.requesterName}? This cannot be undone.`}
-        confirmLabel="Decline"
+        title={t("requests.declineRequest")}
+        description={t("requests.declineConfirm", { name: request.requesterName })}
+        confirmLabel={t("requests.decline")}
         confirmVariant="danger"
         onConfirm={handleDecline}
         loading={declining}

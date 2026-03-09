@@ -9,10 +9,12 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useParams, Link, useLocation } from "wouter";
 import { JobTimeline } from "@/components/JobTimeline";
 import { Calendar, Clock, MapPin, Key, CheckCircle, XCircle, Play, ClipboardCheck, MapPinCheck, Send } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function CleanerJobDetailPage() {
   const params = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const job = useQuery(api.queries.jobs.get,
     user ? { jobId: params.id as Id<"jobs">, userId: user._id } : "skip"
@@ -39,7 +41,7 @@ export function CleanerJobDetailPage() {
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   if (job === undefined) return <PageLoader />;
-  if (job === null) return <div className="text-center py-12 text-gray-500">Job not found</div>;
+  if (job === null) return <div className="text-center py-12 text-gray-500">{t("jobs.jobNotFound")}</div>;
 
   const acceptance = job.acceptanceStatus ?? "pending";
   const canAccept = job.status === "scheduled" && acceptance === "pending";
@@ -76,16 +78,16 @@ export function CleanerJobDetailPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <PageHeader title={job.property?.name ?? (job as any).propertySnapshot?.name ?? "Job Details"} />
+      <PageHeader title={job.property?.name ?? (job as any).propertySnapshot?.name ?? t("jobs.jobDetails")} />
 
       <div className="space-y-4">
         <div className="card space-y-4">
           <div className="flex items-center gap-2">
             <StatusBadge status={job.status} />
-            <span className="text-sm text-gray-500 capitalize">{job.type.replace(/_/g, " ")}</span>
+            <span className="text-sm text-gray-500 capitalize">{t(`jobTypes.${job.type}`, job.type.replace(/_/g, " "))}</span>
             {hasArrived && (
               <span className="badge bg-green-100 text-green-700 flex items-center gap-1">
-                <MapPinCheck className="w-3 h-3" /> Arrived
+                <MapPinCheck className="w-3 h-3" /> {t("jobs.arrived")}
               </span>
             )}
           </div>
@@ -96,7 +98,7 @@ export function CleanerJobDetailPage() {
               {job.startTime && ` at ${job.startTime}`}
             </div>
             <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-gray-400" /> {job.durationMinutes} minutes
+              <Clock className="w-4 h-4 text-gray-400" /> {job.durationMinutes} {t("common.minutes")}
             </div>
             <div className="flex items-center gap-2">
               <MapPin className="w-4 h-4 text-gray-400" /> {job.property?.address ?? (job as any).propertySnapshot?.address}
@@ -106,7 +108,7 @@ export function CleanerJobDetailPage() {
           {(job.property?.accessInstructions || (job as any).propertySnapshot?.accessInstructions) && (
             <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
               <p className="text-sm font-medium text-yellow-800 flex items-center gap-1">
-                <Key className="w-4 h-4" /> Access Instructions
+                <Key className="w-4 h-4" /> {t("jobs.accessInstructions")}
               </p>
               <p className="text-sm text-yellow-700 mt-1">{job.property?.accessInstructions ?? (job as any).propertySnapshot?.accessInstructions}</p>
             </div>
@@ -120,7 +122,7 @@ export function CleanerJobDetailPage() {
         {job.form?.ownerNotes && (
           <div className="card">
             <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
-              <p className="text-sm font-medium text-orange-800">Rework notes from owner:</p>
+              <p className="text-sm font-medium text-orange-800">{t("jobs.reworkNotesFromOwner")}</p>
               <p className="text-sm text-orange-700 mt-1">{job.form.ownerNotes}</p>
             </div>
           </div>
@@ -142,7 +144,7 @@ export function CleanerJobDetailPage() {
           <div className={`card text-center text-sm font-medium py-3 ${
             acceptance === "accepted" ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"
           }`}>
-            {acceptance === "accepted" ? "You accepted this job" : "You denied this job"}
+            {acceptance === "accepted" ? t("jobs.youAcceptedJob") : t("jobs.youDeniedJob")}
           </div>
         )}
 
@@ -157,7 +159,7 @@ export function CleanerJobDetailPage() {
                   setAccepting(true);
                   try {
                     await acceptJob({ jobId: job._id, userId: user._id });
-                    setToast({ message: "Job accepted", type: "success" });
+                    setToast({ message: t("jobs.jobAccepted"), type: "success" });
                     setTimeout(() => setToast(null), 3000);
                   } catch (err: any) {
                     setToast({ message: err.message ?? "Failed to accept", type: "error" });
@@ -168,13 +170,13 @@ export function CleanerJobDetailPage() {
                 }}
                 className="btn-primary flex-1 flex items-center justify-center gap-2"
               >
-                <CheckCircle className="w-4 h-4" /> {accepting ? "Accepting..." : "Accept Job"}
+                <CheckCircle className="w-4 h-4" /> {accepting ? t("jobs.accepting") : t("jobs.acceptJob")}
               </button>
               <button
                 onClick={() => setShowDeny(true)}
                 className="btn-danger flex items-center justify-center gap-2"
               >
-                <XCircle className="w-4 h-4" /> Deny
+                <XCircle className="w-4 h-4" /> {t("jobs.deny")}
               </button>
             </div>
           )}
@@ -184,7 +186,7 @@ export function CleanerJobDetailPage() {
               onClick={async () => { await arriveJob({ jobId: job._id, userId: user!._id }); }}
               className="btn-secondary w-full flex items-center justify-center gap-2 py-3"
             >
-              <MapPinCheck className="w-5 h-5" /> I've Arrived
+              <MapPinCheck className="w-5 h-5" /> {t("jobs.iveArrived")}
             </button>
           )}
 
@@ -193,7 +195,7 @@ export function CleanerJobDetailPage() {
               onClick={() => setShowCleanerCancel(true)}
               className="btn-danger w-full flex items-center justify-center gap-2 py-2 text-sm"
             >
-              <XCircle className="w-4 h-4" /> Cancel Job
+              <XCircle className="w-4 h-4" /> {t("jobs.cancelJobCleaner")}
             </button>
           )}
 
@@ -202,13 +204,13 @@ export function CleanerJobDetailPage() {
               onClick={handleStartJob}
               className="btn-primary w-full flex items-center justify-center gap-2 py-3 text-lg"
             >
-              <Play className="w-5 h-5" /> Start Cleaning
+              <Play className="w-5 h-5" /> {t("jobs.startCleaning")}
             </button>
           )}
 
           {isInProgress && hasForm && (
             <Link href={`/jobs/${job._id}/form`} className="btn-secondary w-full flex items-center justify-center gap-2 py-3 text-lg">
-              <ClipboardCheck className="w-5 h-5" /> Continue Checklist
+              <ClipboardCheck className="w-5 h-5" /> {t("jobs.continueChecklist")}
             </Link>
           )}
 
@@ -217,25 +219,25 @@ export function CleanerJobDetailPage() {
               onClick={() => setShowComplete(true)}
               className="btn-primary w-full flex items-center justify-center gap-2 py-3 text-lg"
             >
-              <CheckCircle className="w-5 h-5" /> Complete Clean
+              <CheckCircle className="w-5 h-5" /> {t("jobs.completeCleaning")}
             </button>
           )}
 
           {job.status === "rework_requested" && (
             <div className="text-center text-sm text-red-600 font-medium py-2">
-              Owner has requested rework — tap Start Cleaning to redo.
+              {t("jobs.reworkRedoMsg")}
             </div>
           )}
 
           {job.status === "submitted" && (
             <div className="text-center text-sm text-gray-500 py-2">
-              Waiting for owner review...
+              {t("jobs.waitingForReview")}
             </div>
           )}
 
           {job.status === "approved" && (
             <div className="text-center text-sm text-green-600 font-medium py-2">
-              Job approved! Great work.
+              {t("jobs.jobApprovedCleaner")}
             </div>
           )}
         </div>
@@ -245,16 +247,16 @@ export function CleanerJobDetailPage() {
       {showDeny && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Deny Job</h3>
+            <h3 className="text-lg font-semibold mb-4">{t("jobs.denyJob")}</h3>
             <textarea
               className="input-field mb-4"
               rows={3}
               value={denyReason}
               onChange={(e) => setDenyReason(e.target.value)}
-              placeholder="Reason for denying (optional)"
+              placeholder={t("jobs.denyReasonPlaceholder")}
             />
             <div className="flex justify-end gap-3">
-              <button onClick={() => setShowDeny(false)} className="btn-secondary">Cancel</button>
+              <button onClick={() => setShowDeny(false)} className="btn-secondary">{t("common.cancel")}</button>
               <button
                 disabled={denying}
                 onClick={async () => {
@@ -263,7 +265,7 @@ export function CleanerJobDetailPage() {
                   try {
                     await denyJob({ jobId: job._id, reason: denyReason || undefined, userId: user._id });
                     setShowDeny(false);
-                    setToast({ message: "Job denied", type: "success" });
+                    setToast({ message: t("jobs.jobDenied"), type: "success" });
                     setTimeout(() => setToast(null), 3000);
                   } catch (err: any) {
                     setToast({ message: err.message ?? "Failed to deny", type: "error" });
@@ -274,7 +276,7 @@ export function CleanerJobDetailPage() {
                 }}
                 className="btn-danger"
               >
-                {denying ? "Denying..." : "Deny Job"}
+                {denying ? t("jobs.denying") : t("jobs.denyJob")}
               </button>
             </div>
           </div>
@@ -285,17 +287,17 @@ export function CleanerJobDetailPage() {
       {showCleanerCancel && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Cancel Job</h3>
-            <p className="text-sm text-gray-500 mb-3">Are you sure you want to cancel this job? The owner will be notified.</p>
+            <h3 className="text-lg font-semibold mb-4">{t("jobs.cancelJobCleaner")}</h3>
+            <p className="text-sm text-gray-500 mb-3">{t("jobs.cancelJobCleanerConfirm")}</p>
             <textarea
               className="input-field mb-4"
               rows={3}
               value={cleanerCancelReason}
               onChange={(e) => setCleanerCancelReason(e.target.value)}
-              placeholder="Reason for cancelling (optional)"
+              placeholder={t("jobs.cancelReasonPlaceholder")}
             />
             <div className="flex justify-end gap-3">
-              <button onClick={() => setShowCleanerCancel(false)} className="btn-secondary">Go Back</button>
+              <button onClick={() => setShowCleanerCancel(false)} className="btn-secondary">{t("common.goBack")}</button>
               <button
                 disabled={cleanerCancelling}
                 onClick={async () => {
@@ -304,7 +306,7 @@ export function CleanerJobDetailPage() {
                   try {
                     await cleanerCancelJob({ jobId: job._id, reason: cleanerCancelReason || undefined, userId: user._id });
                     setShowCleanerCancel(false);
-                    setToast({ message: "Job cancelled", type: "success" });
+                    setToast({ message: t("jobs.jobCancelled"), type: "success" });
                     setTimeout(() => setToast(null), 3000);
                   } catch (err: any) {
                     setToast({ message: err.message ?? "Failed to cancel", type: "error" });
@@ -315,7 +317,7 @@ export function CleanerJobDetailPage() {
                 }}
                 className="btn-danger"
               >
-                {cleanerCancelling ? "Cancelling..." : "Cancel Job"}
+                {cleanerCancelling ? t("jobs.cancelling") : t("jobs.cancelJobCleaner")}
               </button>
             </div>
           </div>
@@ -326,24 +328,24 @@ export function CleanerJobDetailPage() {
       {showComplete && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Complete Clean</h3>
-            <p className="text-sm text-gray-500 mb-3">Add any notes about the cleaning (optional).</p>
+            <h3 className="text-lg font-semibold mb-4">{t("jobs.completeCleanTitle")}</h3>
+            <p className="text-sm text-gray-500 mb-3">{t("jobs.completeCleanDesc")}</p>
             <textarea
               className="input-field mb-4"
               rows={3}
               value={completionNotes}
               onChange={(e) => setCompletionNotes(e.target.value)}
-              placeholder="Notes about the cleaning..."
+              placeholder={t("jobs.completeCleanPlaceholder")}
             />
             <div className="flex justify-end gap-3">
-              <button onClick={() => setShowComplete(false)} className="btn-secondary">Cancel</button>
+              <button onClick={() => setShowComplete(false)} className="btn-secondary">{t("common.cancel")}</button>
               <button
                 onClick={handleCompleteJob}
                 disabled={completing}
                 className="btn-primary flex items-center gap-2"
               >
                 {completing && <LoadingSpinner size="sm" />}
-                <Send className="w-4 h-4" /> Submit
+                <Send className="w-4 h-4" /> {t("common.submit")}
               </button>
             </div>
           </div>

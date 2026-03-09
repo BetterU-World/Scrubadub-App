@@ -30,10 +30,12 @@ import {
   DollarSign,
   CreditCard,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function JobDetailPage() {
   const params = useParams<{ id: string }>();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const job = useQuery(api.queries.jobs.get,
     user ? { jobId: params.id as Id<"jobs">, userId: user._id } : "skip"
   );
@@ -142,7 +144,7 @@ export function JobDetailPage() {
   }, [job, cleanerPayAmountInit]);
 
   if (job === undefined) return <PageLoader />;
-  if (job === null) return <div className="text-center py-12 text-gray-500">Job not found</div>;
+  if (job === null) return <div className="text-center py-12 text-gray-500">{t("jobs.jobNotFound")}</div>;
 
   const canReview = job.status === "submitted";
   const canCancel = ["scheduled", "confirmed"].includes(job.status);
@@ -150,26 +152,26 @@ export function JobDetailPage() {
   return (
     <div className="max-w-3xl mx-auto">
       <PageHeader
-        title={job.property?.name ?? (job as any).propertySnapshot?.name ?? "Job Details"}
+        title={job.property?.name ?? (job as any).propertySnapshot?.name ?? t("jobs.jobDetails")}
         action={
           <div className="flex gap-2">
             {!job.sharedFromJobId && canCancel && (
               <button onClick={() => setShowShare(true)} className="btn-secondary flex items-center gap-2">
-                <Share2 className="w-4 h-4" /> Share Job
+                <Share2 className="w-4 h-4" /> {t("jobs.shareJob")}
               </button>
             )}
             {job.status !== "cancelled" && ((job as any).acceptanceStatus === "denied" || (job as any).acceptanceStatus === "pending" || (job.sharedFromJobId && job.cleanerIds.length === 0)) && (
               <button onClick={() => setShowReassign(true)} className="btn-secondary flex items-center gap-2">
-                <RefreshCw className="w-4 h-4" /> {job.sharedFromJobId && job.cleanerIds.length === 0 ? "Assign Cleaner" : "Reassign"}
+                <RefreshCw className="w-4 h-4" /> {job.sharedFromJobId && job.cleanerIds.length === 0 ? t("jobs.assignCleaner") : t("jobs.reassign")}
               </button>
             )}
             {canCancel && (
               <>
                 <Link href={`/jobs/${job._id}/edit`} className="btn-secondary flex items-center gap-2">
-                  <Pencil className="w-4 h-4" /> Edit
+                  <Pencil className="w-4 h-4" /> {t("common.edit")}
                 </Link>
                 <button onClick={() => setShowCancel(true)} className="btn-danger flex items-center gap-2">
-                  <XCircle className="w-4 h-4" /> Cancel
+                  <XCircle className="w-4 h-4" /> {t("common.cancel")}
                 </button>
               </>
             )}
@@ -197,16 +199,16 @@ export function JobDetailPage() {
             )}
             <span className="text-sm text-gray-500 capitalize">{job.type.replace(/_/g, " ")}</span>
             {job.reworkCount > 0 && (
-              <span className="badge bg-orange-100 text-orange-700">Rework #{job.reworkCount}</span>
+              <span className="badge bg-orange-100 text-orange-700">{t("jobs.reworkNum", { count: job.reworkCount })}</span>
             )}
             {(job as any).sharedFromCompanyName && (
-              <span className="badge bg-blue-100 text-blue-700">Shared from {(job as any).sharedFromCompanyName}</span>
+              <span className="badge bg-blue-100 text-blue-700">{t("jobs.sharedFrom", { name: (job as any).sharedFromCompanyName })}</span>
             )}
           </div>
 
           {(job as any).acceptanceStatus === "denied" && (job as any).denyReason && (
             <div className="p-3 bg-red-50 rounded-lg border border-red-200">
-              <p className="text-sm font-medium text-red-800">Deny reason:</p>
+              <p className="text-sm font-medium text-red-800">{t("jobs.denyReason")}</p>
               <p className="text-sm text-red-700 mt-1">{(job as any).denyReason}</p>
             </div>
           )}
@@ -217,14 +219,14 @@ export function JobDetailPage() {
               {job.startTime && ` at ${job.startTime}`}
             </div>
             <div className="flex items-center gap-2 text-gray-600">
-              <Clock className="w-4 h-4 text-gray-400" /> {job.durationMinutes} minutes
+              <Clock className="w-4 h-4 text-gray-400" /> {job.durationMinutes} {t("common.minutes")}
             </div>
             <div className="flex items-center gap-2 text-gray-600">
               <MapPin className="w-4 h-4 text-gray-400" /> {job.property?.address ?? (job as any).propertySnapshot?.address}
             </div>
             <div className="flex items-center gap-2 text-gray-600">
               <Users className="w-4 h-4 text-gray-400" />
-              {(job.cleaners as any[]).map((c: any) => c.name).join(", ") || "Unassigned"}
+              {(job.cleaners as any[]).map((c: any) => c.name).join(", ") || t("common.unassigned")}
             </div>
           </div>
 
@@ -239,10 +241,10 @@ export function JobDetailPage() {
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
                 <h3 className="font-semibold text-blue-800 flex items-center gap-2">
-                  <Share2 className="w-5 h-5" /> Shared Job from {incomingShared.fromCompanyName}
+                  <Share2 className="w-5 h-5" /> {t("jobs.sharedJobFrom", { name: incomingShared.fromCompanyName })}
                 </h3>
                 <p className="text-sm text-blue-600 mt-1">
-                  Accept to assign cleaners and start work, or reject to decline.
+                  {t("jobs.sharedJobAcceptDesc")}
                 </p>
               </div>
               <div className="flex gap-2">
@@ -254,7 +256,7 @@ export function JobDetailPage() {
                     setSharedJobAction(true);
                     try {
                       await acceptSharedJobMut({ userId: uid, sharedJobId: incomingShared._id });
-                      setToast({ message: "Shared job accepted!", type: "success" });
+                      setToast({ message: t("jobs.sharedJobAccepted"), type: "success" });
                       setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
                       setToast({ message: err.message ?? "Failed", type: "error" });
@@ -265,7 +267,7 @@ export function JobDetailPage() {
                   }}
                   className="btn-primary flex items-center gap-1"
                 >
-                  <CheckCircle className="w-4 h-4" /> Accept
+                  <CheckCircle className="w-4 h-4" /> {t("jobs.accept")}
                 </button>
                 <button
                   disabled={sharedJobAction}
@@ -275,7 +277,7 @@ export function JobDetailPage() {
                     setSharedJobAction(true);
                     try {
                       await rejectSharedJobMut({ userId: uid, sharedJobId: incomingShared._id });
-                      setToast({ message: "Shared job rejected", type: "success" });
+                      setToast({ message: t("jobs.sharedJobRejected"), type: "success" });
                       setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
                       setToast({ message: err.message ?? "Failed", type: "error" });
@@ -286,7 +288,7 @@ export function JobDetailPage() {
                   }}
                   className="btn-secondary flex items-center gap-1 text-red-600 border-red-200 hover:bg-red-50"
                 >
-                  <XCircle className="w-4 h-4" /> Reject
+                  <XCircle className="w-4 h-4" /> {t("jobs.reject")}
                 </button>
               </div>
             </div>
@@ -296,7 +298,7 @@ export function JobDetailPage() {
         {incomingShared && incomingShared.status === "rejected" && (
           <div className="card border-red-200 bg-red-50/50">
             <p className="text-sm font-medium text-red-700">
-              This shared job was rejected. It has been cancelled.
+              {t("jobs.sharedJobRejectedDesc")}
             </p>
           </div>
         )}
@@ -304,7 +306,7 @@ export function JobDetailPage() {
         {incomingShared && incomingShared.status === "accepted" && (
           <div className="card border-green-200 bg-green-50/50">
             <p className="text-sm font-medium text-green-700">
-              Shared job accepted from {incomingShared.fromCompanyName}. You can now assign cleaners and start work.
+              {t("jobs.sharedJobAcceptedDesc", { name: incomingShared.fromCompanyName })}
             </p>
           </div>
         )}
@@ -313,7 +315,7 @@ export function JobDetailPage() {
         {job.redFlags.length > 0 && (
           <div className="card border-red-200">
             <h3 className="font-semibold text-red-700 flex items-center gap-2 mb-4">
-              <Flag className="w-5 h-5" /> Red Flags ({job.redFlags.length})
+              <Flag className="w-5 h-5" /> {t("jobs.redFlags")} ({job.redFlags.length})
             </h3>
             <div className="space-y-3">
               {job.redFlags.map((flag) => (
@@ -337,12 +339,12 @@ export function JobDetailPage() {
               onClick={() => setExpandForm(!expandForm)}
               className="flex items-center justify-between w-full"
             >
-              <h3 className="font-semibold text-gray-900">Cleaning Form</h3>
+              <h3 className="font-semibold text-gray-900">{t("jobs.cleaningForm")}</h3>
               {expandForm ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
             </button>
 
             {job.form.cleanerScore !== undefined && (
-              <p className="text-sm text-gray-500 mt-1">Self-score: {job.form.cleanerScore}/10</p>
+              <p className="text-sm text-gray-500 mt-1">{t("jobs.selfScore", { score: job.form.cleanerScore })}</p>
             )}
 
             {expandForm && formItems && (
@@ -374,13 +376,13 @@ export function JobDetailPage() {
 
             {((job.form as any).maintenanceCost != null || (job.form as any).maintenanceVendor) && (
               <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                <p className="text-sm font-medium text-gray-700 mb-1">Maintenance Details</p>
+                <p className="text-sm font-medium text-gray-700 mb-1">{t("jobs.maintenanceDetails")}</p>
                 <div className="flex gap-6 text-sm text-gray-600">
                   {(job.form as any).maintenanceCost != null && (
-                    <span>Cost: <span className="font-medium">${(job.form as any).maintenanceCost.toFixed(2)}</span></span>
+                    <span>{t("jobs.cost")}: <span className="font-medium">${(job.form as any).maintenanceCost.toFixed(2)}</span></span>
                   )}
                   {(job.form as any).maintenanceVendor && (
-                    <span>Vendor: <span className="font-medium">{(job.form as any).maintenanceVendor}</span></span>
+                    <span>{t("jobs.vendor")}: <span className="font-medium">{(job.form as any).maintenanceVendor}</span></span>
                   )}
                 </div>
               </div>
@@ -388,7 +390,7 @@ export function JobDetailPage() {
 
             {job.form.ownerNotes && (
               <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                <p className="text-sm font-medium text-yellow-800">Review notes:</p>
+                <p className="text-sm font-medium text-yellow-800">{t("jobs.reviewNotes")}</p>
                 <p className="text-sm text-yellow-700">{job.form.ownerNotes}</p>
               </div>
             )}
@@ -398,16 +400,16 @@ export function JobDetailPage() {
         {/* Review actions */}
         {canReview && (
           <div className="card border-primary-200 bg-primary-50/30">
-            <h3 className="font-semibold text-gray-900 mb-4">Review Submission</h3>
+            <h3 className="font-semibold text-gray-900 mb-4">{t("jobs.reviewSubmission")}</h3>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobs.notesOptional")}</label>
                 <textarea
                   className="input-field"
                   rows={2}
                   value={approveNotes}
                   onChange={(e) => setApproveNotes(e.target.value)}
-                  placeholder="Feedback for the cleaner"
+                  placeholder={t("jobs.feedbackPlaceholder")}
                 />
               </div>
               <div className="flex gap-3">
@@ -419,7 +421,7 @@ export function JobDetailPage() {
                     setApproving(true);
                     try {
                       await approveForm({ formId: job.form._id, notes: approveNotes || undefined, userId: uid });
-                      setToast({ message: "Job approved!", type: "success" });
+                      setToast({ message: t("jobs.jobApproved"), type: "success" });
                       setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
                       setToast({ message: err.message ?? "Failed to approve", type: "error" });
@@ -430,14 +432,14 @@ export function JobDetailPage() {
                   }}
                   className="btn-primary flex items-center gap-2"
                 >
-                  <CheckCircle className="w-4 h-4" /> {approving ? "Approving..." : "Approve"}
+                  <CheckCircle className="w-4 h-4" /> {approving ? t("jobs.approving") : t("jobs.approve")}
                 </button>
                 {job.reworkCount < 2 && (
                   <button
                     onClick={() => setShowRework(true)}
                     className="btn-secondary flex items-center gap-2 text-orange-600 border-orange-300 hover:bg-orange-50"
                   >
-                    <RotateCcw className="w-4 h-4" /> Request Rework
+                    <RotateCcw className="w-4 h-4" /> {t("jobs.requestRework")}
                   </button>
                 )}
               </div>
@@ -456,7 +458,7 @@ export function JobDetailPage() {
           return (
             <div className="card border-emerald-200">
               <h3 className="font-semibold text-emerald-700 flex items-center gap-2 mb-3">
-                <DollarSign className="w-5 h-5" /> Cleaner Payment
+                <DollarSign className="w-5 h-5" /> {t("jobs.cleanerPayment")}
               </h3>
 
               {isRejectedOrCancelled && !isPaid ? (
@@ -465,8 +467,8 @@ export function JobDetailPage() {
                   <AlertTriangle className="w-4 h-4 text-gray-400" />
                   <p className="text-sm text-gray-500">
                     {job.status === "cancelled"
-                      ? "Payments unavailable for cancelled jobs."
-                      : "Payments unavailable for rejected jobs."}
+                      ? t("jobs.paymentsUnavailableCancelled")
+                      : t("jobs.paymentsUnavailableRejected")}
                   </p>
                 </div>
               ) : isPaid ? (
@@ -474,22 +476,22 @@ export function JobDetailPage() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-gray-500">Paid to {cleanerName}</p>
+                      <p className="text-sm text-gray-500">{t("jobs.paidTo", { name: cleanerName })}</p>
                       <p className="text-xl font-bold text-gray-900">
                         ${((payment!.amountCents ?? 0) / 100).toFixed(2)}
                       </p>
                     </div>
-                    <span className="badge bg-green-100 text-green-700">Paid</span>
+                    <span className="badge bg-green-100 text-green-700">{t("status.paid")}</span>
                   </div>
                   {payment!.paidAt && (
                     <p className="text-xs text-gray-500 flex items-center gap-1">
-                      Paid on {new Date(payment!.paidAt).toLocaleDateString()}
+                      {t("payments.paidOn")} {new Date(payment!.paidAt).toLocaleDateString()}
                       {payment!.method === "in_app" ? (
                         <span className="inline-flex items-center gap-1 ml-1">
-                          <CreditCard className="w-3 h-3" /> via SCRUB
+                          <CreditCard className="w-3 h-3" /> {t("payments.viaScrub")}
                         </span>
                       ) : (
-                        <span> — paid outside app</span>
+                        <span> — {t("payments.paidOutsideApp")}</span>
                       )}
                     </p>
                   )}
@@ -499,28 +501,28 @@ export function JobDetailPage() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-gray-500">Payment to {cleanerName}</p>
+                      <p className="text-sm text-gray-500">{t("jobs.paymentTo", { name: cleanerName })}</p>
                       <p className="text-xl font-bold text-gray-900">
                         ${(payment!.amountCents! / 100).toFixed(2)}
                       </p>
                     </div>
-                    <span className="badge bg-amber-100 text-amber-700">Checkout Started</span>
+                    <span className="badge bg-amber-100 text-amber-700">{t("jobs.checkoutStarted")}</span>
                   </div>
                   <p className="text-sm text-gray-500">
-                    A Stripe checkout was started. Complete payment or it will remain pending.
+                    {t("jobs.checkoutDesc")}
                   </p>
                 </div>
               ) : (
                 /* Planned pay + pay actions (when eligible) */
                 <div className="space-y-3">
                   <p className="text-sm text-gray-600">
-                    Pay {cleanerName} for this job.
+                    {t("jobs.payWorker", { name: cleanerName })}
                   </p>
 
                   {/* Planned pay: saved state (non-eligible, has amount, not editing) */}
                   {!isEligible && (job as any).plannedCleanerPayCents && !editingPlannedPay ? (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Planned Pay ($)</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobs.plannedPay")}</label>
                       <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 max-w-xs">
                           <DollarSign className="w-4 h-4" />
@@ -529,7 +531,7 @@ export function JobDetailPage() {
                           </span>
                         </div>
                         <span className="text-xs font-medium text-green-600 flex items-center gap-1">
-                          <CheckCircle className="w-3.5 h-3.5" /> Saved
+                          <CheckCircle className="w-3.5 h-3.5" /> {t("jobs.saved")}
                         </span>
                         <button
                           onClick={() => {
@@ -538,18 +540,18 @@ export function JobDetailPage() {
                           }}
                           className="btn-secondary text-xs flex items-center gap-1"
                         >
-                          <Pencil className="w-3 h-3" /> Change
+                          <Pencil className="w-3 h-3" /> {t("jobs.change")}
                         </button>
                       </div>
                       <p className="text-xs text-gray-400 mt-1">
-                        Payment actions become available after the job is submitted.
+                        {t("jobs.paymentAfterSubmit")}
                       </p>
                     </div>
                   ) : (
                     /* Editable amount input (when eligible, or planned pay not set, or editing) */
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        {isEligible ? "Amount ($)" : "Planned Pay ($)"}
+                        {isEligible ? t("jobs.amount") : t("jobs.plannedPay")}
                       </label>
                       <div className="flex items-center gap-2">
                         <input
@@ -576,7 +578,7 @@ export function JobDetailPage() {
                                   amountCents,
                                 });
                                 setEditingPlannedPay(false);
-                                setToast({ message: "Planned pay saved", type: "success" });
+                                setToast({ message: t("jobs.saved"), type: "success" });
                                 setTimeout(() => setToast(null), 3000);
                               } catch (err: any) {
                                 setToast({ message: err.message ?? "Failed to save", type: "error" });
@@ -587,7 +589,7 @@ export function JobDetailPage() {
                             }}
                             className="btn-secondary text-sm"
                           >
-                            {plannedPaySaving ? "Saving..." : "Save"}
+                            {plannedPaySaving ? t("common.saving") : t("common.save")}
                           </button>
                         )}
                       </div>
@@ -632,7 +634,7 @@ export function JobDetailPage() {
                           className="btn-primary text-sm flex items-center gap-1"
                         >
                           <CreditCard className="w-4 h-4" />
-                          {cleanerStripeLoading ? "Loading..." : "Pay via SCRUB"}
+                          {cleanerStripeLoading ? t("common.loading") : t("jobs.payViaScrub")}
                         </button>
                       )}
                       <button
@@ -653,7 +655,7 @@ export function JobDetailPage() {
                               jobId: params.id as Id<"jobs">,
                               amountCents,
                             });
-                            setToast({ message: "Cleaner marked as paid", type: "success" });
+                            setToast({ message: t("jobs.cleanerMarkedPaid"), type: "success" });
                             setTimeout(() => setToast(null), 3000);
                           } catch (err: any) {
                             setToast({ message: toFriendlyMessage(err, "Failed to record payment"), type: "error" });
@@ -665,12 +667,12 @@ export function JobDetailPage() {
                         className="btn-secondary text-sm flex items-center gap-1"
                       >
                         <CheckCircle className="w-4 h-4" />
-                        {cleanerPaySaving ? "Saving..." : "Mark Paid Outside App"}
+                        {cleanerPaySaving ? t("common.saving") : t("jobs.markPaidOutside")}
                       </button>
                     </div>
                   ) : !((job as any).plannedCleanerPayCents && !editingPlannedPay) ? (
                     <p className="text-xs text-gray-400">
-                      Payment actions become available after the job is submitted.
+                      {t("jobs.paymentAfterSubmit")}
                     </p>
                   ) : null}
                 </div>
@@ -683,20 +685,20 @@ export function JobDetailPage() {
         {user?.role !== "owner" && job.cleanerIds?.includes(user?._id as any) && (
           <div className="card border-emerald-200">
             <h3 className="font-semibold text-emerald-700 flex items-center gap-2 mb-3">
-              <DollarSign className="w-5 h-5" /> Your Pay
+              <DollarSign className="w-5 h-5" /> {t("jobs.yourPay")}
             </h3>
             {(job as any).plannedCleanerPayCents ? (
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">Planned pay for this job</p>
+                  <p className="text-sm text-gray-500">{t("jobs.plannedPayForJob")}</p>
                   <p className="text-xl font-bold text-gray-900">
                     ${((job as any).plannedCleanerPayCents / 100).toFixed(2)}
                   </p>
                 </div>
-                <span className="badge bg-blue-100 text-blue-700">Planned</span>
+                <span className="badge bg-blue-100 text-blue-700">{t("status.planned")}</span>
               </div>
             ) : (
-              <p className="text-sm text-gray-500">Pay amount will be set by your manager.</p>
+              <p className="text-sm text-gray-500">{t("jobs.paySetByManager")}</p>
             )}
           </div>
         )}
@@ -705,7 +707,7 @@ export function JobDetailPage() {
         {sharedStatus && sharedStatus.length > 0 && (
           <div className="card border-blue-200">
             <h3 className="font-semibold text-blue-700 flex items-center gap-2 mb-3">
-              <Share2 className="w-5 h-5" /> Shared Job Status
+              <Share2 className="w-5 h-5" /> {t("jobs.sharedJobStatus")}
             </h3>
             <div className="space-y-3">
               {sharedStatus.map((s) => (
@@ -719,9 +721,9 @@ export function JobDetailPage() {
                       {s.status === "rejected"
                         ? <>
                             <AlertTriangle className="w-4 h-4 text-red-500 inline mr-1" />
-                            Rejected by {s.toCompanyName}
+                            {t("jobs.rejectedBy", { name: s.toCompanyName })}
                           </>
-                        : <>Shared to: {s.toCompanyName}</>
+                        : <>{t("jobs.sharedTo", { name: s.toCompanyName })}</>
                       }
                     </span>
                     <span className={`badge ${
@@ -731,10 +733,10 @@ export function JobDetailPage() {
                       s.status === "rejected" ? "bg-red-100 text-red-700" :
                       "bg-gray-100 text-gray-600"
                     }`}>
-                      {s.status === "completed" ? "Completed" :
-                       s.status === "in_progress" ? "In Progress" :
-                       s.status === "accepted" ? "Accepted" :
-                       s.status === "rejected" ? "Rejected" : "Pending"}
+                      {s.status === "completed" ? t("status.completed") :
+                       s.status === "in_progress" ? t("status.inProgress") :
+                       s.status === "accepted" ? t("status.accepted") :
+                       s.status === "rejected" ? t("status.declined") : t("status.pending")}
                     </span>
                   </div>
 
@@ -743,30 +745,30 @@ export function JobDetailPage() {
                     <>
                       {s.respondedAt && (
                         <p className="text-xs text-red-500 mt-1">
-                          Declined on {new Date(s.respondedAt).toLocaleString()}
+                          {t("jobs.declinedOn")} {new Date(s.respondedAt).toLocaleString()}
                         </p>
                       )}
                       {job.status === "cancelled" ? (
                         <p className="text-sm text-gray-500 mt-2">
-                          Cancelled jobs cannot be reassigned.
+                          {t("jobs.cancelledNoReassign")}
                         </p>
                       ) : (
                         <>
                           <p className="text-sm text-red-600 mt-2">
-                            This partner declined the job. Choose a new partner or assign internally.
+                            {t("jobs.partnerDeclinedDesc")}
                           </p>
                           <div className="flex gap-2 mt-3">
                             <button
                               onClick={() => setShowShare(true)}
                               className="btn-secondary flex items-center gap-1.5 text-sm"
                             >
-                              <Share2 className="w-4 h-4" /> Share to another partner
+                              <Share2 className="w-4 h-4" /> {t("jobs.shareToPartner")}
                             </button>
                             <button
                               onClick={() => setShowReassign(true)}
                               className="btn-primary flex items-center gap-1.5 text-sm"
                             >
-                              <Users className="w-4 h-4" /> Assign to my cleaner
+                              <Users className="w-4 h-4" /> {t("jobs.assignToMyCleaner")}
                             </button>
                           </div>
                         </>
@@ -788,32 +790,32 @@ export function JobDetailPage() {
                         className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800"
                       >
                         <Package className="w-4 h-4" />
-                        {expandPackage ? "Hide" : "View"} completion package
+                        {expandPackage ? t("jobs.hidePackage") : t("jobs.viewPackage")} {t("jobs.completionPackage")}
                         {expandPackage ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                       </button>
                       {expandPackage && (
                         <div className="mt-2 p-3 bg-white rounded border border-blue-100 space-y-2">
                           {s.checklistSummary && (
                             <p className="text-sm text-gray-700">
-                              <span className="font-medium">Checklist:</span> {s.checklistSummary}
+                              <span className="font-medium">{t("jobs.checklist")}:</span> {s.checklistSummary}
                             </p>
                           )}
                           {s.completionNotes && (
                             <p className="text-sm text-gray-700">
-                              <span className="font-medium">Notes:</span> {s.completionNotes}
+                              <span className="font-medium">{t("jobs.completionNotes")}:</span> {s.completionNotes}
                             </p>
                           )}
                           {s.photoStorageIds && s.photoStorageIds.length > 0 ? (
-                            <p className="text-sm text-gray-500">{s.photoStorageIds.length} photo(s) shared</p>
+                            <p className="text-sm text-gray-500">{t("jobs.photosShared", { count: s.photoStorageIds.length })}</p>
                           ) : (
-                            <p className="text-sm text-gray-400">No photos shared</p>
+                            <p className="text-sm text-gray-400">{t("jobs.noPhotosShared")}</p>
                           )}
                         </div>
                       )}
                     </div>
                   )}
                   {s.sharePackage && s.status !== "completed" && s.status !== "rejected" && (
-                    <p className="text-xs text-gray-400 mt-1">Completion package will be shared when done</p>
+                    <p className="text-xs text-gray-400 mt-1">{t("jobs.packageWhenDone")}</p>
                   )}
                 </div>
               ))}
@@ -825,7 +827,7 @@ export function JobDetailPage() {
         {sharedStatus && sharedStatus.some((s) => s.status === "accepted" || s.status === "completed" || s.status === "in_progress") && (
           <div className="card border-amber-200">
             <h3 className="font-semibold text-amber-700 flex items-center gap-2 mb-3">
-              <DollarSign className="w-5 h-5" /> Partner Settlement
+              <DollarSign className="w-5 h-5" /> {t("jobs.partnerSettlement")}
             </h3>
 
             {settlement === undefined ? (
@@ -834,7 +836,7 @@ export function JobDetailPage() {
               /* No settlement yet — create */
               <div className="space-y-3">
                 <p className="text-sm text-gray-600">
-                  Create a settlement to track what you owe the partner for this job.
+                  {t("jobs.createSettlementDesc")}
                 </p>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Amount ($)</label>
@@ -862,7 +864,7 @@ export function JobDetailPage() {
                         toCompanyId: partner.toCompanyId,
                         amountCents: Math.round(Number(settlementAmount) * 100),
                       });
-                      setToast({ message: "Settlement created", type: "success" });
+                      setToast({ message: t("jobs.settlementCreated"), type: "success" });
                       setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
                       setToast({ message: err.message ?? "Failed", type: "error" });
@@ -873,7 +875,7 @@ export function JobDetailPage() {
                   }}
                   className="btn-primary text-sm"
                 >
-                  {settlementSaving ? "Creating..." : "Create Settlement"}
+                  {settlementSaving ? t("requests.creating") : t("jobs.createSettlement")}
                 </button>
               </div>
             ) : settlement.status === "open" ? (
@@ -881,7 +883,7 @@ export function JobDetailPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-500">Amount owed to {settlement.toCompanyName}</p>
+                    <p className="text-sm text-gray-500">{t("jobs.amountOwedTo", { name: settlement.toCompanyName })}</p>
                     <p className="text-xl font-bold text-gray-900">${(settlement.amountCents / 100).toFixed(2)}</p>
                   </div>
                   <span className="badge bg-amber-100 text-amber-700">Open</span>
@@ -910,7 +912,7 @@ export function JobDetailPage() {
                           amountCents: Math.round(Number(settlementAmount) * 100),
                         });
                         setSettlementAmount("");
-                        setToast({ message: "Amount updated", type: "success" });
+                        setToast({ message: t("jobs.amountUpdated"), type: "success" });
                         setTimeout(() => setToast(null), 3000);
                       } catch (err: any) {
                         setToast({ message: err.message ?? "Failed", type: "error" });
@@ -921,7 +923,7 @@ export function JobDetailPage() {
                     }}
                     className="btn-secondary text-sm"
                   >
-                    Update
+                    {t("common.update")}
                   </button>
                   <button
                     disabled={stripePayLoading}
@@ -946,13 +948,13 @@ export function JobDetailPage() {
                     className="btn-primary text-sm flex items-center gap-1"
                   >
                     <CreditCard className="w-4 h-4" />
-                    {stripePayLoading ? "Loading…" : "Pay via SCRUB"}
+                    {stripePayLoading ? t("common.loading") : t("jobs.payViaScrub")}
                   </button>
                   <button
                     onClick={() => setShowSettlementPay(true)}
                     className="btn-secondary text-sm flex items-center gap-1"
                   >
-                    <CheckCircle className="w-4 h-4" /> Mark Paid
+                    <CheckCircle className="w-4 h-4" /> {t("jobs.markPaid")}
                   </button>
                 </div>
               </div>
@@ -961,7 +963,7 @@ export function JobDetailPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-500">Paid to {settlement.toCompanyName}</p>
+                    <p className="text-sm text-gray-500">{t("jobs.paidTo", { name: settlement.toCompanyName })}</p>
                     <p className="text-xl font-bold text-gray-900">${(settlement.amountCents / 100).toFixed(2)}</p>
                   </div>
                   <span className="badge bg-green-100 text-green-700">Paid</span>
@@ -990,21 +992,21 @@ export function JobDetailPage() {
         {showSettlementPay && settlement && (
           <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm">
-              <h3 className="text-lg font-semibold mb-4">Mark Settlement Paid</h3>
+              <h3 className="text-lg font-semibold mb-4">{t("jobs.markSettlementPaid")}</h3>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment method (optional)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobs.paymentMethod")}</label>
                   <input
                     type="text"
                     className="input-field"
-                    placeholder="e.g. Zelle, ACH, Cash..."
+                    placeholder={t("jobs.paymentMethodPlaceholder")}
                     value={settlementPayMethod}
                     onChange={(e) => setSettlementPayMethod(e.target.value)}
                   />
                 </div>
               </div>
               <div className="flex justify-end gap-3 mt-4">
-                <button onClick={() => { setShowSettlementPay(false); setSettlementPayMethod(""); }} className="btn-secondary">Cancel</button>
+                <button onClick={() => { setShowSettlementPay(false); setSettlementPayMethod(""); }} className="btn-secondary">{t("common.cancel")}</button>
                 <button
                   disabled={settlementSaving}
                   onClick={async () => {
@@ -1019,7 +1021,7 @@ export function JobDetailPage() {
                       });
                       setShowSettlementPay(false);
                       setSettlementPayMethod("");
-                      setToast({ message: "Settlement marked as paid", type: "success" });
+                      setToast({ message: t("jobs.settlementPaid"), type: "success" });
                       setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
                       setToast({ message: err.message ?? "Failed", type: "error" });
@@ -1030,7 +1032,7 @@ export function JobDetailPage() {
                   }}
                   className="btn-primary"
                 >
-                  {settlementSaving ? "Saving..." : "Confirm Paid"}
+                  {settlementSaving ? t("common.saving") : t("jobs.confirmPaid")}
                 </button>
               </div>
             </div>
@@ -1041,9 +1043,9 @@ export function JobDetailPage() {
       <ConfirmDialog
         open={showCancel}
         onOpenChange={setShowCancel}
-        title="Cancel Job"
-        description="Are you sure you want to cancel this job? Assigned cleaners will be notified."
-        confirmLabel="Cancel Job"
+        title={t("jobs.cancelJob")}
+        description={t("jobs.cancelJobConfirm")}
+        confirmLabel={t("jobs.cancelJob")}
         confirmVariant="danger"
         onConfirm={async () => {
           const uid = requireUserId(user);
@@ -1057,16 +1059,16 @@ export function JobDetailPage() {
       {showRework && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Request Rework</h3>
+            <h3 className="text-lg font-semibold mb-4">{t("jobs.requestRework")}</h3>
             <textarea
               className="input-field mb-4"
               rows={3}
               value={reworkNotes}
               onChange={(e) => setReworkNotes(e.target.value)}
-              placeholder="Describe what needs to be redone..."
+              placeholder={t("jobs.reworkPlaceholder")}
             />
             <div className="flex justify-end gap-3">
-              <button onClick={() => setShowRework(false)} className="btn-secondary">Cancel</button>
+              <button onClick={() => setShowRework(false)} className="btn-secondary">{t("common.cancel")}</button>
               <button
                 onClick={async () => {
                   const uid = requireUserId(user);
@@ -1075,7 +1077,7 @@ export function JobDetailPage() {
                     await requestFormRework({ formId: job.form._id, notes: reworkNotes, userId: uid });
                     setShowRework(false);
                     setReworkNotes("");
-                    setToast({ message: "Rework requested", type: "success" });
+                    setToast({ message: t("jobs.reworkRequested"), type: "success" });
                     setTimeout(() => setToast(null), 3000);
                   } catch (err: any) {
                     setToast({ message: err.message ?? "Failed to request rework", type: "error" });
@@ -1085,7 +1087,7 @@ export function JobDetailPage() {
                 disabled={!reworkNotes.trim()}
                 className="btn-primary"
               >
-                Send Rework Request
+                {t("jobs.sendReworkRequest")}
               </button>
             </div>
           </div>
@@ -1096,22 +1098,22 @@ export function JobDetailPage() {
       {showShare && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Share Job</h3>
+            <h3 className="text-lg font-semibold mb-4">{t("jobs.shareJob")}</h3>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Select partner company</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobs.selectPartner")}</label>
                 <select
                   className="input-field"
                   value={shareToCompany}
                   onChange={(e) => setShareToCompany(e.target.value)}
                 >
-                  <option value="">Choose a connected partner...</option>
+                  <option value="">{t("jobs.choosePartner")}</option>
                   {connections?.map((c) => (
                     <option key={c.companyId} value={c.companyId}>{c.companyName}</option>
                   ))}
                 </select>
                 {connections?.length === 0 && (
-                  <p className="text-xs text-amber-600 mt-1">No active connections. Connect with a partner (must be accepted) before sharing jobs.</p>
+                  <p className="text-xs text-amber-600 mt-1">{t("jobs.noConnections")}</p>
                 )}
               </div>
               <label className="flex items-center gap-2 cursor-pointer">
@@ -1121,12 +1123,12 @@ export function JobDetailPage() {
                   onChange={(e) => setSharePackage(e.target.checked)}
                   className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                 />
-                <span className="text-sm text-gray-700">Share completion package (checklists/photos)</span>
+                <span className="text-sm text-gray-700">{t("jobs.shareCompletionPackage")}</span>
               </label>
             </div>
             <div className="flex justify-end gap-3 mt-4">
               <button onClick={() => { setShowShare(false); setShareToCompany(""); setSharePackage(false); }} className="btn-secondary">
-                Cancel
+                {t("common.cancel")}
               </button>
               <button
                 disabled={!shareToCompany || sharing}
@@ -1144,7 +1146,7 @@ export function JobDetailPage() {
                     setShowShare(false);
                     setShareToCompany("");
                     setSharePackage(false);
-                    setToast({ message: "Job shared successfully!", type: "success" });
+                    setToast({ message: t("jobs.jobShared"), type: "success" });
                     setTimeout(() => setToast(null), 3000);
                   } catch (err: any) {
                     setToast({ message: err.message ?? "Failed to share job", type: "error" });
@@ -1155,7 +1157,7 @@ export function JobDetailPage() {
                 }}
                 className="btn-primary flex items-center gap-2"
               >
-                <Share2 className="w-4 h-4" /> {sharing ? "Sharing..." : "Share Job"}
+                <Share2 className="w-4 h-4" /> {sharing ? t("jobs.sharing") : t("jobs.shareJob")}
               </button>
             </div>
           </div>
@@ -1166,13 +1168,13 @@ export function JobDetailPage() {
       {showReassign && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Reassign Job</h3>
+            <h3 className="text-lg font-semibold mb-4">{t("jobs.reassignJob")}</h3>
             <select
               className="input-field mb-2"
               value={reassignCleanerId}
               onChange={(e) => setReassignCleanerId(e.target.value)}
             >
-              <option value="">Select a cleaner...</option>
+              <option value="">{t("jobs.selectCleaner")}</option>
               {cleaners
                 ?.filter((c) => !job.cleanerIds.includes(c._id))
                 .map((c) => {
@@ -1188,7 +1190,7 @@ export function JobDetailPage() {
               <p className="text-xs text-amber-600 mb-4">This cleaner is marked unavailable for {job.scheduledDate}.</p>
             )}
             <div className="flex justify-end gap-3 mt-4">
-              <button onClick={() => { setShowReassign(false); setReassignCleanerId(""); }} className="btn-secondary">Cancel</button>
+              <button onClick={() => { setShowReassign(false); setReassignCleanerId(""); }} className="btn-secondary">{t("common.cancel")}</button>
               <button
                 disabled={!reassignCleanerId || reassigning || !!cleanerAvailability?.find((a: any) => a._id === reassignCleanerId)?.isUnavailable}
                 onClick={async () => {
@@ -1203,7 +1205,7 @@ export function JobDetailPage() {
                     });
                     setShowReassign(false);
                     setReassignCleanerId("");
-                    setToast({ message: "Job reassigned", type: "success" });
+                    setToast({ message: t("jobs.jobReassigned"), type: "success" });
                     setTimeout(() => setToast(null), 3000);
                   } catch (err: any) {
                     setToast({ message: err.message ?? "Failed to reassign", type: "error" });
@@ -1214,7 +1216,7 @@ export function JobDetailPage() {
                 }}
                 className="btn-primary"
               >
-                {reassigning ? "Reassigning..." : "Reassign"}
+                {reassigning ? t("jobs.reassigning") : t("jobs.reassign")}
               </button>
             </div>
           </div>

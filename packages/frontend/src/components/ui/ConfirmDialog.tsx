@@ -1,5 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -22,6 +23,7 @@ export function ConfirmDialog({
   onConfirm,
   loading,
 }: ConfirmDialogProps) {
+  const { t } = useTranslation();
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -39,7 +41,7 @@ export function ConfirmDialog({
             {description}
           </Dialog.Description>
           <div className="flex justify-end gap-3">
-            <Dialog.Close className="btn-secondary">Cancel</Dialog.Close>
+            <Dialog.Close className="btn-secondary">{t("common.cancel")}</Dialog.Close>
             <button
               onClick={onConfirm}
               disabled={loading}

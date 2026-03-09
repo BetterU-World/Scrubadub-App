@@ -4,9 +4,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { DollarSign, CreditCard } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function WorkerPaymentsPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const jobs = useQuery(
     api.queries.cleanerPayments.listCleanerJobsWithPaymentStatus,
@@ -18,15 +20,15 @@ export function WorkerPaymentsPage() {
   return (
     <div>
       <PageHeader
-        title="My Payments"
-        description="Payments for your assigned jobs"
+        title={t("payments.myPayments")}
+        description={t("payments.myPaymentsDesc")}
       />
 
       {jobs === undefined ? (
         <PageLoader />
       ) : jobs.length === 0 ? (
         <p className="text-sm text-gray-500 py-8 text-center">
-          No jobs yet.
+          {t("payments.noJobsYet")}
         </p>
       ) : (
         <div className="space-y-3">
@@ -64,7 +66,7 @@ export function WorkerPaymentsPage() {
                         <>
                           <span>&middot;</span>
                           <span>
-                            Paid {new Date(j.paidAt).toLocaleDateString()}
+                            {t("payments.paidOn")} {new Date(j.paidAt).toLocaleDateString()}
                           </span>
                         </>
                       )}
@@ -75,10 +77,10 @@ export function WorkerPaymentsPage() {
                             {j.method === "in_app" ? (
                               <>
                                 <CreditCard className="w-3 h-3" />
-                                via SCRUB
+                                {t("payments.viaScrub")}
                               </>
                             ) : (
-                              "Paid outside app"
+                              t("payments.paidOutsideApp")
                             )}
                           </span>
                         </>
@@ -86,7 +88,7 @@ export function WorkerPaymentsPage() {
                       {isBatch && (
                         <>
                           <span>&middot;</span>
-                          <span className="text-xs text-gray-400">Paid in batch</span>
+                          <span className="text-xs text-gray-400">{t("payments.paidInBatch")}</span>
                         </>
                       )}
                     </div>
@@ -103,15 +105,15 @@ export function WorkerPaymentsPage() {
                   </span>
                   {isPaid ? (
                     <span className="badge bg-green-100 text-green-700">
-                      Paid
+                      {t("status.paid")}
                     </span>
                   ) : displayAmount != null ? (
                     <span className="badge bg-blue-100 text-blue-700">
-                      Planned
+                      {t("status.planned")}
                     </span>
                   ) : (
                     <span className="badge bg-gray-100 text-gray-600">
-                      Amount pending
+                      {t("status.amountPending")}
                     </span>
                   )}
                 </div>

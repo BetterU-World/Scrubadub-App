@@ -8,17 +8,19 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useLocation, useParams, Link } from "wouter";
 import { Building2, Users, Handshake, AlertCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const JOB_TYPES = [
-  { value: "standard", label: "Standard Clean" },
-  { value: "deep_clean", label: "Deep Clean" },
-  { value: "turnover", label: "Turnover" },
-  { value: "move_in_out", label: "Move In/Out" },
-  { value: "maintenance", label: "Maintenance" },
+  { value: "standard", labelKey: "jobTypes.standard" },
+  { value: "deep_clean", labelKey: "jobTypes.deep_clean" },
+  { value: "turnover", labelKey: "jobTypes.turnover" },
+  { value: "move_in_out", labelKey: "jobTypes.move_in_out" },
+  { value: "maintenance", labelKey: "jobTypes.maintenance" },
 ] as const;
 
 export function JobFormPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const params = useParams<{ id?: string }>();
   const isEditing = !!params.id;
@@ -115,10 +117,10 @@ export function JobFormPage() {
 
   const isMaintenance = type === "maintenance";
   const workers = isMaintenance ? maintenanceWorkers : cleaners;
-  const workerLabel = isMaintenance ? "Maintenance Workers" : "Cleaners";
+  const workerLabel = isMaintenance ? t("jobForm.myMaintenanceWorkers") : t("jobForm.myCleaners");
   const emptyWorkerMsg = isMaintenance
-    ? <>No active maintenance workers. <a href="/employees" className="text-primary-600">Invite workers first</a>.</>
-    : <>No active cleaners. <a href="/employees" className="text-primary-600">Invite cleaners first</a>.</>;
+    ? <>{t("jobForm.noMaintenanceWorkers")} <a href="/employees" className="text-primary-600">{t("jobForm.inviteFirst")}</a>.</>
+    : <>{t("jobForm.noCleaners")} <a href="/employees" className="text-primary-600">{t("jobForm.inviteFirst")}</a>.</>;
   if (isEditing && existing === undefined) return <PageLoader />;
 
   const activeProperties = (properties ?? []).filter((p) => p.active);
@@ -136,7 +138,7 @@ export function JobFormPage() {
     const uid = requireUserId(user);
     if (!uid || !user!.companyId) return;
     if (isPartnerMode && !partnerCompanyId) {
-      setError("Please select a partner company");
+      setError(t("jobForm.selectPartnerCompany"));
       return;
     }
     setError("");
@@ -153,7 +155,7 @@ export function JobFormPage() {
       };
       if (isEditing) {
         await updateJob({ jobId: params.id as Id<"jobs">, userId: uid, ...data });
-        sessionStorage.setItem("scrubadub_toast", "Job updated");
+        sessionStorage.setItem("scrubadub_toast", t("jobs.jobUpdated"));
         setLocation(`/jobs/${params.id}`);
       } else {
         const id = await createJob({
@@ -183,11 +185,11 @@ export function JobFormPage() {
           });
         }
 
-        sessionStorage.setItem("scrubadub_toast", "Job scheduled");
+        sessionStorage.setItem("scrubadub_toast", t("jobs.jobScheduled"));
         setLocation(`/jobs/${id}`);
       }
     } catch (err: any) {
-      setError(err.message || "Failed to save job");
+      setError(err.message || t("jobs.failedToSave"));
     } finally {
       setLoading(false);
     }
@@ -195,7 +197,7 @@ export function JobFormPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <PageHeader title={isEditing ? "Edit Job" : "Schedule Job"} />
+      <PageHeader title={isEditing ? t("jobs.editJob") : t("jobs.scheduleJob")} />
 
       {!isEditing && activeProperties.length === 0 && (
         <div className="card mb-6 border-amber-200 bg-amber-50">
@@ -204,12 +206,12 @@ export function JobFormPage() {
               <Building2 className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900">Create a property first</h3>
+              <h3 className="font-semibold text-gray-900">{t("jobForm.createPropertyFirst")}</h3>
               <p className="text-sm text-gray-500 mt-1">
-                Jobs are assigned to a property. Add your first property to start scheduling cleans and maintenance.
+                {t("jobForm.createPropertyDesc")}
               </p>
               <Link href="/properties" className="btn-primary inline-block mt-3 text-sm px-4 py-2">
-                Add a Property
+                {t("jobForm.addProperty")}
               </Link>
             </div>
           </div>
@@ -223,7 +225,7 @@ export function JobFormPage() {
       <form onSubmit={handleSubmit} className={`card space-y-4${!isEditing && activeProperties.length === 0 ? " opacity-50 pointer-events-none" : ""}`}>
         {isSharedJob && existing?.propertySnapshot ? (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Property (shared)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.propertyShared")}</label>
             <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
               <p className="font-medium">{existing.propertySnapshot.name}</p>
               {existing.propertySnapshot.address && (
@@ -240,9 +242,9 @@ export function JobFormPage() {
           </div>
         ) : (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Property</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.property")}</label>
             <select className="input-field" value={propertyId} onChange={(e) => setPropertyId(e.target.value)} required>
-              <option value="">Select a property</option>
+              <option value="">{t("jobForm.selectProperty")}</option>
               {activeProperties.map((p) => (
                 <option key={p._id} value={p._id}>{p.name} — {p.address}</option>
               ))}
@@ -251,34 +253,34 @@ export function JobFormPage() {
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Job Type</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.jobType")}</label>
           <select className="input-field" value={type} onChange={(e) => { setType(e.target.value); setSelectedCleaners([]); }}>
-            {JOB_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>{t.label}</option>
+            {JOB_TYPES.map((jt) => (
+              <option key={jt.value} value={jt.value}>{t(jt.labelKey)}</option>
             ))}
           </select>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.date")}</label>
             <input type="date" className="input-field" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} required />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.startTime")}</label>
             <input type="time" className="input-field" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
           </div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.duration")}</label>
           <input type="number" className="input-field" value={durationMinutes} onChange={(e) => setDurationMinutes(parseInt(e.target.value) || 0)} min={15} step={15} required />
         </div>
 
         {/* Assignment mode toggle (create only) */}
         {!isEditing && connections && connections.length > 0 && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Assign To</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t("jobForm.assignTo")}</label>
             <div className="flex rounded-lg border border-gray-200 overflow-hidden">
               <button
                 type="button"
@@ -289,7 +291,7 @@ export function JobFormPage() {
                     : "bg-white text-gray-600 hover:bg-gray-50"
                 }`}
               >
-                <Users className="w-4 h-4" /> My {workerLabel}
+                <Users className="w-4 h-4" /> {workerLabel}
               </button>
               <button
                 type="button"
@@ -300,7 +302,7 @@ export function JobFormPage() {
                     : "bg-white text-gray-600 hover:bg-gray-50"
                 }`}
               >
-                <Handshake className="w-4 h-4" /> Partner Company
+                <Handshake className="w-4 h-4" /> {t("jobForm.partnerCompany")}
               </button>
             </div>
           </div>
@@ -309,14 +311,14 @@ export function JobFormPage() {
         {/* Partner company dropdown */}
         {isPartnerMode && connections && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Partner Company</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.partnerCompany")}</label>
             <select
               className="input-field"
               value={partnerCompanyId}
               onChange={(e) => setPartnerCompanyId(e.target.value)}
               required
             >
-              <option value="">Select a partner...</option>
+              <option value="">{t("jobForm.selectPartner")}</option>
               {connections.map((conn) => (
                 <option key={conn._id} value={conn.companyId}>
                   {conn.companyName}
@@ -324,7 +326,7 @@ export function JobFormPage() {
               ))}
             </select>
             <p className="text-xs text-gray-400 mt-1">
-              The partner will receive the job and assign their own cleaners.
+              {t("jobForm.partnerAssignDesc")}
             </p>
           </div>
         )}
@@ -332,7 +334,7 @@ export function JobFormPage() {
         {/* Cleaner assignment (my_cleaner mode or editing) */}
         {!isPartnerMode && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Assign {workerLabel}</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{isMaintenance ? t("jobForm.assignMaintenanceWorkers") : t("jobForm.assignCleaners")}</label>
             {workers.length === 0 ? (
               <p className="text-sm text-gray-500">{emptyWorkerMsg}</p>
             ) : (
@@ -359,7 +361,7 @@ export function JobFormPage() {
                       {isOff && (
                         <span className="ml-auto flex items-center gap-1 text-xs text-amber-600">
                           <AlertCircle className="w-3.5 h-3.5" />
-                          Unavailable
+                          {t("common.unavailable")}
                         </span>
                       )}
                     </label>
@@ -380,23 +382,23 @@ export function JobFormPage() {
                 className="w-4 h-4 text-primary-600 rounded border-gray-300"
               />
               <div>
-                <span className="text-sm font-medium text-gray-700">Require cleaner confirmation</span>
-                <p className="text-xs text-gray-400">When unchecked, job is auto-confirmed</p>
+                <span className="text-sm font-medium text-gray-700">{t("jobForm.requireConfirmation")}</span>
+                <p className="text-xs text-gray-400">{t("jobForm.autoConfirmed")}</p>
               </div>
             </label>
           </div>
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-          <textarea className="input-field" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Special instructions for this job" />
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.notes")}</label>
+          <textarea className="input-field" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t("jobForm.notesPlaceholder")} />
         </div>
 
         <div className="flex justify-end gap-3 pt-4">
-          <button type="button" onClick={() => setLocation(isEditing ? `/jobs/${params.id}` : "/jobs")} className="btn-secondary">Cancel</button>
+          <button type="button" onClick={() => setLocation(isEditing ? `/jobs/${params.id}` : "/jobs")} className="btn-secondary">{t("common.cancel")}</button>
           <button type="submit" disabled={loading || (!isSharedJob && !propertyId) || (isPartnerMode && !partnerCompanyId)} className="btn-primary flex items-center gap-2">
             {loading && <LoadingSpinner size="sm" />}
-            {isEditing ? "Save Changes" : isPartnerMode ? "Share to Partner" : "Schedule Job"}
+            {isEditing ? t("jobs.saveChanges") : isPartnerMode ? t("jobs.shareToPartnerBtn") : t("jobs.scheduleJob")}
           </button>
         </div>
       </form>
