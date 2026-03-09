@@ -17,11 +17,12 @@ import {
   Zap,
   Search,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const DATE_RANGES = [
-  { value: "all", label: "All" },
-  { value: "today", label: "Today" },
-  { value: "week", label: "This Week" },
+  { value: "all", labelKey: "requests.all" },
+  { value: "today", labelKey: "calendar.today" },
+  { value: "week", labelKey: "jobs.thisWeek" },
 ] as const;
 
 function getToday() {
@@ -43,6 +44,7 @@ function getWeekRange(): [string, string] {
 
 export function CleanerJobListPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [dateRange, setDateRange] = useState<"all" | "today" | "week">("all");
   const [search, setSearch] = useState("");
   const jobs = useQuery(
@@ -76,7 +78,7 @@ export function CleanerJobListPage() {
 
   return (
     <div>
-      <PageHeader title="My Jobs" description={`${activeJobs.length} active jobs`} />
+      <PageHeader title={t("nav.myJobs")} description={t("jobs.activeJobs", { count: activeJobs.length })} />
 
       {/* Date range + search controls */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -91,7 +93,7 @@ export function CleanerJobListPage() {
                   : "bg-white text-gray-600 hover:bg-gray-50"
               }`}
             >
-              {r.label}
+              {t(r.labelKey)}
             </button>
           ))}
         </div>
@@ -101,7 +103,7 @@ export function CleanerJobListPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search property…"
+            placeholder={t("jobs.searchPlaceholder")}
             className="input-field pl-8 py-1.5 text-sm w-full"
           />
         </div>
@@ -119,7 +121,7 @@ export function CleanerJobListPage() {
                 <p className="text-2xl font-bold text-gray-900">
                   {stats.jobsCompletedThisWeek}
                 </p>
-                <p className="text-sm text-gray-500">This Week</p>
+                <p className="text-sm text-gray-500">{t("jobs.thisWeek")}</p>
               </div>
             </div>
           </div>
@@ -155,14 +157,14 @@ export function CleanerJobListPage() {
       {filtered.length === 0 ? (
         <EmptyState
           icon={ClipboardCheck}
-          title={hasFilters ? "No jobs found" : "No jobs assigned"}
-          description={hasFilters ? "No jobs match your filters." : "You'll see your assigned cleaning jobs here"}
+          title={hasFilters ? t("jobs.noJobsFound") : t("jobs.noJobsFound")}
+          description={hasFilters ? t("jobs.noJobsFilter") : t("jobs.scheduleFirst")}
         />
       ) : (
         <div className="space-y-6">
           {activeJobs.length > 0 && (
             <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-3 uppercase tracking-wider">Active</h3>
+              <h3 className="text-sm font-medium text-gray-500 mb-3 uppercase tracking-wider">{t("status.active")}</h3>
               <div className="space-y-3">
                 {activeJobs.map((job) => (
                   <Link key={job._id} href={`/jobs/${job._id}`} className="card block hover:shadow-md transition-shadow">
@@ -193,7 +195,7 @@ export function CleanerJobListPage() {
 
           {pastJobs.length > 0 && (
             <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-3 uppercase tracking-wider">Completed</h3>
+              <h3 className="text-sm font-medium text-gray-500 mb-3 uppercase tracking-wider">{t("status.completed")}</h3>
               <div className="space-y-3">
                 {pastJobs.map((job) => (
                   <Link key={job._id} href={`/jobs/${job._id}`} className="card block opacity-75">

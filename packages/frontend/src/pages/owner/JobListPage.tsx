@@ -8,29 +8,30 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Link } from "wouter";
 import { ClipboardCheck, Plus, Calendar, Users, Search, ArrowUpDown } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 const SORT_OPTIONS = [
-  { value: "soonest", label: "Soonest scheduled" },
-  { value: "updated_desc", label: "Recently updated" },
-  { value: "created_desc", label: "Recently created" },
-  { value: "created_asc", label: "Oldest created" },
+  { value: "soonest", labelKey: "jobs.soonestScheduled" },
+  { value: "updated_desc", labelKey: "jobs.recentlyUpdated" },
+  { value: "created_desc", labelKey: "jobs.recentlyCreated" },
+  { value: "created_asc", labelKey: "jobs.oldestCreated" },
 ] as const;
 
 const STATUS_FILTERS = [
-  { value: "", label: "All" },
-  { value: "scheduled", label: "Scheduled" },
-  { value: "confirmed", label: "Confirmed" },
-  { value: "in_progress", label: "In Progress" },
-  { value: "submitted", label: "Submitted" },
-  { value: "approved", label: "Approved" },
-  { value: "rework_requested", label: "Rework" },
-  { value: "cancelled", label: "Cancelled" },
+  { value: "", labelKey: "requests.all" },
+  { value: "scheduled", labelKey: "status.scheduled" },
+  { value: "confirmed", labelKey: "status.confirmed" },
+  { value: "in_progress", labelKey: "status.inProgress" },
+  { value: "submitted", labelKey: "status.submitted" },
+  { value: "approved", labelKey: "status.approved" },
+  { value: "rework_requested", labelKey: "jobs.rework" },
+  { value: "cancelled", labelKey: "status.cancelled" },
 ];
 
 const DATE_RANGES = [
-  { value: "all", label: "All" },
-  { value: "today", label: "Today" },
-  { value: "week", label: "This Week" },
+  { value: "all", labelKey: "requests.all" },
+  { value: "today", labelKey: "calendar.today" },
+  { value: "week", labelKey: "jobs.thisWeek" },
 ] as const;
 
 function getToday() {
@@ -52,6 +53,7 @@ function getWeekRange(): [string, string] {
 
 export function JobListPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [statusFilter, setStatusFilter] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get("status") || "";
@@ -98,11 +100,11 @@ export function JobListPage() {
   return (
     <div>
       <PageHeader
-        title="Jobs"
-        description="Manage cleaning jobs"
+        title={t("jobs.title")}
+        description={t("jobs.description")}
         action={
           <Link href="/jobs/new" className="btn-primary flex items-center gap-2">
-            <Plus className="w-4 h-4" /> Schedule Job
+            <Plus className="w-4 h-4" /> {t("jobs.scheduleJob")}
           </Link>
         }
       />
@@ -120,7 +122,7 @@ export function JobListPage() {
                   : "bg-white text-gray-600 hover:bg-gray-50"
               }`}
             >
-              {r.label}
+              {t(r.labelKey)}
             </button>
           ))}
         </div>
@@ -130,7 +132,7 @@ export function JobListPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search property or cleaner…"
+            placeholder={t("jobs.searchPlaceholder")}
             className="input-field pl-8 py-1.5 text-sm w-full"
           />
         </div>
@@ -142,7 +144,7 @@ export function JobListPage() {
             className="input-field pl-8 pr-3 py-1.5 text-sm appearance-none"
           >
             {SORT_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+              <option key={o.value} value={o.value}>{t(o.labelKey)}</option>
             ))}
           </select>
         </div>
@@ -154,7 +156,7 @@ export function JobListPage() {
             Type: {typeFilter.replace(/_/g, " ")}
           </span>
           <Link href="/jobs" className="text-xs text-gray-500 hover:text-gray-700 underline">
-            Clear
+            {t("common.clear")}
           </Link>
         </div>
       )}
@@ -171,7 +173,7 @@ export function JobListPage() {
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >
-            {f.label}
+            {t(f.labelKey)}
           </button>
         ))}
       </div>
@@ -179,11 +181,11 @@ export function JobListPage() {
       {filteredJobs.length === 0 ? (
         <EmptyState
           icon={ClipboardCheck}
-          title="No jobs found"
-          description={hasFilters ? "No jobs match your filters." : "Schedule your first cleaning job"}
+          title={t("jobs.noJobsFound")}
+          description={hasFilters ? t("jobs.noJobsFilter") : t("jobs.scheduleFirst")}
           action={
             !hasFilters && (
-              <Link href="/jobs/new" className="btn-primary">Schedule Job</Link>
+              <Link href="/jobs/new" className="btn-primary">{t("jobs.scheduleJob")}</Link>
             )
           }
         />
@@ -204,12 +206,12 @@ export function JobListPage() {
                       )}
                       {(job as any).sharedFromCompanyName && (
                         <span className="badge bg-blue-100 text-blue-700 text-[10px]">
-                          Shared from {(job as any).sharedFromCompanyName}
+                          {t("jobs.sharedFrom", { name: (job as any).sharedFromCompanyName })}
                         </span>
                       )}
                       {(job as any).hasRejectedShare && (
                         <span className="badge bg-red-100 text-red-700 text-[10px]">
-                          Partner Rejected
+                          {t("jobs.partnerRejected")}
                         </span>
                       )}
                     </div>
@@ -219,13 +221,13 @@ export function JobListPage() {
                         {job.scheduledDate}
                       </span>
                       {job.startTime && <span>{job.startTime}</span>}
-                      <span className="capitalize">{job.type.replace(/_/g, " ")}</span>
+                      <span className="capitalize">{t(`jobTypes.${job.type}`, job.type.replace(/_/g, " "))}</span>
                       <span>{job.durationMinutes}min</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 text-sm text-gray-500">
                     <Users className="w-3.5 h-3.5" />
-                    {(job.cleaners as any[]).map((c: any) => c.name).join(", ") || "Unassigned"}
+                    {(job.cleaners as any[]).map((c: any) => c.name).join(", ") || t("common.unassigned")}
                   </div>
                 </div>
             </Link>
