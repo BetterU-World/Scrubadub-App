@@ -163,13 +163,18 @@ export function CalendarPage() {
 
   const formatJobType = (type: string) => type.replace(/_/g, " ");
 
-  // Color helper based on acceptanceStatus
-  const getAcceptanceColor = (job: any) => {
+  // Color helper based on job status first, then acceptanceStatus
+  const getJobColor = (job: any) => {
+    if (job.status === "cancelled") return "bg-gray-100 text-gray-400 hover:bg-gray-200";
+    if (job.status === "approved" || job.status === "submitted") return "bg-gray-200 text-gray-500 hover:bg-gray-300";
     const acceptance = job.acceptanceStatus ?? "pending";
     if (acceptance === "accepted") return "bg-green-100 text-green-800 hover:bg-green-200";
     if (acceptance === "denied") return "bg-red-50 text-red-400 hover:bg-red-100";
     return "bg-gray-100 text-gray-600 hover:bg-gray-200"; // pending
   };
+
+  // Whether the job title should have strikethrough
+  const isJobStrikethrough = (job: any) => job.status === "cancelled";
 
   return (
     <div>
@@ -268,7 +273,8 @@ export function CalendarPage() {
             currentDate={currentDate}
             today={today}
             jobsByDate={jobsByDate}
-            getAcceptanceColor={getAcceptanceColor}
+            getJobColor={getJobColor}
+            isJobStrikethrough={isJobStrikethrough}
           />
         )}
 
@@ -278,7 +284,8 @@ export function CalendarPage() {
             days={days}
             today={today}
             jobsByDate={jobsByDate}
-            getAcceptanceColor={getAcceptanceColor}
+            getJobColor={getJobColor}
+            isJobStrikethrough={isJobStrikethrough}
           />
         )}
 
@@ -289,8 +296,33 @@ export function CalendarPage() {
             today={today}
             jobs={jobsByDate[format(currentDate, "yyyy-MM-dd")] || []}
             formatJobType={formatJobType}
+            isJobStrikethrough={isJobStrikethrough}
           />
         )}
+      </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-gray-500">
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded bg-green-100 border border-green-200" />
+          Accepted
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded bg-gray-100 border border-gray-200" />
+          Pending
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded bg-gray-200 border border-gray-300" />
+          Completed
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded bg-gray-100 border border-gray-200" />
+          <span className="line-through">Cancelled</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block w-2 h-2 rounded-full bg-primary-500" />
+          Today
+        </div>
       </div>
     </div>
   );
@@ -303,10 +335,11 @@ interface MonthViewProps {
   currentDate: Date;
   today: Date;
   jobsByDate: Record<string, any[]>;
-  getAcceptanceColor: (job: any) => string;
+  getJobColor: (job: any) => string;
+  isJobStrikethrough: (job: any) => boolean;
 }
 
-function MonthView({ days, currentDate, today, jobsByDate, getAcceptanceColor }: MonthViewProps) {
+function MonthView({ days, currentDate, today, jobsByDate, getJobColor, isJobStrikethrough }: MonthViewProps) {
   return (
     <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
       {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
@@ -330,16 +363,21 @@ function MonthView({ days, currentDate, today, jobsByDate, getAcceptanceColor }:
               !isCurrentMonth ? "opacity-40" : ""
             }`}
           >
-            <div
-              className={`text-sm font-medium mb-1 ${
-                isToday ? "text-primary-600 font-bold" : "text-gray-700"
-              }`}
-            >
-              {format(day, "d")}
+            <div className="flex flex-col items-start mb-1">
+              <span
+                className={`text-sm font-medium ${
+                  isToday ? "text-primary-600 font-bold" : "text-gray-700"
+                }`}
+              >
+                {format(day, "d")}
+              </span>
+              {isToday && (
+                <span className="w-1.5 h-1.5 rounded-full bg-primary-500 mt-0.5 ml-1" />
+              )}
             </div>
             <div className="space-y-1">
               {dayJobs.slice(0, 3).map((job) => (
-                <Link key={job._id} href={`/jobs/${job._id}`} className={`block text-xs p-1 rounded truncate ${getAcceptanceColor(job)}`}>
+                <Link key={job._id} href={`/jobs/${job._id}`} className={`block text-xs p-1 rounded truncate ${getJobColor(job)} ${isJobStrikethrough(job) ? "line-through" : ""}`}>
                     {job.propertyName}
                 </Link>
               ))}
@@ -362,10 +400,11 @@ interface WeekViewProps {
   days: Date[];
   today: Date;
   jobsByDate: Record<string, any[]>;
-  getAcceptanceColor: (job: any) => string;
+  getJobColor: (job: any) => string;
+  isJobStrikethrough: (job: any) => boolean;
 }
 
-function WeekView({ days, today, jobsByDate, getAcceptanceColor }: WeekViewProps) {
+function WeekView({ days, today, jobsByDate, getJobColor, isJobStrikethrough }: WeekViewProps) {
   return (
     <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-lg overflow-hidden">
       {/* Day headers */}
@@ -381,12 +420,17 @@ function WeekView({ days, today, jobsByDate, getAcceptanceColor }: WeekViewProps
             <div className="text-xs font-medium text-gray-500">
               {format(day, "EEE")}
             </div>
-            <div
-              className={`text-sm font-semibold ${
-                isToday ? "text-primary-600" : "text-gray-900"
-              }`}
-            >
-              {format(day, "d")}
+            <div className="flex flex-col items-center">
+              <span
+                className={`text-sm font-semibold ${
+                  isToday ? "text-primary-600" : "text-gray-900"
+                }`}
+              >
+                {format(day, "d")}
+              </span>
+              {isToday && (
+                <span className="w-1.5 h-1.5 rounded-full bg-primary-500 mt-0.5" />
+              )}
             </div>
           </div>
         );
@@ -406,27 +450,30 @@ function WeekView({ days, today, jobsByDate, getAcceptanceColor }: WeekViewProps
           >
             <div className="space-y-2">
               {dayJobs.map((job) => {
+                const isCancelled = job.status === "cancelled";
+                const isCompleted = job.status === "approved" || job.status === "submitted";
                 const acceptance = job.acceptanceStatus ?? "pending";
-                const borderColor = acceptance === "accepted" ? "border-green-300" : acceptance === "denied" ? "border-red-300" : "border-gray-200";
+                const borderColor = isCancelled ? "border-gray-200" : isCompleted ? "border-gray-300" : acceptance === "accepted" ? "border-green-300" : acceptance === "denied" ? "border-red-300" : "border-gray-200";
+                const bgColor = isCancelled ? "bg-gray-50" : isCompleted ? "bg-gray-50" : "bg-white";
                 return (
-                <Link key={job._id} href={`/jobs/${job._id}`} className={`block p-2 rounded-lg border ${borderColor} hover:shadow-sm transition-all bg-white`}>
+                <Link key={job._id} href={`/jobs/${job._id}`} className={`block p-2 rounded-lg border ${borderColor} hover:shadow-sm transition-all ${bgColor}`}>
                     {job.startTime && (
-                      <div className="flex items-center gap-1 text-xs text-gray-500 mb-1">
+                      <div className={`flex items-center gap-1 text-xs mb-1 ${isCancelled || isCompleted ? "text-gray-400" : "text-gray-500"}`}>
                         <Clock className="w-3 h-3" />
                         {job.startTime}
                       </div>
                     )}
-                    <div className="text-xs font-medium text-gray-900 truncate">
+                    <div className={`text-xs font-medium truncate ${isCancelled ? "text-gray-400 line-through" : isCompleted ? "text-gray-500" : "text-gray-900"}`}>
                       {job.propertyName}
                     </div>
                     {job.cleaners && job.cleaners.length > 0 && (
-                      <div className="text-xs text-gray-500 truncate mt-0.5">
+                      <div className={`text-xs truncate mt-0.5 ${isCancelled || isCompleted ? "text-gray-400" : "text-gray-500"}`}>
                         {job.cleaners.map((c: any) => c.name).join(", ")}
                       </div>
                     )}
                     <div className="mt-1 flex gap-1">
                       <StatusBadge status={job.status} className="text-[10px] px-1.5 py-0" />
-                      <StatusBadge status={acceptance} className="text-[10px] px-1.5 py-0" />
+                      {!isCancelled && <StatusBadge status={acceptance} className="text-[10px] px-1.5 py-0" />}
                     </div>
                 </Link>
                 );
@@ -451,15 +498,19 @@ interface DayViewProps {
   today: Date;
   jobs: any[];
   formatJobType: (type: string) => string;
+  isJobStrikethrough: (job: any) => boolean;
 }
 
-function DayView({ date, today, jobs, formatJobType }: DayViewProps) {
+function DayView({ date, today, jobs, formatJobType, isJobStrikethrough }: DayViewProps) {
   const isToday = isSameDay(date, today);
 
   return (
     <div>
       {isToday && (
-        <div className="text-sm text-primary-600 font-medium mb-4">Today</div>
+        <div className="flex items-center gap-1.5 text-sm text-primary-600 font-medium mb-4">
+          <span className="w-2 h-2 rounded-full bg-primary-500" />
+          Today
+        </div>
       )}
       {jobs.length === 0 ? (
         <div className="text-center py-12 text-gray-400">
@@ -470,13 +521,17 @@ function DayView({ date, today, jobs, formatJobType }: DayViewProps) {
         </div>
       ) : (
         <div className="space-y-3">
-          {jobs.map((job) => (
-            <Link key={job._id} href={`/jobs/${job._id}`} className="block p-4 rounded-lg border border-gray-200 hover:border-primary-300 hover:shadow-md transition-all bg-white">
+          {jobs.map((job) => {
+            const isCancelled = job.status === "cancelled";
+            const isCompleted = job.status === "approved" || job.status === "submitted";
+            const cardBg = isCancelled ? "bg-gray-50 border-gray-200" : isCompleted ? "bg-gray-50 border-gray-200" : "bg-white border-gray-200 hover:border-primary-300 hover:shadow-md";
+            return (
+            <Link key={job._id} href={`/jobs/${job._id}`} className={`block p-4 rounded-lg border transition-all ${cardBg}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     {/* Time */}
                     {job.startTime && (
-                      <div className="flex items-center gap-1.5 text-sm text-gray-500 mb-1">
+                      <div className={`flex items-center gap-1.5 text-sm mb-1 ${isCancelled || isCompleted ? "text-gray-400" : "text-gray-500"}`}>
                         <Clock className="w-4 h-4" />
                         <span>{job.startTime}</span>
                         {job.durationMinutes && (
@@ -488,15 +543,15 @@ function DayView({ date, today, jobs, formatJobType }: DayViewProps) {
                     )}
                     {/* Property */}
                     <div className="flex items-center gap-1.5 mb-1">
-                      <MapPin className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                      <span className="text-base font-semibold text-gray-900">
+                      <MapPin className={`w-4 h-4 flex-shrink-0 ${isCancelled || isCompleted ? "text-gray-300" : "text-gray-400"}`} />
+                      <span className={`text-base font-semibold ${isCancelled ? "text-gray-400 line-through" : isCompleted ? "text-gray-500" : "text-gray-900"}`}>
                         {job.propertyName}
                       </span>
                     </div>
                     {/* Cleaners */}
                     {job.cleaners && job.cleaners.length > 0 && (
-                      <div className="flex items-center gap-1.5 text-sm text-gray-600 mb-2">
-                        <Users className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                      <div className={`flex items-center gap-1.5 text-sm mb-2 ${isCancelled || isCompleted ? "text-gray-400" : "text-gray-600"}`}>
+                        <Users className={`w-4 h-4 flex-shrink-0 ${isCancelled || isCompleted ? "text-gray-300" : "text-gray-400"}`} />
                         <span>
                           {job.cleaners.map((c: any) => c.name).join(", ")}
                         </span>
@@ -505,7 +560,7 @@ function DayView({ date, today, jobs, formatJobType }: DayViewProps) {
                     {/* Job type */}
                     <div className="flex items-center gap-2 flex-wrap">
                       <StatusBadge status={job.status} />
-                      <StatusBadge status={job.acceptanceStatus ?? "pending"} />
+                      {!isCancelled && <StatusBadge status={job.acceptanceStatus ?? "pending"} />}
                       <span className="badge bg-gray-100 text-gray-700 capitalize">
                         {formatJobType(job.type)}
                       </span>
@@ -513,7 +568,8 @@ function DayView({ date, today, jobs, formatJobType }: DayViewProps) {
                   </div>
                 </div>
             </Link>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
