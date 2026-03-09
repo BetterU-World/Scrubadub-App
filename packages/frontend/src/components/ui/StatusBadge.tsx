@@ -1,4 +1,5 @@
 import { clsx } from "clsx";
+import { useTranslation } from "react-i18next";
 
 const statusStyles: Record<string, string> = {
   active: "bg-green-100 text-green-800",
@@ -27,13 +28,43 @@ const statusStyles: Record<string, string> = {
   lost: "bg-red-100 text-red-800",
 };
 
+// Map raw status strings to translation keys
+const statusKeyMap: Record<string, string> = {
+  active: "status.active",
+  inactive: "status.inactive",
+  pending: "status.pending",
+  scheduled: "status.scheduled",
+  confirmed: "status.confirmed",
+  accepted: "status.accepted",
+  denied: "status.denied",
+  in_progress: "status.inProgress",
+  submitted: "status.submitted",
+  approved: "status.approved",
+  rework_requested: "status.reworkRequested",
+  cancelled: "status.cancelled",
+  new: "status.new",
+  declined: "status.declined",
+  converted: "status.converted",
+  open: "status.open",
+  acknowledged: "status.acknowledged",
+  resolved: "status.resolved",
+  reviewed: "status.reviewed",
+  contacted: "status.contacted",
+  archived: "status.archived",
+  quoted: "status.quoted",
+  won: "status.won",
+  lost: "status.lost",
+};
+
 interface StatusBadgeProps {
   status: string;
   className?: string;
 }
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
-  const label = status.replace(/_/g, " ");
+  const { t } = useTranslation();
+  const key = statusKeyMap[status];
+  const label = key ? t(key) : status.replace(/_/g, " ");
   return (
     <span
       className={clsx(

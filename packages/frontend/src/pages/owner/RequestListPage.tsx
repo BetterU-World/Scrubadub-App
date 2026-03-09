@@ -8,31 +8,37 @@ import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Inbox, Calendar, MapPin, Sparkles } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
-const STATUS_OPTIONS = [
-  { value: "", label: "All" },
-  { value: "new", label: "New" },
-  { value: "contacted", label: "Contacted" },
-  { value: "accepted", label: "Accepted" },
-  { value: "declined", label: "Declined" },
-  { value: "converted", label: "Converted" },
-  { value: "archived", label: "Archived" },
-];
-
-function timeAgo(ts: number): string {
-  const diff = Date.now() - ts;
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
+function useTimeAgo() {
+  const { t } = useTranslation();
+  return (ts: number): string => {
+    const diff = Date.now() - ts;
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return t("time.justNow");
+    if (mins < 60) return t("time.minutesAgo", { count: mins });
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return t("time.hoursAgo", { count: hrs });
+    const days = Math.floor(hrs / 24);
+    return t("time.daysAgo", { count: days });
+  };
 }
 
 export function RequestListPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
+  const timeAgo = useTimeAgo();
   const [statusFilter, setStatusFilter] = useState("");
+
+  const statusOptions = [
+    { value: "", label: t("requests.all") },
+    { value: "new", label: t("status.new") },
+    { value: "contacted", label: t("status.contacted") },
+    { value: "accepted", label: t("status.accepted") },
+    { value: "declined", label: t("status.declined") },
+    { value: "converted", label: t("status.converted") },
+    { value: "archived", label: t("status.archived") },
+  ];
 
   const requests = useQuery(
     api.queries.clientRequests.getCompanyRequests,
@@ -55,7 +61,7 @@ export function RequestListPage() {
 
       {/* Filters */}
       <div className="flex gap-2 mb-4">
-        {STATUS_OPTIONS.map((opt) => (
+        {statusOptions.map((opt) => (
           <button
             key={opt.value}
             onClick={() => setStatusFilter(opt.value)}
@@ -73,16 +79,16 @@ export function RequestListPage() {
       {sorted.length === 0 ? (
         <EmptyState
           icon={Inbox}
-          title="No requests"
+          title={t("requests.noRequests")}
           description={
             statusFilter
-              ? "No requests match this filter."
-              : "Requests from your public link will appear here."
+              ? t("requests.noRequestsFilter")
+              : t("requests.noRequestsEmpty")
           }
           action={
             !statusFilter && (
               <Link href="/site" className="btn-primary">
-                Share your booking link
+                {t("requests.shareBookingLink")}
               </Link>
             )
           }

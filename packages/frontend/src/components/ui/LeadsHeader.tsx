@@ -1,21 +1,23 @@
 import { useLocation, Link } from "wouter";
 import { List, Kanban } from "lucide-react";
 import { clsx } from "clsx";
-
-const views = [
-  { href: "/requests", label: "List View", icon: List },
-  { href: "/requests/pipeline", label: "Pipeline View", icon: Kanban },
-] as const;
+import { useTranslation } from "react-i18next";
 
 export function LeadsHeader() {
   const [location] = useLocation();
+  const { t } = useTranslation();
+
+  const views = [
+    { href: "/requests", label: t("requests.listView"), icon: List },
+    { href: "/requests/pipeline", label: t("requests.pipelineView"), icon: Kanban },
+  ] as const;
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Leads</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t("requests.leads")}</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Manage incoming requests and your sales pipeline
+          {t("requests.leadsDescription")}
         </p>
       </div>
       <div className="flex rounded-lg border border-gray-200 overflow-hidden flex-shrink-0">
