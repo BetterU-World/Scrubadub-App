@@ -25,6 +25,11 @@ export const createCleanerPayment = mutation({
       throw new Error("Job not found or does not belong to your company");
     }
 
+    // Block payments for rejected or cancelled jobs
+    if (job.status === "cancelled" || job.status === "denied") {
+      throw new Error("Payments are not allowed for cancelled or rejected jobs");
+    }
+
     // Check not already paid — primary pointer + index cross-check
     if (job.cleanerPaymentId) {
       const existing = await ctx.db.get(job.cleanerPaymentId);
@@ -116,6 +121,11 @@ export const markCleanerPaidOutside = mutation({
     const job = await ctx.db.get(args.jobId);
     if (!job || job.companyId !== owner.companyId) {
       throw new Error("Job not found or does not belong to your company");
+    }
+
+    // Block payments for rejected or cancelled jobs
+    if (job.status === "cancelled" || job.status === "denied") {
+      throw new Error("Payments are not allowed for cancelled or rejected jobs");
     }
 
     // Check not already paid — primary pointer + index cross-check
@@ -272,6 +282,9 @@ export const createCleanerPaymentBatch = mutation({
       if (!job || job.companyId !== owner.companyId) {
         throw new Error("Job not found or does not belong to your company");
       }
+      if (job.status === "cancelled" || job.status === "denied") {
+        throw new Error("Payments are not allowed for cancelled or rejected jobs");
+      }
       if (job.cleanerPaymentId) {
         const existing = await ctx.db.get(job.cleanerPaymentId);
         if (existing && existing.status === "PAID") {
@@ -371,6 +384,9 @@ export const markCleanerBatchPaidOutside = mutation({
       const job = await ctx.db.get(jobId);
       if (!job || job.companyId !== owner.companyId) {
         throw new Error("Job not found or does not belong to your company");
+      }
+      if (job.status === "cancelled" || job.status === "denied") {
+        throw new Error("Payments are not allowed for cancelled or rejected jobs");
       }
       if (job.cleanerPaymentId) {
         const existing = await ctx.db.get(job.cleanerPaymentId);

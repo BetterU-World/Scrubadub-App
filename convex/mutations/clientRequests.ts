@@ -461,7 +461,13 @@ export const toggleFeedbackFeaturedOnSite = mutation({
       throw new Error("Access denied");
     }
 
-    await ctx.db.patch(args.feedbackId, { featuredOnSite: args.featured });
+    const patch: Record<string, unknown> = { featuredOnSite: args.featured };
+    // Featuring on site implicitly means the owner has reviewed this feedback;
+    // the public query only shows status="reviewed" items, so auto-promote.
+    if (args.featured && feedback.status === "new") {
+      patch.status = "reviewed";
+    }
+    await ctx.db.patch(args.feedbackId, patch);
     return { ok: true };
   },
 });
