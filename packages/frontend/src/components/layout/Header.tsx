@@ -1,6 +1,7 @@
 import { Menu, LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { NotificationBell } from "@/components/shared/NotificationBell";
+import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 
 interface HeaderProps {
   onMenuToggle?: () => void;
@@ -25,6 +26,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-2">
+        <LanguageSwitcher />
         <NotificationBell />
         <button
           onClick={signOut}
