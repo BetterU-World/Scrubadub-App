@@ -85,8 +85,7 @@ const steps = [
     num: "2",
     icon: Users,
     title: "Assign Your Team",
-    description:
-      "Cleaners and maintenance receive clear job workflows — in English or Spanish.",
+    description: "Cleaners and maintenance receive clear job workflows.",
   },
   {
     num: "3",
@@ -130,8 +129,8 @@ export function LandingPage() {
           Gold Standard Cleaning Operations — In English and Spanish
         </h1>
         <p className="mt-4 text-lg text-gray-500 max-w-xl mx-auto">
-          Schedule jobs, track quality, and manage your entire cleaning team on
-          one bilingual platform built for real operations.
+          Schedule jobs, track quality with photo-verified checklists, and manage
+          your entire cleaning team from one simple dashboard.
         </p>
         <div className="mt-8 flex justify-center gap-3">
           <Link href="/get-started" className="btn-primary px-6 py-2.5">
@@ -160,8 +159,8 @@ export function LandingPage() {
         </div>
         <p className="mt-8 text-gray-500 text-center max-w-2xl mx-auto">
           SCRUB replaces scattered communication, spreadsheets, and
-          guesswork with one bilingual operational system built specifically for
-          cleaning businesses and short-term rental operators.
+          guesswork with one operational system built specifically for cleaning
+          businesses and short-term rental operators.
         </p>
       </section>
 
@@ -186,13 +185,13 @@ export function LandingPage() {
       {/* Explanation */}
       <section className="pb-16 px-4 text-center max-w-2xl mx-auto">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">
-          One Bilingual Platform. Total Control.
+          One Platform. Total Control.
         </h2>
         <p className="text-gray-500">
           SCRUB replaces scattered tools with one operational system for
           cleaning companies and short-term rental owners. Schedule work, track
           performance, handle maintenance, and train teams using the Gold
-          Standard system — all in one place, in English and Spanish.
+          Standard system — all in one place.
         </p>
       </section>
 
@@ -263,7 +262,7 @@ export function LandingPage() {
         </h2>
         <p className="text-gray-500">
           SCRUB wasn't designed in a boardroom. It was built alongside
-          real bilingual cleaning teams solving real operational problems — from turnovers
+          real cleaning teams solving real operational problems — from turnovers
           and inspections to maintenance coordination and team accountability.
         </p>
       </section>
@@ -271,7 +270,7 @@ export function LandingPage() {
       {/* Final CTA */}
       <section className="pb-20 px-4 text-center">
         <h2 className="text-2xl font-bold text-gray-900 mb-6">
-          Ready to run your bilingual operations the Gold Standard way?
+          Ready to run your operations the Gold Standard way?
         </h2>
         <div className="flex justify-center gap-3">
           <Link href="/get-started" className="btn-primary px-6 py-2.5">
