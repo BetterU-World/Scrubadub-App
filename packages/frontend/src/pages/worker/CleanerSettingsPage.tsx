@@ -5,8 +5,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { Link2, CheckCircle, AlertCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function CleanerSettingsPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const connectStatus = useQuery(
     api.queries.cleanerStripeConnect.getCleanerConnectStatus,
@@ -46,19 +48,19 @@ export function CleanerSettingsPage() {
 
   return (
     <div>
-      <PageHeader title="Settings" />
+      <PageHeader title={t("cleanerSettings.title")} />
 
       {/* Feedback banners */}
       {stripeParam === "return" && (
         <div className="mb-4 p-3 rounded-lg bg-green-50 text-green-700 text-sm flex items-center gap-2">
           <CheckCircle className="w-4 h-4 flex-shrink-0" />
-          Stripe onboarding complete! You can now receive payments for jobs.
+          {t("cleanerSettings.onboardingComplete")}
         </div>
       )}
       {stripeParam === "refresh" && (
         <div className="mb-4 p-3 rounded-lg bg-yellow-50 text-yellow-700 text-sm flex items-center gap-2">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          Stripe session expired. Please try connecting again.
+          {t("cleanerSettings.sessionExpired")}
         </div>
       )}
 
@@ -71,7 +73,7 @@ export function CleanerSettingsPage() {
 
       {/* Stripe Connect card */}
       <div className="card max-w-md">
-        <h3 className="font-semibold text-gray-900 mb-3">Get Paid</h3>
+        <h3 className="font-semibold text-gray-900 mb-3">{t("cleanerSettings.getPaid")}</h3>
         {isConnected ? (
           <>
             <div className="flex items-center gap-3 mb-4">
@@ -79,12 +81,12 @@ export function CleanerSettingsPage() {
                 <CheckCircle className="w-5 h-5" />
               </div>
               <div>
-                <p className="font-semibold text-gray-900">Stripe Connected</p>
+                <p className="font-semibold text-gray-900">{t("cleanerSettings.stripeConnected")}</p>
                 <p className="text-sm text-gray-500">...{accountIdSuffix}</p>
               </div>
             </div>
             <p className="text-sm text-gray-500 mb-3">
-              Your Stripe account is connected. Your employer can pay you for jobs through SCRUB.
+              {t("cleanerSettings.stripeConnectedDesc")}
             </p>
             <button
               onClick={handleConnect}
@@ -92,7 +94,7 @@ export function CleanerSettingsPage() {
               className="btn-secondary w-full flex items-center justify-center gap-2"
             >
               <Link2 className="w-4 h-4" />
-              {loading ? "Redirecting..." : "Update Stripe Info"}
+              {loading ? t("cleanerSettings.redirecting") : t("cleanerSettings.updateStripeInfo")}
             </button>
           </>
         ) : (
@@ -102,9 +104,9 @@ export function CleanerSettingsPage() {
                 <Link2 className="w-5 h-5" />
               </div>
               <div>
-                <p className="font-semibold text-gray-900">Connect Stripe</p>
+                <p className="font-semibold text-gray-900">{t("cleanerSettings.connectStripe")}</p>
                 <p className="text-sm text-gray-500">
-                  Set up your account to receive payment for jobs
+                  {t("cleanerSettings.connectStripeDesc")}
                 </p>
               </div>
             </div>
@@ -114,7 +116,7 @@ export function CleanerSettingsPage() {
               className="btn-primary w-full flex items-center justify-center gap-2"
             >
               <Link2 className="w-4 h-4" />
-              {loading ? "Redirecting..." : "Connect Stripe to Get Paid"}
+              {loading ? t("cleanerSettings.redirecting") : t("cleanerSettings.connectStripeToPay")}
             </button>
           </>
         )}

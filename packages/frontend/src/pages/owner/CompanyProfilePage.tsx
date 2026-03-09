@@ -4,8 +4,10 @@ import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
+import { useTranslation } from "react-i18next";
 
 export function CompanyProfilePage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
 
   const profile = useQuery(
@@ -49,10 +51,10 @@ export function CompanyProfilePage() {
         contactPhone: contactPhone.trim(),
         serviceAreaText: serviceArea.trim(),
       });
-      setToast("Profile saved");
+      setToast(t("companyProfile.profileSaved"));
       setTimeout(() => setToast(null), 3000);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to save";
+      const msg = err instanceof Error ? err.message : t("companyProfile.failedToSave");
       setError(msg);
     } finally {
       setSaving(false);
@@ -62,8 +64,8 @@ export function CompanyProfilePage() {
   return (
     <div>
       <PageHeader
-        title="Company Profile"
-        description="These defaults feed your microsites when site-level fields are empty."
+        title={t("companyProfile.title")}
+        description={t("companyProfile.description")}
       />
 
       <div className="max-w-lg space-y-5">
@@ -76,7 +78,7 @@ export function CompanyProfilePage() {
         {/* Display name */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Company display name
+            {t("companyProfile.displayName")}
           </label>
           <input
             type="text"
@@ -86,14 +88,14 @@ export function CompanyProfilePage() {
             onChange={(e) => setDisplayName(e.target.value)}
           />
           <p className="mt-1 text-xs text-gray-400">
-            Shown on microsites if no brand name is set.
+            {t("companyProfile.displayNameHelper")}
           </p>
         </div>
 
         {/* Contact email */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Contact email
+            {t("companyProfile.contactEmail")}
           </label>
           <input
             type="email"
@@ -107,7 +109,7 @@ export function CompanyProfilePage() {
         {/* Contact phone */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Contact phone
+            {t("companyProfile.contactPhone")}
           </label>
           <input
             type="tel"
@@ -121,16 +123,16 @@ export function CompanyProfilePage() {
         {/* Service area */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Service area
+            {t("companyProfile.serviceArea")}
           </label>
           <textarea
             className="input min-h-[80px]"
-            placeholder="e.g. Austin, TX and surrounding areas"
+            placeholder={t("companyProfile.serviceAreaPlaceholder")}
             value={serviceArea}
             onChange={(e) => setServiceArea(e.target.value)}
           />
           <p className="mt-1 text-xs text-gray-400">
-            Falls back to this if your microsite has no service area set.
+            {t("companyProfile.serviceAreaHelper")}
           </p>
         </div>
 
@@ -140,7 +142,7 @@ export function CompanyProfilePage() {
           disabled={saving}
           className="btn-primary"
         >
-          {saving ? "Saving…" : "Save changes"}
+          {saving ? t("common.saving") : t("companyProfile.saveChanges")}
         </button>
       </div>
 

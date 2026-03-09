@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { LeadsHeader } from "@/components/ui/LeadsHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { useTranslation } from "react-i18next";
 import {
   Inbox,
   MapPin,
@@ -15,25 +16,29 @@ import {
 } from "lucide-react";
 
 const STAGES = [
-  { value: "new", label: "New", color: "bg-blue-50 border-blue-200" },
-  { value: "contacted", label: "Contacted", color: "bg-indigo-50 border-indigo-200" },
-  { value: "quoted", label: "Quoted", color: "bg-yellow-50 border-yellow-200" },
-  { value: "won", label: "Won", color: "bg-green-50 border-green-200" },
-  { value: "lost", label: "Lost", color: "bg-gray-50 border-gray-200" },
+  { value: "new", labelKey: "status.new", color: "bg-blue-50 border-blue-200" },
+  { value: "contacted", labelKey: "status.contacted", color: "bg-indigo-50 border-indigo-200" },
+  { value: "quoted", labelKey: "status.quoted", color: "bg-yellow-50 border-yellow-200" },
+  { value: "won", labelKey: "status.won", color: "bg-green-50 border-green-200" },
+  { value: "lost", labelKey: "status.lost", color: "bg-gray-50 border-gray-200" },
 ] as const;
 
-function timeAgo(ts: number): string {
-  const diff = Date.now() - ts;
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
+function useTimeAgo() {
+  const { t } = useTranslation();
+  return (ts: number): string => {
+    const diff = Date.now() - ts;
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return t("time.justNow");
+    if (mins < 60) return t("time.minutesAgo", { count: mins });
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return t("time.hoursAgo", { count: hrs });
+    const days = Math.floor(hrs / 24);
+    return t("time.daysAgo", { count: days });
+  };
 }
 
 function FollowUpBadge({ nextFollowUpAt }: { nextFollowUpAt: number }) {
+  const { t } = useTranslation();
   const now = Date.now();
   const todayEnd = new Date();
   todayEnd.setHours(23, 59, 59, 999);
@@ -41,14 +46,14 @@ function FollowUpBadge({ nextFollowUpAt }: { nextFollowUpAt: number }) {
   if (nextFollowUpAt <= now) {
     return (
       <span className="inline-flex items-center gap-1 text-xs font-medium text-red-700 bg-red-100 rounded-full px-2 py-0.5">
-        <AlertCircle className="w-3 h-3" /> Overdue
+        <AlertCircle className="w-3 h-3" /> {t("pipeline.overdue")}
       </span>
     );
   }
   if (nextFollowUpAt <= todayEnd.getTime()) {
     return (
       <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-100 rounded-full px-2 py-0.5">
-        <Clock className="w-3 h-3" /> Today
+        <Clock className="w-3 h-3" /> {t("pipeline.today")}
       </span>
     );
   }
@@ -61,6 +66,7 @@ function FollowUpBadge({ nextFollowUpAt }: { nextFollowUpAt: number }) {
 }
 
 function FollowUpsWidget({ userId }: { userId: any }) {
+  const { t } = useTranslation();
   const followUps = useQuery(
     api.queries.clientRequests.listFollowUps,
     { userId, limit: 5 }
@@ -72,7 +78,7 @@ function FollowUpsWidget({ userId }: { userId: any }) {
     <div className="card mb-6">
       <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
         <Clock className="w-4 h-4 text-gray-500" />
-        Upcoming Follow-ups
+        {t("pipeline.upcomingFollowUps")}
       </h3>
       <div className="space-y-2">
         {followUps.map((req) => (
@@ -87,7 +93,7 @@ function FollowUpsWidget({ userId }: { userId: any }) {
                   {req.requesterName}
                 </p>
                 <p className="text-xs text-gray-500 truncate">
-                  {req.propertySnapshot?.address || "No address"}
+                  {req.propertySnapshot?.address || t("pipeline.noAddress")}
                 </p>
               </div>
             </div>
@@ -104,6 +110,8 @@ function FollowUpsWidget({ userId }: { userId: any }) {
 
 export function PipelinePage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
+  const timeAgo = useTimeAgo();
 
   const allRequests = useQuery(
     api.queries.clientRequests.listRequestsForPipeline,
@@ -133,8 +141,8 @@ export function PipelinePage() {
       {allRequests.length === 0 ? (
         <EmptyState
           icon={Inbox}
-          title="No requests yet"
-          description="Requests from your public booking link will appear here."
+          title={t("pipeline.noRequestsYet")}
+          description={t("pipeline.noRequestsYetDesc")}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -144,7 +152,7 @@ export function PipelinePage() {
               <div key={stage.value}>
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-semibold text-gray-700">
-                    {stage.label}
+                    {t(stage.labelKey)}
                   </h3>
                   <span className="badge bg-gray-100 text-gray-600">
                     {items.length}
@@ -153,7 +161,7 @@ export function PipelinePage() {
                 <div className={`rounded-xl border p-2 ${stage.color} min-h-[120px] space-y-2`}>
                   {items.length === 0 ? (
                     <p className="text-xs text-gray-400 text-center py-6">
-                      No leads
+                      {t("pipeline.noLeads")}
                     </p>
                   ) : (
                     items.map((req) => (

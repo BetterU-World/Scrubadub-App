@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
+import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -10,6 +11,7 @@ import { Bell, CheckCheck } from "lucide-react";
 
 export function NotificationsPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const notifications = useQuery(
     api.queries.notifications.list,
     user ? { userId: user._id } : "skip"
@@ -40,22 +42,22 @@ export function NotificationsPage() {
   return (
     <div>
       <PageHeader
-        title="Notifications"
-        description={unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
+        title={t("notifications.title")}
+        description={unreadCount > 0 ? t("notifications.unreadCount", { count: unreadCount }) : t("notifications.allCaughtUp")}
         action={
           unreadCount > 0 && (
             <button
               onClick={() => markAllAsRead({ userId: user._id })}
               className="btn-secondary flex items-center gap-2"
             >
-              <CheckCheck className="w-4 h-4" /> Mark all read
+              <CheckCheck className="w-4 h-4" /> {t("notifications.markAllRead")}
             </button>
           )
         }
       />
 
       {notifications.length === 0 ? (
-        <EmptyState icon={Bell} title="No notifications" description="You're all caught up!" />
+        <EmptyState icon={Bell} title={t("notifications.noNotifications")} description={t("notifications.allCaughtUpDesc")} />
       ) : (
         <div className="space-y-2">
           {notifications.map((n) => (
@@ -79,12 +81,12 @@ export function NotificationsPage() {
                 </div>
                 {n.relatedJobId && (
                   <Link href={`/jobs/${n.relatedJobId}`} className="text-xs text-primary-600 hover:text-primary-700 whitespace-nowrap">
-                      View Job
+                      {t("notifications.viewJob")}
                   </Link>
                 )}
                 {n.relatedClientRequestId && (
                   <Link href={`/requests/${n.relatedClientRequestId}`} className="text-xs text-primary-600 hover:text-primary-700 whitespace-nowrap">
-                      View Request
+                      {t("notifications.viewRequest")}
                   </Link>
                 )}
               </div>

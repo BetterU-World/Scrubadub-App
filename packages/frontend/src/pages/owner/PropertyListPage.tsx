@@ -7,9 +7,11 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Link } from "wouter";
 import { Building2, Plus, MapPin } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function PropertyListPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const properties = useQuery(
     api.queries.properties.list,
     user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
@@ -20,11 +22,11 @@ export function PropertyListPage() {
   return (
     <div>
       <PageHeader
-        title="Properties"
-        description="Manage your cleaning properties"
+        title={t("properties.title")}
+        description={t("properties.description")}
         action={
           <Link href="/properties/new" className="btn-primary flex items-center gap-2">
-            <Plus className="w-4 h-4" /> Add Property
+            <Plus className="w-4 h-4" /> {t("properties.addProperty")}
           </Link>
         }
       />
@@ -32,10 +34,10 @@ export function PropertyListPage() {
       {properties.length === 0 ? (
         <EmptyState
           icon={Building2}
-          title="No properties yet"
-          description="Add your first property to get started"
+          title={t("properties.noPropertiesYet")}
+          description={t("properties.noPropertiesDesc")}
           action={
-            <Link href="/properties/new" className="btn-primary">Add Property</Link>
+            <Link href="/properties/new" className="btn-primary">{t("properties.addProperty")}</Link>
           }
         />
       ) : (
@@ -55,8 +57,8 @@ export function PropertyListPage() {
                   {(property.beds != null || property.baths != null) && (
                     <span className="text-gray-400">
                       {[
-                        property.beds != null ? `${property.beds} bed${property.beds !== 1 ? "s" : ""}` : null,
-                        property.baths != null ? `${property.baths} bath${property.baths !== 1 ? "s" : ""}` : null,
+                        property.beds != null ? `${property.beds} ${property.beds !== 1 ? t("properties.beds").toLowerCase() : t("properties.beds").toLowerCase().replace(/s$/, "")}` : null,
+                        property.baths != null ? `${property.baths} ${property.baths !== 1 ? t("properties.baths").toLowerCase() : t("properties.baths").toLowerCase().replace(/s$/, "")}` : null,
                       ].filter(Boolean).join(" / ")}
                     </span>
                   )}

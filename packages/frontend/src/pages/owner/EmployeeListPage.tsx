@@ -9,9 +9,11 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Users, UserPlus, Copy, Check } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function EmployeeListPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const employees = useQuery(
     api.queries.employees.list,
     user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
@@ -57,7 +59,7 @@ export function EmployeeListPage() {
         role: inviteRole,
       });
       setInviteLink(`${window.location.origin}/invite/${result.token}`);
-      setToast("Invite sent successfully");
+      setToast(t("employees.inviteSent"));
       setTimeout(() => setToast(null), 3000);
     } catch (err: any) {
       setError(err.message || "Failed to invite");
@@ -84,11 +86,11 @@ export function EmployeeListPage() {
   return (
     <div>
       <PageHeader
-        title="Employees"
-        description="Manage your cleaning team"
+        title={t("employees.title")}
+        description={t("employees.description")}
         action={
           <button onClick={() => setShowInvite(true)} className="btn-primary flex items-center gap-2">
-            <UserPlus className="w-4 h-4" /> Invite Employee
+            <UserPlus className="w-4 h-4" /> {t("employees.inviteEmployee")}
           </button>
         }
       />
@@ -96,10 +98,10 @@ export function EmployeeListPage() {
       {employees.length <= 1 ? (
         <EmptyState
           icon={Users}
-          title="No team members yet"
-          description="Invite cleaners to join your team"
+          title={t("employees.noTeamYet")}
+          description={t("employees.noTeamDesc")}
           action={
-            <button onClick={() => setShowInvite(true)} className="btn-primary">Invite Employee</button>
+            <button onClick={() => setShowInvite(true)} className="btn-primary">{t("employees.inviteEmployee")}</button>
           }
         />
       ) : (
@@ -107,11 +109,11 @@ export function EmployeeListPage() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Name</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Email</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Role</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Status</th>
-                <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Actions</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t("employees.name")}</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t("employees.email")}</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t("employees.role")}</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t("employees.status")}</th>
+                <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">{t("employees.actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -131,11 +133,11 @@ export function EmployeeListPage() {
                         })}
                         className="text-sm text-primary-600 hover:text-primary-700 font-medium"
                       >
-                        {emp.status === "active" ? "Deactivate" : "Activate"}
+                        {emp.status === "active" ? t("employees.deactivate") : t("employees.activate")}
                       </button>
                     )}
                     {emp.status === "pending" && (
-                      <span className="text-sm text-gray-400">Invite pending</span>
+                      <span className="text-sm text-gray-400">{t("employees.invitePending")}</span>
                     )}
                   </td>
                 </tr>
@@ -150,7 +152,7 @@ export function EmployeeListPage() {
           <Dialog.Overlay className="fixed inset-0 bg-black/40 z-50" />
           <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-lg p-6 w-full max-w-md z-50">
             <div className="flex items-center justify-between mb-4">
-              <Dialog.Title className="text-lg font-semibold">Invite Employee</Dialog.Title>
+              <Dialog.Title className="text-lg font-semibold">{t("employees.inviteEmployee")}</Dialog.Title>
               <Dialog.Close className="p-1 text-gray-400 hover:text-gray-600 rounded">
                 <X className="w-5 h-5" />
               </Dialog.Close>
@@ -158,15 +160,15 @@ export function EmployeeListPage() {
 
             {inviteLink ? (
               <div>
-                <p className="text-sm text-gray-600 mb-3">Share this link with {inviteName}:</p>
+                <p className="text-sm text-gray-600 mb-3">{t("employees.shareLink", { name: inviteName })}</p>
                 <div className="flex gap-2">
                   <input className="input-field text-sm" value={inviteLink} readOnly />
                   <button onClick={copyLink} className="btn-secondary flex items-center gap-1">
                     {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    {copied ? "Copied" : "Copy"}
+                    {copied ? t("employees.copied") : t("employees.copy")}
                   </button>
                 </div>
-                <button onClick={resetInviteDialog} className="btn-primary w-full mt-4">Done</button>
+                <button onClick={resetInviteDialog} className="btn-primary w-full mt-4">{t("employees.done")}</button>
               </div>
             ) : (
               <div className="space-y-4">
@@ -174,18 +176,18 @@ export function EmployeeListPage() {
                   <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{error}</div>
                 )}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("employees.name")}</label>
                   <input className="input-field" value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="Jane Doe" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("employees.email")}</label>
                   <input className="input-field" type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="jane@email.com" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("employees.role")}</label>
                   <select className="input-field" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as any)}>
-                    <option value="cleaner">Cleaner</option>
-                    <option value="maintenance">Maintenance</option>
+                    <option value="cleaner">{t("employees.roleCleaner")}</option>
+                    <option value="maintenance">{t("employees.roleMaintenance")}</option>
                   </select>
                 </div>
                 <button
@@ -194,7 +196,7 @@ export function EmployeeListPage() {
                   className="btn-primary w-full flex items-center justify-center gap-2"
                 >
                   {inviteLoading && <LoadingSpinner size="sm" />}
-                  Generate Invite Link
+                  {t("employees.generateInviteLink")}
                 </button>
               </div>
             )}
