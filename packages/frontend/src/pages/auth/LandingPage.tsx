@@ -303,6 +303,15 @@ export function LandingPage() {
               </span>
               <span className="text-gray-500">{plan.period}</span>
             </div>
+            <div className="mt-3 mb-1 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-center">
+              <p className="text-sm font-semibold text-gray-800">
+                <span className="text-green-600">50</span>% OFF first{" "}
+                <span className="text-green-600">3</span> months
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Use code <span className="font-mono font-semibold text-gray-700">50OFF3</span> at checkout
+              </p>
+            </div>
             <p className="text-xs text-gray-400 mt-1">{plan.subtitle}</p>
             <ul className="mt-4 space-y-2 flex-1">
               {plan.features.map((f) => (
