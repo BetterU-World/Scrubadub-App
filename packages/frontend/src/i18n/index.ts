@@ -13,7 +13,18 @@ function getSavedLanguage(): string {
   } catch {
     // localStorage unavailable
   }
-  return "en";
+
+  // No saved preference — detect from browser language
+  const detected = navigator.language?.startsWith("es") ? "es" : "en";
+
+  // Persist so we don't re-detect on every load
+  try {
+    localStorage.setItem(STORAGE_KEY, detected);
+  } catch {
+    // localStorage unavailable
+  }
+
+  return detected;
 }
 
 i18n.use(initReactI18next).init({
