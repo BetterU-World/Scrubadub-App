@@ -27,13 +27,21 @@ function getStripe() {
 }
 
 /** TEMPORARY DIAGNOSTIC — remove after debugging price issue */
-function logCheckoutDiagnostic(action: string, priceId: string) {
+async function logCheckoutDiagnostic(action: string, priceId: string, stripe: Stripe) {
   const raw = process.env.STRIPE_PRICE_SCRUB_PRO;
   const key = process.env.STRIPE_SECRET_KEY ?? "";
   const keyHint = key.length > 8 ? `${key.slice(0, 7)}...${key.slice(-4)}` : "(not set)";
   console.log(
     `[STRIPE-DIAG] action=${action} | priceEnvPresent=${raw !== undefined} | priceId=${priceId} | keyHint=${keyHint}`
   );
+  try {
+    const p = await stripe.prices.retrieve(priceId);
+    console.log(
+      `[STRIPE-DIAG] price.retrieve OK | id=${p.id} | livemode=${p.livemode} | active=${p.active} | type=${p.type} | recurring=${p.recurring ? p.recurring.interval + "/" + p.recurring.interval_count : "none"} | product=${p.product}`
+    );
+  } catch (err: any) {
+    console.log(`[STRIPE-DIAG] price.retrieve FAILED | error=${err?.message ?? err}`);
+  }
 }
 
 /**
@@ -72,7 +80,7 @@ export const createPublicCheckoutSession = action({
       process.env.APP_URL ?? "https://scrubadub-app-frontend.vercel.app";
 
     const priceId = getOwnerPriceId();
-    logCheckoutDiagnostic("publicBilling.createPublicCheckoutSession", priceId);
+    await logCheckoutDiagnostic("publicBilling.createPublicCheckoutSession", priceId, stripe);
 
     const session = await stripe.checkout.sessions.create({
       customer: customer.id,
