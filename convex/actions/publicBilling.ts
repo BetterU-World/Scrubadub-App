@@ -35,6 +35,14 @@ async function logCheckoutDiagnostic(action: string, priceId: string, stripe: St
     `[STRIPE-DIAG] action=${action} | priceEnvPresent=${raw !== undefined} | priceId=${priceId} | keyHint=${keyHint}`
   );
   try {
+    const acct = await stripe.accounts.retrieve();
+    console.log(
+      `[STRIPE-DIAG] account | id=${acct.id} | country=${acct.country} | currency=${acct.default_currency} | name=${acct.business_profile?.name ?? "(none)"}`
+    );
+  } catch (err: any) {
+    console.log(`[STRIPE-DIAG] account.retrieve FAILED | error=${err?.message ?? err}`);
+  }
+  try {
     const p = await stripe.prices.retrieve(priceId);
     console.log(
       `[STRIPE-DIAG] price.retrieve OK | id=${p.id} | livemode=${p.livemode} | active=${p.active} | type=${p.type} | recurring=${p.recurring ? p.recurring.interval + "/" + p.recurring.interval_count : "none"} | product=${p.product}`
