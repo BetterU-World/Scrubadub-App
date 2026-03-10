@@ -30,6 +30,16 @@ function getStripe() {
   return new Stripe(process.env.STRIPE_SECRET_KEY!);
 }
 
+/** TEMPORARY DIAGNOSTIC — remove after debugging price issue */
+function logCheckoutDiagnostic(action: string, priceId: string) {
+  const raw = process.env.STRIPE_PRICE_SCRUB_PRO;
+  const key = process.env.STRIPE_SECRET_KEY ?? "";
+  const keyHint = key.length > 8 ? `${key.slice(0, 7)}...${key.slice(-4)}` : "(not set)";
+  console.log(
+    `[STRIPE-DIAG] action=${action} | priceEnvPresent=${raw !== undefined} | priceId=${priceId} | keyHint=${keyHint}`
+  );
+}
+
 export const createCheckoutSession = action({
   args: {
     userId: v.id("users"),
@@ -66,10 +76,13 @@ export const createCheckoutSession = action({
     const APP_URL =
       process.env.APP_URL ?? "https://scrubadub-app-frontend.vercel.app";
 
+    const priceId = getOwnerPriceId();
+    logCheckoutDiagnostic("billing.createCheckoutSession", priceId);
+
     const session: any = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
-      line_items: [{ price: getOwnerPriceId(), quantity: 1 }],
+      line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: {
         trial_period_days: 14,
         metadata: {
