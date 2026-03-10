@@ -1,5 +1,6 @@
 import { QueryCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
+import { isFounderEmail } from "./founderEmails";
 
 /** Grace period for past_due invoices: 3 days in ms */
 const PAST_DUE_GRACE_MS = 3 * 24 * 60 * 60 * 1000;
@@ -8,6 +9,7 @@ const PAST_DUE_GRACE_MS = 3 * 24 * 60 * 60 * 1000;
  * Check if a company's subscription allows write operations.
  *
  * Rules:
+ * - founder/internal-tester company (owner email in allowlist) → allow
  * - active / trialing → allow
  * - past_due AND within 3-day grace window from currentPeriodEnd → allow
  * - no subscription record (new/legacy company) → allow (graceful default)
@@ -19,6 +21,14 @@ export async function requireActiveSubscription(
 ): Promise<void> {
   const company = await ctx.db.get(companyId);
   if (!company) throw new Error("Company not found");
+
+  // Founder/internal-tester bypass — mirrors the frontend companyBypassed check
+  const owners = await ctx.db
+    .query("users")
+    .withIndex("by_companyId", (q) => q.eq("companyId", companyId))
+    .filter((q) => q.eq(q.field("role"), "owner"))
+    .collect();
+  if (owners.some((u) => isFounderEmail(u.email))) return;
 
   const status = company.subscriptionStatus;
 

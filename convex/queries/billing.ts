@@ -1,8 +1,6 @@
 import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
-
-// Same list used in authQueries.ts — company-level bypass for dev/testing
-const SUPERADMIN_EMAILS: string[] = ["dzbfyse@gmail.com"];
+import { isFounderEmail } from "../lib/founderEmails";
 
 export const getCompanySubscription = query({
   args: { companyId: v.id("companies"), userId: v.optional(v.id("users")) },
@@ -27,7 +25,7 @@ export const getCompanySubscription = query({
       .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
       .collect();
     const hasSuperadminOwner = owners.some(
-      (u) => u.role === "owner" && SUPERADMIN_EMAILS.includes(u.email)
+      (u) => u.role === "owner" && isFounderEmail(u.email)
     );
 
     return {

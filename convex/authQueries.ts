@@ -1,8 +1,6 @@
 import { query, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
-
-// Temporary superadmin bypass — emails here skip subscription checks
-const SUPERADMIN_EMAILS: string[] = ["dzbfyse@gmail.com"];
+import { isFounderEmail } from "./lib/founderEmails";
 
 export const getUser = internalQuery({
   args: { userId: v.id("users") },
@@ -39,7 +37,7 @@ export const getCurrentUser = query({
       phone: user.phone,
       referralCode: user.referralCode,
       referredByCode: user.referredByCode,
-      isSuperadmin: SUPERADMIN_EMAILS.includes(user.email),
+      isSuperadmin: isFounderEmail(user.email),
     };
   },
 });
