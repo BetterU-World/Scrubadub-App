@@ -43,6 +43,18 @@ async function logCheckoutDiagnostic(action: string, priceId: string, stripe: St
     console.log(`[STRIPE-DIAG] account.retrieve FAILED | error=${err?.message ?? err}`);
   }
   try {
+    const list = await stripe.prices.list({ active: true, limit: 10 });
+    const recurring = list.data.filter((p) => p.type === "recurring");
+    console.log(`[STRIPE-DIAG] prices.list | total=${list.data.length} | recurring=${recurring.length}`);
+    for (const p of recurring) {
+      console.log(
+        `[STRIPE-DIAG]   price | id=${p.id} | active=${p.active} | livemode=${p.livemode} | interval=${p.recurring?.interval}/${p.recurring?.interval_count} | product=${p.product}`
+      );
+    }
+  } catch (err: any) {
+    console.log(`[STRIPE-DIAG] prices.list FAILED | error=${err?.message ?? err}`);
+  }
+  try {
     const p = await stripe.prices.retrieve(priceId);
     console.log(
       `[STRIPE-DIAG] price.retrieve OK | id=${p.id} | livemode=${p.livemode} | active=${p.active} | type=${p.type} | recurring=${p.recurring ? p.recurring.interval + "/" + p.recurring.interval_count : "none"} | product=${p.product}`
