@@ -964,5 +964,33 @@
     "medium": "Medium",
     "high": "High",
     "critical": "Critical"
+  },
+  "inspection": {
+    "submitHouseCheck": "Submit House Check",
+    "houseCheck": "House Check",
+    "readinessScore": "Readiness Score (1-10)",
+    "severity": "Severity",
+    "notes": "Overall Notes",
+    "notesPlaceholder": "Overall condition, observations...",
+    "issues": "Issues Found",
+    "issuesPlaceholder": "One issue per line...",
+    "issuesFound": "Issues Found:",
+    "photos": "Photos",
+    "addPhotos": "Add Photos",
+    "uploading": "Uploading...",
+    "photosAttached": "photo(s) attached",
+    "submit": "Submit Inspection",
+    "submitted": "Inspection submitted!",
+    "history": "Inspection History",
+    "inspected": "Inspected",
+    "managerInspections": "Manager Inspections",
+    "latestScore": "Latest Score",
+    "assignedCleaners": "Assigned Cleaners",
+    "formSubmission": "Form Submission",
+    "statusLabel": "Status:",
+    "cleanerScore": "Cleaner Score:",
+    "finalPass": "Final Pass:",
+    "photoCount": "photo(s)",
+    "reworkNotes": "Rework Notes"
   }
 }

@@ -79,6 +79,16 @@ export function JobDetailPage() {
   const acceptSharedJobMut = useMutation(api.mutations.partners.acceptSharedJob);
   const rejectSharedJobMut = useMutation(api.mutations.partners.rejectSharedJob);
 
+  // Manager inspections
+  const inspections = useQuery(
+    api.queries.inspections.getByJob,
+    user && job ? { jobId: params.id as Id<"jobs">, userId: user._id } : "skip"
+  );
+  const inspectionSummary = useQuery(
+    api.queries.inspections.getSummary,
+    user && job ? { jobId: params.id as Id<"jobs">, userId: user._id } : "skip"
+  );
+
   // Cleaner payments
   const cleanerPaymentData = useQuery(
     api.queries.cleanerPayments.getCleanerPaymentForJob,
@@ -327,6 +337,74 @@ export function JobDetailPage() {
                     <StatusBadge status={flag.status} />
                   </div>
                   <p className="text-sm text-gray-700">{flag.note}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Manager Inspections */}
+        {inspections && inspections.length > 0 && (
+          <div className="card border-blue-200">
+            <h3 className="font-semibold text-blue-700 flex items-center gap-2 mb-4">
+              <CheckCircle className="w-5 h-5" /> {t("inspection.managerInspections")} ({inspections.length})
+            </h3>
+            {inspectionSummary && (
+              <div className="flex items-center gap-3 mb-4 p-2 bg-blue-50 rounded-lg">
+                <span className="text-sm text-blue-700">
+                  {t("inspection.latestScore")}: <span className="font-bold">{inspectionSummary.latestScore}/10</span>
+                </span>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                  inspectionSummary.latestSeverity === "critical" ? "bg-red-100 text-red-700" :
+                  inspectionSummary.latestSeverity === "high" ? "bg-orange-100 text-orange-700" :
+                  inspectionSummary.latestSeverity === "medium" ? "bg-yellow-100 text-yellow-700" :
+                  "bg-green-100 text-green-700"
+                }`}>
+                  {t(`severity.${inspectionSummary.latestSeverity}`)}
+                </span>
+                <span className="text-xs text-gray-500">
+                  {new Date(inspectionSummary.latestDate).toLocaleDateString()}
+                </span>
+              </div>
+            )}
+            <div className="space-y-3">
+              {inspections.map((ins: any) => (
+                <div key={ins._id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-900">{ins.managerName}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        ins.severity === "critical" ? "bg-red-100 text-red-700" :
+                        ins.severity === "high" ? "bg-orange-100 text-orange-700" :
+                        ins.severity === "medium" ? "bg-yellow-100 text-yellow-700" :
+                        "bg-green-100 text-green-700"
+                      }`}>
+                        {t(`severity.${ins.severity}`)}
+                      </span>
+                    </div>
+                    <span className="text-sm font-bold text-blue-700">{ins.readinessScore}/10</span>
+                  </div>
+                  <p className="text-xs text-gray-400 mb-2">
+                    {new Date(ins.createdAt).toLocaleString()}
+                  </p>
+                  {ins.notes && <p className="text-sm text-gray-600 mb-2">{ins.notes}</p>}
+                  {ins.issues && ins.issues.length > 0 && (
+                    <ul className="space-y-1 mb-2">
+                      {ins.issues.map((issue: string, idx: number) => (
+                        <li key={idx} className="text-sm text-gray-600 flex items-start gap-1.5">
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-500 mt-0.5 flex-shrink-0" />
+                          {issue}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {ins.photoUrls && ins.photoUrls.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2 mt-2">
+                      {ins.photoUrls.map((url: string, i: number) => (
+                        <img key={i} src={url} alt={`Inspection photo ${i + 1}`} className="w-full h-20 object-cover rounded-lg border" />
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

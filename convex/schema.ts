@@ -262,7 +262,8 @@ export default defineSchema({
       v.literal("partner_accepted"),
       v.literal("shared_job_accepted"),
       v.literal("shared_job_rejected"),
-      v.literal("new_client_request")
+      v.literal("new_client_request"),
+      v.literal("inspection_submitted")
     ),
     title: v.string(),
     message: v.string(),
@@ -674,6 +675,26 @@ export default defineSchema({
   })
     .index("by_batchId", ["batchId"])
     .index("by_settlementId", ["settlementId"]),
+
+  // ── Manager Inspections (QA house checks) ──────────────────────────
+  managerInspections: defineTable({
+    jobId: v.id("jobs"),
+    companyId: v.id("companies"),
+    managerId: v.id("users"),
+    readinessScore: v.number(), // 1-10
+    notes: v.optional(v.string()),
+    severity: v.union(
+      v.literal("low"),
+      v.literal("medium"),
+      v.literal("high"),
+      v.literal("critical")
+    ),
+    issues: v.optional(v.array(v.string())),
+    photoStorageIds: v.optional(v.array(v.id("_storage"))),
+    createdAt: v.number(),
+  })
+    .index("by_jobId", ["jobId"])
+    .index("by_companyId_createdAt", ["companyId", "createdAt"]),
 
   // ── Rate Limits (server-side sliding window) ──────────────────────
   rateLimits: defineTable({

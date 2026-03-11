@@ -964,5 +964,33 @@
     "medium": "Medio",
     "high": "Alto",
     "critical": "Crítico"
+  },
+  "inspection": {
+    "submitHouseCheck": "Enviar Inspección",
+    "houseCheck": "Inspección de Casa",
+    "readinessScore": "Puntuación de Preparación (1-10)",
+    "severity": "Severidad",
+    "notes": "Notas Generales",
+    "notesPlaceholder": "Condición general, observaciones...",
+    "issues": "Problemas Encontrados",
+    "issuesPlaceholder": "Un problema por línea...",
+    "issuesFound": "Problemas Encontrados:",
+    "photos": "Fotos",
+    "addPhotos": "Agregar Fotos",
+    "uploading": "Subiendo...",
+    "photosAttached": "foto(s) adjuntas",
+    "submit": "Enviar Inspección",
+    "submitted": "¡Inspección enviada!",
+    "history": "Historial de Inspecciones",
+    "inspected": "Inspeccionado",
+    "managerInspections": "Inspecciones del Manager",
+    "latestScore": "Última Puntuación",
+    "assignedCleaners": "Limpiadores Asignados",
+    "formSubmission": "Envío de Formulario",
+    "statusLabel": "Estado:",
+    "cleanerScore": "Puntuación del Limpiador:",
+    "finalPass": "Paso Final:",
+    "photoCount": "foto(s)",
+    "reworkNotes": "Notas de Retrabajo"
   }
 }

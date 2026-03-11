@@ -91,7 +91,8 @@ export async function createNotification(
       | "partner_accepted"
       | "shared_job_accepted"
       | "shared_job_rejected"
-      | "new_client_request";
+      | "new_client_request"
+      | "inspection_submitted";
     title: string;
     message: string;
     relatedJobId?: Id<"jobs">;
