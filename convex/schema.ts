@@ -154,6 +154,8 @@ export default defineSchema({
     plannedCleanerPayCents: v.optional(v.number()),
     // Cleaner payment pointer
     cleanerPaymentId: v.optional(v.id("cleanerPayments")),
+    // Optional manager assignment (single manager per job)
+    assignedManagerId: v.optional(v.id("users")),
     // Property snapshot for shared jobs (Owner2 sees property info without owning the record)
     propertySnapshot: v.optional(v.object({
       name: v.optional(v.string()),

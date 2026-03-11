@@ -85,11 +85,14 @@ const managerSections: NavSection[] = [
     titleKey: "nav.dashboard",
     items: [
       { href: "/", labelKey: "nav.overview", icon: LayoutDashboard },
+      { href: "/jobs", labelKey: "nav.jobs", icon: ClipboardCheck },
+      { href: "/calendar", labelKey: "nav.calendar", icon: Calendar },
     ],
   },
   {
     titleKey: "nav.hub",
     items: [
+      { href: "/affiliate", labelKey: "nav.affiliate", icon: Share2 },
       { href: "/notifications", labelKey: "nav.notifications", icon: Bell },
     ],
   },

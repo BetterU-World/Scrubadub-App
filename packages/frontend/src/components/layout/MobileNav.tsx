@@ -24,6 +24,8 @@ const ownerMobileNav = [
 
 const managerMobileNav = [
   { href: "/", label: "Home", icon: LayoutDashboard },
+  { href: "/jobs", label: "Jobs", icon: ClipboardCheck },
+  { href: "/calendar", label: "Calendar", icon: Calendar },
   { href: "/notifications", label: "Alerts", icon: Bell },
 ];
 

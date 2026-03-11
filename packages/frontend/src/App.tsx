@@ -58,6 +58,8 @@ import { WorkerPaymentsPage } from "@/pages/worker/WorkerPaymentsPage";
 
 // Manager pages
 import { ManagerHomePage } from "@/pages/manager/ManagerHomePage";
+import { ManagerJobListPage } from "@/pages/manager/ManagerJobListPage";
+import { ManagerJobDetailPage } from "@/pages/manager/ManagerJobDetailPage";
 
 // Admin pages
 import { SuperAdminPage } from "@/pages/admin/SuperAdminPage";
@@ -304,8 +306,10 @@ export default function App() {
           ) : isManager ? (
             accessOk ? (
               <>
-                {/* Manager: minimal placeholder shell — no cleaner/worker pages */}
                 <Route path="/" component={ManagerHomePage} />
+                <Route path="/jobs/:id" component={ManagerJobDetailPage} />
+                <Route path="/jobs" component={ManagerJobListPage} />
+                <Route path="/calendar" component={CalendarPage} />
               </>
             ) : (
               <Route>

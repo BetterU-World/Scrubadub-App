@@ -1,6 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { assertCompanyAccess, getSessionUser } from "../lib/auth";
+import { assertCompanyAccess, getSessionUser, hasManagerPermission } from "../lib/auth";
 import { withPerfLog } from "../lib/perfLog";
 
 export const list = query({
@@ -180,6 +180,60 @@ export const getForCleaner = query({
   },
 });
 
+export const getForManager = query({
+  args: {
+    companyId: v.id("companies"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    return await withPerfLog(ctx, "jobs:getForManager", async () => {
+      const user = await assertCompanyAccess(ctx, args.userId, args.companyId);
+      if (user.role !== "manager") throw new Error("Manager access required");
+
+      const allJobs = await ctx.db
+        .query("jobs")
+        .withIndex("by_companyId_scheduledDate", (q) =>
+          q.eq("companyId", args.companyId)
+        )
+        .collect();
+
+      // Manager visibility: all jobs if canSeeAllJobs, otherwise only assigned
+      const canSeeAll = hasManagerPermission(user, "canSeeAllJobs");
+      const visibleJobs = canSeeAll
+        ? allJobs.filter((j) => j.status !== "cancelled")
+        : allJobs.filter(
+            (j) => j.assignedManagerId === user._id && j.status !== "cancelled"
+          );
+
+      // Sort soonest first
+      visibleJobs.sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate));
+
+      return Promise.all(
+        visibleJobs.map(async (job) => {
+          const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
+          const cleaners = await Promise.all(
+            job.cleanerIds.map(async (id) => {
+              const u = await ctx.db.get(id);
+              return u ? { _id: u._id, name: u.name } : null;
+            })
+          );
+          const form = await ctx.db
+            .query("forms")
+            .withIndex("by_jobId", (q) => q.eq("jobId", job._id))
+            .first();
+          return {
+            ...job,
+            propertyName: property?.name ?? job.propertySnapshot?.name ?? "Unknown",
+            propertyAddress: property?.address ?? job.propertySnapshot?.address ?? "",
+            cleaners: cleaners.filter(Boolean),
+            formStatus: form ? form.status : null,
+          };
+        })
+      );
+    });
+  },
+});
+
 export const getCalendarJobs = query({
   args: {
     companyId: v.id("companies"),
@@ -189,7 +243,7 @@ export const getCalendarJobs = query({
   },
   handler: async (ctx, args) => {
     return await withPerfLog(ctx, "jobs:getCalendarJobs", async () => {
-      await assertCompanyAccess(ctx, args.userId, args.companyId);
+      const user = await assertCompanyAccess(ctx, args.userId, args.companyId);
 
       const jobs = await ctx.db
         .query("jobs")
@@ -198,20 +252,30 @@ export const getCalendarJobs = query({
         )
         .collect();
 
-      const filtered = jobs.filter(
+      let filtered = jobs.filter(
         (j) =>
           j.scheduledDate >= args.startDate &&
           j.scheduledDate <= args.endDate &&
           j.status !== "cancelled"
       );
 
+      // Manager visibility scoping
+      if (user.role === "manager" && !hasManagerPermission(user, "canSeeAllJobs")) {
+        filtered = filtered.filter((j) => j.assignedManagerId === user._id);
+      }
+
+      // Cleaner visibility scoping (existing behavior)
+      if (user.role === "cleaner") {
+        filtered = filtered.filter((j) => j.cleanerIds.includes(user._id));
+      }
+
       return Promise.all(
         filtered.map(async (job) => {
           const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
           const cleaners = await Promise.all(
             job.cleanerIds.map(async (id) => {
-              const user = await ctx.db.get(id);
-              return user ? { _id: user._id, name: user.name } : null;
+              const u = await ctx.db.get(id);
+              return u ? { _id: u._id, name: u.name } : null;
             })
           );
           return {
