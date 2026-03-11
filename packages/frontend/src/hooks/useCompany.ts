@@ -7,5 +7,6 @@ export function useCompany() {
     companyName: user?.companyName ?? "",
     isOwner: user?.role === "owner",
     isCleaner: user?.role === "cleaner",
+    isManager: user?.role === "manager",
   };
 }

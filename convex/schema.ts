@@ -35,7 +35,14 @@ export default defineSchema({
     passwordHash: v.string(),
     name: v.string(),
     companyId: v.id("companies"),
-    role: v.union(v.literal("owner"), v.literal("cleaner"), v.literal("maintenance")),
+    role: v.union(v.literal("owner"), v.literal("cleaner"), v.literal("maintenance"), v.literal("manager")),
+    // Manager permission flags (only meaningful when role === "manager")
+    canSeeAllJobs: v.optional(v.boolean()),
+    canCreateJobs: v.optional(v.boolean()),
+    canAssignCleaners: v.optional(v.boolean()),
+    canRequestRework: v.optional(v.boolean()),
+    canApproveForms: v.optional(v.boolean()),
+    canManageSchedule: v.optional(v.boolean()),
     status: v.union(
       v.literal("active"),
       v.literal("inactive"),

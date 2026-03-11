@@ -12,7 +12,7 @@ export const getVisibleManuals = query({
     const visible = allManuals.filter((m) => {
       if (m.roleVisibility === "both") return true;
       if (user.role === "owner") return m.roleVisibility === "owner" || m.roleVisibility === "cleaner";
-      // cleaner + maintenance see cleaner-visible manuals
+      // cleaner + maintenance + manager see cleaner-visible manuals (not owner manuals)
       return m.roleVisibility === "cleaner";
     });
 
@@ -34,7 +34,7 @@ export const validateManualAccess = internalQuery({
       manual.roleVisibility === "both" ||
       user.role === "owner" ||
       (manual.roleVisibility === "cleaner" &&
-        (user.role === "cleaner" || user.role === "maintenance"));
+        (user.role === "cleaner" || user.role === "maintenance" || user.role === "manager"));
 
     if (!canAccess) throw new Error("Access denied");
     return manual;

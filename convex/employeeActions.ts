@@ -15,7 +15,14 @@ export const inviteCleaner = action({
     email: v.string(),
     name: v.string(),
     userId: v.id("users"),
-    role: v.optional(v.union(v.literal("cleaner"), v.literal("maintenance"))),
+    role: v.optional(v.union(v.literal("cleaner"), v.literal("maintenance"), v.literal("manager"))),
+    // Manager permission flags (only used when role === "manager")
+    canSeeAllJobs: v.optional(v.boolean()),
+    canCreateJobs: v.optional(v.boolean()),
+    canAssignCleaners: v.optional(v.boolean()),
+    canRequestRework: v.optional(v.boolean()),
+    canApproveForms: v.optional(v.boolean()),
+    canManageSchedule: v.optional(v.boolean()),
   },
   handler: async (ctx, args): Promise<{ token: string; userId: Id<"users">; emailSent: boolean }> => {
     // Verify the caller is an active owner of the target company
@@ -44,18 +51,29 @@ export const inviteCleaner = action({
 
     const token = generateSecureToken();
 
+    const createArgs: Record<string, unknown> = {
+      email,
+      passwordHash: "",
+      name: args.name,
+      companyId: args.companyId,
+      role,
+      status: "pending",
+      inviteToken: token,
+      inviteTokenExpiry: Date.now() + INVITE_TOKEN_EXPIRY_MS,
+    };
+    // Pass manager permission flags when creating a manager
+    if (role === "manager") {
+      createArgs.canSeeAllJobs = args.canSeeAllJobs ?? false;
+      createArgs.canCreateJobs = args.canCreateJobs ?? false;
+      createArgs.canAssignCleaners = args.canAssignCleaners ?? false;
+      createArgs.canRequestRework = args.canRequestRework ?? false;
+      createArgs.canApproveForms = args.canApproveForms ?? false;
+      createArgs.canManageSchedule = args.canManageSchedule ?? false;
+    }
+
     const newUserId: Id<"users"> = await ctx.runMutation(
       internal.authInternal.createUser,
-      {
-        email,
-        passwordHash: "",
-        name: args.name,
-        companyId: args.companyId,
-        role,
-        status: "pending",
-        inviteToken: token,
-        inviteTokenExpiry: Date.now() + INVITE_TOKEN_EXPIRY_MS,
-      }
+      createArgs as any
     );
 
     await ctx.runMutation(internal.authInternal.logAuditEntry, {

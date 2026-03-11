@@ -38,6 +38,13 @@ export const getCurrentUser = query({
       referralCode: user.referralCode,
       referredByCode: user.referredByCode,
       isSuperadmin: isFounderEmail(user.email),
+      // Manager permission flags (only meaningful when role === "manager")
+      canSeeAllJobs: user.canSeeAllJobs,
+      canCreateJobs: user.canCreateJobs,
+      canAssignCleaners: user.canAssignCleaners,
+      canRequestRework: user.canRequestRework,
+      canApproveForms: user.canApproveForms,
+      canManageSchedule: user.canManageSchedule,
     };
   },
 });

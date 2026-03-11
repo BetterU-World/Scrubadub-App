@@ -84,7 +84,7 @@ export const createUser = internalMutation({
     passwordHash: v.string(),
     name: v.string(),
     companyId: v.id("companies"),
-    role: v.union(v.literal("owner"), v.literal("cleaner"), v.literal("maintenance")),
+    role: v.union(v.literal("owner"), v.literal("cleaner"), v.literal("maintenance"), v.literal("manager")),
     status: v.union(
       v.literal("active"),
       v.literal("inactive"),
@@ -92,6 +92,13 @@ export const createUser = internalMutation({
     ),
     inviteToken: v.optional(v.string()),
     inviteTokenExpiry: v.optional(v.float64()),
+    // Manager permission flags
+    canSeeAllJobs: v.optional(v.boolean()),
+    canCreateJobs: v.optional(v.boolean()),
+    canAssignCleaners: v.optional(v.boolean()),
+    canRequestRework: v.optional(v.boolean()),
+    canApproveForms: v.optional(v.boolean()),
+    canManageSchedule: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("users", args);

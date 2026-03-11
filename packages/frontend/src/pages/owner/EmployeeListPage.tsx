@@ -37,12 +37,33 @@ export function EmployeeListPage() {
   }, []);
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState<"cleaner" | "maintenance">("cleaner");
+  const [inviteRole, setInviteRole] = useState<"cleaner" | "maintenance" | "manager">("cleaner");
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteLink, setInviteLink] = useState("");
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState<string | null>(null);
+  // Manager permission flags for invite
+  const [mgrPerms, setMgrPerms] = useState({
+    canSeeAllJobs: false,
+    canCreateJobs: false,
+    canAssignCleaners: false,
+    canRequestRework: false,
+    canApproveForms: false,
+    canManageSchedule: false,
+  });
+  // Manager permissions dialog
+  const [editPermsFor, setEditPermsFor] = useState<string | null>(null);
+  const [editPerms, setEditPerms] = useState({
+    canSeeAllJobs: false,
+    canCreateJobs: false,
+    canAssignCleaners: false,
+    canRequestRework: false,
+    canApproveForms: false,
+    canManageSchedule: false,
+  });
+  const [editPermsLoading, setEditPermsLoading] = useState(false);
+  const updateManagerPermissions = useMutation(api.mutations.employees.updateManagerPermissions);
 
   if (!user || employees === undefined) return <PageLoader />;
 
@@ -51,13 +72,17 @@ export function EmployeeListPage() {
     setError("");
     setInviteLoading(true);
     try {
-      const result = await inviteCleaner({
+      const inviteArgs: Record<string, unknown> = {
         companyId: user.companyId,
         email: inviteEmail,
         name: inviteName,
         userId: user._id,
         role: inviteRole,
-      });
+      };
+      if (inviteRole === "manager") {
+        Object.assign(inviteArgs, mgrPerms);
+      }
+      const result = await inviteCleaner(inviteArgs as any);
       setInviteLink(`${window.location.origin}/invite/${result.token}`);
       setToast(t("employees.inviteSent"));
       setTimeout(() => setToast(null), 3000);
@@ -81,6 +106,10 @@ export function EmployeeListPage() {
     setInviteRole("cleaner");
     setInviteLink("");
     setError("");
+    setMgrPerms({
+      canSeeAllJobs: false, canCreateJobs: false, canAssignCleaners: false,
+      canRequestRework: false, canApproveForms: false, canManageSchedule: false,
+    });
   };
 
   return (
@@ -123,7 +152,25 @@ export function EmployeeListPage() {
                   <td className="py-3 px-4 text-sm text-gray-500">{emp.email}</td>
                   <td className="py-3 px-4 text-sm text-gray-500 capitalize">{emp.role}</td>
                   <td className="py-3 px-4"><StatusBadge status={emp.status} /></td>
-                  <td className="py-3 px-4 text-right">
+                  <td className="py-3 px-4 text-right space-x-2">
+                    {emp.role === "manager" && emp.status === "active" && (
+                      <button
+                        onClick={() => {
+                          setEditPermsFor(emp._id);
+                          setEditPerms({
+                            canSeeAllJobs: !!(emp as any).canSeeAllJobs,
+                            canCreateJobs: !!(emp as any).canCreateJobs,
+                            canAssignCleaners: !!(emp as any).canAssignCleaners,
+                            canRequestRework: !!(emp as any).canRequestRework,
+                            canApproveForms: !!(emp as any).canApproveForms,
+                            canManageSchedule: !!(emp as any).canManageSchedule,
+                          });
+                        }}
+                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        Permissions
+                      </button>
+                    )}
                     {emp.role !== "owner" && emp.status !== "pending" && (
                       <button
                         onClick={() => updateStatus({
@@ -188,8 +235,32 @@ export function EmployeeListPage() {
                   <select className="input-field" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as any)}>
                     <option value="cleaner">{t("employees.roleCleaner")}</option>
                     <option value="maintenance">{t("employees.roleMaintenance")}</option>
+                    <option value="manager">Manager</option>
                   </select>
                 </div>
+                {inviteRole === "manager" && (
+                  <div className="p-3 bg-gray-50 rounded-lg space-y-2">
+                    <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Manager Permissions</p>
+                    {([
+                      ["canSeeAllJobs", "Can see all jobs"],
+                      ["canCreateJobs", "Can create jobs"],
+                      ["canAssignCleaners", "Can assign cleaners"],
+                      ["canRequestRework", "Can request rework"],
+                      ["canApproveForms", "Can approve forms"],
+                      ["canManageSchedule", "Can manage schedule"],
+                    ] as const).map(([key, label]) => (
+                      <label key={key} className="flex items-center gap-2 text-sm text-gray-700">
+                        <input
+                          type="checkbox"
+                          checked={mgrPerms[key]}
+                          onChange={(e) => setMgrPerms((p) => ({ ...p, [key]: e.target.checked }))}
+                          className="rounded border-gray-300"
+                        />
+                        {label}
+                      </label>
+                    ))}
+                  </div>
+                )}
                 <button
                   onClick={handleInvite}
                   disabled={!inviteName || !inviteEmail || inviteLoading}
@@ -200,6 +271,66 @@ export function EmployeeListPage() {
                 </button>
               </div>
             )}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      {/* Manager Permissions Dialog */}
+      <Dialog.Root open={!!editPermsFor} onOpenChange={(open) => { if (!open) setEditPermsFor(null); }}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/40 z-50" />
+          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-lg p-6 w-full max-w-md z-50">
+            <div className="flex items-center justify-between mb-4">
+              <Dialog.Title className="text-lg font-semibold">Manager Permissions</Dialog.Title>
+              <Dialog.Close className="p-1 text-gray-400 hover:text-gray-600 rounded">
+                <X className="w-5 h-5" />
+              </Dialog.Close>
+            </div>
+            <div className="space-y-3">
+              {([
+                ["canSeeAllJobs", "Can see all jobs"],
+                ["canCreateJobs", "Can create jobs"],
+                ["canAssignCleaners", "Can assign cleaners"],
+                ["canRequestRework", "Can request rework"],
+                ["canApproveForms", "Can approve forms"],
+                ["canManageSchedule", "Can manage schedule"],
+              ] as const).map(([key, label]) => (
+                <label key={key} className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={editPerms[key]}
+                    onChange={(e) => setEditPerms((p) => ({ ...p, [key]: e.target.checked }))}
+                    className="rounded border-gray-300"
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+            <button
+              onClick={async () => {
+                if (!editPermsFor) return;
+                setEditPermsLoading(true);
+                try {
+                  await updateManagerPermissions({
+                    employeeId: editPermsFor as any,
+                    userId: user._id,
+                    ...editPerms,
+                  });
+                  setEditPermsFor(null);
+                  setToast("Permissions updated");
+                  setTimeout(() => setToast(null), 3000);
+                } catch (err: any) {
+                  setError(err.message || "Failed to update permissions");
+                } finally {
+                  setEditPermsLoading(false);
+                }
+              }}
+              disabled={editPermsLoading}
+              className="btn-primary w-full mt-4 flex items-center justify-center gap-2"
+            >
+              {editPermsLoading && <LoadingSpinner size="sm" />}
+              Save Permissions
+            </button>
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>

@@ -10,7 +10,7 @@ interface AuthUser {
   _id: Id<"users">;
   email: string;
   name: string;
-  role: "owner" | "cleaner" | "maintenance";
+  role: "owner" | "cleaner" | "maintenance" | "manager";
   companyId: Id<"companies">;
   companyName: string;
   status: string;
@@ -18,6 +18,13 @@ interface AuthUser {
   referralCode?: string;
   referredByCode?: string;
   isSuperadmin?: boolean;
+  // Manager permission flags
+  canSeeAllJobs?: boolean;
+  canCreateJobs?: boolean;
+  canAssignCleaners?: boolean;
+  canRequestRework?: boolean;
+  canApproveForms?: boolean;
+  canManageSchedule?: boolean;
 }
 
 function getStoredUserId(): Id<"users"> | null {

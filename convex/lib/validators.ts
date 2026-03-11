@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 
-export const roleValidator = v.union(v.literal("owner"), v.literal("cleaner"));
+export const roleValidator = v.union(v.literal("owner"), v.literal("cleaner"), v.literal("maintenance"), v.literal("manager"));
 
 export const userStatusValidator = v.union(
   v.literal("active"),
