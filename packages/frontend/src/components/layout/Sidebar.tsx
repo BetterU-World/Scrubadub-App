@@ -80,6 +80,27 @@ const ownerSections: NavSection[] = [
   },
 ];
 
+const managerSections: NavSection[] = [
+  {
+    titleKey: "nav.dashboard",
+    items: [
+      { href: "/", labelKey: "nav.overview", icon: LayoutDashboard },
+    ],
+  },
+  {
+    titleKey: "nav.hub",
+    items: [
+      { href: "/notifications", labelKey: "nav.notifications", icon: Bell },
+    ],
+  },
+  {
+    titleKey: "nav.company",
+    items: [
+      { href: "/manuals", labelKey: "nav.manuals", icon: BookOpen },
+    ],
+  },
+];
+
 const workerSections: NavSection[] = [
   {
     titleKey: "nav.dashboard",
@@ -188,7 +209,11 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
     user?._id ? { userId: user._id } : "skip"
   );
 
-  const sections = user?.role === "owner" ? ownerSections : workerSections;
+  const sections = user?.role === "owner"
+    ? ownerSections
+    : user?.role === "manager"
+      ? managerSections
+      : workerSections;
 
   const toggleSection = (titleKey: string) => {
     setOpenSections((prev) => ({ ...prev, [titleKey]: !prev[titleKey] }));

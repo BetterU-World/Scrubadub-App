@@ -22,6 +22,11 @@ const ownerMobileNav = [
   { href: "/notifications", label: "Alerts", icon: Bell },
 ];
 
+const managerMobileNav = [
+  { href: "/", label: "Home", icon: LayoutDashboard },
+  { href: "/notifications", label: "Alerts", icon: Bell },
+];
+
 const workerMobileNav = [
   { href: "/", label: "Jobs", icon: ClipboardCheck },
   { href: "/calendar", label: "Calendar", icon: Calendar },
@@ -33,7 +38,11 @@ export function MobileNav() {
   const [location] = useLocation();
   const { user } = useAuth();
 
-  const nav = user?.role === "owner" ? ownerMobileNav : workerMobileNav;
+  const nav = user?.role === "owner"
+    ? ownerMobileNav
+    : user?.role === "manager"
+      ? managerMobileNav
+      : workerMobileNav;
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">

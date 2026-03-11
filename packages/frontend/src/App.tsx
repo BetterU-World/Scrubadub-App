@@ -56,6 +56,9 @@ import { AvailabilityPage } from "@/pages/worker/AvailabilityPage";
 import { CleanerSettingsPage } from "@/pages/worker/CleanerSettingsPage";
 import { WorkerPaymentsPage } from "@/pages/worker/WorkerPaymentsPage";
 
+// Manager pages
+import { ManagerHomePage } from "@/pages/manager/ManagerHomePage";
+
 // Admin pages
 import { SuperAdminPage } from "@/pages/admin/SuperAdminPage";
 
@@ -126,6 +129,8 @@ export default function App() {
   const subSettled = devBypass || (subscription != null) || !user?.companyId;
 
   const isOwner = user?.role === "owner";
+  const isManager = user?.role === "manager";
+  const isWorker = user?.role === "cleaner" || user?.role === "maintenance";
   const companyBypassed = subscription?.companyBypassed === true;
   const isSubActive =
     companyBypassed ||
@@ -296,17 +301,35 @@ export default function App() {
                 </Route>
               </>
             )
-          ) : accessOk ? (
-            <>
-              <Route path="/" component={WorkerJobListPage} />
-              <Route path="/jobs/:id" component={WorkerJobDetailPage} />
-              <Route path="/jobs/:id/form" component={WorkerJobFormPage} />
-              <Route path="/calendar" component={CalendarPage} />
-              <Route path="/availability" component={AvailabilityPage} />
-              <Route path="/payments" component={WorkerPaymentsPage} />
-              <Route path="/settings" component={CleanerSettingsPage} />
-            </>
+          ) : isManager ? (
+            accessOk ? (
+              <>
+                {/* Manager: minimal placeholder shell — no cleaner/worker pages */}
+                <Route path="/" component={ManagerHomePage} />
+              </>
+            ) : (
+              <Route>
+                <SubscriptionInactive />
+              </Route>
+            )
+          ) : isWorker ? (
+            accessOk ? (
+              <>
+                <Route path="/" component={WorkerJobListPage} />
+                <Route path="/jobs/:id" component={WorkerJobDetailPage} />
+                <Route path="/jobs/:id/form" component={WorkerJobFormPage} />
+                <Route path="/calendar" component={CalendarPage} />
+                <Route path="/availability" component={AvailabilityPage} />
+                <Route path="/payments" component={WorkerPaymentsPage} />
+                <Route path="/settings" component={CleanerSettingsPage} />
+              </>
+            ) : (
+              <Route>
+                <SubscriptionInactive />
+              </Route>
+            )
           ) : (
+            /* Unknown role fallback — safe deny */
             <Route>
               <SubscriptionInactive />
             </Route>
