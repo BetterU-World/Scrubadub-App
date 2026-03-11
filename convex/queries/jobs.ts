@@ -105,6 +105,11 @@ export const get = query({
     if (!job) return null;
     if (job.companyId !== user.companyId) throw new Error("Access denied");
 
+    // Manager visibility guard: without canSeeAllJobs, must be assigned
+    if (user.role === "manager" && !hasManagerPermission(user, "canSeeAllJobs")) {
+      if (job.assignedManagerId !== user._id) return null;
+    }
+
     const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
     const cleaners = await Promise.all(
       job.cleanerIds.map(async (id) => {
