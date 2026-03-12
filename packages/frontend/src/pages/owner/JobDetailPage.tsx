@@ -354,12 +354,14 @@ export function JobDetailPage() {
                 <span className="text-sm text-blue-700">
                   {t("inspection.latestScore")}: <span className="font-bold">{inspectionSummary.latestScore}/10</span>
                 </span>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
                   inspectionSummary.latestSeverity === "critical" ? "bg-red-100 text-red-700" :
                   inspectionSummary.latestSeverity === "high" ? "bg-orange-100 text-orange-700" :
                   inspectionSummary.latestSeverity === "medium" ? "bg-yellow-100 text-yellow-700" :
-                  "bg-green-100 text-green-700"
+                  inspectionSummary.latestSeverity === "low" ? "bg-blue-100 text-blue-700" :
+                  "bg-gray-100 text-gray-600"
                 }`}>
+                  <Flag className="w-3 h-3" />
                   {t(`severity.${inspectionSummary.latestSeverity}`)}
                 </span>
                 <span className="text-xs text-gray-500">
@@ -373,12 +375,14 @@ export function JobDetailPage() {
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-gray-900">{ins.managerName}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
                         ins.severity === "critical" ? "bg-red-100 text-red-700" :
                         ins.severity === "high" ? "bg-orange-100 text-orange-700" :
                         ins.severity === "medium" ? "bg-yellow-100 text-yellow-700" :
-                        "bg-green-100 text-green-700"
+                        ins.severity === "low" ? "bg-blue-100 text-blue-700" :
+                        "bg-gray-100 text-gray-600"
                       }`}>
+                        <Flag className="w-3 h-3" />
                         {t(`severity.${ins.severity}`)}
                       </span>
                     </div>

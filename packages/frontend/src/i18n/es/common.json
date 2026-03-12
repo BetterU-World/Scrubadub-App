@@ -960,6 +960,7 @@
     "done": "Listo"
   },
   "severity": {
+    "none": "Ninguno",
     "low": "Bajo",
     "medium": "Medio",
     "high": "Alto",
@@ -969,7 +970,9 @@
     "submitHouseCheck": "Enviar Inspección",
     "houseCheck": "Inspección de Casa",
     "readinessScore": "Puntuación de Preparación (1-10)",
-    "severity": "Severidad",
+    "redFlags": "Alertas",
+    "redFlagsHelper": "Seleccione el nivel más alto de preocupación encontrado durante la inspección. Seleccione Ninguno si la unidad está lista.",
+    "cleanerRedFlags": "Alertas del Limpiador",
     "notes": "Notas Generales",
     "notesPlaceholder": "Condición general, observaciones...",
     "issues": "Problemas Encontrados",

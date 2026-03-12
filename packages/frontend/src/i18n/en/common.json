@@ -960,6 +960,7 @@
     "done": "Done"
   },
   "severity": {
+    "none": "None",
     "low": "Low",
     "medium": "Medium",
     "high": "High",
@@ -969,7 +970,9 @@
     "submitHouseCheck": "Submit House Check",
     "houseCheck": "House Check",
     "readinessScore": "Readiness Score (1-10)",
-    "severity": "Severity",
+    "redFlags": "Red Flags",
+    "redFlagsHelper": "Choose the highest level of concern found during inspection. Select None if the unit is guest-ready.",
+    "cleanerRedFlags": "Cleaner Red Flags",
     "notes": "Overall Notes",
     "notesPlaceholder": "Overall condition, observations...",
     "issues": "Issues Found",

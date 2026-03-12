@@ -684,6 +684,7 @@ export default defineSchema({
     readinessScore: v.number(), // 1-10
     notes: v.optional(v.string()),
     severity: v.union(
+      v.literal("none"),
       v.literal("low"),
       v.literal("medium"),
       v.literal("high"),

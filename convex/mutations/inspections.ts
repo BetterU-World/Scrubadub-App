@@ -9,6 +9,7 @@ export const submit = mutation({
     jobId: v.id("jobs"),
     readinessScore: v.number(),
     severity: v.union(
+      v.literal("none"),
       v.literal("low"),
       v.literal("medium"),
       v.literal("high"),
@@ -56,7 +57,7 @@ export const submit = mutation({
       action: "inspection_submitted",
       entityType: "managerInspection",
       entityId: inspectionId,
-      details: `Score: ${args.readinessScore}/10, Severity: ${args.severity}`,
+      details: `Score: ${args.readinessScore}/10, Red Flags: ${args.severity}`,
     });
 
     // Notify all owners in the company
@@ -75,7 +76,7 @@ export const submit = mutation({
         userId: owner._id,
         type: "inspection_submitted",
         title: "Inspection Submitted",
-        message: `${user.name} submitted a house check (score: ${args.readinessScore}/10, severity: ${args.severity})`,
+        message: `${user.name} submitted a house check (score: ${args.readinessScore}/10, red flags: ${args.severity})`,
         relatedJobId: args.jobId,
       });
     }

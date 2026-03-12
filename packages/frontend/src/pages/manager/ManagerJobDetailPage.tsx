@@ -23,6 +23,7 @@ import {
   X,
   AlertTriangle,
   Star,
+  Flag,
 } from "lucide-react";
 
 export function ManagerJobDetailPage() {
@@ -53,7 +54,7 @@ export function ManagerJobDetailPage() {
   // Inspection form state
   const [showForm, setShowForm] = useState(false);
   const [score, setScore] = useState(7);
-  const [severity, setSeverity] = useState<"low" | "medium" | "high" | "critical">("low");
+  const [severity, setSeverity] = useState<"none" | "low" | "medium" | "high" | "critical">("none");
   const [notes, setNotes] = useState("");
   const [issues, setIssues] = useState("");
   const [photoIds, setPhotoIds] = useState<Id<"_storage">[]>([]);
@@ -111,7 +112,7 @@ export function ManagerJobDetailPage() {
       });
       setShowForm(false);
       setScore(7);
-      setSeverity("low");
+      setSeverity("none");
       setNotes("");
       setIssues("");
       setPhotoIds([]);
@@ -130,6 +131,8 @@ export function ManagerJobDetailPage() {
       case "critical": return "bg-red-100 text-red-700";
       case "high": return "bg-orange-100 text-orange-700";
       case "medium": return "bg-yellow-100 text-yellow-700";
+      case "low": return "bg-blue-100 text-blue-700";
+      case "none": return "bg-gray-100 text-gray-600";
       default: return "bg-green-100 text-green-700";
     }
   };
@@ -167,6 +170,9 @@ export function ManagerJobDetailPage() {
               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${severityColor(inspectionSummary.latestSeverity)}`}>
                 <ClipboardCheck className="w-3 h-3" />
                 {t("inspection.inspected")} {inspectionSummary.latestScore}/10
+                {inspectionSummary.latestSeverity !== "none" && (
+                  <Flag className="w-3 h-3" />
+                )}
               </span>
             )}
           </div>
@@ -337,13 +343,16 @@ export function ManagerJobDetailPage() {
                 </div>
               </div>
 
-              {/* Severity */}
+              {/* Red Flags */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {t("inspection.severity")}
+                  {t("inspection.redFlags")}
                 </label>
+                <p className="text-xs text-gray-500 mb-2">
+                  {t("inspection.redFlagsHelper")}
+                </p>
                 <div className="flex gap-2 flex-wrap">
-                  {(["low", "medium", "high", "critical"] as const).map((s) => (
+                  {(["none", "low", "medium", "high", "critical"] as const).map((s) => (
                     <button
                       key={s}
                       onClick={() => setSeverity(s)}
@@ -435,6 +444,29 @@ export function ManagerJobDetailPage() {
           </div>
         )}
 
+        {/* ── Cleaner Red Flags ──────────────────────────────── */}
+        {job.redFlags && job.redFlags.length > 0 && (
+          <div className="card border-red-200">
+            <h3 className="text-sm font-semibold text-red-700 mb-3 flex items-center gap-2">
+              <Flag className="w-4 h-4" /> {t("inspection.cleanerRedFlags")} ({job.redFlags.length})
+            </h3>
+            <div className="space-y-2">
+              {job.redFlags.map((flag: any) => (
+                <div key={flag._id} className="p-2.5 rounded-lg bg-red-50 border border-red-100">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${severityColor(flag.severity)}`}>
+                      {t(`severity.${flag.severity}`)}
+                    </span>
+                    <span className="text-xs font-medium capitalize text-gray-600">{flag.category}</span>
+                    <StatusBadge status={flag.status} className="text-[10px]" />
+                  </div>
+                  <p className="text-sm text-gray-700">{flag.note}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* ── Inspection History ──────────────────────────────── */}
         {inspections && inspections.length > 0 && (
           <div className="card">
@@ -452,7 +484,8 @@ export function ManagerJobDetailPage() {
                       <span className="text-sm font-medium text-gray-900">
                         {ins.managerName}
                       </span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${severityColor(ins.severity)}`}>
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${severityColor(ins.severity)}`}>
+                        <Flag className="w-3 h-3" />
                         {t(`severity.${ins.severity}`)}
                       </span>
                     </div>
