@@ -66,13 +66,6 @@ export function ManagerJobDetailPage() {
   const [resolveNote, setResolveNote] = useState("");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
-  // Manager-created red flag form state
-  const [showFlagForm, setShowFlagForm] = useState(false);
-  const [flagCategory, setFlagCategory] = useState<"damage" | "safety" | "cleanliness" | "maintenance" | "other">("cleanliness");
-  const [flagSeverity, setFlagSeverity] = useState<"low" | "medium" | "high" | "critical">("medium");
-  const [flagNote, setFlagNote] = useState("");
-  const [flagSubmitting, setFlagSubmitting] = useState(false);
-  const createRedFlag = useMutation(api.mutations.redFlags.create);
 
   if (job === undefined) return <PageLoader />;
   if (job === null)
@@ -458,113 +451,6 @@ export function ManagerJobDetailPage() {
                 >
                   <ClipboardCheck className="w-4 h-4" />
                   {submitting ? t("common.saving") : t("inspection.submit")}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── Report Red Flag ──────────────────────────────── */}
-        {!showFlagForm ? (
-          <button
-            onClick={() => setShowFlagForm(true)}
-            className="btn-secondary w-full flex items-center justify-center gap-2 text-red-600 border-red-200 hover:bg-red-50"
-          >
-            <Flag className="w-4 h-4" /> {t("inspection.reportRedFlag")}
-          </button>
-        ) : (
-          <div className="card border-red-200">
-            <h3 className="font-semibold text-red-700 flex items-center gap-2 mb-4">
-              <Flag className="w-5 h-5" /> {t("inspection.reportRedFlag")}
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t("redFlags.category")}</label>
-                <div className="flex gap-2 flex-wrap">
-                  {(["cleanliness", "damage", "safety", "maintenance", "other"] as const).map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setFlagCategory(c)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors capitalize ${
-                        flagCategory === c
-                          ? "bg-red-100 text-red-700 border-red-300"
-                          : "bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100"
-                      }`}
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t("redFlags.severityLabel")}</label>
-                <div className="flex gap-2 flex-wrap">
-                  {(["low", "medium", "high", "critical"] as const).map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => setFlagSeverity(s)}
-                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                        flagSeverity === s
-                          ? severityColor(s) + " border-current"
-                          : "bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100"
-                      }`}
-                    >
-                      {t(`severity.${s}`)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{t("redFlags.noteLabel")}</label>
-                <textarea
-                  className="input-field"
-                  rows={2}
-                  placeholder={t("redFlags.notePlaceholder")}
-                  value={flagNote}
-                  onChange={(e) => setFlagNote(e.target.value)}
-                />
-              </div>
-              <div className="flex gap-3 pt-1">
-                <button
-                  type="button"
-                  onClick={() => { setShowFlagForm(false); setFlagNote(""); }}
-                  className="btn-secondary flex-1"
-                >
-                  {t("common.cancel")}
-                </button>
-                <button
-                  type="button"
-                  disabled={flagSubmitting || !flagNote.trim()}
-                  onClick={async () => {
-                    if (!user || !job) return;
-                    setFlagSubmitting(true);
-                    try {
-                      await createRedFlag({
-                        userId: user._id,
-                        companyId: user.companyId,
-                        propertyId: job.propertyId ?? (property as any)?._id,
-                        jobId: jobId,
-                        category: flagCategory,
-                        severity: flagSeverity,
-                        note: `[Manager: ${user.name}] ${flagNote.trim()}`,
-                      });
-                      setShowFlagForm(false);
-                      setFlagNote("");
-                      setToast({ message: t("inspection.flagCreated"), type: "success" });
-                      setTimeout(() => setToast(null), 3000);
-                    } catch (err: any) {
-                      setToast({ message: err.message ?? t("common.failed"), type: "error" });
-                      setTimeout(() => setToast(null), 3000);
-                    } finally {
-                      setFlagSubmitting(false);
-                    }
-                  }}
-                  className="btn-primary flex-1 flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700"
-                >
-                  <Flag className="w-4 h-4" />
-                  {flagSubmitting ? t("common.saving") : t("inspection.submitFlag")}
                 </button>
               </div>
             </div>
