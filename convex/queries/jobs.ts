@@ -249,12 +249,22 @@ export const getForManager = query({
             .query("forms")
             .withIndex("by_jobId", (q) => q.eq("jobId", job._id))
             .first();
+          // Derive inspection status (same logic as owner jobs list)
+          const inspections = await ctx.db
+            .query("managerInspections")
+            .withIndex("by_jobId", (q) => q.eq("jobId", job._id))
+            .collect();
+          let inspectionStatus: "none" | "submitted" | "reinspection_requested" = "none";
+          if (inspections.length > 0) {
+            inspectionStatus = job.inspectionCycleOpen === true ? "reinspection_requested" : "submitted";
+          }
           return {
             ...job,
             propertyName: property?.name ?? job.propertySnapshot?.name ?? "Unknown",
             propertyAddress: property?.address ?? job.propertySnapshot?.address ?? "",
             cleaners: cleaners.filter(Boolean),
             formStatus: form ? form.status : null,
+            inspectionStatus,
           };
         })
       );

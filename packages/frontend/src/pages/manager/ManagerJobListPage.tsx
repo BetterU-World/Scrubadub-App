@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Link } from "wouter";
-import { MapPin, Clock, Users, Search } from "lucide-react";
+import { MapPin, Clock, Users, Search, Eye } from "lucide-react";
 import { format } from "date-fns";
 
 type StatusFilter = "all" | "scheduled" | "confirmed" | "in_progress" | "submitted" | "approved";
@@ -139,6 +139,16 @@ export function ManagerJobListPage() {
                 <StatusBadge status={job.status} className="text-[10px]" />
                 {job.acceptanceStatus && job.acceptanceStatus !== "pending" && (
                   <StatusBadge status={job.acceptanceStatus} className="text-[10px]" />
+                )}
+                {(job as any).inspectionStatus === "submitted" && (
+                  <span className="inline-flex items-center gap-0.5 badge bg-blue-100 text-blue-700 text-[10px]">
+                    <Eye className="w-3 h-3" /> Inspection Submitted
+                  </span>
+                )}
+                {(job as any).inspectionStatus === "reinspection_requested" && (
+                  <span className="inline-flex items-center gap-0.5 badge bg-amber-100 text-amber-700 text-[10px]">
+                    <Eye className="w-3 h-3" /> Re-Inspection Requested
+                  </span>
                 )}
               </div>
             </Link>

@@ -401,7 +401,12 @@ export function JobDetailPage() {
                   onClick={async () => {
                     try {
                       await reopenInspection({ jobId: params.id as Id<"jobs">, userId: user!._id });
-                    } catch {}
+                      setToast({ message: t("jobs.reinspectionRequested"), type: "success" });
+                      setTimeout(() => setToast(null), 3000);
+                    } catch (err: any) {
+                      setToast({ message: err.message ?? t("common.failed"), type: "error" });
+                      setTimeout(() => setToast(null), 3000);
+                    }
                   }}
                   className="text-sm bg-blue-600 text-white px-4 py-1.5 rounded-lg hover:bg-blue-700 flex items-center gap-1.5 whitespace-nowrap"
                 >
