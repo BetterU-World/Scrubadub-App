@@ -1,7 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { getSessionUser, hasManagerPermission } from "../lib/auth";
-import { createNotification, logAudit } from "../lib/helpers";
+import { createNotification, logAudit, requireOwner } from "../lib/helpers";
 
 export const submit = mutation({
   args: {
@@ -97,14 +97,27 @@ export const submit = mutation({
 export const reopenInspection = mutation({
   args: {
     jobId: v.id("jobs"),
-    userId: v.optional(v.id("users")),
+    userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const { requireOwner } = await import("../lib/helpers");
     const owner = await requireOwner(ctx, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Access denied");
+
+    // Guard: cycle must be closed (false) — block if already open or never closed
+    if (job.inspectionCycleOpen === true) {
+      throw new Error("Inspection cycle is already open");
+    }
+
+    // Guard: at least one inspection must exist
+    const inspections = await ctx.db
+      .query("managerInspections")
+      .withIndex("by_jobId", (q) => q.eq("jobId", args.jobId))
+      .collect();
+    if (inspections.length === 0) {
+      throw new Error("No inspections exist for this job");
+    }
 
     await ctx.db.patch(args.jobId, { inspectionCycleOpen: true });
 
