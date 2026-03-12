@@ -55,6 +55,22 @@ export const submit = mutation({
       createdAt: now,
     });
 
+    // Materialize a real red flag record when severity is not "none"
+    if (args.severity !== "none") {
+      await ctx.db.insert("redFlags", {
+        companyId: user.companyId,
+        propertyId: job.propertyId,
+        jobId: args.jobId,
+        category: "inspection",
+        severity: args.severity,
+        note: (args.notes && args.notes.trim())
+          ? `Inspection finding: ${args.notes.trim()}`
+          : `Inspection red flag (score ${args.readinessScore}/10)`,
+        status: "open",
+        inspectionId,
+      });
+    }
+
     // Close the inspection cycle so manager can't submit again until owner reopens
     await ctx.db.patch(args.jobId, { inspectionCycleOpen: false });
 

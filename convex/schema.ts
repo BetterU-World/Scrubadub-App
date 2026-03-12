@@ -225,6 +225,7 @@ export default defineSchema({
       v.literal("safety"),
       v.literal("cleanliness"),
       v.literal("maintenance"),
+      v.literal("inspection"),
       v.literal("other")
     ),
     severity: v.union(
@@ -244,6 +245,7 @@ export default defineSchema({
     ),
     ownerNote: v.optional(v.string()),
     maintenanceJobId: v.optional(v.id("jobs")),
+    inspectionId: v.optional(v.id("managerInspections")),
   })
     .index("by_companyId_status", ["companyId", "status"])
     .index("by_jobId", ["jobId"])

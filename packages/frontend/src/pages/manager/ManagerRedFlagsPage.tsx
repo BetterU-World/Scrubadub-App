@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { Flag, CheckCircle, ClipboardCheck } from "lucide-react";
+import { Flag, CheckCircle } from "lucide-react";
 import { Link } from "wouter";
 
 type ActiveAction = {
@@ -27,12 +27,6 @@ export function ManagerRedFlagsPage() {
 
   const flags = useQuery(
     api.queries.redFlags.listForManager,
-    user?.companyId
-      ? { companyId: user.companyId, userId: user._id, status: statusFilter || undefined }
-      : "skip"
-  );
-  const inspectionFlags = useQuery(
-    api.queries.inspections.getInspectionRedFlags,
     user?.companyId
       ? { companyId: user.companyId, userId: user._id, status: statusFilter || undefined }
       : "skip"
@@ -78,58 +72,15 @@ export function ManagerRedFlagsPage() {
         ))}
       </div>
 
-      {/* Inspection-sourced red flags section */}
-      {inspectionFlags && inspectionFlags.length > 0 && (
-        <div className="mb-6">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-            <ClipboardCheck className="w-4 h-4" /> {t("redFlags.inspectionSourced")} ({inspectionFlags.length})
-          </h3>
-          <div className="space-y-3">
-            {inspectionFlags.map((flag: any) => (
-              <div key={flag._id} className="card border-blue-200">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`badge ${
-                      flag.severity === "critical" ? "bg-red-200 text-red-900" :
-                      flag.severity === "high" ? "bg-red-100 text-red-800" :
-                      flag.severity === "medium" ? "bg-orange-100 text-orange-800" :
-                      "bg-yellow-100 text-yellow-800"
-                    } capitalize`}>
-                      {t(`severity.${flag.severity}`, flag.severity)}
-                    </span>
-                    <span className="text-xs font-medium text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
-                      {t("redFlags.sourceInspection")}
-                    </span>
-                    <span className="text-xs text-gray-500">{flag.managerName}</span>
-                    {flag.readinessScore && (
-                      <span className="text-xs font-medium text-blue-700">{flag.readinessScore}/10</span>
-                    )}
-                  </div>
-                  <p className="text-sm text-gray-700">{flag.note}</p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {flag.propertyName} · {flag.jobDate}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {flags.length === 0 && (!inspectionFlags || inspectionFlags.length === 0) ? (
+      {flags.length === 0 ? (
         <EmptyState icon={Flag} title={t("redFlags.noRedFlags")} description={t("redFlags.noMatchFilter")} />
-      ) : flags.length === 0 ? null : (
+      ) : (
         <div className="space-y-3">
-          {inspectionFlags && inspectionFlags.length > 0 && (
-            <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-              <Flag className="w-4 h-4" /> {t("redFlags.cleanerSourced")}
-            </h3>
-          )}
           {flags.map((flag) => {
             const isActive = activeAction?.flagId === flag._id;
 
             return (
-              <div key={flag._id} className="card">
+              <div key={flag._id} className={`card ${flag.category === "inspection" ? "border-blue-200" : ""}`}>
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
@@ -141,7 +92,13 @@ export function ManagerRedFlagsPage() {
                       } capitalize`}>
                         {t(`severity.${flag.severity}`, flag.severity)}
                       </span>
-                      <span className="text-sm font-medium capitalize">{flag.category}</span>
+                      {flag.category === "inspection" ? (
+                        <span className="text-xs font-medium text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                          {t("redFlags.sourceInspection")}
+                        </span>
+                      ) : (
+                        <span className="text-sm font-medium capitalize">{flag.category}</span>
+                      )}
                       <StatusBadge status={flag.status} />
                     </div>
                     <p className="text-sm text-gray-700">{flag.note}</p>
