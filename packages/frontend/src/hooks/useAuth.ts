@@ -25,6 +25,7 @@ interface AuthUser {
   canRequestRework?: boolean;
   canApproveForms?: boolean;
   canManageSchedule?: boolean;
+  canResolveRedFlags?: boolean;
 }
 
 function getStoredUserId(): Id<"users"> | null {

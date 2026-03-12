@@ -45,6 +45,7 @@ export const getCurrentUser = query({
       canRequestRework: user.canRequestRework,
       canApproveForms: user.canApproveForms,
       canManageSchedule: user.canManageSchedule,
+      canResolveRedFlags: user.canResolveRedFlags,
     };
   },
 });

@@ -706,7 +706,11 @@
     "markInProgress": "In Progress",
     "markedInProgress": "Marked as In Progress",
     "wontFix": "Won't Fix",
-    "markedWontFix": "Marked as Won't Fix"
+    "markedWontFix": "Marked as Won't Fix",
+    "category": "Category",
+    "severityLabel": "Severity",
+    "noteLabel": "Description",
+    "notePlaceholder": "Describe the issue found..."
   },
   "analytics": {
     "title": "Analytics",
@@ -1020,6 +1024,9 @@
     "requestReinspection": "Request Re-Inspection",
     "resolveFlag": "Resolve",
     "resolveNotePlaceholder": "Resolution note (optional)...",
-    "flagResolved": "Red flag resolved"
+    "flagResolved": "Red flag resolved",
+    "reportRedFlag": "Report Red Flag",
+    "flagCreated": "Red flag reported",
+    "submitFlag": "Submit Red Flag"
   }
 }

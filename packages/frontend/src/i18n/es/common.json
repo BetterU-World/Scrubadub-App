@@ -706,7 +706,11 @@
     "markInProgress": "En Progreso",
     "markedInProgress": "Marcado como En Progreso",
     "wontFix": "No Se Corregirá",
-    "markedWontFix": "Marcado como No Se Corregirá"
+    "markedWontFix": "Marcado como No Se Corregirá",
+    "category": "Categoría",
+    "severityLabel": "Gravedad",
+    "noteLabel": "Descripción",
+    "notePlaceholder": "Describe el problema encontrado..."
   },
   "analytics": {
     "title": "Analíticas",
@@ -1020,6 +1024,9 @@
     "requestReinspection": "Solicitar Re-Inspección",
     "resolveFlag": "Resolver",
     "resolveNotePlaceholder": "Nota de resolución (opcional)...",
-    "flagResolved": "Alerta resuelta"
+    "flagResolved": "Alerta resuelta",
+    "reportRedFlag": "Reportar Alerta",
+    "flagCreated": "Alerta reportada",
+    "submitFlag": "Enviar Alerta"
   }
 }
