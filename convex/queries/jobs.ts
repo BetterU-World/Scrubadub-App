@@ -84,12 +84,29 @@ export const list = query({
               (s) => s.fromCompanyId === args.companyId && s.status === "rejected"
             );
           }
+          // Derive inspection status for badges
+          const inspections = await ctx.db
+            .query("managerInspections")
+            .withIndex("by_jobId", (q) => q.eq("jobId", job._id))
+            .collect();
+          let inspectionStatus: "none" | "submitted" | "reinspection_requested" = "none";
+          if (inspections.length > 0) {
+            inspectionStatus = job.inspectionCycleOpen === true ? "reinspection_requested" : "submitted";
+          }
+
+          // Resolve assigned manager name
+          const assignedManager = job.assignedManagerId
+            ? await ctx.db.get(job.assignedManagerId)
+            : null;
+
           return {
             ...job,
             propertyName: property?.name ?? job.propertySnapshot?.name ?? "Unknown",
             propertyAddress: property?.address ?? job.propertySnapshot?.address ?? "",
             cleaners: cleaners.filter(Boolean),
             hasRejectedShare,
+            inspectionStatus,
+            assignedManagerName: assignedManager?.name ?? null,
           };
         })
       );
@@ -137,12 +154,18 @@ export const get = query({
       photoUrls = urls.filter((u): u is string => u !== null);
     }
 
+    // Resolve assigned manager name
+    const assignedManager = job.assignedManagerId
+      ? await ctx.db.get(job.assignedManagerId)
+      : null;
+
     return {
       ...job,
       property: property ?? null,
       cleaners: cleaners.filter(Boolean),
       form: form ? { ...form, photoUrls } : null,
       redFlags,
+      assignedManagerName: assignedManager?.name ?? null,
     };
   },
 });

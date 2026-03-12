@@ -49,6 +49,15 @@ export function JobFormPage() {
     user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
   );
 
+  const managers = useQuery(
+    api.queries.employees.getManagers,
+    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+  );
+  const companyProfile = useQuery(
+    api.queries.companies.getCompanyProfile,
+    user ? { userId: user._id } : "skip"
+  );
+
   const connections = useQuery(
     api.queries.partners.listConnections,
     !isEditing && user ? { userId: user._id } : "skip"
@@ -67,6 +76,7 @@ export function JobFormPage() {
   const [durationMinutes, setDurationMinutes] = useState(120);
   const [notes, setNotes] = useState("");
   const [requireConfirmation, setRequireConfirmation] = useState(true);
+  const [managerId, setManagerId] = useState("");
   const [assignMode, setAssignMode] = useState<"my_cleaner" | "partner">("my_cleaner");
   const [partnerCompanyId, setPartnerCompanyId] = useState("");
   const [error, setError] = useState("");
@@ -110,8 +120,16 @@ export function JobFormPage() {
       setStartTime(existing.startTime ?? "");
       setDurationMinutes(existing.durationMinutes);
       setNotes(existing.notes ?? "");
+      setManagerId((existing as any).assignedManagerId ?? "");
     }
   }, [existing]);
+
+  // Prefill default manager for new jobs
+  useEffect(() => {
+    if (!isEditing && companyProfile?.defaultManagerId && !managerId) {
+      setManagerId(companyProfile.defaultManagerId);
+    }
+  }, [isEditing, companyProfile, managerId]);
 
   if (!user || (!isSharedJob && properties === undefined) || cleaners === undefined || maintenanceWorkers === undefined) return <PageLoader />;
 
@@ -152,6 +170,7 @@ export function JobFormPage() {
         startTime: startTime || undefined,
         durationMinutes,
         notes: notes || undefined,
+        ...(managerId ? { assignedManagerId: managerId as Id<"users"> } : {}),
       };
       if (isEditing) {
         await updateJob({ jobId: params.id as Id<"jobs">, userId: uid, ...data });
@@ -386,6 +405,19 @@ export function JobFormPage() {
                 <p className="text-xs text-gray-400">{t("jobForm.autoConfirmed")}</p>
               </div>
             </label>
+          </div>
+        )}
+
+        {/* Assign Manager */}
+        {managers && managers.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.assignManager")}</label>
+            <select className="input-field" value={managerId} onChange={(e) => setManagerId(e.target.value)}>
+              <option value="">{t("jobForm.noManager")}</option>
+              {managers.map((m) => (
+                <option key={m._id} value={m._id}>{m.name}</option>
+              ))}
+            </select>
           </div>
         )}
 

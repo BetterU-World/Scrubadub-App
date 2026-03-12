@@ -26,6 +26,8 @@ export default defineSchema({
     serviceAreaText: v.optional(v.string()),
     // Client portal – public booking-request link token
     publicRequestToken: v.optional(v.string()),
+    // Default manager for new jobs
+    defaultManagerId: v.optional(v.id("users")),
   })
     .index("by_stripeCustomerId", ["stripeCustomerId"])
     .index("by_publicRequestToken", ["publicRequestToken"]),

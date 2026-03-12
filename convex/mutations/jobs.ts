@@ -22,6 +22,7 @@ export const create = mutation({
     durationMinutes: v.number(),
     notes: v.optional(v.string()),
     requireConfirmation: v.optional(v.boolean()),
+    assignedManagerId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
     const owner = await requireOwner(ctx, args.userId);
@@ -95,6 +96,7 @@ export const update = mutation({
     startTime: v.optional(v.string()),
     durationMinutes: v.optional(v.number()),
     notes: v.optional(v.string()),
+    assignedManagerId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
     const owner = await requireOwner(ctx, args.userId);

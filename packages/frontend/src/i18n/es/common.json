@@ -431,7 +431,12 @@
     "waitingForReview": "Esperando revisión del propietario...",
     "jobApprovedCleaner": "¡Trabajo aprobado! Buen trabajo.",
     "accessInstructions": "Instrucciones de acceso",
-    "activeJobs": "{{count}} trabajos activos"
+    "activeJobs": "{{count}} trabajos activos",
+    "assignedManager": "Manager Asignado",
+    "noManagerAssigned": "Sin manager asignado",
+    "inspectionSubmitted": "Inspección Enviada",
+    "reinspectionRequested": "Re-Inspección Solicitada",
+    "notInspected": "Sin Inspeccionar"
   },
   "jobTypes": {
     "standard": "Limpieza estándar",
@@ -466,7 +471,9 @@
     "createPropertyFirst": "Crea una propiedad primero",
     "createPropertyDesc": "Los trabajos se asignan a una propiedad. Agrega tu primera propiedad para comenzar a programar limpiezas y mantenimiento.",
     "addProperty": "Agregar propiedad",
-    "selectPartnerCompany": "Selecciona una empresa socia"
+    "selectPartnerCompany": "Selecciona una empresa socia",
+    "assignManager": "Asignar Manager",
+    "noManager": "Sin manager"
   },
   "pipeline": {
     "upcomingFollowUps": "Próximos seguimientos",
@@ -570,7 +577,10 @@
     "copied": "Copiado",
     "done": "Listo",
     "roleCleaner": "Limpiador",
-    "roleMaintenance": "Mantenimiento"
+    "roleMaintenance": "Mantenimiento",
+    "defaultManager": "Manager Predeterminado",
+    "noDefaultManager": "Sin manager predeterminado",
+    "defaultManagerHint": "Asignado automáticamente a nuevos trabajos"
   },
   "partners": {
     "title": "Socios",

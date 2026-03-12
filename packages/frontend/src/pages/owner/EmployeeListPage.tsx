@@ -67,6 +67,13 @@ export function EmployeeListPage() {
   const [editPermsLoading, setEditPermsLoading] = useState(false);
   const updateManagerPermissions = useMutation(api.mutations.employees.updateManagerPermissions);
 
+  // Default manager
+  const companyProfile = useQuery(
+    api.queries.companies.getCompanyProfile,
+    user ? { userId: user._id } : "skip"
+  );
+  const setDefaultManager = useMutation(api.mutations.companies.setDefaultManager);
+
   if (!user || employees === undefined) return <PageLoader />;
 
   const handleInvite = async () => {
@@ -126,6 +133,34 @@ export function EmployeeListPage() {
           </button>
         }
       />
+
+      {/* Default manager selector */}
+      {(() => {
+        const activeManagers = employees.filter((e) => e.role === "manager" && e.status === "active");
+        if (activeManagers.length === 0) return null;
+        return (
+          <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200 flex items-center gap-3 flex-wrap">
+            <label className="text-sm font-medium text-gray-700">{t("employees.defaultManager")}:</label>
+            <select
+              className="input-field text-sm py-1.5 w-auto"
+              value={companyProfile?.defaultManagerId ?? ""}
+              onChange={async (e) => {
+                if (!user) return;
+                await setDefaultManager({
+                  userId: user._id,
+                  managerId: e.target.value ? (e.target.value as any) : undefined,
+                });
+              }}
+            >
+              <option value="">{t("employees.noDefaultManager")}</option>
+              {activeManagers.map((m) => (
+                <option key={m._id} value={m._id}>{m.name}</option>
+              ))}
+            </select>
+            <span className="text-xs text-gray-400">{t("employees.defaultManagerHint")}</span>
+          </div>
+        );
+      })()}
 
       {employees.length <= 1 ? (
         <EmptyState

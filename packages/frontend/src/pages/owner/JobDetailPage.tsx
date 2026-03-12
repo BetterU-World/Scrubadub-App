@@ -210,6 +210,23 @@ export function JobDetailPage() {
               <StatusBadge status={(job as any).acceptanceStatus} />
             )}
             <span className="text-sm text-gray-500 capitalize">{t(`jobTypes.${job.type}`, job.type.replace(/_/g, " "))}</span>
+            {/* Inspection state badge */}
+            {inspectionSummary && inspectionSummary.count > 0 && (
+              <span className={`badge text-[10px] ${
+                inspectionSummary.inspectionCycleOpen
+                  ? "bg-amber-100 text-amber-700"
+                  : "bg-blue-100 text-blue-700"
+              }`}>
+                {inspectionSummary.inspectionCycleOpen
+                  ? t("jobs.reinspectionRequested")
+                  : t("jobs.inspectionSubmitted")}
+              </span>
+            )}
+            {inspectionSummary && inspectionSummary.count === 0 && (
+              <span className="badge bg-gray-100 text-gray-500 text-[10px]">
+                {t("jobs.notInspected")}
+              </span>
+            )}
             {job.reworkCount > 0 && (
               <span className="badge bg-orange-100 text-orange-700">{t("jobs.reworkNum", { count: job.reworkCount })}</span>
             )}
@@ -240,6 +257,12 @@ export function JobDetailPage() {
               <Users className="w-4 h-4 text-gray-400" />
               {(job.cleaners as any[]).map((c: any) => c.name).join(", ") || t("common.unassigned")}
             </div>
+          </div>
+
+          {/* Assigned Manager */}
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <span className="font-medium text-gray-500">{t("jobs.assignedManager")}:</span>
+            {(job as any).assignedManagerName ?? t("jobs.noManagerAssigned")}
           </div>
 
           {job.notes && <p className="text-sm text-gray-600 border-t pt-3">{job.notes}</p>}

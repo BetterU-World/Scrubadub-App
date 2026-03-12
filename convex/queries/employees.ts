@@ -47,6 +47,19 @@ export const getCleaners = query({
   },
 });
 
+export const getManagers = query({
+  args: { companyId: v.id("companies"), userId: v.id("users") },
+  handler: async (ctx, args) => {
+    await assertCompanyAccess(ctx, args.userId, args.companyId);
+
+    const users = await ctx.db
+      .query("users")
+      .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
+      .collect();
+    return users.filter((u) => u.role === "manager" && u.status === "active");
+  },
+});
+
 export const getMaintenanceWorkers = query({
   args: { companyId: v.id("companies"), userId: v.id("users") },
   handler: async (ctx, args) => {

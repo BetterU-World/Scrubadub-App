@@ -18,6 +18,7 @@ export const getCompanyProfile = query({
       contactEmail: company.contactEmail ?? null,
       contactPhone: company.contactPhone ?? null,
       serviceAreaText: company.serviceAreaText ?? null,
+      defaultManagerId: company.defaultManagerId ?? null,
     };
   },
 });

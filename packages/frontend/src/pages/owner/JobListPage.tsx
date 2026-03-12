@@ -7,7 +7,7 @@ import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Link } from "wouter";
-import { ClipboardCheck, Plus, Calendar, Users, Search, ArrowUpDown } from "lucide-react";
+import { ClipboardCheck, Plus, Calendar, Users, Search, ArrowUpDown, Eye } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 const SORT_OPTIONS = [
@@ -212,6 +212,17 @@ export function JobListPage() {
                       {(job as any).hasRejectedShare && (
                         <span className="badge bg-red-100 text-red-700 text-[10px]">
                           {t("jobs.partnerRejected")}
+                        </span>
+                      )}
+                      {/* Inspection status badge */}
+                      {(job as any).inspectionStatus === "submitted" && (
+                        <span className="inline-flex items-center gap-0.5 badge bg-blue-100 text-blue-700 text-[10px]">
+                          <Eye className="w-3 h-3" /> {t("jobs.inspectionSubmitted")}
+                        </span>
+                      )}
+                      {(job as any).inspectionStatus === "reinspection_requested" && (
+                        <span className="inline-flex items-center gap-0.5 badge bg-amber-100 text-amber-700 text-[10px]">
+                          <Eye className="w-3 h-3" /> {t("jobs.reinspectionRequested")}
                         </span>
                       )}
                     </div>

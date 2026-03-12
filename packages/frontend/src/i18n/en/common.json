@@ -431,7 +431,12 @@
     "waitingForReview": "Waiting for owner review...",
     "jobApprovedCleaner": "Job approved! Great work.",
     "accessInstructions": "Access Instructions",
-    "activeJobs": "{{count}} active jobs"
+    "activeJobs": "{{count}} active jobs",
+    "assignedManager": "Assigned Manager",
+    "noManagerAssigned": "No manager assigned",
+    "inspectionSubmitted": "Inspection Submitted",
+    "reinspectionRequested": "Re-Inspection Requested",
+    "notInspected": "Not Inspected"
   },
   "jobTypes": {
     "standard": "Standard Clean",
@@ -466,7 +471,9 @@
     "createPropertyFirst": "Create a property first",
     "createPropertyDesc": "Jobs are assigned to a property. Add your first property to start scheduling cleans and maintenance.",
     "addProperty": "Add a Property",
-    "selectPartnerCompany": "Please select a partner company"
+    "selectPartnerCompany": "Please select a partner company",
+    "assignManager": "Assign Manager",
+    "noManager": "No manager"
   },
   "pipeline": {
     "upcomingFollowUps": "Upcoming Follow-ups",
@@ -570,7 +577,10 @@
     "copied": "Copied",
     "done": "Done",
     "roleCleaner": "Cleaner",
-    "roleMaintenance": "Maintenance"
+    "roleMaintenance": "Maintenance",
+    "defaultManager": "Default Manager",
+    "noDefaultManager": "No default manager",
+    "defaultManagerHint": "Auto-assigned to new jobs"
   },
   "partners": {
     "title": "Partners",

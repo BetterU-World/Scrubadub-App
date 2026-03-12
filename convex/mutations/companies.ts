@@ -36,3 +36,28 @@ export const updateCompanyProfile = mutation({
     return await ctx.db.get(company._id);
   },
 });
+
+/** Set or clear the company's default manager. */
+export const setDefaultManager = mutation({
+  args: {
+    userId: v.id("users"),
+    managerId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    const user = await assertOwnerRole(ctx, args.userId);
+    const company = await ctx.db.get(user.companyId);
+    if (!company) throw new Error("Company not found");
+
+    // Validate the manager if provided
+    if (args.managerId) {
+      const manager = await ctx.db.get(args.managerId);
+      if (!manager || manager.companyId !== user.companyId || manager.role !== "manager") {
+        throw new Error("Invalid manager");
+      }
+    }
+
+    await ctx.db.patch(company._id, {
+      defaultManagerId: args.managerId ?? undefined,
+    });
+  },
+});
