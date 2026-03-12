@@ -32,6 +32,11 @@ export const submit = mutation({
       if (job.assignedManagerId !== user._id) throw new Error("Access denied");
     }
 
+    // Enforce single inspection cycle: reject if cycle is closed
+    if (job.inspectionCycleOpen === false) {
+      throw new Error("Inspection cycle is closed for this job. Owner must request re-inspection.");
+    }
+
     // Validate readinessScore range
     if (args.readinessScore < 1 || args.readinessScore > 10 || !Number.isInteger(args.readinessScore)) {
       throw new Error("Readiness score must be an integer between 1 and 10");
@@ -49,6 +54,9 @@ export const submit = mutation({
       photoStorageIds: args.photoStorageIds,
       createdAt: now,
     });
+
+    // Close the inspection cycle so manager can't submit again until owner reopens
+    await ctx.db.patch(args.jobId, { inspectionCycleOpen: false });
 
     // Audit log
     await logAudit(ctx, {
@@ -82,5 +90,42 @@ export const submit = mutation({
     }
 
     return inspectionId;
+  },
+});
+
+/** Owner-only: reopen the inspection cycle so manager can submit again. */
+export const reopenInspection = mutation({
+  args: {
+    jobId: v.id("jobs"),
+    userId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    const { requireOwner } = await import("../lib/helpers");
+    const owner = await requireOwner(ctx, args.userId);
+    const job = await ctx.db.get(args.jobId);
+    if (!job) throw new Error("Job not found");
+    if (job.companyId !== owner.companyId) throw new Error("Access denied");
+
+    await ctx.db.patch(args.jobId, { inspectionCycleOpen: true });
+
+    await logAudit(ctx, {
+      companyId: owner.companyId,
+      userId: owner._id,
+      action: "reopen_inspection_cycle",
+      entityType: "job",
+      entityId: args.jobId,
+    });
+
+    // Notify assigned manager(s)
+    if (job.assignedManagerId) {
+      await createNotification(ctx, {
+        companyId: owner.companyId,
+        userId: job.assignedManagerId,
+        type: "inspection_submitted",
+        title: "Re-Inspection Requested",
+        message: `Owner has requested a new inspection for ${job.scheduledDate ?? "a job"}`,
+        relatedJobId: args.jobId,
+      });
+    }
   },
 });

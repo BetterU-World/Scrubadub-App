@@ -51,6 +51,7 @@ export function EmployeeListPage() {
     canRequestRework: false,
     canApproveForms: false,
     canManageSchedule: false,
+    canResolveRedFlags: false,
   });
   // Manager permissions dialog
   const [editPermsFor, setEditPermsFor] = useState<string | null>(null);
@@ -61,6 +62,7 @@ export function EmployeeListPage() {
     canRequestRework: false,
     canApproveForms: false,
     canManageSchedule: false,
+    canResolveRedFlags: false,
   });
   const [editPermsLoading, setEditPermsLoading] = useState(false);
   const updateManagerPermissions = useMutation(api.mutations.employees.updateManagerPermissions);
@@ -109,6 +111,7 @@ export function EmployeeListPage() {
     setMgrPerms({
       canSeeAllJobs: false, canCreateJobs: false, canAssignCleaners: false,
       canRequestRework: false, canApproveForms: false, canManageSchedule: false,
+      canResolveRedFlags: false,
     });
   };
 
@@ -164,6 +167,7 @@ export function EmployeeListPage() {
                             canRequestRework: !!(emp as any).canRequestRework,
                             canApproveForms: !!(emp as any).canApproveForms,
                             canManageSchedule: !!(emp as any).canManageSchedule,
+                            canResolveRedFlags: !!(emp as any).canResolveRedFlags,
                           });
                         }}
                         className="text-sm text-blue-600 hover:text-blue-700 font-medium"
@@ -248,6 +252,7 @@ export function EmployeeListPage() {
                       ["canRequestRework", "Can request rework"],
                       ["canApproveForms", "Can approve forms"],
                       ["canManageSchedule", "Can manage schedule"],
+                      ["canResolveRedFlags", "Can resolve red flags"],
                     ] as const).map(([key, label]) => (
                       <label key={key} className="flex items-center gap-2 text-sm text-gray-700">
                         <input

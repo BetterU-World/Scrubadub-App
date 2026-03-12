@@ -51,6 +51,53 @@ export const getByJob = query({
   },
 });
 
+/** Get inspection-sourced red flags (severity != "none") for a company — used by Red Flags dashboard. */
+export const getInspectionRedFlags = query({
+  args: {
+    companyId: v.id("companies"),
+    userId: v.id("users"),
+    status: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { assertCompanyAccess } = await import("../lib/auth");
+    await assertCompanyAccess(ctx, args.userId, args.companyId);
+
+    const inspections = await ctx.db
+      .query("managerInspections")
+      .withIndex("by_companyId_createdAt", (q) => q.eq("companyId", args.companyId))
+      .collect();
+
+    // Filter to only those with actual red flags
+    const flagged = inspections.filter((ins) => ins.severity !== "none");
+
+    // If status filter is "resolved", exclude these (inspection flags don't have status lifecycle yet)
+    // For now: "open" or no filter → show all, "resolved" → none, "acknowledged" → none
+    if (args.status === "resolved" || args.status === "acknowledged") return [];
+
+    return Promise.all(
+      flagged.map(async (ins) => {
+        const manager = await ctx.db.get(ins.managerId);
+        const job = await ctx.db.get(ins.jobId);
+        const property = job ? await ctx.db.get(job.propertyId) : null;
+        return {
+          _id: ins._id,
+          source: "inspection" as const,
+          severity: ins.severity,
+          category: "inspection" as const,
+          note: ins.notes ?? `Inspection red flag: ${ins.severity}`,
+          status: "open" as const,
+          propertyName: property?.name ?? "Unknown",
+          jobDate: job?.scheduledDate ?? "Unknown",
+          managerName: manager?.name ?? "Unknown",
+          readinessScore: ins.readinessScore,
+          createdAt: ins.createdAt,
+          jobId: ins.jobId,
+        };
+      })
+    );
+  },
+});
+
 /** Lightweight inspection summary for a job (latest inspection info + count). */
 export const getSummary = query({
   args: {
@@ -76,7 +123,17 @@ export const getSummary = query({
       .withIndex("by_jobId", (q) => q.eq("jobId", args.jobId))
       .collect();
 
-    if (inspections.length === 0) return null;
+    const cycleOpen = job.inspectionCycleOpen !== false;
+
+    if (inspections.length === 0) {
+      return {
+        count: 0,
+        latestScore: null,
+        latestSeverity: null,
+        latestDate: null,
+        inspectionCycleOpen: cycleOpen,
+      };
+    }
 
     // Sort newest first to get latest
     inspections.sort((a, b) => b.createdAt - a.createdAt);
@@ -87,6 +144,7 @@ export const getSummary = query({
       latestScore: latest.readinessScore,
       latestSeverity: latest.severity,
       latestDate: latest.createdAt,
+      inspectionCycleOpen: cycleOpen,
     };
   },
 });

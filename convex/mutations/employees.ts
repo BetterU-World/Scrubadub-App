@@ -40,6 +40,7 @@ export const updateManagerPermissions = mutation({
     canRequestRework: v.boolean(),
     canApproveForms: v.boolean(),
     canManageSchedule: v.boolean(),
+    canResolveRedFlags: v.boolean(),
   },
   handler: async (ctx, args) => {
     const owner = await requireOwner(ctx, args.userId);
@@ -55,6 +56,7 @@ export const updateManagerPermissions = mutation({
       canRequestRework: args.canRequestRework,
       canApproveForms: args.canApproveForms,
       canManageSchedule: args.canManageSchedule,
+      canResolveRedFlags: args.canResolveRedFlags,
     });
 
     await logAudit(ctx, {
@@ -70,6 +72,7 @@ export const updateManagerPermissions = mutation({
         canRequestRework: args.canRequestRework,
         canApproveForms: args.canApproveForms,
         canManageSchedule: args.canManageSchedule,
+        canResolveRedFlags: args.canResolveRedFlags,
       }),
     });
   },

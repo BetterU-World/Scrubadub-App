@@ -685,7 +685,10 @@
     "notesOptional": "Notes (optional)",
     "notesPlaceholder": "Any additional notes...",
     "durationMin": "Duration (min)",
-    "createMaintenanceJob": "Create Maintenance Job"
+    "createMaintenanceJob": "Create Maintenance Job",
+    "inspectionSourced": "Inspection Red Flags",
+    "sourceInspection": "Inspection",
+    "cleanerSourced": "Cleaner Red Flags"
   },
   "analytics": {
     "title": "Analytics",
@@ -994,6 +997,11 @@
     "cleanerScore": "Cleaner Score:",
     "finalPass": "Final Pass:",
     "photoCount": "photo(s)",
-    "reworkNotes": "Rework Notes"
+    "reworkNotes": "Rework Notes",
+    "cycleClosed": "Inspection submitted — awaiting owner review",
+    "requestReinspection": "Request Re-Inspection",
+    "resolveFlag": "Resolve",
+    "resolveNotePlaceholder": "Resolution note (optional)...",
+    "flagResolved": "Red flag resolved"
   }
 }

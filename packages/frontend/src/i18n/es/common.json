@@ -685,7 +685,10 @@
     "notesOptional": "Notas (opcional)",
     "notesPlaceholder": "Notas adicionales...",
     "durationMin": "Duración (min)",
-    "createMaintenanceJob": "Crear trabajo de mantenimiento"
+    "createMaintenanceJob": "Crear trabajo de mantenimiento",
+    "inspectionSourced": "Alertas de Inspección",
+    "sourceInspection": "Inspección",
+    "cleanerSourced": "Alertas del Limpiador"
   },
   "analytics": {
     "title": "Analíticas",
@@ -994,6 +997,11 @@
     "cleanerScore": "Puntuación del Limpiador:",
     "finalPass": "Paso Final:",
     "photoCount": "foto(s)",
-    "reworkNotes": "Notas de Retrabajo"
+    "reworkNotes": "Notas de Retrabajo",
+    "cycleClosed": "Inspección enviada — esperando revisión del propietario",
+    "requestReinspection": "Solicitar Re-Inspección",
+    "resolveFlag": "Resolver",
+    "resolveNotePlaceholder": "Nota de resolución (opcional)...",
+    "flagResolved": "Alerta resuelta"
   }
 }

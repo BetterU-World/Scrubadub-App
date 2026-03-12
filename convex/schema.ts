@@ -43,6 +43,7 @@ export default defineSchema({
     canRequestRework: v.optional(v.boolean()),
     canApproveForms: v.optional(v.boolean()),
     canManageSchedule: v.optional(v.boolean()),
+    canResolveRedFlags: v.optional(v.boolean()),
     status: v.union(
       v.literal("active"),
       v.literal("inactive"),
@@ -156,6 +157,8 @@ export default defineSchema({
     cleanerPaymentId: v.optional(v.id("cleanerPayments")),
     // Optional manager assignment (single manager per job)
     assignedManagerId: v.optional(v.id("users")),
+    // Inspection cycle: false after manager submits, true when owner reopens
+    inspectionCycleOpen: v.optional(v.boolean()),
     // Property snapshot for shared jobs (Owner2 sees property info without owning the record)
     propertySnapshot: v.optional(v.object({
       name: v.optional(v.string()),

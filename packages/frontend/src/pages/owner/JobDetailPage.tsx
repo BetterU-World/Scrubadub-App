@@ -88,6 +88,7 @@ export function JobDetailPage() {
     api.queries.inspections.getSummary,
     user && job ? { jobId: params.id as Id<"jobs">, userId: user._id } : "skip"
   );
+  const reopenInspection = useMutation(api.mutations.inspections.reopenInspection);
 
   // Cleaner payments
   const cleanerPaymentData = useQuery(
@@ -349,8 +350,8 @@ export function JobDetailPage() {
             <h3 className="font-semibold text-blue-700 flex items-center gap-2 mb-4">
               <CheckCircle className="w-5 h-5" /> {t("inspection.managerInspections")} ({inspections.length})
             </h3>
-            {inspectionSummary && (
-              <div className="flex items-center gap-3 mb-4 p-2 bg-blue-50 rounded-lg">
+            {inspectionSummary && inspectionSummary.latestScore !== null && (
+              <div className="flex items-center gap-3 mb-4 p-2 bg-blue-50 rounded-lg flex-wrap">
                 <span className="text-sm text-blue-700">
                   {t("inspection.latestScore")}: <span className="font-bold">{inspectionSummary.latestScore}/10</span>
                 </span>
@@ -367,6 +368,18 @@ export function JobDetailPage() {
                 <span className="text-xs text-gray-500">
                   {new Date(inspectionSummary.latestDate).toLocaleDateString()}
                 </span>
+                {!inspectionSummary.inspectionCycleOpen && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await reopenInspection({ jobId: params.id as Id<"jobs">, userId: user!._id });
+                      } catch {}
+                    }}
+                    className="ml-auto text-xs bg-blue-600 text-white px-3 py-1 rounded-full hover:bg-blue-700 flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3 h-3" /> {t("inspection.requestReinspection")}
+                  </button>
+                )}
               </div>
             )}
             <div className="space-y-3">

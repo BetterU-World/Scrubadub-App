@@ -50,6 +50,7 @@ export function ManagerJobDetailPage() {
 
   const submitInspection = useMutation(api.mutations.inspections.submit);
   const generateUploadUrl = useMutation(api.mutations.storage.generateUploadUrl);
+  const resolveRedFlag = useMutation(api.mutations.redFlags.managerResolveRedFlag);
 
   // Inspection form state
   const [showForm, setShowForm] = useState(false);
@@ -60,6 +61,8 @@ export function ManagerJobDetailPage() {
   const [photoIds, setPhotoIds] = useState<Id<"_storage">[]>([]);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [resolvingFlag, setResolvingFlag] = useState<string | null>(null);
+  const [resolveNote, setResolveNote] = useState("");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   if (job === undefined) return <PageLoader />;
@@ -306,7 +309,15 @@ export function ManagerJobDetailPage() {
         )}
 
         {/* ── Inspection Action ──────────────────────────────────── */}
-        {!showForm && (
+        {inspectionSummary && !inspectionSummary.inspectionCycleOpen && (
+          <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 text-center">
+            <p className="text-sm text-gray-600 flex items-center justify-center gap-2">
+              <ClipboardCheck className="w-4 h-4 text-gray-400" />
+              {t("inspection.cycleClosed")}
+            </p>
+          </div>
+        )}
+        {(!inspectionSummary || inspectionSummary.inspectionCycleOpen) && !showForm && (
           <button
             onClick={() => setShowForm(true)}
             className="btn-primary w-full flex items-center justify-center gap-2"
@@ -461,6 +472,50 @@ export function ManagerJobDetailPage() {
                     <StatusBadge status={flag.status} className="text-[10px]" />
                   </div>
                   <p className="text-sm text-gray-700">{flag.note}</p>
+                  {/* Manager resolve action */}
+                  {user && (user as any).canResolveRedFlags && flag.status !== "resolved" && (
+                    <div className="mt-2">
+                      {resolvingFlag === flag._id ? (
+                        <div className="flex gap-2 items-center">
+                          <input
+                            type="text"
+                            className="input-field text-sm flex-1"
+                            placeholder={t("inspection.resolveNotePlaceholder")}
+                            value={resolveNote}
+                            onChange={(e) => setResolveNote(e.target.value)}
+                            autoFocus
+                          />
+                          <button
+                            className="btn-primary text-xs px-2 py-1"
+                            onClick={async () => {
+                              try {
+                                await resolveRedFlag({ flagId: flag._id, userId: user._id, note: resolveNote.trim() || undefined });
+                                setResolvingFlag(null);
+                                setResolveNote("");
+                                setToast({ message: t("inspection.flagResolved"), type: "success" });
+                                setTimeout(() => setToast(null), 3000);
+                              } catch (err: any) {
+                                setToast({ message: err.message ?? t("common.failed"), type: "error" });
+                                setTimeout(() => setToast(null), 3000);
+                              }
+                            }}
+                          >
+                            {t("common.confirm")}
+                          </button>
+                          <button className="btn-secondary text-xs px-2 py-1" onClick={() => { setResolvingFlag(null); setResolveNote(""); }}>
+                            {t("common.cancel")}
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          className="text-xs text-green-600 hover:text-green-700 font-medium"
+                          onClick={() => setResolvingFlag(flag._id)}
+                        >
+                          {t("inspection.resolveFlag")}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

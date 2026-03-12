@@ -93,6 +93,37 @@ export const updateStatus = mutation({
   },
 });
 
+/** Manager with canResolveRedFlags permission: resolve a red flag. */
+export const managerResolveRedFlag = mutation({
+  args: {
+    flagId: v.id("redFlags"),
+    note: v.optional(v.string()),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx, args.userId);
+    if (user.role !== "manager") throw new Error("Manager access required");
+    if (!(user as any).canResolveRedFlags) throw new Error("Permission denied: canResolveRedFlags required");
+
+    const flag = await ctx.db.get(args.flagId);
+    if (!flag) throw new Error("Red flag not found");
+    if (flag.companyId !== user.companyId) throw new Error("Access denied");
+    if (flag.status === "resolved") throw new Error("Red flag is already resolved");
+
+    const updates: Record<string, string> = { status: "resolved" };
+    if (args.note?.trim()) updates.ownerNote = `[Manager: ${user.name}] ${args.note.trim()}`;
+    await ctx.db.patch(args.flagId, updates);
+
+    await logAudit(ctx, {
+      companyId: user.companyId,
+      userId: user._id,
+      action: "manager_resolved_red_flag",
+      entityType: "redFlag",
+      entityId: args.flagId,
+    });
+  },
+});
+
 export const createMaintenanceJob = mutation({
   args: {
     flagId: v.id("redFlags"),
