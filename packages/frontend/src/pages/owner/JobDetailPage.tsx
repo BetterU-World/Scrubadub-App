@@ -391,18 +391,22 @@ export function JobDetailPage() {
                 <span className="text-xs text-gray-500">
                   {new Date(inspectionSummary.latestDate).toLocaleDateString()}
                 </span>
-                {!inspectionSummary.inspectionCycleOpen && (
-                  <button
-                    onClick={async () => {
-                      try {
-                        await reopenInspection({ jobId: params.id as Id<"jobs">, userId: user!._id });
-                      } catch {}
-                    }}
-                    className="ml-auto text-xs bg-blue-600 text-white px-3 py-1 rounded-full hover:bg-blue-700 flex items-center gap-1"
-                  >
-                    <RefreshCw className="w-3 h-3" /> {t("inspection.requestReinspection")}
-                  </button>
-                )}
+              </div>
+            )}
+            {/* Re-Inspection CTA: visible when cycle is closed and inspections exist */}
+            {inspectionSummary && !inspectionSummary.inspectionCycleOpen && inspectionSummary.count > 0 && (
+              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between gap-3">
+                <span className="text-sm text-amber-800">{t("inspection.cycleClosed")}</span>
+                <button
+                  onClick={async () => {
+                    try {
+                      await reopenInspection({ jobId: params.id as Id<"jobs">, userId: user!._id });
+                    } catch {}
+                  }}
+                  className="text-sm bg-blue-600 text-white px-4 py-1.5 rounded-lg hover:bg-blue-700 flex items-center gap-1.5 whitespace-nowrap"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> {t("inspection.requestReinspection")}
+                </button>
               </div>
             )}
             <div className="space-y-3">

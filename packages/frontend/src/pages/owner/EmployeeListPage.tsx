@@ -334,6 +334,7 @@ export function EmployeeListPage() {
                 ["canRequestRework", "Can request rework"],
                 ["canApproveForms", "Can approve forms"],
                 ["canManageSchedule", "Can manage schedule"],
+                ["canResolveRedFlags", "Can resolve red flags"],
               ] as const).map(([key, label]) => (
                 <label key={key} className="flex items-center gap-2 text-sm text-gray-700">
                   <input

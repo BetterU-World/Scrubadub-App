@@ -1,4 +1,4 @@
-import { useState, FormEvent, useEffect } from "react";
+import { useState, FormEvent, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
@@ -77,6 +77,7 @@ export function JobFormPage() {
   const [notes, setNotes] = useState("");
   const [requireConfirmation, setRequireConfirmation] = useState(true);
   const [managerId, setManagerId] = useState("");
+  const managerTouched = useRef(false);
   const [assignMode, setAssignMode] = useState<"my_cleaner" | "partner">("my_cleaner");
   const [partnerCompanyId, setPartnerCompanyId] = useState("");
   const [error, setError] = useState("");
@@ -124,12 +125,12 @@ export function JobFormPage() {
     }
   }, [existing]);
 
-  // Prefill default manager for new jobs
+  // Prefill default manager for new jobs (only once, before user interaction)
   useEffect(() => {
-    if (!isEditing && companyProfile?.defaultManagerId && !managerId) {
+    if (!isEditing && companyProfile?.defaultManagerId && !managerTouched.current) {
       setManagerId(companyProfile.defaultManagerId);
     }
-  }, [isEditing, companyProfile, managerId]);
+  }, [isEditing, companyProfile]);
 
   if (!user || (!isSharedJob && properties === undefined) || cleaners === undefined || maintenanceWorkers === undefined) return <PageLoader />;
 
@@ -412,7 +413,7 @@ export function JobFormPage() {
         {managers && managers.length > 0 && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.assignManager")}</label>
-            <select className="input-field" value={managerId} onChange={(e) => setManagerId(e.target.value)}>
+            <select className="input-field" value={managerId} onChange={(e) => { managerTouched.current = true; setManagerId(e.target.value); }}>
               <option value="">{t("jobForm.noManager")}</option>
               {managers.map((m) => (
                 <option key={m._id} value={m._id}>{m.name}</option>

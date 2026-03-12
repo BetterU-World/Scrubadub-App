@@ -123,7 +123,8 @@ export const getSummary = query({
       .withIndex("by_jobId", (q) => q.eq("jobId", args.jobId))
       .collect();
 
-    const cycleOpen = job.inspectionCycleOpen !== false;
+    // Only true when owner explicitly reopened (not initial undefined state)
+    const cycleOpen = job.inspectionCycleOpen === true;
 
     if (inspections.length === 0) {
       return {
