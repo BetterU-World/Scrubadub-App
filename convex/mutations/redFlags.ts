@@ -69,7 +69,12 @@ export const create = mutation({
 export const updateStatus = mutation({
   args: {
     flagId: v.id("redFlags"),
-    status: v.union(v.literal("acknowledged"), v.literal("resolved")),
+    status: v.union(
+      v.literal("acknowledged"),
+      v.literal("in_progress"),
+      v.literal("resolved"),
+      v.literal("wont_fix")
+    ),
     ownerNote: v.optional(v.string()),
     userId: v.optional(v.id("users")),
   },
@@ -78,6 +83,11 @@ export const updateStatus = mutation({
     const flag = await ctx.db.get(args.flagId);
     if (!flag) throw new Error("Red flag not found");
     if (flag.companyId !== owner.companyId) throw new Error("Access denied");
+
+    // Cannot transition out of terminal states
+    if (flag.status === "resolved" || flag.status === "wont_fix") {
+      throw new Error("Cannot update a flag that is already resolved or wont_fix");
+    }
 
     const updates: Record<string, string> = { status: args.status };
     if (args.ownerNote !== undefined) updates.ownerNote = args.ownerNote;
@@ -108,7 +118,9 @@ export const managerResolveRedFlag = mutation({
     const flag = await ctx.db.get(args.flagId);
     if (!flag) throw new Error("Red flag not found");
     if (flag.companyId !== user.companyId) throw new Error("Access denied");
-    if (flag.status === "resolved") throw new Error("Red flag is already resolved");
+    if (flag.status === "resolved" || flag.status === "wont_fix") {
+      throw new Error("Red flag is already in a terminal state");
+    }
 
     const updates: Record<string, string> = { status: "resolved" };
     if (args.note?.trim()) updates.ownerNote = `[Manager: ${user.name}] ${args.note.trim()}`;
@@ -118,6 +130,48 @@ export const managerResolveRedFlag = mutation({
       companyId: user.companyId,
       userId: user._id,
       action: "manager_resolved_red_flag",
+      entityType: "redFlag",
+      entityId: args.flagId,
+    });
+  },
+});
+
+/** Manager with canResolveRedFlags permission: update red flag lifecycle status. */
+export const managerUpdateLifecycle = mutation({
+  args: {
+    flagId: v.id("redFlags"),
+    status: v.union(
+      v.literal("in_progress"),
+      v.literal("resolved"),
+      v.literal("wont_fix")
+    ),
+    note: v.optional(v.string()),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx, args.userId);
+    if (user.role !== "manager") throw new Error("Manager access required");
+    if (!(user as any).canResolveRedFlags) throw new Error("Permission denied: canResolveRedFlags required");
+
+    const flag = await ctx.db.get(args.flagId);
+    if (!flag) throw new Error("Red flag not found");
+    if (flag.companyId !== user.companyId) throw new Error("Access denied");
+
+    // Cannot transition out of terminal states
+    if (flag.status === "resolved" || flag.status === "wont_fix") {
+      throw new Error("Cannot update a flag that is already resolved or wont_fix");
+    }
+
+    const updates: Record<string, string> = { status: args.status };
+    if (args.note?.trim()) {
+      updates.ownerNote = `[Manager: ${user.name}] ${args.note.trim()}`;
+    }
+    await ctx.db.patch(args.flagId, updates);
+
+    await logAudit(ctx, {
+      companyId: user.companyId,
+      userId: user._id,
+      action: `manager_${args.status}_red_flag`,
       entityType: "redFlag",
       entityId: args.flagId,
     });

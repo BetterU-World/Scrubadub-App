@@ -51,6 +51,7 @@ export function ManagerJobDetailPage() {
   const submitInspection = useMutation(api.mutations.inspections.submit);
   const generateUploadUrl = useMutation(api.mutations.storage.generateUploadUrl);
   const resolveRedFlag = useMutation(api.mutations.redFlags.managerResolveRedFlag);
+  const updateLifecycle = useMutation(api.mutations.redFlags.managerUpdateLifecycle);
 
   // Inspection form state
   const [showForm, setShowForm] = useState(false);
@@ -472,8 +473,8 @@ export function ManagerJobDetailPage() {
                     <StatusBadge status={flag.status} className="text-[10px]" />
                   </div>
                   <p className="text-sm text-gray-700">{flag.note}</p>
-                  {/* Manager resolve action */}
-                  {user && (user as any).canResolveRedFlags && flag.status !== "resolved" && (
+                  {/* Manager lifecycle actions */}
+                  {user && (user as any).canResolveRedFlags && flag.status !== "resolved" && flag.status !== "wont_fix" && (
                     <div className="mt-2">
                       {resolvingFlag === flag._id ? (
                         <div className="flex gap-2 items-center">
@@ -507,12 +508,46 @@ export function ManagerJobDetailPage() {
                           </button>
                         </div>
                       ) : (
-                        <button
-                          className="text-xs text-green-600 hover:text-green-700 font-medium"
-                          onClick={() => setResolvingFlag(flag._id)}
-                        >
-                          {t("inspection.resolveFlag")}
-                        </button>
+                        <div className="flex gap-2 items-center flex-wrap">
+                          {flag.status !== "in_progress" && (
+                            <button
+                              className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                              onClick={async () => {
+                                try {
+                                  await updateLifecycle({ flagId: flag._id, userId: user._id, status: "in_progress" });
+                                  setToast({ message: t("redFlags.markedInProgress"), type: "success" });
+                                  setTimeout(() => setToast(null), 3000);
+                                } catch (err: any) {
+                                  setToast({ message: err.message ?? t("common.failed"), type: "error" });
+                                  setTimeout(() => setToast(null), 3000);
+                                }
+                              }}
+                            >
+                              {t("redFlags.markInProgress")}
+                            </button>
+                          )}
+                          <button
+                            className="text-xs text-green-600 hover:text-green-700 font-medium"
+                            onClick={() => setResolvingFlag(flag._id)}
+                          >
+                            {t("inspection.resolveFlag")}
+                          </button>
+                          <button
+                            className="text-xs text-gray-500 hover:text-gray-600 font-medium"
+                            onClick={async () => {
+                              try {
+                                await updateLifecycle({ flagId: flag._id, userId: user._id, status: "wont_fix" });
+                                setToast({ message: t("redFlags.markedWontFix"), type: "success" });
+                                setTimeout(() => setToast(null), 3000);
+                              } catch (err: any) {
+                                setToast({ message: err.message ?? t("common.failed"), type: "error" });
+                                setTimeout(() => setToast(null), 3000);
+                              }
+                            }}
+                          >
+                            {t("redFlags.wontFix")}
+                          </button>
+                        </div>
                       )}
                     </div>
                   )}

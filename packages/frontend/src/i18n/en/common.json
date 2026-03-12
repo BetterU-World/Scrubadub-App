@@ -131,6 +131,8 @@
     "open": "Open",
     "acknowledged": "Acknowledged",
     "resolved": "Resolved",
+    "in_progress": "In Progress",
+    "wont_fix": "Won't Fix",
     "reviewed": "Reviewed",
     "contacted": "Contacted",
     "archived": "Archived",
@@ -698,7 +700,13 @@
     "createMaintenanceJob": "Create Maintenance Job",
     "inspectionSourced": "Inspection Red Flags",
     "sourceInspection": "Inspection",
-    "cleanerSourced": "Cleaner Red Flags"
+    "cleanerSourced": "Cleaner Red Flags",
+    "filterInProgress": "In Progress",
+    "filterWontFix": "Won't Fix",
+    "markInProgress": "In Progress",
+    "markedInProgress": "Marked as In Progress",
+    "wontFix": "Won't Fix",
+    "markedWontFix": "Marked as Won't Fix"
   },
   "analytics": {
     "title": "Analytics",

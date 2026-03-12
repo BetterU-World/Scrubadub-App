@@ -12,7 +12,7 @@ import { Flag, CheckCircle, Eye, Wrench, ClipboardCheck } from "lucide-react";
 import { Link } from "wouter";
 
 type ActiveAction =
-  | { flagId: string; type: "acknowledge" | "resolve"; ownerNote: string }
+  | { flagId: string; type: "acknowledge" | "in_progress" | "resolve" | "wont_fix"; ownerNote: string }
   | { flagId: string; type: "maintenance"; scheduledDate: string; cleanerIds: string[]; notes: string; durationMinutes: string }
   | null;
 
@@ -43,7 +43,7 @@ export function RedFlagsDashboard() {
 
   if (!user || flags === undefined) return <PageLoader />;
 
-  const handleStatusUpdate = async (flagId: string, status: "acknowledged" | "resolved", ownerNote: string) => {
+  const handleStatusUpdate = async (flagId: string, status: "acknowledged" | "in_progress" | "resolved" | "wont_fix", ownerNote: string) => {
     await updateStatus({
       flagId: flagId as Id<"redFlags">,
       status,
@@ -73,11 +73,13 @@ export function RedFlagsDashboard() {
     <div>
       <PageHeader title={t("redFlags.title")} description={t("redFlags.description")} />
 
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-6 flex-wrap">
         {[
           { value: "open", label: t("redFlags.filterOpen") },
+          { value: "in_progress", label: t("redFlags.filterInProgress") },
           { value: "acknowledged", label: t("redFlags.filterAcknowledged") },
           { value: "resolved", label: t("redFlags.filterResolved") },
+          { value: "wont_fix", label: t("redFlags.filterWontFix") },
           { value: "", label: t("redFlags.filterAll") },
         ].map((f) => (
           <button
@@ -180,23 +182,37 @@ export function RedFlagsDashboard() {
                       </Link>
                     )}
                   </div>
-                  <div className="flex gap-2 flex-shrink-0">
-                    {flag.status === "open" && (
-                      <button
-                        onClick={() =>
-                          setActiveAction(
-                            isActive && activeAction.type === "acknowledge"
-                              ? null
-                              : { flagId: flag._id, type: "acknowledge", ownerNote: "" }
-                          )
-                        }
-                        className="btn-secondary text-sm flex items-center gap-1"
-                      >
-                        <Eye className="w-3.5 h-3.5" /> {t("redFlags.acknowledge")}
-                      </button>
-                    )}
-                    {(flag.status === "open" || flag.status === "acknowledged") && (
+                  <div className="flex gap-2 flex-shrink-0 flex-wrap">
+                    {flag.status !== "resolved" && flag.status !== "wont_fix" && (
                       <>
+                        {flag.status === "open" && (
+                          <button
+                            onClick={() =>
+                              setActiveAction(
+                                isActive && activeAction.type === "acknowledge"
+                                  ? null
+                                  : { flagId: flag._id, type: "acknowledge", ownerNote: "" }
+                              )
+                            }
+                            className="btn-secondary text-sm flex items-center gap-1"
+                          >
+                            <Eye className="w-3.5 h-3.5" /> {t("redFlags.acknowledge")}
+                          </button>
+                        )}
+                        {flag.status !== "in_progress" && (
+                          <button
+                            onClick={() =>
+                              setActiveAction(
+                                isActive && activeAction.type === "in_progress"
+                                  ? null
+                                  : { flagId: flag._id, type: "in_progress", ownerNote: "" }
+                              )
+                            }
+                            className="btn-secondary text-sm flex items-center gap-1"
+                          >
+                            {t("redFlags.markInProgress")}
+                          </button>
+                        )}
                         <button
                           onClick={() =>
                             setActiveAction(
@@ -208,6 +224,18 @@ export function RedFlagsDashboard() {
                           className="btn-primary text-sm flex items-center gap-1"
                         >
                           <CheckCircle className="w-3.5 h-3.5" /> {t("redFlags.resolve")}
+                        </button>
+                        <button
+                          onClick={() =>
+                            setActiveAction(
+                              isActive && activeAction.type === "wont_fix"
+                                ? null
+                                : { flagId: flag._id, type: "wont_fix", ownerNote: "" }
+                            )
+                          }
+                          className="btn-secondary text-sm flex items-center gap-1 text-gray-500"
+                        >
+                          {t("redFlags.wontFix")}
                         </button>
                         {!flag.maintenanceJobId && (
                           <button
@@ -228,8 +256,8 @@ export function RedFlagsDashboard() {
                   </div>
                 </div>
 
-                {/* Inline owner note input for Acknowledge / Resolve */}
-                {isStatusAction && (activeAction.type === "acknowledge" || activeAction.type === "resolve") && (
+                {/* Inline owner note input for lifecycle status changes */}
+                {isStatusAction && (activeAction.type === "acknowledge" || activeAction.type === "in_progress" || activeAction.type === "resolve" || activeAction.type === "wont_fix") && (
                   <div className="mt-3 pt-3 border-t border-gray-100">
                     <label className="block text-xs font-medium text-gray-500 mb-1">
                       {t("redFlags.addNote")}
@@ -246,13 +274,19 @@ export function RedFlagsDashboard() {
                         autoFocus
                       />
                       <button
-                        onClick={() =>
+                        onClick={() => {
+                          const statusMap: Record<string, "acknowledged" | "in_progress" | "resolved" | "wont_fix"> = {
+                            acknowledge: "acknowledged",
+                            in_progress: "in_progress",
+                            resolve: "resolved",
+                            wont_fix: "wont_fix",
+                          };
                           handleStatusUpdate(
                             flag._id,
-                            activeAction.type === "acknowledge" ? "acknowledged" : "resolved",
+                            statusMap[activeAction.type],
                             activeAction.ownerNote
-                          )
-                        }
+                          );
+                        }}
                         className="btn-primary text-sm"
                       >
                         {t("common.confirm")}

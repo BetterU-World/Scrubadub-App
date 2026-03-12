@@ -70,9 +70,8 @@ export const getInspectionRedFlags = query({
     // Filter to only those with actual red flags
     const flagged = inspections.filter((ins) => ins.severity !== "none");
 
-    // If status filter is "resolved", exclude these (inspection flags don't have status lifecycle yet)
-    // For now: "open" or no filter → show all, "resolved" → none, "acknowledged" → none
-    if (args.status === "resolved" || args.status === "acknowledged") return [];
+    // Inspection flags are synthetic and always "open" — only show for "open" or unfiltered
+    if (args.status && args.status !== "open") return [];
 
     return Promise.all(
       flagged.map(async (ins) => {

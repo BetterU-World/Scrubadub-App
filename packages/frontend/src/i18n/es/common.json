@@ -131,6 +131,8 @@
     "open": "Abierto",
     "acknowledged": "Reconocido",
     "resolved": "Resuelto",
+    "in_progress": "En Progreso",
+    "wont_fix": "No Se Corregirá",
     "reviewed": "Revisado",
     "contacted": "Contactado",
     "archived": "Archivado",
@@ -698,7 +700,13 @@
     "createMaintenanceJob": "Crear trabajo de mantenimiento",
     "inspectionSourced": "Alertas de Inspección",
     "sourceInspection": "Inspección",
-    "cleanerSourced": "Alertas del Limpiador"
+    "cleanerSourced": "Alertas del Limpiador",
+    "filterInProgress": "En Progreso",
+    "filterWontFix": "No Se Corregirá",
+    "markInProgress": "En Progreso",
+    "markedInProgress": "Marcado como En Progreso",
+    "wontFix": "No Se Corregirá",
+    "markedWontFix": "Marcado como No Se Corregirá"
   },
   "analytics": {
     "title": "Analíticas",

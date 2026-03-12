@@ -238,7 +238,9 @@ export default defineSchema({
     status: v.union(
       v.literal("open"),
       v.literal("acknowledged"),
-      v.literal("resolved")
+      v.literal("in_progress"),
+      v.literal("resolved"),
+      v.literal("wont_fix")
     ),
     ownerNote: v.optional(v.string()),
     maintenanceJobId: v.optional(v.id("jobs")),
