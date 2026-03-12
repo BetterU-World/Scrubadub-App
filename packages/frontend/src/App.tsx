@@ -60,6 +60,7 @@ import { WorkerPaymentsPage } from "@/pages/worker/WorkerPaymentsPage";
 import { ManagerHomePage } from "@/pages/manager/ManagerHomePage";
 import { ManagerJobListPage } from "@/pages/manager/ManagerJobListPage";
 import { ManagerJobDetailPage } from "@/pages/manager/ManagerJobDetailPage";
+import { ManagerRedFlagsPage } from "@/pages/manager/ManagerRedFlagsPage";
 
 // Admin pages
 import { SuperAdminPage } from "@/pages/admin/SuperAdminPage";
@@ -309,6 +310,7 @@ export default function App() {
                 <Route path="/" component={ManagerHomePage} />
                 <Route path="/jobs/:id" component={ManagerJobDetailPage} />
                 <Route path="/jobs" component={ManagerJobListPage} />
+                <Route path="/red-flags" component={ManagerRedFlagsPage} />
                 <Route path="/calendar" component={CalendarPage} />
               </>
             ) : (

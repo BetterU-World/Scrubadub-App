@@ -1,6 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { getSessionUser, hasManagerPermission } from "../lib/auth";
+import { assertCompanyAccess, getSessionUser, hasManagerPermission } from "../lib/auth";
 
 /** Get all inspections for a specific job. */
 export const getByJob = query({
@@ -59,7 +59,6 @@ export const getInspectionRedFlags = query({
     status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { assertCompanyAccess } = await import("../lib/auth");
     await assertCompanyAccess(ctx, args.userId, args.companyId);
 
     const inspections = await ctx.db

@@ -86,6 +86,7 @@ const managerSections: NavSection[] = [
     items: [
       { href: "/", labelKey: "nav.overview", icon: LayoutDashboard },
       { href: "/jobs", labelKey: "nav.jobs", icon: ClipboardCheck },
+      { href: "/red-flags", labelKey: "nav.redFlags", icon: Flag },
       { href: "/calendar", labelKey: "nav.calendar", icon: Calendar },
     ],
   },
