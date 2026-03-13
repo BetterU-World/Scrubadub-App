@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAuth, requireOwner, logAudit, createNotification } from "../lib/helpers";
+import { hasManagerPermission } from "../lib/auth";
 
 export const create = mutation({
   args: {
@@ -113,7 +114,7 @@ export const managerResolveRedFlag = mutation({
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx, args.userId);
     if (user.role !== "manager") throw new Error("Manager access required");
-    if (!(user as any).canResolveRedFlags) throw new Error("Permission denied: canResolveRedFlags required");
+    if (!hasManagerPermission(user, "canResolveRedFlags")) throw new Error("Permission denied: canResolveRedFlags required");
 
     const flag = await ctx.db.get(args.flagId);
     if (!flag) throw new Error("Red flag not found");
@@ -151,7 +152,7 @@ export const managerUpdateLifecycle = mutation({
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx, args.userId);
     if (user.role !== "manager") throw new Error("Manager access required");
-    if (!(user as any).canResolveRedFlags) throw new Error("Permission denied: canResolveRedFlags required");
+    if (!hasManagerPermission(user, "canResolveRedFlags")) throw new Error("Permission denied: canResolveRedFlags required");
 
     const flag = await ctx.db.get(args.flagId);
     if (!flag) throw new Error("Red flag not found");

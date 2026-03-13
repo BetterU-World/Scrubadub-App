@@ -108,6 +108,11 @@ export const listByJob = query({
     if (!job) return [];
     if (job.companyId !== user.companyId) throw new Error("Access denied");
 
+    // Manager visibility: if manager can't see all jobs, only allow assigned jobs
+    if (user.role === "manager" && !hasManagerPermission(user, "canSeeAllJobs")) {
+      if (job.assignedManagerId !== user._id) throw new Error("Access denied");
+    }
+
     return await ctx.db
       .query("redFlags")
       .withIndex("by_jobId", (q) => q.eq("jobId", args.jobId))

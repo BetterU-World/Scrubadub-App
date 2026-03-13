@@ -80,11 +80,11 @@ export function NotificationsPage() {
                   </p>
                 </div>
                 {n.relatedJobId && (
-                  <Link href={`/jobs/${n.relatedJobId}`} className="text-xs text-primary-600 hover:text-primary-700 whitespace-nowrap">
+                  <Link href={user.role === "manager" ? `/manager/jobs/${n.relatedJobId}` : `/jobs/${n.relatedJobId}`} className="text-xs text-primary-600 hover:text-primary-700 whitespace-nowrap">
                       {t("notifications.viewJob")}
                   </Link>
                 )}
-                {n.relatedClientRequestId && (
+                {n.relatedClientRequestId && user.role !== "manager" && (
                   <Link href={`/requests/${n.relatedClientRequestId}`} className="text-xs text-primary-600 hover:text-primary-700 whitespace-nowrap">
                       {t("notifications.viewRequest")}
                   </Link>
