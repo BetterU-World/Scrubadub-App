@@ -28,6 +28,14 @@ const STATUS_FILTERS = [
   { value: "cancelled", labelKey: "status.cancelled" },
 ];
 
+const ASSIGNMENT_FILTERS = [
+  { value: "", labelKey: "jobs.allAssignments" },
+  { value: "self_assigned", labelKey: "jobs.selfAssigned" },
+  { value: "unassigned", labelKey: "jobs.unassigned" },
+  { value: "my_cleaners", labelKey: "jobs.myCleaners" },
+  { value: "my_partners", labelKey: "jobs.myPartners" },
+] as const;
+
 const DATE_RANGES = [
   { value: "all", labelKey: "requests.all" },
   { value: "today", labelKey: "calendar.today" },
@@ -65,6 +73,7 @@ export function JobListPage() {
   const [dateRange, setDateRange] = useState<"all" | "today" | "week">("all");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("soonest");
+  const [assignmentFilter, setAssignmentFilter] = useState("");
   const jobs = useQuery(
     api.queries.jobs.list,
     user?.companyId
@@ -84,6 +93,18 @@ export function JobListPage() {
         const [mon, sun] = getWeekRange();
         if (job.scheduledDate < mon || job.scheduledDate > sun) return false;
       }
+      if (assignmentFilter) {
+        if (assignmentFilter === "self_assigned") {
+          if ((job as any).assignedManagerId !== user?._id) return false;
+        } else if (assignmentFilter === "unassigned") {
+          if ((job.cleaners as any[]).length > 0 || (job as any).assignedManagerId) return false;
+        } else if (assignmentFilter === "my_cleaners") {
+          if ((job.cleaners as any[]).length === 0) return false;
+          if ((job as any).sharedFromCompanyName) return false;
+        } else if (assignmentFilter === "my_partners") {
+          if (!(job as any).sharedFromCompanyName && !(job as any).hasRejectedShare) return false;
+        }
+      }
       if (searchLower) {
         const propMatch = job.propertyName?.toLowerCase().includes(searchLower);
         const cleanerMatch = (job.cleaners as any[]).some((c: any) =>
@@ -95,7 +116,7 @@ export function JobListPage() {
     })
 ;
 
-  const hasFilters = statusFilter || typeFilter || dateRange !== "all" || search;
+  const hasFilters = statusFilter || typeFilter || dateRange !== "all" || search || assignmentFilter;
 
   return (
     <div>
@@ -162,7 +183,7 @@ export function JobListPage() {
       )}
 
       {/* Status pills */}
-      <div className="flex flex-wrap gap-2 mb-6">
+      <div className="flex flex-wrap gap-2 mb-3">
         {STATUS_FILTERS.map((f) => (
           <button
             key={f.value}
@@ -170,6 +191,23 @@ export function JobListPage() {
             className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
               statusFilter === f.value
                 ? "bg-primary-100 text-primary-700"
+                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            {t(f.labelKey)}
+          </button>
+        ))}
+      </div>
+
+      {/* Assignment scope filter */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        {ASSIGNMENT_FILTERS.map((f) => (
+          <button
+            key={f.value}
+            onClick={() => setAssignmentFilter(f.value)}
+            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              assignmentFilter === f.value
+                ? "bg-blue-100 text-blue-700"
                 : "bg-gray-100 text-gray-600 hover:bg-gray-200"
             }`}
           >

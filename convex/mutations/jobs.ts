@@ -661,6 +661,151 @@ export const completeJob = mutation({
  * Set or update the planned cleaner pay amount on a job (owner-gated).
  * Can be set anytime once a cleaner is assigned.
  */
+/**
+ * Owner self-execution: start a job the owner is self-assigned to (via assignedManagerId).
+ * Lighter-weight alternative to the cleaner startJob flow.
+ */
+export const ownerStartJob = mutation({
+  args: { jobId: v.id("jobs"), userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+    const job = await ctx.db.get(args.jobId);
+    if (!job) throw new Error("Job not found");
+    if (job.companyId !== owner.companyId) throw new Error("Not your company");
+    if (job.assignedManagerId !== owner._id) throw new Error("You are not self-assigned to this job");
+    if (job.status !== "scheduled" && job.status !== "confirmed" && job.status !== "rework_requested")
+      throw new Error("Job cannot be started in current status");
+
+    await ctx.db.patch(args.jobId, {
+      status: "in_progress",
+      startedAt: Date.now(),
+    });
+
+    await logAudit(ctx, {
+      companyId: owner.companyId,
+      userId: owner._id,
+      action: "owner_start_job",
+      entityType: "job",
+      entityId: args.jobId,
+    });
+  },
+});
+
+/**
+ * Owner self-execution: complete a job the owner is self-assigned to.
+ * Skips the submit→approve cycle — directly marks as approved.
+ */
+export const ownerCompleteJob = mutation({
+  args: {
+    jobId: v.id("jobs"),
+    notes: v.optional(v.string()),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+    const job = await ctx.db.get(args.jobId);
+    if (!job) throw new Error("Job not found");
+    if (job.companyId !== owner.companyId) throw new Error("Not your company");
+    if (job.assignedManagerId !== owner._id) throw new Error("You are not self-assigned to this job");
+    if (job.status !== "in_progress") throw new Error("Job not in progress");
+
+    await ctx.db.patch(args.jobId, {
+      status: "approved",
+      completedAt: Date.now(),
+      notes: args.notes ? `${job.notes ? job.notes + "\n" : ""}Owner completion: ${args.notes}` : job.notes,
+    });
+
+    // Keep form status in sync if one exists
+    const form = await ctx.db
+      .query("forms")
+      .withIndex("by_jobId", (q) => q.eq("jobId", args.jobId))
+      .first();
+    if (form && (form.status === "in_progress" || form.status === "submitted")) {
+      await ctx.db.patch(form._id, { status: "approved", submittedAt: Date.now() });
+    }
+
+    await logAudit(ctx, {
+      companyId: owner.companyId,
+      userId: owner._id,
+      action: "owner_complete_job",
+      entityType: "job",
+      entityId: args.jobId,
+    });
+  },
+});
+
+/**
+ * Owner self-execution: submit a house-check inspection on a self-assigned job.
+ * Reuses the same managerInspections table but with owner-level auth.
+ */
+export const ownerSubmitInspection = mutation({
+  args: {
+    userId: v.id("users"),
+    jobId: v.id("jobs"),
+    readinessScore: v.number(),
+    severity: v.union(
+      v.literal("none"),
+      v.literal("low"),
+      v.literal("medium"),
+      v.literal("high"),
+      v.literal("critical")
+    ),
+    notes: v.optional(v.string()),
+    issues: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+    const job = await ctx.db.get(args.jobId);
+    if (!job) throw new Error("Job not found");
+    if (job.companyId !== owner.companyId) throw new Error("Not your company");
+    if (job.assignedManagerId !== owner._id) throw new Error("You are not self-assigned to this job");
+
+    if (args.readinessScore < 1 || args.readinessScore > 10 || !Number.isInteger(args.readinessScore)) {
+      throw new Error("Readiness score must be an integer between 1 and 10");
+    }
+
+    const now = Date.now();
+    const inspectionId = await ctx.db.insert("managerInspections", {
+      jobId: args.jobId,
+      companyId: owner.companyId,
+      managerId: owner._id,
+      readinessScore: args.readinessScore,
+      severity: args.severity,
+      notes: args.notes,
+      issues: args.issues,
+      createdAt: now,
+    });
+
+    if (args.severity !== "none" && job.propertyId) {
+      await ctx.db.insert("redFlags", {
+        companyId: owner.companyId,
+        propertyId: job.propertyId,
+        jobId: args.jobId,
+        category: "inspection",
+        severity: args.severity,
+        note: (args.notes && args.notes.trim())
+          ? `Owner inspection: ${args.notes.trim()}`
+          : `Owner inspection red flag (score ${args.readinessScore}/10)`,
+        status: "open",
+        inspectionId,
+      });
+    }
+
+    await ctx.db.patch(args.jobId, { inspectionCycleOpen: false });
+
+    await logAudit(ctx, {
+      companyId: owner.companyId,
+      userId: owner._id,
+      action: "owner_inspection_submitted",
+      entityType: "managerInspection",
+      entityId: inspectionId,
+      details: `Score: ${args.readinessScore}/10, Severity: ${args.severity}`,
+    });
+
+    return inspectionId;
+  },
+});
+
 export const updatePlannedCleanerPay = mutation({
   args: {
     userId: v.id("users"),

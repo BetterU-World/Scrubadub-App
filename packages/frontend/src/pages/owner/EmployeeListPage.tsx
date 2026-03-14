@@ -19,6 +19,7 @@ export function EmployeeListPage() {
     user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
   );
   const inviteCleaner = useAction(api.employeeActions.inviteCleaner);
+  const resendInviteEmail = useAction(api.employeeActions.resendInviteEmail);
   const updateStatus = useMutation(api.mutations.employees.updateEmployeeStatus);
 
   const [showInvite, setShowInvite] = useState(() => {
@@ -40,6 +41,7 @@ export function EmployeeListPage() {
   const [inviteRole, setInviteRole] = useState<"cleaner" | "maintenance" | "manager">("cleaner");
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteLink, setInviteLink] = useState("");
+  const [inviteEmailSent, setInviteEmailSent] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState<string | null>(null);
@@ -93,7 +95,8 @@ export function EmployeeListPage() {
       }
       const result = await inviteCleaner(inviteArgs as any);
       setInviteLink(`${window.location.origin}/invite/${result.token}`);
-      setToast(t("employees.inviteSent"));
+      setInviteEmailSent(result.emailSent);
+      setToast(result.emailSent ? t("employees.inviteCreatedAndEmailed") : t("employees.inviteCreatedCopyLink"));
       setTimeout(() => setToast(null), 3000);
     } catch (err: any) {
       setError(err.message || "Failed to invite");
@@ -114,6 +117,7 @@ export function EmployeeListPage() {
     setInviteEmail("");
     setInviteRole("cleaner");
     setInviteLink("");
+    setInviteEmailSent(false);
     setError("");
     setMgrPerms({
       canSeeAllJobs: false, canCreateJobs: false, canAssignCleaners: false,
@@ -246,7 +250,18 @@ export function EmployeeListPage() {
 
             {inviteLink ? (
               <div>
-                <p className="text-sm text-gray-600 mb-3">{t("employees.shareLink", { name: inviteName })}</p>
+                {inviteEmailSent ? (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg mb-3">
+                    <p className="text-sm font-medium text-green-800">{t("employees.emailSentConfirm", { email: inviteEmail })}</p>
+                    <p className="text-xs text-green-600 mt-1">{t("employees.emailSentDesc")}</p>
+                  </div>
+                ) : (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg mb-3">
+                    <p className="text-sm font-medium text-amber-800">{t("employees.emailNotSent")}</p>
+                    <p className="text-xs text-amber-600 mt-1">{t("employees.emailNotSentDesc")}</p>
+                  </div>
+                )}
+                <p className="text-sm text-gray-600 mb-2">{t("employees.shareLinkManually", { name: inviteName })}</p>
                 <div className="flex gap-2">
                   <input className="input-field text-sm" value={inviteLink} readOnly />
                   <button onClick={copyLink} className="btn-secondary flex items-center gap-1">
@@ -254,7 +269,34 @@ export function EmployeeListPage() {
                     {copied ? t("employees.copied") : t("employees.copy")}
                   </button>
                 </div>
-                <button onClick={resetInviteDialog} className="btn-primary w-full mt-4">{t("employees.done")}</button>
+                {!inviteEmailSent && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        const result = await resendInviteEmail({
+                          userId: user._id,
+                          companyId: user.companyId!,
+                          employeeEmail: inviteEmail,
+                        });
+                        if (result.emailSent) {
+                          setInviteEmailSent(true);
+                          setToast(t("employees.emailResentSuccess"));
+                          setTimeout(() => setToast(null), 3000);
+                        } else {
+                          setToast(t("employees.emailNotSent"));
+                          setTimeout(() => setToast(null), 3000);
+                        }
+                      } catch (err: any) {
+                        setToast(err.message ?? t("common.failed"));
+                        setTimeout(() => setToast(null), 3000);
+                      }
+                    }}
+                    className="btn-secondary w-full mt-2 text-sm"
+                  >
+                    {t("employees.resendEmail")}
+                  </button>
+                )}
+                <button onClick={resetInviteDialog} className="btn-primary w-full mt-3">{t("employees.done")}</button>
               </div>
             ) : (
               <div className="space-y-4">
@@ -301,13 +343,14 @@ export function EmployeeListPage() {
                     ))}
                   </div>
                 )}
+                <p className="text-xs text-gray-400">{t("employees.inviteWillEmail")}</p>
                 <button
                   onClick={handleInvite}
                   disabled={!inviteName || !inviteEmail || inviteLoading}
                   className="btn-primary w-full flex items-center justify-center gap-2"
                 >
                   {inviteLoading && <LoadingSpinner size="sm" />}
-                  {t("employees.generateInviteLink")}
+                  {t("employees.createAndSendInvite")}
                 </button>
               </div>
             )}

@@ -425,6 +425,7 @@ export function JobFormPage() {
               <option key={m._id} value={m._id}>{m.name}</option>
             ))}
           </select>
+          <p className="text-xs text-gray-400 mt-1">{t("jobForm.selfAssignHint")}</p>
         </div>
 
         <div>

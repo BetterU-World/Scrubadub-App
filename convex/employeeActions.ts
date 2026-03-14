@@ -95,6 +95,35 @@ export const inviteCleaner = action({
   },
 });
 
+/**
+ * Resend the invite email for a pending user who didn't receive it.
+ * Only the owner can trigger this, and the user must still be in "pending" status.
+ */
+export const resendInviteEmail = action({
+  args: {
+    userId: v.id("users"),
+    companyId: v.id("companies"),
+    employeeEmail: v.string(),
+  },
+  handler: async (ctx, args): Promise<{ emailSent: boolean }> => {
+    const isOwner: boolean = await ctx.runQuery(
+      internal.clientPortalInternal.verifyOwner,
+      { userId: args.userId, companyId: args.companyId }
+    );
+    if (!isOwner) throw new Error("Owner access required");
+
+    const email = args.employeeEmail.toLowerCase();
+    const user = await ctx.runQuery(internal.authInternal.getUserByEmail, { email });
+    if (!user) throw new Error("Employee not found");
+    if (user.status !== "pending") throw new Error("Employee already accepted invite");
+    if (user.companyId !== args.companyId) throw new Error("Employee not in your company");
+    if (!user.inviteToken) throw new Error("No invite token found");
+
+    const emailSent = await sendInviteEmail(email, user.inviteToken);
+    return { emailSent };
+  },
+});
+
 export const acceptInvite = action({
   args: {
     token: v.string(),

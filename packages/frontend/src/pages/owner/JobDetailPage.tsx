@@ -30,6 +30,7 @@ import {
   DollarSign,
   CreditCard,
   ImagePlus,
+  Play,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -109,6 +110,11 @@ export function JobDetailPage() {
   const markSettlementPaid = useMutation(api.mutations.settlements.markSettlementPaid);
   const createSettlementCheckout = useAction(api.actions.settlements.createSettlementPayCheckout);
 
+  // Owner self-execution mutations
+  const ownerStartJobMut = useMutation(api.mutations.jobs.ownerStartJob);
+  const ownerCompleteJobMut = useMutation(api.mutations.jobs.ownerCompleteJob);
+  const ownerSubmitInspectionMut = useMutation(api.mutations.jobs.ownerSubmitInspection);
+
   const [showCancel, setShowCancel] = useState(false);
   const [showRework, setShowRework] = useState(false);
   const [reworkNotes, setReworkNotes] = useState("");
@@ -136,6 +142,12 @@ export function JobDetailPage() {
   const [cleanerStripeLoading, setCleanerStripeLoading] = useState(false);
   const [plannedPaySaving, setPlannedPaySaving] = useState(false);
   const [editingPlannedPay, setEditingPlannedPay] = useState(false);
+  // Owner self-execution state
+  const [ownerInspScore, setOwnerInspScore] = useState(7);
+  const [ownerInspSeverity, setOwnerInspSeverity] = useState("none");
+  const [ownerInspNotes, setOwnerInspNotes] = useState("");
+  const [ownerInspSubmitting, setOwnerInspSubmitting] = useState(false);
+  const [ownerInspectionSubmitted, setOwnerInspectionSubmitted] = useState(false);
 
   // Read flash toast from sessionStorage (set by JobFormPage)
   useEffect(() => {
@@ -1187,6 +1199,135 @@ export function JobDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Owner self-execution controls — only when owner is explicitly self-assigned */}
+      {user?.role === "owner" && (job as any).assignedManagerId === user._id && (
+        <div className="card border-primary-200 mt-6">
+          <h3 className="font-semibold text-gray-900 flex items-center gap-2 mb-3">
+            <CheckCircle className="w-5 h-5 text-primary-600" /> {t("jobs.ownerExecution")}
+          </h3>
+          <p className="text-xs text-gray-400 mb-4">{t("jobs.ownerExecutionDesc")}</p>
+
+          {/* Clean workflow actions */}
+          {job.type !== "maintenance" && (
+            <div className="space-y-2 mb-4">
+              <p className="text-sm font-medium text-gray-700">{t("jobs.cleanWorkflow")}</p>
+              {(job.status === "scheduled" || job.status === "confirmed" || job.status === "rework_requested") && (
+                <button
+                  onClick={async () => {
+                    const uid = requireUserId(user);
+                    if (!uid) return;
+                    try {
+                      await ownerStartJobMut({ jobId: job._id, userId: uid });
+                      setToast({ message: t("jobs.cleanStarted"), type: "success" });
+                      setTimeout(() => setToast(null), 3000);
+                    } catch (err: any) {
+                      setToast({ message: err.message ?? t("common.failed"), type: "error" });
+                      setTimeout(() => setToast(null), 3000);
+                    }
+                  }}
+                  className="btn-primary text-sm flex items-center gap-2"
+                >
+                  <Play className="w-4 h-4" /> {t("jobs.startClean")}
+                </button>
+              )}
+              {job.status === "in_progress" && (
+                <button
+                  onClick={async () => {
+                    const uid = requireUserId(user);
+                    if (!uid) return;
+                    try {
+                      await ownerCompleteJobMut({ jobId: job._id, userId: uid });
+                      setToast({ message: t("jobs.cleanCompleted"), type: "success" });
+                      setTimeout(() => setToast(null), 3000);
+                    } catch (err: any) {
+                      setToast({ message: err.message ?? t("common.failed"), type: "error" });
+                      setTimeout(() => setToast(null), 3000);
+                    }
+                  }}
+                  className="btn-primary text-sm flex items-center gap-2"
+                >
+                  <CheckCircle className="w-4 h-4" /> {t("jobs.completeClean")}
+                </button>
+              )}
+              {job.status === "approved" && (
+                <span className="text-sm text-green-600 font-medium">{t("jobs.cleanDone")}</span>
+              )}
+            </div>
+          )}
+
+          {/* House check / inspection actions */}
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-gray-700">{t("jobs.houseCheckWorkflow")}</p>
+            {!ownerInspectionSubmitted ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-gray-600">{t("jobs.readinessScore")}:</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={ownerInspScore}
+                    onChange={(e) => setOwnerInspScore(parseInt(e.target.value) || 1)}
+                    className="input-field w-16 text-sm py-1"
+                  />
+                  <span className="text-xs text-gray-400">/10</span>
+                </div>
+                <div>
+                  <select
+                    value={ownerInspSeverity}
+                    onChange={(e) => setOwnerInspSeverity(e.target.value)}
+                    className="input-field text-sm py-1"
+                  >
+                    <option value="none">{t("jobs.noIssues")}</option>
+                    <option value="low">{t("severity.low")}</option>
+                    <option value="medium">{t("severity.medium")}</option>
+                    <option value="high">{t("severity.high")}</option>
+                    <option value="critical">{t("severity.critical")}</option>
+                  </select>
+                </div>
+                <textarea
+                  className="input-field text-sm"
+                  rows={2}
+                  value={ownerInspNotes}
+                  onChange={(e) => setOwnerInspNotes(e.target.value)}
+                  placeholder={t("jobs.inspectionNotesPlaceholder")}
+                />
+                <button
+                  disabled={ownerInspSubmitting}
+                  onClick={async () => {
+                    const uid = requireUserId(user);
+                    if (!uid) return;
+                    setOwnerInspSubmitting(true);
+                    try {
+                      await ownerSubmitInspectionMut({
+                        userId: uid,
+                        jobId: job._id,
+                        readinessScore: ownerInspScore,
+                        severity: ownerInspSeverity as any,
+                        notes: ownerInspNotes || undefined,
+                      });
+                      setOwnerInspectionSubmitted(true);
+                      setToast({ message: t("jobs.inspectionSubmittedSuccess"), type: "success" });
+                      setTimeout(() => setToast(null), 3000);
+                    } catch (err: any) {
+                      setToast({ message: err.message ?? t("common.failed"), type: "error" });
+                      setTimeout(() => setToast(null), 3000);
+                    } finally {
+                      setOwnerInspSubmitting(false);
+                    }
+                  }}
+                  className="btn-secondary text-sm flex items-center gap-2"
+                >
+                  <Flag className="w-4 h-4" /> {ownerInspSubmitting ? t("common.saving") : t("jobs.submitHouseCheck")}
+                </button>
+              </div>
+            ) : (
+              <span className="text-sm text-green-600 font-medium">{t("jobs.houseCheckDone")}</span>
+            )}
+          </div>
+        </div>
+      )}
 
       <ConfirmDialog
         open={showCancel}
