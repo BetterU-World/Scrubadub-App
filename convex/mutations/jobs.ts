@@ -97,6 +97,7 @@ export const update = mutation({
     durationMinutes: v.optional(v.number()),
     notes: v.optional(v.string()),
     assignedManagerId: v.optional(v.id("users")),
+    clearAssignedManager: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const owner = await requireOwner(ctx, args.userId);
@@ -104,11 +105,15 @@ export const update = mutation({
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
 
-    const { jobId, userId: _uid, ...updates } = args;
+    const { jobId, userId: _uid, clearAssignedManager, ...updates } = args;
     // Remove undefined values
     const cleanUpdates: Record<string, any> = {};
     for (const [key, val] of Object.entries(updates)) {
       if (val !== undefined) cleanUpdates[key] = val;
+    }
+    // Explicitly clear assignedManagerId when requested
+    if (clearAssignedManager) {
+      cleanUpdates.assignedManagerId = undefined;
     }
     await ctx.db.patch(jobId, cleanUpdates);
 

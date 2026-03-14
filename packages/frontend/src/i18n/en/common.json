@@ -475,7 +475,8 @@
     "addProperty": "Add a Property",
     "selectPartnerCompany": "Please select a partner company",
     "assignManager": "Assign Manager",
-    "noManager": "No manager"
+    "noManager": "No manager assigned",
+    "selfAssign": "Self"
   },
   "pipeline": {
     "upcomingFollowUps": "Upcoming Follow-ups",

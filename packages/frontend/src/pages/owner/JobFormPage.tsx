@@ -174,7 +174,13 @@ export function JobFormPage() {
         ...(managerId ? { assignedManagerId: managerId as Id<"users"> } : {}),
       };
       if (isEditing) {
-        await updateJob({ jobId: params.id as Id<"jobs">, userId: uid, ...data });
+        await updateJob({
+          jobId: params.id as Id<"jobs">,
+          userId: uid,
+          ...data,
+          // Clear manager if user explicitly unset it (was previously assigned)
+          ...(!managerId && (existing as any)?.assignedManagerId ? { clearAssignedManager: true } : {}),
+        });
         sessionStorage.setItem("scrubadub_toast", t("jobs.jobUpdated"));
         setLocation(`/jobs/${params.id}`);
       } else {
@@ -409,18 +415,17 @@ export function JobFormPage() {
           </div>
         )}
 
-        {/* Assign Manager */}
-        {managers && managers.length > 0 && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.assignManager")}</label>
-            <select className="input-field" value={managerId} onChange={(e) => { managerTouched.current = true; setManagerId(e.target.value); }}>
-              <option value="">{t("jobForm.noManager")}</option>
-              {managers.map((m) => (
-                <option key={m._id} value={m._id}>{m.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
+        {/* Assign Manager / Owner */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.assignManager")}</label>
+          <select className="input-field" value={managerId} onChange={(e) => { managerTouched.current = true; setManagerId(e.target.value); }}>
+            <option value="">{t("jobForm.noManager")}</option>
+            <option value={user._id}>{user.name} ({t("jobForm.selfAssign")})</option>
+            {(managers ?? []).map((m) => (
+              <option key={m._id} value={m._id}>{m.name}</option>
+            ))}
+          </select>
+        </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.notes")}</label>

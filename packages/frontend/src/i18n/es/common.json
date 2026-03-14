@@ -475,7 +475,8 @@
     "addProperty": "Agregar propiedad",
     "selectPartnerCompany": "Selecciona una empresa socia",
     "assignManager": "Asignar Manager",
-    "noManager": "Sin manager"
+    "noManager": "Sin manager asignado",
+    "selfAssign": "Yo mismo"
   },
   "pipeline": {
     "upcomingFollowUps": "Próximos seguimientos",
