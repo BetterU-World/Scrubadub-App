@@ -6,6 +6,7 @@ import {
   sendJobAssignedEmail,
   sendJobCompletedEmail,
   sendJobApprovedEmail,
+  sendStripeConnectInviteEmail,
 } from "../lib/email";
 
 /**
@@ -69,6 +70,23 @@ export const sendJobApproved = internalAction({
     const sent = await sendJobApprovedEmail(args.email, args.propertyName);
     if (!sent) {
       console.error("[emailNotifications] Job approved email failed for", args.email);
+    }
+  },
+});
+
+/**
+ * Internal action: send "connect Stripe" invite email to a cleaner.
+ * Scheduled from mutations via ctx.scheduler.runAfter(0, ...).
+ */
+export const sendStripeConnectInvite = internalAction({
+  args: {
+    email: v.string(),
+    ownerName: v.optional(v.string()),
+  },
+  handler: async (_ctx, args) => {
+    const sent = await sendStripeConnectInviteEmail(args.email, args.ownerName);
+    if (!sent) {
+      console.error("[emailNotifications] Stripe connect invite email failed for", args.email);
     }
   },
 });

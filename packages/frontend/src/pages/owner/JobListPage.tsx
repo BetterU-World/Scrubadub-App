@@ -33,7 +33,8 @@ const ASSIGNMENT_FILTERS = [
   { value: "self_assigned", labelKey: "jobs.selfAssigned" },
   { value: "unassigned", labelKey: "jobs.unassigned" },
   { value: "my_cleaners", labelKey: "jobs.myCleaners" },
-  { value: "my_partners", labelKey: "jobs.myPartners" },
+  { value: "shared_to_partners", labelKey: "jobs.sharedToPartners" },
+  { value: "shared_from_partners", labelKey: "jobs.sharedFromPartners" },
 ] as const;
 
 const DATE_RANGES = [
@@ -97,12 +98,20 @@ export function JobListPage() {
         if (assignmentFilter === "self_assigned") {
           if ((job as any).assignedManagerId !== user?._id) return false;
         } else if (assignmentFilter === "unassigned") {
-          if ((job.cleaners as any[]).length > 0 || (job as any).assignedManagerId) return false;
+          // Truly unassigned: no cleaners, no manager, not shared to/from partners
+          if (
+            (job.cleaners as any[]).length > 0 ||
+            (job as any).assignedManagerId ||
+            (job as any).sharedFromCompanyName ||
+            (job as any).hasActiveShare
+          ) return false;
         } else if (assignmentFilter === "my_cleaners") {
           if ((job.cleaners as any[]).length === 0) return false;
           if ((job as any).sharedFromCompanyName) return false;
-        } else if (assignmentFilter === "my_partners") {
-          if (!(job as any).sharedFromCompanyName && !(job as any).hasRejectedShare) return false;
+        } else if (assignmentFilter === "shared_to_partners") {
+          if (!(job as any).hasActiveShare && !(job as any).hasRejectedShare) return false;
+        } else if (assignmentFilter === "shared_from_partners") {
+          if (!(job as any).sharedFromCompanyName) return false;
         }
       }
       if (searchLower) {

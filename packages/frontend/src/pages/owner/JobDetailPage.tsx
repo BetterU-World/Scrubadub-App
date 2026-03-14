@@ -100,6 +100,7 @@ export function JobDetailPage() {
   const markCleanerPaidOutside = useMutation(api.mutations.cleanerPayments.markCleanerPaidOutside);
   const createCleanerPaymentCheckout = useAction(api.actions.cleanerPayments.createCleanerPaymentCheckout);
   const updatePlannedCleanerPay = useMutation(api.mutations.jobs.updatePlannedCleanerPay);
+  const sendStripeConnectInviteMut = useMutation(api.mutations.cleanerPayments.sendStripeConnectInvite);
 
   // Settlements
   const settlement = useQuery(
@@ -142,6 +143,8 @@ export function JobDetailPage() {
   const [cleanerStripeLoading, setCleanerStripeLoading] = useState(false);
   const [plannedPaySaving, setPlannedPaySaving] = useState(false);
   const [editingPlannedPay, setEditingPlannedPay] = useState(false);
+  const [showConnectStripeModal, setShowConnectStripeModal] = useState(false);
+  const [connectStripeLoading, setConnectStripeLoading] = useState(false);
   // Owner self-execution state
   const [ownerInspScore, setOwnerInspScore] = useState(7);
   const [ownerInspSeverity, setOwnerInspSeverity] = useState("none");
@@ -758,7 +761,7 @@ export function JobDetailPage() {
 
                   {isEligible ? (
                     <div className="flex items-center gap-2 flex-wrap">
-                      {cleanerStripeAccountId && (
+                      {cleanerStripeAccountId ? (
                         <button
                           disabled={cleanerStripeLoading || cleanerPaySaving || !cleanerPayAmount || Number(cleanerPayAmount) < 1}
                           onClick={async () => {
@@ -795,6 +798,16 @@ export function JobDetailPage() {
                         >
                           <CreditCard className="w-4 h-4" />
                           {cleanerStripeLoading ? t("common.loading") : t("jobs.payViaScrub")}
+                        </button>
+                      ) : (
+                        <button
+                          disabled={!cleanerPaymentData?.cleanerEmail}
+                          onClick={() => setShowConnectStripeModal(true)}
+                          className="btn-primary text-sm flex items-center gap-1"
+                          title={!cleanerPaymentData?.cleanerEmail ? t("jobs.connectCleanerNoEmail") : undefined}
+                        >
+                          <CreditCard className="w-4 h-4" />
+                          {t("jobs.connectCleanerToStripe")}
                         </button>
                       )}
                       <button
@@ -1343,6 +1356,72 @@ export function JobDetailPage() {
           setShowCancel(false);
         }}
       />
+
+      {/* Stripe Connect invite modal */}
+      {showConnectStripeModal && cleanerPaymentData && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-2">{t("jobs.connectCleanerToStripe")}</h3>
+            {cleanerPaymentData.cleanerEmail ? (
+              <>
+                <p className="text-sm text-gray-600 mb-4">
+                  {t("jobs.connectCleanerToStripeDesc", { name: cleanerPaymentData.cleanerName })}
+                </p>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 mb-4 text-sm text-gray-700">
+                  {cleanerPaymentData.cleanerEmail}
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setShowConnectStripeModal(false)}
+                    className="btn-secondary text-sm"
+                  >
+                    {t("common.cancel")}
+                  </button>
+                  <button
+                    disabled={connectStripeLoading}
+                    onClick={async () => {
+                      const uid = requireUserId(user);
+                      if (!uid || !cleanerPaymentData.cleanerUserId) return;
+                      setConnectStripeLoading(true);
+                      try {
+                        await sendStripeConnectInviteMut({
+                          userId: uid,
+                          cleanerUserId: cleanerPaymentData.cleanerUserId,
+                        });
+                        setShowConnectStripeModal(false);
+                        setToast({ message: t("jobs.stripeInviteSent"), type: "success" });
+                        setTimeout(() => setToast(null), 3000);
+                      } catch (err: any) {
+                        setToast({ message: toFriendlyMessage(err, t("jobs.stripeInviteFailed")), type: "error" });
+                        setTimeout(() => setToast(null), 4000);
+                      } finally {
+                        setConnectStripeLoading(false);
+                      }
+                    }}
+                    className="btn-primary text-sm"
+                  >
+                    {connectStripeLoading ? t("common.loading") : t("jobs.sendInvite")}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-gray-600 mb-4">
+                  {t("jobs.connectCleanerNoEmail")}
+                </p>
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => setShowConnectStripeModal(false)}
+                    className="btn-secondary text-sm"
+                  >
+                    {t("common.close")}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Rework dialog */}
       {showRework && (

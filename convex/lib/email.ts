@@ -222,6 +222,51 @@ export async function sendJobApprovedEmail(
   }
 }
 
+/**
+ * Send a "connect to Stripe" invite email to a cleaner on behalf of the owner.
+ */
+export async function sendStripeConnectInviteEmail(
+  email: string,
+  ownerName?: string
+): Promise<boolean> {
+  const resend = getResendClient();
+  const appUrl = getAppUrl();
+
+  const from = ownerName ? `Your employer (${ownerName})` : "Your employer";
+
+  try {
+    const { error } = await resend.emails.send({
+      from: getFromEmail(),
+      to: email,
+      subject: "Connect Stripe to receive payments via SCRUB",
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <img src="${appUrl}/favicon-96x96.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
+          </div>
+          <h2 style="text-align: center; color: #111; font-size: 22px; margin: 0 0 16px;">Connect Stripe to Get Paid</h2>
+          <p style="color: #374151; font-size: 15px; line-height: 1.6;">${from} wants to pay you for jobs through SCRUB. To receive payments, connect your Stripe account:</p>
+          <p style="text-align: center; margin: 28px 0;">
+            <a href="${appUrl}" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
+              Open SCRUB &amp; Connect Stripe
+            </a>
+          </p>
+          <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">Log in to SCRUB and go to Settings &rarr; Get Paid to connect your Stripe account.</p>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error("[email] Failed to send Stripe connect invite:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[email] Error sending Stripe connect invite:", err);
+    return false;
+  }
+}
+
 export async function sendInviteEmail(
   email: string,
   inviteToken: string,

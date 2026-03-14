@@ -1,4 +1,5 @@
 import { mutation, internalMutation } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { assertOwnerRole } from "../lib/auth";
 import { checkRateLimit } from "../lib/rateLimit";
@@ -480,5 +481,35 @@ export const updateCleanerPaymentAmount = mutation({
     if (payment.status !== "OPEN") throw new Error("Can only edit amount on OPEN payments");
 
     await ctx.db.patch(args.cleanerPaymentId, { amountCents: args.amountCents });
+  },
+});
+
+/**
+ * Owner-initiated: send Stripe connect invite email to a cleaner.
+ */
+export const sendStripeConnectInvite = mutation({
+  args: {
+    userId: v.id("users"),
+    cleanerUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const owner = await assertOwnerRole(ctx, args.userId);
+    const cleaner = await ctx.db.get(args.cleanerUserId);
+    if (!cleaner || cleaner.companyId !== owner.companyId) {
+      throw new Error("Cleaner not found or not in your company");
+    }
+    if (!cleaner.email) {
+      throw new Error("Cleaner has no email on file");
+    }
+    if (cleaner.stripeConnectAccountId) {
+      throw new Error("Cleaner is already connected to Stripe");
+    }
+
+    const ownerUser = await ctx.db.get(args.userId);
+
+    await ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendStripeConnectInvite, {
+      email: cleaner.email,
+      ownerName: ownerUser?.name,
+    });
   },
 });

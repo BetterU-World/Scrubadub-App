@@ -47,6 +47,7 @@ export const getCleanerPaymentForJob = query({
     return {
       payment: payment ?? null,
       cleanerName: cleaner?.name ?? "Unknown",
+      cleanerEmail: cleaner?.email ?? null,
       cleanerUserId: cleanerId,
       cleanerStripeAccountId: cleaner?.stripeConnectAccountId ?? null,
     };
