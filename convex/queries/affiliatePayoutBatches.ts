@@ -78,7 +78,7 @@ export const getPayoutBatch = query({
       payoutsEnabled: boolean;
     } | null = null;
     if (firstReferrer) {
-      const aff = await ctx.db.get(firstReferrer as any);
+      const aff = await ctx.db.get(firstReferrer as any) as any;
       if (aff) {
         affiliateStripe = {
           userId: String(aff._id),
@@ -138,7 +138,7 @@ export const getBatchPayoutData = internalQuery({
       throw new Error("No ledger rows in batch");
     }
 
-    const affiliate = await ctx.db.get(referrerUserId as any);
+    const affiliate = await ctx.db.get(referrerUserId as any) as any;
     if (!affiliate) throw new Error("Affiliate user not found");
     if (!affiliate.stripeConnectAccountId) {
       throw new Error("affiliate_not_ready");
@@ -150,7 +150,7 @@ export const getBatchPayoutData = internalQuery({
     return {
       batchId: batch._id,
       totalCommissionCents: batch.totalCommissionCents,
-      stripeConnectAccountId: affiliate.stripeConnectAccountId,
+      stripeConnectAccountId: affiliate.stripeConnectAccountId as string,
       affiliateUserId: affiliate._id,
       ledgerIds: batch.ledgerIds,
     };

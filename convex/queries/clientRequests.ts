@@ -245,14 +245,15 @@ export const listClientFeedback = query({
     const requestMap = new Map(requests.map((r) => [r._id, r]));
 
     // Get feedback, optionally filtered by status
-    let feedbackQuery = ctx.db.query("clientFeedback");
-    if (args.status) {
-      feedbackQuery = feedbackQuery.withIndex("by_status_createdAt", (q) =>
-        q.eq("status", args.status!)
-      );
-    }
-
-    const allFeedback = await feedbackQuery.order("desc").collect();
+    const allFeedback = args.status
+      ? await ctx.db
+          .query("clientFeedback")
+          .withIndex("by_status_createdAt", (q) =>
+            q.eq("status", args.status!)
+          )
+          .order("desc")
+          .collect()
+      : await ctx.db.query("clientFeedback").order("desc").collect();
 
     // Filter to only this company's requests
     const companyFeedback = allFeedback.filter((f) =>

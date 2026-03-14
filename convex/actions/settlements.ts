@@ -25,7 +25,7 @@ export const createSettlementPayCheckout = action({
     userId: v.id("users"),
     settlementId: v.id("companySettlements"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ url: string | null }> => {
     // Rate limit: 3 checkout creations per 60s per user
     await ctx.runMutation(internal.rateLimitInternal.enforce, {
       key: `u:${args.userId}:createSettlementPayCheckout`,
@@ -37,14 +37,14 @@ export const createSettlementPayCheckout = action({
     if (!stripe) throw new Error("Stripe is not configured");
 
     // Fetch caller (payer) info
-    const payer = await ctx.runQuery(
+    const payer: any = await ctx.runQuery(
       internal.queries.companyStripeConnect.getOwnerAndCompany,
       { userId: args.userId },
     );
     if (!payer) throw new Error("Owner or company not found");
 
     // Fetch settlement + recipient company data via internal query
-    const data = await ctx.runQuery(
+    const data: any = await ctx.runQuery(
       internal.queries.settlements.getSettlementForPayment,
       { settlementId: args.settlementId },
     );
@@ -121,7 +121,7 @@ export const createSettlementBatchCheckout = action({
     userId: v.id("users"),
     batchId: v.id("settlementBatches"),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ url: string | null }> => {
     // Rate limit: 3 checkout creations per 60s per user
     await ctx.runMutation(internal.rateLimitInternal.enforce, {
       key: `u:${args.userId}:createSettlementBatchCheckout`,
@@ -132,13 +132,13 @@ export const createSettlementBatchCheckout = action({
     const stripe = getStripeClientOrNull();
     if (!stripe) throw new Error("Stripe is not configured");
 
-    const payer = await ctx.runQuery(
+    const payer: any = await ctx.runQuery(
       internal.queries.companyStripeConnect.getOwnerAndCompany,
       { userId: args.userId },
     );
     if (!payer) throw new Error("Owner or company not found");
 
-    const data = await ctx.runQuery(
+    const data: any = await ctx.runQuery(
       internal.queries.settlements.getSettlementBatchForPayment,
       { batchId: args.batchId },
     );

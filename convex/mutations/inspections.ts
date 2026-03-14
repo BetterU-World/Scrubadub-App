@@ -59,7 +59,7 @@ export const submit = mutation({
     if (args.severity !== "none") {
       await ctx.db.insert("redFlags", {
         companyId: user.companyId,
-        propertyId: job.propertyId,
+        propertyId: job.propertyId!,
         jobId: args.jobId,
         category: "inspection",
         severity: args.severity,

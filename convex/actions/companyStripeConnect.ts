@@ -97,11 +97,11 @@ export const createCompanyStripeAccountLink = action({
  */
 export const createCompanyStripeTestCheckout = action({
   args: { userId: v.id("users") },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ url: string | null }> => {
     const stripe = getStripeClientOrNull();
     if (!stripe) throw new Error("Stripe is not configured");
 
-    const data = await ctx.runQuery(
+    const data: any = await ctx.runQuery(
       internal.queries.companyStripeConnect.getOwnerAndCompany,
       { userId: args.userId }
     );
@@ -113,7 +113,7 @@ export const createCompanyStripeTestCheckout = action({
     const appUrl =
       process.env.APP_URL ?? "http://localhost:5173";
 
-    const session = await stripe.checkout.sessions.create({
+    const session: any = await stripe.checkout.sessions.create({
       mode: "payment",
       line_items: [
         {

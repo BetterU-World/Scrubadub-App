@@ -76,7 +76,7 @@ export const getInspectionRedFlags = query({
       flagged.map(async (ins) => {
         const manager = await ctx.db.get(ins.managerId);
         const job = await ctx.db.get(ins.jobId);
-        const property = job ? await ctx.db.get(job.propertyId) : null;
+        const property = job?.propertyId ? await ctx.db.get(job.propertyId) : null;
         return {
           _id: ins._id,
           source: "inspection" as const,
@@ -84,7 +84,7 @@ export const getInspectionRedFlags = query({
           category: "inspection" as const,
           note: ins.notes ?? `Inspection red flag: ${ins.severity}`,
           status: "open" as const,
-          propertyName: property?.name ?? "Unknown",
+          propertyName: (property as any)?.name ?? "Unknown",
           jobDate: job?.scheduledDate ?? "Unknown",
           managerName: manager?.name ?? "Unknown",
           readinessScore: ins.readinessScore,

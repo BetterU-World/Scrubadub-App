@@ -17,11 +17,11 @@ import { getStripeClientOrNull } from "../lib/stripe";
  */
 export const getOrCreateAffiliateStripeAccount = action({
   args: { userId: v.id("users") },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<string> => {
     const stripe = getStripeClientOrNull();
     if (!stripe) throw new Error("Stripe is not configured");
 
-    const data = await ctx.runQuery(
+    const data: any = await ctx.runQuery(
       internal.queries.stripeConnect.getUserAndCompanyForAffiliateConnect,
       { userId: args.userId }
     );

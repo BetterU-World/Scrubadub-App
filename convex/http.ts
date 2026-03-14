@@ -67,10 +67,11 @@ const stripeWebhook = httpAction(async (ctx, request) => {
         typeof invoice.customer === "string"
           ? invoice.customer
           : invoice.customer?.id ?? null;
+      const rawSubscription = (invoice as any).subscription;
       const invoiceSubscriptionId =
-        typeof invoice.subscription === "string"
-          ? invoice.subscription
-          : invoice.subscription?.id ?? null;
+        typeof rawSubscription === "string"
+          ? rawSubscription
+          : rawSubscription?.id ?? null;
 
       console.log("[attribution:http] invoice.paid received", {
         eventId: event.id,
@@ -79,7 +80,7 @@ const stripeWebhook = httpAction(async (ctx, request) => {
         rawCustomerType: typeof invoice.customer,
         rawCustomerValue: String(invoice.customer).slice(0, 80),
         resolvedCustomerId: invoiceCustomerId,
-        rawSubscriptionType: typeof invoice.subscription,
+        rawSubscriptionType: typeof rawSubscription,
         resolvedSubscriptionId: invoiceSubscriptionId,
         amountPaid: invoice.amount_paid,
         currency: invoice.currency,
@@ -210,7 +211,7 @@ const stripeWebhook = httpAction(async (ctx, request) => {
       break;
     case "charge.refunded":
     case "invoice.voided": {
-      const obj = event.data.object as Record<string, unknown>;
+      const obj = event.data.object as unknown as Record<string, unknown>;
       console.warn(`[stripe:webhook] ${event.type} received — no commission reversal yet`, {
         eventId: event.id,
         objectId: obj.id ?? "unknown",
