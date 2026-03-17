@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { BookOpen, ExternalLink, Users, Sparkles, AppWindow, BookMarked, Upload, X } from "lucide-react";
+import { BookOpen, ExternalLink, Users, Sparkles, AppWindow, BookMarked, Upload, Download, X, Check } from "lucide-react";
 
 const CATEGORY_META: Record<string, { labelKey: string; icon: typeof BookOpen }> = {
   app: { labelKey: "manuals.categoryApp", icon: AppWindow },
@@ -133,9 +133,23 @@ export function ManualsPage() {
     api.queries.manuals.getVisibleManuals,
     user ? { userId: user._id } : "skip"
   );
+  const exportedManuals = useQuery(
+    api.queries.manuals.exportManuals,
+    user?.isSuperadmin ? { userId: user._id } : "skip"
+  );
   const getSignedUrl = useAction(api.actions.manuals.getManualSignedUrl);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [showSeed, setShowSeed] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleExport = () => {
+    if (!exportedManuals) return;
+    const json = JSON.stringify(exportedManuals, null, 2);
+    navigator.clipboard.writeText(json).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   if (!user || manuals === undefined) return <PageLoader />;
 
@@ -163,12 +177,22 @@ export function ManualsPage() {
         description={t("manuals.description")}
         action={
           user.isSuperadmin && (
-            <button
-              onClick={() => setShowSeed(true)}
-              className="btn-secondary flex items-center gap-1.5 text-sm"
-            >
-              <Upload className="w-4 h-4" /> {t("manuals.seedManuals")}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExport}
+                disabled={!exportedManuals || exportedManuals.length === 0}
+                className="btn-secondary flex items-center gap-1.5 text-sm"
+              >
+                {copied ? <Check className="w-4 h-4" /> : <Download className="w-4 h-4" />}
+                {copied ? t("manuals.exportCopied") : t("manuals.exportManuals")}
+              </button>
+              <button
+                onClick={() => setShowSeed(true)}
+                className="btn-secondary flex items-center gap-1.5 text-sm"
+              >
+                <Upload className="w-4 h-4" /> {t("manuals.seedManuals")}
+              </button>
+            </div>
           )
         }
       />

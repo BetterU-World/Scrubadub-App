@@ -859,7 +859,9 @@
     "seeding": "Cargando…",
     "invalidJson": "JSON inválido",
     "expectedArray": "Se esperaba un arreglo JSON no vacío",
-    "seedDone": "Listo — {{inserted}} insertados, {{updated}} actualizados."
+    "seedDone": "Listo — {{inserted}} insertados, {{updated}} actualizados.",
+    "exportManuals": "Exportar JSON",
+    "exportCopied": "¡Copiado!"
   },
   "siteBuilder": {
     "title": "Mi sitio",

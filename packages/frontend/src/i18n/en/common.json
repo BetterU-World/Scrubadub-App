@@ -859,7 +859,9 @@
     "seeding": "Seeding…",
     "invalidJson": "Invalid JSON",
     "expectedArray": "Expected a non-empty JSON array",
-    "seedDone": "Done — {{inserted}} inserted, {{updated}} updated."
+    "seedDone": "Done — {{inserted}} inserted, {{updated}} updated.",
+    "exportManuals": "Export JSON",
+    "exportCopied": "Copied!"
   },
   "siteBuilder": {
     "title": "My Site",
