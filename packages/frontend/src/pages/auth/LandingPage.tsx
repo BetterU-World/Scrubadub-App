@@ -233,6 +233,7 @@ export function LandingPage() {
               muted
               playsInline
               preload="metadata"
+              poster="/images/scrub-demo-poster.png"
               className="w-full h-full object-cover opacity-80 group-hover:opacity-90 transition-opacity"
             />
             <div className="absolute inset-0 flex flex-col items-center justify-center">
