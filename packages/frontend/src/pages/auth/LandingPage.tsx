@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Link } from "wouter";
 import {
   CheckCircle,
@@ -14,6 +15,8 @@ import {
   Inbox,
   BookOpen,
   ClipboardCheck,
+  Play,
+  X,
 } from "lucide-react";
 
 const plan = {
@@ -120,7 +123,61 @@ const steps = [
   },
 ];
 
+const VIDEO_SRC = "/videos/Scrub_Owner_Dashboard_User_Guide.mp4";
+
+function VideoModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const handleClose = useCallback(() => {
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+    onClose();
+  }, [onClose]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleClose();
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [open, handleClose]);
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      onClick={handleClose}
+    >
+      <div
+        className="relative w-full max-w-4xl rounded-xl overflow-hidden bg-black shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={handleClose}
+          className="absolute top-3 right-3 z-10 p-1.5 rounded-full bg-black/50 text-white hover:bg-black/70 transition"
+          aria-label="Close video"
+        >
+          <X className="w-5 h-5" />
+        </button>
+        <video
+          ref={videoRef}
+          src={VIDEO_SRC}
+          controls
+          autoPlay
+          className="w-full aspect-video"
+        />
+      </div>
+    </div>
+  );
+}
+
 export function LandingPage() {
+  const [videoOpen, setVideoOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Nav */}
@@ -150,11 +207,10 @@ export function LandingPage() {
       {/* Hero */}
       <section className="py-16 sm:py-24 text-center px-4">
         <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 max-w-2xl mx-auto leading-tight">
-          Gold Standard Cleaning Operations — In English and Spanish
+          Manage your cleaning operations all in one place.
         </h1>
         <p className="mt-4 text-lg text-gray-500 max-w-xl mx-auto">
-          Schedule jobs, track quality with photo-verified checklists, and manage
-          your entire cleaning team from one simple dashboard.
+          The gold standard system for growing cleaning companies.
         </p>
         <div className="mt-8 flex justify-center gap-3">
           <Link href="/get-started" className="btn-primary px-6 py-2.5">
@@ -164,7 +220,34 @@ export function LandingPage() {
             Sign In
           </Link>
         </div>
+
+        {/* Video Preview */}
+        <div className="mt-12 max-w-3xl mx-auto">
+          <button
+            onClick={() => setVideoOpen(true)}
+            className="group relative w-full rounded-xl overflow-hidden shadow-lg border border-gray-200 bg-gray-900 aspect-video cursor-pointer transition hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+            aria-label="Watch product demo"
+          >
+            <video
+              src={VIDEO_SRC}
+              muted
+              playsInline
+              preload="metadata"
+              className="w-full h-full object-cover opacity-80 group-hover:opacity-90 transition-opacity"
+            />
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <div className="flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/90 shadow-lg group-hover:scale-105 transition-transform">
+                <Play className="w-7 h-7 sm:w-9 sm:h-9 text-primary-600 ml-1" />
+              </div>
+              <span className="mt-3 text-sm font-medium text-white bg-black/40 px-3 py-1 rounded-full">
+                Watch Demo
+              </span>
+            </div>
+          </button>
+        </div>
       </section>
+
+      <VideoModal open={videoOpen} onClose={() => setVideoOpen(false)} />
 
       {/* Problem */}
       <section className="pb-16 px-4">
