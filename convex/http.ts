@@ -226,7 +226,7 @@ const stripeWebhook = httpAction(async (ctx, request) => {
 });
 
 http.route({
-  path: "/stripe-webhook",
+  path: "/stripe/webhook",
   method: "POST",
   handler: stripeWebhook,
 });
