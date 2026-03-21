@@ -10,6 +10,7 @@ import {
   Clock,
   XCircle,
 } from "lucide-react";
+import { Link } from "wouter";
 
 /** Plan name/price are now dynamic from the subscription query. */
 
@@ -76,7 +77,6 @@ export function BillingSection() {
     api.queries.billing.getCompanySubscription,
     user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip",
   );
-  const createCheckout = useAction(api.actions.billing.createCheckoutSession);
   const createPortal = useAction(
     api.actions.billing.createBillingPortalSession,
   );
@@ -128,21 +128,6 @@ export function BillingSection() {
     }
   };
 
-  const handleActivateSubscription = async () => {
-    setLoading("checkout");
-    try {
-      const url = await createCheckout({
-        userId: user._id,
-        tier: "cleaning_owner",
-      });
-      if (url) window.location.href = url;
-    } catch {
-      showToast("Unable to start checkout. Please try again.", "error");
-    } finally {
-      setLoading(null);
-    }
-  };
-
   // ── No subscription at all ──────────────────────────────────
   if (!subscription || !status) {
     return (
@@ -162,15 +147,12 @@ export function BillingSection() {
               </p>
             </div>
           </div>
-          <button
-            onClick={handleActivateSubscription}
-            disabled={loading !== null}
-            className="btn-primary text-sm"
+          <Link
+            href="/subscribe"
+            className="btn-primary text-sm inline-block"
           >
-            {loading === "checkout"
-              ? "Redirecting…"
-              : "Activate Subscription"}
-          </button>
+            Activate Subscription
+          </Link>
         </div>
       </>
     );

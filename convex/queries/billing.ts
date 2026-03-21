@@ -96,7 +96,7 @@ export const getCleanerUsage = internalQuery({
       .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
       .collect();
     const activeCleaners = users.filter(
-      (u) => u.role === "cleaner" && (u.status === "active" || u.status === "pending")
+      (u) => u.role === "cleaner" && u.status === "active"
     ).length;
 
     return {
@@ -128,7 +128,7 @@ export const getCleanerUsageForUI = query({
       .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
       .collect();
     const activeCleaners = users.filter(
-      (u) => u.role === "cleaner" && (u.status === "active" || u.status === "pending")
+      (u) => u.role === "cleaner" && u.status === "active"
     ).length;
 
     return {
