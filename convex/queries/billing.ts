@@ -1,6 +1,7 @@
 import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { isFounderEmail } from "../lib/founderEmails";
+import { tierToScrubPlan, planDisplayName, planPrice, cleanerLimit } from "../lib/plans";
 
 /** Safe fallback when subscription data cannot be determined yet. */
 const EMPTY_SUB = {
@@ -11,6 +12,9 @@ const EMPTY_SUB = {
   subscriptionBecameInactiveAt: undefined as number | undefined,
   stripeCustomerId: undefined as string | undefined,
   companyBypassed: false,
+  planName: "Pro" as string,
+  planPrice: "$149.99" as string,
+  scrubPlan: "pro" as string,
 };
 
 export const getCompanySubscription = query({
@@ -41,6 +45,8 @@ export const getCompanySubscription = query({
       // If the founder check fails, continue without bypass
     }
 
+    const scrubPlan = tierToScrubPlan(company.tier);
+
     return {
       subscriptionStatus: company.subscriptionStatus,
       tier: company.tier,
@@ -49,6 +55,10 @@ export const getCompanySubscription = query({
       subscriptionBecameInactiveAt: company.subscriptionBecameInactiveAt,
       stripeCustomerId: company.stripeCustomerId,
       companyBypassed: hasSuperadminOwner,
+      // Plan metadata for UI
+      planName: planDisplayName(scrubPlan),
+      planPrice: planPrice(scrubPlan),
+      scrubPlan,
     };
   },
 });
@@ -65,6 +75,67 @@ export const getCompanyForBilling = internalQuery({
       role: user.role,
       email: user.email,
       stripeCustomerId: company.stripeCustomerId,
+    };
+  },
+});
+
+/**
+ * Internal query used by backend cleaner cap enforcement.
+ * Returns active cleaner count, plan limit, and plan name.
+ */
+export const getCleanerUsage = internalQuery({
+  args: { companyId: v.id("companies") },
+  handler: async (ctx, args) => {
+    const company = await ctx.db.get(args.companyId);
+    if (!company) return null;
+    const scrubPlan = tierToScrubPlan(company.tier);
+    const limit = cleanerLimit(scrubPlan);
+
+    const users = await ctx.db
+      .query("users")
+      .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
+      .collect();
+    const activeCleaners = users.filter(
+      (u) => u.role === "cleaner" && (u.status === "active" || u.status === "pending")
+    ).length;
+
+    return {
+      activeCleaners,
+      limit,
+      planName: planDisplayName(scrubPlan),
+      scrubPlan,
+    };
+  },
+});
+
+/**
+ * Public query for frontend cleaner usage display.
+ * Returns active cleaner count and plan limits.
+ */
+export const getCleanerUsageForUI = query({
+  args: { companyId: v.id("companies"), userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const caller = await ctx.db.get(args.userId);
+    if (!caller || caller.companyId !== args.companyId) return null;
+
+    const company = await ctx.db.get(args.companyId);
+    if (!company) return null;
+    const scrubPlan = tierToScrubPlan(company.tier);
+    const limit = cleanerLimit(scrubPlan);
+
+    const users = await ctx.db
+      .query("users")
+      .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
+      .collect();
+    const activeCleaners = users.filter(
+      (u) => u.role === "cleaner" && (u.status === "active" || u.status === "pending")
+    ).length;
+
+    return {
+      activeCleaners,
+      limit,
+      planName: planDisplayName(scrubPlan),
+      scrubPlan,
     };
   },
 });

@@ -10,7 +10,13 @@ export default defineSchema({
     stripeSubscriptionId: v.optional(v.string()),
     stripePriceId: v.optional(v.string()),
     tier: v.optional(
-      v.union(v.literal("cleaning_owner"), v.literal("str_owner"))
+      v.union(
+        v.literal("cleaning_owner"),
+        v.literal("str_owner"),
+        v.literal("scrub_solo"),
+        v.literal("scrub_team"),
+        v.literal("scrub_pro"),
+      )
     ),
     subscriptionStatus: v.optional(v.string()),
     currentPeriodEnd: v.optional(v.number()),

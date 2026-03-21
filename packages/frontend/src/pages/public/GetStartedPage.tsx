@@ -5,21 +5,57 @@ import { api } from "../../../../../convex/_generated/api";
 import { CheckCircle, CreditCard } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
-const plan = {
-  name: "Scrubadub Pro",
-  price: "$249",
-  period: "/mo",
-  features: [
-    "Unlimited properties",
-    "Team scheduling & job tracking",
-    "Quality checklists & photo proof",
-    "Red flag alerts & maintenance tracking",
-    "Performance analytics",
-    "14-day free trial included",
-  ],
+type PlanKey = "solo" | "team" | "pro";
+
+const PLANS: Record<PlanKey, { name: string; price: string; features: string[] }> = {
+  solo: {
+    name: "Solo",
+    price: "$34.99",
+    features: [
+      "1 cleaner included",
+      "Unlimited properties",
+      "Job scheduling & tracking",
+      "Quality checklists & photo proof",
+      "14-day free trial included",
+    ],
+  },
+  team: {
+    name: "Team",
+    price: "$64.99",
+    features: [
+      "Up to 5 cleaners",
+      "Unlimited properties",
+      "Team scheduling & job tracking",
+      "Quality checklists & photo proof",
+      "Red flag alerts & maintenance tracking",
+      "14-day free trial included",
+    ],
+  },
+  pro: {
+    name: "Pro",
+    price: "$149.99",
+    features: [
+      "Unlimited cleaners",
+      "Unlimited properties",
+      "Team scheduling & job tracking",
+      "Quality checklists & photo proof",
+      "Red flag alerts & maintenance tracking",
+      "Performance analytics",
+      "Cleaner payments & partner settlements",
+      "14-day free trial included",
+    ],
+  },
 };
 
+function parsePlanFromURL(): PlanKey {
+  const params = new URLSearchParams(window.location.search);
+  const raw = params.get("plan");
+  if (raw === "solo" || raw === "team" || raw === "pro") return raw;
+  return "team";
+}
+
 export function GetStartedPage() {
+  const [selectedPlan, setSelectedPlan] = useState<PlanKey>(parsePlanFromURL);
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -30,12 +66,14 @@ export function GetStartedPage() {
   const params = new URLSearchParams(window.location.search);
   const canceled = params.get("canceled") === "true";
 
+  const plan = PLANS[selectedPlan];
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
-      const url = await createPublicCheckout({ email });
+      const url = await createPublicCheckout({ email, plan: selectedPlan });
       if (url) window.location.href = url;
       else throw new Error("Failed to create checkout session");
     } catch (err: any) {
@@ -77,6 +115,24 @@ export function GetStartedPage() {
           </p>
         </div>
 
+        {/* Plan selector */}
+        <div className="flex gap-2 mb-6">
+          {(["solo", "team", "pro"] as const).map((key) => (
+            <button
+              key={key}
+              onClick={() => setSelectedPlan(key)}
+              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition ${
+                selectedPlan === key
+                  ? "border-primary-500 bg-primary-50 text-primary-700"
+                  : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+              }`}
+            >
+              {PLANS[key].name}
+              <span className="block text-xs font-normal mt-0.5">{PLANS[key].price}/mo</span>
+            </button>
+          ))}
+        </div>
+
         <div className="card flex flex-col">
           <div className="flex items-center gap-3 mb-3">
             <div className="p-2 rounded-lg bg-primary-100 text-primary-600">
@@ -87,7 +143,7 @@ export function GetStartedPage() {
           <p className="text-2xl font-bold text-gray-900 mb-1">
             {plan.price}
             <span className="text-sm font-normal text-gray-500">
-              {plan.period}
+              /mo
             </span>
           </p>
           <p className="text-xs text-gray-400 mb-4">

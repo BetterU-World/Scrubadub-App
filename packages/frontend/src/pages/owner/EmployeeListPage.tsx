@@ -6,10 +6,11 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { Users, UserPlus, Copy, Check } from "lucide-react";
+import { Users, UserPlus, Copy, Check, AlertTriangle } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Link } from "wouter";
 
 export function EmployeeListPage() {
   const { user } = useAuth();
@@ -69,6 +70,12 @@ export function EmployeeListPage() {
   const [editPermsLoading, setEditPermsLoading] = useState(false);
   const updateManagerPermissions = useMutation(api.mutations.employees.updateManagerPermissions);
 
+  // Cleaner usage for cap enforcement
+  const cleanerUsage = useQuery(
+    api.queries.billing.getCleanerUsageForUI,
+    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+  );
+
   // Default manager
   const companyProfile = useQuery(
     api.queries.companies.getCompanyProfile,
@@ -77,6 +84,11 @@ export function EmployeeListPage() {
   const setDefaultManager = useMutation(api.mutations.companies.setDefaultManager);
 
   if (!user || employees === undefined) return <PageLoader />;
+
+  const cleanerCapReached =
+    cleanerUsage &&
+    cleanerUsage.limit !== null &&
+    cleanerUsage.activeCleaners >= cleanerUsage.limit;
 
   const handleInvite = async () => {
     if (!user.companyId) return;
@@ -137,6 +149,28 @@ export function EmployeeListPage() {
           </button>
         }
       />
+
+      {/* Cleaner usage indicator */}
+      {cleanerUsage && cleanerUsage.limit !== null && (
+        <div className={`mb-4 p-3 rounded-lg border flex items-center justify-between flex-wrap gap-2 ${
+          cleanerCapReached
+            ? "bg-amber-50 border-amber-200"
+            : "bg-gray-50 border-gray-200"
+        }`}>
+          <div className="flex items-center gap-2">
+            {cleanerCapReached && <AlertTriangle className="w-4 h-4 text-amber-500" />}
+            <span className="text-sm font-medium text-gray-700">
+              Cleaners: {cleanerUsage.activeCleaners} / {cleanerUsage.limit} used
+            </span>
+            <span className="text-xs text-gray-400">({cleanerUsage.planName} plan)</span>
+          </div>
+          {cleanerCapReached && (
+            <Link href="/settings" className="text-sm font-medium text-primary-600 hover:text-primary-700">
+              Upgrade Plan
+            </Link>
+          )}
+        </div>
+      )}
 
       {/* Default manager selector */}
       {(() => {
@@ -344,14 +378,25 @@ export function EmployeeListPage() {
                   </div>
                 )}
                 <p className="text-xs text-gray-400">{t("employees.inviteWillEmail")}</p>
-                <button
-                  onClick={handleInvite}
-                  disabled={!inviteName || !inviteEmail || inviteLoading}
-                  className="btn-primary w-full flex items-center justify-center gap-2"
-                >
-                  {inviteLoading && <LoadingSpinner size="sm" />}
-                  {t("employees.createAndSendInvite")}
-                </button>
+                {inviteRole === "cleaner" && cleanerCapReached ? (
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p className="text-sm font-medium text-amber-800">
+                      Your {cleanerUsage?.planName} plan includes {cleanerUsage?.limit === 1 ? "1 cleaner" : `up to ${cleanerUsage?.limit} cleaners`}. Upgrade to add more cleaners.
+                    </p>
+                    <Link href="/settings" className="text-sm font-medium text-primary-600 hover:text-primary-700 mt-1 inline-block">
+                      Upgrade Plan
+                    </Link>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleInvite}
+                    disabled={!inviteName || !inviteEmail || inviteLoading}
+                    className="btn-primary w-full flex items-center justify-center gap-2"
+                  >
+                    {inviteLoading && <LoadingSpinner size="sm" />}
+                    {t("employees.createAndSendInvite")}
+                  </button>
+                )}
               </div>
             )}
           </Dialog.Content>

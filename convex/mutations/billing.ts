@@ -3,21 +3,34 @@ import { v } from "convex/values";
 
 /**
  * Maps Stripe price IDs → internal tier.
- * All owner plans resolve to "cleaning_owner".
- * Includes the current STRIPE_PRICE_SCRUB_PRO plus legacy IDs
- * so historical subscriptions are still recognised by webhooks.
+ *
+ * New tiers (2026): scrub_solo, scrub_team, scrub_pro
+ * Legacy tiers:     cleaning_owner / str_owner → treated as Pro (unlimited)
+ *
+ * Env vars:
+ *   STRIPE_PRICE_SCRUB_SOLO       → scrub_solo
+ *   STRIPE_PRICE_SCRUB_TEAM       → scrub_team
+ *   STRIPE_PRICE_SCRUB_PRO        → scrub_pro
+ *   STRIPE_PRICE_SCRUB_PRO_LEGACY → cleaning_owner (grandfathered)
+ *   STRIPE_PRICE_CLEANING_OWNER   → cleaning_owner (old fallback)
  */
-function getPriceToTier(): Record<string, "cleaning_owner" | "str_owner"> {
-  const scrubPro = process.env.STRIPE_PRICE_SCRUB_PRO;
+function getPriceToTier(): Record<string, string> {
+  const solo = process.env.STRIPE_PRICE_SCRUB_SOLO;
+  const team = process.env.STRIPE_PRICE_SCRUB_TEAM;
+  const pro = process.env.STRIPE_PRICE_SCRUB_PRO;
+  const proLegacy = process.env.STRIPE_PRICE_SCRUB_PRO_LEGACY;
   const legacyCleaning = process.env.STRIPE_PRICE_CLEANING_OWNER;
   return {
     // Legacy hardcoded IDs (kept for historical webhook events)
     price_1T1qhM9bHruUzqYi7qMlyhFq: "cleaning_owner",
     price_1T1qhu9bHruUZqYiR0lus6To: "cleaning_owner",
-    // Legacy env-driven price ID (if still set)
+    // Legacy env-driven price IDs
     ...(legacyCleaning ? { [legacyCleaning]: "cleaning_owner" as const } : {}),
-    // Current price ID (production)
-    ...(scrubPro ? { [scrubPro]: "cleaning_owner" as const } : {}),
+    ...(proLegacy ? { [proLegacy]: "cleaning_owner" as const } : {}),
+    // New tier price IDs
+    ...(solo ? { [solo]: "scrub_solo" as const } : {}),
+    ...(team ? { [team]: "scrub_team" as const } : {}),
+    ...(pro ? { [pro]: "scrub_pro" as const } : {}),
   };
 }
 

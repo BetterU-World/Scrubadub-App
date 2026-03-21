@@ -41,8 +41,22 @@ export const inviteCleaner = action({
       companyId: args.companyId,
     });
 
-    const email = args.email.toLowerCase();
+    // Enforce cleaner cap — only when adding a cleaner role
     const role = args.role ?? "cleaner";
+    if (role === "cleaner") {
+      const capResult: any = await ctx.runQuery(
+        internal.queries.billing.getCleanerUsage,
+        { companyId: args.companyId }
+      );
+      if (capResult && capResult.limit !== null && capResult.activeCleaners >= capResult.limit) {
+        const planName = capResult.planName ?? "your current plan";
+        throw new Error(
+          `Your ${planName} plan includes ${capResult.limit === 1 ? "1 cleaner" : `up to ${capResult.limit} cleaners`}. Upgrade to add more cleaners.`
+        );
+      }
+    }
+
+    const email = args.email.toLowerCase();
 
     const existing = await ctx.runQuery(internal.authInternal.getUserByEmail, {
       email,

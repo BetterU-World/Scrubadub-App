@@ -11,9 +11,7 @@ import {
   XCircle,
 } from "lucide-react";
 
-/** Single owner plan — $249/month */
-const PLAN_NAME = "Scrubadub Pro";
-const PLAN_PRICE = "$249";
+/** Plan name/price are now dynamic from the subscription query. */
 
 function formatDate(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString("en-US", {
@@ -201,10 +199,10 @@ export function BillingSection() {
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-500">Plan</span>
             <span className="font-medium text-gray-900">
-              {PLAN_NAME}
+              SCRUB {subscription?.planName ?? "Pro"}
               <span className="text-gray-400 font-normal">
                 {" "}
-                &middot; {PLAN_PRICE}/mo
+                &middot; {subscription?.planPrice ?? "$149.99"}/mo
               </span>
             </span>
           </div>

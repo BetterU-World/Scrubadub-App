@@ -19,26 +19,60 @@ import {
   X,
 } from "lucide-react";
 
-const plan = {
-  name: "Scrubadub Pro",
-  price: "$249",
-  period: "/mo",
-  description:
-    "For cleaning business owners and property managers running real operations.",
-  subtitle:
-    "Everything you need to schedule, track, and manage your cleaning team.",
-  features: [
-    "Unlimited properties",
-    "Team scheduling & job tracking",
-    "Quality checklists & photo proof",
-    "Red flag alerts & maintenance tracking",
-    "Performance analytics",
-    "Cleaner payments & partner settlements",
-    "Available in English and Spanish",
-    "Affiliate rewards program",
-    "14-day free trial included",
-  ],
-};
+const plans = [
+  {
+    name: "Solo",
+    price: "$34.99",
+    period: "/mo",
+    planKey: "solo",
+    description: "For solo operators managing their own cleans.",
+    features: [
+      "1 cleaner included",
+      "Unlimited properties",
+      "Job scheduling & tracking",
+      "Quality checklists & photo proof",
+      "Available in English and Spanish",
+      "14-day free trial included",
+    ],
+  },
+  {
+    name: "Team",
+    price: "$64.99",
+    period: "/mo",
+    planKey: "team",
+    popular: true,
+    description: "For small teams ready to grow.",
+    features: [
+      "Up to 5 cleaners",
+      "Unlimited properties",
+      "Team scheduling & job tracking",
+      "Quality checklists & photo proof",
+      "Red flag alerts & maintenance tracking",
+      "Available in English and Spanish",
+      "14-day free trial included",
+    ],
+  },
+  {
+    name: "Pro",
+    price: "$149.99",
+    period: "/mo",
+    planKey: "pro",
+    description:
+      "For cleaning business owners and property managers running real operations.",
+    features: [
+      "Unlimited cleaners",
+      "Unlimited properties",
+      "Team scheduling & job tracking",
+      "Quality checklists & photo proof",
+      "Red flag alerts & maintenance tracking",
+      "Performance analytics",
+      "Cleaner payments & partner settlements",
+      "Affiliate rewards program",
+      "Available in English and Spanish",
+      "14-day free trial included",
+    ],
+  },
+];
 
 const valueProps = [
   {
@@ -375,43 +409,52 @@ export function LandingPage() {
         <p className="text-center text-sm text-gray-500 mb-8">
           Built for professional operations, not basic scheduling.
         </p>
-        <div className="max-w-md mx-auto">
-          <div className="card flex flex-col">
-            <h3 className="text-lg font-semibold text-gray-900">
-              {plan.name}
-            </h3>
-            <p className="text-sm text-gray-500 mt-1">{plan.description}</p>
-            <div className="mt-4">
-              <span className="text-3xl font-bold text-gray-900">
-                {plan.price}
-              </span>
-              <span className="text-gray-500">{plan.period}</span>
-            </div>
-            <div className="mt-3 mb-1 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-center">
-              <p className="text-sm font-semibold text-gray-800">
-                <span className="text-green-600">50</span>% OFF first{" "}
-                <span className="text-green-600">3</span> months
-              </p>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Use code <span className="font-mono font-semibold text-gray-700">50OFF3</span> at checkout
-              </p>
-            </div>
-            <p className="text-xs text-gray-400 mt-1">{plan.subtitle}</p>
-            <ul className="mt-4 space-y-2 flex-1">
-              {plan.features.map((f) => (
-                <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
-                  <CheckCircle className="w-4 h-4 text-primary-500 mt-0.5 flex-shrink-0" />
-                  {f}
-                </li>
-              ))}
-            </ul>
-            <Link
-              href="/get-started"
-              className="btn-primary w-full text-center mt-6"
+        <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-6">
+          {plans.map((p) => (
+            <div
+              key={p.planKey}
+              className={`card flex flex-col ${p.popular ? "ring-2 ring-primary-500 relative" : ""}`}
             >
-              Start Operating Smarter
-            </Link>
-          </div>
+              {p.popular && (
+                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
+                  Most Popular
+                </span>
+              )}
+              <h3 className="text-lg font-semibold text-gray-900">
+                {p.name}
+              </h3>
+              <p className="text-sm text-gray-500 mt-1">{p.description}</p>
+              <div className="mt-4">
+                <span className="text-3xl font-bold text-gray-900">
+                  {p.price}
+                </span>
+                <span className="text-gray-500">{p.period}</span>
+              </div>
+              <div className="mt-3 mb-1 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-center">
+                <p className="text-sm font-semibold text-gray-800">
+                  <span className="text-green-600">50</span>% OFF first{" "}
+                  <span className="text-green-600">3</span> months
+                </p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Use code <span className="font-mono font-semibold text-gray-700">50OFF3</span> at checkout
+                </p>
+              </div>
+              <ul className="mt-4 space-y-2 flex-1">
+                {p.features.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
+                    <CheckCircle className="w-4 h-4 text-primary-500 mt-0.5 flex-shrink-0" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href={`/get-started?plan=${p.planKey}`}
+                className="btn-primary w-full text-center mt-6"
+              >
+                Get Started
+              </Link>
+            </div>
+          ))}
         </div>
       </section>
 

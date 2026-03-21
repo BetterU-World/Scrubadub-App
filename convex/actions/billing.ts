@@ -8,23 +8,20 @@ import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 
+import { planToEnvVar, planToTier, type ScrubPlan } from "../lib/plans";
+
 /**
- * Owner subscription price ID — set via STRIPE_PRICE_SCRUB_PRO env var
- * in the Convex dashboard.
+ * Resolve the Stripe price ID for a given plan.
+ * Falls back to STRIPE_PRICE_SCRUB_PRO for the legacy "cleaning_owner" tier arg.
  */
-function getOwnerPriceId(): string {
-  const priceId = process.env.STRIPE_PRICE_SCRUB_PRO;
+function getPriceIdForPlan(plan: ScrubPlan): string {
+  const envVar = planToEnvVar(plan);
+  const priceId = process.env[envVar];
   if (!priceId) {
-    throw new Error("STRIPE_PRICE_SCRUB_PRO env var not set");
+    throw new Error(`${envVar} env var not set`);
   }
   return priceId;
 }
-
-/** @deprecated kept only so the tier arg still compiles; single plan now */
-const PRICE_IDS = {
-  cleaning_owner: "scrub_pro",
-  str_owner: "scrub_pro",
-} as const;
 
 function getStripe() {
   return new Stripe(process.env.STRIPE_SECRET_KEY!);
@@ -72,6 +69,7 @@ export const createCheckoutSession = action({
   args: {
     userId: v.id("users"),
     tier: v.union(v.literal("cleaning_owner"), v.literal("str_owner")),
+    plan: v.optional(v.union(v.literal("solo"), v.literal("team"), v.literal("pro"))),
   },
   handler: async (ctx: any, args: any): Promise<any> => {
     const data: any = await ctx.runQuery(
@@ -104,7 +102,10 @@ export const createCheckoutSession = action({
     const APP_URL =
       process.env.APP_URL ?? "https://scrubadub-app-frontend.vercel.app";
 
-    const priceId = getOwnerPriceId();
+    // Use new plan arg if provided, fallback to "pro" for legacy callers
+    const selectedPlan: ScrubPlan = args.plan ?? "pro";
+    const priceId = getPriceIdForPlan(selectedPlan);
+    const internalTier = planToTier(selectedPlan);
     await logCheckoutDiagnostic("billing.createCheckoutSession", priceId, stripe);
 
     const session: any = await stripe.checkout.sessions.create({
@@ -116,7 +117,7 @@ export const createCheckoutSession = action({
         metadata: {
           companyId: data.companyId,
           ownerUserId: args.userId,
-          tier: args.tier,
+          tier: internalTier,
         },
       },
       allow_promotion_codes: true,
@@ -125,7 +126,7 @@ export const createCheckoutSession = action({
       metadata: {
         companyId: data.companyId,
         ownerUserId: args.userId,
-        tier: args.tier,
+        tier: internalTier,
       },
     });
 

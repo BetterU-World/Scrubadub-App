@@ -14,10 +14,13 @@ import {
   validateName,
 } from "../lib/validation";
 
-function getOwnerPriceId(): string {
-  const priceId = process.env.STRIPE_PRICE_SCRUB_PRO;
+import { planToEnvVar, planToTier, type ScrubPlan } from "../lib/plans";
+
+function getPriceIdForPlan(plan: ScrubPlan): string {
+  const envVar = planToEnvVar(plan);
+  const priceId = process.env[envVar];
   if (!priceId) {
-    throw new Error("STRIPE_PRICE_SCRUB_PRO env var not set");
+    throw new Error(`${envVar} env var not set`);
   }
   return priceId;
 }
@@ -73,6 +76,7 @@ async function logCheckoutDiagnostic(action: string, priceId: string, stripe: St
 export const createPublicCheckoutSession = action({
   args: {
     email: v.string(),
+    plan: v.optional(v.union(v.literal("solo"), v.literal("team"), v.literal("pro"))),
   },
   handler: async (ctx, args): Promise<string | null> => {
     const email = args.email.toLowerCase().trim();
@@ -91,6 +95,9 @@ export const createPublicCheckoutSession = action({
 
     const stripe = getStripe();
 
+    const selectedPlan: ScrubPlan = args.plan ?? "pro";
+    const internalTier = planToTier(selectedPlan);
+
     const customer = await stripe.customers.create({
       email,
       metadata: { source: "public_checkout" },
@@ -99,7 +106,7 @@ export const createPublicCheckoutSession = action({
     const APP_URL =
       process.env.APP_URL ?? "https://scrubadub-app-frontend.vercel.app";
 
-    const priceId = getOwnerPriceId();
+    const priceId = getPriceIdForPlan(selectedPlan);
     await logCheckoutDiagnostic("publicBilling.createPublicCheckoutSession", priceId, stripe);
 
     const session = await stripe.checkout.sessions.create({
@@ -108,7 +115,7 @@ export const createPublicCheckoutSession = action({
       line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: {
         trial_period_days: 14,
-        metadata: { source: "public_checkout" },
+        metadata: { source: "public_checkout", tier: internalTier },
       },
       allow_promotion_codes: true,
       success_url: `${APP_URL}/setup?session_id={CHECKOUT_SESSION_ID}`,
@@ -116,6 +123,7 @@ export const createPublicCheckoutSession = action({
       metadata: {
         source: "public_checkout",
         customerEmail: email,
+        tier: internalTier,
       },
     });
 
