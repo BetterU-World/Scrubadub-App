@@ -3,6 +3,8 @@ import { v } from "convex/values";
 import { assertCompanyAccess } from "../lib/auth";
 import { withPerfLog } from "../lib/perfLog";
 
+const COMPANY_QUERY_CAP = 5_000;
+
 export const getCleanerStats = query({
   args: {
     cleanerId: v.id("users"),
@@ -26,7 +28,7 @@ export const getCleanerStats = query({
       .withIndex("by_companyId_scheduledDate", (q) =>
         q.eq("companyId", args.companyId)
       )
-      .collect();
+      .take(COMPANY_QUERY_CAP);
 
     const approvedJobs = allJobs.filter(
       (j) => j.status === "approved" && j.cleanerIds.includes(args.cleanerId)
@@ -73,7 +75,7 @@ export const getCleanerStats = query({
       .withIndex("by_companyId_status", (q) =>
         q.eq("companyId", args.companyId)
       )
-      .collect();
+      .take(COMPANY_QUERY_CAP);
     const redFlagsReported = companyRedFlags.filter((f) =>
       allCleanerJobIds.has(f.jobId)
     ).length;
@@ -125,7 +127,7 @@ export const getLeaderboard = query({
       .withIndex("by_companyId_scheduledDate", (q) =>
         q.eq("companyId", args.companyId)
       )
-      .collect();
+      .take(COMPANY_QUERY_CAP);
 
     const approvedJobs = allJobs.filter((j) => j.status === "approved");
 
@@ -135,7 +137,7 @@ export const getLeaderboard = query({
       .withIndex("by_companyId_status", (q) =>
         q.eq("companyId", args.companyId)
       )
-      .collect();
+      .take(COMPANY_QUERY_CAP);
 
     const leaderboard = await Promise.all(
       activeCleaners.map(async (cleaner) => {

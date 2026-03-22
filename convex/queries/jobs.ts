@@ -3,6 +3,9 @@ import { v } from "convex/values";
 import { assertCompanyAccess, getSessionUser, hasManagerPermission } from "../lib/auth";
 import { withPerfLog } from "../lib/perfLog";
 
+// Hard cap for company-scoped job queries
+const JOB_LIST_CAP = 2_000;
+
 export const list = query({
   args: {
     companyId: v.id("companies"),
@@ -23,14 +26,14 @@ export const list = query({
           .withIndex("by_companyId_status", (q) =>
             q.eq("companyId", args.companyId).eq("status", args.status as any)
           )
-          .collect();
+          .take(JOB_LIST_CAP);
       } else {
         jobs = await ctx.db
           .query("jobs")
           .withIndex("by_companyId_scheduledDate", (q) =>
             q.eq("companyId", args.companyId)
           )
-          .collect();
+          .take(JOB_LIST_CAP);
       }
 
       // Apply sort — the dataset is already loaded via index scan, so this is
@@ -63,15 +66,31 @@ export const list = query({
           break;
       }
 
+      // Batch-resolve properties and users to avoid N+1 lookups
+      const propertyIds = [...new Set(jobs.map((j) => j.propertyId).filter(Boolean))];
+      const propertyMap = new Map(
+        (await Promise.all(propertyIds.map((id) => ctx.db.get(id!)))).map(
+          (p) => p && [p._id, p] as const
+        ).filter(Boolean) as [string, any][]
+      );
+
+      const userIds = [...new Set(jobs.flatMap((j) => [...j.cleanerIds, j.assignedManagerId].filter(Boolean)))];
+      const userMap = new Map(
+        (await Promise.all(userIds.map((id) => ctx.db.get(id as any)))).map(
+          (u) => u && [u._id, u] as const
+        ).filter(Boolean) as [string, any][]
+      );
+
       return Promise.all(
         jobs.map(async (job) => {
-          const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
-          const cleaners = await Promise.all(
-            job.cleanerIds.map(async (id) => {
-              const user = await ctx.db.get(id);
+          const property = job.propertyId ? propertyMap.get(job.propertyId) ?? null : null;
+          const cleaners = job.cleanerIds
+            .map((id) => {
+              const user = userMap.get(id);
               return user ? { _id: user._id, name: user.name } : null;
             })
-          );
+            .filter(Boolean);
+
           // Check outgoing shared-job records for this job
           const sharedRecords = await ctx.db
             .query("sharedJobs")
@@ -95,16 +114,15 @@ export const list = query({
             inspectionStatus = job.inspectionCycleOpen === true ? "reinspection_requested" : "submitted";
           }
 
-          // Resolve assigned manager name
           const assignedManager = job.assignedManagerId
-            ? await ctx.db.get(job.assignedManagerId)
+            ? userMap.get(job.assignedManagerId) ?? null
             : null;
 
           return {
             ...job,
             propertyName: property?.name ?? job.propertySnapshot?.name ?? "Unknown",
             propertyAddress: property?.address ?? job.propertySnapshot?.address ?? "",
-            cleaners: cleaners.filter(Boolean),
+            cleaners,
             hasRejectedShare,
             hasActiveShare,
             inspectionStatus,
@@ -190,7 +208,7 @@ export const getForCleaner = query({
         .withIndex("by_companyId_scheduledDate", (q) =>
           q.eq("companyId", args.companyId)
         )
-        .collect();
+        .take(JOB_LIST_CAP);
 
       const myJobs = jobs.filter(
         (j) => j.cleanerIds.includes(args.cleanerId) && j.status !== "cancelled"
@@ -225,7 +243,7 @@ export const getForManager = query({
         .withIndex("by_companyId_scheduledDate", (q) =>
           q.eq("companyId", args.companyId)
         )
-        .collect();
+        .take(JOB_LIST_CAP);
 
       // Manager visibility: all jobs if canSeeAllJobs, otherwise only assigned
       const canSeeAll = hasManagerPermission(user, "canSeeAllJobs");
@@ -290,7 +308,7 @@ export const getCalendarJobs = query({
         .withIndex("by_companyId_scheduledDate", (q) =>
           q.eq("companyId", args.companyId)
         )
-        .collect();
+        .take(JOB_LIST_CAP);
 
       let filtered = jobs.filter(
         (j) =>

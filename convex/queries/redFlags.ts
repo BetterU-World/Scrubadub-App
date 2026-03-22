@@ -3,6 +3,8 @@ import { v } from "convex/values";
 import { assertCompanyAccess, getSessionUser, hasManagerPermission } from "../lib/auth";
 import { withPerfLog } from "../lib/perfLog";
 
+const RED_FLAG_CAP = 2_000;
+
 export const listByCompany = query({
   args: {
     companyId: v.id("companies"),
@@ -20,14 +22,14 @@ export const listByCompany = query({
           .withIndex("by_companyId_status", (q) =>
             q.eq("companyId", args.companyId).eq("status", args.status as any)
           )
-          .collect();
+          .take(RED_FLAG_CAP);
       } else {
         flags = await ctx.db
           .query("redFlags")
           .withIndex("by_companyId_status", (q) =>
             q.eq("companyId", args.companyId)
           )
-          .collect();
+          .take(RED_FLAG_CAP);
       }
 
       return Promise.all(

@@ -2,6 +2,8 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAuth } from "../lib/helpers";
 
+const REQUEST_LIST_CAP = 2_000;
+
 /**
  * Public query – returns minimal branding info for a company given its
  * publicRequestToken.  No auth required.  Returns null for invalid tokens
@@ -54,13 +56,13 @@ export const getCompanyRequests = query({
         .withIndex("by_companyId_status", (q) =>
           q.eq("companyId", args.companyId).eq("status", args.status!)
         )
-        .collect();
+        .take(REQUEST_LIST_CAP);
     }
 
     return await ctx.db
       .query("clientRequests")
       .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
-      .collect();
+      .take(REQUEST_LIST_CAP);
   },
 });
 
@@ -114,7 +116,7 @@ export const listRequestsForPipeline = query({
     const requests = await ctx.db
       .query("clientRequests")
       .withIndex("by_companyId", (q) => q.eq("companyId", user.companyId))
-      .collect();
+      .take(REQUEST_LIST_CAP);
 
     // Treat missing leadStage as "new"
     const enriched = requests.map((r) => ({
@@ -148,7 +150,7 @@ export const listFollowUps = query({
     const requests = await ctx.db
       .query("clientRequests")
       .withIndex("by_companyId", (q) => q.eq("companyId", user.companyId))
-      .collect();
+      .take(REQUEST_LIST_CAP);
 
     const withFollowUp = requests.filter((r) => {
       if (!(r as any).nextFollowUpAt) return false;
@@ -239,7 +241,7 @@ export const listClientFeedback = query({
     const requests = await ctx.db
       .query("clientRequests")
       .withIndex("by_companyId", (q) => q.eq("companyId", user.companyId))
-      .collect();
+      .take(REQUEST_LIST_CAP);
 
     const requestMap = new Map(requests.map((r) => [r._id, r]));
 

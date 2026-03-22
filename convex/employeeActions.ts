@@ -7,7 +7,6 @@ import type { Id } from "./_generated/dataModel";
 import { hashPassword } from "./lib/password";
 import { generateSecureToken, INVITE_TOKEN_EXPIRY_MS } from "./lib/tokens";
 import { validatePassword, validateEmail, validateName } from "./lib/validation";
-import { sendInviteEmail } from "./lib/email";
 import { validateRequiredEnv } from "./lib/validateEnv";
 
 validateRequiredEnv();
@@ -102,13 +101,13 @@ export const inviteCleaner = action({
       details: `Invited ${email} as ${role}`,
     });
 
-    // Send invite email (non-blocking — invite creation succeeds regardless)
-    const emailSent = await sendInviteEmail(email, token);
-    if (!emailSent) {
-      console.error(`[employee] Invite email failed to send to ${email}, but invite was created successfully`);
-    }
+    // Schedule invite email async — does not block the response
+    await ctx.runMutation(internal.mutations.scheduleEmail.scheduleInviteEmail, {
+      email,
+      inviteToken: token,
+    });
 
-    return { token, userId: newUserId, emailSent };
+    return { token, userId: newUserId, emailSent: true };
   },
 });
 
@@ -136,8 +135,11 @@ export const resendInviteEmail = action({
     if (user.companyId !== args.companyId) throw new Error("Employee not in your company");
     if (!user.inviteToken) throw new Error("No invite token found");
 
-    const emailSent = await sendInviteEmail(email, user.inviteToken);
-    return { emailSent };
+    await ctx.runMutation(internal.mutations.scheduleEmail.scheduleInviteEmail, {
+      email,
+      inviteToken: user.inviteToken,
+    });
+    return { emailSent: true };
   },
 });
 

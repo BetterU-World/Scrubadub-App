@@ -7,6 +7,8 @@ import {
   sendJobCompletedEmail,
   sendJobApprovedEmail,
   sendStripeConnectInviteEmail,
+  sendPasswordResetEmail,
+  sendInviteEmail,
 } from "../lib/email";
 
 /**
@@ -87,6 +89,40 @@ export const sendStripeConnectInvite = internalAction({
     const sent = await sendStripeConnectInviteEmail(args.email, args.ownerName);
     if (!sent) {
       console.error("[emailNotifications] Stripe connect invite email failed for", args.email);
+    }
+  },
+});
+
+/**
+ * Internal action: send password reset email.
+ * Scheduled from mutations via ctx.scheduler.runAfter(0, ...).
+ */
+export const sendPasswordReset = internalAction({
+  args: {
+    email: v.string(),
+    token: v.string(),
+  },
+  handler: async (_ctx, args) => {
+    const sent = await sendPasswordResetEmail(args.email, args.token);
+    if (!sent) {
+      console.error("[emailNotifications] Password reset email failed for", args.email);
+    }
+  },
+});
+
+/**
+ * Internal action: send employee invite email.
+ * Scheduled from mutations via ctx.scheduler.runAfter(0, ...).
+ */
+export const sendInvite = internalAction({
+  args: {
+    email: v.string(),
+    inviteToken: v.string(),
+  },
+  handler: async (_ctx, args) => {
+    const sent = await sendInviteEmail(args.email, args.inviteToken);
+    if (!sent) {
+      console.error("[emailNotifications] Invite email failed for", args.email);
     }
   },
 });

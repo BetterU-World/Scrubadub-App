@@ -12,7 +12,6 @@ import {
 } from "./lib/password";
 import { generateSecureToken, hashToken, RESET_TOKEN_EXPIRY_MS } from "./lib/tokens";
 import { validatePassword, validateEmail, validateName } from "./lib/validation";
-import { sendPasswordResetEmail } from "./lib/email";
 import { validateRequiredEnv } from "./lib/validateEnv";
 
 validateRequiredEnv();
@@ -166,11 +165,11 @@ export const requestPasswordReset = action({
       resetTokenExpiry: expiry,
     });
 
-    // Send the raw token via email (NOT returned to client)
-    const emailSent = await sendPasswordResetEmail(email, token);
-    if (!emailSent) {
-      console.error("[auth] Password reset email failed to send for user, but returning success to prevent enumeration");
-    }
+    // Schedule email async — does not block the response
+    await ctx.runMutation(internal.mutations.scheduleEmail.schedulePasswordResetEmail, {
+      email,
+      token,
+    });
 
     return { success: true };
   },

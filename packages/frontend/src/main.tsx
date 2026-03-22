@@ -1,10 +1,22 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
+import * as Sentry from "@sentry/react";
 
 import App from "./App";
 import "./index.css";
 import "./i18n";
+
+const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
+if (sentryDsn) {
+  Sentry.init({
+    dsn: sentryDsn,
+    environment: import.meta.env.MODE,
+    sampleRate: 1.0,
+    // Keep noise low — only unhandled errors + explicit captures
+    autoSessionTracking: false,
+  });
+}
 
 const convexUrl = import.meta.env.VITE_CONVEX_URL;
 if (!convexUrl) {
