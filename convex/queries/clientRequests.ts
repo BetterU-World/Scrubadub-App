@@ -241,24 +241,28 @@ export const listClientFeedback = query({
       .withIndex("by_companyId", (q) => q.eq("companyId", user.companyId))
       .collect();
 
-    const requestIds = new Set(requests.map((r) => r._id));
     const requestMap = new Map(requests.map((r) => [r._id, r]));
 
-    // Get feedback, optionally filtered by status
-    const allFeedback = args.status
-      ? await ctx.db
+    // Fetch feedback scoped to this company's requests via index
+    const feedbackPerRequest = await Promise.all(
+      requests.map((r) =>
+        ctx.db
           .query("clientFeedback")
-          .withIndex("by_status_createdAt", (q) =>
-            q.eq("status", args.status!)
+          .withIndex("by_clientRequestId_createdAt", (q) =>
+            q.eq("clientRequestId", r._id)
           )
           .order("desc")
           .collect()
-      : await ctx.db.query("clientFeedback").order("desc").collect();
-
-    // Filter to only this company's requests
-    const companyFeedback = allFeedback.filter((f) =>
-      requestIds.has(f.clientRequestId)
+      )
     );
+    let companyFeedback = feedbackPerRequest.flat();
+
+    if (args.status) {
+      companyFeedback = companyFeedback.filter((f) => f.status === args.status);
+    }
+
+    // Sort all results newest-first
+    companyFeedback.sort((a, b) => b.createdAt - a.createdAt);
 
     const limited = args.limit
       ? companyFeedback.slice(0, args.limit)

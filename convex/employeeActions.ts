@@ -8,6 +8,9 @@ import { hashPassword } from "./lib/password";
 import { generateSecureToken, INVITE_TOKEN_EXPIRY_MS } from "./lib/tokens";
 import { validatePassword, validateEmail, validateName } from "./lib/validation";
 import { sendInviteEmail } from "./lib/email";
+import { validateRequiredEnv } from "./lib/validateEnv";
+
+validateRequiredEnv();
 
 export const inviteCleaner = action({
   args: {
@@ -151,6 +154,14 @@ export const acceptInvite = action({
     companyId: Id<"companies">;
   }> => {
     validatePassword(args.password);
+
+    // Rate limit by first 8 chars of token to avoid storing full token as key
+    const tokenPrefix = args.token.slice(0, 8);
+    await ctx.runMutation(internal.rateLimitInternal.enforce, {
+      key: `tp:${tokenPrefix}:acceptInvite`,
+      limit: 5,
+      windowMs: 60_000,
+    });
 
     const user = await ctx.runQuery(internal.authInternal.getUserByinviteToken, {
       tokenHash: args.token,

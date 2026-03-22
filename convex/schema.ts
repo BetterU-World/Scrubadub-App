@@ -582,6 +582,7 @@ export default defineSchema({
     status: v.union(v.literal("new"), v.literal("reviewed")),
     featuredOnSite: v.optional(v.boolean()),
   })
+    .index("by_clientRequestId", ["clientRequestId"])
     .index("by_clientRequestId_createdAt", ["clientRequestId", "createdAt"])
     .index("by_status_createdAt", ["status", "createdAt"]),
 

@@ -13,6 +13,9 @@ import {
 import { generateSecureToken, hashToken, RESET_TOKEN_EXPIRY_MS } from "./lib/tokens";
 import { validatePassword, validateEmail, validateName } from "./lib/validation";
 import { sendPasswordResetEmail } from "./lib/email";
+import { validateRequiredEnv } from "./lib/validateEnv";
+
+validateRequiredEnv();
 
 /**
  * Actions
@@ -36,6 +39,12 @@ export const signUp = action({
     validateName(args.companyName);
 
     const email = args.email.toLowerCase();
+
+    await ctx.runMutation(internal.rateLimitInternal.enforce, {
+      key: `e:${email}:signUp`,
+      limit: 3,
+      windowMs: 60_000,
+    });
 
     const existing = await ctx.runQuery(internal.authInternal.getUserByEmail, {
       email,
@@ -85,6 +94,13 @@ export const signIn = action({
     status: string;
   }> => {
     const email = args.email.toLowerCase();
+
+    await ctx.runMutation(internal.rateLimitInternal.enforce, {
+      key: `e:${email}:signIn`,
+      limit: 5,
+      windowMs: 60_000,
+    });
+
     const genericError = "Invalid email or password";
 
     const user = await ctx.runQuery(internal.authInternal.getUserByEmail, {
@@ -126,6 +142,12 @@ export const requestPasswordReset = action({
   handler: async (ctx, args): Promise<{ success: boolean }> => {
     const email = args.email.toLowerCase();
 
+    await ctx.runMutation(internal.rateLimitInternal.enforce, {
+      key: `e:${email}:requestPasswordReset`,
+      limit: 3,
+      windowMs: 60_000,
+    });
+
     const user = await ctx.runQuery(internal.authInternal.getUserByEmail, {
       email,
     });
@@ -161,6 +183,14 @@ export const resetPassword = action({
   },
   handler: async (ctx, args): Promise<{ success: boolean }> => {
     validatePassword(args.newPassword);
+
+    // Rate limit by first 8 chars of token to avoid storing full token as key
+    const tokenPrefix = args.token.slice(0, 8);
+    await ctx.runMutation(internal.rateLimitInternal.enforce, {
+      key: `tp:${tokenPrefix}:resetPassword`,
+      limit: 5,
+      windowMs: 60_000,
+    });
 
     const tokenHash = hashToken(args.token);
 

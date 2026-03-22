@@ -1,8 +1,9 @@
-import { mutation } from "../_generated/server";
+import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwner } from "../lib/helpers";
 
-export const resetCompanyOpsData = mutation({
+// Internal-only: not callable from the frontend.
+export const resetCompanyOpsData = internalMutation({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
     const owner = await requireOwner(ctx, args.userId);
