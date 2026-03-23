@@ -24,6 +24,7 @@ import {
   ChevronDown,
   Clock,
   Banknote,
+  Package,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useQuery } from "convex/react";
@@ -49,6 +50,7 @@ const ownerSections: NavSection[] = [
     items: [
       { href: "/", labelKey: "nav.overview", icon: LayoutDashboard },
       { href: "/properties", labelKey: "nav.properties", icon: Building2 },
+      { href: "/inventory-templates", labelKey: "nav.inventoryTemplates", icon: Package },
       { href: "/employees", labelKey: "nav.employees", icon: Users },
       { href: "/jobs", labelKey: "nav.jobs", icon: ClipboardCheck },
       { href: "/calendar", labelKey: "nav.calendar", icon: Calendar },

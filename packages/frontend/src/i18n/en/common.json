@@ -59,6 +59,7 @@
     "admin": "Admin",
     "myJobs": "My Jobs",
     "myAvailability": "My Availability",
+    "inventoryTemplates": "Inventory Templates",
     "dashboard": "Dashboard",
     "hub": "Hub",
     "company": "Company"
@@ -626,6 +627,31 @@
         "manager": "Manager"
       }
     }
+  },
+  "inventoryTemplates": {
+    "title": "Inventory Templates",
+    "description": "Create reusable inventory lists for your properties",
+    "createTemplate": "New Template",
+    "editTemplate": "Edit Template",
+    "deleteTemplate": "Delete",
+    "noTemplates": "No templates yet",
+    "noTemplatesDesc": "Create a reusable inventory template to quickly set up properties",
+    "templateName": "Template Name",
+    "templateNamePlaceholder": "e.g. Standard Vacation Rental",
+    "default": "Default",
+    "setDefault": "Set as Default",
+    "items": "{{count}} item",
+    "items_plural": "{{count}} items",
+    "addItem": "Add Item",
+    "save": "Save Template",
+    "saving": "Saving...",
+    "templateCreated": "Template created",
+    "templateUpdated": "Template updated",
+    "templateDeleted": "Template deleted",
+    "confirmDelete": "Delete this template?",
+    "confirmDeleteDesc": "This will permanently delete \"{{name}}\". Properties using this template will keep their current inventory.",
+    "atLeastOneItem": "Add at least one item to save",
+    "nameRequired": "Template name is required"
   },
   "employees": {
     "title": "Employees",

@@ -59,6 +59,7 @@
     "admin": "Admin",
     "myJobs": "Mis trabajos",
     "myAvailability": "Mi disponibilidad",
+    "inventoryTemplates": "Plantillas de inventario",
     "dashboard": "Panel",
     "hub": "Centro",
     "company": "Empresa"
@@ -626,6 +627,31 @@
         "manager": "Gerente"
       }
     }
+  },
+  "inventoryTemplates": {
+    "title": "Plantillas de inventario",
+    "description": "Crea listas de inventario reutilizables para tus propiedades",
+    "createTemplate": "Nueva plantilla",
+    "editTemplate": "Editar plantilla",
+    "deleteTemplate": "Eliminar",
+    "noTemplates": "Aún no hay plantillas",
+    "noTemplatesDesc": "Crea una plantilla de inventario reutilizable para configurar propiedades rápidamente",
+    "templateName": "Nombre de la plantilla",
+    "templateNamePlaceholder": "ej. Alquiler vacacional estándar",
+    "default": "Predeterminada",
+    "setDefault": "Establecer como predeterminada",
+    "items": "{{count}} artículo",
+    "items_plural": "{{count}} artículos",
+    "addItem": "Agregar artículo",
+    "save": "Guardar plantilla",
+    "saving": "Guardando...",
+    "templateCreated": "Plantilla creada",
+    "templateUpdated": "Plantilla actualizada",
+    "templateDeleted": "Plantilla eliminada",
+    "confirmDelete": "¿Eliminar esta plantilla?",
+    "confirmDeleteDesc": "Esto eliminará permanentemente \"{{name}}\". Las propiedades que usan esta plantilla conservarán su inventario actual.",
+    "atLeastOneItem": "Agrega al menos un artículo para guardar",
+    "nameRequired": "El nombre de la plantilla es obligatorio"
   },
   "employees": {
     "title": "Empleados",

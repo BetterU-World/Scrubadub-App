@@ -47,6 +47,7 @@ import { CompanyProfilePage } from "@/pages/owner/CompanyProfilePage";
 import { SettlementsPage } from "@/pages/owner/SettlementsPage";
 import { PaymentsHubPage } from "@/pages/owner/PaymentsHubPage";
 import { CleanerPaymentsPage } from "@/pages/owner/CleanerPaymentsPage";
+import { InventoryTemplatesPage } from "@/pages/owner/InventoryTemplatesPage";
 
 // Worker pages (cleaner + maintenance unified)
 import { WorkerJobListPage } from "@/pages/worker/WorkerJobListPage";
@@ -267,6 +268,7 @@ export default function App() {
                   component={PropertyFormPage}
                 />
                 <Route path="/properties/:id" component={PropertyDetailPage} />
+                <Route path="/inventory-templates" component={InventoryTemplatesPage} />
                 <Route path="/employees" component={EmployeeListPage} />
                 <Route path="/jobs" component={JobListPage} />
                 <Route path="/jobs/new" component={JobFormPage} />
