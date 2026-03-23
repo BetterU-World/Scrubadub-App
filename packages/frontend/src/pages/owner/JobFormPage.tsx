@@ -268,7 +268,7 @@ export function JobFormPage() {
           </div>
         ) : (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.property")}</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.property")} <span className="text-red-500">*</span></label>
             <select className="input-field" value={propertyId} onChange={(e) => setPropertyId(e.target.value)} required>
               <option value="">{t("jobForm.selectProperty")}</option>
               {activeProperties.map((p) => (
@@ -279,7 +279,7 @@ export function JobFormPage() {
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.jobType")}</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.jobType")} <span className="text-red-500">*</span></label>
           <select className="input-field" value={type} onChange={(e) => { setType(e.target.value); setSelectedCleaners([]); }}>
             {JOB_TYPES.map((jt) => (
               <option key={jt.value} value={jt.value}>{t(jt.labelKey)}</option>
@@ -289,7 +289,7 @@ export function JobFormPage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.date")}</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.date")} <span className="text-red-500">*</span></label>
             <input type="date" className="input-field" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} required />
           </div>
           <div>
@@ -299,7 +299,7 @@ export function JobFormPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.duration")}</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.duration")} <span className="text-red-500">*</span></label>
           <input type="number" className="input-field" value={durationMinutes} onChange={(e) => setDurationMinutes(parseInt(e.target.value) || 0)} min={15} step={15} required />
         </div>
 

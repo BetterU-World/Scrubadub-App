@@ -4,6 +4,7 @@ import { useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { CheckCircle } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 
 export function PostCheckoutSetupPage() {
   const [name, setName] = useState("");
@@ -96,7 +97,7 @@ export function PostCheckoutSetupPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Your Name
+                Your Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -110,7 +111,7 @@ export function PostCheckoutSetupPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Company Name
+                Company Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -124,10 +125,9 @@ export function PostCheckoutSetupPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Password
+                Password <span className="text-red-500">*</span>
               </label>
-              <input
-                type="password"
+              <PasswordInput
                 className="input-field"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

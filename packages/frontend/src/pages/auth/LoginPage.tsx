@@ -2,6 +2,7 @@ import { useState, FormEvent } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "wouter";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 
@@ -53,7 +54,7 @@ export function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t("auth.email")}
+                {t("auth.email")} <span className="text-red-500">*</span>
               </label>
               <input
                 type="email"
@@ -68,10 +69,9 @@ export function LoginPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                {t("auth.password")}
+                {t("auth.password")} <span className="text-red-500">*</span>
               </label>
-              <input
-                type="password"
+              <PasswordInput
                 className="input-field"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

@@ -3,6 +3,7 @@ import { useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Link, useLocation, useParams } from "wouter";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 
@@ -84,10 +85,9 @@ export function ResetPasswordPage() {
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {t("auth.newPassword")}
+                    {t("auth.newPassword")} <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="password"
+                  <PasswordInput
                     className="input-field"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -99,10 +99,9 @@ export function ResetPasswordPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {t("auth.confirmPassword")}
+                    {t("auth.confirmPassword")} <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="password"
+                  <PasswordInput
                     className="input-field"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}

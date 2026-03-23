@@ -3,6 +3,7 @@ import { useQuery, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useParams, useLocation } from "wouter";
 import { LoadingSpinner, PageLoader } from "@/components/ui/LoadingSpinner";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 
 export function AcceptInvitePage() {
   const params = useParams<{ token: string }>();
@@ -81,9 +82,8 @@ export function AcceptInvitePage() {
               <input className="input-field bg-gray-50" value={inviteInfo.email} disabled />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-              <input
-                type="password"
+              <label className="block text-sm font-medium text-gray-700 mb-1">Password <span className="text-red-500">*</span></label>
+              <PasswordInput
                 className="input-field"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -92,9 +92,8 @@ export function AcceptInvitePage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
-              <input
-                type="password"
+              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password <span className="text-red-500">*</span></label>
+              <PasswordInput
                 className="input-field"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}

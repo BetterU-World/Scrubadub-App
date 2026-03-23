@@ -170,12 +170,12 @@ export function PropertyFormPage() {
 
       <form onSubmit={handleSubmit} className="card space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t("properties.propertyName")}</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("properties.propertyName")} <span className="text-red-500">*</span></label>
           <input className="input-field" value={name} onChange={(e) => setName(e.target.value)} required placeholder="Beach House #1" />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t("common.type")}</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("common.type")} <span className="text-red-500">*</span></label>
           <select className="input-field" value={type} onChange={(e) => setType(e.target.value)}>
             {PROPERTY_TYPES.map((pt) => (
               <option key={pt.value} value={pt.value}>{t(pt.labelKey)}</option>
@@ -184,7 +184,7 @@ export function PropertyFormPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t("properties.address")}</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("properties.address")} <span className="text-red-500">*</span></label>
           <input className="input-field" value={address} onChange={(e) => setAddress(e.target.value)} required placeholder="123 Main St, City, ST 12345" />
         </div>
 
