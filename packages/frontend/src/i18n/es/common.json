@@ -586,6 +586,45 @@
       "oceanfront": "Frente al mar",
       "smartLock": "Cerradura inteligente",
       "garage": "Garaje"
+    },
+    "inventory": {
+      "title": "Inventario",
+      "noItems": "Aún no hay artículos de inventario",
+      "noItemsDesc": "Agrega artículos para rastrear suministros de esta propiedad",
+      "addItem": "Agregar artículo",
+      "editItem": "Editar artículo",
+      "removeItem": "Eliminar",
+      "itemName": "Nombre del artículo",
+      "category": "Categoría",
+      "parLevel": "Nivel mínimo",
+      "currentQty": "Cantidad actual",
+      "required": "Requerido",
+      "notes": "Notas",
+      "restockResponsibility": "Reabastecer por",
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "applyTemplate": "Aplicar plantilla",
+      "noTemplates": "No hay plantillas disponibles",
+      "templateApplied": "Plantilla aplicada",
+      "itemAdded": "Artículo agregado",
+      "itemRemoved": "Artículo eliminado",
+      "inventoryUpdated": "Inventario actualizado",
+      "confirmRemove": "¿Eliminar este artículo de inventario?",
+      "confirmRemoveDesc": "Esto eliminará \"{{name}}\" de la lista de inventario de esta propiedad.",
+      "confirmApplyTemplate": "¿Aplicar plantilla de inventario?",
+      "confirmApplyTemplateDesc": "Esto reemplazará el inventario actual con artículos de \"{{name}}\". Los datos de cantidad existentes se conservarán para artículos coincidentes.",
+      "categories": {
+        "bathroom": "Baño",
+        "kitchen": "Cocina",
+        "bedroom": "Dormitorio",
+        "general": "General",
+        "outdoor": "Exterior"
+      },
+      "responsibility": {
+        "owner": "Propietario",
+        "cleaner": "Limpiador",
+        "manager": "Gerente"
+      }
     }
   },
   "employees": {

@@ -6,8 +6,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useParams, Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
+import {
+  INVENTORY_CATEGORIES,
+  INVENTORY_CATEGORY_LABELS,
+} from "../../../../../convex/lib/constants";
 
 const AMENITY_KEYS: Record<string, string> = {
   "Washer/Dryer": "properties.amenityPresets.washerDryer",
@@ -22,6 +27,8 @@ const AMENITY_KEYS: Record<string, string> = {
   "Garage": "properties.amenityPresets.garage",
 };
 
+const RESTOCK_OPTIONS = ["owner", "cleaner", "manager"] as const;
+
 import {
   MapPin,
   Key,
@@ -34,9 +41,14 @@ import {
   Flag,
   Briefcase,
   AlertTriangle,
+  Package,
+  Plus,
+  Trash2,
+  X,
+  ClipboardList,
 } from "lucide-react";
 
-type Tab = "details" | "history";
+type Tab = "details" | "inventory" | "history";
 
 export function PropertyDetailPage() {
   const params = useParams<{ id: string }>();
@@ -121,6 +133,17 @@ export function PropertyDetailPage() {
           {t("properties.details")}
         </button>
         <button
+          onClick={() => setActiveTab("inventory")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
+            activeTab === "inventory"
+              ? "border-primary-600 text-primary-600"
+              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+          }`}
+        >
+          <Package className="w-4 h-4" />
+          {t("properties.inventory.title")}
+        </button>
+        <button
           onClick={() => setActiveTab("history")}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
             activeTab === "history"
@@ -134,6 +157,12 @@ export function PropertyDetailPage() {
       </div>
 
       {activeTab === "details" && <DetailsTab property={property} />}
+      {activeTab === "inventory" && (
+        <InventoryTab
+          property={property}
+          userId={user!._id}
+        />
+      )}
       {activeTab === "history" && (
         <HistoryTab
           propertyId={params.id as Id<"properties">}
@@ -291,6 +320,418 @@ function DetailsTab({ property }: { property: any }) {
         </div>
       )}
     </div>
+  );
+}
+
+// ── Inventory Tab ──────────────────────────────────────────────────────
+
+interface InventoryItem {
+  name: string;
+  category: string;
+  parLevel: number;
+  required: boolean;
+  currentQty?: number;
+  restockResponsibility?: string;
+  notes?: string;
+}
+
+const EMPTY_ITEM: InventoryItem = {
+  name: "",
+  category: "bathroom",
+  parLevel: 1,
+  required: false,
+};
+
+function InventoryTab({
+  property,
+  userId,
+}: {
+  property: any;
+  userId: Id<"users">;
+}) {
+  const { t } = useTranslation();
+  const items: InventoryItem[] = property.inventoryItems ?? [];
+
+  // Mutations
+  const addItem = useMutation(api.mutations.properties.addInventoryItem);
+  const removeItem = useMutation(api.mutations.properties.removeInventoryItem);
+  const updateItems = useMutation(api.mutations.properties.updateInventoryItems);
+  const applyTemplate = useMutation(api.mutations.inventoryTemplates.applyToProperty);
+
+  // Templates query
+  const templates = useQuery(
+    api.queries.inventoryTemplates.list,
+    { companyId: property.companyId, userId }
+  );
+
+  // UI state
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<string | null>(null);
+  const [templateConfirm, setTemplateConfirm] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleAdd = async (item: InventoryItem) => {
+    setSaving(true);
+    try {
+      await addItem({ userId, propertyId: property._id, item });
+      setShowAddForm(false);
+      showToast(t("properties.inventory.itemAdded"));
+    } catch (e: any) {
+      showToast(e.message || "Error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemove = async () => {
+    if (!removeTarget) return;
+    setSaving(true);
+    try {
+      await removeItem({ userId, propertyId: property._id, itemName: removeTarget });
+      setRemoveTarget(null);
+      showToast(t("properties.inventory.itemRemoved"));
+    } catch (e: any) {
+      showToast(e.message || "Error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEditSave = async (index: number, updated: InventoryItem) => {
+    setSaving(true);
+    try {
+      const newItems = [...items];
+      newItems[index] = updated;
+      await updateItems({ userId, propertyId: property._id, items: newItems });
+      setEditingIndex(null);
+      showToast(t("properties.inventory.inventoryUpdated"));
+    } catch (e: any) {
+      showToast(e.message || "Error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleApplyTemplate = async () => {
+    if (!templateConfirm) return;
+    setSaving(true);
+    try {
+      await applyTemplate({
+        userId,
+        templateId: templateConfirm as Id<"inventoryTemplates">,
+        propertyId: property._id,
+      });
+      setTemplateConfirm(null);
+      showToast(t("properties.inventory.templateApplied"));
+    } catch (e: any) {
+      showToast(e.message || "Error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const selectedTemplate = templates?.find((tmpl) => tmpl._id === templateConfirm);
+
+  // Group items by category for display
+  const grouped = items.reduce<Record<string, { item: InventoryItem; index: number }[]>>(
+    (acc, item, index) => {
+      const cat = item.category || "general";
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push({ item, index });
+      return acc;
+    },
+    {}
+  );
+
+  return (
+    <div className="space-y-4">
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium bg-green-600 text-white">
+          {toast}
+        </div>
+      )}
+
+      {/* Action bar */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          {templates && templates.length > 0 && (
+            <select
+              className="input-field text-sm py-1.5 w-auto"
+              value=""
+              onChange={(e) => {
+                if (e.target.value) setTemplateConfirm(e.target.value);
+              }}
+            >
+              <option value="">{t("properties.inventory.applyTemplate")}</option>
+              {templates.map((tmpl) => (
+                <option key={tmpl._id} value={tmpl._id}>
+                  {tmpl.name} ({tmpl.items.length} items)
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+        <button
+          onClick={() => { setShowAddForm(true); setEditingIndex(null); }}
+          className="btn-primary flex items-center gap-1.5 text-sm"
+        >
+          <Plus className="w-4 h-4" /> {t("properties.inventory.addItem")}
+        </button>
+      </div>
+
+      {/* Add form */}
+      {showAddForm && (
+        <div className="card">
+          <InventoryItemForm
+            initial={EMPTY_ITEM}
+            onSave={handleAdd}
+            onCancel={() => setShowAddForm(false)}
+            saving={saving}
+          />
+        </div>
+      )}
+
+      {/* Empty state */}
+      {items.length === 0 && !showAddForm && (
+        <div className="card text-center py-10">
+          <ClipboardList className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-500 text-sm">{t("properties.inventory.noItems")}</p>
+          <p className="text-gray-400 text-xs mt-1">{t("properties.inventory.noItemsDesc")}</p>
+        </div>
+      )}
+
+      {/* Grouped inventory items */}
+      {INVENTORY_CATEGORIES.filter((cat) => grouped[cat]?.length).map((cat) => (
+        <div key={cat}>
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            {t(`properties.inventory.categories.${cat}`, INVENTORY_CATEGORY_LABELS[cat])}
+          </h3>
+          <div className="space-y-2">
+            {grouped[cat].map(({ item, index }) =>
+              editingIndex === index ? (
+                <div key={item.name} className="card">
+                  <InventoryItemForm
+                    initial={item}
+                    onSave={(updated) => handleEditSave(index, updated)}
+                    onCancel={() => setEditingIndex(null)}
+                    saving={saving}
+                  />
+                </div>
+              ) : (
+                <InventoryItemRow
+                  key={item.name}
+                  item={item}
+                  onEdit={() => { setEditingIndex(index); setShowAddForm(false); }}
+                  onRemove={() => { setRemoveTarget(item.name); }}
+                />
+              )
+            )}
+          </div>
+        </div>
+      ))}
+
+      {/* Confirm remove dialog */}
+      <ConfirmDialog
+        open={removeTarget !== null}
+        onOpenChange={(open) => { if (!open) setRemoveTarget(null); }}
+        title={t("properties.inventory.confirmRemove")}
+        description={t("properties.inventory.confirmRemoveDesc", { name: removeTarget ?? "" })}
+        confirmLabel={t("properties.inventory.removeItem")}
+        confirmVariant="danger"
+        onConfirm={handleRemove}
+        loading={saving}
+      />
+
+      {/* Confirm template apply dialog */}
+      <ConfirmDialog
+        open={templateConfirm !== null}
+        onOpenChange={(open) => { if (!open) setTemplateConfirm(null); }}
+        title={t("properties.inventory.confirmApplyTemplate")}
+        description={t("properties.inventory.confirmApplyTemplateDesc", { name: selectedTemplate?.name ?? "" })}
+        confirmLabel={t("properties.inventory.applyTemplate")}
+        confirmVariant="primary"
+        onConfirm={handleApplyTemplate}
+        loading={saving}
+      />
+    </div>
+  );
+}
+
+function InventoryItemRow({
+  item,
+  onEdit,
+  onRemove,
+}: {
+  item: InventoryItem;
+  onEdit: () => void;
+  onRemove: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="card flex items-center gap-3 py-3 px-4 cursor-pointer hover:bg-gray-50" onClick={onEdit}>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-gray-800">{item.name}</span>
+          {item.required && (
+            <span className="badge bg-red-100 text-red-700 text-[10px]">{t("properties.inventory.required")}</span>
+          )}
+          {item.restockResponsibility && (
+            <span className="badge bg-gray-100 text-gray-600 text-[10px]">
+              {t(`properties.inventory.responsibility.${item.restockResponsibility}`, item.restockResponsibility)}
+            </span>
+          )}
+        </div>
+        {item.notes && (
+          <p className="text-xs text-gray-400 mt-0.5 truncate">{item.notes}</p>
+        )}
+      </div>
+      <div className="flex items-center gap-4 flex-shrink-0">
+        <div className="text-right">
+          <div className="text-sm font-semibold text-gray-800">
+            {item.currentQty != null ? item.currentQty : "—"} / {item.parLevel}
+          </div>
+          <div className="text-[10px] text-gray-400">{t("properties.inventory.currentQty")} / {t("properties.inventory.parLevel")}</div>
+        </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); onRemove(); }}
+          className="p-1.5 text-gray-400 hover:text-red-500 rounded transition-colors"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function InventoryItemForm({
+  initial,
+  onSave,
+  onCancel,
+  saving,
+}: {
+  initial: InventoryItem;
+  onSave: (item: InventoryItem) => void;
+  onCancel: () => void;
+  saving: boolean;
+}) {
+  const { t } = useTranslation();
+  const [name, setName] = useState(initial.name);
+  const [category, setCategory] = useState(initial.category);
+  const [parLevel, setParLevel] = useState(initial.parLevel);
+  const [required, setRequired] = useState(initial.required);
+  const [currentQty, setCurrentQty] = useState<number | undefined>(initial.currentQty);
+  const [restockResponsibility, setRestockResponsibility] = useState(initial.restockResponsibility ?? "");
+  const [notes, setNotes] = useState(initial.notes ?? "");
+
+  const handleSubmit = (e: { preventDefault: () => void }) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    onSave({
+      name: name.trim(),
+      category,
+      parLevel,
+      required,
+      ...(currentQty != null ? { currentQty } : {}),
+      ...(restockResponsibility ? { restockResponsibility } : {}),
+      ...(notes.trim() ? { notes: notes.trim() } : {}),
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs font-medium text-gray-600">{t("properties.inventory.itemName")} <span className="text-red-500">*</span></label>
+          <input
+            className="input-field mt-1"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Toilet Paper"
+            autoFocus
+            disabled={!!initial.name}
+          />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-600">{t("properties.inventory.category")}</label>
+          <select className="input-field mt-1" value={category} onChange={(e) => setCategory(e.target.value)}>
+            {INVENTORY_CATEGORIES.map((cat) => (
+              <option key={cat} value={cat}>
+                {t(`properties.inventory.categories.${cat}`, INVENTORY_CATEGORY_LABELS[cat])}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <div>
+          <label className="text-xs font-medium text-gray-600">{t("properties.inventory.parLevel")} <span className="text-red-500">*</span></label>
+          <input
+            type="number"
+            className="input-field mt-1"
+            value={parLevel}
+            onChange={(e) => setParLevel(Math.max(0, Number(e.target.value)))}
+            min={0}
+          />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-600">{t("properties.inventory.currentQty")}</label>
+          <input
+            type="number"
+            className="input-field mt-1"
+            value={currentQty ?? ""}
+            onChange={(e) => setCurrentQty(e.target.value === "" ? undefined : Math.max(0, Number(e.target.value)))}
+            min={0}
+            placeholder="—"
+          />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-gray-600">{t("properties.inventory.restockResponsibility")}</label>
+          <select className="input-field mt-1" value={restockResponsibility} onChange={(e) => setRestockResponsibility(e.target.value)}>
+            <option value="">—</option>
+            {RESTOCK_OPTIONS.map((opt) => (
+              <option key={opt} value={opt}>
+                {t(`properties.inventory.responsibility.${opt}`, opt)}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <div>
+        <label className="text-xs font-medium text-gray-600">{t("properties.inventory.notes")}</label>
+        <input
+          className="input-field mt-1"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Optional notes..."
+        />
+      </div>
+      <div className="flex items-center gap-4">
+        <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={required}
+            onChange={(e) => setRequired(e.target.checked)}
+            className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+          {t("properties.inventory.required")}
+        </label>
+      </div>
+      <div className="flex justify-end gap-2 pt-1">
+        <button type="button" onClick={onCancel} className="btn-secondary text-sm">
+          {t("properties.inventory.cancel")}
+        </button>
+        <button type="submit" disabled={saving || !name.trim()} className="btn-primary text-sm">
+          {saving ? "..." : t("properties.inventory.save")}
+        </button>
+      </div>
+    </form>
   );
 }
 

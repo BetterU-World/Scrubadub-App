@@ -586,6 +586,45 @@
       "oceanfront": "Oceanfront",
       "smartLock": "Smart Lock",
       "garage": "Garage"
+    },
+    "inventory": {
+      "title": "Inventory",
+      "noItems": "No inventory items yet",
+      "noItemsDesc": "Add items to track supplies for this property",
+      "addItem": "Add Item",
+      "editItem": "Edit Item",
+      "removeItem": "Remove",
+      "itemName": "Item Name",
+      "category": "Category",
+      "parLevel": "Par Level",
+      "currentQty": "Current Qty",
+      "required": "Required",
+      "notes": "Notes",
+      "restockResponsibility": "Restock By",
+      "save": "Save",
+      "cancel": "Cancel",
+      "applyTemplate": "Apply Template",
+      "noTemplates": "No templates available",
+      "templateApplied": "Template applied",
+      "itemAdded": "Item added",
+      "itemRemoved": "Item removed",
+      "inventoryUpdated": "Inventory updated",
+      "confirmRemove": "Remove this inventory item?",
+      "confirmRemoveDesc": "This will remove \"{{name}}\" from this property's inventory list.",
+      "confirmApplyTemplate": "Apply inventory template?",
+      "confirmApplyTemplateDesc": "This will replace the current inventory with items from \"{{name}}\". Existing quantity data will be preserved for matching items.",
+      "categories": {
+        "bathroom": "Bathroom",
+        "kitchen": "Kitchen",
+        "bedroom": "Bedroom",
+        "general": "General",
+        "outdoor": "Outdoor"
+      },
+      "responsibility": {
+        "owner": "Owner",
+        "cleaner": "Cleaner",
+        "manager": "Manager"
+      }
     }
   },
   "employees": {
