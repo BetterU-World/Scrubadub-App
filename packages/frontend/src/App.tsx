@@ -193,6 +193,7 @@ export default function App() {
     "/partners", "/requests", "/feedback", "/cleaner-leads", "/audit-log", "/notifications", "/manuals",
     "/admin", "/site", "/affiliate", "/availability", "/owner", "/settings", "/payments",
     "/terms", "/privacy", "/contact", "/get-started", "/setup",
+    "/inventory-templates",
   ];
   const isKnownRoute = pathname === "/" || knownPrefixes.some((p) => pathname.startsWith(p));
   const slugMatch = !isKnownRoute && /^\/[a-z0-9][a-z0-9-]+/.test(pathname);
