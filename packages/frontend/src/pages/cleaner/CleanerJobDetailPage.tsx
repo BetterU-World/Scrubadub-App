@@ -8,6 +8,9 @@ import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useParams, Link, useLocation } from "wouter";
 import { JobTimeline } from "@/components/JobTimeline";
+import { JobWorkspaceProgress } from "@/components/JobWorkspaceProgress";
+import { JobSubmissionBlockers } from "@/components/JobSubmissionBlockers";
+import { StickyWorkspaceCTA } from "@/components/StickyWorkspaceCTA";
 import { Calendar, Clock, MapPin, Key, CheckCircle, XCircle, Play, ClipboardCheck, MapPinCheck, Send, Package, ChevronDown, ChevronUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
@@ -32,6 +35,14 @@ export function CleanerJobDetailPage() {
 
   const cleanerCancelJob = useMutation(api.mutations.jobs.cleanerCancelJob);
   const updateChecklistItem = useMutation(api.mutations.jobs.updateInventoryChecklistItem);
+
+  // Query form items for cleaning checklist progress (uses existing query)
+  const formItems = useQuery(
+    api.queries.forms.getItems,
+    job && job !== null && (job as any).form?._id && user
+      ? { formId: (job as any).form._id, userId: user._id }
+      : "skip"
+  );
 
   const [showDeny, setShowDeny] = useState(false);
   const [denyReason, setDenyReason] = useState("");
@@ -63,6 +74,15 @@ export function CleanerJobDetailPage() {
     (item: any) => item.required && !item.status
   );
   const inventoryComplete = unreportedRequired.length === 0;
+
+  // Derive progress counts for workspace components
+  const requiredInventoryItems = inventoryChecklist.filter((item: any) => item.required);
+  const reportedInventoryCount = requiredInventoryItems.filter((item: any) => item.status).length;
+  const cleaningTotal = formItems?.length ?? 0;
+  const cleaningCompleted = formItems?.filter((i: any) => i.completed).length ?? 0;
+  const remainingCleaning = cleaningTotal - cleaningCompleted;
+  const showWorkspaceProgress = isInProgress || job.status === "rework_requested";
+  const showStickyCTA = isInProgress || canStart || job.status === "rework_requested";
 
   const handleStartJob = async () => {
     if (!user) return;
@@ -129,6 +149,15 @@ export function CleanerJobDetailPage() {
           {job.notes && <p className="text-sm text-gray-600 border-t pt-3">{job.notes}</p>}
         </div>
 
+        {showWorkspaceProgress && (
+          <JobWorkspaceProgress
+            cleaningCompleted={cleaningCompleted}
+            cleaningTotal={cleaningTotal}
+            inventoryCompleted={reportedInventoryCount}
+            inventoryTotal={requiredInventoryItems.length}
+          />
+        )}
+
         <JobTimeline job={job as any} />
 
         {job.form?.ownerNotes && (
@@ -160,57 +189,105 @@ export function CleanerJobDetailPage() {
           </div>
         )}
 
-        {/* Action buttons */}
-        <div className="card space-y-3">
-          {canAccept && (
-            <div className="flex gap-3">
+        {/* Action buttons — non-workspace states (accept/arrive/cancel) */}
+        {(canAccept || (canArrive && !canAccept) || canCleanerCancel) && (
+          <div className="card space-y-3">
+            {canAccept && (
+              <div className="flex gap-3">
+                <button
+                  disabled={accepting}
+                  onClick={async () => {
+                    if (!user) return;
+                    setAccepting(true);
+                    try {
+                      await acceptJob({ jobId: job._id, userId: user._id });
+                      setToast({ message: t("jobs.jobAccepted"), type: "success" });
+                      setTimeout(() => setToast(null), 3000);
+                    } catch (err: any) {
+                      setToast({ message: err.message ?? t("common.failedToAccept"), type: "error" });
+                      setTimeout(() => setToast(null), 3000);
+                    } finally {
+                      setAccepting(false);
+                    }
+                  }}
+                  className="btn-primary flex-1 flex items-center justify-center gap-2"
+                >
+                  <CheckCircle className="w-4 h-4" /> {accepting ? t("jobs.accepting") : t("jobs.acceptJob")}
+                </button>
+                <button
+                  onClick={() => setShowDeny(true)}
+                  className="btn-danger flex items-center justify-center gap-2"
+                >
+                  <XCircle className="w-4 h-4" /> {t("jobs.deny")}
+                </button>
+              </div>
+            )}
+
+            {canArrive && !canAccept && (
               <button
-                disabled={accepting}
-                onClick={async () => {
-                  if (!user) return;
-                  setAccepting(true);
-                  try {
-                    await acceptJob({ jobId: job._id, userId: user._id });
-                    setToast({ message: t("jobs.jobAccepted"), type: "success" });
-                    setTimeout(() => setToast(null), 3000);
-                  } catch (err: any) {
-                    setToast({ message: err.message ?? t("common.failedToAccept"), type: "error" });
-                    setTimeout(() => setToast(null), 3000);
-                  } finally {
-                    setAccepting(false);
-                  }
-                }}
-                className="btn-primary flex-1 flex items-center justify-center gap-2"
+                onClick={async () => { await arriveJob({ jobId: job._id, userId: user!._id }); }}
+                className="btn-secondary w-full flex items-center justify-center gap-2 py-3"
               >
-                <CheckCircle className="w-4 h-4" /> {accepting ? t("jobs.accepting") : t("jobs.acceptJob")}
+                <MapPinCheck className="w-5 h-5" /> {t("jobs.iveArrived")}
               </button>
+            )}
+
+            {canCleanerCancel && (
               <button
-                onClick={() => setShowDeny(true)}
-                className="btn-danger flex items-center justify-center gap-2"
+                onClick={() => setShowCleanerCancel(true)}
+                className="btn-danger w-full flex items-center justify-center gap-2 py-2 text-sm"
               >
-                <XCircle className="w-4 h-4" /> {t("jobs.deny")}
+                <XCircle className="w-4 h-4" /> {t("jobs.cancelJobCleaner")}
               </button>
-            </div>
-          )}
+            )}
+          </div>
+        )}
 
-          {canArrive && !canAccept && (
-            <button
-              onClick={async () => { await arriveJob({ jobId: job._id, userId: user!._id }); }}
-              className="btn-secondary w-full flex items-center justify-center gap-2 py-3"
-            >
-              <MapPinCheck className="w-5 h-5" /> {t("jobs.iveArrived")}
-            </button>
-          )}
+        {/* Status messages for terminal states */}
+        {job.status === "submitted" && (
+          <div className="card text-center text-sm text-gray-500 py-2">
+            {t("jobs.waitingForReview")}
+          </div>
+        )}
 
-          {canCleanerCancel && (
-            <button
-              onClick={() => setShowCleanerCancel(true)}
-              className="btn-danger w-full flex items-center justify-center gap-2 py-2 text-sm"
-            >
-              <XCircle className="w-4 h-4" /> {t("jobs.cancelJobCleaner")}
-            </button>
-          )}
+        {job.status === "approved" && (
+          <div className="card text-center text-sm text-green-600 font-medium py-2">
+            {t("jobs.jobApprovedCleaner")}
+          </div>
+        )}
 
+        {job.status === "rework_requested" && !canStart && (
+          <div className="card text-center text-sm text-red-600 font-medium py-2">
+            {t("jobs.reworkRedoMsg")}
+          </div>
+        )}
+
+        {/* Submission blockers — shown above inventory when in progress */}
+        {isInProgress && (
+          <JobSubmissionBlockers
+            remainingCleaningCount={remainingCleaning}
+            remainingInventoryCount={unreportedRequired.length}
+          />
+        )}
+
+        {/* Inventory checklist */}
+        {(isInProgress || job.status === "rework_requested" || job.status === "submitted" || job.status === "approved") && job.inventoryChecklist && job.inventoryChecklist.length > 0 && (
+          <InventoryChecklistSection
+            checklist={job.inventoryChecklist}
+            jobId={job._id}
+            userId={user!._id}
+            updateItem={updateChecklistItem}
+            editable={isInProgress || job.status === "rework_requested"}
+          />
+        )}
+
+        {/* Bottom spacer when sticky CTA is visible */}
+        {showStickyCTA && <div className="h-20" />}
+      </div>
+
+      {/* Sticky workspace CTA — primary actions for active job states */}
+      <StickyWorkspaceCTA visible={showStickyCTA}>
+        <div className="space-y-2">
           {canStart && (
             <button
               onClick={handleStartJob}
@@ -226,12 +303,6 @@ export function CleanerJobDetailPage() {
             </Link>
           )}
 
-          {isInProgress && !inventoryComplete && inventoryChecklist.length > 0 && (
-            <p className="text-xs text-orange-600 text-center">
-              {t("jobs.inventoryIncomplete", { count: unreportedRequired.length })}
-            </p>
-          )}
-
           {isInProgress && (
             <button
               onClick={() => setShowComplete(true)}
@@ -244,36 +315,13 @@ export function CleanerJobDetailPage() {
             </button>
           )}
 
-          {job.status === "rework_requested" && (
-            <div className="text-center text-sm text-red-600 font-medium py-2">
+          {job.status === "rework_requested" && canStart && (
+            <div className="text-center text-xs text-red-600 font-medium">
               {t("jobs.reworkRedoMsg")}
             </div>
           )}
-
-          {job.status === "submitted" && (
-            <div className="text-center text-sm text-gray-500 py-2">
-              {t("jobs.waitingForReview")}
-            </div>
-          )}
-
-          {job.status === "approved" && (
-            <div className="text-center text-sm text-green-600 font-medium py-2">
-              {t("jobs.jobApprovedCleaner")}
-            </div>
-          )}
         </div>
-
-        {/* Inventory checklist */}
-        {(isInProgress || job.status === "rework_requested" || job.status === "submitted" || job.status === "approved") && job.inventoryChecklist && job.inventoryChecklist.length > 0 && (
-          <InventoryChecklistSection
-            checklist={job.inventoryChecklist}
-            jobId={job._id}
-            userId={user!._id}
-            updateItem={updateChecklistItem}
-            editable={isInProgress || job.status === "rework_requested"}
-          />
-        )}
-      </div>
+      </StickyWorkspaceCTA>
 
       {/* Deny dialog */}
       {showDeny && (
