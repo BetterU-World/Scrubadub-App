@@ -117,6 +117,19 @@ export default defineSchema({
     maintenanceNotes: v.optional(v.string()),
     ownerNotes: v.optional(v.string()),
     active: v.boolean(),
+    // ── Property Inventory (Sprint 2) ──────────────────────────────
+    inventoryItems: v.optional(v.array(v.object({
+      name: v.string(),
+      category: v.string(),
+      parLevel: v.number(),
+      required: v.boolean(),
+      currentQty: v.optional(v.number()),
+      lastCheckedAt: v.optional(v.number()),
+      lastCheckedBy: v.optional(v.id("users")),
+      restockResponsibility: v.optional(v.string()),
+      notes: v.optional(v.string()),
+    }))),
+    inventoryTemplateId: v.optional(v.id("inventoryTemplates")),
   }).index("by_companyId", ["companyId"]),
 
   jobs: defineTable({
@@ -712,6 +725,22 @@ export default defineSchema({
   })
     .index("by_jobId", ["jobId"])
     .index("by_companyId_createdAt", ["companyId", "createdAt"]),
+
+  // ── Inventory Templates (Sprint 2) ─────────────────────────────────
+  inventoryTemplates: defineTable({
+    companyId: v.id("companies"),
+    name: v.string(),
+    items: v.array(v.object({
+      name: v.string(),
+      category: v.string(),
+      parLevel: v.number(),
+      required: v.boolean(),
+      restockResponsibility: v.optional(v.string()),
+      notes: v.optional(v.string()),
+    })),
+    isDefault: v.optional(v.boolean()),
+    createdAt: v.number(),
+  }).index("by_companyId", ["companyId"]),
 
   // ── Rate Limits (server-side sliding window) ──────────────────────
   rateLimits: defineTable({

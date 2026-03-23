@@ -99,6 +99,112 @@ export const update = mutation({
   },
 });
 
+// ── Property Inventory Item mutations (Sprint 2) ──────────────────────
+
+const inventoryItemValidator = v.object({
+  name: v.string(),
+  category: v.string(),
+  parLevel: v.number(),
+  required: v.boolean(),
+  currentQty: v.optional(v.number()),
+  restockResponsibility: v.optional(v.string()),
+  notes: v.optional(v.string()),
+});
+
+/** Replace the full inventory list on a property. */
+export const updateInventoryItems = mutation({
+  args: {
+    userId: v.optional(v.id("users")),
+    propertyId: v.id("properties"),
+    items: v.array(inventoryItemValidator),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+    const property = await ctx.db.get(args.propertyId);
+    if (!property) throw new Error("Property not found");
+    if (property.companyId !== owner.companyId) throw new Error("Not your company");
+
+    await ctx.db.patch(args.propertyId, { inventoryItems: args.items });
+
+    await logAudit(ctx, {
+      companyId: owner.companyId,
+      userId: owner._id,
+      action: "update_property_inventory",
+      entityType: "property",
+      entityId: args.propertyId,
+    });
+  },
+});
+
+/** Add a single item to a property's inventory list. */
+export const addInventoryItem = mutation({
+  args: {
+    userId: v.optional(v.id("users")),
+    propertyId: v.id("properties"),
+    item: inventoryItemValidator,
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+    const property = await ctx.db.get(args.propertyId);
+    if (!property) throw new Error("Property not found");
+    if (property.companyId !== owner.companyId) throw new Error("Not your company");
+
+    if (args.item.name.trim().length === 0) throw new Error("Item name is required");
+    if (args.item.parLevel < 0) throw new Error("Par level must be non-negative");
+
+    const existing = property.inventoryItems ?? [];
+    const duplicate = existing.some(
+      (i) => i.name.toLowerCase() === args.item.name.trim().toLowerCase()
+    );
+    if (duplicate) throw new Error("Item already exists on this property");
+
+    await ctx.db.patch(args.propertyId, {
+      inventoryItems: [...existing, { ...args.item, name: args.item.name.trim() }],
+    });
+
+    await logAudit(ctx, {
+      companyId: owner.companyId,
+      userId: owner._id,
+      action: "add_inventory_item",
+      entityType: "property",
+      entityId: args.propertyId,
+      details: args.item.name,
+    });
+  },
+});
+
+/** Remove a single item from a property's inventory list by name. */
+export const removeInventoryItem = mutation({
+  args: {
+    userId: v.optional(v.id("users")),
+    propertyId: v.id("properties"),
+    itemName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+    const property = await ctx.db.get(args.propertyId);
+    if (!property) throw new Error("Property not found");
+    if (property.companyId !== owner.companyId) throw new Error("Not your company");
+
+    const existing = property.inventoryItems ?? [];
+    const filtered = existing.filter(
+      (i) => i.name.toLowerCase() !== args.itemName.toLowerCase()
+    );
+    if (filtered.length === existing.length) throw new Error("Item not found");
+
+    await ctx.db.patch(args.propertyId, { inventoryItems: filtered });
+
+    await logAudit(ctx, {
+      companyId: owner.companyId,
+      userId: owner._id,
+      action: "remove_inventory_item",
+      entityType: "property",
+      entityId: args.propertyId,
+      details: args.itemName,
+    });
+  },
+});
+
 export const toggleActive = mutation({
   args: { propertyId: v.id("properties"), userId: v.optional(v.id("users")) },
   handler: async (ctx, args) => {

@@ -128,3 +128,49 @@ export const SEVERITY_COLORS: Record<string, string> = {
   high: "bg-red-100 text-red-800",
   critical: "bg-red-200 text-red-900",
 };
+
+// ── Inventory (Sprint 2) ──────────────────────────────────────────────
+
+export const INVENTORY_CATEGORIES = [
+  "bathroom",
+  "kitchen",
+  "bedroom",
+  "general",
+  "outdoor",
+] as const;
+
+export type InventoryCategory = (typeof INVENTORY_CATEGORIES)[number];
+
+export const INVENTORY_CATEGORY_LABELS: Record<InventoryCategory, string> = {
+  bathroom: "Bathroom",
+  kitchen: "Kitchen",
+  bedroom: "Bedroom",
+  general: "General",
+  outdoor: "Outdoor",
+};
+
+export const DEFAULT_INVENTORY_ITEMS: Array<{
+  name: string;
+  category: InventoryCategory;
+  parLevel: number;
+  required: boolean;
+}> = [
+  { name: "Toilet Paper", category: "bathroom", parLevel: 4, required: true },
+  { name: "Hand Soap", category: "bathroom", parLevel: 2, required: true },
+  { name: "Shampoo", category: "bathroom", parLevel: 2, required: true },
+  { name: "Conditioner", category: "bathroom", parLevel: 2, required: true },
+  { name: "Body Wash", category: "bathroom", parLevel: 2, required: true },
+  { name: "Paper Towels", category: "kitchen", parLevel: 2, required: true },
+  { name: "Dish Soap", category: "kitchen", parLevel: 1, required: true },
+  { name: "Dishwasher Pods", category: "kitchen", parLevel: 6, required: false },
+  { name: "Trash Bags", category: "kitchen", parLevel: 4, required: true },
+  { name: "Sponge", category: "kitchen", parLevel: 1, required: true },
+  { name: "Coffee", category: "kitchen", parLevel: 1, required: false },
+  { name: "Coffee Filters", category: "kitchen", parLevel: 4, required: false },
+  { name: "Sugar", category: "kitchen", parLevel: 1, required: false },
+  { name: "Creamer", category: "kitchen", parLevel: 1, required: false },
+  { name: "Laundry Detergent", category: "general", parLevel: 1, required: false },
+  { name: "Dryer Sheets", category: "general", parLevel: 4, required: false },
+  { name: "Wine (Welcome Gift)", category: "general", parLevel: 1, required: false },
+  { name: "Snack Basket", category: "general", parLevel: 1, required: false },
+];
