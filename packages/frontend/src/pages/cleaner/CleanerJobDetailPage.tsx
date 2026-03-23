@@ -57,6 +57,13 @@ export function CleanerJobDetailPage() {
   const isInProgress = job.status === "in_progress";
   const hasForm = !!job.form;
 
+  // Check if required inventory items are all reported
+  const inventoryChecklist = job.inventoryChecklist ?? [];
+  const unreportedRequired = inventoryChecklist.filter(
+    (item: any) => item.required && !item.status
+  );
+  const inventoryComplete = unreportedRequired.length === 0;
+
   const handleStartJob = async () => {
     if (!user) return;
     await startJob({ jobId: job._id, userId: user._id });
@@ -65,7 +72,7 @@ export function CleanerJobDetailPage() {
       companyId: job.companyId,
       cleanerId: user._id,
     });
-    setLocation(`/jobs/${job._id}/form`);
+    // Stay on job detail page — inventory checklist is shown inline
   };
 
   const handleCompleteJob = async () => {
@@ -219,10 +226,19 @@ export function CleanerJobDetailPage() {
             </Link>
           )}
 
+          {isInProgress && !inventoryComplete && inventoryChecklist.length > 0 && (
+            <p className="text-xs text-orange-600 text-center">
+              {t("jobs.inventoryIncomplete", { count: unreportedRequired.length })}
+            </p>
+          )}
+
           {isInProgress && (
             <button
               onClick={() => setShowComplete(true)}
-              className="btn-primary w-full flex items-center justify-center gap-2 py-3 text-lg"
+              disabled={!inventoryComplete}
+              className={`w-full flex items-center justify-center gap-2 py-3 text-lg ${
+                inventoryComplete ? "btn-primary" : "btn-secondary opacity-60 cursor-not-allowed"
+              }`}
             >
               <CheckCircle className="w-5 h-5" /> {t("jobs.completeCleaning")}
             </button>
@@ -248,7 +264,7 @@ export function CleanerJobDetailPage() {
         </div>
 
         {/* Inventory checklist */}
-        {(isInProgress || job.status === "submitted" || job.status === "approved") && job.inventoryChecklist && job.inventoryChecklist.length > 0 && (
+        {(isInProgress || job.status === "rework_requested" || job.status === "submitted" || job.status === "approved") && job.inventoryChecklist && job.inventoryChecklist.length > 0 && (
           <InventoryChecklistSection
             checklist={job.inventoryChecklist}
             jobId={job._id}

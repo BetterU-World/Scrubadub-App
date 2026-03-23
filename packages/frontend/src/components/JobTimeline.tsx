@@ -84,7 +84,7 @@ export function JobTimeline({ job }: { job: Job }) {
     });
   }
 
-  if (job.completedAt && (job.status === "submitted" || job.status === "rework_requested")) {
+  if (job.completedAt && (job.status === "submitted" || job.status === "rework_requested" || job.status === "approved")) {
     events.push({
       label: "Submitted",
       time: job.completedAt,
@@ -93,27 +93,22 @@ export function JobTimeline({ job }: { job: Job }) {
     });
   }
 
-  if (job.completedAt && job.status === "approved") {
-    events.push({
-      label: "Submitted",
-      time: job.completedAt,
-      icon: <Send className="w-4 h-4" />,
-      color: "text-teal-600 bg-teal-100",
-    });
-    events.push({
-      label: "Approved",
-      time: job.completedAt,
-      icon: <ThumbsUp className="w-4 h-4" />,
-      color: "text-green-600 bg-green-100",
-    });
-  }
-
-  if (job.status === "rework_requested") {
+  // Show rework events whenever reworkCount > 0 (persists through full cycle)
+  if (job.reworkCount > 0) {
     events.push({
       label: `Rework #${job.reworkCount}`,
       time: job.completedAt ?? Date.now(),
       icon: <RotateCcw className="w-4 h-4" />,
       color: "text-orange-600 bg-orange-100",
+    });
+  }
+
+  if (job.status === "approved" && job.completedAt) {
+    events.push({
+      label: "Approved",
+      time: job.completedAt,
+      icon: <ThumbsUp className="w-4 h-4" />,
+      color: "text-green-600 bg-green-100",
     });
   }
 

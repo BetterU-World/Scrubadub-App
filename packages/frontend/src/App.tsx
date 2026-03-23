@@ -261,6 +261,7 @@ export default function App() {
             accessOk ? (
               <>
                 <Route path="/" component={DashboardPage} />
+                <Route path="/inventory-templates" component={InventoryTemplatesPage} />
                 <Route path="/properties" component={PropertyListPage} />
                 <Route path="/properties/new" component={PropertyFormPage} />
                 <Route
@@ -268,7 +269,6 @@ export default function App() {
                   component={PropertyFormPage}
                 />
                 <Route path="/properties/:id" component={PropertyDetailPage} />
-                <Route path="/inventory-templates" component={InventoryTemplatesPage} />
                 <Route path="/employees" component={EmployeeListPage} />
                 <Route path="/jobs" component={JobListPage} />
                 <Route path="/jobs/new" component={JobFormPage} />

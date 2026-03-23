@@ -598,6 +598,18 @@ export const completeJob = mutation({
     if (!job.cleanerIds.includes(user._id)) throw new Error("Not assigned to this job");
     if (job.status !== "in_progress") throw new Error("Job not in progress");
 
+    // Gate: all required inventory items must have a status reported
+    if (job.inventoryChecklist && job.inventoryChecklist.length > 0) {
+      const unreported = job.inventoryChecklist.filter(
+        (item) => item.required && !item.status
+      );
+      if (unreported.length > 0) {
+        throw new Error(
+          `Cannot submit: ${unreported.length} required inventory item(s) not reported. Please check all required items.`
+        );
+      }
+    }
+
     await ctx.db.patch(args.jobId, {
       status: "submitted",
       completedAt: Date.now(),
