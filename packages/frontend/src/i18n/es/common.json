@@ -506,7 +506,20 @@
     "assignManager": "Asignar Manager",
     "noManager": "Sin manager asignado",
     "selfAssign": "Yo mismo",
-    "selfAssignHint": "Para auto asignarte este trabajo, selecciónate arriba. Tendrás controles directos en la página de detalles del trabajo."
+    "selfAssignHint": "Para auto asignarte este trabajo, selecciónate arriba. Tendrás controles directos en la página de detalles del trabajo.",
+    "inventoryChecklist": "Lista de inventario",
+    "inventoryChecklistDesc": "Reporta el estado de cada artículo de inventario",
+    "noInventoryChecklist": "Sin lista de inventario para este trabajo",
+    "statusOk": "OK",
+    "statusLow": "Bajo",
+    "statusOut": "Agotado",
+    "statusRestocked": "Reabastecido",
+    "statusNotReported": "Sin reporte",
+    "reportQty": "Cant",
+    "itemNote": "Nota",
+    "inventoryReported": "Inventario reportado",
+    "allItemsReported": "Todos los artículos reportados",
+    "itemsReported": "{{reported}} / {{total}} reportados"
   },
   "pipeline": {
     "upcomingFollowUps": "Próximos seguimientos",

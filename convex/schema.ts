@@ -194,6 +194,23 @@ export default defineSchema({
       pillowCount: v.optional(v.number()),
       ownerNotes: v.optional(v.string()),
     })),
+    // ── Inventory checklist snapshot (Sprint 2, Batch 4) ──────────────
+    // Snapshotted from property at job start; cleaners report status per item.
+    inventoryChecklist: v.optional(v.array(v.object({
+      name: v.string(),
+      category: v.string(),
+      parLevel: v.number(),
+      required: v.boolean(),
+      // Cleaner-reported fields
+      status: v.optional(v.union(
+        v.literal("ok"),
+        v.literal("low"),
+        v.literal("out"),
+        v.literal("restocked")
+      )),
+      reportedQty: v.optional(v.number()),
+      note: v.optional(v.string()),
+    }))),
   })
     .index("by_companyId_status", ["companyId", "status"])
     .index("by_companyId_scheduledDate", ["companyId", "scheduledDate"])

@@ -410,10 +410,23 @@ export const startJob = mutation({
     if (job.status !== "confirmed" && job.status !== "rework_requested")
       throw new Error("Job cannot be started in current status");
 
-    await ctx.db.patch(args.jobId, {
+    // Snapshot property inventory onto job as checklist
+    const updates: Record<string, unknown> = {
       status: "in_progress",
       startedAt: Date.now(),
-    });
+    };
+    if (job.propertyId) {
+      const property = await ctx.db.get(job.propertyId);
+      if (property?.inventoryItems && property.inventoryItems.length > 0) {
+        updates.inventoryChecklist = property.inventoryItems.map((item) => ({
+          name: item.name,
+          category: item.category,
+          parLevel: item.parLevel,
+          required: item.required,
+        }));
+      }
+    }
+    await ctx.db.patch(args.jobId, updates);
 
     const owners = await ctx.db
       .query("users")
@@ -831,5 +844,47 @@ export const updatePlannedCleanerPay = mutation({
     }
 
     await ctx.db.patch(args.jobId, { plannedCleanerPayCents: args.amountCents });
+  },
+});
+
+// ── Inventory checklist (Sprint 2, Batch 4) ─────────────────────────
+
+/** Cleaner updates a single inventory checklist item by name. */
+export const updateInventoryChecklistItem = mutation({
+  args: {
+    jobId: v.id("jobs"),
+    userId: v.optional(v.id("users")),
+    itemName: v.string(),
+    status: v.union(
+      v.literal("ok"),
+      v.literal("low"),
+      v.literal("out"),
+      v.literal("restocked")
+    ),
+    reportedQty: v.optional(v.number()),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuth(ctx, args.userId);
+    const job = await ctx.db.get(args.jobId);
+    if (!job) throw new Error("Job not found");
+    if (!job.cleanerIds.includes(user._id)) throw new Error("Not assigned to this job");
+    if (job.status !== "in_progress" && job.status !== "rework_requested")
+      throw new Error("Job is not in progress");
+    if (!job.inventoryChecklist) throw new Error("No inventory checklist on this job");
+
+    const checklist = job.inventoryChecklist.map((item) => {
+      if (item.name === args.itemName) {
+        return {
+          ...item,
+          status: args.status,
+          ...(args.reportedQty !== undefined ? { reportedQty: args.reportedQty } : {}),
+          ...(args.note !== undefined ? { note: args.note } : {}),
+        };
+      }
+      return item;
+    });
+
+    await ctx.db.patch(args.jobId, { inventoryChecklist: checklist });
   },
 });

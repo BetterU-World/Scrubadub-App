@@ -506,7 +506,20 @@
     "assignManager": "Assign Manager",
     "noManager": "No manager assigned",
     "selfAssign": "Self",
-    "selfAssignHint": "To self-assign this job, select yourself above. You'll get direct execution controls on the job detail page."
+    "selfAssignHint": "To self-assign this job, select yourself above. You'll get direct execution controls on the job detail page.",
+    "inventoryChecklist": "Inventory Checklist",
+    "inventoryChecklistDesc": "Report the status of each inventory item",
+    "noInventoryChecklist": "No inventory checklist for this job",
+    "statusOk": "OK",
+    "statusLow": "Low",
+    "statusOut": "Out",
+    "statusRestocked": "Restocked",
+    "statusNotReported": "Not reported",
+    "reportQty": "Qty",
+    "itemNote": "Note",
+    "inventoryReported": "Inventory reported",
+    "allItemsReported": "All items reported",
+    "itemsReported": "{{reported}} / {{total}} reported"
   },
   "pipeline": {
     "upcomingFollowUps": "Upcoming Follow-ups",

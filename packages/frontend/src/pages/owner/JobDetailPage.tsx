@@ -33,6 +33,10 @@ import {
   Play,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import {
+  INVENTORY_CATEGORIES,
+  INVENTORY_CATEGORY_LABELS,
+} from "../../../../../convex/lib/constants";
 
 export function JobDetailPage() {
   const params = useParams<{ id: string }>();
@@ -558,6 +562,11 @@ export function JobDetailPage() {
               </div>
             )}
           </div>
+        )}
+
+        {/* Inventory checklist review */}
+        {job.inventoryChecklist && job.inventoryChecklist.length > 0 && (
+          <OwnerInventoryChecklistReview checklist={job.inventoryChecklist} />
         )}
 
         {/* Review actions */}
@@ -1588,6 +1597,95 @@ export function JobDetailPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Inventory Checklist Review (read-only for owner) ──────────────────
+
+const CHECKLIST_STATUS_STYLES: Record<string, string> = {
+  ok: "bg-green-100 text-green-700",
+  low: "bg-yellow-100 text-yellow-700",
+  out: "bg-red-100 text-red-700",
+  restocked: "bg-blue-100 text-blue-700",
+};
+
+function OwnerInventoryChecklistReview({ checklist }: { checklist: any[] }) {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(false);
+
+  const reported = checklist.filter((i: any) => i.status).length;
+  const issues = checklist.filter((i: any) => i.status === "low" || i.status === "out");
+
+  // Group by category
+  const grouped: Record<string, any[]> = {};
+  for (const item of checklist) {
+    const cat = item.category || "general";
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(item);
+  }
+
+  return (
+    <div className="card">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between"
+      >
+        <div className="flex items-center gap-2">
+          <Package className="w-5 h-5 text-primary-600" />
+          <h3 className="font-semibold text-gray-900">{t("jobs.inventoryChecklist")}</h3>
+          <span className="text-xs text-gray-400">
+            {t("jobs.itemsReported", { reported, total: checklist.length })}
+          </span>
+          {issues.length > 0 && (
+            <span className="badge bg-red-100 text-red-700 text-[10px]">
+              {issues.length} {issues.length === 1 ? "issue" : "issues"}
+            </span>
+          )}
+        </div>
+        {expanded ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+      </button>
+
+      {expanded && (
+        <div className="mt-4 space-y-3">
+          {INVENTORY_CATEGORIES.filter((cat) => grouped[cat]?.length).map((cat) => (
+            <div key={cat}>
+              <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">
+                {t(`properties.inventory.categories.${cat}`, INVENTORY_CATEGORY_LABELS[cat])}
+              </h4>
+              <div className="space-y-1">
+                {grouped[cat].map((item: any) => (
+                  <div key={item.name} className="flex items-center justify-between py-1.5 px-2 rounded bg-gray-50 text-sm">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-gray-800">{item.name}</span>
+                      {item.required && (
+                        <span className="text-[10px] font-semibold text-red-600">*</span>
+                      )}
+                      {item.note && (
+                        <span className="text-xs text-gray-400 truncate">— {item.note}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {item.reportedQty !== undefined && (
+                        <span className="text-xs text-gray-500">
+                          {item.reportedQty}/{item.parLevel}
+                        </span>
+                      )}
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                        item.status ? CHECKLIST_STATUS_STYLES[item.status] : "bg-gray-100 text-gray-500"
+                      }`}>
+                        {item.status
+                          ? t(`jobs.status${item.status.charAt(0).toUpperCase() + item.status.slice(1)}`)
+                          : t("jobs.statusNotReported")}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

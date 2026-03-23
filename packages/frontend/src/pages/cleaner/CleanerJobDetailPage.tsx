@@ -8,8 +8,12 @@ import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useParams, Link, useLocation } from "wouter";
 import { JobTimeline } from "@/components/JobTimeline";
-import { Calendar, Clock, MapPin, Key, CheckCircle, XCircle, Play, ClipboardCheck, MapPinCheck, Send } from "lucide-react";
+import { Calendar, Clock, MapPin, Key, CheckCircle, XCircle, Play, ClipboardCheck, MapPinCheck, Send, Package, ChevronDown, ChevronUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import {
+  INVENTORY_CATEGORIES,
+  INVENTORY_CATEGORY_LABELS,
+} from "../../../../../convex/lib/constants";
 
 export function CleanerJobDetailPage() {
   const params = useParams<{ id: string }>();
@@ -27,6 +31,7 @@ export function CleanerJobDetailPage() {
   const createForm = useMutation(api.mutations.forms.createFromTemplate);
 
   const cleanerCancelJob = useMutation(api.mutations.jobs.cleanerCancelJob);
+  const updateChecklistItem = useMutation(api.mutations.jobs.updateInventoryChecklistItem);
 
   const [showDeny, setShowDeny] = useState(false);
   const [denyReason, setDenyReason] = useState("");
@@ -241,6 +246,17 @@ export function CleanerJobDetailPage() {
             </div>
           )}
         </div>
+
+        {/* Inventory checklist */}
+        {(isInProgress || job.status === "submitted" || job.status === "approved") && job.inventoryChecklist && job.inventoryChecklist.length > 0 && (
+          <InventoryChecklistSection
+            checklist={job.inventoryChecklist}
+            jobId={job._id}
+            userId={user!._id}
+            updateItem={updateChecklistItem}
+            editable={isInProgress || job.status === "rework_requested"}
+          />
+        )}
       </div>
 
       {/* Deny dialog */}
@@ -350,6 +366,208 @@ export function CleanerJobDetailPage() {
             </div>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+// ── Inventory Checklist Section ────────────────────────────────────────
+
+const STATUS_OPTIONS = ["ok", "low", "out", "restocked"] as const;
+
+const STATUS_STYLES: Record<string, string> = {
+  ok: "bg-green-100 text-green-700 border-green-300",
+  low: "bg-yellow-100 text-yellow-700 border-yellow-300",
+  out: "bg-red-100 text-red-700 border-red-300",
+  restocked: "bg-blue-100 text-blue-700 border-blue-300",
+};
+
+function InventoryChecklistSection({
+  checklist,
+  jobId,
+  userId,
+  updateItem,
+  editable,
+}: {
+  checklist: any[];
+  jobId: Id<"jobs">;
+  userId: Id<"users">;
+  updateItem: any;
+  editable: boolean;
+}) {
+  const { t } = useTranslation();
+  const [expanded, setExpanded] = useState(true);
+  const [expandedItem, setExpandedItem] = useState<string | null>(null);
+  const [saving, setSaving] = useState<string | null>(null);
+
+  const reported = checklist.filter((i) => i.status).length;
+
+  // Group by category
+  const grouped: Record<string, any[]> = {};
+  for (const item of checklist) {
+    const cat = item.category || "general";
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(item);
+  }
+
+  const handleStatusChange = async (itemName: string, status: string, reportedQty?: number, note?: string) => {
+    setSaving(itemName);
+    try {
+      await updateItem({
+        jobId,
+        userId,
+        itemName,
+        status,
+        ...(reportedQty !== undefined ? { reportedQty } : {}),
+        ...(note !== undefined ? { note } : {}),
+      });
+    } catch {
+      // handled by convex
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  return (
+    <div className="card">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between"
+      >
+        <div className="flex items-center gap-2">
+          <Package className="w-5 h-5 text-primary-600" />
+          <h3 className="font-semibold text-gray-900">{t("jobs.inventoryChecklist")}</h3>
+          <span className="text-xs text-gray-400">
+            {t("jobs.itemsReported", { reported, total: checklist.length })}
+          </span>
+        </div>
+        {expanded ? <ChevronUp className="w-5 h-5 text-gray-400" /> : <ChevronDown className="w-5 h-5 text-gray-400" />}
+      </button>
+
+      {expanded && (
+        <div className="mt-4 space-y-4">
+          {INVENTORY_CATEGORIES.filter((cat) => grouped[cat]?.length).map((cat) => (
+            <div key={cat}>
+              <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                {t(`properties.inventory.categories.${cat}`, INVENTORY_CATEGORY_LABELS[cat])}
+              </h4>
+              <div className="space-y-1.5">
+                {grouped[cat].map((item: any) => (
+                  <InventoryChecklistItem
+                    key={item.name}
+                    item={item}
+                    editable={editable}
+                    saving={saving === item.name}
+                    isExpanded={expandedItem === item.name}
+                    onToggleExpand={() => setExpandedItem(expandedItem === item.name ? null : item.name)}
+                    onStatusChange={(status) => handleStatusChange(item.name, status)}
+                    onDetailSave={(qty, note) => handleStatusChange(item.name, item.status || "ok", qty, note)}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InventoryChecklistItem({
+  item,
+  editable,
+  saving,
+  isExpanded,
+  onToggleExpand,
+  onStatusChange,
+  onDetailSave,
+}: {
+  item: any;
+  editable: boolean;
+  saving: boolean;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  onStatusChange: (status: string) => void;
+  onDetailSave: (qty?: number, note?: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [qty, setQty] = useState<string>(item.reportedQty?.toString() ?? "");
+  const [note, setNote] = useState(item.note ?? "");
+
+  return (
+    <div className={`rounded-lg border p-2.5 ${item.status ? STATUS_STYLES[item.status] || "bg-gray-50 border-gray-200" : "bg-gray-50 border-gray-200"}`}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0 flex-1" onClick={onToggleExpand}>
+          <span className="text-sm font-medium truncate">{item.name}</span>
+          {item.required && (
+            <span className="text-[10px] font-semibold text-red-600">*</span>
+          )}
+          <span className="text-[10px] text-gray-400 flex-shrink-0">
+            par:{item.parLevel}
+          </span>
+        </div>
+        {editable ? (
+          <div className="flex gap-1 flex-shrink-0">
+            {STATUS_OPTIONS.map((s) => (
+              <button
+                key={s}
+                disabled={saving}
+                onClick={() => onStatusChange(s)}
+                className={`px-2 py-0.5 text-[11px] font-medium rounded-full border transition-colors ${
+                  item.status === s
+                    ? STATUS_STYLES[s]
+                    : "bg-white border-gray-200 text-gray-500 hover:bg-gray-100"
+                }`}
+              >
+                {t(`jobs.status${s.charAt(0).toUpperCase() + s.slice(1)}`)}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+            item.status ? STATUS_STYLES[item.status] : "bg-gray-100 text-gray-500"
+          }`}>
+            {item.status ? t(`jobs.status${item.status.charAt(0).toUpperCase() + item.status.slice(1)}`) : t("jobs.statusNotReported")}
+          </span>
+        )}
+      </div>
+
+      {/* Expandable detail row for qty + note */}
+      {isExpanded && editable && (
+        <div className="mt-2 flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1">
+            <label className="text-[10px] text-gray-500">{t("jobs.reportQty")}</label>
+            <input
+              type="number"
+              className="input-field text-xs w-14 py-0.5 px-1.5"
+              value={qty}
+              onChange={(e) => setQty(e.target.value)}
+              min={0}
+              placeholder="—"
+            />
+          </div>
+          <input
+            className="input-field text-xs flex-1 py-0.5 px-1.5 min-w-[100px]"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder={t("jobs.itemNote")}
+          />
+          <button
+            disabled={saving}
+            onClick={() => onDetailSave(
+              qty ? Number(qty) : undefined,
+              note || undefined
+            )}
+            className="btn-primary text-[11px] py-0.5 px-2"
+          >
+            {saving ? "..." : t("common.save")}
+          </button>
+        </div>
+      )}
+
+      {/* Show note read-only when not expanded but note exists */}
+      {!isExpanded && item.note && (
+        <p className="text-[11px] text-gray-500 mt-1 truncate">{item.note}</p>
       )}
     </div>
   );
