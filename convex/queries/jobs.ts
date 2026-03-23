@@ -68,18 +68,18 @@ export const list = query({
 
       // Batch-resolve properties and users to avoid N+1 lookups
       const propertyIds = [...new Set(jobs.map((j) => j.propertyId).filter(Boolean))];
-      const propertyMap = new Map(
-        (await Promise.all(propertyIds.map((id) => ctx.db.get(id!)))).map(
-          (p) => p && [p._id, p] as const
-        ).filter(Boolean) as [string, any][]
-      );
+      const propertyDocs = await Promise.all(propertyIds.map((id) => ctx.db.get(id!)));
+      const propertyMap = new Map<string, NonNullable<(typeof propertyDocs)[number]>>();
+      for (const p of propertyDocs) {
+        if (p) propertyMap.set(p._id, p);
+      }
 
       const userIds = [...new Set(jobs.flatMap((j) => [...j.cleanerIds, j.assignedManagerId].filter(Boolean)))];
-      const userMap = new Map(
-        (await Promise.all(userIds.map((id) => ctx.db.get(id as any)))).map(
-          (u) => u && [u._id, u] as const
-        ).filter(Boolean) as [string, any][]
-      );
+      const userDocs = await Promise.all(userIds.map((id) => ctx.db.get(id as any)));
+      const userMap = new Map<string, NonNullable<(typeof userDocs)[number]>>();
+      for (const u of userDocs) {
+        if (u) userMap.set(u._id, u);
+      }
 
       return Promise.all(
         jobs.map(async (job) => {

@@ -14,7 +14,9 @@ import { v } from "convex/values";
  *   STRIPE_PRICE_SCRUB_PRO_LEGACY → cleaning_owner (grandfathered)
  *   STRIPE_PRICE_CLEANING_OWNER   → cleaning_owner (old fallback)
  */
-function getPriceToTier(): Record<string, string> {
+type CompanyTier = "cleaning_owner" | "str_owner" | "scrub_solo" | "scrub_team" | "scrub_pro";
+
+function getPriceToTier(): Record<string, CompanyTier> {
   const solo = process.env.STRIPE_PRICE_SCRUB_SOLO;
   const team = process.env.STRIPE_PRICE_SCRUB_TEAM;
   const pro = process.env.STRIPE_PRICE_SCRUB_PRO;
