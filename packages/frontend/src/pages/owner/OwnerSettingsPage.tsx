@@ -15,6 +15,7 @@ import {
   ExternalLink,
   Banknote,
   Globe,
+  Archive,
 } from "lucide-react";
 import { BillingSection } from "@/components/settings/BillingSection";
 
@@ -129,6 +130,23 @@ export function OwnerSettingsPage() {
             <p className="font-medium text-gray-900">{t("settings.paymentsLabel")}</p>
             <p className="text-sm text-gray-500">
               {t("settings.paymentsDesc")}
+            </p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-gray-400" />
+        </Link>
+
+        {/* ── Archived Properties ─────────────────────────── */}
+        <Link
+          href="/owner/settings/archived-properties"
+          className="card flex items-center gap-4 hover:bg-gray-50 transition-colors"
+        >
+          <div className="p-2 rounded-lg bg-primary-50 text-primary-600">
+            <Archive className="w-5 h-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-gray-900">{t("settings.archivedProperties")}</p>
+            <p className="text-sm text-gray-500">
+              {t("settings.archivedPropertiesDesc")}
             </p>
           </div>
           <ChevronRight className="w-4 h-4 text-gray-400" />

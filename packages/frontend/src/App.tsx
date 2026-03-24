@@ -48,6 +48,7 @@ import { SettlementsPage } from "@/pages/owner/SettlementsPage";
 import { PaymentsHubPage } from "@/pages/owner/PaymentsHubPage";
 import { CleanerPaymentsPage } from "@/pages/owner/CleanerPaymentsPage";
 import { InventoryTemplatesPage } from "@/pages/owner/InventoryTemplatesPage";
+import { ArchivedPropertiesPage } from "@/pages/owner/ArchivedPropertiesPage";
 
 // Worker pages (cleaner + maintenance unified)
 import { WorkerJobListPage } from "@/pages/worker/WorkerJobListPage";
@@ -294,6 +295,7 @@ export default function App() {
                 <Route path="/owner/cleaner-payments" component={CleanerPaymentsPage} />
                 <Route path="/owner/settlements" component={SettlementsPage} />
                 <Route path="/owner/settings/billing" component={StripeConnectPage} />
+                <Route path="/owner/settings/archived-properties" component={ArchivedPropertiesPage} />
                 <Route path="/owner/settings/company" component={CompanyProfilePage} />
                 <Route path="/owner/settings" component={OwnerSettingsPage} />
               </>

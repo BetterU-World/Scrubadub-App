@@ -34,8 +34,8 @@ import {
   Key,
   Wrench,
   Pencil,
-  ToggleLeft,
-  ToggleRight,
+  Archive,
+  RotateCcw,
   Lock,
   Clock,
   Flag,
@@ -58,6 +58,7 @@ export function PropertyDetailPage() {
   const [activeTab, setActiveTab] = useState<Tab>("details");
   const [toast, setToast] = useState<string | null>(null);
   const [toggling, setToggling] = useState(false);
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
 
   // Read flash toast from sessionStorage (set by PropertyFormPage)
   useEffect(() => {
@@ -90,28 +91,39 @@ export function PropertyDetailPage() {
           {toast}
         </div>
       )}
+      <ConfirmDialog
+        open={showArchiveConfirm}
+        onOpenChange={setShowArchiveConfirm}
+        title={property.active ? t("properties.archiveConfirmTitle") : t("properties.restoreConfirmTitle")}
+        description={property.active ? t("properties.archiveConfirmDesc") : t("properties.restoreConfirmDesc")}
+        confirmLabel={property.active ? t("properties.archiveProperty") : t("properties.restoreProperty")}
+        confirmVariant={property.active ? "danger" : "primary"}
+        onConfirm={async () => {
+          setToggling(true);
+          try {
+            await toggleActive({ propertyId: property._id, userId: user!._id });
+            setShowArchiveConfirm(false);
+          } finally {
+            setToggling(false);
+          }
+        }}
+        loading={toggling}
+      />
+
       <PageHeader
         title={property.name}
         action={
           <div className="flex gap-2">
             <button
-              disabled={toggling}
-              onClick={async () => {
-                setToggling(true);
-                try {
-                  await toggleActive({ propertyId: property._id, userId: user!._id });
-                } finally {
-                  setToggling(false);
-                }
-              }}
+              onClick={() => setShowArchiveConfirm(true)}
               className="btn-secondary flex items-center gap-2"
             >
               {property.active ? (
-                <ToggleRight className="w-4 h-4" />
+                <Archive className="w-4 h-4" />
               ) : (
-                <ToggleLeft className="w-4 h-4" />
+                <RotateCcw className="w-4 h-4" />
               )}
-              {property.active ? t("properties.deactivate") : t("properties.activate")}
+              {property.active ? t("properties.archive") : t("properties.restoreProperty")}
             </button>
             <Link href={`/properties/${property._id}/edit`} className="btn-primary flex items-center gap-2">
               <Pencil className="w-4 h-4" /> {t("common.edit")}
