@@ -347,39 +347,9 @@ export const submit = mutation({
       ...(args.maintenanceVendor ? { maintenanceVendor: args.maintenanceVendor } : {}),
     });
 
-    const job = await ctx.db.get(form.jobId);
-    if (job) {
-      await ctx.db.patch(form.jobId, { status: "submitted" });
-
-      const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
-      const propName = property?.name ?? job.propertySnapshot?.name ?? "a property";
-      const now = Date.now();
-
-      const owners = await ctx.db
-        .query("users")
-        .withIndex("by_companyId", (q) => q.eq("companyId", form.companyId))
-        .collect();
-      for (const owner of owners.filter((u) => u.role === "owner")) {
-        await createNotification(ctx, {
-          companyId: form.companyId,
-          userId: owner._id,
-          type: "job_submitted",
-          title: "Job Submitted for Review",
-          message: `${user.name} submitted cleaning form for ${job.scheduledDate}`,
-          relatedJobId: form.jobId,
-        });
-
-        // Send job completed email to owner
-        if (owner.email) {
-          await ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendJobCompleted, {
-            email: owner.email,
-            propertyName: propName,
-            cleanerName: user.name,
-            completedAt: now,
-          });
-        }
-      }
-    }
+    // NOTE: Form submission marks the cleaning checklist as complete but does NOT
+    // submit the job. Final job submission happens separately via jobs.completeJob
+    // from the job workspace page, which also handles owner notifications and emails.
 
     await logAudit(ctx, {
       companyId: form.companyId,

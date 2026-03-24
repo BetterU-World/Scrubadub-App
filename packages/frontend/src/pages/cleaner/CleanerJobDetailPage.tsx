@@ -67,6 +67,7 @@ export function CleanerJobDetailPage() {
   const canCleanerCancel = job.status === "confirmed" && acceptance === "accepted" && !job.startedAt;
   const isInProgress = job.status === "in_progress";
   const hasForm = !!job.form;
+  const formCompleted = job.form?.status === "submitted" || job.form?.status === "approved";
 
   // Check if required inventory items are all reported
   const inventoryChecklist = job.inventoryChecklist ?? [];
@@ -74,6 +75,7 @@ export function CleanerJobDetailPage() {
     (item: any) => item.required && !item.status
   );
   const inventoryComplete = unreportedRequired.length === 0;
+  const canSubmitJob = inventoryComplete && formCompleted;
 
   // Derive progress counts for workspace components
   const requiredInventoryItems = inventoryChecklist.filter((item: any) => item.required);
@@ -267,6 +269,7 @@ export function CleanerJobDetailPage() {
           <JobSubmissionBlockers
             remainingCleaningCount={remainingCleaning}
             remainingInventoryCount={unreportedRequired.length}
+            formCompleted={formCompleted}
           />
         )}
 
@@ -297,21 +300,27 @@ export function CleanerJobDetailPage() {
             </button>
           )}
 
-          {isInProgress && hasForm && (
+          {isInProgress && hasForm && !formCompleted && (
             <Link href={`/jobs/${job._id}/form`} className="btn-secondary w-full flex items-center justify-center gap-2 py-3 text-lg">
               <ClipboardCheck className="w-5 h-5" /> {t("jobs.continueChecklist")}
+            </Link>
+          )}
+
+          {isInProgress && hasForm && formCompleted && (
+            <Link href={`/jobs/${job._id}/form`} className="btn-secondary w-full flex items-center justify-center gap-2 py-2 text-sm text-gray-600">
+              <ClipboardCheck className="w-4 h-4" /> {t("jobs.continueChecklist")} — ✓ Done
             </Link>
           )}
 
           {isInProgress && (
             <button
               onClick={() => setShowComplete(true)}
-              disabled={!inventoryComplete}
+              disabled={!canSubmitJob}
               className={`w-full flex items-center justify-center gap-2 py-3 text-lg ${
-                inventoryComplete ? "btn-primary" : "btn-secondary opacity-60 cursor-not-allowed"
+                canSubmitJob ? "btn-primary" : "btn-secondary opacity-60 cursor-not-allowed"
               }`}
             >
-              <CheckCircle className="w-5 h-5" /> {t("jobs.completeCleaning")}
+              <Send className="w-5 h-5" /> {t("jobs.completeCleaning")}
             </button>
           )}
 
