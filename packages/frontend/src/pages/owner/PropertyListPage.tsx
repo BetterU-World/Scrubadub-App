@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -6,12 +7,14 @@ import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Link } from "wouter";
-import { Building2, Plus, MapPin } from "lucide-react";
+import { Building2, Plus, MapPin, Upload } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { ImportPropertiesDialog } from "./ImportPropertiesDialog";
 
 export function PropertyListPage() {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const [showImport, setShowImport] = useState(false);
   const properties = useQuery(
     api.queries.properties.list,
     user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
@@ -25,10 +28,25 @@ export function PropertyListPage() {
         title={t("properties.title")}
         description={t("properties.description")}
         action={
-          <Link href="/properties/new" className="btn-primary flex items-center gap-2">
-            <Plus className="w-4 h-4" /> {t("properties.addProperty")}
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowImport(true)}
+              className="btn-secondary flex items-center gap-2"
+            >
+              <Upload className="w-4 h-4" /> {t("properties.import.button")}
+            </button>
+            <Link href="/properties/new" className="btn-primary flex items-center gap-2">
+              <Plus className="w-4 h-4" /> {t("properties.addProperty")}
+            </Link>
+          </div>
         }
+      />
+
+      <ImportPropertiesDialog
+        open={showImport}
+        onOpenChange={setShowImport}
+        companyId={user.companyId}
+        userId={user._id}
       />
 
       {properties.length === 0 ? (
