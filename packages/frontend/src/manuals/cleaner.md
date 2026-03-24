@@ -110,4 +110,4 @@ A: Your owner tracks performance metrics. Ask them for feedback if you'd like to
 
 *Last updated: March 1, 2026*
 
-*Need help? Contact your manager or reach out to support at support@scrubadub.app*
+*Need help? Contact your manager or reach out to support at scrubadubsolutionsllc@gmail.com*

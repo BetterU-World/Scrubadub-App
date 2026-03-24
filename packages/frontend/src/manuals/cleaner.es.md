@@ -110,4 +110,4 @@ R: Tu propietario rastrea las métricas de rendimiento. Pídele retroalimentaci�
 
 *Última actualización: 1 de marzo de 2026*
 
-*¿Necesitas ayuda? Contacta a tu supervisor o escribe a soporte en support@scrubadub.app*
+*¿Necesitas ayuda? Contacta a tu supervisor o escribe a soporte en scrubadubsolutionsllc@gmail.com*
