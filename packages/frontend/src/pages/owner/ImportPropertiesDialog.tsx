@@ -20,6 +20,10 @@ interface ParsedRow {
   beds: number | undefined;
   baths: number | undefined;
   notes: string;
+  amenities: string[];
+  accessInstructions: string;
+  pillowCount: number | undefined;
+  maintenanceNotes: string;
 }
 
 interface ValidatedRow {
@@ -45,14 +49,18 @@ const BATCH_SIZE = 50;
 const MAX_NAME_LENGTH = 200;
 const MAX_ADDRESS_LENGTH = 500;
 const MAX_NOTE_LENGTH = 5000;
+const MAX_ACCESS_INSTRUCTIONS_LENGTH = 5000;
+const MAX_MAINTENANCE_NOTES_LENGTH = 5000;
 
 // ── Column Mapping ───────────────────────────────────────────────────────────
 
 const COLUMN_MAP: Record<string, keyof ParsedRow> = {
+  // Name
   "property name": "name",
   "name": "name",
   "property_name": "name",
   "propertyname": "name",
+  // Address
   "address": "address",
   "street address": "address",
   "street_address": "address",
@@ -62,20 +70,53 @@ const COLUMN_MAP: Record<string, keyof ParsedRow> = {
   "zipcode": "address",
   "zip_code": "address",
   "zip code": "address",
+  // Type
   "type": "type",
   "property type": "type",
   "property_type": "type",
   "propertytype": "type",
+  // Beds
   "beds": "beds",
   "bedrooms": "beds",
+  "bedroom": "beds",
   "bed": "beds",
+  "br": "beds",
+  // Baths
   "baths": "baths",
   "bathrooms": "baths",
+  "bathroom": "baths",
   "bath": "baths",
+  "ba": "baths",
+  // Owner Notes
   "notes": "notes",
   "owner notes": "notes",
   "owner_notes": "notes",
   "ownernotes": "notes",
+  // Amenities (Phase A)
+  "amenities": "amenities",
+  "amenity": "amenities",
+  "amenity list": "amenities",
+  "amenity_list": "amenities",
+  // Access Instructions (Phase A)
+  "access instructions": "accessInstructions",
+  "access_instructions": "accessInstructions",
+  "accessinstructions": "accessInstructions",
+  "entry instructions": "accessInstructions",
+  "entry_instructions": "accessInstructions",
+  "check-in instructions": "accessInstructions",
+  "checkin instructions": "accessInstructions",
+  "access": "accessInstructions",
+  // Pillow Count (Phase A)
+  "pillows": "pillowCount",
+  "pillow count": "pillowCount",
+  "pillow_count": "pillowCount",
+  "pillowcount": "pillowCount",
+  "number of pillows": "pillowCount",
+  // Maintenance Notes (Phase A)
+  "maintenance notes": "maintenanceNotes",
+  "maintenance_notes": "maintenanceNotes",
+  "maintenancenotes": "maintenanceNotes",
+  "maintenance": "maintenanceNotes",
 };
 
 // Columns that are part of a compound address
@@ -87,10 +128,25 @@ function normalizeHeader(header: string): string {
 
 // ── Parsing ──────────────────────────────────────────────────────────────────
 
+/** Tracks which optional columns were detected in the CSV */
+interface DetectedColumns {
+  hasNameCol: boolean;
+  hasAddressCol: boolean;
+  hasAmenities: boolean;
+  hasAccessInstructions: boolean;
+  hasPillowCount: boolean;
+  hasMaintenanceNotes: boolean;
+}
+
 function mapCsvToRows(
   records: Record<string, string>[]
-): { rows: ParsedRow[]; hasNameCol: boolean; hasAddressCol: boolean } {
-  if (records.length === 0) return { rows: [], hasNameCol: false, hasAddressCol: false };
+): { rows: ParsedRow[]; detected: DetectedColumns } {
+  const emptyDetected: DetectedColumns = {
+    hasNameCol: false, hasAddressCol: false,
+    hasAmenities: false, hasAccessInstructions: false,
+    hasPillowCount: false, hasMaintenanceNotes: false,
+  };
+  if (records.length === 0) return { rows: [], detected: emptyDetected };
 
   // Determine which columns exist
   const sampleKeys = Object.keys(records[0]).map(normalizeHeader);
@@ -102,6 +158,12 @@ function mapCsvToRows(
   );
   const hasAddressParts = ADDRESS_PARTS.some((p) => sampleKeys.includes(p));
   const hasAddressCol = hasDirectAddress || hasAddressParts;
+
+  // Detect Phase A columns
+  const hasAmenities = sampleKeys.some((k) => COLUMN_MAP[k] === "amenities");
+  const hasAccessInstructions = sampleKeys.some((k) => COLUMN_MAP[k] === "accessInstructions");
+  const hasPillowCount = sampleKeys.some((k) => COLUMN_MAP[k] === "pillowCount");
+  const hasMaintenanceNotes = sampleKeys.some((k) => COLUMN_MAP[k] === "maintenanceNotes");
 
   const rows: ParsedRow[] = records.map((record) => {
     // Build a normalized key map
@@ -172,10 +234,57 @@ function mapCsvToRows(
       normalized["ownernotes"] ||
       "";
 
-    return { name, address, type, beds, baths, notes };
+    // Extract amenities (Phase A) — comma-delimited string → string[]
+    const amenitiesRaw =
+      normalized["amenities"] ||
+      normalized["amenity"] ||
+      normalized["amenity list"] ||
+      normalized["amenity_list"] ||
+      "";
+    const amenities = amenitiesRaw
+      ? amenitiesRaw.split(",").map((s) => s.trim()).filter(Boolean)
+      : [];
+
+    // Extract access instructions (Phase A)
+    const accessInstructions =
+      normalized["access instructions"] ||
+      normalized["access_instructions"] ||
+      normalized["accessinstructions"] ||
+      normalized["entry instructions"] ||
+      normalized["entry_instructions"] ||
+      normalized["check-in instructions"] ||
+      normalized["checkin instructions"] ||
+      normalized["access"] ||
+      "";
+
+    // Extract pillow count (Phase A)
+    const pillowCountRaw =
+      normalized["pillows"] ||
+      normalized["pillow count"] ||
+      normalized["pillow_count"] ||
+      normalized["pillowcount"] ||
+      normalized["number of pillows"] ||
+      "";
+    const pillowCount = pillowCountRaw
+      ? parseInt(pillowCountRaw.replace(/,/g, ""), 10)
+      : undefined;
+
+    // Extract maintenance notes (Phase A)
+    const maintenanceNotes =
+      normalized["maintenance notes"] ||
+      normalized["maintenance_notes"] ||
+      normalized["maintenancenotes"] ||
+      normalized["maintenance"] ||
+      "";
+
+    return { name, address, type, beds, baths, notes, amenities, accessInstructions, pillowCount, maintenanceNotes };
   });
 
-  return { rows, hasNameCol, hasAddressCol };
+  const detected: DetectedColumns = {
+    hasNameCol, hasAddressCol,
+    hasAmenities, hasAccessInstructions, hasPillowCount, hasMaintenanceNotes,
+  };
+  return { rows, detected };
 }
 
 // ── Validation ───────────────────────────────────────────────────────────────
@@ -214,6 +323,21 @@ function validateRows(rows: ParsedRow[]): ValidatedRow[] {
     // Notes validation
     if (data.notes.length > MAX_NOTE_LENGTH) {
       errors.notes = "tooLong";
+    }
+
+    // Access instructions validation (Phase A)
+    if (data.accessInstructions.length > MAX_ACCESS_INSTRUCTIONS_LENGTH) {
+      errors.accessInstructions = "tooLong";
+    }
+
+    // Pillow count validation (Phase A)
+    if (data.pillowCount !== undefined && (isNaN(data.pillowCount) || data.pillowCount < 0)) {
+      errors.pillowCount = "invalidNumber";
+    }
+
+    // Maintenance notes validation (Phase A)
+    if (data.maintenanceNotes.length > MAX_MAINTENANCE_NOTES_LENGTH) {
+      errors.maintenanceNotes = "tooLong";
     }
 
     // Within-CSV duplicate detection
@@ -259,6 +383,11 @@ export function ImportPropertiesDialog({
   const [step, setStep] = useState<Step>("upload");
   const [fileName, setFileName] = useState("");
   const [rows, setRows] = useState<ValidatedRow[]>([]);
+  const [detectedCols, setDetectedCols] = useState<DetectedColumns>({
+    hasNameCol: false, hasAddressCol: false,
+    hasAmenities: false, hasAccessInstructions: false,
+    hasPillowCount: false, hasMaintenanceNotes: false,
+  });
   const [parseError, setParseError] = useState("");
   const [isParsing, setIsParsing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -347,9 +476,9 @@ export function ImportPropertiesDialog({
             return;
           }
 
-          const { rows: parsedRows, hasNameCol, hasAddressCol } = mapCsvToRows(parsed.data);
+          const { rows: parsedRows, detected } = mapCsvToRows(parsed.data);
 
-          if (!hasNameCol || !hasAddressCol) {
+          if (!detected.hasNameCol || !detected.hasAddressCol) {
             setParseError(t("properties.import.noHeaderError"));
             setIsParsing(false);
             return;
@@ -357,6 +486,7 @@ export function ImportPropertiesDialog({
 
           const validated = validateRows(parsedRows);
           setRows(validated);
+          setDetectedCols(detected);
           setIsParsing(false);
         } catch {
           setParseError(t("properties.import.parseError"));
@@ -397,6 +527,10 @@ export function ImportPropertiesDialog({
       beds: row.data.beds !== undefined && !isNaN(row.data.beds) ? row.data.beds : undefined,
       baths: row.data.baths !== undefined && !isNaN(row.data.baths) ? row.data.baths : undefined,
       ownerNotes: row.data.notes.trim() || undefined,
+      amenities: row.data.amenities.length > 0 ? row.data.amenities : undefined,
+      accessInstructions: row.data.accessInstructions.trim() || undefined,
+      pillowCount: row.data.pillowCount !== undefined && !isNaN(row.data.pillowCount) ? row.data.pillowCount : undefined,
+      maintenanceNotes: row.data.maintenanceNotes.trim() || undefined,
     }));
 
     // Send in batches of BATCH_SIZE
@@ -480,6 +614,7 @@ export function ImportPropertiesDialog({
                 validCount={validCount}
                 totalCount={totalCount}
                 onToggleExclude={toggleRowExcluded}
+                detectedCols={detectedCols}
               />
             )}
 
@@ -611,12 +746,14 @@ function PreviewStep({
   validCount,
   totalCount,
   onToggleExclude,
+  detectedCols,
 }: {
   t: (key: string, opts?: Record<string, unknown>) => string;
   rows: ValidatedRow[];
   validCount: number;
   totalCount: number;
   onToggleExclude: (index: number) => void;
+  detectedCols: DetectedColumns;
 }) {
   return (
     <div className="space-y-4">
@@ -651,6 +788,26 @@ function PreviewStep({
               <th className="text-left p-2 font-medium text-gray-600 w-16">
                 {t("properties.import.baths")}
               </th>
+              {detectedCols.hasAmenities && (
+                <th className="text-left p-2 font-medium text-gray-600 w-32">
+                  {t("properties.import.amenities")}
+                </th>
+              )}
+              {detectedCols.hasAccessInstructions && (
+                <th className="text-left p-2 font-medium text-gray-600 w-32">
+                  {t("properties.import.accessInstructions")}
+                </th>
+              )}
+              {detectedCols.hasPillowCount && (
+                <th className="text-left p-2 font-medium text-gray-600 w-20">
+                  {t("properties.import.pillowCount")}
+                </th>
+              )}
+              {detectedCols.hasMaintenanceNotes && (
+                <th className="text-left p-2 font-medium text-gray-600 w-32">
+                  {t("properties.import.maintenanceNotes")}
+                </th>
+              )}
               <th className="text-left p-2 font-medium text-gray-600 w-20">
                 {t("properties.import.status")}
               </th>
@@ -693,6 +850,44 @@ function PreviewStep({
                       t={t}
                     />
                   </td>
+                  {detectedCols.hasAmenities && (
+                    <td className="p-2">
+                      <span className="text-gray-700" title={row.data.amenities.join(", ")}>
+                        {row.data.amenities.length > 0
+                          ? row.data.amenities.length === 1
+                            ? row.data.amenities[0]
+                            : `${row.data.amenities.length} items`
+                          : "—"}
+                      </span>
+                    </td>
+                  )}
+                  {detectedCols.hasAccessInstructions && (
+                    <td className="p-2">
+                      <CellValue
+                        value={row.data.accessInstructions}
+                        error={row.errors.accessInstructions}
+                        t={t}
+                      />
+                    </td>
+                  )}
+                  {detectedCols.hasPillowCount && (
+                    <td className="p-2">
+                      <CellValue
+                        value={row.data.pillowCount !== undefined ? String(row.data.pillowCount) : ""}
+                        error={row.errors.pillowCount}
+                        t={t}
+                      />
+                    </td>
+                  )}
+                  {detectedCols.hasMaintenanceNotes && (
+                    <td className="p-2">
+                      <CellValue
+                        value={row.data.maintenanceNotes}
+                        error={row.errors.maintenanceNotes}
+                        t={t}
+                      />
+                    </td>
+                  )}
                   <td className="p-2">
                     <RowStatus
                       t={t}

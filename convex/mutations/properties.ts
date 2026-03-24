@@ -70,6 +70,10 @@ export const bulkCreate = mutation({
         beds: v.optional(v.number()),
         baths: v.optional(v.number()),
         ownerNotes: v.optional(v.string()),
+        amenities: v.optional(v.array(v.string())),
+        accessInstructions: v.optional(v.string()),
+        pillowCount: v.optional(v.number()),
+        maintenanceNotes: v.optional(v.string()),
       })
     ),
   },
@@ -89,10 +93,13 @@ export const bulkCreate = mutation({
           name: prop.name,
           type: prop.type,
           address: prop.address,
-          amenities: [],
+          amenities: prop.amenities ?? [],
           beds: prop.beds,
           baths: prop.baths,
           ownerNotes: prop.ownerNotes,
+          accessInstructions: prop.accessInstructions,
+          pillowCount: prop.pillowCount,
+          maintenanceNotes: prop.maintenanceNotes,
           active: true,
         });
 
