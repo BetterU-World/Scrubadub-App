@@ -30,16 +30,28 @@ const stripeWebhook = httpAction(async (ctx, request) => {
     return new Response("Webhook secret not configured", { status: 500 });
   }
 
+  console.log("[STRIPE-WEBHOOK] verifying signature", {
+    signaturePresent: !!signature,
+    signaturePrefix: signature.slice(0, 12),
+    bodyLength: payload.length,
+    bodyPrefix: payload.slice(0, 20),
+    secretsConfigured: secretCandidates.map((c) => c.label),
+  });
+
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
   let matchedSecret: string | null = null;
 
   for (const candidate of secretCandidates) {
     try {
-      event = stripe.webhooks.constructEvent(payload, signature, candidate.secret);
+      // Use constructEventAsync — Convex httpAction runs in a V8 isolate
+      // without Node.js crypto, so the synchronous constructEvent fails.
+      event = await stripe.webhooks.constructEventAsync(payload, signature, candidate.secret);
       matchedSecret = candidate.label;
       break;
-    } catch {
-      // This secret didn't match — try the next one.
+    } catch (verifyErr: any) {
+      console.warn(`[STRIPE-WEBHOOK] verification failed with "${candidate.label}" secret`, {
+        error: verifyErr?.message ?? String(verifyErr),
+      });
     }
   }
 
