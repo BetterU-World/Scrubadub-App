@@ -17,7 +17,7 @@ const stripeWebhook = httpAction(async (ctx, request) => {
     return new Response("Missing stripe-signature header", { status: 400 });
   }
 
-  // Try secrets in order: account, connect, legacy fallback.
+  // Try secrets in order: account (platform), then connect.
   const secretCandidates: Array<{ secret: string; label: string }> = [];
   if (process.env.STRIPE_WEBHOOK_ACCOUNT_SECRET) {
     secretCandidates.push({ secret: process.env.STRIPE_WEBHOOK_ACCOUNT_SECRET, label: "account" });
@@ -25,10 +25,6 @@ const stripeWebhook = httpAction(async (ctx, request) => {
   if (process.env.STRIPE_WEBHOOK_CONNECT_SECRET) {
     secretCandidates.push({ secret: process.env.STRIPE_WEBHOOK_CONNECT_SECRET, label: "connect" });
   }
-  if (process.env.STRIPE_WEBHOOK_SECRET) {
-    secretCandidates.push({ secret: process.env.STRIPE_WEBHOOK_SECRET, label: "legacy" });
-  }
-
   if (secretCandidates.length === 0) {
     console.error("[STRIPE-WEBHOOK] no webhook secrets configured");
     return new Response("Webhook secret not configured", { status: 500 });

@@ -4,7 +4,7 @@ declare const process: { env: Record<string, string | undefined> };
 
 const REQUIRED_ENV_VARS = [
   "STRIPE_SECRET_KEY",
-  "STRIPE_WEBHOOK_SECRET",
+  "STRIPE_WEBHOOK_ACCOUNT_SECRET",
   "TOKEN_PEPPER",
   "RESEND_API_KEY",
   "RESEND_FROM_EMAIL",
