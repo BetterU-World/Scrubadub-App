@@ -17,6 +17,8 @@ import {
   ClipboardCheck,
   Play,
   X,
+  RotateCcw,
+  Upload,
 } from "lucide-react";
 
 const plans = [
@@ -45,6 +47,7 @@ const plans = [
     features: [
       "Up to 5 cleaners",
       "Unlimited properties",
+      "CSV property import",
       "Team scheduling & job tracking",
       "Quality checklists & photo proof",
       "Red flag alerts & maintenance tracking",
@@ -62,6 +65,7 @@ const plans = [
     features: [
       "Unlimited cleaners",
       "Unlimited properties",
+      "CSV property import",
       "Team scheduling & job tracking",
       "Quality checklists & photo proof",
       "Red flag alerts & maintenance tracking",
@@ -79,13 +83,13 @@ const valueProps = [
     icon: Award,
     title: "Gold Standard Operations",
     description:
-      "Standardized cleaning workflows, inspections, and maintenance tracking in one system.",
+      "Standardized workflows, inspections, and maintenance tracking — with every property set up for operational readiness from day one.",
   },
   {
     icon: Building2,
     title: "Built for Real Cleaning Businesses",
     description:
-      "Manage teams, properties, turnovers, and issues without spreadsheets or group chats.",
+      "Manage teams, properties, turnovers, and issues — from amenities and access instructions to linens and supplies — without spreadsheets or group chats.",
   },
   {
     icon: Globe,
@@ -111,6 +115,12 @@ const valueProps = [
     description:
       "Keep your team aligned with built-in Gold Standard manuals and workflows.",
   },
+  {
+    icon: Upload,
+    title: "Switch Without Rebuilding",
+    description:
+      "Import your properties in seconds via CSV. No need to rebuild your portfolio manually — get your entire operation running fast.",
+  },
 ];
 
 const problems = [
@@ -126,6 +136,10 @@ const problems = [
     icon: EyeOff,
     text: "No visibility into what was actually completed",
   },
+  {
+    icon: RotateCcw,
+    text: "Rebuilding your property list every time you switch tools",
+  },
 ];
 
 const steps = [
@@ -133,7 +147,8 @@ const steps = [
     num: "1",
     icon: Home,
     title: "Set Up Your Properties",
-    description: "Add units, amenities, and turnover details once.",
+    description:
+      "Import via CSV or add manually — amenities, access instructions, linens, and supplies are captured upfront.",
   },
   {
     num: "2",
@@ -244,7 +259,7 @@ export function LandingPage() {
           Manage your cleaning operations all in one place.
         </h1>
         <p className="mt-4 text-lg text-gray-500 max-w-xl mx-auto">
-          The gold standard system for growing cleaning companies.
+          The gold standard operations system for cleaning companies and short-term rental teams.
         </p>
         <div className="mt-8 flex justify-center gap-3">
           <Link href="/get-started" className="btn-primary px-6 py-2.5">
@@ -289,7 +304,7 @@ export function LandingPage() {
         <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">
           Running cleaning operations shouldn't feel chaotic.
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
           {problems.map((p) => (
             <div key={p.text} className="card text-center">
               <div className="inline-flex p-2 rounded-lg bg-red-100 text-red-600 mb-3">
@@ -300,8 +315,8 @@ export function LandingPage() {
           ))}
         </div>
         <p className="mt-8 text-gray-500 text-center max-w-2xl mx-auto">
-          SCRUB replaces scattered communication, spreadsheets, and
-          guesswork with one operational system built specifically for cleaning
+          SCRUB replaces scattered communication, manual property rebuilds,
+          and guesswork with one operational system built for cleaning
           businesses and short-term rental operators.
         </p>
       </section>
@@ -330,10 +345,9 @@ export function LandingPage() {
           One Platform. Total Control.
         </h2>
         <p className="text-gray-500">
-          SCRUB replaces scattered tools with one operational system for
-          cleaning companies and short-term rental owners. Schedule work, track
-          performance, handle maintenance, and train teams using the Gold
-          Standard system — all in one place.
+          Import your properties. Configure property setup details. Schedule
+          work, track performance, and train your team — all from one
+          operational system built on the Gold Standard.
         </p>
       </section>
 
@@ -383,8 +397,8 @@ export function LandingPage() {
               Short-Term Rental Operators
             </h3>
             <ul className="space-y-1.5 text-sm text-gray-500">
-              <li>Coordinate turnovers and maintenance</li>
-              <li>Keep properties guest-ready</li>
+              <li>Import your portfolio and get operational fast</li>
+              <li>Coordinate turnovers with full property context</li>
               <li>Catch issues before the next booking</li>
             </ul>
           </div>
@@ -407,7 +421,7 @@ export function LandingPage() {
           Simple, Transparent Pricing
         </h2>
         <p className="text-center text-sm text-gray-500 mb-8">
-          Built for professional operations, not basic scheduling.
+          Built for real cleaning operations, not basic scheduling.
         </p>
         <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-6">
           {plans.map((p) => (
@@ -465,8 +479,9 @@ export function LandingPage() {
         </h2>
         <p className="text-gray-500">
           SCRUB wasn't designed in a boardroom. It was built alongside
-          real cleaning teams solving real operational problems — from turnovers
-          and inspections to maintenance coordination and team accountability.
+          real cleaning teams solving real operational problems — from property
+          setup and turnovers to inspections, maintenance coordination, and
+          team accountability.
         </p>
       </section>
 
