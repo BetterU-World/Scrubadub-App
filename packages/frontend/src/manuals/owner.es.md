@@ -258,4 +258,4 @@ Los pagos pueden procesarse vía transferencia de Stripe (si has conectado tu cu
 
 *Última actualización: 1 de marzo de 2026*
 
-*¿Necesitas ayuda? Contacta soporte en support@scrubadub.app*
+*¿Necesitas ayuda? Contacta soporte en scrubadubsolutionsllc@gmail.com*

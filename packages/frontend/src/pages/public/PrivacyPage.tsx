@@ -121,7 +121,7 @@ export function PrivacyPage() {
         </ul>
         <p>
           To exercise any of these rights, contact us at{" "}
-          <a href="mailto:support@scrubadub.app">support@scrubadub.app</a>. We
+          <a href="mailto:scrubadubsolutionsllc@gmail.com">scrubadubsolutionsllc@gmail.com</a>. We
           will respond within a reasonable timeframe.
         </p>
 
@@ -149,7 +149,7 @@ export function PrivacyPage() {
         <h2>9. Contact</h2>
         <p>
           Questions or concerns about this Privacy Policy? Contact us at{" "}
-          <a href="mailto:support@scrubadub.app">support@scrubadub.app</a>.
+          <a href="mailto:scrubadubsolutionsllc@gmail.com">scrubadubsolutionsllc@gmail.com</a>.
         </p>
 
         <div className="mt-8 not-prose">

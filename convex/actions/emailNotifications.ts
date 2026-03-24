@@ -9,6 +9,7 @@ import {
   sendStripeConnectInviteEmail,
   sendPasswordResetEmail,
   sendInviteEmail,
+  sendSupportEmail,
 } from "../lib/email";
 
 /**
@@ -114,6 +115,25 @@ export const sendPasswordReset = internalAction({
  * Internal action: send employee invite email.
  * Scheduled from mutations via ctx.scheduler.runAfter(0, ...).
  */
+/**
+ * Internal action: send support/contact form email.
+ * Scheduled from the public submitContactForm action.
+ */
+export const sendSupport = internalAction({
+  args: {
+    name: v.string(),
+    email: v.string(),
+    subject: v.string(),
+    message: v.string(),
+  },
+  handler: async (_ctx, args) => {
+    const sent = await sendSupportEmail(args.name, args.email, args.subject, args.message);
+    if (!sent) {
+      console.error("[emailNotifications] Support email failed from", args.email);
+    }
+  },
+});
+
 export const sendInvite = internalAction({
   args: {
     email: v.string(),

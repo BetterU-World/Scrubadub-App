@@ -31,7 +31,7 @@ export function TermsPage() {
           You are responsible for maintaining the confidentiality of your login
           credentials and for all activity that occurs under your account. Notify
           us immediately at{" "}
-          <a href="mailto:support@scrubadub.app">support@scrubadub.app</a> if
+          <a href="mailto:scrubadubsolutionsllc@gmail.com">scrubadubsolutionsllc@gmail.com</a> if
           you suspect unauthorized access.
         </p>
 
@@ -143,7 +143,7 @@ export function TermsPage() {
         <h2>11. Contact</h2>
         <p>
           Questions about these Terms? Contact us at{" "}
-          <a href="mailto:support@scrubadub.app">support@scrubadub.app</a>.
+          <a href="mailto:scrubadubsolutionsllc@gmail.com">scrubadubsolutionsllc@gmail.com</a>.
         </p>
 
         <div className="mt-8 not-prose">

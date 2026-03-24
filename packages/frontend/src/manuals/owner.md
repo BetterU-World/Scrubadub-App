@@ -258,4 +258,4 @@ Payouts can be processed via Stripe transfer (if you've connected your account) 
 
 *Last updated: March 1, 2026*
 
-*Need help? Contact support at support@scrubadub.app*
+*Need help? Contact support at scrubadubsolutionsllc@gmail.com*

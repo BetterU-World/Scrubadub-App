@@ -267,6 +267,54 @@ export async function sendStripeConnectInviteEmail(
   }
 }
 
+const SUPPORT_DESTINATION_EMAIL =
+  process.env.SUPPORT_DESTINATION_EMAIL || "scrubadubsolutionsllc@gmail.com";
+
+/**
+ * Send a support/contact form message via Resend.
+ * Delivers to the support destination mailbox.
+ */
+export async function sendSupportEmail(
+  name: string,
+  email: string,
+  subject: string,
+  message: string
+): Promise<boolean> {
+  const resend = getResendClient();
+
+  try {
+    const { error } = await resend.emails.send({
+      from: getFromEmail(),
+      to: SUPPORT_DESTINATION_EMAIL,
+      replyTo: email,
+      subject: `[Contact Form] ${subject}`,
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
+          <h2 style="color: #111; font-size: 22px; margin: 0 0 16px;">New Contact Form Submission</h2>
+          <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+            <tr><td style="color: #6b7280; font-size: 14px; padding: 6px 0;">Name</td><td style="color: #111; font-size: 14px; padding: 6px 0; text-align: right; font-weight: 500;">${name}</td></tr>
+            <tr><td style="color: #6b7280; font-size: 14px; padding: 6px 0;">Email</td><td style="color: #111; font-size: 14px; padding: 6px 0; text-align: right; font-weight: 500;">${email}</td></tr>
+            <tr><td style="color: #6b7280; font-size: 14px; padding: 6px 0;">Subject</td><td style="color: #111; font-size: 14px; padding: 6px 0; text-align: right; font-weight: 500;">${subject}</td></tr>
+          </table>
+          <div style="background: #f9fafb; border-radius: 8px; padding: 16px; margin: 16px 0;">
+            <p style="color: #374151; font-size: 15px; line-height: 1.6; margin: 0; white-space: pre-wrap;">${message}</p>
+          </div>
+          <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">Reply directly to this email to respond to ${name} at ${email}.</p>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error("[email] Failed to send support email:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[email] Error sending support email:", err);
+    return false;
+  }
+}
+
 export async function sendInviteEmail(
   email: string,
   inviteToken: string,
