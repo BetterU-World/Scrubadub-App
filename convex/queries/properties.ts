@@ -4,14 +4,36 @@ import { assertCompanyAccess, getSessionUser } from "../lib/auth";
 import { withPerfLog } from "../lib/perfLog";
 
 export const list = query({
+  args: {
+    companyId: v.id("companies"),
+    userId: v.id("users"),
+    activeOnly: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    await assertCompanyAccess(ctx, args.userId, args.companyId);
+
+    const all = await ctx.db
+      .query("properties")
+      .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
+      .collect();
+
+    // Default: return only active properties. Pass activeOnly=false to get all.
+    const activeOnly = args.activeOnly !== false;
+    return activeOnly ? all.filter((p) => p.active) : all;
+  },
+});
+
+export const listArchived = query({
   args: { companyId: v.id("companies"), userId: v.id("users") },
   handler: async (ctx, args) => {
     await assertCompanyAccess(ctx, args.userId, args.companyId);
 
-    return await ctx.db
+    const all = await ctx.db
       .query("properties")
       .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
       .collect();
+
+    return all.filter((p) => !p.active);
   },
 });
 
