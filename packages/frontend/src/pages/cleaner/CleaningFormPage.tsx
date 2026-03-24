@@ -366,7 +366,7 @@ export function CleaningFormPage() {
           <button onClick={() => setShowReview(false)} className="p-2 hover:bg-gray-100 rounded-lg">
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-xl font-bold">Review & Submit</h1>
+          <h1 className="text-xl font-bold">Review Checklist</h1>
         </div>
 
         <div className="space-y-4">
@@ -474,9 +474,12 @@ export function CleaningFormPage() {
             disabled={submitting}
             className="btn-primary w-full py-3 text-lg flex items-center justify-center gap-2"
           >
-            {submitting ? <LoadingSpinner size="sm" /> : <Send className="w-5 h-5" />}
-            Submit for Review
+            {submitting ? <LoadingSpinner size="sm" /> : <Check className="w-5 h-5" />}
+            Complete Checklist
           </button>
+          <p className="text-xs text-gray-500 text-center mt-2">
+            You'll return to the job page for final submission.
+          </p>
         </div>
       </div>
     );
@@ -645,7 +648,7 @@ export function CleaningFormPage() {
           onClick={() => setShowReview(true)}
           className="btn-primary w-full flex items-center justify-center gap-2 py-3 text-lg"
         >
-          <Send className="w-5 h-5" /> Review & Submit
+          <Check className="w-5 h-5" /> Review & Complete
         </button>
       </div>
 

@@ -3,13 +3,15 @@ import { AlertCircle } from "lucide-react";
 interface JobSubmissionBlockersProps {
   remainingCleaningCount: number;
   remainingInventoryCount: number;
+  formCompleted: boolean;
 }
 
 export function JobSubmissionBlockers({
   remainingCleaningCount,
   remainingInventoryCount,
+  formCompleted,
 }: JobSubmissionBlockersProps) {
-  if (remainingCleaningCount === 0 && remainingInventoryCount === 0) {
+  if (remainingCleaningCount === 0 && remainingInventoryCount === 0 && formCompleted) {
     return null;
   }
 
@@ -20,10 +22,8 @@ export function JobSubmissionBlockers({
         <div className="text-sm text-amber-800">
           <p className="font-medium">Cannot submit yet</p>
           <ul className="mt-1 space-y-0.5 text-xs text-amber-700">
-            {remainingCleaningCount > 0 && (
-              <li>
-                {remainingCleaningCount} cleaning item{remainingCleaningCount !== 1 ? "s" : ""} remaining
-              </li>
+            {!formCompleted && (
+              <li>Cleaning checklist not completed</li>
             )}
             {remainingInventoryCount > 0 && (
               <li>
