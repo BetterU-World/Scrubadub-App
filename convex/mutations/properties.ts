@@ -53,6 +53,70 @@ export const create = mutation({
   },
 });
 
+export const bulkCreate = mutation({
+  args: {
+    userId: v.optional(v.id("users")),
+    companyId: v.id("companies"),
+    properties: v.array(
+      v.object({
+        name: v.string(),
+        address: v.string(),
+        type: v.union(
+          v.literal("residential"),
+          v.literal("commercial"),
+          v.literal("vacation_rental"),
+          v.literal("office")
+        ),
+        beds: v.optional(v.number()),
+        baths: v.optional(v.number()),
+        ownerNotes: v.optional(v.string()),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+    if (owner.companyId !== args.companyId) throw new Error("Not your company");
+    await requireActiveSubscription(ctx, args.companyId);
+
+    let created = 0;
+    const errors: Array<{ row: number; message: string }> = [];
+
+    for (let i = 0; i < args.properties.length; i++) {
+      try {
+        const prop = args.properties[i];
+        const propertyId = await ctx.db.insert("properties", {
+          companyId: args.companyId,
+          name: prop.name,
+          type: prop.type,
+          address: prop.address,
+          amenities: [],
+          beds: prop.beds,
+          baths: prop.baths,
+          ownerNotes: prop.ownerNotes,
+          active: true,
+        });
+
+        await logAudit(ctx, {
+          companyId: args.companyId,
+          userId: owner._id,
+          action: "create_property",
+          entityType: "property",
+          entityId: propertyId,
+        });
+
+        created++;
+      } catch (err) {
+        errors.push({
+          row: i,
+          message: err instanceof Error ? err.message : "Unknown error",
+        });
+      }
+    }
+
+    return { created, errors };
+  },
+});
+
 export const update = mutation({
   args: {
     userId: v.optional(v.id("users")),
