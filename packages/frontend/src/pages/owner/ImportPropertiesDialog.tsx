@@ -96,7 +96,9 @@ const COLUMN_MAP: Record<string, keyof ParsedRow> = {
   "amenities": "amenities",
   "amenity": "amenities",
   "amenity list": "amenities",
+  "amenities list": "amenities",
   "amenity_list": "amenities",
+  "amenities_list": "amenities",
   // Access Instructions (Phase A)
   "access instructions": "accessInstructions",
   "access_instructions": "accessInstructions",
@@ -124,6 +126,16 @@ const ADDRESS_PARTS = ["city", "state", "zip", "zipcode", "zip_code", "zip code"
 
 function normalizeHeader(header: string): string {
   return header.trim().toLowerCase();
+}
+
+/** Resolve a ParsedRow field from a normalized record using COLUMN_MAP as single source of truth */
+function resolveField(normalized: Record<string, string>, targetField: string): string {
+  for (const [alias, mappedField] of Object.entries(COLUMN_MAP)) {
+    if (mappedField === targetField && normalized[alias]) {
+      return normalized[alias];
+    }
+  }
+  return "";
 }
 
 // ── Parsing ──────────────────────────────────────────────────────────────────
@@ -172,13 +184,8 @@ function mapCsvToRows(
       normalized[normalizeHeader(key)] = (value ?? "").trim();
     }
 
-    // Extract name
-    const name =
-      normalized["property name"] ||
-      normalized["name"] ||
-      normalized["property_name"] ||
-      normalized["propertyname"] ||
-      "";
+    // Extract name (via COLUMN_MAP)
+    const name = resolveField(normalized, "name");
 
     // Extract address: prefer direct address column, fall back to city/state/zip concat
     let address = "";
@@ -208,74 +215,38 @@ function mapCsvToRows(
       }
     }
 
-    // Extract type
-    const rawType = (
-      normalized["type"] ||
-      normalized["property type"] ||
-      normalized["property_type"] ||
-      normalized["propertytype"] ||
-      ""
-    ).toLowerCase().replace(/\s+/g, "_");
+    // Extract type (via COLUMN_MAP)
+    const rawType = resolveField(normalized, "type").toLowerCase().replace(/\s+/g, "_");
     const type: PropertyType = VALID_TYPES.includes(rawType as PropertyType)
       ? (rawType as PropertyType)
       : "residential";
 
-    // Extract beds/baths
-    const bedsRaw = normalized["beds"] || normalized["bedrooms"] || normalized["bed"] || "";
-    const bathsRaw = normalized["baths"] || normalized["bathrooms"] || normalized["bath"] || "";
+    // Extract beds/baths (via COLUMN_MAP)
+    const bedsRaw = resolveField(normalized, "beds");
+    const bathsRaw = resolveField(normalized, "baths");
     const beds = bedsRaw ? parseInt(bedsRaw.replace(/,/g, ""), 10) : undefined;
     const baths = bathsRaw ? parseInt(bathsRaw.replace(/,/g, ""), 10) : undefined;
 
-    // Extract notes
-    const notes =
-      normalized["notes"] ||
-      normalized["owner notes"] ||
-      normalized["owner_notes"] ||
-      normalized["ownernotes"] ||
-      "";
+    // Extract notes (via COLUMN_MAP)
+    const notes = resolveField(normalized, "notes");
 
     // Extract amenities (Phase A) — comma-delimited string → string[]
-    const amenitiesRaw =
-      normalized["amenities"] ||
-      normalized["amenity"] ||
-      normalized["amenity list"] ||
-      normalized["amenity_list"] ||
-      "";
+    const amenitiesRaw = resolveField(normalized, "amenities");
     const amenities = amenitiesRaw
       ? amenitiesRaw.split(",").map((s) => s.trim()).filter(Boolean)
       : [];
 
-    // Extract access instructions (Phase A)
-    const accessInstructions =
-      normalized["access instructions"] ||
-      normalized["access_instructions"] ||
-      normalized["accessinstructions"] ||
-      normalized["entry instructions"] ||
-      normalized["entry_instructions"] ||
-      normalized["check-in instructions"] ||
-      normalized["checkin instructions"] ||
-      normalized["access"] ||
-      "";
+    // Extract access instructions (Phase A, via COLUMN_MAP)
+    const accessInstructions = resolveField(normalized, "accessInstructions");
 
-    // Extract pillow count (Phase A)
-    const pillowCountRaw =
-      normalized["pillows"] ||
-      normalized["pillow count"] ||
-      normalized["pillow_count"] ||
-      normalized["pillowcount"] ||
-      normalized["number of pillows"] ||
-      "";
+    // Extract pillow count (Phase A, via COLUMN_MAP)
+    const pillowCountRaw = resolveField(normalized, "pillowCount");
     const pillowCount = pillowCountRaw
       ? parseInt(pillowCountRaw.replace(/,/g, ""), 10)
       : undefined;
 
-    // Extract maintenance notes (Phase A)
-    const maintenanceNotes =
-      normalized["maintenance notes"] ||
-      normalized["maintenance_notes"] ||
-      normalized["maintenancenotes"] ||
-      normalized["maintenance"] ||
-      "";
+    // Extract maintenance notes (Phase A, via COLUMN_MAP)
+    const maintenanceNotes = resolveField(normalized, "maintenanceNotes");
 
     return { name, address, type, beds, baths, notes, amenities, accessInstructions, pillowCount, maintenanceNotes };
   });
