@@ -281,8 +281,8 @@ export function CleanerJobDetailPage() {
           />
         )}
 
-        {/* Bottom spacer when sticky CTA is visible */}
-        {showStickyCTA && <div className="h-20" />}
+        {/* Bottom spacer when sticky CTA is visible — must clear multi-button CTA + safe-area */}
+        {showStickyCTA && <div className="h-44" />}
       </div>
 
       {/* Sticky workspace CTA — primary actions for active job states */}
