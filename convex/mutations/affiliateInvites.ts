@@ -44,6 +44,45 @@ export const updateAffiliateInviteToken = internalMutation({
   },
 });
 
+// ── Internal mutation: generate referral code on invite acceptance ──
+// Mirrors the logic in mutations/affiliate.ts ensureReferralCode, but
+// as an internalMutation so acceptInvite (an action) can call it without
+// a session auth check — the action already validated via invite token.
+
+function generateCode(): string {
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  const length = 8 + Math.floor(Math.random() * 5); // 8–12
+  let code = "";
+  for (let i = 0; i < length; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
+export const ensureReferralCodeInternal = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user) throw new Error("User not found");
+    if (user.referralCode) return user.referralCode;
+
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const code = generateCode();
+      const existing = await ctx.db
+        .query("users")
+        .withIndex("by_referralCode", (q) => q.eq("referralCode", code))
+        .first();
+
+      if (!existing) {
+        await ctx.db.patch(user._id, { referralCode: code });
+        return code;
+      }
+    }
+
+    throw new Error("Unable to generate a unique referral code. Please try again.");
+  },
+});
+
 // ── Public mutation: revoke an affiliate invite (superadmin only) ──
 
 export const revokeAffiliateInvite = mutation({

@@ -193,6 +193,14 @@ export const acceptInvite = action({
       });
     }
 
+    // Auto-generate referral code for affiliate users on activation
+    if (user.role === "affiliate") {
+      await ctx.runMutation(
+        internal.mutations.affiliateInvites.ensureReferralCodeInternal,
+        { userId: user._id }
+      );
+    }
+
     return {
       userId: user._id,
       email: user.email,
