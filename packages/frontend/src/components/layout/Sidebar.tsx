@@ -296,13 +296,26 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
               onClick={handleNavClick}
               className={clsx(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150",
-                location.startsWith("/admin")
+                location === "/admin"
                   ? "bg-primary-50 text-primary-700"
                   : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
               )}
             >
               <Shield className="w-5 h-5" />
               {t("nav.admin")}
+            </Link>
+            <Link
+              href="/admin/affiliates"
+              onClick={handleNavClick}
+              className={clsx(
+                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150",
+                location.startsWith("/admin/affiliates")
+                  ? "bg-primary-50 text-primary-700"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+              )}
+            >
+              <UserPlus className="w-5 h-5" />
+              Affiliate Invites
             </Link>
           </CollapsibleSection>
         )}

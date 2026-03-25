@@ -66,6 +66,7 @@ import { ManagerRedFlagsPage } from "@/pages/manager/ManagerRedFlagsPage";
 
 // Admin pages
 import { SuperAdminPage } from "@/pages/admin/SuperAdminPage";
+import { AffiliateInvitesPage } from "@/pages/admin/AffiliateInvitesPage";
 
 // Shared pages
 import { NotificationsPage } from "@/pages/shared/NotificationsPage";
@@ -366,6 +367,7 @@ export default function App() {
           <Route path="/notifications" component={NotificationsPage} />
           <Route path="/manuals/:slug" component={ManualViewerPage} />
           <Route path="/manuals" component={ManualsPage} />
+          <Route path="/admin/affiliates" component={AffiliateInvitesPage} />
           <Route path="/admin" component={SuperAdminPage} />
           <Route path="/invite/:token" component={AcceptInvitePage} />
           <Route path="/terms" component={TermsPage} />
