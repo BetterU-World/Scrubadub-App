@@ -153,7 +153,7 @@ export const acceptInvite = action({
     email: string;
     name: string;
     role: string;
-    companyId: Id<"companies">;
+    companyId?: Id<"companies">;
   }> => {
     validatePassword(args.password);
 
@@ -182,13 +182,24 @@ export const acceptInvite = action({
       passwordHash,
     });
 
-    await ctx.runMutation(internal.authInternal.logAuditEntry, {
-      companyId: user.companyId,
-      userId: user._id,
-      action: "accept_invite",
-      entityType: "user",
-      entityId: user._id,
-    });
+    // Skip company-scoped audit log for affiliate users (no companyId)
+    if (user.companyId) {
+      await ctx.runMutation(internal.authInternal.logAuditEntry, {
+        companyId: user.companyId,
+        userId: user._id,
+        action: "accept_invite",
+        entityType: "user",
+        entityId: user._id,
+      });
+    }
+
+    // Auto-generate referral code for affiliate users on activation
+    if (user.role === "affiliate") {
+      await ctx.runMutation(
+        internal.mutations.affiliateInvites.ensureReferralCodeInternal,
+        { userId: user._id }
+      );
+    }
 
     return {
       userId: user._id,

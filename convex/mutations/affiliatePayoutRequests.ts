@@ -15,6 +15,14 @@ export const createPayoutRequest = mutation({
   handler: async (ctx, args) => {
     const user = await getSessionUser(ctx, args.userId);
 
+    // Require Stripe Connect for payouts — affiliates must connect
+    // their account before they can request money out.
+    if (!user.affiliateStripeAccountId) {
+      throw new Error(
+        "Connect your Stripe account before requesting a payout"
+      );
+    }
+
     if (args.ledgerIds.length === 0) {
       throw new Error("No ledger entries selected");
     }

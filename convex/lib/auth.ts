@@ -36,7 +36,7 @@ export async function assertCompanyAccess(
   companyId: Id<"companies">
 ) {
   const user = await getSessionUser(ctx, providedUserId);
-  if (user.companyId !== companyId) {
+  if (!user.companyId || user.companyId !== companyId) {
     throw new Error("Access denied");
   }
   return user;

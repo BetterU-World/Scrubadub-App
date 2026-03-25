@@ -59,7 +59,7 @@ export const getUserAndCompanyForAffiliateConnect = internalQuery({
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId);
     if (!user || user.status === "inactive") return null;
-    const company = await ctx.db.get(user.companyId);
+    const company = user.companyId ? await ctx.db.get(user.companyId) : null;
     return {
       _id: user._id,
       email: user.email,
