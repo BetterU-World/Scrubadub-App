@@ -136,6 +136,7 @@ export default function App() {
   const isOwner = user?.role === "owner";
   const isManager = user?.role === "manager";
   const isWorker = user?.role === "cleaner" || user?.role === "maintenance";
+  const isAffiliate = user?.role === "affiliate";
   const companyBypassed = subscription?.companyBypassed === true;
   const isSubActive =
     companyBypassed ||
@@ -339,6 +340,19 @@ export default function App() {
                 <SubscriptionInactive />
               </Route>
             )
+          ) : isAffiliate ? (
+            <>
+              <Route path="/">
+                <Redirect to="/affiliate" />
+              </Route>
+              <Route path="/affiliate/stripe/return" component={StripeReturnPage} />
+              <Route path="/affiliate/stripe/refresh" component={StripeReturnPage} />
+              <Route path="/affiliate/payout-request/:requestId" component={PayoutRequestPage} />
+              <Route path="/affiliate" component={AffiliatePage} />
+              <Route>
+                <Redirect to="/affiliate" />
+              </Route>
+            </>
           ) : (
             /* Unknown role fallback — safe deny */
             <Route>

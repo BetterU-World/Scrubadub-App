@@ -107,6 +107,15 @@ const managerSections: NavSection[] = [
   },
 ];
 
+const affiliateSections: NavSection[] = [
+  {
+    titleKey: "nav.hub",
+    items: [
+      { href: "/affiliate", labelKey: "nav.affiliate", icon: Share2 },
+    ],
+  },
+];
+
 const workerSections: NavSection[] = [
   {
     titleKey: "nav.dashboard",
@@ -219,7 +228,9 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
     ? ownerSections
     : user?.role === "manager"
       ? managerSections
-      : workerSections;
+      : user?.role === "affiliate"
+        ? affiliateSections
+        : workerSections;
 
   const toggleSection = (titleKey: string) => {
     setOpenSections((prev) => ({ ...prev, [titleKey]: !prev[titleKey] }));
@@ -239,7 +250,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
           <img src="/favicon-96x96.png" alt="SCRUB" className="w-7 h-7" />
           <h1 className="text-2xl font-extrabold text-primary-700 font-logo tracking-[0.06em]">SCRUB</h1>
         </div>
-        <p className="text-sm text-gray-500 mt-1">{user?.companyName}</p>
+        <p className="text-sm text-gray-500 mt-1">{user?.companyName || (user?.role === "affiliate" ? "Affiliate Program" : "")}</p>
       </div>
 
       <nav className="flex-1 p-4 space-y-4 overflow-y-auto">

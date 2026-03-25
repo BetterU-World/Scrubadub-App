@@ -29,6 +29,10 @@ const managerMobileNav = [
   { href: "/notifications", label: "Alerts", icon: Bell },
 ];
 
+const affiliateMobileNav = [
+  { href: "/affiliate", label: "Affiliate", icon: Share2 },
+];
+
 const workerMobileNav = [
   { href: "/", label: "Jobs", icon: ClipboardCheck },
   { href: "/calendar", label: "Calendar", icon: Calendar },
@@ -44,7 +48,9 @@ export function MobileNav() {
     ? ownerMobileNav
     : user?.role === "manager"
       ? managerMobileNav
-      : workerMobileNav;
+      : user?.role === "affiliate"
+        ? affiliateMobileNav
+        : workerMobileNav;
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">

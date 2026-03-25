@@ -10,8 +10,8 @@ interface AuthUser {
   _id: Id<"users">;
   email: string;
   name: string;
-  role: "owner" | "cleaner" | "maintenance" | "manager";
-  companyId: Id<"companies">;
+  role: "owner" | "cleaner" | "maintenance" | "manager" | "affiliate";
+  companyId?: Id<"companies">;
   companyName: string;
   status: string;
   phone?: string;
