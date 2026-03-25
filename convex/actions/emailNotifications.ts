@@ -9,6 +9,7 @@ import {
   sendStripeConnectInviteEmail,
   sendPasswordResetEmail,
   sendInviteEmail,
+  sendAffiliateInviteEmail,
   sendSupportEmail,
 } from "../lib/email";
 
@@ -130,6 +131,24 @@ export const sendSupport = internalAction({
     const sent = await sendSupportEmail(args.name, args.email, args.subject, args.message);
     if (!sent) {
       console.error("[emailNotifications] Support email failed from", args.email);
+    }
+  },
+});
+
+/**
+ * Internal action: send affiliate program invite email.
+ * Scheduled from mutations via ctx.scheduler.runAfter(0, ...).
+ */
+export const sendAffiliateInvite = internalAction({
+  args: {
+    email: v.string(),
+    inviteToken: v.string(),
+    name: v.optional(v.string()),
+  },
+  handler: async (_ctx, args) => {
+    const sent = await sendAffiliateInviteEmail(args.email, args.inviteToken, args.name);
+    if (!sent) {
+      console.error("[emailNotifications] Affiliate invite email failed for", args.email);
     }
   },
 });

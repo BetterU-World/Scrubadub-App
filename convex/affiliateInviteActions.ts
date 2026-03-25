@@ -92,8 +92,13 @@ export const inviteAffiliate = action({
     const appUrl = (process.env.APP_URL ?? "").replace(/\/+$/, "");
     const inviteUrl = `${appUrl}/invite/${token}`;
 
-    // 8. Email sending will be wired in Step 4
-    // if (args.sendEmail) { ... }
+    // 8. Optionally send invite email via Resend
+    if (args.sendEmail) {
+      await ctx.runMutation(
+        internal.mutations.scheduleEmail.scheduleAffiliateInviteEmail,
+        { email, inviteToken: token, name: args.name }
+      );
+    }
 
     return { token, userId, inviteUrl };
   },
@@ -148,7 +153,11 @@ export const resendAffiliateInvite = action({
     const appUrl = (process.env.APP_URL ?? "").replace(/\/+$/, "");
     const inviteUrl = `${appUrl}/invite/${token}`;
 
-    // 6. Email sending will be wired in Step 4
+    // 6. Send invite email via Resend
+    await ctx.runMutation(
+      internal.mutations.scheduleEmail.scheduleAffiliateInviteEmail,
+      { email: target.email, inviteToken: token, name: target.name }
+    );
 
     return { token, inviteUrl };
   },

@@ -315,6 +315,55 @@ export async function sendSupportEmail(
   }
 }
 
+/**
+ * Send an affiliate program invite email.
+ * Separate from the employee invite — different subject, copy, and expiry note.
+ * Returns true if sent successfully, false otherwise.
+ */
+export async function sendAffiliateInviteEmail(
+  email: string,
+  inviteToken: string,
+  name?: string
+): Promise<boolean> {
+  const resend = getResendClient();
+  const inviteLink = `${getAppUrl()}/invite/${inviteToken}`;
+
+  const greeting = name ? `Hi ${name}, you've` : "You've";
+
+  try {
+    const { error } = await resend.emails.send({
+      from: getFromEmail(),
+      to: email,
+      subject: "You've been invited to the SCRUB Affiliate Program",
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <img src="${getAppUrl()}/favicon-96x96.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
+          </div>
+          <h2 style="text-align: center; color: #111; font-size: 22px; margin: 0 0 16px;">SCRUB Affiliate Program</h2>
+          <p style="color: #374151; font-size: 15px; line-height: 1.6;">${greeting} been invited to join the SCRUB Affiliate Program. Set up your affiliate account to start earning referral commissions.</p>
+          <p style="color: #374151; font-size: 15px; line-height: 1.6;">No subscription or payment required.</p>
+          <p style="text-align: center; margin: 28px 0;">
+            <a href="${inviteLink}" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
+              Accept Invite
+            </a>
+          </p>
+          <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">This link expires in 7 days. If you weren't expecting this invite, you can safely ignore this email.</p>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error("[email] Failed to send affiliate invite email:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[email] Error sending affiliate invite email:", err);
+    return false;
+  }
+}
+
 export async function sendInviteEmail(
   email: string,
   inviteToken: string,
