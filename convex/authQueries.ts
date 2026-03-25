@@ -25,7 +25,7 @@ export const getCurrentUser = query({
     if (!args.userId) return null;
     const user = await ctx.db.get(args.userId);
     if (!user) return null;
-    const company = await ctx.db.get(user.companyId);
+    const company = user.companyId ? await ctx.db.get(user.companyId) : null;
     return {
       _id: user._id,
       email: user.email,

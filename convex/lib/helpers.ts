@@ -33,11 +33,11 @@ export async function requireAuth(ctx: QueryCtx, userId?: Id<"users">) {
 
 export async function requireOwner(ctx: QueryCtx, userId?: Id<"users">) {
   const user = await requireAuth(ctx, userId);
-  if (user.role === "owner") return user;
+  if (user.role === "owner" && user.companyId) return user;
   // Identity resolved to non-owner; try explicit userId fallback
   if (userId) {
     const explicit = await ctx.db.get(userId);
-    if (explicit && explicit.status === "active" && explicit.role === "owner") return explicit;
+    if (explicit && explicit.status === "active" && explicit.role === "owner" && explicit.companyId) return explicit;
   }
   throw new Error("Owner access required");
 }
@@ -48,7 +48,7 @@ export async function requireCompanyMember(
   userId?: Id<"users">
 ) {
   const user = await requireAuth(ctx, userId);
-  if (user.companyId !== companyId) throw new Error("Not a member of this company");
+  if (!user.companyId || user.companyId !== companyId) throw new Error("Not a member of this company");
   return user;
 }
 
