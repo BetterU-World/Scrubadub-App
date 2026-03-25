@@ -42,8 +42,8 @@ export default defineSchema({
     email: v.string(),
     passwordHash: v.string(),
     name: v.string(),
-    companyId: v.id("companies"),
-    role: v.union(v.literal("owner"), v.literal("cleaner"), v.literal("maintenance"), v.literal("manager")),
+    companyId: v.optional(v.id("companies")),
+    role: v.union(v.literal("owner"), v.literal("cleaner"), v.literal("maintenance"), v.literal("manager"), v.literal("affiliate")),
     // Manager permission flags (only meaningful when role === "manager")
     canSeeAllJobs: v.optional(v.boolean()),
     canCreateJobs: v.optional(v.boolean()),
@@ -83,6 +83,8 @@ export default defineSchema({
     // Affiliate Stripe Connect (may reuse company Connect account)
     affiliateStripeAccountId: v.optional(v.string()),
     affiliateStripeOnboardedAt: v.optional(v.number()),
+    // Affiliate invite tracking (who invited this affiliate)
+    affiliateInvitedBy: v.optional(v.id("users")),
   })
     .index("by_email", ["email"])
     .index("by_companyId", ["companyId"])
