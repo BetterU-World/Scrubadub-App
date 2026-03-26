@@ -61,7 +61,11 @@ export function AcceptInvitePage() {
         <div className="text-center mb-8">
           <img src="/favicon-96x96.png" alt="SCRUB" className="w-12 h-12 mx-auto mb-3" />
           <h1 className="text-3xl font-bold text-primary-700">SCRUB</h1>
-          <p className="text-gray-500 mt-2">Welcome to {inviteInfo.companyName}</p>
+          <p className="text-gray-500 mt-2">
+            {inviteInfo.role === "affiliate"
+              ? "Join the SCRUB Affiliate Program"
+              : `Welcome to ${inviteInfo.companyName}`}
+          </p>
         </div>
 
         <div className="card">
@@ -107,7 +111,7 @@ export function AcceptInvitePage() {
               className="btn-primary w-full flex items-center justify-center gap-2"
             >
               {loading && <LoadingSpinner size="sm" />}
-              Join Team
+              {inviteInfo.role === "affiliate" ? "Get Started" : "Join Team"}
             </button>
           </form>
         </div>
