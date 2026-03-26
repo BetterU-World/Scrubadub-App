@@ -55,7 +55,7 @@ export function LiveJobBanner() {
 
   const jobs = useQuery(
     api.queries.jobs.list,
-    user ? { companyId: user.companyId, userId: user._id } : "skip"
+    user && user.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
   );
 
   if (!user || !jobs) return null;
