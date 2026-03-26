@@ -23,11 +23,12 @@ export const getByInviteToken = query({
       .withIndex("by_inviteToken", (q) => q.eq("inviteToken", args.token))
       .first();
     if (!user) return null;
-    const company = await ctx.db.get(user.companyId);
+    const company = user.companyId ? await ctx.db.get(user.companyId) : null;
     return {
       _id: user._id,
       email: user.email,
       name: user.name,
+      role: user.role,
       status: user.status,
       companyName: company?.name ?? "",
     };
