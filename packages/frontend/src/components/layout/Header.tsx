@@ -21,7 +21,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
         </button>
         <div className="flex items-center gap-2 md:hidden">
           <img src="/logo-icon.png" alt="SCRUB" className="w-6 h-6" />
-          <img src="/logo-word.png" alt="SCRUB" className="h-10 w-auto" />
+          <img src="/logo-full.png" alt="SCRUB" className="h-10 w-auto" />
         </div>
       </div>
 
