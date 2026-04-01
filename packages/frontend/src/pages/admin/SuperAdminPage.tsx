@@ -10,6 +10,7 @@ import {
   Flag,
   Wrench,
   Activity,
+  Mail,
 } from "lucide-react";
 
 export function SuperAdminPage() {
@@ -17,6 +18,11 @@ export function SuperAdminPage() {
 
   const stats = useQuery(
     api.queries.admin.getPlatformStats,
+    user ? { userId: user._id } : "skip"
+  );
+
+  const companiesWithUsers = useQuery(
+    api.queries.admin.getCompaniesWithUsers,
     user ? { userId: user._id } : "skip"
   );
 
@@ -56,6 +62,44 @@ export function SuperAdminPage() {
               <div key={i} className="flex items-center justify-between text-sm">
                 <span className="text-gray-700 truncate">{c.name}</span>
                 <span className="font-medium text-primary-600 flex-shrink-0 ml-2">{c.count} jobs</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* All companies with users */}
+      <div className="card mt-8">
+        <h3 className="font-semibold text-gray-900 flex items-center gap-2 mb-4">
+          <Users className="w-4 h-4 text-gray-400" /> All Companies &amp; Users
+        </h3>
+        {!companiesWithUsers ? (
+          <p className="text-sm text-gray-500">Loading…</p>
+        ) : companiesWithUsers.length === 0 ? (
+          <p className="text-sm text-gray-500">No companies found</p>
+        ) : (
+          <div className="space-y-4">
+            {companiesWithUsers.map((company, i) => (
+              <div key={i} className="border border-gray-200 rounded-lg p-4">
+                <h4 className="font-medium text-gray-900 flex items-center gap-2 mb-2">
+                  <Building2 className="w-4 h-4 text-primary-500" />
+                  {company.name}
+                  <span className="text-xs text-gray-400 font-normal">
+                    ({company.users.length} {company.users.length === 1 ? "user" : "users"})
+                  </span>
+                </h4>
+                {company.users.length === 0 ? (
+                  <p className="text-sm text-gray-400 ml-6">No users</p>
+                ) : (
+                  <ul className="ml-6 space-y-1">
+                    {company.users.map((u, j) => (
+                      <li key={j} className="text-sm text-gray-700 flex items-center gap-2">
+                        <Mail className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                        {u.name} <span className="text-gray-400">({u.email})</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             ))}
           </div>

@@ -86,6 +86,32 @@ export const getPlatformStats = query({
   },
 });
 
+export const getCompaniesWithUsers = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    await requireSuperAdmin(ctx, args.userId);
+
+    const SCAN_CAP = 10_000;
+    const companies = await ctx.db.query("companies").take(SCAN_CAP);
+    const users = await ctx.db.query("users").take(SCAN_CAP);
+
+    const usersByCompany = new Map<string, { name: string; email: string }[]>();
+    for (const u of users) {
+      if (!u.companyId) continue;
+      const key = u.companyId as string;
+      if (!usersByCompany.has(key)) usersByCompany.set(key, []);
+      usersByCompany.get(key)!.push({ name: u.name, email: u.email });
+    }
+
+    return companies
+      .map((c) => ({
+        name: c.name,
+        users: usersByCompany.get(c._id as string) ?? [],
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  },
+});
+
 export const isSuperAdmin = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
