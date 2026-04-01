@@ -47,7 +47,7 @@ export async function sendPasswordResetEmail(
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
           <div style="text-align: center; margin-bottom: 24px;">
-            <img src="${getAppUrl()}/favicon-96x96.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
+            <img src="${getAppUrl()}/logo-icon.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
           </div>
           <h2 style="text-align: center; color: #111; font-size: 22px; margin: 0 0 16px;">Reset your password</h2>
           <p style="color: #374151; font-size: 15px; line-height: 1.6;">You requested a password reset for your SCRUB account. Click the button below to set a new password:</p>
@@ -97,7 +97,7 @@ export async function sendJobAssignedEmail(
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
           <div style="text-align: center; margin-bottom: 24px;">
-            <img src="${appUrl}/favicon-96x96.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
+            <img src="${appUrl}/logo-icon.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
           </div>
           <h2 style="text-align: center; color: #111; font-size: 22px; margin: 0 0 16px;">New Cleaning Job Assigned</h2>
           <p style="color: #374151; font-size: 15px; line-height: 1.6;">You've been assigned a new cleaning job:</p>
@@ -150,7 +150,7 @@ export async function sendJobCompletedEmail(
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
           <div style="text-align: center; margin-bottom: 24px;">
-            <img src="${appUrl}/favicon-96x96.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
+            <img src="${appUrl}/logo-icon.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
           </div>
           <h2 style="text-align: center; color: #111; font-size: 22px; margin: 0 0 16px;">Cleaning Job Completed</h2>
           <p style="color: #374151; font-size: 15px; line-height: 1.6;">A cleaning job has been completed and is ready for your review.</p>
@@ -198,7 +198,7 @@ export async function sendJobApprovedEmail(
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
           <div style="text-align: center; margin-bottom: 24px;">
-            <img src="${appUrl}/favicon-96x96.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
+            <img src="${appUrl}/logo-icon.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
           </div>
           <h2 style="text-align: center; color: #111; font-size: 22px; margin: 0 0 16px;">Cleaning Job Approved</h2>
           <p style="color: #374151; font-size: 15px; line-height: 1.6;">Great work! Your cleaning job at <strong>${propertyName}</strong> has been reviewed and approved by the owner.</p>
@@ -242,7 +242,7 @@ export async function sendStripeConnectInviteEmail(
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
           <div style="text-align: center; margin-bottom: 24px;">
-            <img src="${appUrl}/favicon-96x96.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
+            <img src="${appUrl}/logo-icon.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
           </div>
           <h2 style="text-align: center; color: #111; font-size: 22px; margin: 0 0 16px;">Connect Stripe to Get Paid</h2>
           <p style="color: #374151; font-size: 15px; line-height: 1.6;">${from} wants to pay you for jobs through SCRUB. To receive payments, connect your Stripe account:</p>
@@ -338,7 +338,7 @@ export async function sendAffiliateInviteEmail(
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
           <div style="text-align: center; margin-bottom: 24px;">
-            <img src="${getAppUrl()}/favicon-96x96.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
+            <img src="${getAppUrl()}/logo-icon.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
           </div>
           <h2 style="text-align: center; color: #111; font-size: 22px; margin: 0 0 16px;">SCRUB Affiliate Program</h2>
           <p style="color: #374151; font-size: 15px; line-height: 1.6;">${greeting} been invited to join the SCRUB Affiliate Program. Set up your affiliate account to start earning referral commissions.</p>
@@ -382,7 +382,7 @@ export async function sendInviteEmail(
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
           <div style="text-align: center; margin-bottom: 24px;">
-            <img src="${getAppUrl()}/favicon-96x96.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
+            <img src="${getAppUrl()}/logo-icon.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
           </div>
           <h2 style="text-align: center; color: #111; font-size: 22px; margin: 0 0 16px;">You've been invited to SCRUB</h2>
           <p style="color: #374151; font-size: 15px; line-height: 1.6;">You've been invited${invitedBy} to join a team on SCRUB. Click the button below to set up your account:</p>
