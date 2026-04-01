@@ -1,4 +1,5 @@
 import { Menu, LogOut } from "lucide-react";
+import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { NotificationBell } from "@/components/shared/NotificationBell";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
@@ -19,10 +20,10 @@ export function Header({ onMenuToggle }: HeaderProps) {
         >
           <Menu className="w-5 h-5" />
         </button>
-        <div className="flex items-center gap-2 md:hidden">
+        <Link href="/" className="flex items-center gap-2 md:hidden">
           <img src="/logo-icon.png" alt="SCRUB" className="w-8 h-8" />
           <img src="/logo-word.png" alt="SCRUB" className="h-9 w-auto" />
-        </div>
+        </Link>
       </div>
 
       <div className="flex items-center gap-2">
