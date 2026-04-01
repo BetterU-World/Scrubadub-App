@@ -248,7 +248,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center gap-2">
           <img src="/logo-icon.png" alt="SCRUB" className="w-7 h-7" />
-          <img src="/logo-word.png" alt="SCRUB" className="h-10 w-auto" />
+          <img src="/logo-word.png" alt="SCRUB" className="h-14 w-auto" />
         </div>
         <p className="text-sm text-gray-500 mt-1">{user?.companyName || (user?.role === "affiliate" ? "Affiliate Program" : "")}</p>
       </div>
