@@ -246,7 +246,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
   const sidebarContent = (
     <>
       <div className="p-6 border-b border-gray-200">
-        <Link href="/" className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2 transition-opacity hover:opacity-80">
           <img src="/logo-icon.png" alt="SCRUB" className="w-10 h-10" />
           <img src="/logo-word.png" alt="SCRUB" className="h-12 w-auto" />
         </Link>
