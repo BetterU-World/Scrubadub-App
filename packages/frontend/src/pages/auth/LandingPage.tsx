@@ -234,7 +234,7 @@ export function LandingPage() {
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
           <span className="flex items-center gap-2">
             <img src="/logo-icon.png" alt="SCRUB" className="w-7 h-7" />
-            <span className="text-xl font-bold text-primary-700">SCRUB</span>
+            <img src="/logo-word.png" alt="SCRUB" className="h-7 w-auto" />
           </span>
           <div className="flex items-center gap-3">
             <Link
