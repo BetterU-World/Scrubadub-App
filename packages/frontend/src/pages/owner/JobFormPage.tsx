@@ -15,6 +15,7 @@ const JOB_TYPES = [
   { value: "deep_clean", labelKey: "jobTypes.deep_clean" },
   { value: "turnover", labelKey: "jobTypes.turnover" },
   { value: "move_in_out", labelKey: "jobTypes.move_in_out" },
+  { value: "post_construction", labelKey: "jobTypes.post_construction" },
   { value: "maintenance", labelKey: "jobTypes.maintenance" },
 ] as const;
 

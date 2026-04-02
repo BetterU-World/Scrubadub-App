@@ -3,7 +3,7 @@ import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
 import { requireAuth, requireOwner, logAudit, createNotification } from "../lib/helpers";
-import { FORM_TEMPLATE, MAINTENANCE_FORM_TEMPLATE } from "../lib/constants";
+import { getFormTemplate } from "../lib/constants";
 
 export const createFromTemplate = mutation({
   args: {
@@ -33,7 +33,9 @@ export const createFromTemplate = mutation({
       status: "in_progress",
     });
 
-    const template = job.type === "maintenance" ? MAINTENANCE_FORM_TEMPLATE : FORM_TEMPLATE;
+    // Resolve property type so commercial/office jobs can get the right template
+    const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
+    const template = getFormTemplate(job.type, property?.type);
 
     let order = 0;
     for (const section of template) {

@@ -15,7 +15,8 @@ export const create = mutation({
       v.literal("deep_clean"),
       v.literal("turnover"),
       v.literal("move_in_out"),
-      v.literal("maintenance")
+      v.literal("maintenance"),
+      v.literal("post_construction")
     ),
     scheduledDate: v.string(),
     startTime: v.optional(v.string()),
@@ -89,7 +90,8 @@ export const update = mutation({
         v.literal("deep_clean"),
         v.literal("turnover"),
         v.literal("move_in_out"),
-      v.literal("maintenance")
+        v.literal("maintenance"),
+        v.literal("post_construction")
       )
     ),
     scheduledDate: v.optional(v.string()),

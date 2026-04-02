@@ -19,7 +19,9 @@ export const jobTypeValidator = v.union(
   v.literal("standard"),
   v.literal("deep_clean"),
   v.literal("turnover"),
-  v.literal("move_in_out")
+  v.literal("move_in_out"),
+  v.literal("maintenance"),
+  v.literal("post_construction")
 );
 
 export const jobStatusValidator = v.union(

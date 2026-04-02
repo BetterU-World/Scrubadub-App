@@ -488,7 +488,8 @@
     "deep_clean": "Limpieza profunda",
     "turnover": "Rotación",
     "move_in_out": "Entrada/Salida",
-    "maintenance": "Mantenimiento"
+    "maintenance": "Mantenimiento",
+    "post_construction": "Post-Construcción"
   },
   "jobForm": {
     "propertyShared": "Propiedad (compartida)",
@@ -603,6 +604,9 @@
     "add": "Agregar",
     "lockboxPlaceholder": "Código de caja fuerte, ubicación de llave, etc.",
     "maintenancePlaceholder": "Problemas de mantenimiento o notas actuales",
+    "squareFootage": "Pies Cuadrados",
+    "trashCanCount": "Botes de Basura",
+    "restroomCount": "Baños",
     "ownerNotesPlaceholder": "Notas privadas visibles solo para el propietario",
     "propertyTypes": {
       "residential": "Residencial",

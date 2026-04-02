@@ -118,6 +118,10 @@ export default defineSchema({
     showerGlassDoorCount: v.optional(v.number()),
     maintenanceNotes: v.optional(v.string()),
     ownerNotes: v.optional(v.string()),
+    // ── Expanded property fields (SCRUB expansion) ────────────────
+    squareFootage: v.optional(v.number()),
+    trashCanCount: v.optional(v.number()),
+    restroomCount: v.optional(v.number()),
     active: v.boolean(),
     // ── Property Inventory (Sprint 2) ──────────────────────────────
     inventoryItems: v.optional(v.array(v.object({
@@ -143,7 +147,8 @@ export default defineSchema({
       v.literal("deep_clean"),
       v.literal("turnover"),
       v.literal("move_in_out"),
-      v.literal("maintenance")
+      v.literal("maintenance"),
+      v.literal("post_construction")
     ),
     status: v.union(
       v.literal("scheduled"),
@@ -195,6 +200,9 @@ export default defineSchema({
       sheetSets: v.optional(v.number()),
       pillowCount: v.optional(v.number()),
       ownerNotes: v.optional(v.string()),
+      squareFootage: v.optional(v.number()),
+      trashCanCount: v.optional(v.number()),
+      restroomCount: v.optional(v.number()),
     })),
     // ── Inventory checklist snapshot (Sprint 2, Batch 4) ──────────────
     // Snapshotted from property at job start; cleaners report status per item.

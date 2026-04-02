@@ -488,7 +488,8 @@
     "deep_clean": "Deep Clean",
     "turnover": "Turnover",
     "move_in_out": "Move In/Out",
-    "maintenance": "Maintenance"
+    "maintenance": "Maintenance",
+    "post_construction": "Post-Construction"
   },
   "jobForm": {
     "propertyShared": "Property (shared)",
@@ -603,6 +604,9 @@
     "add": "Add",
     "lockboxPlaceholder": "Lockbox code, key location, etc.",
     "maintenancePlaceholder": "Any ongoing maintenance issues or notes",
+    "squareFootage": "Square Footage",
+    "trashCanCount": "Trash Cans",
+    "restroomCount": "Restrooms",
     "ownerNotesPlaceholder": "Private notes visible only to the property owner",
     "propertyTypes": {
       "residential": "Residential",

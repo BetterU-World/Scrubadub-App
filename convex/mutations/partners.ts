@@ -447,6 +447,9 @@ export const shareJob = mutation({
       sheetSets: property?.sheetSets,
       pillowCount: property?.pillowCount,
       ownerNotes: `Shared from ${fromCompany?.name ?? "partner"}. ${property?.ownerNotes ?? ""}`.trim(),
+      squareFootage: property?.squareFootage,
+      trashCanCount: property?.trashCanCount,
+      restroomCount: property?.restroomCount,
     };
 
     // Create the copied job in the target company (no propertyId — snapshot only)

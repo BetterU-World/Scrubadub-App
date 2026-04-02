@@ -29,6 +29,9 @@ export const create = mutation({
     showerGlassDoorCount: v.optional(v.number()),
     maintenanceNotes: v.optional(v.string()),
     ownerNotes: v.optional(v.string()),
+    squareFootage: v.optional(v.number()),
+    trashCanCount: v.optional(v.number()),
+    restroomCount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const owner = await requireOwner(ctx, args.userId);
@@ -150,6 +153,9 @@ export const update = mutation({
     showerGlassDoorCount: v.optional(v.number()),
     maintenanceNotes: v.optional(v.string()),
     ownerNotes: v.optional(v.string()),
+    squareFootage: v.optional(v.number()),
+    trashCanCount: v.optional(v.number()),
+    restroomCount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const owner = await requireOwner(ctx, args.userId);

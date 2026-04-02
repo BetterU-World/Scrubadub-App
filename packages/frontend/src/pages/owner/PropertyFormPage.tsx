@@ -71,6 +71,9 @@ export function PropertyFormPage() {
   const [pillowCount, setPillowCount] = useState<number | undefined>(undefined);
   const [hasStandaloneTub, setHasStandaloneTub] = useState(false);
   const [showerGlassDoorCount, setShowerGlassDoorCount] = useState<number | undefined>(undefined);
+  const [squareFootage, setSquareFootage] = useState<number | undefined>(undefined);
+  const [trashCanCount, setTrashCanCount] = useState<number | undefined>(undefined);
+  const [restroomCount, setRestroomCount] = useState<number | undefined>(undefined);
   const [maintenanceNotes, setMaintenanceNotes] = useState("");
   const [ownerNotes, setOwnerNotes] = useState("");
   const [error, setError] = useState("");
@@ -91,6 +94,9 @@ export function PropertyFormPage() {
       setPillowCount(existing.pillowCount ?? undefined);
       setHasStandaloneTub((existing as any).hasStandaloneTub ?? false);
       setShowerGlassDoorCount((existing as any).showerGlassDoorCount ?? undefined);
+      setSquareFootage((existing as any).squareFootage ?? undefined);
+      setTrashCanCount((existing as any).trashCanCount ?? undefined);
+      setRestroomCount((existing as any).restroomCount ?? undefined);
       setMaintenanceNotes(existing.maintenanceNotes ?? "");
       setOwnerNotes(existing.ownerNotes ?? "");
     }
@@ -118,6 +124,9 @@ export function PropertyFormPage() {
         pillowCount: pillowCount ?? undefined,
         hasStandaloneTub: hasStandaloneTub || undefined,
         showerGlassDoorCount: showerGlassDoorCount ?? undefined,
+        squareFootage: squareFootage ?? undefined,
+        trashCanCount: trashCanCount ?? undefined,
+        restroomCount: restroomCount ?? undefined,
         maintenanceNotes: maintenanceNotes || undefined,
         ownerNotes: ownerNotes || undefined,
       };
@@ -188,6 +197,49 @@ export function PropertyFormPage() {
           <input className="input-field" value={address} onChange={(e) => setAddress(e.target.value)} required placeholder="123 Main St, City, ST 12345" />
         </div>
 
+        {/* Property details — visible for all types */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t("properties.squareFootage")}</label>
+            <input
+              type="number"
+              min={1}
+              className="input-field"
+              value={squareFootage ?? ""}
+              onChange={(e) => setSquareFootage(e.target.value ? parseInt(e.target.value, 10) : undefined)}
+              placeholder="—"
+            />
+          </div>
+          {(type === "commercial" || type === "office") && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t("properties.trashCanCount")}</label>
+                <input
+                  type="number"
+                  min={0}
+                  className="input-field"
+                  value={trashCanCount ?? ""}
+                  onChange={(e) => setTrashCanCount(e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                  placeholder="—"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t("properties.restroomCount")}</label>
+                <input
+                  type="number"
+                  min={0}
+                  className="input-field"
+                  value={restroomCount ?? ""}
+                  onChange={(e) => setRestroomCount(e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                  placeholder="—"
+                />
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Beds/Baths — hidden for commercial/office */}
+        {type !== "commercial" && type !== "office" && (
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t("properties.beds")}</label>
@@ -213,8 +265,10 @@ export function PropertyFormPage() {
             />
           </div>
         </div>
+        )}
 
-        {/* Bathroom details */}
+        {/* Bathroom details — hidden for commercial/office */}
+        {type !== "commercial" && type !== "office" && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">{t("properties.bathroomDetails")}</label>
           <div className="grid grid-cols-2 gap-4">
@@ -240,6 +294,7 @@ export function PropertyFormPage() {
             </div>
           </div>
         </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">{t("properties.accessInstructions")}</label>
@@ -290,7 +345,8 @@ export function PropertyFormPage() {
           )}
         </div>
 
-        {/* Linen & Supply Counts */}
+        {/* Linen & Supply Counts — hidden for commercial/office */}
+        {type !== "commercial" && type !== "office" && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">{t("properties.linenSupplyCounts")}</label>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -340,6 +396,7 @@ export function PropertyFormPage() {
             </div>
           </div>
         </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">{t("properties.maintenanceNotes")}</label>

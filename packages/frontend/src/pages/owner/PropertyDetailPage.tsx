@@ -187,6 +187,7 @@ export function PropertyDetailPage() {
 
 function DetailsTab({ property }: { property: any }) {
   const { t } = useTranslation();
+  const isCommercialOrOffice = property.type === "commercial" || property.type === "office";
   const hasBathroomDetails =
     property.hasStandaloneTub || property.showerGlassDoorCount != null;
   const hasStructuredAmenities =
@@ -194,6 +195,10 @@ function DetailsTab({ property }: { property: any }) {
     property.sheetSets != null ||
     property.pillowCount != null ||
     property.linenCount != null;
+  const hasExpandedFields =
+    property.squareFootage != null ||
+    property.trashCanCount != null ||
+    property.restroomCount != null;
 
   return (
     <div className="card space-y-6">
@@ -211,7 +216,30 @@ function DetailsTab({ property }: { property: any }) {
         </div>
       </div>
 
-      {(property.beds != null || property.baths != null) && (
+      {hasExpandedFields && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {property.squareFootage != null && (
+            <div className="bg-gray-50 rounded-lg p-3 text-center">
+              <div className="text-2xl font-semibold text-gray-800">{property.squareFootage.toLocaleString()}</div>
+              <div className="text-xs text-gray-500 mt-1">{t("properties.squareFootage")}</div>
+            </div>
+          )}
+          {property.trashCanCount != null && (
+            <div className="bg-gray-50 rounded-lg p-3 text-center">
+              <div className="text-2xl font-semibold text-gray-800">{property.trashCanCount}</div>
+              <div className="text-xs text-gray-500 mt-1">{t("properties.trashCanCount")}</div>
+            </div>
+          )}
+          {property.restroomCount != null && (
+            <div className="bg-gray-50 rounded-lg p-3 text-center">
+              <div className="text-2xl font-semibold text-gray-800">{property.restroomCount}</div>
+              <div className="text-xs text-gray-500 mt-1">{t("properties.restroomCount")}</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!isCommercialOrOffice && (property.beds != null || property.baths != null) && (
         <div className="grid grid-cols-2 gap-4">
           {property.beds != null && (
             <div className="bg-gray-50 rounded-lg p-3 text-center">
@@ -228,7 +256,7 @@ function DetailsTab({ property }: { property: any }) {
         </div>
       )}
 
-      {hasBathroomDetails && (
+      {!isCommercialOrOffice && hasBathroomDetails && (
         <div>
           <h3 className="text-sm font-medium text-gray-500 mb-2">{t("properties.bathroomDetails")}</h3>
           <div className="flex flex-wrap gap-3">
@@ -268,7 +296,7 @@ function DetailsTab({ property }: { property: any }) {
         </div>
       )}
 
-      {hasStructuredAmenities && (
+      {!isCommercialOrOffice && hasStructuredAmenities && (
         <div>
           <h3 className="text-sm font-medium text-gray-500 mb-2">
             {t("properties.linenSupplyCounts")}
