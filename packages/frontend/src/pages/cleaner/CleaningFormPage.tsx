@@ -28,6 +28,25 @@ const SECTIONS = [
   "Final Walkthrough (Client Perspective)",
 ];
 
+/**
+ * Derive unique section names from formItems in their original insertion order.
+ * Falls back to the hardcoded SECTIONS for backward compatibility if no items loaded yet.
+ */
+function getSectionsFromItems(
+  items: Array<{ section: string }> | undefined
+): string[] {
+  if (!items || items.length === 0) return SECTIONS;
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const item of items) {
+    if (!seen.has(item.section)) {
+      seen.add(item.section);
+      result.push(item.section);
+    }
+  }
+  return result;
+}
+
 // Inline keyframes for micro-win animations
 const animationStyles = `
 @keyframes checkPulse {
@@ -447,7 +466,7 @@ export function CleaningFormPage() {
           </div>
 
           {/* Section by section review */}
-          {SECTIONS.map((section) => {
+          {getSectionsFromItems(formItems).map((section) => {
             const items = formItems.filter((i) => i.section === section);
             const done = items.filter((i) => i.completed).length;
             return (
@@ -559,7 +578,7 @@ export function CleaningFormPage() {
 
       {/* All sections — single scroll */}
       <div className="space-y-6">
-        {SECTIONS.map((section) => {
+        {getSectionsFromItems(formItems).map((section) => {
           const items = formItems.filter((i) => i.section === section);
           return (
             <div key={section}>
