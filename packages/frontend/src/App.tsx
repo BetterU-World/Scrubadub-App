@@ -90,6 +90,11 @@ import { PostCheckoutSetupPage } from "@/pages/public/PostCheckoutSetupPage";
 import { CleaningBusinessSoftwarePage } from "@/pages/seo/CleaningBusinessSoftwarePage";
 import { AirbnbCleaningSoftwarePage } from "@/pages/seo/AirbnbCleaningSoftwarePage";
 import { CleaningCompanyManagementSoftwarePage } from "@/pages/seo/CleaningCompanyManagementSoftwarePage";
+import { CleaningChecklistAppPage } from "@/pages/seo/CleaningChecklistAppPage";
+import { JanitorialSoftwarePage } from "@/pages/seo/JanitorialSoftwarePage";
+import { MaidServiceSoftwarePage } from "@/pages/seo/MaidServiceSoftwarePage";
+import { CommercialCleaningSoftwarePage } from "@/pages/seo/CommercialCleaningSoftwarePage";
+import { HouseCleaningBusinessSoftwarePage } from "@/pages/seo/HouseCleaningBusinessSoftwarePage";
 
 import { Footer } from "@/components/layout/Footer";
 
@@ -203,6 +208,8 @@ export default function App() {
     "/terms", "/privacy", "/contact", "/get-started", "/setup",
     "/inventory-templates",
     "/cleaning-business-software", "/airbnb-cleaning-software", "/cleaning-company-management-software",
+    "/cleaning-checklist-app", "/janitorial-software", "/maid-service-software",
+    "/commercial-cleaning-software", "/house-cleaning-business-software",
   ];
   const isKnownRoute = pathname === "/" || knownPrefixes.some((p) => pathname.startsWith(p));
   const slugMatch = !isKnownRoute && /^\/[a-z0-9][a-z0-9-]+/.test(pathname);
@@ -249,6 +256,11 @@ export default function App() {
           <Route path="/cleaning-business-software" component={CleaningBusinessSoftwarePage} />
           <Route path="/airbnb-cleaning-software" component={AirbnbCleaningSoftwarePage} />
           <Route path="/cleaning-company-management-software" component={CleaningCompanyManagementSoftwarePage} />
+          <Route path="/cleaning-checklist-app" component={CleaningChecklistAppPage} />
+          <Route path="/janitorial-software" component={JanitorialSoftwarePage} />
+          <Route path="/maid-service-software" component={MaidServiceSoftwarePage} />
+          <Route path="/commercial-cleaning-software" component={CommercialCleaningSoftwarePage} />
+          <Route path="/house-cleaning-business-software" component={HouseCleaningBusinessSoftwarePage} />
           <Route>
             <Redirect to="/" />
           </Route>

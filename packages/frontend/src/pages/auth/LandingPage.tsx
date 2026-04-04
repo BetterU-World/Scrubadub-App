@@ -508,6 +508,11 @@ export function LandingPage() {
             <Link href="/cleaning-business-software" className="hover:text-gray-700">Cleaning Business Software</Link>
             <Link href="/airbnb-cleaning-software" className="hover:text-gray-700">Airbnb Cleaning Software</Link>
             <Link href="/cleaning-company-management-software" className="hover:text-gray-700">Cleaning Company Management Software</Link>
+            <Link href="/cleaning-checklist-app" className="hover:text-gray-700">Cleaning Checklist App</Link>
+            <Link href="/janitorial-software" className="hover:text-gray-700">Janitorial Software</Link>
+            <Link href="/maid-service-software" className="hover:text-gray-700">Maid Service Software</Link>
+            <Link href="/commercial-cleaning-software" className="hover:text-gray-700">Commercial Cleaning Software</Link>
+            <Link href="/house-cleaning-business-software" className="hover:text-gray-700">House Cleaning Business Software</Link>
           </nav>
         </div>
       </section>
