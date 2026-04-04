@@ -486,7 +486,7 @@ export function LandingPage() {
       </section>
 
       {/* Final CTA */}
-      <section className="pb-20 px-4 text-center">
+      <section className="pb-16 px-4 text-center">
         <h2 className="text-2xl font-bold text-gray-900 mb-6">
           Ready to run your operations the Gold Standard way?
         </h2>
@@ -497,6 +497,18 @@ export function LandingPage() {
           <Link href="/login" className="btn-secondary px-6 py-2.5">
             Sign In
           </Link>
+        </div>
+      </section>
+
+      {/* SEO Footer Links */}
+      <section className="border-t border-gray-200 bg-white py-8 px-4">
+        <div className="max-w-5xl mx-auto text-center">
+          <p className="text-xs text-gray-400 mb-3">Learn more about SCRUB</p>
+          <nav className="flex flex-wrap justify-center gap-4 text-xs text-gray-500">
+            <Link href="/cleaning-business-software" className="hover:text-gray-700">Cleaning Business Software</Link>
+            <Link href="/airbnb-cleaning-software" className="hover:text-gray-700">Airbnb Cleaning Software</Link>
+            <Link href="/cleaning-company-management-software" className="hover:text-gray-700">Cleaning Company Management Software</Link>
+          </nav>
         </div>
       </section>
     </div>

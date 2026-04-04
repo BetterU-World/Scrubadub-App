@@ -86,6 +86,11 @@ import { ContactPage } from "@/pages/public/ContactPage";
 import { GetStartedPage } from "@/pages/public/GetStartedPage";
 import { PostCheckoutSetupPage } from "@/pages/public/PostCheckoutSetupPage";
 
+// SEO landing pages
+import { CleaningBusinessSoftwarePage } from "@/pages/seo/CleaningBusinessSoftwarePage";
+import { AirbnbCleaningSoftwarePage } from "@/pages/seo/AirbnbCleaningSoftwarePage";
+import { CleaningCompanyManagementSoftwarePage } from "@/pages/seo/CleaningCompanyManagementSoftwarePage";
+
 import { Footer } from "@/components/layout/Footer";
 
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
@@ -197,6 +202,7 @@ export default function App() {
     "/admin", "/site", "/affiliate", "/availability", "/owner", "/settings", "/payments",
     "/terms", "/privacy", "/contact", "/get-started", "/setup",
     "/inventory-templates",
+    "/cleaning-business-software", "/airbnb-cleaning-software", "/cleaning-company-management-software",
   ];
   const isKnownRoute = pathname === "/" || knownPrefixes.some((p) => pathname.startsWith(p));
   const slugMatch = !isKnownRoute && /^\/[a-z0-9][a-z0-9-]+/.test(pathname);
@@ -240,6 +246,9 @@ export default function App() {
           <Route path="/terms" component={TermsPage} />
           <Route path="/privacy" component={PrivacyPage} />
           <Route path="/contact" component={ContactPage} />
+          <Route path="/cleaning-business-software" component={CleaningBusinessSoftwarePage} />
+          <Route path="/airbnb-cleaning-software" component={AirbnbCleaningSoftwarePage} />
+          <Route path="/cleaning-company-management-software" component={CleaningCompanyManagementSoftwarePage} />
           <Route>
             <Redirect to="/" />
           </Route>
