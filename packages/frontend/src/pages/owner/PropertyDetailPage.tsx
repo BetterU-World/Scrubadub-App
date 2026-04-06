@@ -46,9 +46,11 @@ import {
   Trash2,
   X,
   ClipboardList,
+  Calendar,
 } from "lucide-react";
+import { CalendarSyncTab } from "@/components/owner/CalendarSyncTab";
 
-type Tab = "details" | "inventory" | "history";
+type Tab = "details" | "inventory" | "history" | "calendar";
 
 export function PropertyDetailPage() {
   const params = useParams<{ id: string }>();
@@ -166,6 +168,17 @@ export function PropertyDetailPage() {
           <Clock className="w-4 h-4" />
           {t("properties.history")}
         </button>
+        <button
+          onClick={() => setActiveTab("calendar")}
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
+            activeTab === "calendar"
+              ? "border-primary-600 text-primary-600"
+              : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+          }`}
+        >
+          <Calendar className="w-4 h-4" />
+          Calendar Sync
+        </button>
       </div>
 
       {activeTab === "details" && <DetailsTab property={property} />}
@@ -179,6 +192,14 @@ export function PropertyDetailPage() {
         <HistoryTab
           propertyId={params.id as Id<"properties">}
           history={history}
+        />
+      )}
+      {activeTab === "calendar" && (
+        <CalendarSyncTab
+          propertyId={property._id}
+          companyId={property.companyId}
+          userId={user!._id}
+          propertyName={property.name}
         />
       )}
     </div>
