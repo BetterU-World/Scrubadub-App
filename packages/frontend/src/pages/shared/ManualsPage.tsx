@@ -201,7 +201,7 @@ export function ManualsPage() {
         steps={[
           "Manuals are guides and reference docs for your team and clients.",
           "Browse by category — app guides, cleaner instructions, and owner resources are organized separately.",
-          "Open any manual to read it. Superadmins can seed or export manuals from the header actions.",
+          "Share these with your cleaners so everyone follows the same gold-standard process every time.",
         ]}
       />
 
