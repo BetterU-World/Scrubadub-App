@@ -68,8 +68,20 @@ async function maybeCreateJobForReservation(
   // ── Gate 1: reservation already has a linked job ──────────────────
   if (reservation.linkedJobId) return null;
 
-  // ── Gate 2: reservation was flagged to skip job creation ──────────
-  if (reservation.jobCreationSkipped) return null;
+  // ── Gate 2: reservation was permanently flagged to skip ────────────
+  //   Some skip reasons are permanent (historical cutoff, past checkout).
+  //   Others are temporary (rules were disabled, duplicate job existed)
+  //   and should be re-evaluated on each sync.
+  const PERMANENT_SKIP_REASONS = new Set([
+    "before_initial_sync_cutoff",
+    "checkout_in_past",
+  ]);
+  if (
+    reservation.jobCreationSkipped &&
+    PERMANENT_SKIP_REASONS.has(reservation.skipReason ?? "")
+  ) {
+    return null;
+  }
 
   // ── Gate 3: checkout is in the past (strictly before today) ───────
   //   Same-day checkouts are allowed — the job is for today.
@@ -168,8 +180,12 @@ async function maybeCreateJobForReservation(
     sourceReservationId: reservationId,
   });
 
-  // ── Link reservation back to job ──────────────────────────────────
-  await ctx.db.patch(reservationId, { linkedJobId: jobId });
+  // ── Link reservation back to job and clear any temporary skip flags ─
+  await ctx.db.patch(reservationId, {
+    linkedJobId: jobId,
+    jobCreationSkipped: undefined,
+    skipReason: undefined,
+  });
 
   // ── Audit log ─────────────────────────────────────────────────────
   await ctx.db.insert("auditLog", {
@@ -332,11 +348,10 @@ export const processSyncResults = internalMutation({
 
         await ctx.db.patch(existing._id, updates);
 
-        // For reactivated reservations that don't yet have a job, try creation
-        if (
-          existing.status === "cancelled" &&
-          !existing.linkedJobId
-        ) {
+        // Retry job creation for reservations that don't yet have a job.
+        // This covers: reactivated cancelled reservations, and reservations
+        // previously skipped for a temporary reason (rules disabled, duplicate).
+        if (!existing.linkedJobId) {
           const updated = await ctx.db.get(existing._id);
           if (updated) {
             const jobId = await maybeCreateJobForReservation(
