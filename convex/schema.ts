@@ -204,6 +204,15 @@ export default defineSchema({
       trashCanCount: v.optional(v.number()),
       restroomCount: v.optional(v.number()),
     })),
+    // ── Calendar sync source metadata ──────────────────────────────────
+    source: v.optional(v.union(v.literal("manual"), v.literal("calendar_sync"))),
+    sourceConnectionId: v.optional(v.id("calendarConnections")),
+    sourcePlatform: v.optional(v.union(
+      v.literal("airbnb"),
+      v.literal("vrbo"),
+      v.literal("other")
+    )),
+    sourceReservationId: v.optional(v.id("calendarReservations")),
     // ── Inventory checklist snapshot (Sprint 2, Batch 4) ──────────────
     // Snapshotted from property at job start; cleaners report status per item.
     inventoryChecklist: v.optional(v.array(v.object({
@@ -318,7 +327,8 @@ export default defineSchema({
       v.literal("shared_job_accepted"),
       v.literal("shared_job_rejected"),
       v.literal("new_client_request"),
-      v.literal("inspection_submitted")
+      v.literal("inspection_submitted"),
+      v.literal("calendar_sync_alert")
     ),
     title: v.string(),
     message: v.string(),
@@ -775,4 +785,85 @@ export default defineSchema({
     windowStartMs: v.number(),
     count: v.number(),
   }).index("by_key", ["key"]),
+
+  // ── Calendar Sync (iCal feed integration) ────────────────────────
+
+  calendarConnections: defineTable({
+    companyId: v.id("companies"),
+    propertyId: v.id("properties"),
+    platform: v.union(
+      v.literal("airbnb"),
+      v.literal("vrbo"),
+      v.literal("other")
+    ),
+    icalUrl: v.string(),
+    label: v.optional(v.string()),
+    enabled: v.boolean(),
+    lastSyncAt: v.optional(v.number()),
+    lastSyncStatus: v.union(
+      v.literal("success"),
+      v.literal("error"),
+      v.literal("pending")
+    ),
+    lastSyncError: v.optional(v.string()),
+    // ISO date string — reservations with checkOut <= this date are skipped
+    // on first sync to prevent historical job creation
+    initialSyncCutoff: v.string(),
+    consecutiveErrors: v.number(),
+    createdAt: v.number(),
+    createdBy: v.id("users"),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_propertyId", ["propertyId"])
+    .index("by_enabled", ["enabled"]),
+
+  calendarReservations: defineTable({
+    companyId: v.id("companies"),
+    connectionId: v.id("calendarConnections"),
+    propertyId: v.id("properties"),
+    externalUid: v.string(),
+    summary: v.optional(v.string()),
+    checkIn: v.string(),
+    checkOut: v.string(),
+    dtStamp: v.optional(v.string()),
+    rawHash: v.string(),
+    status: v.union(v.literal("active"), v.literal("cancelled")),
+    linkedJobId: v.optional(v.id("jobs")),
+    firstSeenAt: v.number(),
+    lastSeenAt: v.number(),
+    cancelledAt: v.optional(v.number()),
+    // Flags for owner review (set by sync processor, not auto-acted upon)
+    jobCreationSkipped: v.optional(v.boolean()),
+    skipReason: v.optional(v.string()),
+    dateConflict: v.optional(v.boolean()),
+    originalCheckOut: v.optional(v.string()),
+    cancellationFlagged: v.optional(v.boolean()),
+  })
+    .index("by_connectionId", ["connectionId"])
+    .index("by_propertyId", ["propertyId"])
+    .index("by_externalUid", ["externalUid"])
+    .index("by_companyId_status", ["companyId", "status"]),
+
+  calendarSyncLogs: defineTable({
+    connectionId: v.id("calendarConnections"),
+    companyId: v.id("companies"),
+    syncedAt: v.number(),
+    status: v.union(v.literal("success"), v.literal("error")),
+    eventsFound: v.number(),
+    reservationsCreated: v.number(),
+    errorMessage: v.optional(v.string()),
+  }).index("by_connectionId", ["connectionId"]),
+
+  jobAutomationRules: defineTable({
+    companyId: v.id("companies"),
+    propertyId: v.id("properties"),
+    enabled: v.boolean(),
+    jobType: v.string(),
+    defaultDurationMinutes: v.number(),
+    // Maps to jobs.startTime — the time-of-day the job should begin.
+    // System default is "16:00". Empty string means owner wants it blank.
+    defaultStartTime: v.optional(v.string()),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_propertyId", ["propertyId"]),
 });
