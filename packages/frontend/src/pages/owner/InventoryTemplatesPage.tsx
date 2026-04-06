@@ -73,7 +73,7 @@ export function InventoryTemplatesPage() {
         steps={[
           "Inventory templates define reusable supply checklists for your properties.",
           "Create a template, add items by category, then assign it to one or more properties so cleaners know what to restock.",
-          "Edit or delete templates anytime. Changes apply the next time a cleaner views the property inventory.",
+          "Edit or delete templates anytime. Assigned properties will use those templates in the inventory workflow.",
         ]}
       />
 
