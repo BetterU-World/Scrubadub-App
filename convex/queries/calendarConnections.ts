@@ -1,6 +1,17 @@
-import { query } from "../_generated/server";
+import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { assertCompanyAccess } from "../lib/auth";
+
+/**
+ * Internal query — read a single connection by ID.
+ * Used by the sync action to get connection details without auth checks.
+ */
+export const getConnectionInternal = internalQuery({
+  args: { connectionId: v.id("calendarConnections") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.connectionId);
+  },
+});
 
 export const listByProperty = query({
   args: {
