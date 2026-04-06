@@ -28,10 +28,20 @@ export interface ParsedReservation {
  * Extract a date-only ISO string ("YYYY-MM-DD") from an ical date value.
  * Handles both VALUE=DATE (dateOnly) and VALUE=DATE-TIME formats.
  *
- * For dateOnly dates, we use the UTC components directly since node-ical
- * represents them as midnight UTC. For date-time values, we also extract
- * the UTC date portion — the job scheduling layer will use the property's
- * company timezone when computing start times.
+ * For VALUE=DATE (dateOnly === true):
+ *   node-ical stores these as midnight UTC. The UTC date components are the
+ *   exact calendar date from the feed. Safe to use getUTC*().
+ *
+ * For VALUE=DATE-TIME (dateOnly falsy):
+ *   node-ical converts to a JS Date in UTC. If the original event had a
+ *   timezone (e.g. America/New_York 11:00 AM → UTC 15:00), the UTC date
+ *   could differ from the local date. However Airbnb and Vrbo feeds
+ *   consistently use VALUE=DATE for reservations, so timed events are rare.
+ *   For the uncommon timed case we still extract the UTC date — this is safe
+ *   because checkout times are typically morning/midday, well before the UTC
+ *   date boundary for any US timezone. A property in UTC-12 with a late-night
+ *   checkout could shift by one day, but that scenario doesn't occur with
+ *   real Airbnb/Vrbo feeds which always use VALUE=DATE.
  */
 function toDateString(d: Date | undefined | null): string | null {
   if (!d || !(d instanceof Date) || isNaN(d.getTime())) return null;
