@@ -139,9 +139,9 @@ function AffiliatePageInner({
       />
       <HowItWorks
         steps={[
-          "Share your unique referral link with other cleaning business owners to earn rewards.",
-          "When someone signs up using your link, they appear in your Referrals tab. Track earnings under Revenue and Ledger.",
-          "Copy your link, share it on social media, and request payouts once you've accumulated a balance.",
+          "This is your referral hub for earning rewards by growing the SCRUB community.",
+          "Every owner who signs up through your unique link is tracked here, along with your earnings and payout history.",
+          "Share your link, monitor your referrals, and request payouts when you're ready.",
         ]}
       />
 

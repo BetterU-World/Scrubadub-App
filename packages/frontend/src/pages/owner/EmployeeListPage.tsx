@@ -152,9 +152,9 @@ export function EmployeeListPage() {
       />
       <HowItWorks
         steps={[
-          "This page shows all cleaners and employees on your team.",
-          "Each person's status, role, and contact info are listed. The usage bar shows how many cleaner slots you've used on your plan.",
-          "Invite new team members with the button above. Click any employee to view their profile or manage their access.",
+          "This is your team roster — every cleaner and employee in your company.",
+          "Roles, statuses, and contact info are tracked here. Your plan's cleaner capacity is shown so you always know where you stand.",
+          "Use this page to invite new team members, review profiles, and manage access.",
         ]}
       />
 

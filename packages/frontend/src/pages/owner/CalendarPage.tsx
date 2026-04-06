@@ -195,9 +195,9 @@ export function CalendarPage() {
       <PageHeader title={t("calendar.title")} />
       <HowItWorks
         steps={[
-          "This page shows all scheduled cleaning jobs on a calendar view.",
-          "Use the month, week, or day tabs to change your view. Filter by property or cleaner to narrow results.",
-          "Click any job to view its details. Sync external calendars (Airbnb, Vrbo) from individual property settings.",
+          "This is your calendar view of every scheduled clean across all properties.",
+          "Jobs appear automatically as they're created. Filter by property or cleaner, and switch between month, week, or day views.",
+          "Use this page to spot gaps, catch conflicts, and keep your schedule running smoothly.",
         ]}
       />
 

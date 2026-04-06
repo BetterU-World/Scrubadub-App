@@ -130,9 +130,9 @@ export function SiteSetupPage() {
       />
       <HowItWorks
         steps={[
-          "Build a public booking page for your cleaning business in minutes.",
-          "Fill in your brand name, bio, services, and contact info. Choose a template and pick a URL slug.",
-          "Hit save to publish your site. Share the link with clients so they can request quotes directly.",
+          "This is where you build and manage your public-facing booking website.",
+          "Your brand, services, and contact info power a hosted page where clients can request quotes directly.",
+          "Fill in your details, choose a template, and publish. Share the link anywhere to start getting requests.",
         ]}
       />
 
