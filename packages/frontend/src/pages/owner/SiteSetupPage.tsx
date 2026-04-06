@@ -132,7 +132,7 @@ export function SiteSetupPage() {
         steps={[
           "This is where you build and manage your public-facing booking website.",
           "Your brand, services, and contact info power a hosted page where clients can request quotes directly.",
-          "Fill in your details, choose a template, and publish. Share the link anywhere to start getting requests.",
+          "Fill in your details, choose a template, and publish. Share the link to start receiving client requests.",
         ]}
       />
 

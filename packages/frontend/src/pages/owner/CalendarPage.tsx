@@ -196,7 +196,7 @@ export function CalendarPage() {
       <HowItWorks
         steps={[
           "This is your calendar view of every scheduled clean across all properties.",
-          "Jobs appear automatically as they're created. Filter by property or cleaner, and switch between month, week, or day views.",
+          "Jobs appear automatically as they're scheduled. Filter by property or cleaner, and switch between month, week, or day views.",
           "Use this page to spot gaps, catch conflicts, and keep your schedule running smoothly.",
         ]}
       />
