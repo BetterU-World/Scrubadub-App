@@ -1,6 +1,8 @@
 import { internalMutation, mutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
+import { Doc, Id } from "../_generated/dataModel";
+import { MutationCtx } from "../_generated/server";
 import { requireOwner, logAudit } from "../lib/helpers";
 
 /** Sync interval: connections are eligible for sync after this many ms. */
@@ -8,6 +10,12 @@ const SYNC_INTERVAL_MS = 60 * 60 * 1000; // 60 minutes
 
 /** Stagger delay between scheduling sync actions to avoid burst. */
 const STAGGER_MS = 2_000; // 2 seconds
+
+/** Valid job types from the jobs schema. */
+const VALID_JOB_TYPES = new Set([
+  "standard", "deep_clean", "turnover", "move_in_out", "maintenance", "post_construction",
+]);
+type JobType = "standard" | "deep_clean" | "turnover" | "move_in_out" | "maintenance" | "post_construction";
 
 /**
  * Cron tick — called every 15 minutes by the cron scheduler.
@@ -46,15 +54,173 @@ export const cronTick = internalMutation({
 });
 
 /**
+ * Attempt to create a calendar-sync job for a reservation.
+ *
+ * Returns the new job ID, or null if creation was skipped (with the
+ * reservation flagged accordingly).
+ */
+async function maybeCreateJobForReservation(
+  ctx: MutationCtx,
+  reservationId: Id<"calendarReservations">,
+  reservation: Doc<"calendarReservations">,
+  connection: Doc<"calendarConnections">,
+): Promise<Id<"jobs"> | null> {
+  // ── Gate 1: reservation already has a linked job ──────────────────
+  if (reservation.linkedJobId) return null;
+
+  // ── Gate 2: reservation was flagged to skip job creation ──────────
+  if (reservation.jobCreationSkipped) return null;
+
+  // ── Gate 3: checkout is in the past (strictly before today) ───────
+  //   Same-day checkouts are allowed — the job is for today.
+  const today = new Date().toISOString().slice(0, 10);
+  if (reservation.checkOut < today) {
+    await ctx.db.patch(reservationId, {
+      jobCreationSkipped: true,
+      skipReason: "checkout_in_past",
+    });
+    return null;
+  }
+
+  // ── Gate 4: automation rules exist and are enabled ────────────────
+  const rule = await ctx.db
+    .query("jobAutomationRules")
+    .withIndex("by_propertyId", (q) =>
+      q.eq("propertyId", reservation.propertyId)
+    )
+    .first();
+
+  if (!rule || !rule.enabled) {
+    await ctx.db.patch(reservationId, {
+      jobCreationSkipped: true,
+      skipReason: "automation_rules_disabled",
+    });
+    return null;
+  }
+
+  // ── Gate 5: no existing non-cancelled calendar-sync job for this
+  //   property + scheduledDate (duplicate prevention) ────────────────
+  const existingJobs = await ctx.db
+    .query("jobs")
+    .withIndex("by_propertyId", (q) =>
+      q.eq("propertyId", reservation.propertyId)
+    )
+    .filter((q) =>
+      q.and(
+        q.eq(q.field("scheduledDate"), reservation.checkOut),
+        q.eq(q.field("source"), "calendar_sync"),
+        q.neq(q.field("status"), "cancelled")
+      )
+    )
+    .first();
+
+  if (existingJobs) {
+    await ctx.db.patch(reservationId, {
+      jobCreationSkipped: true,
+      skipReason: "duplicate_checkout_date",
+    });
+    return null;
+  }
+
+  // ── Resolve job fields from automation rules ──────────────────────
+
+  // Validate job type — fall back to "turnover" if rule has an invalid value
+  const jobType: JobType = VALID_JOB_TYPES.has(rule.jobType)
+    ? (rule.jobType as JobType)
+    : "turnover";
+
+  // Resolve startTime from rules:
+  //   undefined (not set) → system default "16:00"
+  //   "" (empty string)   → no startTime on the job
+  //   "HH:MM"             → use that value
+  let startTime: string | undefined;
+  if (rule.defaultStartTime === undefined) {
+    startTime = "16:00";
+  } else if (rule.defaultStartTime === "") {
+    startTime = undefined;
+  } else {
+    startTime = rule.defaultStartTime;
+  }
+
+  const durationMinutes = rule.defaultDurationMinutes ?? 180;
+
+  // ── Create the job ────────────────────────────────────────────────
+
+  const property = await ctx.db.get(reservation.propertyId);
+  const propertyName = property?.name ?? "a property";
+
+  const jobId = await ctx.db.insert("jobs", {
+    companyId: reservation.companyId,
+    propertyId: reservation.propertyId,
+    cleanerIds: [],
+    type: jobType,
+    status: "scheduled",
+    scheduledDate: reservation.checkOut,
+    startTime,
+    durationMinutes,
+    notes: `Auto-created from ${connection.platform} calendar sync`,
+    requireConfirmation: true,
+    reworkCount: 0,
+    // Calendar sync source metadata
+    source: "calendar_sync",
+    sourceConnectionId: connection._id,
+    sourcePlatform: connection.platform,
+    sourceReservationId: reservationId,
+  });
+
+  // ── Link reservation back to job ──────────────────────────────────
+  await ctx.db.patch(reservationId, { linkedJobId: jobId });
+
+  // ── Audit log ─────────────────────────────────────────────────────
+  await ctx.db.insert("auditLog", {
+    companyId: reservation.companyId,
+    userId: connection.createdBy,
+    action: "calendar_sync_create_job",
+    entityType: "job",
+    entityId: jobId,
+    details: `Auto-created from ${connection.platform} reservation ${reservation.externalUid} for ${propertyName} on ${reservation.checkOut}`,
+    timestamp: Date.now(),
+  });
+
+  // ── Notify the owner ──────────────────────────────────────────────
+  // Find the company owner(s) to notify
+  const owners = await ctx.db
+    .query("users")
+    .withIndex("by_companyId", (q) =>
+      q.eq("companyId", reservation.companyId)
+    )
+    .filter((q) =>
+      q.and(
+        q.eq(q.field("role"), "owner"),
+        q.eq(q.field("status"), "active")
+      )
+    )
+    .collect();
+
+  for (const owner of owners) {
+    await ctx.db.insert("notifications", {
+      companyId: reservation.companyId,
+      userId: owner._id,
+      type: "calendar_sync_alert",
+      title: "New Turnover Job Created",
+      message: `A cleaning job for ${propertyName} on ${reservation.checkOut} was auto-created from ${connection.platform}. Please assign a cleaner.`,
+      read: false,
+      relatedJobId: jobId,
+    });
+  }
+
+  return jobId;
+}
+
+/**
  * Process parsed iCal sync results for a single connection.
  *
  * Responsibilities:
  *   - Create or update calendarReservations
+ *   - Auto-create unassigned jobs for eligible reservations
  *   - Detect cancelled reservations (UIDs that disappeared from feed)
  *   - Update connection sync status
  *   - Write sync log entry
- *
- * Does NOT create jobs — that is a future phase.
  */
 export const processSyncResults = internalMutation({
   args: {
@@ -83,6 +249,7 @@ export const processSyncResults = internalMutation({
     let reservationsCreated = 0;
     let reservationsUpdated = 0;
     let reservationsCancelled = 0;
+    let jobsCreated = 0;
 
     // Build a set of UIDs present in this sync for cancellation detection
     const incomingUids = new Set(args.reservations.map((r) => r.uid));
@@ -101,13 +268,9 @@ export const processSyncResults = internalMutation({
 
       if (!existing) {
         // ── New reservation ────────────────────────────────────────────
-        //
-        // Determine if this reservation falls before the initial sync cutoff.
-        // Reservations with checkOut <= initialSyncCutoff are stored for
-        // history but flagged so future job creation skips them.
         const beforeCutoff = res.checkOut <= connection.initialSyncCutoff;
 
-        await ctx.db.insert("calendarReservations", {
+        const reservationId = await ctx.db.insert("calendarReservations", {
           companyId: connection.companyId,
           connectionId: args.connectionId,
           propertyId: connection.propertyId,
@@ -120,7 +283,6 @@ export const processSyncResults = internalMutation({
           status: "active",
           firstSeenAt: now,
           lastSeenAt: now,
-          // Historical reservations are stored but flagged for skip
           ...(beforeCutoff
             ? {
                 jobCreationSkipped: true,
@@ -129,6 +291,17 @@ export const processSyncResults = internalMutation({
             : {}),
         });
         reservationsCreated++;
+
+        // Attempt job creation for eligible new reservations
+        if (!beforeCutoff) {
+          const reservation = await ctx.db.get(reservationId);
+          if (reservation) {
+            const jobId = await maybeCreateJobForReservation(
+              ctx, reservationId, reservation, connection
+            );
+            if (jobId) jobsCreated++;
+          }
+        }
       } else {
         // ── Existing reservation ───────────────────────────────────────
 
@@ -158,6 +331,20 @@ export const processSyncResults = internalMutation({
         }
 
         await ctx.db.patch(existing._id, updates);
+
+        // For reactivated reservations that don't yet have a job, try creation
+        if (
+          existing.status === "cancelled" &&
+          !existing.linkedJobId
+        ) {
+          const updated = await ctx.db.get(existing._id);
+          if (updated) {
+            const jobId = await maybeCreateJobForReservation(
+              ctx, existing._id, updated, connection
+            );
+            if (jobId) jobsCreated++;
+          }
+        }
       }
     }
 
@@ -180,7 +367,7 @@ export const processSyncResults = internalMutation({
           cancelledAt: now,
         };
 
-        // If a job was linked, flag for owner review
+        // If a job was linked, flag for owner review (do NOT auto-cancel)
         if (existing.linkedJobId) {
           updates.cancellationFlagged = true;
         }
@@ -215,7 +402,7 @@ export const processSyncResults = internalMutation({
       `[calendarSync] Connection ${args.connectionId}: ` +
         `${args.totalEvents} events, ${reservationsCreated} new, ` +
         `${reservationsUpdated} updated, ${reservationsCancelled} cancelled, ` +
-        `${args.skipped} skipped`
+        `${jobsCreated} jobs created, ${args.skipped} skipped`
     );
   },
 });
