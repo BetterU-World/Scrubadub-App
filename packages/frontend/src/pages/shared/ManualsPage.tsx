@@ -199,9 +199,9 @@ export function ManualsPage() {
       />
       <HowItWorks
         steps={[
-          "Manuals are guides and reference docs for your team and clients.",
-          "Browse by category — app guides, cleaner instructions, and owner resources are organized separately.",
-          "Share these with your cleaners so everyone follows the same gold-standard process every time.",
+          "This is where you manage your team's cleaning standards and reference docs.",
+          "Manuals define how work should be done across your company, organized by category for easy access.",
+          "Share these with your cleaners so every clean meets your standard.",
         ]}
       />
 

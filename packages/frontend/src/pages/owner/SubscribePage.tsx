@@ -73,9 +73,9 @@ export function SubscribePage() {
         />
         <HowItWorks
           steps={[
-            "This page shows your current SCRUB subscription and billing status.",
-            "Your active plan and status are displayed below. Stripe handles all payment processing securely.",
-            "Click Manage Billing to update your card, change plans, or view invoices in the Stripe portal.",
+            "This is where you manage your SCRUB subscription and billing.",
+            "Your current plan and payment status are shown below. All billing is handled securely through Stripe.",
+            "Use Manage Billing to update your card, switch plans, or review invoices.",
           ]}
         />
         <div className="card max-w-md">
@@ -112,9 +112,9 @@ export function SubscribePage() {
       />
       <HowItWorks
         steps={[
-          "Choose a plan that fits your team size to get started with SCRUB.",
-          "All plans include a 14-day free trial. Pick Solo, Team, or Pro, then hit Start Trial to activate.",
-          "You won't be charged until the trial ends. You can cancel or switch plans anytime from the billing portal.",
+          "This is where you choose a SCRUB plan that fits your team.",
+          "Every plan includes a 14-day free trial. Pick the tier that matches your team size and start immediately.",
+          "You won't be charged until the trial ends. Cancel or switch plans anytime.",
         ]}
       />
       <div className="max-w-md">

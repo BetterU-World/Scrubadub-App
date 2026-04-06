@@ -35,9 +35,9 @@ export function PaymentsHubPage() {
       />
       <HowItWorks
         steps={[
-          "This is your payments hub for settling balances with partners and cleaners.",
-          "Partner Settlements tracks amounts owed to or from co-hosting partners. Cleaner Payments tracks what you owe your cleaning team.",
-          "Open each section to review open balances, mark payments as complete, and keep your books up to date.",
+          "This is where you manage outgoing payments tied to your operations.",
+          "Settlements and cleaner payments are tracked here as work gets completed.",
+          "Use this page to review balances, record payments, and keep everything up to date.",
         ]}
       />
 

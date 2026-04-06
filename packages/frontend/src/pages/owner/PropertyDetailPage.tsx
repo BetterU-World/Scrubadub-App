@@ -136,9 +136,9 @@ export function PropertyDetailPage() {
       />
       <HowItWorks
         steps={[
-          "This is the detail page for a single property.",
-          "Switch between tabs to view property info, manage inventory, review job history, or set up calendar sync.",
-          "Edit the property, archive it when no longer active, or sync external calendars from the Calendar tab.",
+          "This is the operational hub for a single property.",
+          "Details, inventory, job history, and calendar sync are organized into tabs so everything lives in one place.",
+          "Use this page to keep property info current, manage supplies, and connect external calendars.",
         ]}
       />
 

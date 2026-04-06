@@ -141,9 +141,9 @@ export function JobListPage() {
       />
       <HowItWorks
         steps={[
-          "This page lists all cleaning jobs across your properties.",
-          "Use the date range tabs and search bar to find specific jobs. Sort by date, property, or status.",
-          "Click any job to view details, or hit Schedule Job to create a new one.",
+          "This is where you manage all cleaning jobs across your properties.",
+          "Jobs move from scheduled to completed as your team works through them. Filter by date, property, or status to find what you need.",
+          "Use this page to assign cleaners, track progress, and stay on top of every clean.",
         ]}
       />
 
