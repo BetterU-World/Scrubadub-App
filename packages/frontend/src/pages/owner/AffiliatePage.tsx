@@ -5,6 +5,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { HowItWorks } from "@/components/ui/HowItWorks";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { AffiliateRevenueTab } from "@/components/affiliate/AffiliateRevenueTab";
 import { AffiliateLedgerTab } from "@/components/affiliate/AffiliateLedgerTab";
@@ -135,6 +136,13 @@ function AffiliatePageInner({
       <PageHeader
         title={t("affiliate.title")}
         description={t("affiliate.description")}
+      />
+      <HowItWorks
+        steps={[
+          "Share your unique referral link with other cleaning business owners to earn rewards.",
+          "When someone signs up using your link, they appear in your Referrals tab. Track earnings under Revenue and Ledger.",
+          "Copy your link, share it on social media, and request payouts once you've accumulated a balance.",
+        ]}
       />
 
       {/* Tab nav */}
