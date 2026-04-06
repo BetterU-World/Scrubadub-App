@@ -4,6 +4,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { HowItWorks } from "@/components/ui/HowItWorks";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -132,6 +133,13 @@ export function PropertyDetailPage() {
             </Link>
           </div>
         }
+      />
+      <HowItWorks
+        steps={[
+          "This is the detail page for a single property.",
+          "Switch between tabs to view property info, manage inventory, review job history, or set up calendar sync.",
+          "Edit the property, archive it when no longer active, or sync external calendars from the Calendar tab.",
+        ]}
       />
 
       {/* Tabs */}

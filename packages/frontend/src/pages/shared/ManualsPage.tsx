@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { HowItWorks } from "@/components/ui/HowItWorks";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BookOpen, ExternalLink, Users, Sparkles, AppWindow, BookMarked, Upload, Download, X, Check } from "lucide-react";
@@ -195,6 +196,13 @@ export function ManualsPage() {
             </div>
           )
         }
+      />
+      <HowItWorks
+        steps={[
+          "Manuals are guides and reference docs for your team and clients.",
+          "Browse by category — app guides, cleaner instructions, and owner resources are organized separately.",
+          "Open any manual to read it. Superadmins can seed or export manuals from the header actions.",
+        ]}
       />
 
       <div className="space-y-8 max-w-2xl">

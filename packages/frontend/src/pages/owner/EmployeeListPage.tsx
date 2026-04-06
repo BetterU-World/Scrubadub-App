@@ -3,6 +3,7 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { HowItWorks } from "@/components/ui/HowItWorks";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -148,6 +149,13 @@ export function EmployeeListPage() {
             <UserPlus className="w-4 h-4" /> {t("employees.inviteEmployee")}
           </button>
         }
+      />
+      <HowItWorks
+        steps={[
+          "This page shows all cleaners and employees on your team.",
+          "Each person's status, role, and contact info are listed. The usage bar shows how many cleaner slots you've used on your plan.",
+          "Invite new team members with the button above. Click any employee to view their profile or manage their access.",
+        ]}
       />
 
       {/* Cleaner usage indicator */}
