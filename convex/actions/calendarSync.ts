@@ -3,7 +3,7 @@
 import { internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
-import { parseICalFeed } from "../lib/icalParser";
+import { parseICalFeed } from "./icalParser";
 
 /**
  * Fetch and parse an iCal feed for a single calendar connection.

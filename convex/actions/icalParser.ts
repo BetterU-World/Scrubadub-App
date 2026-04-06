@@ -1,8 +1,10 @@
+"use node";
+
 /**
  * iCal feed parser — extracts normalized reservation candidates from raw .ics content.
  *
  * Uses node-ical for parsing. This is a pure utility with no DB access.
- * Designed to run inside a "use node" Convex action.
+ * Imported only by the calendarSync action.
  */
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
