@@ -4,6 +4,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { HowItWorks } from "@/components/ui/HowItWorks";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -67,6 +68,13 @@ export function InventoryTemplatesPage() {
             <Plus className="w-4 h-4" /> {t("inventoryTemplates.createTemplate")}
           </button>
         }
+      />
+      <HowItWorks
+        steps={[
+          "Inventory templates define reusable supply checklists for your properties.",
+          "Create a template, add items by category, then assign it to one or more properties so cleaners know what to restock.",
+          "Edit or delete templates anytime. Changes apply the next time a cleaner views the property inventory.",
+        ]}
       />
 
       {creating && (

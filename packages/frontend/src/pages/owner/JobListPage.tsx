@@ -3,6 +3,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { HowItWorks } from "@/components/ui/HowItWorks";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -137,6 +138,13 @@ export function JobListPage() {
             <Plus className="w-4 h-4" /> {t("jobs.scheduleJob")}
           </Link>
         }
+      />
+      <HowItWorks
+        steps={[
+          "This page lists all cleaning jobs across your properties.",
+          "Use the date range tabs and search bar to find specific jobs. Sort by date, property, or status.",
+          "Click any job to view details, or hit Schedule Job to create a new one.",
+        ]}
       />
 
       {/* Date range + search controls */}
