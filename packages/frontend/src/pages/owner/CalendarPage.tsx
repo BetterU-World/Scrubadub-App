@@ -3,6 +3,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { HowItWorks } from "@/components/ui/HowItWorks";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Link } from "wouter";
@@ -192,6 +193,13 @@ export function CalendarPage() {
   return (
     <div>
       <PageHeader title={t("calendar.title")} />
+      <HowItWorks
+        steps={[
+          "This page shows all scheduled cleaning jobs on a calendar view.",
+          "Use the month, week, or day tabs to change your view. Filter by property or cleaner to narrow results.",
+          "Click any job to view its details. Sync external calendars (Airbnb, Vrbo) from individual property settings.",
+        ]}
+      />
 
       {/* View Mode Tabs */}
       <div className="flex items-center gap-1 mb-4 bg-gray-100 rounded-lg p-1 w-fit">
