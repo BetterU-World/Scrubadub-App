@@ -364,6 +364,50 @@ export async function sendAffiliateInviteEmail(
   }
 }
 
+/**
+ * Send a partner connection invite email.
+ * Notifies an existing owner that another company wants to connect.
+ */
+export async function sendPartnerInviteEmail(
+  email: string,
+  fromCompanyName: string
+): Promise<boolean> {
+  const resend = getResendClient();
+  const appUrl = getAppUrl();
+
+  try {
+    const { error } = await resend.emails.send({
+      from: getFromEmail(),
+      to: email,
+      subject: `${fromCompanyName} wants to connect on SCRUB`,
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <img src="${appUrl}/logo-icon.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
+          </div>
+          <h2 style="text-align: center; color: #111; font-size: 22px; margin: 0 0 16px;">Partner Connection Request</h2>
+          <p style="color: #374151; font-size: 15px; line-height: 1.6;"><strong>${fromCompanyName}</strong> wants to connect with you on SCRUB for job sharing. Log in to accept or decline the request.</p>
+          <p style="text-align: center; margin: 28px 0;">
+            <a href="${appUrl}/partners" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
+              View Request
+            </a>
+          </p>
+          <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">If you weren't expecting this, you can safely ignore this email.</p>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error("[email] Failed to send partner invite email:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[email] Error sending partner invite email:", err);
+    return false;
+  }
+}
+
 export async function sendInviteEmail(
   email: string,
   inviteToken: string,

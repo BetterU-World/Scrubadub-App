@@ -1,4 +1,5 @@
 import { mutation } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { requireOwner, logAudit, createNotification } from "../lib/helpers";
 import { requireActiveSubscription } from "../lib/subscriptionGating";
@@ -131,14 +132,21 @@ export const connectByEmail = mutation({
       .query("users")
       .withIndex("by_companyId", (q) => q.eq("companyId", targetUser.companyId))
       .collect();
+    const fromCompanyName = ownerCompany?.name ?? "A company";
     for (const ro of recipientOwners.filter((u) => u.role === "owner")) {
       await createNotification(ctx, {
         companyId: targetUser.companyId,
         userId: ro._id,
         type: "partner_request",
         title: "Partner Connection Request",
-        message: `${ownerCompany?.name ?? "A company"} wants to connect for job sharing`,
+        message: `${fromCompanyName} wants to connect for job sharing`,
       });
+      // Send email notification via Resend
+      await ctx.scheduler.runAfter(
+        0,
+        internal.actions.emailNotifications.sendPartnerInvite,
+        { email: ro.email, fromCompanyName }
+      );
     }
 
     await logAudit(ctx, {

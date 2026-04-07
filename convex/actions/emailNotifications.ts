@@ -11,6 +11,7 @@ import {
   sendInviteEmail,
   sendAffiliateInviteEmail,
   sendSupportEmail,
+  sendPartnerInviteEmail,
 } from "../lib/email";
 
 /**
@@ -149,6 +150,23 @@ export const sendAffiliateInvite = internalAction({
     const sent = await sendAffiliateInviteEmail(args.email, args.inviteToken, args.name);
     if (!sent) {
       console.error("[emailNotifications] Affiliate invite email failed for", args.email);
+    }
+  },
+});
+
+/**
+ * Internal action: send partner connection invite email.
+ * Scheduled from mutations via ctx.scheduler.runAfter(0, ...).
+ */
+export const sendPartnerInvite = internalAction({
+  args: {
+    email: v.string(),
+    fromCompanyName: v.string(),
+  },
+  handler: async (_ctx, args) => {
+    const sent = await sendPartnerInviteEmail(args.email, args.fromCompanyName);
+    if (!sent) {
+      console.error("[emailNotifications] Partner invite email failed for", args.email);
     }
   },
 });
