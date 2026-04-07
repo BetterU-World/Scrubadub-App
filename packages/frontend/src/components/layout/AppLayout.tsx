@@ -5,6 +5,7 @@ import { Header } from "./Header";
 import { Footer } from "./Footer";
 import { LiveJobBanner } from "../LiveJobBanner";
 import { PageTransition } from "./PageTransition";
+import { AddToHomeScreenTip } from "../shared/AddToHomeScreenTip";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -23,6 +24,7 @@ export function AppLayout({ children }: AppLayoutProps) {
         <LiveJobBanner />
         <Header onMenuToggle={toggleSidebar} />
         <main className="flex-1 p-4 md:p-6 pb-20 md:pb-6">
+          <AddToHomeScreenTip />
           <PageTransition>{children}</PageTransition>
         </main>
         <Footer />
