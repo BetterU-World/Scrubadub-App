@@ -7,6 +7,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 import { OfflineIndicator } from "@/components/shared/OfflineIndicator";
+import { Analytics } from "@vercel/analytics/react";
 
 // Auth pages
 import { LandingPage } from "@/pages/auth/LandingPage";
@@ -183,17 +184,23 @@ export default function App() {
   // --- PUBLIC ROUTES: bypass all auth guards, no layout ---
   if (pathname.startsWith("/r/")) {
     return (
-      <ErrorBoundary>
-        <Route path="/r/:token" component={PublicRequestPage} />
-      </ErrorBoundary>
+      <>
+        <Analytics />
+        <ErrorBoundary>
+          <Route path="/r/:token" component={PublicRequestPage} />
+        </ErrorBoundary>
+      </>
     );
   }
 
   if (pathname.startsWith("/c/")) {
     return (
-      <ErrorBoundary>
-        <Route path="/c/:token" component={ClientPortalPage} />
-      </ErrorBoundary>
+      <>
+        <Analytics />
+        <ErrorBoundary>
+          <Route path="/c/:token" component={ClientPortalPage} />
+        </ErrorBoundary>
+      </>
     );
   }
 
@@ -216,32 +223,37 @@ export default function App() {
 
   if (slugMatch) {
     return (
-      <ErrorBoundary>
-        <Switch>
-          <Route path="/:slug/cleaner" component={CleanerStubPage} />
-          <Route path="/:slug" component={PublicSitePage} />
-        </Switch>
-      </ErrorBoundary>
+      <>
+        <Analytics />
+        <ErrorBoundary>
+          <Switch>
+            <Route path="/:slug/cleaner" component={CleanerStubPage} />
+            <Route path="/:slug" component={PublicSitePage} />
+          </Switch>
+        </ErrorBoundary>
+      </>
     );
   }
 
   // --- GUARD 1: Auth still loading — show spinner, NEVER redirect ---
   if (isLoading) {
-    return <>{devBanner}<PageLoader /></>;
+    return <><Analytics />{devBanner}<PageLoader /></>;
   }
 
   // --- GUARD 2: storedUserId exists but query hasn't resolved yet — wait ---
   if (isAuthed && !isAuthenticated) {
-    return <>{devBanner}<PageLoader /></>;
+    return <><Analytics />{devBanner}<PageLoader /></>;
   }
 
   // --- GUARD 3: Definitely not authenticated — show login routes ---
   if (!isAuthed && !isAuthenticated) {
     return (
-      <ErrorBoundary>
-        <OfflineIndicator />
-        {devBanner}
-        <Switch>
+      <>
+        <Analytics />
+        <ErrorBoundary>
+          <OfflineIndicator />
+          {devBanner}
+          <Switch>
           <Route path="/" component={LandingPage} />
           <Route path="/login" component={LoginPage} />
           <Route path="/signup" component={SignupPage} />
@@ -264,15 +276,16 @@ export default function App() {
           <Route>
             <Redirect to="/" />
           </Route>
-        </Switch>
-        <Footer />
-      </ErrorBoundary>
+          </Switch>
+          <Footer />
+        </ErrorBoundary>
+      </>
     );
   }
 
   // --- GUARD 4: Authenticated but subscription data still loading ---
   if (!subSettled) {
-    return <>{devBanner}<PageLoader /></>;
+    return <><Analytics />{devBanner}<PageLoader /></>;
   }
 
   // --- GUARD 5: Fully resolved — render app with access control ---
@@ -399,6 +412,7 @@ export default function App() {
           </Route>
         </Switch>
       </AppLayout>
+      <Analytics />
     </ErrorBoundary>
   );
 }
