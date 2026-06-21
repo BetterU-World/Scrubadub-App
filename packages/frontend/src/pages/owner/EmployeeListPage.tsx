@@ -61,7 +61,7 @@ export function EmployeeListPage() {
   const [teamDescription, setTeamDescription] = useState("");
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
   const [teamMemberUserId, setTeamMemberUserId] = useState<Record<string, string>>({});
-  const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "member">({});
+const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "member">>({});
   // Manager permission flags for invite
   const [mgrPerms, setMgrPerms] = useState({
     canSeeAllJobs: false,
