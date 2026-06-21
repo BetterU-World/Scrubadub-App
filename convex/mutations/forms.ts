@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
 import { requireAuth, requireOwner, logAudit, createNotification } from "../lib/helpers";
 import { getFormTemplate } from "../lib/constants";
+import { getJobRecipientUserIds, isUserAssignedToJob } from "../lib/teams";
 
 export const createFromTemplate = mutation({
   args: {
@@ -19,6 +20,9 @@ export const createFromTemplate = mutation({
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== user.companyId) throw new Error("Access denied");
+    if (!(await isUserAssignedToJob(ctx, job, user._id)) && user.role !== "owner" && !(user.role === "manager" && job.assignedManagerId === user._id)) {
+      throw new Error("Not assigned to this job");
+    }
 
     const existing = await ctx.db
       .query("forms")
@@ -64,6 +68,20 @@ async function requireEditable(ctx: MutationCtx, formId: Id<"forms">) {
   return form;
 }
 
+async function requireFormWorkspaceAccess(
+  ctx: MutationCtx,
+  form: any,
+  user: { _id: Id<"users">; role: string; companyId?: Id<"companies"> },
+) {
+  if (form.companyId !== user.companyId) throw new Error("Access denied");
+  const job: any = await ctx.db.get(form.jobId);
+  if (!job) throw new Error("Job not found");
+  if (user.role === "owner") return job;
+  if (user.role === "manager" && job.assignedManagerId === user._id) return job;
+  if (await isUserAssignedToJob(ctx, job, user._id)) return job;
+  throw new Error("Not assigned to this job");
+}
+
 export const updateItem = mutation({
   args: {
     itemId: v.id("formItems"),
@@ -79,7 +97,7 @@ export const updateItem = mutation({
     if (!item) throw new Error("Item not found");
 
     const form = await requireEditable(ctx, item.formId);
-    if (form.companyId !== user.companyId) throw new Error("Access denied");
+    await requireFormWorkspaceAccess(ctx, form as any, user);
 
     const { itemId, userId: _uid, ...updates } = args;
     const cleanUpdates: Record<string, any> = {};
@@ -99,7 +117,7 @@ export const updateScore = mutation({
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx, args.userId);
     const form = await requireEditable(ctx, args.formId);
-    if (form.companyId !== user.companyId) throw new Error("Access denied");
+    await requireFormWorkspaceAccess(ctx, form as any, user);
 
     await ctx.db.patch(args.formId, { cleanerScore: args.cleanerScore });
   },
@@ -114,7 +132,7 @@ export const updateFinalPass = mutation({
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx, args.userId);
     const form = await requireEditable(ctx, args.formId);
-    if (form.companyId !== user.companyId) throw new Error("Access denied");
+    await requireFormWorkspaceAccess(ctx, form as any, user);
 
     await ctx.db.patch(args.formId, { finalPass: args.finalPass });
   },
@@ -129,7 +147,7 @@ export const saveSignature = mutation({
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx, args.userId);
     const form = await requireEditable(ctx, args.formId);
-    if (form.companyId !== user.companyId) throw new Error("Access denied");
+    await requireFormWorkspaceAccess(ctx, form as any, user);
 
     await ctx.db.patch(args.formId, {
       signatureStorageId: args.signatureStorageId,
@@ -142,7 +160,7 @@ export const markAllComplete = mutation({
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx, args.userId);
     const form = await requireEditable(ctx, args.formId);
-    if (form.companyId !== user.companyId) throw new Error("Access denied");
+    await requireFormWorkspaceAccess(ctx, form as any, user);
 
     const items = await ctx.db
       .query("formItems")
@@ -165,7 +183,7 @@ export const addPhoto = mutation({
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx, args.userId);
     const form = await requireEditable(ctx, args.formId);
-    if (form.companyId !== user.companyId) throw new Error("Access denied");
+    await requireFormWorkspaceAccess(ctx, form as any, user);
 
     const existing = form.photoStorageIds ?? [];
     await ctx.db.patch(args.formId, {
@@ -200,7 +218,7 @@ export const approve = mutation({
     const approveProperty = job.propertyId ? await ctx.db.get(job.propertyId) : null;
     const approvePropertyName = approveProperty?.name ?? job.propertySnapshot?.name ?? "a property";
 
-    for (const cid of job.cleanerIds) {
+    for (const cid of await getJobRecipientUserIds(ctx, job)) {
       await createNotification(ctx, {
         companyId: form.companyId,
         userId: cid,
@@ -287,7 +305,7 @@ export const requestRework = mutation({
       reworkCount: (job.reworkCount ?? 0) + 1,
     });
 
-    for (const cid of job.cleanerIds) {
+    for (const cid of await getJobRecipientUserIds(ctx, job)) {
       await createNotification(ctx, {
         companyId: form.companyId,
         userId: cid,
@@ -322,7 +340,7 @@ export const submit = mutation({
     if (form.cleanerId !== user._id) {
       // Fall back: allow if user is assigned to the job (handles auth identity mismatch)
       const job = await ctx.db.get(form.jobId);
-      if (!job || !job.cleanerIds.includes(user._id)) {
+      if (!job || !(await isUserAssignedToJob(ctx, job, user._id))) {
         throw new Error("Not your form");
       }
     }

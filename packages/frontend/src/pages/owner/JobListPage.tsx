@@ -107,7 +107,7 @@ export function JobListPage() {
             (job as any).hasActiveShare
           ) return false;
         } else if (assignmentFilter === "my_cleaners") {
-          if ((job.cleaners as any[]).length === 0) return false;
+          if ((job.cleaners as any[]).length === 0 && !(job as any).assignedTeamName) return false;
           if ((job as any).sharedFromCompanyName) return false;
         } else if (assignmentFilter === "shared_to_partners") {
           if (!(job as any).hasActiveShare && !(job as any).hasRejectedShare) return false;
@@ -120,7 +120,8 @@ export function JobListPage() {
         const cleanerMatch = (job.cleaners as any[]).some((c: any) =>
           c.name?.toLowerCase().includes(searchLower)
         );
-        if (!propMatch && !cleanerMatch) return false;
+        const teamMatch = (job as any).assignedTeamName?.toLowerCase().includes(searchLower);
+        if (!propMatch && !cleanerMatch && !teamMatch) return false;
       }
       return true;
     })
@@ -293,7 +294,7 @@ export function JobListPage() {
                   </div>
                   <div className="flex items-center gap-1 text-sm text-gray-500">
                     <Users className="w-3.5 h-3.5" />
-                    {(job.cleaners as any[]).map((c: any) => c.name).join(", ") || t("common.unassigned")}
+                    {(job as any).assignedTeamName ? `Team: ${(job as any).assignedTeamName}` : ((job.cleaners as any[]).map((c: any) => c.name).join(", ") || t("common.unassigned"))}
                   </div>
                 </div>
             </Link>

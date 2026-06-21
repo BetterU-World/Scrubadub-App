@@ -96,10 +96,8 @@ export function CalendarPage() {
     let result = [...jobs];
 
     // Cleaners only see their own jobs
-    if (user?.role === "cleaner") {
-      result = result.filter((job) =>
-        job.cleanerIds.includes(user._id)
-      );
+    if (user?.role === "cleaner" || user?.role === "maintenance") {
+      result = result.filter((job) => (job as any).isAssignedToCurrentUser !== false);
     }
 
     // Property filter
@@ -405,7 +403,7 @@ function MonthView({ days, currentDate, today, jobsByDate, getJobColor, isJobStr
             <div className="space-y-1">
               {dayJobs.slice(0, 3).map((job) => (
                 <Link key={job._id} href={`/jobs/${job._id}`} className={`block text-xs p-1 rounded truncate ${getJobColor(job)} ${isJobStrikethrough(job) ? "line-through" : ""}`}>
-                    {job.propertyName}
+                    {job.propertyName}{(job as any).assignedTeamName ? ` · ${(job as any).assignedTeamName}` : ""}
                 </Link>
               ))}
               {dayJobs.length > 3 && (
@@ -494,9 +492,9 @@ function WeekView({ days, today, jobsByDate, getJobColor, isJobStrikethrough, t 
                     <div className={`text-xs font-medium truncate ${isCancelled ? "text-gray-400 line-through" : isCompleted ? "text-gray-500" : "text-gray-900"}`}>
                       {job.propertyName}
                     </div>
-                    {job.cleaners && job.cleaners.length > 0 && (
+                    {((job as any).assignedTeamName || (job.cleaners && job.cleaners.length > 0)) && (
                       <div className={`text-xs truncate mt-0.5 ${isCancelled || isCompleted ? "text-gray-400" : "text-gray-500"}`}>
-                        {job.cleaners.map((c: any) => c.name).join(", ")}
+                        {(job as any).assignedTeamName ? `Team: ${(job as any).assignedTeamName}` : job.cleaners.map((c: any) => c.name).join(", ")}
                       </div>
                     )}
                     <div className="mt-1 flex gap-1">
@@ -578,11 +576,11 @@ function DayView({ date, today, jobs, formatJobType, isJobStrikethrough, t }: Da
                       </span>
                     </div>
                     {/* Cleaners */}
-                    {job.cleaners && job.cleaners.length > 0 && (
+                    {((job as any).assignedTeamName || (job.cleaners && job.cleaners.length > 0)) && (
                       <div className={`flex items-center gap-1.5 text-sm mb-2 ${isCancelled || isCompleted ? "text-gray-400" : "text-gray-600"}`}>
                         <Users className={`w-4 h-4 flex-shrink-0 ${isCancelled || isCompleted ? "text-gray-300" : "text-gray-400"}`} />
                         <span>
-                          {job.cleaners.map((c: any) => c.name).join(", ")}
+                          {(job as any).assignedTeamName ? `Team: ${(job as any).assignedTeamName}` : job.cleaners.map((c: any) => c.name).join(", ")}
                         </span>
                       </div>
                     )}

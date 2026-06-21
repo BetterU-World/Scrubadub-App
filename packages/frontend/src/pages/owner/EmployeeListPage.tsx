@@ -7,7 +7,7 @@ import { HowItWorks } from "@/components/ui/HowItWorks";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { Users, UserPlus, Copy, Check, AlertTriangle } from "lucide-react";
+import { Users, UserPlus, Copy, Check, AlertTriangle, Plus, Archive, RotateCcw, Trash2 } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -23,6 +23,16 @@ export function EmployeeListPage() {
   const inviteCleaner = useAction(api.employeeActions.inviteCleaner);
   const resendInviteEmail = useAction(api.employeeActions.resendInviteEmail);
   const updateStatus = useMutation(api.mutations.employees.updateEmployeeStatus);
+  const teams = useQuery(
+    (api as any).queries.teams.list,
+    user?.companyId ? { companyId: user.companyId, userId: user._id, includeArchived: true } : "skip"
+  );
+  const createTeam = useMutation((api as any).mutations.teams.create);
+  const updateTeam = useMutation((api as any).mutations.teams.update);
+  const setTeamActive = useMutation((api as any).mutations.teams.setActive);
+  const addTeamMember = useMutation((api as any).mutations.teams.addMember);
+  const removeTeamMember = useMutation((api as any).mutations.teams.removeMember);
+  const setTeamMemberRoleMut = useMutation((api as any).mutations.teams.setMemberRole);
 
   const [showInvite, setShowInvite] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -47,6 +57,11 @@ export function EmployeeListPage() {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState<string | null>(null);
+  const [teamName, setTeamName] = useState("");
+  const [teamDescription, setTeamDescription] = useState("");
+  const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
+  const [teamMemberUserId, setTeamMemberUserId] = useState<Record<string, string>>({});
+  const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "member">>({});
   // Manager permission flags for invite
   const [mgrPerms, setMgrPerms] = useState({
     canSeeAllJobs: false,
@@ -84,7 +99,7 @@ export function EmployeeListPage() {
   );
   const setDefaultManager = useMutation(api.mutations.companies.setDefaultManager);
 
-  if (!user || employees === undefined) return <PageLoader />;
+  if (!user || employees === undefined || teams === undefined) return <PageLoader />;
 
   const cleanerCapReached =
     cleanerUsage &&
@@ -179,6 +194,142 @@ export function EmployeeListPage() {
           )}
         </div>
       )}
+
+
+      {/* Teams management */}
+      <div className="card mb-6 space-y-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Cleaner Teams</h2>
+            <p className="text-sm text-gray-500">Create reusable teams of cleaners, maintenance workers, and managers for team-assigned jobs.</p>
+          </div>
+        </div>
+        <div className="grid md:grid-cols-[1fr_2fr_auto] gap-3">
+          <input
+            className="input-field"
+            value={teamName}
+            onChange={(e) => setTeamName(e.target.value)}
+            placeholder="Team name"
+          />
+          <input
+            className="input-field"
+            value={teamDescription}
+            onChange={(e) => setTeamDescription(e.target.value)}
+            placeholder="Description (optional)"
+          />
+          <button
+            className="btn-primary flex items-center justify-center gap-2"
+            disabled={!teamName.trim()}
+            onClick={async () => {
+              try {
+                if (editingTeamId) {
+                  await updateTeam({ userId: user._id, teamId: editingTeamId as any, name: teamName, description: teamDescription || undefined });
+                  setToast("Team updated");
+                } else {
+                  await createTeam({ userId: user._id, companyId: user.companyId!, name: teamName, description: teamDescription || undefined });
+                  setToast("Team created");
+                }
+                setTeamName("");
+                setTeamDescription("");
+                setEditingTeamId(null);
+                setTimeout(() => setToast(null), 3000);
+              } catch (err: any) {
+                setError(err.message || "Failed to save team");
+              }
+            }}
+          >
+            <Plus className="w-4 h-4" /> {editingTeamId ? "Save Team" : "Create Team"}
+          </button>
+        </div>
+        {editingTeamId && (
+          <button className="text-sm text-gray-500 hover:text-gray-700" onClick={() => { setEditingTeamId(null); setTeamName(""); setTeamDescription(""); }}>
+            Cancel editing
+          </button>
+        )}
+        <div className="space-y-3">
+          {teams.length === 0 ? (
+            <p className="text-sm text-gray-500">No teams yet.</p>
+          ) : teams.map((team: any) => {
+            const candidates = employees.filter((e) => ["cleaner", "maintenance", "manager"].includes(e.role) && e.status === "active" && !team.members.some((m: any) => m.active && m.userId === e._id));
+            return (
+              <div key={team._id} className={`rounded-lg border p-3 ${team.active ? "border-gray-200" : "border-gray-200 bg-gray-50 opacity-75"}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-semibold text-gray-900">{team.name}</h3>
+                      {!team.active && <span className="badge bg-gray-200 text-gray-600">archived</span>}
+                      <span className="text-xs text-gray-400">{team.activeMemberCount} active member(s)</span>
+                    </div>
+                    {team.description && <p className="text-sm text-gray-500 mt-0.5">{team.description}</p>}
+                  </div>
+                  <div className="flex gap-2">
+                    <button className="text-sm text-primary-600 hover:text-primary-700 font-medium" onClick={() => { setEditingTeamId(team._id); setTeamName(team.name); setTeamDescription(team.description ?? ""); }}>
+                      Edit
+                    </button>
+                    <button
+                      className="text-sm text-gray-600 hover:text-gray-800 font-medium flex items-center gap-1"
+                      onClick={() => setTeamActive({ userId: user._id, teamId: team._id, active: !team.active })}
+                    >
+                      {team.active ? <Archive className="w-3.5 h-3.5" /> : <RotateCcw className="w-3.5 h-3.5" />}
+                      {team.active ? "Archive" : "Reactivate"}
+                    </button>
+                  </div>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {team.members.filter((m: any) => m.active).map((member: any) => (
+                    <div key={member._id} className="flex items-center justify-between gap-3 rounded bg-gray-50 px-3 py-2 text-sm">
+                      <div>
+                        <span className="font-medium text-gray-900">{member.user?.name ?? "Unknown"}</span>
+                        <span className="text-gray-400 ml-2">{member.user?.role}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <select
+                          className="input-field py-1 text-xs w-auto"
+                          value={member.role}
+                          onChange={(e) => setTeamMemberRoleMut({ userId: user._id, membershipId: member._id, role: e.target.value as "lead" | "member" })}
+                        >
+                          <option value="member">member</option>
+                          <option value="lead">lead</option>
+                        </select>
+                        <button className="text-red-600 hover:text-red-700" onClick={() => removeTeamMember({ userId: user._id, membershipId: member._id })} title="Remove member">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  {team.active && (
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      <select
+                        className="input-field py-1.5 text-sm flex-1 min-w-[180px]"
+                        value={teamMemberUserId[team._id] ?? ""}
+                        onChange={(e) => setTeamMemberUserId((p) => ({ ...p, [team._id]: e.target.value }))}
+                      >
+                        <option value="">Add employee…</option>
+                        {candidates.map((emp) => <option key={emp._id} value={emp._id}>{emp.name} ({emp.role})</option>)}
+                      </select>
+                      <select
+                        className="input-field py-1.5 text-sm w-auto"
+                        value={teamMemberRole[team._id] ?? "member"}
+                        onChange={(e) => setTeamMemberRole((p) => ({ ...p, [team._id]: e.target.value as "lead" | "member" }))}
+                      >
+                        <option value="member">member</option>
+                        <option value="lead">lead</option>
+                      </select>
+                      <button
+                        className="btn-secondary text-sm"
+                        disabled={!teamMemberUserId[team._id]}
+                        onClick={() => addTeamMember({ userId: user._id, teamId: team._id, memberUserId: teamMemberUserId[team._id] as any, role: teamMemberRole[team._id] ?? "member" })}
+                      >
+                        Add
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Default manager selector */}
       {(() => {

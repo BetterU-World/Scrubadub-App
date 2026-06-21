@@ -111,6 +111,7 @@ export function MaintenanceJobListPage() {
                     <div className="flex items-start justify-between">
                       <div>
                         <h3 className="font-semibold text-gray-900">{job.propertyName}</h3>
+                        {(job as any).assignedTeamName && <p className="text-xs text-blue-600 mt-0.5">Team: {(job as any).assignedTeamName}</p>}
                         <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500">
                           <span className="flex items-center gap-1">
                             <Calendar className="w-3.5 h-3.5" /> {job.scheduledDate}
@@ -142,6 +143,7 @@ export function MaintenanceJobListPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="font-medium text-gray-700">{job.propertyName}</h3>
+                        {(job as any).assignedTeamName && <p className="text-xs text-blue-600 mt-0.5">Team: {(job as any).assignedTeamName}</p>}
                         <p className="text-sm text-gray-400">{job.scheduledDate}</p>
                       </div>
                       <StatusBadge status={job.status} />
