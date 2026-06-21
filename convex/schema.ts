@@ -93,6 +93,33 @@ export default defineSchema({
     .index("by_referralCode", ["referralCode"])
     .index("by_referredByCode", ["referredByCode"]),
 
+  teams: defineTable({
+    companyId: v.id("companies"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    active: v.boolean(),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_companyId_active", ["companyId", "active"]),
+
+  teamMembers: defineTable({
+    teamId: v.id("teams"),
+    companyId: v.id("companies"),
+    userId: v.id("users"),
+    role: v.union(v.literal("lead"), v.literal("member")),
+    active: v.boolean(),
+    addedAt: v.number(),
+    removedAt: v.optional(v.number()),
+  })
+    .index("by_teamId", ["teamId"])
+    .index("by_companyId", ["companyId"])
+    .index("by_userId", ["userId"])
+    .index("by_userId_active", ["userId", "active"])
+    .index("by_teamId_userId", ["teamId", "userId"]),
+
   properties: defineTable({
     companyId: v.id("companies"),
     name: v.string(),
@@ -185,6 +212,8 @@ export default defineSchema({
     cleanerPaymentId: v.optional(v.id("cleanerPayments")),
     // Optional manager assignment (single manager per job)
     assignedManagerId: v.optional(v.id("users")),
+    // Optional cleaner team assignment. Existing individual assignment remains cleanerIds.
+    assignedTeamId: v.optional(v.id("teams")),
     // Inspection cycle: false after manager submits, true when owner reopens
     inspectionCycleOpen: v.optional(v.boolean()),
     // Property snapshot for shared jobs (Owner2 sees property info without owning the record)

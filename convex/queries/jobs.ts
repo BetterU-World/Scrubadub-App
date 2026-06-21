@@ -2,6 +2,7 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { assertCompanyAccess, getSessionUser, hasManagerPermission } from "../lib/auth";
 import { withPerfLog } from "../lib/perfLog";
+import { getActiveTeamIdsForUser } from "../lib/teams";
 
 // Hard cap for company-scoped job queries
 const JOB_LIST_CAP = 2_000;
@@ -15,7 +16,7 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     return await withPerfLog(ctx, "jobs:list", async () => {
-      await assertCompanyAccess(ctx, args.userId, args.companyId);
+      const user = await assertCompanyAccess(ctx, args.userId, args.companyId);
 
       const sort = args.sort || "soonest";
 
@@ -34,6 +35,22 @@ export const list = query({
             q.eq("companyId", args.companyId)
           )
           .take(JOB_LIST_CAP);
+      }
+
+      if (user.role === "cleaner" || user.role === "maintenance") {
+        const activeTeamIds = await getActiveTeamIdsForUser(ctx, user._id, args.companyId);
+        jobs = jobs.filter(
+          (j) =>
+            j.cleanerIds.includes(user._id) ||
+            (j.assignedTeamId && activeTeamIds.has(j.assignedTeamId))
+        );
+      } else if (user.role === "manager" && !hasManagerPermission(user, "canSeeAllJobs")) {
+        const managerTeamIds = await getActiveTeamIdsForUser(ctx, user._id, args.companyId);
+        jobs = jobs.filter(
+          (j) =>
+            j.assignedManagerId === user._id ||
+            (j.assignedTeamId && managerTeamIds.has(j.assignedTeamId))
+        );
       }
 
       // Apply sort — the dataset is already loaded via index scan, so this is
@@ -76,9 +93,16 @@ export const list = query({
 
       const userIds = [...new Set(jobs.flatMap((j) => [...j.cleanerIds, j.assignedManagerId].filter(Boolean)))];
       const userDocs = await Promise.all(userIds.map((id) => ctx.db.get(id as any)));
-      const userMap = new Map<string, NonNullable<(typeof userDocs)[number]>>();
+      const userMap = new Map<string, any>();
       for (const u of userDocs) {
         if (u) userMap.set(u._id, u);
+      }
+
+      const teamIds = [...new Set(jobs.map((j) => j.assignedTeamId).filter(Boolean))];
+      const teamDocs = await Promise.all(teamIds.map((id) => ctx.db.get(id!)));
+      const teamMap = new Map<string, any>();
+      for (const t of teamDocs) {
+        if (t) teamMap.set(t._id, t);
       }
 
       return Promise.all(
@@ -127,6 +151,8 @@ export const list = query({
             hasActiveShare,
             inspectionStatus,
             assignedManagerName: assignedManager?.name ?? null,
+            assignedTeamName: job.assignedTeamId ? teamMap.get(job.assignedTeamId)?.name ?? null : null,
+            assignmentType: job.assignedTeamId ? "team" : "individual",
           };
         })
       );
@@ -142,9 +168,15 @@ export const get = query({
     if (!job) return null;
     if (job.companyId !== user.companyId) throw new Error("Access denied");
 
-    // Manager visibility guard: without canSeeAllJobs, must be assigned
+    // Role visibility guards: workers must be directly assigned or active team members;
+    // managers without canSeeAllJobs must be assigned manager or active team members.
+    if (user.role === "cleaner" || user.role === "maintenance") {
+      const workerTeamIds = await getActiveTeamIdsForUser(ctx, user._id, user.companyId);
+      if (!job.cleanerIds.includes(user._id) && !(job.assignedTeamId && workerTeamIds.has(job.assignedTeamId))) return null;
+    }
     if (user.role === "manager" && !hasManagerPermission(user, "canSeeAllJobs")) {
-      if (job.assignedManagerId !== user._id) return null;
+      const managerTeamIds = await getActiveTeamIdsForUser(ctx, user._id, user.companyId);
+      if (job.assignedManagerId !== user._id && !(job.assignedTeamId && managerTeamIds.has(job.assignedTeamId))) return null;
     }
 
     const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
@@ -154,6 +186,20 @@ export const get = query({
         return u ? { _id: u._id, name: u.name, email: u.email } : null;
       })
     );
+
+    const assignedTeam = job.assignedTeamId ? await ctx.db.get(job.assignedTeamId) : null;
+    const teamMemberships = job.assignedTeamId
+      ? await ctx.db
+          .query("teamMembers")
+          .withIndex("by_teamId", (q) => q.eq("teamId", job.assignedTeamId!))
+          .filter((q) => q.eq(q.field("active"), true))
+          .collect()
+      : [];
+    const teamUsers = await Promise.all(teamMemberships.map((m) => ctx.db.get(m.userId)));
+    const assignedTeamMembers = teamMemberships.map((m, idx) => {
+      const u = teamUsers[idx];
+      return u ? { _id: u._id, name: u.name, email: u.email, role: m.role, userRole: u.role } : null;
+    }).filter(Boolean);
 
     const form = await ctx.db
       .query("forms")
@@ -186,6 +232,10 @@ export const get = query({
       form: form ? { ...form, photoUrls } : null,
       redFlags,
       assignedManagerName: assignedManager?.name ?? null,
+      assignedTeamName: assignedTeam?.name ?? null,
+      assignedTeam: assignedTeam ? { _id: assignedTeam._id, name: assignedTeam.name, active: assignedTeam.active } : null,
+      assignedTeamMembers,
+      assignmentType: job.assignedTeamId ? "team" : "individual",
     };
   },
 });
@@ -210,17 +260,24 @@ export const getForCleaner = query({
         )
         .take(JOB_LIST_CAP);
 
+      const activeTeamIds = await getActiveTeamIdsForUser(ctx, args.cleanerId, args.companyId);
       const myJobs = jobs.filter(
-        (j) => j.cleanerIds.includes(args.cleanerId) && j.status !== "cancelled"
+        (j) =>
+          j.status !== "cancelled" &&
+          (j.cleanerIds.includes(args.cleanerId) ||
+            (j.assignedTeamId && activeTeamIds.has(j.assignedTeamId)))
       );
 
       return Promise.all(
         myJobs.map(async (job) => {
           const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
+          const team = job.assignedTeamId ? await ctx.db.get(job.assignedTeamId) : null;
           return {
             ...job,
             propertyName: property?.name ?? job.propertySnapshot?.name ?? "Unknown",
             propertyAddress: property?.address ?? job.propertySnapshot?.address ?? "",
+            assignedTeamName: team?.name ?? null,
+            assignmentType: job.assignedTeamId ? "team" : "individual",
           };
         })
       );
@@ -247,10 +304,14 @@ export const getForManager = query({
 
       // Manager visibility: all jobs if canSeeAllJobs, otherwise only assigned
       const canSeeAll = hasManagerPermission(user, "canSeeAllJobs");
+      const managerTeamIds = canSeeAll ? new Set() : await getActiveTeamIdsForUser(ctx, user._id, args.companyId);
       const visibleJobs = canSeeAll
         ? allJobs.filter((j) => j.status !== "cancelled")
         : allJobs.filter(
-            (j) => j.assignedManagerId === user._id && j.status !== "cancelled"
+            (j) =>
+              j.status !== "cancelled" &&
+              (j.assignedManagerId === user._id ||
+                (j.assignedTeamId && managerTeamIds.has(j.assignedTeamId)))
           );
 
       // Sort soonest first
@@ -285,6 +346,8 @@ export const getForManager = query({
             cleaners: cleaners.filter(Boolean),
             formStatus: form ? form.status : null,
             inspectionStatus,
+            assignedTeamName: job.assignedTeamId ? (await ctx.db.get(job.assignedTeamId))?.name ?? null : null,
+            assignmentType: job.assignedTeamId ? "team" : "individual",
           };
         })
       );
@@ -319,12 +382,20 @@ export const getCalendarJobs = query({
 
       // Manager visibility scoping
       if (user.role === "manager" && !hasManagerPermission(user, "canSeeAllJobs")) {
-        filtered = filtered.filter((j) => j.assignedManagerId === user._id);
+        const managerTeamIds = await getActiveTeamIdsForUser(ctx, user._id, args.companyId);
+        filtered = filtered.filter(
+          (j) => j.assignedManagerId === user._id || (j.assignedTeamId && managerTeamIds.has(j.assignedTeamId))
+        );
       }
 
-      // Cleaner visibility scoping (existing behavior)
-      if (user.role === "cleaner") {
-        filtered = filtered.filter((j) => j.cleanerIds.includes(user._id));
+      // Cleaner/maintenance visibility scoping: direct jobs plus active team jobs.
+      if (user.role === "cleaner" || user.role === "maintenance") {
+        const activeTeamIds = await getActiveTeamIdsForUser(ctx, user._id, args.companyId);
+        filtered = filtered.filter(
+          (j) =>
+            j.cleanerIds.includes(user._id) ||
+            (j.assignedTeamId && activeTeamIds.has(j.assignedTeamId))
+        );
       }
 
       return Promise.all(
@@ -336,10 +407,13 @@ export const getCalendarJobs = query({
               return u ? { _id: u._id, name: u.name } : null;
             })
           );
+          const team = job.assignedTeamId ? await ctx.db.get(job.assignedTeamId) : null;
           return {
             ...job,
             propertyName: property?.name ?? job.propertySnapshot?.name ?? "Unknown",
             cleaners: cleaners.filter(Boolean),
+            assignedTeamName: team?.name ?? null,
+            assignmentType: job.assignedTeamId ? "team" : "individual",
           };
         })
       );
