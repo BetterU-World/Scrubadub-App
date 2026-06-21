@@ -252,6 +252,9 @@ export function JobDetailPage() {
             {(job as any).sharedFromCompanyName && (
               <span className="badge bg-blue-100 text-blue-700">{t("jobs.sharedFrom", { name: (job as any).sharedFromCompanyName })}</span>
             )}
+            {(job as any).assignedTeamName && (
+              <span className="badge bg-blue-100 text-blue-700">Team: {(job as any).assignedTeamName}</span>
+            )}
           </div>
 
           {(job as any).acceptanceStatus === "denied" && (job as any).denyReason && (

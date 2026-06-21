@@ -3,6 +3,7 @@ import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { requireOwner, requireAuth, logAudit, createNotification } from "../lib/helpers";
 import { requireActiveSubscription } from "../lib/subscriptionGating";
+import { assertTeamInCompany, canSubmitFinalJob, getJobRecipientUserIds, isUserAssignedToJob } from "../lib/teams";
 
 export const create = mutation({
   args: {
@@ -10,6 +11,7 @@ export const create = mutation({
     companyId: v.id("companies"),
     propertyId: v.id("properties"),
     cleanerIds: v.array(v.id("users")),
+    assignedTeamId: v.optional(v.id("teams")),
     type: v.union(
       v.literal("standard"),
       v.literal("deep_clean"),
@@ -29,6 +31,10 @@ export const create = mutation({
     const owner = await requireOwner(ctx, args.userId);
     if (owner.companyId !== args.companyId) throw new Error("Not your company");
     await requireActiveSubscription(ctx, args.companyId);
+    if (args.assignedTeamId) {
+      await assertTeamInCompany(ctx, args.assignedTeamId, args.companyId, { requireActive: true });
+      if (args.cleanerIds.length > 0) throw new Error("Choose either individual cleaners or a team");
+    }
 
     const initialStatus = args.requireConfirmation === false ? "confirmed" : "scheduled";
     const initialAcceptance = args.requireConfirmation === false ? "accepted" as const : "pending" as const;
@@ -43,8 +49,12 @@ export const create = mutation({
 
     const property = await ctx.db.get(args.propertyId);
 
-    // Notify assigned cleaners
-    for (const cleanerId of args.cleanerIds) {
+    const recipientIds = args.assignedTeamId
+      ? await getJobRecipientUserIds(ctx, { companyId: args.companyId, cleanerIds: args.cleanerIds, assignedTeamId: args.assignedTeamId })
+      : args.cleanerIds;
+
+    // Notify assigned cleaners/team members
+    for (const cleanerId of recipientIds) {
       await createNotification(ctx, {
         companyId: args.companyId,
         userId: cleanerId,
@@ -84,6 +94,8 @@ export const update = mutation({
     jobId: v.id("jobs"),
     propertyId: v.optional(v.id("properties")),
     cleanerIds: v.optional(v.array(v.id("users"))),
+    assignedTeamId: v.optional(v.id("teams")),
+    clearAssignedTeam: v.optional(v.boolean()),
     type: v.optional(
       v.union(
         v.literal("standard"),
@@ -107,7 +119,12 @@ export const update = mutation({
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
 
-    const { jobId, userId: _uid, clearAssignedManager, ...updates } = args;
+    if (args.assignedTeamId) {
+      await assertTeamInCompany(ctx, args.assignedTeamId, owner.companyId, { requireActive: true });
+      if (args.cleanerIds && args.cleanerIds.length > 0) throw new Error("Choose either individual cleaners or a team");
+    }
+
+    const { jobId, userId: _uid, clearAssignedManager, clearAssignedTeam, ...updates } = args;
     // Remove undefined values
     const cleanUpdates: Record<string, any> = {};
     for (const [key, val] of Object.entries(updates)) {
@@ -116,6 +133,9 @@ export const update = mutation({
     // Explicitly clear assignedManagerId when requested
     if (clearAssignedManager) {
       cleanUpdates.assignedManagerId = undefined;
+    }
+    if (clearAssignedTeam || (updates.cleanerIds && updates.cleanerIds.length > 0)) {
+      cleanUpdates.assignedTeamId = undefined;
     }
     await ctx.db.patch(jobId, cleanUpdates);
 
@@ -139,7 +159,7 @@ export const cancel = mutation({
 
     await ctx.db.patch(args.jobId, { status: "cancelled" });
 
-    for (const cleanerId of job.cleanerIds) {
+    for (const cleanerId of await getJobRecipientUserIds(ctx, job)) {
       await createNotification(ctx, {
         companyId: job.companyId,
         userId: cleanerId,
@@ -166,7 +186,7 @@ export const confirmJob = mutation({
     const user = await requireAuth(ctx, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
-    if (!job.cleanerIds.includes(user._id)) throw new Error("Not assigned to this job");
+    if (!(await isUserAssignedToJob(ctx, job, user._id))) throw new Error("Not assigned to this job");
     if (job.status !== "scheduled") throw new Error("Job cannot be confirmed in current status");
 
     await ctx.db.patch(args.jobId, { status: "confirmed" });
@@ -195,7 +215,7 @@ export const acceptJob = mutation({
     const user = await requireAuth(ctx, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
-    if (!job.cleanerIds.includes(user._id)) throw new Error("Not assigned to this job");
+    if (!(await isUserAssignedToJob(ctx, job, user._id))) throw new Error("Not assigned to this job");
     if (job.status !== "scheduled") throw new Error("Job cannot be accepted in current status");
 
     await ctx.db.patch(args.jobId, {
@@ -237,7 +257,7 @@ export const denyJob = mutation({
     const user = await requireAuth(ctx, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
-    if (!job.cleanerIds.includes(user._id)) throw new Error("Not assigned to this job");
+    if (!(await isUserAssignedToJob(ctx, job, user._id))) throw new Error("Not assigned to this job");
     if (job.status !== "scheduled") throw new Error("Job cannot be denied in current status");
 
     await ctx.db.patch(args.jobId, {
@@ -284,7 +304,7 @@ export const cleanerCancelJob = mutation({
     const user = await requireAuth(ctx, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
-    if (!job.cleanerIds.includes(user._id)) throw new Error("Not assigned to this job");
+    if (!(await isUserAssignedToJob(ctx, job, user._id))) throw new Error("Not assigned to this job");
 
     // Only allow cancellation before work has started
     if (job.status === "in_progress" || job.status === "submitted" || job.status === "approved") {
@@ -394,7 +414,7 @@ export const arriveJob = mutation({
     const user = await requireAuth(ctx, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
-    if (!job.cleanerIds.includes(user._id)) throw new Error("Not assigned to this job");
+    if (!(await isUserAssignedToJob(ctx, job, user._id))) throw new Error("Not assigned to this job");
     if (job.status !== "confirmed" && job.status !== "scheduled")
       throw new Error("Cannot mark arrived in current status");
 
@@ -408,7 +428,7 @@ export const startJob = mutation({
     const user = await requireAuth(ctx, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
-    if (!job.cleanerIds.includes(user._id)) throw new Error("Not assigned to this job");
+    if (!(await isUserAssignedToJob(ctx, job, user._id))) throw new Error("Not assigned to this job");
     if (job.status !== "confirmed" && job.status !== "rework_requested")
       throw new Error("Job cannot be started in current status");
 
@@ -481,7 +501,7 @@ export const approveJob = mutation({
     const approveProperty = job.propertyId ? await ctx.db.get(job.propertyId) : null;
     const approvePropertyName = approveProperty?.name ?? job.propertySnapshot?.name ?? "a property";
 
-    for (const cleanerId of job.cleanerIds) {
+    for (const cleanerId of await getJobRecipientUserIds(ctx, job)) {
       await createNotification(ctx, {
         companyId: job.companyId,
         userId: cleanerId,
@@ -565,7 +585,7 @@ export const requestRework = mutation({
       await ctx.db.patch(form._id, { status: "rework_requested", ownerNotes: args.notes });
     }
 
-    for (const cleanerId of job.cleanerIds) {
+    for (const cleanerId of await getJobRecipientUserIds(ctx, job)) {
       await createNotification(ctx, {
         companyId: job.companyId,
         userId: cleanerId,
@@ -597,7 +617,7 @@ export const completeJob = mutation({
     const user = await requireAuth(ctx, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
-    if (!job.cleanerIds.includes(user._id)) throw new Error("Not assigned to this job");
+    if (!(await canSubmitFinalJob(ctx, job, user))) throw new Error("Only a team lead, assigned manager, or owner can submit this job");
     if (job.status !== "in_progress") throw new Error("Job not in progress");
 
     // Gate: all required inventory items must have a status reported
@@ -653,6 +673,18 @@ export const completeJob = mutation({
           completedAt: now,
         });
       }
+    }
+
+    // Auto-create OPEN cleaner payment for individual jobs only. Team payment splitting is out of scope for V1.
+    if (job.assignedTeamId) {
+      await logAudit(ctx, {
+        companyId: job.companyId,
+        userId: user._id,
+        action: "complete_job",
+        entityType: "job",
+        entityId: args.jobId,
+      });
+      return;
     }
 
     // Auto-create OPEN cleaner payment if none exists (idempotent)
@@ -882,7 +914,7 @@ export const updateInventoryChecklistItem = mutation({
     const user = await requireAuth(ctx, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
-    if (!job.cleanerIds.includes(user._id)) throw new Error("Not assigned to this job");
+    if (!(await isUserAssignedToJob(ctx, job, user._id))) throw new Error("Not assigned to this job");
     if (job.status !== "in_progress" && job.status !== "rework_requested")
       throw new Error("Job is not in progress");
     if (!job.inventoryChecklist) throw new Error("No inventory checklist on this job");

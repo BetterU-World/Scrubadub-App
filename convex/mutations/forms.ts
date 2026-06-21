@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
 import { requireAuth, requireOwner, logAudit, createNotification } from "../lib/helpers";
 import { getFormTemplate } from "../lib/constants";
+import { isUserAssignedToJob } from "../lib/teams";
 
 export const createFromTemplate = mutation({
   args: {
@@ -322,7 +323,7 @@ export const submit = mutation({
     if (form.cleanerId !== user._id) {
       // Fall back: allow if user is assigned to the job (handles auth identity mismatch)
       const job = await ctx.db.get(form.jobId);
-      if (!job || !job.cleanerIds.includes(user._id)) {
+      if (!job || !(await isUserAssignedToJob(ctx, job, user._id))) {
         throw new Error("Not your form");
       }
     }
