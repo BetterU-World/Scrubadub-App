@@ -16,7 +16,7 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     return await withPerfLog(ctx, "jobs:list", async () => {
-      await assertCompanyAccess(ctx, args.userId, args.companyId);
+      const user = await assertCompanyAccess(ctx, args.userId, args.companyId);
 
       const sort = args.sort || "soonest";
 
@@ -35,6 +35,22 @@ export const list = query({
             q.eq("companyId", args.companyId)
           )
           .take(JOB_LIST_CAP);
+      }
+
+      if (user.role === "cleaner" || user.role === "maintenance") {
+        const activeTeamIds = await getActiveTeamIdsForUser(ctx, user._id, args.companyId);
+        jobs = jobs.filter(
+          (j) =>
+            j.cleanerIds.includes(user._id) ||
+            (j.assignedTeamId && activeTeamIds.has(j.assignedTeamId))
+        );
+      } else if (user.role === "manager" && !hasManagerPermission(user, "canSeeAllJobs")) {
+        const managerTeamIds = await getActiveTeamIdsForUser(ctx, user._id, args.companyId);
+        jobs = jobs.filter(
+          (j) =>
+            j.assignedManagerId === user._id ||
+            (j.assignedTeamId && managerTeamIds.has(j.assignedTeamId))
+        );
       }
 
       // Apply sort — the dataset is already loaded via index scan, so this is
@@ -152,7 +168,12 @@ export const get = query({
     if (!job) return null;
     if (job.companyId !== user.companyId) throw new Error("Access denied");
 
-    // Manager visibility guard: without canSeeAllJobs, must be assigned
+    // Role visibility guards: workers must be directly assigned or active team members;
+    // managers without canSeeAllJobs must be assigned manager or active team members.
+    if (user.role === "cleaner" || user.role === "maintenance") {
+      const workerTeamIds = await getActiveTeamIdsForUser(ctx, user._id, user.companyId);
+      if (!job.cleanerIds.includes(user._id) && !(job.assignedTeamId && workerTeamIds.has(job.assignedTeamId))) return null;
+    }
     if (user.role === "manager" && !hasManagerPermission(user, "canSeeAllJobs")) {
       const managerTeamIds = await getActiveTeamIdsForUser(ctx, user._id, user.companyId);
       if (job.assignedManagerId !== user._id && !(job.assignedTeamId && managerTeamIds.has(job.assignedTeamId))) return null;
