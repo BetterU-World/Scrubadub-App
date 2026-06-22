@@ -1308,7 +1308,7 @@
       "declined": "Rechazada"
     },
     "markAsSent": "Marcar como enviada",
-    "externalSendHelp": "Esto registra que enviaste la propuesta fuera de SCRUB. El envío por email/PDF llegará más adelante.",
-    "externalDecisionHelp": "Registra aquí la decisión del cliente después de que acepte o rechace fuera de SCRUB."
+    "externalSendHelp": "Marcar como enviada registra que enviaste esta propuesta fuera de SCRUB. El envío por email/PDF llegará más adelante.",
+    "externalDecisionHelp": "Registra la decisión del cliente después de que acepte o rechace fuera de SCRUB."
   }
 }

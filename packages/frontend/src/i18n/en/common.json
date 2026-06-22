@@ -1308,7 +1308,7 @@
       "declined": "Declined"
     },
     "markAsSent": "Mark as Sent",
-    "externalSendHelp": "This records that you sent the proposal outside SCRUB. Email/PDF sending is coming later.",
-    "externalDecisionHelp": "Record the client decision here after they accept or decline outside SCRUB."
+    "externalSendHelp": "Mark as Sent records that you sent this proposal outside SCRUB. Email/PDF sending is coming later.",
+    "externalDecisionHelp": "Record the client’s decision after they accept or decline outside SCRUB."
   }
 }
