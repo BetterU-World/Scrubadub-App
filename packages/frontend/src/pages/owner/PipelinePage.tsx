@@ -19,10 +19,25 @@ import {
 const STAGES = [
   { value: "new", labelKey: "status.new", color: "bg-blue-50 border-blue-200" },
   { value: "contacted", labelKey: "status.contacted", color: "bg-indigo-50 border-indigo-200" },
-  { value: "quoted", labelKey: "status.quoted", color: "bg-yellow-50 border-yellow-200" },
-  { value: "won", labelKey: "status.won", color: "bg-green-50 border-green-200" },
-  { value: "lost", labelKey: "status.lost", color: "bg-gray-50 border-gray-200" },
+  { value: "walkthrough_scheduled", labelKey: "status.walkthroughScheduled", color: "bg-purple-50 border-purple-200" },
+  { value: "proposal_needed", labelKey: "status.proposalNeeded", color: "bg-orange-50 border-orange-200" },
+  { value: "proposal_sent", labelKey: "status.proposalSent", color: "bg-yellow-50 border-yellow-200" },
+  { value: "negotiating", labelKey: "status.negotiating", color: "bg-amber-50 border-amber-200" },
+  { value: "accepted", labelKey: "status.accepted", color: "bg-green-50 border-green-200" },
+  { value: "declined", labelKey: "status.declined", color: "bg-gray-50 border-gray-200" },
+  { value: "converted", labelKey: "status.converted", color: "bg-primary-50 border-primary-200" },
 ] as const;
+
+const LEGACY_STAGE_MAP: Record<string, string> = {
+  quoted: "proposal_sent",
+  won: "accepted",
+  lost: "declined",
+};
+
+function displayStage(stage: string | undefined) {
+  if (!stage) return "new";
+  return LEGACY_STAGE_MAP[stage] ?? stage;
+}
 
 function FollowUpBadge({ nextFollowUpAt }: { nextFollowUpAt: number }) {
   const { t } = useTranslation();
@@ -113,7 +128,7 @@ export function PipelinePage() {
     byStage[stage.value] = [];
   }
   for (const req of allRequests) {
-    const stage = (req as any).leadStage ?? "new";
+    const stage = displayStage((req as any).leadStage);
     if (byStage[stage]) {
       byStage[stage].push(req);
     }
@@ -132,7 +147,7 @@ export function PipelinePage() {
           description={t("pipeline.noRequestsYetDesc")}
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-4">
           {STAGES.map((stage) => {
             const items = byStage[stage.value];
             return (

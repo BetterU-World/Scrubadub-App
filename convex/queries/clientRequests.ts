@@ -103,6 +103,13 @@ export const listRequestsForPipeline = query({
       v.union(
         v.literal("new"),
         v.literal("contacted"),
+        v.literal("walkthrough_scheduled"),
+        v.literal("proposal_needed"),
+        v.literal("proposal_sent"),
+        v.literal("negotiating"),
+        v.literal("accepted"),
+        v.literal("declined"),
+        v.literal("converted"),
         v.literal("quoted"),
         v.literal("won"),
         v.literal("lost")

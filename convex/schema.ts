@@ -607,7 +607,18 @@ export default defineSchema({
     timeWindow: v.optional(v.string()),
     notes: v.optional(v.string()),
     requestedService: v.optional(v.string()),
-    source: v.literal("public_link"),
+    source: v.union(v.literal("public_link"), v.literal("manual")),
+    leadType: v.optional(
+      v.union(
+        v.literal("booking_request"),
+        v.literal("residential"),
+        v.literal("str_airbnb"),
+        v.literal("commercial"),
+        v.literal("move_out"),
+        v.literal("post_construction"),
+        v.literal("other")
+      )
+    ),
     propertyId: v.optional(v.id("properties")),
     // Client portal fields
     portalToken: v.optional(v.string()),
@@ -619,6 +630,13 @@ export default defineSchema({
       v.union(
         v.literal("new"),
         v.literal("contacted"),
+        v.literal("walkthrough_scheduled"),
+        v.literal("proposal_needed"),
+        v.literal("proposal_sent"),
+        v.literal("negotiating"),
+        v.literal("accepted"),
+        v.literal("declined"),
+        v.literal("converted"),
         v.literal("quoted"),
         v.literal("won"),
         v.literal("lost")
@@ -627,6 +645,22 @@ export default defineSchema({
     leadNotes: v.optional(v.string()),
     nextFollowUpAt: v.optional(v.number()),
     lastStageChangedAt: v.optional(v.number()),
+    businessName: v.optional(v.string()),
+    businessContactTitle: v.optional(v.string()),
+    businessWebsite: v.optional(v.string()),
+    estimatedContractValueCents: v.optional(v.number()),
+    estimatedFrequency: v.optional(
+      v.union(
+        v.literal("one_time"),
+        v.literal("weekly"),
+        v.literal("biweekly"),
+        v.literal("monthly"),
+        v.literal("quarterly"),
+        v.literal("custom")
+      )
+    ),
+    estimatedFrequencyNotes: v.optional(v.string()),
+    createdByUserId: v.optional(v.id("users")),
   })
     .index("by_companyId", ["companyId"])
     .index("by_companyId_status", ["companyId", "status"])

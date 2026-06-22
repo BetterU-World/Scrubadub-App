@@ -68,6 +68,9 @@ export function RequestDetailPage() {
   const updateNextFollowUpMut = useMutation(
     api.mutations.clientRequests.updateNextFollowUp
   );
+  const updateLeadDetailsMut = useMutation(
+    api.mutations.clientRequests.updateLeadDetails
+  );
 
   const latestFeedback = useQuery(
     api.queries.clientRequests.getLatestFeedbackForRequest,
@@ -98,11 +101,30 @@ export function RequestDetailPage() {
   const [savingFollowUp, setSavingFollowUp] = useState(false);
   const [contactingLoading, setContactingLoading] = useState(false);
   const [archiving, setArchiving] = useState(false);
+  const [savingLeadDetails, setSavingLeadDetails] = useState(false);
+  const [leadTypeVal, setLeadTypeVal] = useState("booking_request");
+  const [businessNameVal, setBusinessNameVal] = useState("");
+  const [businessContactTitleVal, setBusinessContactTitleVal] = useState("");
+  const [businessWebsiteVal, setBusinessWebsiteVal] = useState("");
+  const [estimatedValueVal, setEstimatedValueVal] = useState("");
+  const [estimatedFrequencyVal, setEstimatedFrequencyVal] = useState("");
+  const [estimatedFrequencyNotesVal, setEstimatedFrequencyNotesVal] = useState("");
 
   // Sync lead notes / follow-up from server on first load
   useEffect(() => {
     if (request && !leadNotesLoaded) {
       setLeadNotesVal((request as any).leadNotes ?? "");
+      setLeadTypeVal((request as any).leadType ?? "booking_request");
+      setBusinessNameVal((request as any).businessName ?? "");
+      setBusinessContactTitleVal((request as any).businessContactTitle ?? "");
+      setBusinessWebsiteVal((request as any).businessWebsite ?? "");
+      setEstimatedValueVal(
+        (request as any).estimatedContractValueCents != null
+          ? String((request as any).estimatedContractValueCents / 100)
+          : ""
+      );
+      setEstimatedFrequencyVal((request as any).estimatedFrequency ?? "");
+      setEstimatedFrequencyNotesVal((request as any).estimatedFrequencyNotes ?? "");
       if ((request as any).nextFollowUpAt) {
         const d = new Date((request as any).nextFollowUpAt);
         // Format as datetime-local value
@@ -397,7 +419,17 @@ export function RequestDetailPage() {
             {t("requests.leadStage")}
           </label>
           <div className="flex gap-1.5 flex-wrap">
-            {(["new", "contacted", "quoted", "won", "lost"] as const).map(
+            {([
+              "new",
+              "contacted",
+              "walkthrough_scheduled",
+              "proposal_needed",
+              "proposal_sent",
+              "negotiating",
+              "accepted",
+              "declined",
+              "converted",
+            ] as const).map(
               (stage) => {
                 const current = (request as any).leadStage ?? "new";
                 const isActive = current === stage;
@@ -430,6 +462,150 @@ export function RequestDetailPage() {
               }
             )}
           </div>
+        </div>
+
+
+        {/* Lead Details */}
+        <div className="border-t pt-4 space-y-3">
+          <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
+            {t("requests.leadDetails")}
+          </h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                {t("requests.leadType")}
+              </label>
+              <select
+                className="input-field text-sm"
+                value={leadTypeVal}
+                onChange={(e) => setLeadTypeVal(e.target.value)}
+              >
+                {([
+                  "booking_request",
+                  "residential",
+                  "str_airbnb",
+                  "commercial",
+                  "move_out",
+                  "post_construction",
+                  "other",
+                ] as const).map((type) => (
+                  <option key={type} value={type}>
+                    {t(`leadTypes.${type}`)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                {t("requests.businessName")}
+              </label>
+              <input
+                className="input-field text-sm"
+                value={businessNameVal}
+                onChange={(e) => setBusinessNameVal(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                {t("requests.businessContactTitle")}
+              </label>
+              <input
+                className="input-field text-sm"
+                value={businessContactTitleVal}
+                onChange={(e) => setBusinessContactTitleVal(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                {t("requests.businessWebsite")}
+              </label>
+              <input
+                className="input-field text-sm"
+                value={businessWebsiteVal}
+                onChange={(e) => setBusinessWebsiteVal(e.target.value)}
+                placeholder="https://"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                {t("requests.estimatedContractValue")}
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                className="input-field text-sm"
+                value={estimatedValueVal}
+                onChange={(e) => setEstimatedValueVal(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                {t("requests.estimatedFrequency")}
+              </label>
+              <select
+                className="input-field text-sm"
+                value={estimatedFrequencyVal}
+                onChange={(e) => setEstimatedFrequencyVal(e.target.value)}
+              >
+                <option value="">{t("common.select")}</option>
+                {(["one_time", "weekly", "biweekly", "monthly", "quarterly", "custom"] as const).map((freq) => (
+                  <option key={freq} value={freq}>
+                    {t(`leadFrequencies.${freq}`)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              {t("requests.estimatedFrequencyNotes")}
+            </label>
+            <input
+              className="input-field text-sm"
+              value={estimatedFrequencyNotesVal}
+              onChange={(e) => setEstimatedFrequencyNotesVal(e.target.value)}
+            />
+          </div>
+          <button
+            disabled={savingLeadDetails}
+            onClick={async () => {
+              setSavingLeadDetails(true);
+              try {
+                const cents = estimatedValueVal
+                  ? Math.round(Number(estimatedValueVal) * 100)
+                  : undefined;
+                if (
+                  estimatedValueVal &&
+                  (cents === undefined || !Number.isFinite(cents) || cents < 0)
+                ) {
+                  throw new Error(t("requests.invalidEstimate"));
+                }
+                await updateLeadDetailsMut({
+                  userId: user!._id,
+                  requestId: request._id,
+                  leadType: leadTypeVal as any,
+                  businessName: businessNameVal,
+                  businessContactTitle: businessContactTitleVal,
+                  businessWebsite: businessWebsiteVal,
+                  estimatedContractValueCents: cents,
+                  estimatedFrequency: (estimatedFrequencyVal || undefined) as any,
+                  estimatedFrequencyNotes: estimatedFrequencyNotesVal,
+                });
+                setToast({ message: t("requests.leadDetailsSaved"), type: "success" });
+                setTimeout(() => setToast(null), 2000);
+              } catch (err: any) {
+                setToast({ message: err.message || "Failed", type: "error" });
+                setTimeout(() => setToast(null), 3000);
+              } finally {
+                setSavingLeadDetails(false);
+              }
+            }}
+            className="btn-secondary flex items-center gap-1.5 text-xs py-1 px-2.5"
+          >
+            <Save className="w-3 h-3" />
+            {savingLeadDetails ? t("common.saving") : t("requests.saveLeadDetails")}
+          </button>
         </div>
 
         {/* Lead Notes */}
