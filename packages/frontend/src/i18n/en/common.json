@@ -111,7 +111,12 @@
     "retry": "Retry",
     "failedToAccept": "Failed to accept",
     "failedToDeny": "Failed to deny",
-    "failedToCancel": "Failed to cancel"
+    "failedToCancel": "Failed to cancel",
+    "select": "Select...",
+    "name": "Name",
+    "email": "Email",
+    "phone": "Phone",
+    "address": "Address"
   },
   "status": {
     "active": "Active",
@@ -143,7 +148,11 @@
     "completed": "Completed",
     "paid": "Paid",
     "planned": "Planned",
-    "amountPending": "Amount pending"
+    "amountPending": "Amount pending",
+    "walkthroughScheduled": "Walkthrough Scheduled",
+    "proposalNeeded": "Proposal Needed",
+    "proposalSent": "Proposal Sent",
+    "negotiating": "Negotiating"
   },
   "dashboard": {
     "welcomeBack": "Welcome back, {{name}}",
@@ -236,7 +245,23 @@
     "clientFeedback": "Client Feedback",
     "declineRequest": "Decline request",
     "declineConfirm": "Decline the request from {{name}}? This cannot be undone.",
-    "backToRequests": "Back to requests"
+    "backToRequests": "Back to requests",
+    "newLead": "New Lead",
+    "createLead": "Create Lead",
+    "creatingLead": "Creating...",
+    "leadCreated": "Lead created",
+    "leadType": "Lead Type",
+    "businessName": "Business / Company Name",
+    "businessContactTitle": "Contact Title",
+    "businessWebsite": "Website",
+    "estimatedContractValue": "Estimated Contract Value",
+    "estimatedFrequency": "Estimated Frequency",
+    "estimatedFrequencyNotes": "Frequency Notes",
+    "saveLeadDetails": "Save Lead Details",
+    "leadDetailsSaved": "Lead details saved",
+    "invalidEstimate": "Enter a valid estimated value",
+    "manualLead": "Manual Lead",
+    "service": "Service"
   },
   "feedback": {
     "title": "Feedback",
@@ -1230,5 +1255,22 @@
     "reportRedFlag": "Report Red Flag",
     "flagCreated": "Red flag reported",
     "submitFlag": "Submit Red Flag"
+  },
+  "leadTypes": {
+    "booking_request": "Booking Request",
+    "residential": "Residential",
+    "str_airbnb": "STR / Airbnb",
+    "commercial": "Commercial",
+    "move_out": "Move Out",
+    "post_construction": "Post Construction",
+    "other": "Other"
+  },
+  "leadFrequencies": {
+    "one_time": "One-time",
+    "weekly": "Weekly",
+    "biweekly": "Biweekly",
+    "monthly": "Monthly",
+    "quarterly": "Quarterly",
+    "custom": "Custom"
   }
 }

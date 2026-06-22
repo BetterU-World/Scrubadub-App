@@ -69,6 +69,7 @@ export const createClientRequestByToken = mutation({
       timeWindow: args.timeWindow,
       notes: args.notes,
       requestedService: args.requestedService || undefined,
+      leadType: "booking_request",
       clientNotes: args.clientNotes
         ? args.clientNotes.trim().slice(0, 2000)
         : undefined,
@@ -199,7 +200,158 @@ export const createPropertyFromRequest = mutation({
 
 // ── Lead Pipeline mutations ─────────────────────────────────────
 
-const LEAD_STAGES = ["new", "contacted", "quoted", "won", "lost"] as const;
+const leadStageValidator = v.union(
+  v.literal("new"),
+  v.literal("contacted"),
+  v.literal("walkthrough_scheduled"),
+  v.literal("proposal_needed"),
+  v.literal("proposal_sent"),
+  v.literal("negotiating"),
+  v.literal("accepted"),
+  v.literal("declined"),
+  v.literal("converted"),
+  v.literal("quoted"),
+  v.literal("won"),
+  v.literal("lost")
+);
+
+const leadTypeValidator = v.union(
+  v.literal("booking_request"),
+  v.literal("residential"),
+  v.literal("str_airbnb"),
+  v.literal("commercial"),
+  v.literal("move_out"),
+  v.literal("post_construction"),
+  v.literal("other")
+);
+
+const estimatedFrequencyValidator = v.union(
+  v.literal("one_time"),
+  v.literal("weekly"),
+  v.literal("biweekly"),
+  v.literal("monthly"),
+  v.literal("quarterly"),
+  v.literal("custom")
+);
+
+function cleanOptional(value: string | undefined, max = 500) {
+  const trimmed = value?.trim().slice(0, max);
+  return trimmed || undefined;
+}
+
+function patchForStage(leadStage: string, request: any) {
+  const now = Date.now();
+  const patch: Record<string, unknown> = {
+    leadStage,
+    lastStageChangedAt: now,
+  };
+
+  if (leadStage === "contacted" && !request.contactedAt) {
+    patch.contactedAt = now;
+    patch.status = "contacted";
+  }
+  if ((leadStage === "declined" || leadStage === "lost") && request.status !== "converted") {
+    patch.status = "declined";
+  }
+  if (leadStage === "converted" && request.status !== "converted") {
+    patch.status = "converted";
+  }
+
+  return patch;
+}
+
+/**
+ * Create a manual lead/request from the owner Leads area.
+ * Owner-only; company is derived from the authenticated owner.
+ */
+export const createManualClientRequest = mutation({
+  args: {
+    userId: v.optional(v.id("users")),
+    requesterName: v.string(),
+    requesterEmail: v.string(),
+    requesterPhone: v.optional(v.string()),
+    propertyName: v.optional(v.string()),
+    propertyAddress: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    requestedService: v.optional(v.string()),
+    leadType: v.optional(leadTypeValidator),
+    leadStage: v.optional(leadStageValidator),
+    businessName: v.optional(v.string()),
+    businessContactTitle: v.optional(v.string()),
+    businessWebsite: v.optional(v.string()),
+    estimatedContractValueCents: v.optional(v.number()),
+    estimatedFrequency: v.optional(estimatedFrequencyValidator),
+    estimatedFrequencyNotes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+    const now = Date.now();
+
+    const requestId = await ctx.db.insert("clientRequests", {
+      companyId: owner.companyId!,
+      createdAt: now,
+      status: args.leadStage === "contacted" ? "contacted" : "new",
+      contactedAt: args.leadStage === "contacted" ? now : undefined,
+      requesterName: args.requesterName.trim().slice(0, 200),
+      requesterEmail: args.requesterEmail.trim().toLowerCase().slice(0, 200),
+      requesterPhone: cleanOptional(args.requesterPhone, 50),
+      propertySnapshot: {
+        name: cleanOptional(args.propertyName, 200),
+        address: cleanOptional(args.propertyAddress, 500),
+      },
+      notes: cleanOptional(args.notes, 4000),
+      requestedService: cleanOptional(args.requestedService, 200),
+      source: "manual",
+      leadType: args.leadType ?? "other",
+      leadStage: args.leadStage ?? "new",
+      lastStageChangedAt: now,
+      businessName: cleanOptional(args.businessName, 200),
+      businessContactTitle: cleanOptional(args.businessContactTitle, 200),
+      businessWebsite: cleanOptional(args.businessWebsite, 500),
+      estimatedContractValueCents: args.estimatedContractValueCents,
+      estimatedFrequency: args.estimatedFrequency,
+      estimatedFrequencyNotes: cleanOptional(args.estimatedFrequencyNotes, 1000),
+      createdByUserId: owner._id,
+    });
+
+    return requestId;
+  },
+});
+
+/**
+ * Update universal lead details for a request.
+ * Owner-only; scoped to company.
+ */
+export const updateLeadDetails = mutation({
+  args: {
+    userId: v.optional(v.id("users")),
+    requestId: v.id("clientRequests"),
+    leadType: v.optional(leadTypeValidator),
+    businessName: v.optional(v.string()),
+    businessContactTitle: v.optional(v.string()),
+    businessWebsite: v.optional(v.string()),
+    estimatedContractValueCents: v.optional(v.number()),
+    estimatedFrequency: v.optional(estimatedFrequencyValidator),
+    estimatedFrequencyNotes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+
+    const request = await ctx.db.get(args.requestId);
+    if (!request) throw new Error("Request not found");
+    if (request.companyId !== owner.companyId) throw new Error("Access denied");
+
+    await ctx.db.patch(args.requestId, {
+      leadType: args.leadType,
+      businessName: cleanOptional(args.businessName, 200),
+      businessContactTitle: cleanOptional(args.businessContactTitle, 200),
+      businessWebsite: cleanOptional(args.businessWebsite, 500),
+      estimatedContractValueCents: args.estimatedContractValueCents,
+      estimatedFrequency: args.estimatedFrequency,
+      estimatedFrequencyNotes: cleanOptional(args.estimatedFrequencyNotes, 1000),
+    });
+  },
+});
 
 /**
  * Update the CRM lead stage for a request.
@@ -209,13 +361,7 @@ export const updateLeadStage = mutation({
   args: {
     userId: v.id("users"),
     requestId: v.id("clientRequests"),
-    leadStage: v.union(
-      v.literal("new"),
-      v.literal("contacted"),
-      v.literal("quoted"),
-      v.literal("won"),
-      v.literal("lost")
-    ),
+    leadStage: leadStageValidator,
   },
   handler: async (ctx, args) => {
     const owner = await requireOwner(ctx, args.userId);
@@ -224,17 +370,7 @@ export const updateLeadStage = mutation({
     if (!request) throw new Error("Request not found");
     if (request.companyId !== owner.companyId) throw new Error("Access denied");
 
-    const patch: Record<string, unknown> = {
-      leadStage: args.leadStage,
-      lastStageChangedAt: Date.now(),
-    };
-
-    // Sync contactedAt when moving to contacted stage
-    if (args.leadStage === "contacted" && !request.contactedAt) {
-      patch.contactedAt = Date.now();
-    }
-
-    await ctx.db.patch(args.requestId, patch);
+    await ctx.db.patch(args.requestId, patchForStage(args.leadStage, request));
   },
 });
 

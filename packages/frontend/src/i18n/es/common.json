@@ -111,7 +111,12 @@
     "retry": "Reintentar",
     "failedToAccept": "Error al aceptar",
     "failedToDeny": "Error al rechazar",
-    "failedToCancel": "Error al cancelar"
+    "failedToCancel": "Error al cancelar",
+    "select": "Seleccionar...",
+    "name": "Nombre",
+    "email": "Correo electrónico",
+    "phone": "Teléfono",
+    "address": "Dirección"
   },
   "status": {
     "active": "Activo",
@@ -143,7 +148,11 @@
     "completed": "Completado",
     "paid": "Pagado",
     "planned": "Planificado",
-    "amountPending": "Monto pendiente"
+    "amountPending": "Monto pendiente",
+    "walkthroughScheduled": "Recorrido Programado",
+    "proposalNeeded": "Propuesta Necesaria",
+    "proposalSent": "Propuesta Enviada",
+    "negotiating": "Negociando"
   },
   "dashboard": {
     "welcomeBack": "Bienvenido, {{name}}",
@@ -236,7 +245,23 @@
     "clientFeedback": "Comentarios del cliente",
     "declineRequest": "Rechazar solicitud",
     "declineConfirm": "¿Rechazar la solicitud de {{name}}? Esta acción no se puede deshacer.",
-    "backToRequests": "Volver a solicitudes"
+    "backToRequests": "Volver a solicitudes",
+    "newLead": "Nuevo prospecto",
+    "createLead": "Crear prospecto",
+    "creatingLead": "Creando...",
+    "leadCreated": "Prospecto creado",
+    "leadType": "Tipo de prospecto",
+    "businessName": "Nombre del negocio / compañía",
+    "businessContactTitle": "Cargo del contacto",
+    "businessWebsite": "Sitio web",
+    "estimatedContractValue": "Valor estimado del contrato",
+    "estimatedFrequency": "Frecuencia estimada",
+    "estimatedFrequencyNotes": "Notas de frecuencia",
+    "saveLeadDetails": "Guardar detalles",
+    "leadDetailsSaved": "Detalles guardados",
+    "invalidEstimate": "Ingresa un valor estimado válido",
+    "manualLead": "Prospecto manual",
+    "service": "Servicio"
   },
   "feedback": {
     "title": "Comentarios",
@@ -1230,5 +1255,22 @@
     "reportRedFlag": "Reportar Alerta",
     "flagCreated": "Alerta reportada",
     "submitFlag": "Enviar Alerta"
+  },
+  "leadTypes": {
+    "booking_request": "Solicitud de reserva",
+    "residential": "Residencial",
+    "str_airbnb": "STR / Airbnb",
+    "commercial": "Comercial",
+    "move_out": "Mudanza",
+    "post_construction": "Post-construcción",
+    "other": "Otro"
+  },
+  "leadFrequencies": {
+    "one_time": "Una vez",
+    "weekly": "Semanal",
+    "biweekly": "Quincenal",
+    "monthly": "Mensual",
+    "quarterly": "Trimestral",
+    "custom": "Personalizado"
   }
 }

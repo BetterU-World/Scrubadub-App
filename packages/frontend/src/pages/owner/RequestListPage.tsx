@@ -1,13 +1,13 @@
-import { useState } from "react";
+import { FormEvent, useState } from "react";
 import { Link } from "wouter";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { LeadsHeader } from "@/components/ui/LeadsHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { Inbox, Calendar, MapPin, Sparkles } from "lucide-react";
+import { Inbox, Calendar, MapPin, Sparkles, Plus, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useTimeAgo } from "@/hooks/useTimeAgo";
 
@@ -16,6 +16,19 @@ export function RequestListPage() {
   const { t } = useTranslation();
   const timeAgo = useTimeAgo();
   const [statusFilter, setStatusFilter] = useState("");
+  const [showNewLead, setShowNewLead] = useState(false);
+  const [creatingLead, setCreatingLead] = useState(false);
+  const [leadError, setLeadError] = useState("");
+  const [newLead, setNewLead] = useState({
+    requesterName: "",
+    requesterEmail: "",
+    requesterPhone: "",
+    propertyAddress: "",
+    requestedService: "",
+    leadType: "other",
+    businessName: "",
+    notes: "",
+  });
 
   const statusOptions = [
     { value: "", label: t("requests.all") },
@@ -26,6 +39,10 @@ export function RequestListPage() {
     { value: "converted", label: t("status.converted") },
     { value: "archived", label: t("status.archived") },
   ];
+
+  const createManualLead = useMutation(
+    api.mutations.clientRequests.createManualClientRequest
+  );
 
   const requests = useQuery(
     api.queries.clientRequests.getCompanyRequests,
@@ -40,11 +57,92 @@ export function RequestListPage() {
 
   if (!user || requests === undefined) return <PageLoader />;
 
+  const handleCreateLead = async (e: FormEvent) => {
+    e.preventDefault();
+    setLeadError("");
+    setCreatingLead(true);
+    try {
+      await createManualLead({
+        userId: user._id,
+        requesterName: newLead.requesterName,
+        requesterEmail: newLead.requesterEmail,
+        requesterPhone: newLead.requesterPhone || undefined,
+        propertyAddress: newLead.propertyAddress || undefined,
+        requestedService: newLead.requestedService || undefined,
+        leadType: newLead.leadType as any,
+        businessName: newLead.businessName || undefined,
+        notes: newLead.notes || undefined,
+      });
+      setNewLead({
+        requesterName: "",
+        requesterEmail: "",
+        requesterPhone: "",
+        propertyAddress: "",
+        requestedService: "",
+        leadType: "other",
+        businessName: "",
+        notes: "",
+      });
+      setShowNewLead(false);
+    } catch (err: any) {
+      setLeadError(err.message || "Failed to create lead");
+    } finally {
+      setCreatingLead(false);
+    }
+  };
+
   const sorted = [...requests].sort((a, b) => b.createdAt - a.createdAt);
 
   return (
     <div>
-      <LeadsHeader />
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+        <LeadsHeader />
+        <button
+          onClick={() => setShowNewLead(true)}
+          className="btn-primary flex items-center justify-center gap-2 sm:mt-1"
+        >
+          <Plus className="w-4 h-4" /> {t("requests.newLead")}
+        </button>
+      </div>
+
+      {showNewLead && (
+        <div className="card mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold text-gray-900">{t("requests.manualLead")}</h2>
+            <button
+              onClick={() => setShowNewLead(false)}
+              className="p-1 text-gray-400 hover:text-gray-600"
+              aria-label="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          {leadError && (
+            <div className="mb-3 p-2 rounded bg-red-50 text-red-700 text-sm">
+              {leadError}
+            </div>
+          )}
+          <form onSubmit={handleCreateLead} className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input className="input-field" required placeholder={t("common.name")} value={newLead.requesterName} onChange={(e) => setNewLead({ ...newLead, requesterName: e.target.value })} />
+              <input className="input-field" required type="email" placeholder={t("common.email")} value={newLead.requesterEmail} onChange={(e) => setNewLead({ ...newLead, requesterEmail: e.target.value })} />
+              <input className="input-field" placeholder={t("common.phone")} value={newLead.requesterPhone} onChange={(e) => setNewLead({ ...newLead, requesterPhone: e.target.value })} />
+              <select className="input-field" value={newLead.leadType} onChange={(e) => setNewLead({ ...newLead, leadType: e.target.value })}>
+                {(["booking_request", "residential", "str_airbnb", "commercial", "move_out", "post_construction", "other"] as const).map((type) => (
+                  <option key={type} value={type}>{t(`leadTypes.${type}`)}</option>
+                ))}
+              </select>
+              <input className="input-field" placeholder={t("requests.businessName")} value={newLead.businessName} onChange={(e) => setNewLead({ ...newLead, businessName: e.target.value })} />
+              <input className="input-field" placeholder={t("requests.service")} value={newLead.requestedService} onChange={(e) => setNewLead({ ...newLead, requestedService: e.target.value })} />
+            </div>
+            <input className="input-field" placeholder={t("common.address")} value={newLead.propertyAddress} onChange={(e) => setNewLead({ ...newLead, propertyAddress: e.target.value })} />
+            <textarea className="input-field" rows={3} placeholder={t("common.notes")} value={newLead.notes} onChange={(e) => setNewLead({ ...newLead, notes: e.target.value })} />
+            <button disabled={creatingLead} className="btn-primary w-full sm:w-auto" type="submit">
+              {creatingLead ? t("requests.creatingLead") : t("requests.createLead")}
+            </button>
+          </form>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex gap-2 mb-4">
