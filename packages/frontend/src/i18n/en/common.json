@@ -1272,5 +1272,40 @@
     "monthly": "Monthly",
     "quarterly": "Quarterly",
     "custom": "Custom"
+  },
+  "proposals": {
+    "title": "Proposal",
+    "description": "SCRUB-standard proposal for this lead",
+    "emptyDesc": "Create a simple proposal for this lead.",
+    "create": "Create Proposal",
+    "created": "Proposal created",
+    "createFailed": "Failed to create proposal",
+    "save": "Save Proposal",
+    "saved": "Proposal saved",
+    "saveFailed": "Failed to save proposal",
+    "actionFailed": "Failed to update proposal",
+    "proposalTitle": "Proposal Title",
+    "clientName": "Client Name",
+    "serviceFrequency": "Service Frequency",
+    "frequencyNotes": "Frequency Notes",
+    "scopeOfWork": "Scope of Work",
+    "monthlyPrice": "Monthly Price",
+    "oneTimePrice": "One-Time Price",
+    "pricing": "Pricing",
+    "priceNotSet": "Not set",
+    "invalidPrice": "Enter a valid proposal price",
+    "markSent": "Mark Sent",
+    "markAccepted": "Mark Accepted",
+    "markDeclined": "Mark Declined",
+    "sentSuccess": "Proposal marked sent",
+    "acceptedSuccess": "Proposal accepted",
+    "declinedSuccess": "Proposal declined",
+    "commercialAccountComingSoon": "Commercial Account conversion coming soon",
+    "statuses": {
+      "draft": "Draft",
+      "sent": "Sent",
+      "accepted": "Accepted",
+      "declined": "Declined"
+    }
   }
 }

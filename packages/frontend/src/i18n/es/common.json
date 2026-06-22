@@ -1272,5 +1272,40 @@
     "monthly": "Mensual",
     "quarterly": "Trimestral",
     "custom": "Personalizado"
+  },
+  "proposals": {
+    "title": "Propuesta",
+    "description": "Propuesta estándar de SCRUB para este prospecto",
+    "emptyDesc": "Crea una propuesta simple para este prospecto.",
+    "create": "Crear propuesta",
+    "created": "Propuesta creada",
+    "createFailed": "No se pudo crear la propuesta",
+    "save": "Guardar propuesta",
+    "saved": "Propuesta guardada",
+    "saveFailed": "No se pudo guardar la propuesta",
+    "actionFailed": "No se pudo actualizar la propuesta",
+    "proposalTitle": "Título de la propuesta",
+    "clientName": "Nombre del cliente",
+    "serviceFrequency": "Frecuencia del servicio",
+    "frequencyNotes": "Notas de frecuencia",
+    "scopeOfWork": "Alcance del trabajo",
+    "monthlyPrice": "Precio mensual",
+    "oneTimePrice": "Precio único",
+    "pricing": "Precios",
+    "priceNotSet": "Sin definir",
+    "invalidPrice": "Ingresa un precio válido",
+    "markSent": "Marcar enviada",
+    "markAccepted": "Marcar aceptada",
+    "markDeclined": "Marcar rechazada",
+    "sentSuccess": "Propuesta marcada como enviada",
+    "acceptedSuccess": "Propuesta aceptada",
+    "declinedSuccess": "Propuesta rechazada",
+    "commercialAccountComingSoon": "La conversión a cuenta comercial estará disponible pronto",
+    "statuses": {
+      "draft": "Borrador",
+      "sent": "Enviada",
+      "accepted": "Aceptada",
+      "declined": "Rechazada"
+    }
   }
 }
