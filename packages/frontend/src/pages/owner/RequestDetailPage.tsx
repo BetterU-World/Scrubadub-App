@@ -30,6 +30,8 @@ import {
   X,
   AlertCircle,
   Sparkles,
+  Send,
+  DollarSign,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -71,6 +73,27 @@ export function RequestDetailPage() {
   const updateLeadDetailsMut = useMutation(
     api.mutations.clientRequests.updateLeadDetails
   );
+  const createProposal = useMutation(
+    (api as any).mutations.proposals.createProposalFromLead
+  );
+  const updateProposalMut = useMutation((api as any).mutations.proposals.updateProposal);
+  const markProposalSent = useMutation((api as any).mutations.proposals.markProposalSent);
+  const markProposalAccepted = useMutation(
+    (api as any).mutations.proposals.markProposalAccepted
+  );
+  const markProposalDeclined = useMutation(
+    (api as any).mutations.proposals.markProposalDeclined
+  );
+
+  const proposal = useQuery(
+    (api as any).queries.proposals.getProposalByClientRequest,
+    params.id && user
+      ? {
+          userId: user._id,
+          clientRequestId: params.id as Id<"clientRequests">,
+        }
+      : "skip"
+  );
 
   const latestFeedback = useQuery(
     api.queries.clientRequests.getLatestFeedbackForRequest,
@@ -110,6 +133,25 @@ export function RequestDetailPage() {
   const [estimatedFrequencyVal, setEstimatedFrequencyVal] = useState("");
   const [estimatedFrequencyNotesVal, setEstimatedFrequencyNotesVal] = useState("");
 
+  // Proposal state
+  const [creatingProposal, setCreatingProposal] = useState(false);
+  const [savingProposal, setSavingProposal] = useState(false);
+  const [proposalActionLoading, setProposalActionLoading] = useState<string | null>(null);
+  const [editingProposal, setEditingProposal] = useState(false);
+  const [proposalLoadedId, setProposalLoadedId] = useState<string | null>(null);
+  const [proposalForm, setProposalForm] = useState({
+    title: "",
+    clientName: "",
+    businessName: "",
+    propertyAddress: "",
+    serviceFrequency: "",
+    serviceFrequencyNotes: "",
+    scopeOfWork: "",
+    monthlyPrice: "",
+    oneTimePrice: "",
+    notes: "",
+  });
+
   // Sync lead notes / follow-up from server on first load
   useEffect(() => {
     if (request && !leadNotesLoaded) {
@@ -137,7 +179,32 @@ export function RequestDetailPage() {
     }
   }, [request, leadNotesLoaded]);
 
-  if (request === undefined) return <PageLoader />;
+  useEffect(() => {
+    if (proposal && proposal._id !== proposalLoadedId) {
+      setProposalForm({
+        title: proposal.title ?? "",
+        clientName: proposal.clientName ?? "",
+        businessName: proposal.businessName ?? "",
+        propertyAddress: proposal.propertyAddress ?? "",
+        serviceFrequency: proposal.serviceFrequency ?? "",
+        serviceFrequencyNotes: proposal.serviceFrequencyNotes ?? "",
+        scopeOfWork: proposal.scopeOfWork ?? "",
+        monthlyPrice:
+          proposal.monthlyPriceCents != null
+            ? String(proposal.monthlyPriceCents / 100)
+            : "",
+        oneTimePrice:
+          proposal.oneTimePriceCents != null
+            ? String(proposal.oneTimePriceCents / 100)
+            : "",
+        notes: proposal.notes ?? "",
+      });
+      setEditingProposal(proposal.status === "draft");
+      setProposalLoadedId(proposal._id);
+    }
+  }, [proposal, proposalLoadedId]);
+
+  if (request === undefined || proposal === undefined) return <PageLoader />;
   if (request === null) {
     return (
       <div className="text-center py-12 text-gray-500">{t("requests.requestNotFound")}</div>
@@ -247,6 +314,88 @@ export function RequestDetailPage() {
       setCopiedPortal(true);
       setTimeout(() => setCopiedPortal(false), 2000);
     });
+  };
+
+  const centsFromPrice = (value: string) => {
+    if (!value.trim()) return undefined;
+    const cents = Math.round(Number(value) * 100);
+    if (!Number.isFinite(cents) || cents < 0) {
+      throw new Error(t("proposals.invalidPrice"));
+    }
+    return cents;
+  };
+
+  const formatPrice = (cents?: number) =>
+    cents == null
+      ? t("proposals.priceNotSet")
+      : new Intl.NumberFormat(undefined, {
+          style: "currency",
+          currency: "USD",
+        }).format(cents / 100);
+
+  const handleCreateProposal = async () => {
+    setCreatingProposal(true);
+    try {
+      await createProposal({ userId: user!._id, clientRequestId: request._id });
+      setToast({ message: t("proposals.created"), type: "success" });
+      setTimeout(() => setToast(null), 2000);
+    } catch (err: any) {
+      setToast({ message: err.message || t("proposals.createFailed"), type: "error" });
+      setTimeout(() => setToast(null), 3000);
+    } finally {
+      setCreatingProposal(false);
+    }
+  };
+
+  const handleSaveProposal = async () => {
+    if (!proposal) return;
+    setSavingProposal(true);
+    try {
+      await updateProposalMut({
+        userId: user!._id,
+        proposalId: proposal._id,
+        title: proposalForm.title,
+        clientName: proposalForm.clientName,
+        businessName: proposalForm.businessName || undefined,
+        propertyAddress: proposalForm.propertyAddress || undefined,
+        serviceFrequency: (proposalForm.serviceFrequency || undefined) as any,
+        serviceFrequencyNotes: proposalForm.serviceFrequencyNotes || undefined,
+        scopeOfWork: proposalForm.scopeOfWork || undefined,
+        monthlyPriceCents: centsFromPrice(proposalForm.monthlyPrice),
+        oneTimePriceCents: centsFromPrice(proposalForm.oneTimePrice),
+        notes: proposalForm.notes || undefined,
+      });
+      setEditingProposal(false);
+      setToast({ message: t("proposals.saved"), type: "success" });
+      setTimeout(() => setToast(null), 2000);
+    } catch (err: any) {
+      setToast({ message: err.message || t("proposals.saveFailed"), type: "error" });
+      setTimeout(() => setToast(null), 3000);
+    } finally {
+      setSavingProposal(false);
+    }
+  };
+
+  const handleProposalAction = async (action: "sent" | "accepted" | "declined") => {
+    if (!proposal) return;
+    setProposalActionLoading(action);
+    try {
+      if (action === "sent") {
+        await markProposalSent({ userId: user!._id, proposalId: proposal._id });
+      } else if (action === "accepted") {
+        await markProposalAccepted({ userId: user!._id, proposalId: proposal._id });
+      } else {
+        await markProposalDeclined({ userId: user!._id, proposalId: proposal._id });
+      }
+      setEditingProposal(false);
+      setToast({ message: t(`proposals.${action}Success`), type: "success" });
+      setTimeout(() => setToast(null), 2000);
+    } catch (err: any) {
+      setToast({ message: err.message || t("proposals.actionFailed"), type: "error" });
+      setTimeout(() => setToast(null), 3000);
+    } finally {
+      setProposalActionLoading(null);
+    }
   };
 
   const handleDecline = async () => {
@@ -407,6 +556,285 @@ export function RequestDetailPage() {
             </button>
           ) : null}
         </div>
+      </div>
+
+      {/* Proposal */}
+      <div className="card mt-4 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <FileText className="w-4 h-4 text-gray-500" />
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">
+                {t("proposals.title")}
+              </h3>
+              <p className="text-xs text-gray-500">
+                {proposal ? t("proposals.description") : t("proposals.emptyDesc")}
+              </p>
+            </div>
+          </div>
+          {proposal && (
+            <span className="badge bg-primary-50 text-primary-700 capitalize self-start">
+              {t(`proposals.statuses.${proposal.status}`)}
+            </span>
+          )}
+        </div>
+
+        {!proposal ? (
+          <button
+            onClick={handleCreateProposal}
+            disabled={creatingProposal}
+            className="btn-primary flex items-center justify-center gap-2 text-sm w-full sm:w-auto"
+          >
+            <FileText className="w-4 h-4" />
+            {creatingProposal ? t("requests.creating") : t("proposals.create")}
+          </button>
+        ) : editingProposal ? (
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  {t("proposals.proposalTitle")}
+                </label>
+                <input
+                  className="input-field text-sm"
+                  value={proposalForm.title}
+                  onChange={(e) => setProposalForm({ ...proposalForm, title: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  {t("proposals.clientName")}
+                </label>
+                <input
+                  className="input-field text-sm"
+                  value={proposalForm.clientName}
+                  onChange={(e) => setProposalForm({ ...proposalForm, clientName: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  {t("requests.businessName")}
+                </label>
+                <input
+                  className="input-field text-sm"
+                  value={proposalForm.businessName}
+                  onChange={(e) => setProposalForm({ ...proposalForm, businessName: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  {t("common.address")}
+                </label>
+                <input
+                  className="input-field text-sm"
+                  value={proposalForm.propertyAddress}
+                  onChange={(e) => setProposalForm({ ...proposalForm, propertyAddress: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  {t("proposals.serviceFrequency")}
+                </label>
+                <select
+                  className="input-field text-sm"
+                  value={proposalForm.serviceFrequency}
+                  onChange={(e) => setProposalForm({ ...proposalForm, serviceFrequency: e.target.value })}
+                >
+                  <option value="">{t("common.select")}</option>
+                  {(["one_time", "weekly", "biweekly", "monthly", "quarterly", "custom"] as const).map((freq) => (
+                    <option key={freq} value={freq}>{t(`leadFrequencies.${freq}`)}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  {t("proposals.frequencyNotes")}
+                </label>
+                <input
+                  className="input-field text-sm"
+                  value={proposalForm.serviceFrequencyNotes}
+                  onChange={(e) => setProposalForm({ ...proposalForm, serviceFrequencyNotes: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  {t("proposals.monthlyPrice")}
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="input-field text-sm"
+                  value={proposalForm.monthlyPrice}
+                  onChange={(e) => setProposalForm({ ...proposalForm, monthlyPrice: e.target.value })}
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  {t("proposals.oneTimePrice")}
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="input-field text-sm"
+                  value={proposalForm.oneTimePrice}
+                  onChange={(e) => setProposalForm({ ...proposalForm, oneTimePrice: e.target.value })}
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                {t("proposals.scopeOfWork")}
+              </label>
+              <textarea
+                className="input-field text-sm"
+                rows={4}
+                value={proposalForm.scopeOfWork}
+                onChange={(e) => setProposalForm({ ...proposalForm, scopeOfWork: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                {t("common.notes")}
+              </label>
+              <textarea
+                className="input-field text-sm"
+                rows={3}
+                value={proposalForm.notes}
+                onChange={(e) => setProposalForm({ ...proposalForm, notes: e.target.value })}
+              />
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <button
+                onClick={handleSaveProposal}
+                disabled={savingProposal}
+                className="btn-primary flex items-center gap-2 text-sm"
+              >
+                <Save className="w-4 h-4" />
+                {savingProposal ? t("common.saving") : t("proposals.save")}
+              </button>
+              <button
+                onClick={() => setEditingProposal(false)}
+                className="btn-secondary text-sm"
+              >
+                {t("common.cancel")}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-xs font-medium text-gray-500">{t("proposals.proposalTitle")}</p>
+                <p className="text-gray-900">{proposal.title}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-500">{t("proposals.clientName")}</p>
+                <p className="text-gray-900">{proposal.clientName}</p>
+              </div>
+              {proposal.businessName && (
+                <div>
+                  <p className="text-xs font-medium text-gray-500">{t("requests.businessName")}</p>
+                  <p className="text-gray-900">{proposal.businessName}</p>
+                </div>
+              )}
+              {proposal.propertyAddress && (
+                <div>
+                  <p className="text-xs font-medium text-gray-500">{t("common.address")}</p>
+                  <p className="text-gray-900">{proposal.propertyAddress}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-xs font-medium text-gray-500">{t("proposals.serviceFrequency")}</p>
+                <p className="text-gray-900">
+                  {proposal.serviceFrequency ? t(`leadFrequencies.${proposal.serviceFrequency}`) : t("common.unassigned")}
+                </p>
+              </div>
+              <div className="flex items-start gap-2">
+                <DollarSign className="w-4 h-4 text-gray-400 mt-0.5" />
+                <div>
+                  <p className="text-xs font-medium text-gray-500">{t("proposals.pricing")}</p>
+                  <p className="text-gray-900">
+                    {t("proposals.monthlyPrice")}: {formatPrice(proposal.monthlyPriceCents)}
+                  </p>
+                  <p className="text-gray-900">
+                    {t("proposals.oneTimePrice")}: {formatPrice(proposal.oneTimePriceCents)}
+                  </p>
+                </div>
+              </div>
+            </div>
+            {proposal.scopeOfWork && (
+              <div className="border-t pt-3">
+                <p className="text-xs font-medium text-gray-500 mb-1">{t("proposals.scopeOfWork")}</p>
+                <p className="text-sm text-gray-600 whitespace-pre-wrap">{proposal.scopeOfWork}</p>
+              </div>
+            )}
+            {proposal.notes && (
+              <div className="border-t pt-3">
+                <p className="text-xs font-medium text-gray-500 mb-1">{t("common.notes")}</p>
+                <p className="text-sm text-gray-600 whitespace-pre-wrap">{proposal.notes}</p>
+              </div>
+            )}
+            {proposal.status === "accepted" && (
+              <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+                {t("proposals.commercialAccountComingSoon")}
+              </div>
+            )}
+            {proposal.status === "draft" && (
+              <p className="rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-blue-800">
+                {t("proposals.externalSendHelp")}
+              </p>
+            )}
+            {proposal.status === "sent" && (
+              <p className="rounded-lg border border-amber-100 bg-amber-50 p-3 text-sm text-amber-800">
+                {t("proposals.externalDecisionHelp")}
+              </p>
+            )}
+            <div className="flex gap-2 flex-wrap">
+              {(proposal.status === "draft" || proposal.status === "sent") && (
+                <button
+                  onClick={() => setEditingProposal(true)}
+                  className="btn-secondary text-sm"
+                >
+                  {t("common.edit")}
+                </button>
+              )}
+              {proposal.status === "draft" && (
+                <button
+                  onClick={() => handleProposalAction("sent")}
+                  disabled={proposalActionLoading === "sent"}
+                  className="btn-primary flex items-center gap-2 text-sm"
+                >
+                  <Send className="w-4 h-4" />
+                  {proposalActionLoading === "sent" ? t("common.saving") : t("proposals.markAsSent")}
+                </button>
+              )}
+              {proposal.status === "sent" && (
+                <>
+                  <button
+                    onClick={() => handleProposalAction("accepted")}
+                    disabled={proposalActionLoading === "accepted"}
+                    className="btn-primary flex items-center gap-2 text-sm"
+                  >
+                    <Check className="w-4 h-4" />
+                    {proposalActionLoading === "accepted" ? t("common.saving") : t("proposals.markAccepted")}
+                  </button>
+                  <button
+                    onClick={() => handleProposalAction("declined")}
+                    disabled={proposalActionLoading === "declined"}
+                    className="btn-danger flex items-center gap-2 text-sm"
+                  >
+                    <XCircle className="w-4 h-4" />
+                    {proposalActionLoading === "declined" ? t("common.saving") : t("proposals.markDeclined")}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Lead Pipeline controls */}

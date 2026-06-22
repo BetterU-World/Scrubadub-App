@@ -580,6 +580,45 @@ export default defineSchema({
     .index("by_status_createdAt", ["status", "createdAt"])
     .index("by_payoutBatchId", ["payoutBatchId"]),
 
+  proposals: defineTable({
+    companyId: v.id("companies"),
+    clientRequestId: v.id("clientRequests"),
+    createdByUserId: v.id("users"),
+    title: v.string(),
+    clientName: v.string(),
+    businessName: v.optional(v.string()),
+    propertyAddress: v.optional(v.string()),
+    serviceFrequency: v.optional(
+      v.union(
+        v.literal("one_time"),
+        v.literal("weekly"),
+        v.literal("biweekly"),
+        v.literal("monthly"),
+        v.literal("quarterly"),
+        v.literal("custom")
+      )
+    ),
+    serviceFrequencyNotes: v.optional(v.string()),
+    scopeOfWork: v.optional(v.string()),
+    monthlyPriceCents: v.optional(v.number()),
+    oneTimePriceCents: v.optional(v.number()),
+    notes: v.optional(v.string()),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("sent"),
+      v.literal("accepted"),
+      v.literal("declined")
+    ),
+    sentAt: v.optional(v.number()),
+    acceptedAt: v.optional(v.number()),
+    declinedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_clientRequestId", ["clientRequestId"])
+    .index("by_companyId_status", ["companyId", "status"]),
+
   clientRequests: defineTable({
     companyId: v.id("companies"),
     createdAt: v.number(),
