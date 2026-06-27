@@ -1410,5 +1410,58 @@
       "signed": "Signed",
       "cancelled": "Cancelled"
     }
+  },
+  "commercialSchedules": {
+    "title": "Commercial Schedule",
+    "defaultTitle": "Schedule",
+    "helper": "This defines the recurring commercial service schedule. Job generation will be added in a later sprint.",
+    "emptyDesc": "No recurring commercial schedule is defined yet.",
+    "create": "Create Schedule",
+    "save": "Save Schedule",
+    "created": "Schedule created",
+    "updated": "Schedule updated",
+    "saveFailed": "Failed to save schedule",
+    "actionFailed": "Failed to update schedule",
+    "edit": "Edit Schedule",
+    "pause": "Pause",
+    "reactivate": "Reactivate",
+    "end": "End",
+    "ended": "Ended",
+    "pauseSuccess": "Schedule paused",
+    "reactivateSuccess": "Schedule reactivated",
+    "endSuccess": "Schedule ended",
+    "scheduleTitle": "Schedule Title",
+    "property": "Property",
+    "frequency": "Frequency",
+    "daysOfWeek": "Days of Week",
+    "dayOfMonth": "Day of Month",
+    "startDate": "Start Date",
+    "endDate": "End Date",
+    "defaultStartTime": "Default Start Time",
+    "defaultDueTime": "Default Due Time",
+    "assignedCleaner": "Assigned Cleaner",
+    "assignedManager": "Assigned Manager",
+    "assignedTeam": "Assigned Team",
+    "frequencies": {
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "biweekly": "Biweekly",
+      "monthly": "Monthly",
+      "custom": "Custom"
+    },
+    "statuses": {
+      "active": "Active",
+      "paused": "Paused",
+      "ended": "Ended"
+    },
+    "days": {
+      "0": "Sun",
+      "1": "Mon",
+      "2": "Tue",
+      "3": "Wed",
+      "4": "Thu",
+      "5": "Fri",
+      "6": "Sat"
+    }
   }
 }

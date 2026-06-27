@@ -1410,5 +1410,58 @@
       "signed": "Firmado",
       "cancelled": "Cancelado"
     }
+  },
+  "commercialSchedules": {
+    "title": "Programa comercial",
+    "defaultTitle": "Programa",
+    "helper": "Esto define el programa recurrente del servicio comercial. La generacion de trabajos se agregara en un sprint futuro.",
+    "emptyDesc": "Aun no hay programa comercial recurrente.",
+    "create": "Crear programa",
+    "save": "Guardar programa",
+    "created": "Programa creado",
+    "updated": "Programa actualizado",
+    "saveFailed": "No se pudo guardar el programa",
+    "actionFailed": "No se pudo actualizar el programa",
+    "edit": "Editar programa",
+    "pause": "Pausar",
+    "reactivate": "Reactivar",
+    "end": "Finalizar",
+    "ended": "Finalizado",
+    "pauseSuccess": "Programa pausado",
+    "reactivateSuccess": "Programa reactivado",
+    "endSuccess": "Programa finalizado",
+    "scheduleTitle": "Titulo del programa",
+    "property": "Propiedad",
+    "frequency": "Frecuencia",
+    "daysOfWeek": "Dias de la semana",
+    "dayOfMonth": "Dia del mes",
+    "startDate": "Fecha de inicio",
+    "endDate": "Fecha de fin",
+    "defaultStartTime": "Hora de inicio",
+    "defaultDueTime": "Hora limite",
+    "assignedCleaner": "Limpiador asignado",
+    "assignedManager": "Supervisor asignado",
+    "assignedTeam": "Equipo asignado",
+    "frequencies": {
+      "daily": "Diario",
+      "weekly": "Semanal",
+      "biweekly": "Quincenal",
+      "monthly": "Mensual",
+      "custom": "Personalizado"
+    },
+    "statuses": {
+      "active": "Activo",
+      "paused": "Pausado",
+      "ended": "Finalizado"
+    },
+    "days": {
+      "0": "Dom",
+      "1": "Lun",
+      "2": "Mar",
+      "3": "Mie",
+      "4": "Jue",
+      "5": "Vie",
+      "6": "Sab"
+    }
   }
 }
