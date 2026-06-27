@@ -1325,5 +1325,30 @@
       "accepted": "Accepted",
       "declined": "Declined"
     }
+  },
+  "commercialAccounts": {
+    "create": "Create Commercial Account",
+    "save": "Save Commercial Account",
+    "edit": "Edit Account",
+    "created": "Commercial account created",
+    "updated": "Commercial account updated",
+    "saveFailed": "Failed to save commercial account",
+    "summary": "Commercial Account",
+    "clientName": "Client or Business Name",
+    "contactName": "Contact Name",
+    "serviceAddress": "Service Address",
+    "contractAmount": "Contract Amount",
+    "frequency": "Service Frequency",
+    "startDate": "Start Date",
+    "renewalDate": "Renewal Date",
+    "assignedManager": "Assigned Manager",
+    "assignedCleaner": "Assigned Cleaner",
+    "assignedTeam": "Assigned Team",
+    "status": "Status",
+    "statuses": {
+      "active": "Active",
+      "paused": "Paused",
+      "ended": "Ended"
+    }
   }
 }

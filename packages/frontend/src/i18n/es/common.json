@@ -1325,5 +1325,30 @@
       "accepted": "Aceptada",
       "declined": "Rechazada"
     }
+  },
+  "commercialAccounts": {
+    "create": "Crear cuenta comercial",
+    "save": "Guardar cuenta comercial",
+    "edit": "Editar cuenta",
+    "created": "Cuenta comercial creada",
+    "updated": "Cuenta comercial actualizada",
+    "saveFailed": "No se pudo guardar la cuenta comercial",
+    "summary": "Cuenta comercial",
+    "clientName": "Nombre del cliente o empresa",
+    "contactName": "Nombre del contacto",
+    "serviceAddress": "Direccion del servicio",
+    "contractAmount": "Monto del contrato",
+    "frequency": "Frecuencia del servicio",
+    "startDate": "Fecha de inicio",
+    "renewalDate": "Fecha de renovacion",
+    "assignedManager": "Supervisor asignado",
+    "assignedCleaner": "Limpiador asignado",
+    "assignedTeam": "Equipo asignado",
+    "status": "Estado",
+    "statuses": {
+      "active": "Activa",
+      "paused": "Pausada",
+      "ended": "Finalizada"
+    }
   }
 }
