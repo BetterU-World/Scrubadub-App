@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { CalendarDays, Check, Pause, Play, Save, XCircle } from "lucide-react";
+import { CalendarDays, CalendarPlus, Check, Pause, Play, Save, XCircle } from "lucide-react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
@@ -30,9 +30,24 @@ const EMPTY_FORM = {
   notes: "",
 };
 
+const EMPTY_GENERATE_FORM = {
+  startDate: "",
+  endDate: "",
+};
+
 function formatDate(date: string | undefined, fallback: string) {
   if (!date) return fallback;
   return new Date(`${date}T00:00:00`).toLocaleDateString();
+}
+
+function dateString(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function addDaysString(date: Date, days: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return dateString(next);
 }
 
 function Detail({ label, value }: { label: string; value: ReactNode }) {
@@ -69,7 +84,10 @@ export function CommercialScheduleCard({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [generatingScheduleId, setGeneratingScheduleId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [generateForm, setGenerateForm] = useState(EMPTY_GENERATE_FORM);
 
   const schedules = useQuery(
     (api as any).queries.commercialSchedules.getByCommercialAccount,
@@ -101,6 +119,9 @@ export function CommercialScheduleCard({
     (api as any).mutations.commercialSchedules.reactivate
   );
   const endSchedule = useMutation((api as any).mutations.commercialSchedules.end);
+  const generateJobs = useMutation(
+    (api as any).mutations.commercialSchedules.generateCommercialJobsFromSchedule
+  );
 
   useEffect(() => {
     if (showForm && !editingId) return;
@@ -233,6 +254,43 @@ export function CommercialScheduleCard({
       showToast(err.message || t("commercialSchedules.actionFailed"), "error");
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const openGenerateForm = (schedule: any) => {
+    const today = new Date();
+    setGenerateForm({
+      startDate:
+        schedule.startDate && schedule.startDate > dateString(today)
+          ? schedule.startDate
+          : dateString(today),
+      endDate: addDaysString(today, 30),
+    });
+    setGeneratingScheduleId(schedule._id);
+  };
+
+  const handleGenerateJobs = async (scheduleId: Id<"commercialSchedules">) => {
+    setGenerating(true);
+    try {
+      const result = await generateJobs({
+        userId: user._id,
+        commercialScheduleId: scheduleId,
+        startDate: generateForm.startDate,
+        endDate: generateForm.endDate,
+      });
+      showToast(
+        t("commercialSchedules.generateSuccess", {
+          created: result.createdCount,
+          skipped: result.skippedDuplicateCount,
+        }),
+        "success"
+      );
+      setGeneratingScheduleId(null);
+      setGenerateForm(EMPTY_GENERATE_FORM);
+    } catch (err: any) {
+      showToast(err.message || t("commercialSchedules.generateFailed"), "error");
+    } finally {
+      setGenerating(false);
     }
   };
 
@@ -575,6 +633,16 @@ export function CommercialScheduleCard({
                 {schedule.status === "active" && (
                   <button
                     type="button"
+                    onClick={() => openGenerateForm(schedule)}
+                    className="btn-secondary flex items-center gap-2 text-sm"
+                  >
+                    <CalendarPlus className="h-4 w-4" />
+                    {t("commercialSchedules.generateJobs")}
+                  </button>
+                )}
+                {schedule.status === "active" && (
+                  <button
+                    type="button"
                     onClick={() => handleStatusAction(schedule._id, "pause")}
                     disabled={actionLoading === `pause:${schedule._id}`}
                     className="btn-secondary flex items-center gap-2 text-sm"
@@ -612,6 +680,65 @@ export function CommercialScheduleCard({
                   </span>
                 )}
               </div>
+              {generatingScheduleId === schedule._id && (
+                <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                  <p className="text-sm text-gray-600">
+                    {t("commercialSchedules.generateHelper")}
+                  </p>
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <label className="block">
+                      <span className="text-xs font-medium text-gray-600">
+                        {t("commercialSchedules.generateStartDate")}
+                      </span>
+                      <input
+                        type="date"
+                        className="input-field mt-1"
+                        value={generateForm.startDate}
+                        onChange={(e) =>
+                          setGenerateForm({ ...generateForm, startDate: e.target.value })
+                        }
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="text-xs font-medium text-gray-600">
+                        {t("commercialSchedules.generateEndDate")}
+                      </span>
+                      <input
+                        type="date"
+                        className="input-field mt-1"
+                        value={generateForm.endDate}
+                        onChange={(e) =>
+                          setGenerateForm({ ...generateForm, endDate: e.target.value })
+                        }
+                      />
+                    </label>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleGenerateJobs(schedule._id)}
+                      disabled={generating || !generateForm.startDate || !generateForm.endDate}
+                      className="btn-primary flex items-center gap-2 text-sm"
+                    >
+                      <CalendarPlus className="h-4 w-4" />
+                      {generating
+                        ? t("commercialSchedules.generating")
+                        : t("commercialSchedules.generate")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setGeneratingScheduleId(null);
+                        setGenerateForm(EMPTY_GENERATE_FORM);
+                      }}
+                      disabled={generating}
+                      className="btn-secondary text-sm"
+                    >
+                      {t("common.cancel")}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
