@@ -31,6 +31,7 @@ import {
   AlertCircle,
   Sparkles,
   Send,
+  ClipboardCheck,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -83,6 +84,12 @@ export function RequestDetailPage() {
   const markProposalDeclined = useMutation(
     (api as any).mutations.proposals.markProposalDeclined
   );
+  const createCommercialAccount = useMutation(
+    (api as any).mutations.commercialAccounts.create
+  );
+  const updateCommercialAccount = useMutation(
+    (api as any).mutations.commercialAccounts.update
+  );
 
   const proposal = useQuery(
     (api as any).queries.proposals.getProposalByClientRequest,
@@ -91,6 +98,33 @@ export function RequestDetailPage() {
           userId: user._id,
           clientRequestId: params.id as Id<"clientRequests">,
         }
+      : "skip"
+  );
+  const commercialAccount = useQuery(
+    (api as any).queries.commercialAccounts.getByProposal,
+    proposal && user
+      ? {
+          userId: user._id,
+          proposalId: proposal._id,
+        }
+      : "skip"
+  );
+  const managers = useQuery(
+    api.queries.employees.getManagers,
+    proposal?.status === "accepted" && user?.companyId
+      ? { companyId: user.companyId, userId: user._id }
+      : "skip"
+  );
+  const cleaners = useQuery(
+    api.queries.employees.getCleaners,
+    proposal?.status === "accepted" && user?.companyId
+      ? { companyId: user.companyId, userId: user._id }
+      : "skip"
+  );
+  const teams = useQuery(
+    api.queries.teams.listActiveForAssignment,
+    proposal?.status === "accepted" && user?.companyId
+      ? { companyId: user.companyId, userId: user._id }
       : "skip"
   );
 
@@ -138,6 +172,7 @@ export function RequestDetailPage() {
   const [proposalActionLoading, setProposalActionLoading] = useState<string | null>(null);
   const [editingProposal, setEditingProposal] = useState(false);
   const [proposalLoadedId, setProposalLoadedId] = useState<string | null>(null);
+  const [accountLoadedKey, setAccountLoadedKey] = useState<string | null>(null);
   const [proposalForm, setProposalForm] = useState({
     title: "",
     clientName: "",
@@ -148,6 +183,24 @@ export function RequestDetailPage() {
     scopeOfWork: "",
     monthlyPrice: "",
     oneTimePrice: "",
+    notes: "",
+  });
+  const [showAccountForm, setShowAccountForm] = useState(false);
+  const [savingAccount, setSavingAccount] = useState(false);
+  const [accountForm, setAccountForm] = useState({
+    clientName: "",
+    contactName: "",
+    contactEmail: "",
+    contactPhone: "",
+    serviceAddress: "",
+    contractAmount: "",
+    serviceFrequency: "",
+    startDate: "",
+    renewalDate: "",
+    assignedManagerId: "",
+    assignedCleanerId: "",
+    assignedTeamId: "",
+    status: "active",
     notes: "",
   });
 
@@ -203,7 +256,60 @@ export function RequestDetailPage() {
     }
   }, [proposal, proposalLoadedId]);
 
-  if (request === undefined || proposal === undefined) return <PageLoader />;
+  useEffect(() => {
+    if (!request || !proposal || proposal.status !== "accepted") return;
+    const key = commercialAccount?._id ?? `proposal:${proposal._id}`;
+    if (accountLoadedKey === key) return;
+    if (commercialAccount) {
+      setAccountForm({
+        clientName: commercialAccount.clientName ?? "",
+        contactName: commercialAccount.contactName ?? "",
+        contactEmail: commercialAccount.contactEmail ?? "",
+        contactPhone: commercialAccount.contactPhone ?? "",
+        serviceAddress: commercialAccount.serviceAddress ?? "",
+        contractAmount:
+          commercialAccount.contractAmountCents != null
+            ? String(commercialAccount.contractAmountCents / 100)
+            : "",
+        serviceFrequency: commercialAccount.serviceFrequency ?? "",
+        startDate: commercialAccount.startDate ?? "",
+        renewalDate: commercialAccount.renewalDate ?? "",
+        assignedManagerId: commercialAccount.assignedManagerId ?? "",
+        assignedCleanerId: commercialAccount.assignedCleanerId ?? "",
+        assignedTeamId: commercialAccount.assignedTeamId ?? "",
+        status: commercialAccount.status ?? "active",
+        notes: commercialAccount.notes ?? "",
+      });
+      setAccountLoadedKey(key);
+      return;
+    }
+    setAccountForm((current) => ({
+      ...current,
+      clientName: proposal.businessName || proposal.clientName || (request as any).businessName || request.requesterName,
+      contactName: proposal.clientName || request.requesterName,
+      contactEmail: request.requesterEmail ?? "",
+      contactPhone: request.requesterPhone ?? "",
+      serviceAddress: proposal.propertyAddress || request.propertySnapshot?.address || "",
+      contractAmount:
+        proposal.monthlyPriceCents != null
+          ? String(proposal.monthlyPriceCents / 100)
+          : proposal.oneTimePriceCents != null
+            ? String(proposal.oneTimePriceCents / 100)
+            : (request as any).estimatedContractValueCents != null
+              ? String((request as any).estimatedContractValueCents / 100)
+              : "",
+      serviceFrequency: proposal.serviceFrequency || (request as any).estimatedFrequency || "",
+      startDate: request.requestedDate ?? "",
+      notes: proposal.notes || (request as any).leadNotes || request.notes || "",
+    }));
+    setAccountLoadedKey(key);
+  }, [proposal, commercialAccount, request, accountLoadedKey]);
+
+  if (
+    request === undefined ||
+    proposal === undefined ||
+    (proposal && commercialAccount === undefined)
+  ) return <PageLoader />;
   if (request === null) {
     return (
       <div className="text-center py-12 text-gray-500">{t("requests.requestNotFound")}</div>
@@ -343,6 +449,9 @@ export function RequestDetailPage() {
     return parts.length ? parts.join(" + ") : t("proposals.priceNotSet");
   };
 
+  const formatDate = (date?: string) =>
+    date ? new Date(`${date}T00:00:00`).toLocaleDateString() : t("common.unassigned");
+
   const handleCreateProposal = async () => {
     setCreatingProposal(true);
     try {
@@ -404,6 +513,56 @@ export function RequestDetailPage() {
       setTimeout(() => setToast(null), 3000);
     } finally {
       setProposalActionLoading(null);
+    }
+  };
+
+  const handleSaveCommercialAccount = async () => {
+    if (!proposal) return;
+    setSavingAccount(true);
+    try {
+      const payload = {
+        userId: user!._id,
+        clientName: accountForm.clientName,
+        contactName: accountForm.contactName || undefined,
+        contactEmail: accountForm.contactEmail || undefined,
+        contactPhone: accountForm.contactPhone || undefined,
+        serviceAddress: accountForm.serviceAddress || undefined,
+        contractAmountCents: centsFromPrice(accountForm.contractAmount),
+        serviceFrequency: (accountForm.serviceFrequency || undefined) as any,
+        startDate: accountForm.startDate || undefined,
+        renewalDate: accountForm.renewalDate || undefined,
+        assignedManagerId: (accountForm.assignedManagerId || undefined) as any,
+        assignedCleanerId: (accountForm.assignedCleanerId || undefined) as any,
+        assignedTeamId: (accountForm.assignedTeamId || undefined) as any,
+        status: accountForm.status as any,
+        notes: accountForm.notes || undefined,
+      };
+      if (commercialAccount) {
+        await updateCommercialAccount({
+          ...payload,
+          accountId: commercialAccount._id,
+        });
+      } else {
+        await createCommercialAccount({
+          ...payload,
+          clientRequestId: request._id,
+          sourceLeadId: request._id,
+          sourceProposalId: proposal._id,
+        });
+      }
+      setShowAccountForm(false);
+      setToast({
+        message: commercialAccount
+          ? t("commercialAccounts.updated")
+          : t("commercialAccounts.created"),
+        type: "success",
+      });
+      setTimeout(() => setToast(null), 2000);
+    } catch (err: any) {
+      setToast({ message: err.message || t("commercialAccounts.saveFailed"), type: "error" });
+      setTimeout(() => setToast(null), 3000);
+    } finally {
+      setSavingAccount(false);
     }
   };
 
@@ -807,13 +966,314 @@ export function RequestDetailPage() {
                   <Check className="w-4 h-4" />
                   {t("proposals.acceptedBanner")}
                 </div>
-                <div className="rounded-md border border-gray-200 bg-gray-50 p-4">
-                  <p className="text-xs font-medium uppercase text-gray-500">{t("proposals.nextStep")}</p>
-                  <p className="mt-1 text-sm font-semibold text-gray-900">
-                    {t("proposals.commercialAccountCreation")}
-                  </p>
-                  <p className="mt-1 text-sm text-gray-500">{t("proposals.comingSoon")}</p>
-                </div>
+                {commercialAccount && !showAccountForm ? (
+                  <div className="rounded-md border border-gray-200 bg-gray-50 p-4 space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-medium uppercase text-gray-500">
+                          {t("commercialAccounts.summary")}
+                        </p>
+                        <h4 className="mt-1 text-base font-semibold text-gray-900">
+                          {commercialAccount.clientName}
+                        </h4>
+                      </div>
+                      <span className="badge bg-white text-gray-700 capitalize self-start">
+                        {t(`commercialAccounts.statuses.${commercialAccount.status}`)}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-xs font-medium text-gray-500">
+                          {t("commercialAccounts.contractAmount")}
+                        </p>
+                        <p className="text-gray-900">
+                          {formatPrice(commercialAccount.contractAmountCents)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-500">
+                          {t("commercialAccounts.frequency")}
+                        </p>
+                        <p className="text-gray-900">
+                          {commercialAccount.serviceFrequency
+                            ? t(`leadFrequencies.${commercialAccount.serviceFrequency}`)
+                            : t("common.unassigned")}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-500">
+                          {t("commercialAccounts.startDate")}
+                        </p>
+                        <p className="text-gray-900">{formatDate(commercialAccount.startDate)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-500">
+                          {t("commercialAccounts.renewalDate")}
+                        </p>
+                        <p className="text-gray-900">{formatDate(commercialAccount.renewalDate)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-500">
+                          {t("commercialAccounts.assignedManager")}
+                        </p>
+                        <p className="text-gray-900">
+                          {commercialAccount.assignedManagerName ?? t("common.unassigned")}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-500">
+                          {t("commercialAccounts.assignedCleaner")}
+                        </p>
+                        <p className="text-gray-900">
+                          {commercialAccount.assignedCleanerName ?? t("common.unassigned")}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-gray-500">
+                          {t("commercialAccounts.assignedTeam")}
+                        </p>
+                        <p className="text-gray-900">
+                          {commercialAccount.assignedTeamName ?? t("common.unassigned")}
+                        </p>
+                      </div>
+                    </div>
+                    {commercialAccount.notes && (
+                      <div className="border-t pt-3">
+                        <p className="text-xs font-medium text-gray-500 mb-1">
+                          {t("common.notes")}
+                        </p>
+                        <p className="text-sm text-gray-600 whitespace-pre-wrap">
+                          {commercialAccount.notes}
+                        </p>
+                      </div>
+                    )}
+                    <button
+                      onClick={() => setShowAccountForm(true)}
+                      className="btn-secondary text-sm"
+                    >
+                      {t("commercialAccounts.edit")}
+                    </button>
+                  </div>
+                ) : showAccountForm ? (
+                  <div className="rounded-md border border-gray-200 bg-gray-50 p-4 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <ClipboardCheck className="w-4 h-4 text-gray-500" />
+                      <div>
+                        <p className="text-xs font-medium uppercase text-gray-500">
+                          {t("proposals.nextStep")}
+                        </p>
+                        <h4 className="text-sm font-semibold text-gray-900">
+                          {t("commercialAccounts.create")}
+                        </h4>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          {t("commercialAccounts.clientName")}
+                        </label>
+                        <input
+                          className="input-field text-sm"
+                          value={accountForm.clientName}
+                          onChange={(e) => setAccountForm({ ...accountForm, clientName: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          {t("commercialAccounts.contactName")}
+                        </label>
+                        <input
+                          className="input-field text-sm"
+                          value={accountForm.contactName}
+                          onChange={(e) => setAccountForm({ ...accountForm, contactName: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          {t("common.email")}
+                        </label>
+                        <input
+                          className="input-field text-sm"
+                          value={accountForm.contactEmail}
+                          onChange={(e) => setAccountForm({ ...accountForm, contactEmail: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          {t("common.phone")}
+                        </label>
+                        <input
+                          className="input-field text-sm"
+                          value={accountForm.contactPhone}
+                          onChange={(e) => setAccountForm({ ...accountForm, contactPhone: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          {t("commercialAccounts.serviceAddress")}
+                        </label>
+                        <input
+                          className="input-field text-sm"
+                          value={accountForm.serviceAddress}
+                          onChange={(e) => setAccountForm({ ...accountForm, serviceAddress: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          {t("commercialAccounts.contractAmount")}
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          className="input-field text-sm"
+                          value={accountForm.contractAmount}
+                          onChange={(e) => setAccountForm({ ...accountForm, contractAmount: e.target.value })}
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          {t("commercialAccounts.frequency")}
+                        </label>
+                        <select
+                          className="input-field text-sm"
+                          value={accountForm.serviceFrequency}
+                          onChange={(e) => setAccountForm({ ...accountForm, serviceFrequency: e.target.value })}
+                        >
+                          <option value="">{t("common.select")}</option>
+                          {(["one_time", "weekly", "biweekly", "monthly", "quarterly", "custom"] as const).map((freq) => (
+                            <option key={freq} value={freq}>{t(`leadFrequencies.${freq}`)}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          {t("commercialAccounts.status")}
+                        </label>
+                        <select
+                          className="input-field text-sm"
+                          value={accountForm.status}
+                          onChange={(e) => setAccountForm({ ...accountForm, status: e.target.value })}
+                        >
+                          {(["active", "paused", "ended"] as const).map((status) => (
+                            <option key={status} value={status}>
+                              {t(`commercialAccounts.statuses.${status}`)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          {t("commercialAccounts.startDate")}
+                        </label>
+                        <input
+                          type="date"
+                          className="input-field text-sm"
+                          value={accountForm.startDate}
+                          onChange={(e) => setAccountForm({ ...accountForm, startDate: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          {t("commercialAccounts.renewalDate")}
+                        </label>
+                        <input
+                          type="date"
+                          className="input-field text-sm"
+                          value={accountForm.renewalDate}
+                          onChange={(e) => setAccountForm({ ...accountForm, renewalDate: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          {t("commercialAccounts.assignedManager")}
+                        </label>
+                        <select
+                          className="input-field text-sm"
+                          value={accountForm.assignedManagerId}
+                          onChange={(e) => setAccountForm({ ...accountForm, assignedManagerId: e.target.value })}
+                        >
+                          <option value="">{t("common.unassigned")}</option>
+                          {(managers ?? []).map((manager: any) => (
+                            <option key={manager._id} value={manager._id}>{manager.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          {t("commercialAccounts.assignedCleaner")}
+                        </label>
+                        <select
+                          className="input-field text-sm"
+                          value={accountForm.assignedCleanerId}
+                          onChange={(e) => setAccountForm({ ...accountForm, assignedCleanerId: e.target.value })}
+                        >
+                          <option value="">{t("common.unassigned")}</option>
+                          {(cleaners ?? []).map((cleaner: any) => (
+                            <option key={cleaner._id} value={cleaner._id}>{cleaner.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">
+                          {t("commercialAccounts.assignedTeam")}
+                        </label>
+                        <select
+                          className="input-field text-sm"
+                          value={accountForm.assignedTeamId}
+                          onChange={(e) => setAccountForm({ ...accountForm, assignedTeamId: e.target.value })}
+                        >
+                          <option value="">{t("common.unassigned")}</option>
+                          {(teams ?? []).map((team: any) => (
+                            <option key={team._id} value={team._id}>{team.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        {t("common.notes")}
+                      </label>
+                      <textarea
+                        className="input-field text-sm"
+                        rows={3}
+                        value={accountForm.notes}
+                        onChange={(e) => setAccountForm({ ...accountForm, notes: e.target.value })}
+                      />
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      <button
+                        onClick={handleSaveCommercialAccount}
+                        disabled={savingAccount}
+                        className="btn-primary flex items-center gap-2 text-sm"
+                      >
+                        <Save className="w-4 h-4" />
+                        {savingAccount ? t("common.saving") : t("commercialAccounts.save")}
+                      </button>
+                      <button
+                        onClick={() => setShowAccountForm(false)}
+                        className="btn-secondary text-sm"
+                      >
+                        {t("common.cancel")}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-gray-200 bg-gray-50 p-4">
+                    <p className="text-xs font-medium uppercase text-gray-500">{t("proposals.nextStep")}</p>
+                    <p className="mt-1 text-sm font-semibold text-gray-900">
+                      {t("commercialAccounts.create")}
+                    </p>
+                    <button
+                      onClick={() => setShowAccountForm(true)}
+                      className="btn-primary mt-3 flex items-center gap-2 text-sm"
+                    >
+                      <ClipboardCheck className="w-4 h-4" />
+                      {t("commercialAccounts.create")}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
             {proposal.status === "declined" && (

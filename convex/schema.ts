@@ -619,6 +619,46 @@ export default defineSchema({
     .index("by_clientRequestId", ["clientRequestId"])
     .index("by_companyId_status", ["companyId", "status"]),
 
+  commercialAccounts: defineTable({
+    companyId: v.id("companies"),
+    sourceLeadId: v.optional(v.id("clientRequests")),
+    clientRequestId: v.optional(v.id("clientRequests")),
+    sourceProposalId: v.optional(v.id("proposals")),
+    clientName: v.string(),
+    contactName: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    serviceAddress: v.optional(v.string()),
+    contractAmountCents: v.optional(v.number()),
+    serviceFrequency: v.optional(
+      v.union(
+        v.literal("one_time"),
+        v.literal("weekly"),
+        v.literal("biweekly"),
+        v.literal("monthly"),
+        v.literal("quarterly"),
+        v.literal("custom")
+      )
+    ),
+    startDate: v.optional(v.string()),
+    renewalDate: v.optional(v.string()),
+    assignedManagerId: v.optional(v.id("users")),
+    assignedCleanerId: v.optional(v.id("users")),
+    assignedTeamId: v.optional(v.id("teams")),
+    status: v.union(
+      v.literal("active"),
+      v.literal("paused"),
+      v.literal("ended")
+    ),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_sourceProposalId", ["sourceProposalId"])
+    .index("by_clientRequestId", ["clientRequestId"])
+    .index("by_companyId_status", ["companyId", "status"]),
+
   clientRequests: defineTable({
     companyId: v.id("companies"),
     createdAt: v.number(),
