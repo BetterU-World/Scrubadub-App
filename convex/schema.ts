@@ -191,6 +191,9 @@ export default defineSchema({
     startTime: v.optional(v.string()),
     durationMinutes: v.number(),
     notes: v.optional(v.string()),
+    commercialAccountId: v.optional(v.id("commercialAccounts")),
+    commercialScheduleId: v.optional(v.id("commercialSchedules")),
+    generatedFromCommercialSchedule: v.optional(v.boolean()),
     requireConfirmation: v.optional(v.boolean()),
     reworkCount: v.number(),
     acceptanceStatus: v.optional(
@@ -262,7 +265,9 @@ export default defineSchema({
   })
     .index("by_companyId_status", ["companyId", "status"])
     .index("by_companyId_scheduledDate", ["companyId", "scheduledDate"])
-    .index("by_propertyId", ["propertyId"]),
+    .index("by_propertyId", ["propertyId"])
+    .index("by_commercialAccount", ["commercialAccountId"])
+    .index("by_commercialSchedule", ["commercialScheduleId"]),
 
   forms: defineTable({
     jobId: v.id("jobs"),
