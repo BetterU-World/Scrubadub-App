@@ -31,7 +31,6 @@ import {
   AlertCircle,
   Sparkles,
   Send,
-  DollarSign,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -333,6 +332,17 @@ export function RequestDetailPage() {
           currency: "USD",
         }).format(cents / 100);
 
+  const formatProposalAmount = (monthlyPriceCents?: number, oneTimePriceCents?: number) => {
+    const parts: string[] = [];
+    if (monthlyPriceCents != null) {
+      parts.push(`${formatPrice(monthlyPriceCents)} ${t("proposals.perMonth")}`);
+    }
+    if (oneTimePriceCents != null) {
+      parts.push(`${formatPrice(oneTimePriceCents)} ${t("proposals.oneTime")}`);
+    }
+    return parts.length ? parts.join(" + ") : t("proposals.priceNotSet");
+  };
+
   const handleCreateProposal = async () => {
     setCreatingProposal(true);
     try {
@@ -366,7 +376,6 @@ export function RequestDetailPage() {
         notes: proposalForm.notes || undefined,
       });
       setEditingProposal(false);
-      setProposalLoadedId(null);
       setToast({ message: t("proposals.saved"), type: "success" });
       setTimeout(() => setToast(null), 2000);
     } catch (err: any) {
@@ -726,43 +735,57 @@ export function RequestDetailPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-              <div>
-                <p className="text-xs font-medium text-gray-500">{t("proposals.proposalTitle")}</p>
-                <p className="text-gray-900">{proposal.title}</p>
-              </div>
-              <div>
-                <p className="text-xs font-medium text-gray-500">{t("proposals.clientName")}</p>
-                <p className="text-gray-900">{proposal.clientName}</p>
-              </div>
-              {proposal.businessName && (
+            <div className="rounded-md border border-gray-200 bg-gray-50 p-4 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <div>
-                  <p className="text-xs font-medium text-gray-500">{t("requests.businessName")}</p>
-                  <p className="text-gray-900">{proposal.businessName}</p>
-                </div>
-              )}
-              {proposal.propertyAddress && (
-                <div>
-                  <p className="text-xs font-medium text-gray-500">{t("common.address")}</p>
-                  <p className="text-gray-900">{proposal.propertyAddress}</p>
-                </div>
-              )}
-              <div>
-                <p className="text-xs font-medium text-gray-500">{t("proposals.serviceFrequency")}</p>
-                <p className="text-gray-900">
-                  {proposal.serviceFrequency ? t(`leadFrequencies.${proposal.serviceFrequency}`) : t("common.unassigned")}
-                </p>
-              </div>
-              <div className="flex items-start gap-2">
-                <DollarSign className="w-4 h-4 text-gray-400 mt-0.5" />
-                <div>
-                  <p className="text-xs font-medium text-gray-500">{t("proposals.pricing")}</p>
-                  <p className="text-gray-900">
-                    {t("proposals.monthlyPrice")}: {formatPrice(proposal.monthlyPriceCents)}
+                  <p className="text-xs font-medium uppercase text-gray-500">
+                    {t("proposals.reviewProposal")}
                   </p>
+                  <h4 className="mt-1 text-base font-semibold text-gray-900">
+                    {proposal.title || t("proposals.title")}
+                  </h4>
+                  <p className="mt-1 text-sm text-gray-600">{proposal.clientName}</p>
+                </div>
+                <span className="badge bg-white text-gray-700 capitalize self-start">
+                  {t(`proposals.statuses.${proposal.status}`)}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                {proposal.businessName && (
+                  <div>
+                    <p className="text-xs font-medium text-gray-500">{t("requests.businessName")}</p>
+                    <p className="text-gray-900">{proposal.businessName}</p>
+                  </div>
+                )}
+                {proposal.propertyAddress && (
+                  <div>
+                    <p className="text-xs font-medium text-gray-500">{t("common.address")}</p>
+                    <p className="text-gray-900">{proposal.propertyAddress}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs font-medium text-gray-500">{t("proposals.estimatedContractAmount")}</p>
                   <p className="text-gray-900">
-                    {t("proposals.oneTimePrice")}: {formatPrice(proposal.oneTimePriceCents)}
+                    {formatProposalAmount(proposal.monthlyPriceCents, proposal.oneTimePriceCents)}
                   </p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-gray-500">{t("proposals.serviceFrequency")}</p>
+                  <p className="text-gray-900">
+                    {proposal.serviceFrequency ? t(`leadFrequencies.${proposal.serviceFrequency}`) : t("common.unassigned")}
+                  </p>
+                  {proposal.serviceFrequencyNotes && (
+                    <p className="mt-1 text-xs text-gray-500">{proposal.serviceFrequencyNotes}</p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-gray-500">{t("proposals.terms")}</p>
+                  <p className="text-gray-900">{t("proposals.termsNotSet")}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-gray-500">{t("proposals.status")}</p>
+                  <p className="text-gray-900">{t(`proposals.statuses.${proposal.status}`)}</p>
                 </div>
               </div>
             </div>
@@ -779,8 +802,34 @@ export function RequestDetailPage() {
               </div>
             )}
             {proposal.status === "accepted" && (
-              <div className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800">
-                {t("proposals.commercialAccountComingSoon")}
+              <div className="space-y-3">
+                <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm font-medium text-green-800 flex items-center gap-2">
+                  <Check className="w-4 h-4" />
+                  {t("proposals.acceptedBanner")}
+                </div>
+                <div className="rounded-md border border-gray-200 bg-gray-50 p-4">
+                  <p className="text-xs font-medium uppercase text-gray-500">{t("proposals.nextStep")}</p>
+                  <p className="mt-1 text-sm font-semibold text-gray-900">
+                    {t("proposals.commercialAccountCreation")}
+                  </p>
+                  <p className="mt-1 text-sm text-gray-500">{t("proposals.comingSoon")}</p>
+                </div>
+              </div>
+            )}
+            {proposal.status === "declined" && (
+              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm font-medium text-red-800 flex items-center gap-2">
+                <XCircle className="w-4 h-4" />
+                {t("proposals.declinedBanner")}
+              </div>
+            )}
+            {(proposal.status === "draft" || proposal.status === "sent") && (
+              <div className="rounded-md border border-primary-100 bg-primary-50 p-3 text-sm text-primary-800">
+                <p className="font-medium">{t("proposals.nextStep")}</p>
+                <p className="mt-1">
+                  {proposal.status === "draft"
+                    ? t("proposals.nextStepDraft")
+                    : t("proposals.nextStepSent")}
+                </p>
               </div>
             )}
             <div className="flex gap-2 flex-wrap">
@@ -789,7 +838,7 @@ export function RequestDetailPage() {
                   onClick={() => setEditingProposal(true)}
                   className="btn-secondary text-sm"
                 >
-                  {t("common.edit")}
+                  {t("proposals.editProposal")}
                 </button>
               )}
               {proposal.status === "draft" && (
@@ -799,7 +848,7 @@ export function RequestDetailPage() {
                   className="btn-primary flex items-center gap-2 text-sm"
                 >
                   <Send className="w-4 h-4" />
-                  {proposalActionLoading === "sent" ? t("common.saving") : t("proposals.markSent")}
+                  {proposalActionLoading === "sent" ? t("common.saving") : t("proposals.markAsSent")}
                 </button>
               )}
               {proposal.status === "sent" && (
@@ -810,7 +859,7 @@ export function RequestDetailPage() {
                     className="btn-primary flex items-center gap-2 text-sm"
                   >
                     <Check className="w-4 h-4" />
-                    {proposalActionLoading === "accepted" ? t("common.saving") : t("proposals.markAccepted")}
+                    {proposalActionLoading === "accepted" ? t("common.saving") : t("proposals.markAcceptedOutside")}
                   </button>
                   <button
                     onClick={() => handleProposalAction("declined")}
@@ -818,7 +867,7 @@ export function RequestDetailPage() {
                     className="btn-danger flex items-center gap-2 text-sm"
                   >
                     <XCircle className="w-4 h-4" />
-                    {proposalActionLoading === "declined" ? t("common.saving") : t("proposals.markDeclined")}
+                    {proposalActionLoading === "declined" ? t("common.saving") : t("proposals.markDeclinedOutside")}
                   </button>
                 </>
               )}
