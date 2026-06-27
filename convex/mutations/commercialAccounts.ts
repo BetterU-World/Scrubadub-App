@@ -113,6 +113,7 @@ export const create = mutation({
     clientRequestId: v.optional(v.id("clientRequests")),
     sourceLeadId: v.optional(v.id("clientRequests")),
     sourceProposalId: v.optional(v.id("proposals")),
+    serviceAgreementId: v.optional(v.id("serviceAgreements")),
     ...accountFields,
   },
   handler: async (ctx, args) => {
@@ -137,6 +138,24 @@ export const create = mutation({
       if (existing) return existing._id;
     }
 
+    const sourceProposalId = args.sourceProposalId;
+    const agreement = args.serviceAgreementId
+      ? await ctx.db.get(args.serviceAgreementId)
+      : sourceProposalId
+        ? await ctx.db
+            .query("serviceAgreements")
+            .withIndex("by_proposal", (q) =>
+              q.eq("proposalId", sourceProposalId)
+            )
+            .first()
+        : null;
+    if (agreement) {
+      if (agreement.companyId !== companyId) throw new Error("Access denied");
+      if (args.sourceProposalId && agreement.proposalId !== args.sourceProposalId) {
+        throw new Error("Service agreement must match the source proposal");
+      }
+    }
+
     const clientRequestId = args.clientRequestId ?? proposal?.clientRequestId;
     if (clientRequestId) {
       const request = await ctx.db.get(clientRequestId);
@@ -151,15 +170,23 @@ export const create = mutation({
     }
 
     const now = Date.now();
-    return await ctx.db.insert("commercialAccounts", {
+    const accountId = await ctx.db.insert("commercialAccounts", {
       companyId,
       clientRequestId,
       sourceLeadId: args.sourceLeadId ?? clientRequestId,
       sourceProposalId: args.sourceProposalId,
+      serviceAgreementId: agreement?._id,
       ...(await buildAccountPatch(ctx, companyId, args)),
       createdAt: now,
       updatedAt: now,
     });
+    if (agreement && !agreement.commercialAccountId) {
+      await ctx.db.patch(agreement._id, {
+        commercialAccountId: accountId,
+        updatedAt: now,
+      });
+    }
+    return accountId;
   },
 });
 

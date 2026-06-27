@@ -7,6 +7,7 @@ import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
+import { ServiceAgreementCard } from "@/components/owner/ServiceAgreementCard";
 import {
   Building2,
   CalendarDays,
@@ -417,7 +418,19 @@ export function CommercialAccountDetailPage() {
           </section>
 
           <div className="grid gap-3">
-            <ComingSoonCard icon={FileText} title={t("commercialAccounts.contracts")} label={comingSoon} />
+            <ServiceAgreementCard
+              commercialAccountId={account._id}
+              hideWhenMissing
+              source={{
+                title: `${account.clientName} ${t("serviceAgreements.title")}`,
+                serviceFrequency: account.serviceFrequency,
+                contractAmountCents: account.contractAmountCents,
+                effectiveStartDate: account.startDate,
+                renewalDate: account.renewalDate,
+                notes: account.notes,
+              }}
+              onToast={showToast}
+            />
             <ComingSoonCard icon={CalendarDays} title={t("commercialAccounts.recurringSchedule")} label={comingSoon} />
             <ComingSoonCard icon={Receipt} title={t("commercialAccounts.invoices")} label={comingSoon} />
             <ComingSoonCard icon={User} title={t("commercialAccounts.clientPortal")} label={comingSoon} />
