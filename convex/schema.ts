@@ -693,6 +693,40 @@ export default defineSchema({
     .index("by_clientRequestId", ["clientRequestId"])
     .index("by_companyId_status", ["companyId", "status"]),
 
+  commercialSchedules: defineTable({
+    companyId: v.id("companies"),
+    commercialAccountId: v.id("commercialAccounts"),
+    propertyId: v.optional(v.id("properties")),
+    title: v.string(),
+    status: v.union(
+      v.literal("active"),
+      v.literal("paused"),
+      v.literal("ended")
+    ),
+    frequency: v.union(
+      v.literal("daily"),
+      v.literal("weekly"),
+      v.literal("biweekly"),
+      v.literal("monthly"),
+      v.literal("custom")
+    ),
+    daysOfWeek: v.optional(v.array(v.number())),
+    dayOfMonth: v.optional(v.number()),
+    startDate: v.optional(v.string()),
+    endDate: v.optional(v.string()),
+    defaultStartTime: v.optional(v.string()),
+    defaultDueTime: v.optional(v.string()),
+    assignedCleanerId: v.optional(v.id("users")),
+    assignedManagerId: v.optional(v.id("users")),
+    assignedTeamId: v.optional(v.id("teams")),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_company", ["companyId"])
+    .index("by_commercialAccount", ["commercialAccountId"])
+    .index("by_property", ["propertyId"]),
+
   clientRequests: defineTable({
     companyId: v.id("companies"),
     createdAt: v.number(),

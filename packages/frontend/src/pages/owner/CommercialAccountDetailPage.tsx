@@ -7,10 +7,10 @@ import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
+import { CommercialScheduleCard } from "@/components/owner/CommercialScheduleCard";
 import { ServiceAgreementCard } from "@/components/owner/ServiceAgreementCard";
 import {
   Building2,
-  CalendarDays,
   ClipboardCheck,
   FileText,
   MapPin,
@@ -431,7 +431,16 @@ export function CommercialAccountDetailPage() {
               }}
               onToast={showToast}
             />
-            <ComingSoonCard icon={CalendarDays} title={t("commercialAccounts.recurringSchedule")} label={comingSoon} />
+            <CommercialScheduleCard
+              commercialAccountId={account._id}
+              accountName={account.clientName}
+              defaultPropertyId={account.linkedProperty?._id}
+              defaultStartDate={account.startDate}
+              defaultCleanerId={account.assignedCleanerId}
+              defaultManagerId={account.assignedManagerId}
+              defaultTeamId={account.assignedTeamId}
+              onToast={showToast}
+            />
             <ComingSoonCard icon={Receipt} title={t("commercialAccounts.invoices")} label={comingSoon} />
             <ComingSoonCard icon={User} title={t("commercialAccounts.clientPortal")} label={comingSoon} />
           </div>
