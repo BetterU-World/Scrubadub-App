@@ -8,6 +8,7 @@ import {
   ClipboardCheck,
   Flag,
   Bell,
+  Briefcase,
   ScrollText,
   LogOut,
   BarChart3,
@@ -64,6 +65,7 @@ const ownerSections: NavSection[] = [
     titleKey: "nav.hub",
     items: [
       { href: "/requests", labelKey: "nav.requests", icon: Inbox },
+      { href: "/commercial-accounts", labelKey: "nav.commercialAccounts", icon: Briefcase },
       { href: "/feedback", labelKey: "nav.feedback", icon: MessageSquare },
       { href: "/cleaner-leads", labelKey: "nav.cleanerLeads", icon: UserPlus },
       { href: "/owner/payments", labelKey: "nav.payments", icon: Banknote },
