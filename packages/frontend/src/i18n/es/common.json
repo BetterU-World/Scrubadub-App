@@ -1375,5 +1375,40 @@
       "paused": "Pausada",
       "ended": "Finalizada"
     }
+  },
+  "serviceAgreements": {
+    "title": "Acuerdo de servicio",
+    "defaultTitle": "Acuerdo comercial de servicio",
+    "create": "Crear acuerdo de servicio",
+    "created": "Acuerdo creado",
+    "save": "Guardar acuerdo",
+    "saved": "Acuerdo guardado",
+    "saveFailed": "No se pudo guardar el acuerdo",
+    "actionFailed": "No se pudo actualizar el acuerdo",
+    "emptyDesc": "Crea un borrador del acuerdo despues de que el cliente acepte la propuesta.",
+    "manualSigningNote": "V1 solo registra acuerdos. Firma, correo y archivos ocurren fuera de SCRUB por ahora.",
+    "agreementTitle": "Titulo del acuerdo",
+    "contractAmount": "Monto del contrato",
+    "frequency": "Frecuencia del servicio",
+    "effectiveStartDate": "Fecha de inicio",
+    "effectiveEndDate": "Fecha de fin",
+    "renewalDate": "Fecha de renovacion",
+    "paymentTerms": "Terminos de pago",
+    "scopeOfWork": "Alcance del trabajo",
+    "terms": "Terminos",
+    "edit": "Editar acuerdo",
+    "markSent": "Marcar enviado",
+    "markSignedOutside": "Marcar firmado fuera de SCRUB",
+    "markCancelled": "Marcar cancelado",
+    "sentSuccess": "Acuerdo marcado como enviado",
+    "signedSuccess": "Acuerdo marcado como firmado",
+    "cancelledSuccess": "Acuerdo cancelado",
+    "invalidAmount": "Ingresa un monto valido",
+    "statuses": {
+      "draft": "Borrador",
+      "sent": "Enviado",
+      "signed": "Firmado",
+      "cancelled": "Cancelado"
+    }
   }
 }

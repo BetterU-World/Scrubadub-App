@@ -1375,5 +1375,40 @@
       "paused": "Paused",
       "ended": "Ended"
     }
+  },
+  "serviceAgreements": {
+    "title": "Service Agreement",
+    "defaultTitle": "Commercial Service Agreement",
+    "create": "Create Service Agreement",
+    "created": "Service agreement created",
+    "save": "Save Agreement",
+    "saved": "Service agreement saved",
+    "saveFailed": "Failed to save service agreement",
+    "actionFailed": "Failed to update service agreement",
+    "emptyDesc": "Create a draft agreement after the client accepts the proposal.",
+    "manualSigningNote": "V1 tracks agreements only. Signing, email, and files happen outside SCRUB for now.",
+    "agreementTitle": "Agreement Title",
+    "contractAmount": "Contract Amount",
+    "frequency": "Service Frequency",
+    "effectiveStartDate": "Effective Start Date",
+    "effectiveEndDate": "Effective End Date",
+    "renewalDate": "Renewal Date",
+    "paymentTerms": "Payment Terms",
+    "scopeOfWork": "Scope of Work",
+    "terms": "Terms",
+    "edit": "Edit Agreement",
+    "markSent": "Mark as Sent",
+    "markSignedOutside": "Mark as Signed Outside SCRUB",
+    "markCancelled": "Mark Cancelled",
+    "sentSuccess": "Agreement marked sent",
+    "signedSuccess": "Agreement marked signed",
+    "cancelledSuccess": "Agreement cancelled",
+    "invalidAmount": "Enter a valid agreement amount",
+    "statuses": {
+      "draft": "Draft",
+      "sent": "Sent",
+      "signed": "Signed",
+      "cancelled": "Cancelled"
+    }
   }
 }

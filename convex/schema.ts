@@ -619,11 +619,45 @@ export default defineSchema({
     .index("by_clientRequestId", ["clientRequestId"])
     .index("by_companyId_status", ["companyId", "status"]),
 
+  serviceAgreements: defineTable({
+    companyId: v.id("companies"),
+    proposalId: v.id("proposals"),
+    clientRequestId: v.optional(v.id("clientRequests")),
+    commercialAccountId: v.optional(v.id("commercialAccounts")),
+    title: v.string(),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("sent"),
+      v.literal("signed"),
+      v.literal("cancelled")
+    ),
+    agreementType: v.literal("commercial_cleaning"),
+    effectiveStartDate: v.optional(v.string()),
+    effectiveEndDate: v.optional(v.string()),
+    renewalDate: v.optional(v.string()),
+    serviceFrequency: v.optional(v.string()),
+    contractAmountCents: v.optional(v.number()),
+    paymentTerms: v.optional(v.string()),
+    scopeOfWork: v.optional(v.string()),
+    terms: v.optional(v.string()),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    sentAt: v.optional(v.number()),
+    signedAt: v.optional(v.number()),
+    cancelledAt: v.optional(v.number()),
+  })
+    .index("by_company", ["companyId"])
+    .index("by_proposal", ["proposalId"])
+    .index("by_clientRequest", ["clientRequestId"])
+    .index("by_commercialAccount", ["commercialAccountId"]),
+
   commercialAccounts: defineTable({
     companyId: v.id("companies"),
     sourceLeadId: v.optional(v.id("clientRequests")),
     clientRequestId: v.optional(v.id("clientRequests")),
     sourceProposalId: v.optional(v.id("proposals")),
+    serviceAgreementId: v.optional(v.id("serviceAgreements")),
     clientName: v.string(),
     contactName: v.optional(v.string()),
     contactEmail: v.optional(v.string()),

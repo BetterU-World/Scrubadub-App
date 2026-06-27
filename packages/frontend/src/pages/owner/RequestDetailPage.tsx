@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { ServiceAgreementCard } from "@/components/owner/ServiceAgreementCard";
 import {
   User,
   Mail,
@@ -966,6 +967,23 @@ export function RequestDetailPage() {
                   <Check className="w-4 h-4" />
                   {t("proposals.acceptedBanner")}
                 </div>
+                <ServiceAgreementCard
+                  proposalId={proposal._id}
+                  canCreate
+                  source={{
+                    title: `${proposal.businessName || proposal.clientName} ${t("serviceAgreements.title")}`,
+                    serviceFrequency: proposal.serviceFrequency,
+                    contractAmountCents: proposal.monthlyPriceCents ?? proposal.oneTimePriceCents,
+                    effectiveStartDate: request.requestedDate ?? "",
+                    renewalDate: accountForm.renewalDate,
+                    scopeOfWork: proposal.scopeOfWork,
+                    notes: proposal.notes,
+                  }}
+                  onToast={(message, type) => {
+                    setToast({ message, type });
+                    setTimeout(() => setToast(null), type === "success" ? 2000 : 3000);
+                  }}
+                />
                 {commercialAccount && !showAccountForm ? (
                   <div className="rounded-md border border-gray-200 bg-gray-50 p-4 space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
