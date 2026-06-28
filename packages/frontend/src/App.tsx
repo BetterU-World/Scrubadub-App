@@ -23,6 +23,7 @@ import { PropertyListPage } from "@/pages/owner/PropertyListPage";
 import { PropertyFormPage } from "@/pages/owner/PropertyFormPage";
 import { PropertyDetailPage } from "@/pages/owner/PropertyDetailPage";
 import { EmployeeListPage } from "@/pages/owner/EmployeeListPage";
+import { WorkerDetailPage } from "@/pages/owner/WorkerDetailPage";
 import { JobListPage } from "@/pages/owner/JobListPage";
 import { JobFormPage } from "@/pages/owner/JobFormPage";
 import { JobDetailPage } from "@/pages/owner/JobDetailPage";
@@ -335,6 +336,7 @@ export default function App() {
                   component={PropertyFormPage}
                 />
                 <Route path="/properties/:id" component={PropertyDetailPage} />
+                <Route path="/employees/:id" component={WorkerDetailPage} />
                 <Route path="/employees" component={EmployeeListPage} />
                 <Route path="/jobs" component={JobListPage} />
                 <Route path="/jobs/new" component={JobFormPage} />
