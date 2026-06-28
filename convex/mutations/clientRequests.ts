@@ -283,13 +283,21 @@ export const createManualClientRequest = mutation({
     estimatedContractValueCents: v.optional(v.number()),
     estimatedFrequency: v.optional(estimatedFrequencyValidator),
     estimatedFrequencyNotes: v.optional(v.string()),
+    clientRelationshipId: v.optional(v.id("clientRelationships")),
   },
   handler: async (ctx, args) => {
     const owner = await requireOwner(ctx, args.userId);
     const now = Date.now();
+    const relationship = args.clientRelationshipId
+      ? await ctx.db.get(args.clientRelationshipId)
+      : null;
+    if (relationship && relationship.companyId !== owner.companyId) {
+      throw new Error("Client relationship must belong to your company");
+    }
 
     const requestId = await ctx.db.insert("clientRequests", {
       companyId: owner.companyId!,
+      clientRelationshipId: relationship?._id,
       createdAt: now,
       status: args.leadStage === "contacted" ? "contacted" : "new",
       contactedAt: args.leadStage === "contacted" ? now : undefined,
