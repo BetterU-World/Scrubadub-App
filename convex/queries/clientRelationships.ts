@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { requireOwner } from "../lib/helpers";
 
 const RELATIONSHIP_LIST_CAP = 2_000;
+const DETAIL_LIST_CAP = 500;
 
 async function requireOwnedRelationship(ctx: any, userId: any, relationshipId: any) {
   const owner = await requireOwner(ctx, userId);
@@ -104,6 +105,67 @@ export const getById = query({
     return {
       ...relationship,
       counts: await countsForRelationship(ctx, relationship),
+    };
+  },
+});
+
+async function relatedByRelationship(ctx: any, table: any, index: string, companyId: any, relationshipId: any) {
+  const records = await ctx.db
+    .query(table)
+    .withIndex(index, (q: any) => q.eq("companyId", companyId))
+    .take(DETAIL_LIST_CAP);
+
+  return records.filter((record: any) => record.clientRelationshipId === relationshipId);
+}
+
+export const getClientRelationshipDetail = query({
+  args: {
+    userId: v.id("users"),
+    relationshipId: v.id("clientRelationships"),
+  },
+  handler: async (ctx, args) => {
+    const { relationship } = await requireOwnedRelationship(
+      ctx,
+      args.userId,
+      args.relationshipId
+    );
+    if (!relationship) return null;
+
+    const companyId = relationship.companyId;
+    const relationshipId = relationship._id;
+    const [
+      leads,
+      properties,
+      commercialAccounts,
+      walkthroughs,
+      proposals,
+      serviceAgreements,
+      invoices,
+      jobs,
+    ] = await Promise.all([
+      relatedByRelationship(ctx, "clientRequests", "by_companyId", companyId, relationshipId),
+      relatedByRelationship(ctx, "properties", "by_companyId", companyId, relationshipId),
+      relatedByRelationship(ctx, "commercialAccounts", "by_companyId", companyId, relationshipId),
+      relatedByRelationship(ctx, "walkthroughs", "by_company", companyId, relationshipId),
+      relatedByRelationship(ctx, "proposals", "by_companyId", companyId, relationshipId),
+      relatedByRelationship(ctx, "serviceAgreements", "by_company", companyId, relationshipId),
+      relatedByRelationship(ctx, "invoices", "by_company", companyId, relationshipId),
+      relatedByRelationship(ctx, "jobs", "by_companyId_scheduledDate", companyId, relationshipId),
+    ]);
+
+    return {
+      relationship: {
+        ...relationship,
+        hasClientUser: Boolean(relationship.clientUserId),
+      },
+      leads: leads.sort((a: any, b: any) => b.createdAt - a.createdAt),
+      properties: properties.sort((a: any, b: any) => a.name.localeCompare(b.name)),
+      commercialAccounts: commercialAccounts.sort((a: any, b: any) => b.updatedAt - a.updatedAt),
+      walkthroughs: walkthroughs.sort((a: any, b: any) => b.updatedAt - a.updatedAt),
+      proposals: proposals.sort((a: any, b: any) => b.updatedAt - a.updatedAt),
+      serviceAgreements: serviceAgreements.sort((a: any, b: any) => b.updatedAt - a.updatedAt),
+      invoices: invoices.sort((a: any, b: any) => b.updatedAt - a.updatedAt),
+      jobs: jobs.sort((a: any, b: any) => b.scheduledDate.localeCompare(a.scheduledDate)),
     };
   },
 });

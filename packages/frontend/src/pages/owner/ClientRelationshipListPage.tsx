@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import { Link } from "wouter";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -191,7 +192,7 @@ export function ClientRelationshipListPage() {
       ) : (
         <div className="grid gap-3">
           {relationships.map((relationship: any) => (
-            <div key={relationship._id} className="card">
+            <Link key={relationship._id} href={`/clients/${relationship._id}`} className="card block hover:border-primary-200 hover:bg-primary-50/30">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <div className="flex items-center gap-2">
@@ -214,7 +215,7 @@ export function ClientRelationshipListPage() {
                   Updated {new Date(relationship.updatedAt).toLocaleDateString()}
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}

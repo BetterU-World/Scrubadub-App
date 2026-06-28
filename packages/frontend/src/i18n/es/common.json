@@ -1329,6 +1329,59 @@
       "declined": "Rechazada"
     }
   },
+  "clientRelationships": {
+    "detailDescription": "Relacion de cliente de la empresa y registros vinculados.",
+    "backToClients": "Volver a clientes",
+    "notFound": "Relacion de cliente no encontrada",
+    "notSet": "No establecido",
+    "saved": "Relacion de cliente guardada",
+    "saveFailed": "No se pudo guardar la relacion de cliente",
+    "noBusinessName": "Sin nombre de empresa",
+    "clientUser": "Inicio de sesion del cliente",
+    "yes": "Si",
+    "no": "No",
+    "fields": {
+      "displayName": "Nombre visible",
+      "clientType": "Tipo de cliente",
+      "businessName": "Nombre de empresa",
+      "primaryContactName": "Contacto principal",
+      "email": "Correo electronico",
+      "phone": "Telefono",
+      "status": "Estado"
+    },
+    "clientTypes": {
+      "residential": "Residencial",
+      "commercial": "Comercial",
+      "str": "STR",
+      "property_manager": "Administrador de propiedades",
+      "marketplace": "Marketplace"
+    },
+    "statuses": {
+      "active": "Activa",
+      "inactive": "Inactiva",
+      "archived": "Archivada"
+    },
+    "sections": {
+      "leads": "Prospectos relacionados",
+      "properties": "Propiedades relacionadas",
+      "commercialAccounts": "Cuentas comerciales",
+      "walkthroughs": "Recorridos",
+      "proposals": "Propuestas",
+      "serviceAgreements": "Acuerdos de servicio",
+      "invoices": "Facturas",
+      "jobs": "Trabajos"
+    },
+    "empty": {
+      "leads": "Aun no hay prospectos vinculados.",
+      "properties": "Aun no hay propiedades vinculadas.",
+      "commercialAccounts": "Aun no hay cuentas comerciales vinculadas.",
+      "walkthroughs": "Aun no hay recorridos.",
+      "proposals": "Aun no hay propuestas.",
+      "serviceAgreements": "Aun no hay acuerdos de servicio.",
+      "invoices": "Aun no hay facturas.",
+      "jobs": "Aun no hay trabajos."
+    }
+  },
   "commercialAccounts": {
     "title": "Cuentas comerciales",
     "description": "Gestiona clientes comerciales aceptados y relaciones de servicio.",

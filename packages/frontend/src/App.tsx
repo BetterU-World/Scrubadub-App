@@ -38,6 +38,7 @@ import { PartnersPage } from "@/pages/owner/PartnersPage";
 import { RequestListPage } from "@/pages/owner/RequestListPage";
 import { RequestDetailPage } from "@/pages/owner/RequestDetailPage";
 import { ClientRelationshipListPage } from "@/pages/owner/ClientRelationshipListPage";
+import { ClientRelationshipDetailPage } from "@/pages/owner/ClientRelationshipDetailPage";
 import { CommercialAccountListPage } from "@/pages/owner/CommercialAccountListPage";
 import { CommercialAccountDetailPage } from "@/pages/owner/CommercialAccountDetailPage";
 import { CommercialInvoiceListPage } from "@/pages/owner/CommercialInvoiceListPage";
@@ -325,6 +326,7 @@ export default function App() {
                 <Route path="/requests/pipeline" component={PipelinePage} />
                 <Route path="/requests/:id" component={RequestDetailPage} />
                 <Route path="/requests" component={RequestListPage} />
+                <Route path="/clients/:id" component={ClientRelationshipDetailPage} />
                 <Route path="/clients" component={ClientRelationshipListPage} />
                 <Route path="/commercial-invoices/:id" component={CommercialInvoiceDetailPage} />
                 <Route path="/commercial-invoices" component={CommercialInvoiceListPage} />
