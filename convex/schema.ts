@@ -93,6 +93,135 @@ export default defineSchema({
     .index("by_referralCode", ["referralCode"])
     .index("by_referredByCode", ["referredByCode"]),
 
+  workerProfiles: defineTable({
+    companyId: v.id("companies"),
+    userId: v.id("users"),
+    workerType: v.union(
+      v.literal("w2_employee"),
+      v.literal("contractor_1099"),
+      v.literal("maintenance_contractor"),
+      v.literal("vendor")
+    ),
+    workerStatus: v.union(
+      v.literal("pending"),
+      v.literal("active"),
+      v.literal("inactive"),
+      v.literal("archived")
+    ),
+    primaryRole: v.union(
+      v.literal("cleaner"),
+      v.literal("manager"),
+      v.literal("maintenance"),
+      v.literal("inspector"),
+      v.literal("team_lead")
+    ),
+    eligibleRoles: v.array(
+      v.union(
+        v.literal("cleaner"),
+        v.literal("manager"),
+        v.literal("maintenance"),
+        v.literal("inspector"),
+        v.literal("team_lead")
+      )
+    ),
+    onboardingStatus: v.union(
+      v.literal("not_started"),
+      v.literal("in_progress"),
+      v.literal("blocked"),
+      v.literal("complete"),
+      v.literal("waived")
+    ),
+    jobEligibilityStatus: v.union(
+      v.literal("eligible"),
+      v.literal("limited"),
+      v.literal("ineligible"),
+      v.literal("manual_review")
+    ),
+    payProfile: v.optional(v.object({
+      payType: v.optional(v.union(
+        v.literal("hourly"),
+        v.literal("per_job"),
+        v.literal("salary"),
+        v.literal("vendor_invoice"),
+        v.literal("manual")
+      )),
+      defaultRateCents: v.optional(v.number()),
+      currency: v.optional(v.string()),
+      stripeConnectEnabled: v.optional(v.boolean()),
+      stripeConnectUserFieldSource: v.optional(v.literal("users")),
+      outsideAppPaymentNotes: v.optional(v.string()),
+      taxDocsHandledOffPlatform: v.optional(v.boolean()),
+    })),
+    manualComplianceNotes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_userId", ["userId"])
+    .index("by_companyId_status", ["companyId", "workerStatus"])
+    .index("by_companyId_workerType", ["companyId", "workerType"]),
+
+  workerDocuments: defineTable({
+    companyId: v.id("companies"),
+    workerProfileId: v.id("workerProfiles"),
+    userId: v.id("users"),
+    documentType: v.union(
+      v.literal("contractor_agreement"),
+      v.literal("employee_handbook_ack"),
+      v.literal("w9_record"),
+      v.literal("insurance_record"),
+      v.literal("background_check_record"),
+      v.literal("training_record"),
+      v.literal("policy_ack"),
+      v.literal("other")
+    ),
+    status: v.union(
+      v.literal("not_started"),
+      v.literal("requested"),
+      v.literal("received"),
+      v.literal("reviewed"),
+      v.literal("expired"),
+      v.literal("waived")
+    ),
+    required: v.boolean(),
+    handledOffPlatform: v.boolean(),
+    expiresAt: v.optional(v.number()),
+    reviewedAt: v.optional(v.number()),
+    reviewedByUserId: v.optional(v.id("users")),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_workerProfileId", ["workerProfileId"])
+    .index("by_userId", ["userId"])
+    .index("by_workerProfileId_documentType", ["workerProfileId", "documentType"]),
+
+  workerOnboardingItems: defineTable({
+    companyId: v.id("companies"),
+    workerProfileId: v.id("workerProfiles"),
+    userId: v.id("users"),
+    itemKey: v.string(),
+    title: v.string(),
+    status: v.union(
+      v.literal("not_started"),
+      v.literal("in_progress"),
+      v.literal("complete"),
+      v.literal("blocked"),
+      v.literal("waived")
+    ),
+    required: v.boolean(),
+    completedAt: v.optional(v.number()),
+    completedByUserId: v.optional(v.id("users")),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_workerProfileId", ["workerProfileId"])
+    .index("by_userId", ["userId"])
+    .index("by_workerProfileId_itemKey", ["workerProfileId", "itemKey"]),
+
   clientUsers: defineTable({
     email: v.string(),
     passwordHash: v.optional(v.string()),
