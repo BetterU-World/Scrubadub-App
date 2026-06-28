@@ -26,6 +26,7 @@ import {
   Clock,
   Banknote,
   Package,
+  Receipt,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useQuery } from "convex/react";
@@ -66,6 +67,7 @@ const ownerSections: NavSection[] = [
     items: [
       { href: "/requests", labelKey: "nav.requests", icon: Inbox },
       { href: "/commercial-accounts", labelKey: "nav.commercialAccounts", icon: Briefcase },
+      { href: "/commercial-invoices", labelKey: "nav.commercialInvoices", icon: Receipt },
       { href: "/feedback", labelKey: "nav.feedback", icon: MessageSquare },
       { href: "/cleaner-leads", labelKey: "nav.cleanerLeads", icon: UserPlus },
       { href: "/owner/payments", labelKey: "nav.payments", icon: Banknote },

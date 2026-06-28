@@ -39,6 +39,7 @@ import { RequestListPage } from "@/pages/owner/RequestListPage";
 import { RequestDetailPage } from "@/pages/owner/RequestDetailPage";
 import { CommercialAccountListPage } from "@/pages/owner/CommercialAccountListPage";
 import { CommercialAccountDetailPage } from "@/pages/owner/CommercialAccountDetailPage";
+import { CommercialInvoiceListPage } from "@/pages/owner/CommercialInvoiceListPage";
 import { CommercialInvoiceDetailPage } from "@/pages/owner/CommercialInvoiceDetailPage";
 import { SiteSetupPage } from "@/pages/owner/SiteSetupPage";
 import { CleanerLeadsPage } from "@/pages/owner/CleanerLeadsPage";
@@ -324,6 +325,7 @@ export default function App() {
                 <Route path="/requests/:id" component={RequestDetailPage} />
                 <Route path="/requests" component={RequestListPage} />
                 <Route path="/commercial-invoices/:id" component={CommercialInvoiceDetailPage} />
+                <Route path="/commercial-invoices" component={CommercialInvoiceListPage} />
                 <Route path="/commercial-accounts/:id" component={CommercialAccountDetailPage} />
                 <Route path="/commercial-accounts" component={CommercialAccountListPage} />
                 <Route path="/feedback" component={FeedbackInboxPage} />

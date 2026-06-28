@@ -104,6 +104,29 @@ async function nextInvoiceNumber(ctx: any, companyId: any) {
   return `INV-${String(next).padStart(5, "0")}`;
 }
 
+async function findDraftForBillingPeriod(
+  ctx: any,
+  companyId: any,
+  commercialAccountId: any,
+  billingStartDate: string,
+  billingEndDate: string
+) {
+  const invoices = await ctx.db
+    .query("invoices")
+    .withIndex("by_commercialAccount", (q: any) =>
+      q.eq("commercialAccountId", commercialAccountId)
+    )
+    .collect();
+
+  return invoices.find(
+    (invoice: any) =>
+      invoice.companyId === companyId &&
+      invoice.status === "draft" &&
+      invoice.billingStartDate === billingStartDate &&
+      invoice.billingEndDate === billingEndDate
+  );
+}
+
 function invoiceTotals(account: any) {
   const subtotalCents = account.contractAmountCents ?? 0;
   const taxCents = 0;
@@ -129,6 +152,16 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const { account } = await getOwnedAccount(ctx, args.userId, args.commercialAccountId);
     assertDateRange(args.billingStartDate, args.billingEndDate);
+    const existingDraft = await findDraftForBillingPeriod(
+      ctx,
+      account.companyId,
+      account._id,
+      args.billingStartDate,
+      args.billingEndDate
+    );
+    if (existingDraft) {
+      throw new Error("A draft invoice already exists for this billing period");
+    }
     parseDate(args.issueDate, "Issue date");
     parseDate(args.dueDate, "Due date");
     const jobs = await assertJobsInvoiceable(
@@ -179,6 +212,13 @@ export const generateFromJobs = mutation({
   handler: async (ctx, args) => {
     const { account } = await getOwnedAccount(ctx, args.userId, args.commercialAccountId);
     assertDateRange(args.billingStartDate, args.billingEndDate);
+    const existingDraft = await findDraftForBillingPeriod(
+      ctx,
+      account.companyId,
+      account._id,
+      args.billingStartDate,
+      args.billingEndDate
+    );
 
     const existingInvoices = await ctx.db
       .query("invoices")
@@ -209,9 +249,23 @@ export const generateFromJobs = mutation({
       (job: any) => job.status !== "approved" || billedJobIds.has(job._id)
     );
 
+    if (existingDraft) {
+      return {
+        invoiceId: existingDraft._id,
+        existingInvoice: true,
+        jobsIncluded: [],
+        jobsSkipped: inRange.map((job: any) => ({
+          jobId: job._id,
+          scheduledDate: job.scheduledDate,
+          reason: billedJobIds.has(job._id) ? "already_invoiced" : "draft_exists",
+        })),
+      };
+    }
+
     if (invoiceJobs.length === 0) {
       return {
         invoiceId: null,
+        existingInvoice: false,
         jobsIncluded: [],
         jobsSkipped: skippedJobs.map((job: any) => ({
           jobId: job._id,
@@ -244,6 +298,7 @@ export const generateFromJobs = mutation({
 
     return {
       invoiceId,
+      existingInvoice: false,
       jobsIncluded: invoiceJobs.map((job: any) => ({
         jobId: job._id,
         scheduledDate: job.scheduledDate,
