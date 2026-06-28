@@ -794,6 +794,36 @@ export default defineSchema({
     .index("by_commercialAccount", ["commercialAccountId"])
     .index("by_property", ["propertyId"]),
 
+  invoices: defineTable({
+    companyId: v.id("companies"),
+    commercialAccountId: v.id("commercialAccounts"),
+    title: v.string(),
+    invoiceNumber: v.string(),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("issued"),
+      v.literal("paid"),
+      v.literal("void")
+    ),
+    billingStartDate: v.string(),
+    billingEndDate: v.string(),
+    issueDate: v.string(),
+    dueDate: v.string(),
+    subtotalCents: v.number(),
+    taxCents: v.number(),
+    totalCents: v.number(),
+    jobIds: v.array(v.id("jobs")),
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    issuedAt: v.optional(v.number()),
+    paidAt: v.optional(v.number()),
+    voidedAt: v.optional(v.number()),
+  })
+    .index("by_company", ["companyId"])
+    .index("by_commercialAccount", ["commercialAccountId"])
+    .index("by_status", ["status"]),
+
   clientRequests: defineTable({
     companyId: v.id("companies"),
     createdAt: v.number(),

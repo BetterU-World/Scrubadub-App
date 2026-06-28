@@ -10,12 +10,12 @@ import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { CommercialScheduleCard } from "@/components/owner/CommercialScheduleCard";
 import { ServiceAgreementCard } from "@/components/owner/ServiceAgreementCard";
 import { WalkthroughCard } from "@/components/owner/WalkthroughCard";
+import { CommercialInvoiceCard } from "@/components/owner/CommercialInvoiceCard";
 import {
   Building2,
   ClipboardCheck,
   FileText,
   MapPin,
-  Receipt,
   Save,
   User,
   Users,
@@ -447,7 +447,10 @@ export function CommercialAccountDetailPage() {
               defaultTeamId={account.assignedTeamId}
               onToast={showToast}
             />
-            <ComingSoonCard icon={Receipt} title={t("commercialAccounts.invoices")} label={comingSoon} />
+            <CommercialInvoiceCard
+              commercialAccountId={account._id}
+              onToast={showToast}
+            />
             <ComingSoonCard icon={User} title={t("commercialAccounts.clientPortal")} label={comingSoon} />
           </div>
         </aside>
