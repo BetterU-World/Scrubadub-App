@@ -13,12 +13,33 @@ import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link } from "wouter";
 
+function formatLabel(value?: string | null) {
+  if (!value) return "Not set";
+  return value
+    .split("_")
+    .map((part) => part === "1099" ? part : part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ")
+    .replace("W2", "W-2");
+}
+
+function defaultWorkerTypeForRole(
+  role: "cleaner" | "maintenance" | "manager"
+): "w2_employee" | "contractor_1099" | "maintenance_contractor" {
+  if (role === "maintenance") return "maintenance_contractor";
+  if (role === "manager") return "w2_employee";
+  return "contractor_1099";
+}
+
 export function EmployeeListPage() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const employees = useQuery(
     api.queries.employees.list,
     user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+  );
+  const workerProfiles = useQuery(
+    (api as any).queries.workers.listWorkersForCompany,
+    user?.companyId ? { companyId: user.companyId, userId: user._id, includeArchived: true } : "skip"
   );
   const inviteCleaner = useAction(api.employeeActions.inviteCleaner);
   const resendInviteEmail = useAction(api.employeeActions.resendInviteEmail);
@@ -51,6 +72,7 @@ export function EmployeeListPage() {
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"cleaner" | "maintenance" | "manager">("cleaner");
+  const [inviteWorkerType, setInviteWorkerType] = useState<"w2_employee" | "contractor_1099" | "maintenance_contractor">("contractor_1099");
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteLink, setInviteLink] = useState("");
   const [inviteEmailSent, setInviteEmailSent] = useState(false);
@@ -99,7 +121,11 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
   );
   const setDefaultManager = useMutation(api.mutations.companies.setDefaultManager);
 
-  if (!user || employees === undefined || teams === undefined) return <PageLoader />;
+  if (!user || employees === undefined || teams === undefined || workerProfiles === undefined) return <PageLoader />;
+
+  const workerProfileByUserId = new Map(
+    (workerProfiles ?? []).map((profile: any) => [profile.userId, profile])
+  );
 
   const cleanerCapReached =
     cleanerUsage &&
@@ -117,6 +143,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
         name: inviteName,
         userId: user._id,
         role: inviteRole,
+        workerType: inviteWorkerType,
       };
       if (inviteRole === "manager") {
         Object.assign(inviteArgs, mgrPerms);
@@ -144,6 +171,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
     setInviteName("");
     setInviteEmail("");
     setInviteRole("cleaner");
+    setInviteWorkerType("contractor_1099");
     setInviteLink("");
     setInviteEmailSent(false);
     setError("");
@@ -167,9 +195,9 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
       />
       <HowItWorks
         steps={[
-          "This is your team roster — every cleaner and employee in your company.",
-          "Roles, statuses, and contact info are managed here. Your plan's cleaner capacity is shown so you always know where you stand.",
-          "Use this page to invite new team members, review profiles, and manage access.",
+          "This is your worker roster — every cleaner, manager, and maintenance worker in your company.",
+          "Operational roles stay separate from worker type, onboarding, compliance, and eligibility metadata.",
+          "Use this page to invite workers, review profiles, and manage access.",
         ]}
       />
 
@@ -376,18 +404,39 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t("employees.name")}</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t("employees.email")}</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t("employees.role")}</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Worker Type</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Onboarding</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Eligibility</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t("employees.status")}</th>
                 <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">{t("employees.actions")}</th>
               </tr>
             </thead>
             <tbody>
-              {employees.map((emp) => (
+              {employees.map((emp) => {
+                const workerProfile = workerProfileByUserId.get(emp._id) as any;
+                return (
                 <tr key={emp._id} className="border-b border-gray-100 last:border-0">
-                  <td className="py-3 px-4 text-sm font-medium text-gray-900">{emp.name}</td>
+                  <td className="py-3 px-4 text-sm font-medium text-gray-900">
+                    {emp.role === "owner" ? (
+                      emp.name
+                    ) : (
+                      <Link href={`/employees/${emp._id}`} className="text-primary-700 hover:text-primary-800">
+                        {emp.name}
+                      </Link>
+                    )}
+                  </td>
                   <td className="py-3 px-4 text-sm text-gray-500">{emp.email}</td>
-                  <td className="py-3 px-4 text-sm text-gray-500 capitalize">{emp.role}</td>
-                  <td className="py-3 px-4"><StatusBadge status={emp.status} /></td>
+                  <td className="py-3 px-4 text-sm text-gray-500">{formatLabel(workerProfile?.primaryRole ?? emp.role)}</td>
+                  <td className="py-3 px-4 text-sm text-gray-500">{formatLabel(workerProfile?.workerType)}</td>
+                  <td className="py-3 px-4 text-sm text-gray-500">{formatLabel(workerProfile?.onboardingStatus)}</td>
+                  <td className="py-3 px-4 text-sm text-gray-500">{formatLabel(workerProfile?.jobEligibilityStatus)}</td>
+                  <td className="py-3 px-4"><StatusBadge status={workerProfile?.workerStatus ?? emp.status} /></td>
                   <td className="py-3 px-4 text-right space-x-2">
+                    {emp.role !== "owner" && (
+                      <Link href={`/employees/${emp._id}`} className="text-sm text-gray-600 hover:text-gray-800 font-medium">
+                        View
+                      </Link>
+                    )}
                     {emp.role === "manager" && emp.status === "active" && (
                       <button
                         onClick={() => {
@@ -424,7 +473,8 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                     )}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -505,11 +555,31 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                   <input className="input-field" type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="jane@email.com" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("employees.role")}</label>
-                  <select className="input-field" value={inviteRole} onChange={(e) => setInviteRole(e.target.value as any)}>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Operational Role</label>
+                  <select
+                    className="input-field"
+                    value={inviteRole}
+                    onChange={(e) => {
+                      const nextRole = e.target.value as "cleaner" | "maintenance" | "manager";
+                      setInviteRole(nextRole);
+                      setInviteWorkerType(defaultWorkerTypeForRole(nextRole));
+                    }}
+                  >
                     <option value="cleaner">{t("employees.roleCleaner")}</option>
                     <option value="maintenance">{t("employees.roleMaintenance")}</option>
                     <option value="manager">Manager</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Worker Type</label>
+                  <select
+                    className="input-field"
+                    value={inviteWorkerType}
+                    onChange={(e) => setInviteWorkerType(e.target.value as any)}
+                  >
+                    <option value="w2_employee">W-2 Employee</option>
+                    <option value="contractor_1099">1099 Contractor</option>
+                    <option value="maintenance_contractor">Maintenance Contractor</option>
                   </select>
                 </div>
                 {inviteRole === "manager" && (
