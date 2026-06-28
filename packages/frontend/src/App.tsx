@@ -92,6 +92,9 @@ import { PrivacyPage } from "@/pages/public/PrivacyPage";
 import { ContactPage } from "@/pages/public/ContactPage";
 import { GetStartedPage } from "@/pages/public/GetStartedPage";
 import { PostCheckoutSetupPage } from "@/pages/public/PostCheckoutSetupPage";
+import { ClientLoginPage } from "@/pages/client/ClientLoginPage";
+import { ClientAcceptInvitePage } from "@/pages/client/ClientAcceptInvitePage";
+import { ClientHomePage } from "@/pages/client/ClientHomePage";
 
 // SEO landing pages
 import { CleaningBusinessSoftwarePage } from "@/pages/seo/CleaningBusinessSoftwarePage";
@@ -210,11 +213,30 @@ export default function App() {
     );
   }
 
+  if (pathname.startsWith("/client/")) {
+    return (
+      <>
+        <Analytics />
+        <ErrorBoundary>
+          <Switch>
+            <Route path="/client/login" component={ClientLoginPage} />
+            <Route path="/client/accept-invite/:token" component={ClientAcceptInvitePage} />
+            <Route path="/client/home" component={ClientHomePage} />
+            <Route>
+              <Redirect to="/client/login" />
+            </Route>
+          </Switch>
+        </ErrorBoundary>
+      </>
+    );
+  }
+
   // Public mini-site routes: /:slug and /:slug/cleaner
   // Match paths that look like a slug (not a known app route)
   const knownPrefixes = [
     "/login", "/signup", "/forgot-password", "/reset-password",
     "/invite", "/subscribe", "/billing", "/properties", "/employees",
+    "/client",
     "/jobs", "/calendar", "/red-flags", "/performance", "/analytics",
     "/partners", "/requests", "/clients", "/commercial-accounts", "/commercial-invoices", "/feedback", "/cleaner-leads", "/audit-log", "/notifications", "/manuals",
     "/admin", "/site", "/affiliate", "/availability", "/owner", "/settings", "/payments",

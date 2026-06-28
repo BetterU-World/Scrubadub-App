@@ -1338,6 +1338,14 @@
     "saveFailed": "Failed to save client relationship",
     "leadCreated": "Lead created",
     "leadCreateFailed": "Failed to create lead",
+    "inviteClient": "Invite Client",
+    "clientAccess": "Client access",
+    "inviteSent": "Invite sent and link copied",
+    "inviteLinkReady": "Invite link ready",
+    "inviteFailed": "Failed to invite client",
+    "inviteAlreadyActive": "Client login is already active",
+    "inviteNeedsEmail": "Add an email before inviting this client.",
+    "inviteLink": "Invite link",
     "noBusinessName": "No business name",
     "createLead": "Create Lead for Client",
     "createLeadHelper": "Start a new owner-created lead already linked to this client relationship.",
@@ -1397,6 +1405,11 @@
       "inactive": "Inactive",
       "archived": "Archived"
     },
+    "inviteStatuses": {
+      "not_invited": "Not invited",
+      "pending": "Invite sent / pending",
+      "active": "Active client login"
+    },
     "sections": {
       "leads": "Related leads",
       "properties": "Related properties",
@@ -1418,6 +1431,39 @@
       "invoices": "No invoices yet.",
       "jobs": "No jobs yet."
     }
+  },
+  "clientAuth": {
+    "signIn": "Client Sign In",
+    "loginSubtitle": "View your cleaning services in SCRUB",
+    "signInFailed": "Unable to sign in",
+    "staffLogin": "Staff or owner login",
+    "acceptInvite": "Accept Invite",
+    "acceptSubtitle": "Set up your free client access",
+    "hello": "Hello {{name}}. Set your password to get started.",
+    "invalidInvite": "This invite link is invalid or expired.",
+    "goToLogin": "Go to Client Login",
+    "acceptFailed": "Failed to accept invite"
+  },
+  "clientHome": {
+    "title": "Client Home",
+    "profile": "Profile",
+    "providers": "Providers",
+    "relationships": "Providers",
+    "upcomingJobs": "Upcoming jobs",
+    "completedJobs": "Completed jobs",
+    "properties": "Properties / service accounts",
+    "invoices": "Invoices",
+    "proposals": "Proposals",
+    "serviceAgreements": "Service agreements",
+    "noRelationships": "No active provider relationships yet.",
+    "noUpcomingJobs": "No upcoming jobs.",
+    "noCompletedJobs": "No completed jobs yet.",
+    "noProperties": "No properties or service accounts yet.",
+    "noInvoices": "No invoices yet.",
+    "noProposals": "No proposals yet.",
+    "noServiceAgreements": "No service agreements yet.",
+    "notSet": "Not set",
+    "signInRequired": "Please sign in to view your client home."
   },
   "commercialAccounts": {
     "title": "Commercial Accounts",

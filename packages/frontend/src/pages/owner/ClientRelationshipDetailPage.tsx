@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useLocation, useParams } from "wouter";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
@@ -167,6 +167,8 @@ export function ClientRelationshipDetailPage() {
   const [showLeadForm, setShowLeadForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [creatingLead, setCreatingLead] = useState(false);
+  const [inviting, setInviting] = useState(false);
+  const [inviteLink, setInviteLink] = useState("");
   const [form, setForm] = useState(EMPTY_FORM);
   const [leadForm, setLeadForm] = useState(EMPTY_LEAD_FORM);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -179,6 +181,7 @@ export function ClientRelationshipDetailPage() {
   );
   const updateRelationship = useMutation((api as any).mutations.clientRelationships.update);
   const createLead = useMutation(api.mutations.clientRequests.createManualClientRequest);
+  const inviteClient = useAction(api.clientAuthActions.inviteClient);
 
   const relationship = detail?.relationship;
   const notSet = t("clientRelationships.notSet");
@@ -263,6 +266,32 @@ export function ClientRelationshipDetailPage() {
     }
   };
 
+  const handleInviteClient = async () => {
+    setInviting(true);
+    try {
+      const result = await inviteClient({
+        userId: user._id,
+        relationshipId: relationship._id,
+      });
+      if (result.status === "active") {
+        showToast(t("clientRelationships.inviteAlreadyActive"), "success");
+      } else {
+        setInviteLink(result.inviteUrl);
+        await navigator.clipboard?.writeText(result.inviteUrl).catch(() => {});
+        showToast(
+          result.emailSent
+            ? t("clientRelationships.inviteSent")
+            : t("clientRelationships.inviteLinkReady"),
+          "success"
+        );
+      }
+    } catch (err: any) {
+      showToast(err.message || t("clientRelationships.inviteFailed"), "error");
+    } finally {
+      setInviting(false);
+    }
+  };
+
   const counts = {
     leads: detail.leads.length,
     properties: detail.properties.length,
@@ -295,6 +324,9 @@ export function ClientRelationshipDetailPage() {
             <button type="button" onClick={() => setShowLeadForm((current) => !current)} className="btn-primary flex items-center gap-2">
               <Plus className="h-4 w-4" />
               {t("clientRelationships.createLead")}
+            </button>
+            <button type="button" onClick={handleInviteClient} disabled={inviting || !relationship.email} className="btn-secondary text-sm">
+              {inviting ? t("common.saving") : t("clientRelationships.inviteClient")}
             </button>
             <Link href="/clients" className="btn-secondary flex items-center gap-2">
               <ArrowLeft className="h-4 w-4" />
@@ -338,6 +370,27 @@ export function ClientRelationshipDetailPage() {
           </div>
         </form>
       )}
+
+      <section className="card space-y-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900">{t("clientRelationships.clientAccess")}</h2>
+            <p className="text-sm text-gray-500">
+              {t(`clientRelationships.inviteStatuses.${relationship.inviteStatus}`)}
+              {relationship.inviteSentAt ? ` · ${formatDate(relationship.inviteSentAt, "")}` : ""}
+            </p>
+          </div>
+          {!relationship.email && (
+            <span className="text-sm text-amber-700">{t("clientRelationships.inviteNeedsEmail")}</span>
+          )}
+        </div>
+        {inviteLink && (
+          <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
+            <p className="mb-2 text-xs font-medium text-gray-500">{t("clientRelationships.inviteLink")}</p>
+            <input className="input-field text-sm" value={inviteLink} readOnly />
+          </div>
+        )}
+      </section>
 
       {totalLinkedRecords === 0 && (
         <div className="rounded-lg border border-primary-200 bg-primary-50 p-4 text-sm text-primary-800">

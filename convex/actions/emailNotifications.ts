@@ -12,6 +12,7 @@ import {
   sendAffiliateInviteEmail,
   sendSupportEmail,
   sendPartnerInviteEmail,
+  sendClientInviteEmail,
 } from "../lib/email";
 
 /**
@@ -180,6 +181,20 @@ export const sendInvite = internalAction({
     const sent = await sendInviteEmail(args.email, args.inviteToken);
     if (!sent) {
       console.error("[emailNotifications] Invite email failed for", args.email);
+    }
+  },
+});
+
+export const sendClientInvite = internalAction({
+  args: {
+    email: v.string(),
+    token: v.string(),
+    name: v.optional(v.string()),
+  },
+  handler: async (_ctx, args) => {
+    const sent = await sendClientInviteEmail(args.email, args.token, args.name);
+    if (!sent) {
+      console.error("[emailNotifications] Client invite email failed for", args.email);
     }
   },
 });

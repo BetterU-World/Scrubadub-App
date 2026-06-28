@@ -130,6 +130,10 @@ export default defineSchema({
     email: v.optional(v.string()),
     phone: v.optional(v.string()),
     notes: v.optional(v.string()),
+    pendingInviteClientUserId: v.optional(v.id("clientUsers")),
+    inviteTokenHash: v.optional(v.string()),
+    inviteTokenExpiry: v.optional(v.number()),
+    inviteSentAt: v.optional(v.number()),
     status: v.union(
       v.literal("active"),
       v.literal("inactive"),
@@ -141,6 +145,7 @@ export default defineSchema({
   })
     .index("by_companyId", ["companyId"])
     .index("by_clientUserId", ["clientUserId"])
+    .index("by_inviteTokenHash", ["inviteTokenHash"])
     .index("by_companyId_status", ["companyId", "status"])
     .index("by_companyId_email", ["companyId", "email"]),
 

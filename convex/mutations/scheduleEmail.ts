@@ -37,3 +37,14 @@ export const scheduleInviteEmail = internalMutation({
     });
   },
 });
+
+export const scheduleClientInviteEmail = internalMutation({
+  args: { email: v.string(), token: v.string(), name: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    await ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendClientInvite, {
+      email: args.email,
+      token: args.token,
+      name: args.name,
+    });
+  },
+});
