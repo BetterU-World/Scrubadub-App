@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { CommercialScheduleCard } from "@/components/owner/CommercialScheduleCard";
 import { ServiceAgreementCard } from "@/components/owner/ServiceAgreementCard";
+import { WalkthroughCard } from "@/components/owner/WalkthroughCard";
 import {
   Building2,
   ClipboardCheck,
@@ -418,6 +419,11 @@ export function CommercialAccountDetailPage() {
           </section>
 
           <div className="grid gap-3">
+            <WalkthroughCard
+              commercialAccountId={account._id}
+              compact
+              onToast={showToast}
+            />
             <ServiceAgreementCard
               commercialAccountId={account._id}
               hideWhenMissing

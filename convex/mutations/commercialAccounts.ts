@@ -186,6 +186,18 @@ export const create = mutation({
         updatedAt: now,
       });
     }
+    if (args.sourceProposalId) {
+      const walkthrough = await ctx.db
+        .query("walkthroughs")
+        .withIndex("by_proposal", (q: any) => q.eq("proposalId", args.sourceProposalId))
+        .first();
+      if (walkthrough && walkthrough.companyId === companyId && !walkthrough.commercialAccountId) {
+        await ctx.db.patch(walkthrough._id, {
+          commercialAccountId: accountId,
+          updatedAt: now,
+        });
+      }
+    }
     return accountId;
   },
 });
