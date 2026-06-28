@@ -130,6 +130,18 @@ export const getClientRelationshipDetail = query({
       args.relationshipId
     );
     if (!relationship) return null;
+    const linkedClientUser: any = relationship.clientUserId
+      ? await ctx.db.get(relationship.clientUserId)
+      : null;
+    const pendingClientUser: any = relationship.pendingInviteClientUserId
+      ? await ctx.db.get(relationship.pendingInviteClientUserId)
+      : null;
+    const inviteStatus =
+      linkedClientUser?.status === "active"
+        ? "active"
+        : relationship.inviteTokenHash || linkedClientUser?.status === "pending" || pendingClientUser
+          ? "pending"
+          : "not_invited";
 
     const companyId = relationship.companyId;
     const relationshipId = relationship._id;
@@ -155,7 +167,22 @@ export const getClientRelationshipDetail = query({
 
     return {
       relationship: {
-        ...relationship,
+        _id: relationship._id,
+        companyId: relationship.companyId,
+        clientUserId: relationship.clientUserId,
+        displayName: relationship.displayName,
+        clientType: relationship.clientType,
+        businessName: relationship.businessName,
+        primaryContactName: relationship.primaryContactName,
+        email: relationship.email,
+        phone: relationship.phone,
+        notes: relationship.notes,
+        status: relationship.status,
+        sourceClientRequestId: relationship.sourceClientRequestId,
+        createdAt: relationship.createdAt,
+        updatedAt: relationship.updatedAt,
+        inviteSentAt: relationship.inviteSentAt,
+        inviteStatus,
         hasClientUser: Boolean(relationship.clientUserId),
       },
       leads: leads.sort((a: any, b: any) => b.createdAt - a.createdAt),

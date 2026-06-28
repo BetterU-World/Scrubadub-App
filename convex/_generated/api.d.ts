@@ -27,6 +27,8 @@ import type * as auth from "../auth.js";
 import type * as authActions from "../authActions.js";
 import type * as authInternal from "../authInternal.js";
 import type * as authQueries from "../authQueries.js";
+import type * as clientAuthActions from "../clientAuthActions.js";
+import type * as clientAuthInternal from "../clientAuthInternal.js";
 import type * as clientPortalActions from "../clientPortalActions.js";
 import type * as clientPortalInternal from "../clientPortalInternal.js";
 import type * as crons from "../crons.js";
@@ -107,6 +109,8 @@ import type * as queries_calendarReservations from "../queries/calendarReservati
 import type * as queries_cleanerLeads from "../queries/cleanerLeads.js";
 import type * as queries_cleanerPayments from "../queries/cleanerPayments.js";
 import type * as queries_cleanerStripeConnect from "../queries/cleanerStripeConnect.js";
+import type * as queries_clientAuth from "../queries/clientAuth.js";
+import type * as queries_clientHome from "../queries/clientHome.js";
 import type * as queries_clientRelationships from "../queries/clientRelationships.js";
 import type * as queries_clientRequests from "../queries/clientRequests.js";
 import type * as queries_commercialAccounts from "../queries/commercialAccounts.js";
@@ -163,6 +167,8 @@ declare const fullApi: ApiFromModules<{
   authActions: typeof authActions;
   authInternal: typeof authInternal;
   authQueries: typeof authQueries;
+  clientAuthActions: typeof clientAuthActions;
+  clientAuthInternal: typeof clientAuthInternal;
   clientPortalActions: typeof clientPortalActions;
   clientPortalInternal: typeof clientPortalInternal;
   crons: typeof crons;
@@ -243,6 +249,8 @@ declare const fullApi: ApiFromModules<{
   "queries/cleanerLeads": typeof queries_cleanerLeads;
   "queries/cleanerPayments": typeof queries_cleanerPayments;
   "queries/cleanerStripeConnect": typeof queries_cleanerStripeConnect;
+  "queries/clientAuth": typeof queries_clientAuth;
+  "queries/clientHome": typeof queries_clientHome;
   "queries/clientRelationships": typeof queries_clientRelationships;
   "queries/clientRequests": typeof queries_clientRequests;
   "queries/commercialAccounts": typeof queries_commercialAccounts;

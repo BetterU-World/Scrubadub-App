@@ -450,3 +450,45 @@ export async function sendInviteEmail(
     return false;
   }
 }
+
+export async function sendClientInviteEmail(
+  email: string,
+  inviteToken: string,
+  name?: string
+): Promise<boolean> {
+  const resend = getResendClient();
+  const inviteLink = `${getAppUrl()}/client/accept-invite/${inviteToken}`;
+  const greeting = name ? `Hi ${name},` : "Hi,";
+
+  try {
+    const { error } = await resend.emails.send({
+      from: getFromEmail(),
+      to: email,
+      subject: "Your SCRUB client access",
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <img src="${getAppUrl()}/logo-icon.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
+          </div>
+          <h2 style="text-align: center; color: #111; font-size: 22px; margin: 0 0 16px;">Set up your SCRUB client access</h2>
+          <p style="color: #374151; font-size: 15px; line-height: 1.6;">${greeting} you've been invited to view your cleaning service records in SCRUB. Click below to set your password.</p>
+          <p style="text-align: center; margin: 28px 0;">
+            <a href="${inviteLink}" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
+              Accept Invite
+            </a>
+          </p>
+          <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">This free client access link expires in 72 hours. If you weren't expecting this invite, you can safely ignore this email.</p>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error("[email] Failed to send client invite email:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[email] Error sending client invite email:", err);
+    return false;
+  }
+}
