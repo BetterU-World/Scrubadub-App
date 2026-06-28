@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
@@ -28,6 +28,7 @@ function formatDate(date: string | undefined) {
 export function CommercialInvoiceCard({ commercialAccountId, onToast }: Props) {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const [, navigate] = useLocation();
   const [billingStartDate, setBillingStartDate] = useState("");
   const [billingEndDate, setBillingEndDate] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -65,9 +66,16 @@ export function CommercialInvoiceCard({ commercialAccountId, onToast }: Props) {
         skipped: response.jobsSkipped.length,
       });
       showToast(
-        response.invoiceId ? t("invoices.created") : t("invoices.noEligibleJobs"),
+        response.existingInvoice
+          ? t("invoices.existingDraftOpened")
+          : response.invoiceId
+            ? t("invoices.created")
+            : t("invoices.noEligibleJobs"),
         response.invoiceId ? "success" : "error"
       );
+      if (response.invoiceId) {
+        navigate(`/commercial-invoices/${response.invoiceId}`);
+      }
     } catch (err: any) {
       showToast(err.message || t("invoices.createFailed"), "error");
     } finally {
@@ -115,7 +123,11 @@ export function CommercialInvoiceCard({ commercialAccountId, onToast }: Props) {
           className="btn-primary mt-3 flex items-center gap-2 text-sm"
         >
           <Plus className="h-4 w-4" />
-          {generating ? t("common.saving") : t("invoices.generate")}
+          {generating
+            ? t("common.saving")
+            : invoices && invoices.length > 0
+              ? t("invoices.generateNew")
+              : t("invoices.generateFirst")}
         </button>
         {result && (
           <p className="mt-2 text-xs text-gray-500">
@@ -131,33 +143,60 @@ export function CommercialInvoiceCard({ commercialAccountId, onToast }: Props) {
         {invoices === undefined ? null : invoices.length === 0 ? (
           <p className="text-sm text-gray-500">{t("invoices.none")}</p>
         ) : (
-          invoices.map((invoice: any) => (
-            <Link
-              key={invoice._id}
-              href={`/commercial-invoices/${invoice._id}`}
-              className="block rounded-lg border border-gray-200 p-3 hover:bg-gray-50"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-gray-400" />
-                    <p className="font-medium text-gray-900">{invoice.invoiceNumber}</p>
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    {formatDate(invoice.billingStartDate)} - {formatDate(invoice.billingEndDate)}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <span className="badge bg-gray-100 text-gray-700">
-                    {t(`invoices.statuses.${invoice.status}`)}
-                  </span>
-                  <p className="mt-2 text-sm font-semibold text-gray-900">
-                    {formatCents(invoice.totalCents)}
-                  </p>
-                </div>
-              </div>
-            </Link>
-          ))
+          <div className="overflow-x-auto rounded-lg border border-gray-200">
+            <table className="w-full min-w-[680px]">
+              <thead>
+                <tr className="border-b border-gray-200 bg-gray-50">
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
+                    {t("invoices.invoiceNumber")}
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
+                    {t("invoices.billingPeriod")}
+                  </th>
+                  <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
+                    {t("commercialAccounts.status")}
+                  </th>
+                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">
+                    {t("invoices.total")}
+                  </th>
+                  <th className="px-3 py-2 text-right text-xs font-medium text-gray-500">
+                    {t("invoices.actions")}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoices.map((invoice: any) => (
+                  <tr key={invoice._id} className="border-b border-gray-100 last:border-0">
+                    <td className="px-3 py-3">
+                      <div className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-gray-400" />
+                        <span className="font-medium text-gray-900">{invoice.invoiceNumber}</span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-sm text-gray-600">
+                      {formatDate(invoice.billingStartDate)} - {formatDate(invoice.billingEndDate)}
+                    </td>
+                    <td className="px-3 py-3">
+                      <span className="badge bg-gray-100 text-gray-700">
+                        {t(`invoices.statuses.${invoice.status}`)}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-right text-sm font-semibold text-gray-900">
+                      {formatCents(invoice.totalCents)}
+                    </td>
+                    <td className="px-3 py-3 text-right">
+                      <Link
+                        href={`/commercial-invoices/${invoice._id}`}
+                        className="text-sm font-medium text-primary-600 hover:text-primary-700"
+                      >
+                        {t("invoices.view")}
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </section>

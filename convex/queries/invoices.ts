@@ -66,3 +66,31 @@ export const listByCommercialAccount = query({
     return await Promise.all(scoped.map((invoice: any) => decorateInvoice(ctx, invoice)));
   },
 });
+
+export const listByCompany = query({
+  args: {
+    userId: v.id("users"),
+    status: v.optional(
+      v.union(
+        v.literal("draft"),
+        v.literal("issued"),
+        v.literal("paid"),
+        v.literal("void")
+      )
+    ),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwnerCompany(ctx, args.userId);
+    const invoices = await ctx.db
+      .query("invoices")
+      .withIndex("by_company", (q: any) => q.eq("companyId", owner.companyId))
+      .collect();
+
+    const scoped = invoices.filter(
+      (invoice: any) => invoice.companyId === owner.companyId &&
+        (!args.status || invoice.status === args.status)
+    );
+    scoped.sort((a: any, b: any) => b.createdAt - a.createdAt);
+    return await Promise.all(scoped.map((invoice: any) => decorateInvoice(ctx, invoice)));
+  },
+});
