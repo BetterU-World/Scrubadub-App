@@ -84,6 +84,27 @@ const ONBOARDING_STATUSES = [
   "waived",
 ] as const;
 
+const DEFAULT_DOCUMENT_ITEMS = [
+  { documentType: "contractor_agreement", label: "Contractor Agreement" },
+  { documentType: "employee_handbook_ack", label: "Employee Handbook Acknowledgement" },
+  { documentType: "policy_ack", label: "Safety Policy Acknowledgement" },
+  { documentType: "training_record", label: "Training Record" },
+  { documentType: "other", label: "Other" },
+] as const;
+
+const DOCUMENT_STATUSES = [
+  "not_started",
+  "requested",
+  "received",
+  "reviewed",
+  "expired",
+  "waived",
+] as const;
+
+function formatDocumentType(value?: string | null) {
+  return DEFAULT_DOCUMENT_ITEMS.find((item) => item.documentType === value)?.label ?? formatLabel(value);
+}
+
 function nextProfileOnboardingStatus(items: Array<{ required?: boolean; status: string }>) {
   const requiredItems = items.filter((item) => item.required !== false);
   if (requiredItems.some((item) => item.status === "blocked")) return "blocked";
@@ -102,10 +123,15 @@ export function WorkerDetailPage() {
   const [savingOnboarding, setSavingOnboarding] = useState(false);
   const [onboardingError, setOnboardingError] = useState<string | null>(null);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
+  const [savingDocuments, setSavingDocuments] = useState(false);
+  const [documentError, setDocumentError] = useState<string | null>(null);
+  const [documentNoteDrafts, setDocumentNoteDrafts] = useState<Record<string, string>>({});
+  const [newDocumentType, setNewDocumentType] = useState<string>("contractor_agreement");
 
   const upsertWorkerProfile = useMutation((api as any).mutations.workers.upsertWorkerProfile);
   const updateWorkerProfile = useMutation((api as any).mutations.workers.updateWorkerProfile);
   const upsertOnboardingItem = useMutation((api as any).mutations.workers.upsertWorkerOnboardingItem);
+  const upsertDocumentStatus = useMutation((api as any).mutations.workers.upsertWorkerDocumentStatus);
 
   const employees = useQuery(
     api.queries.employees.list,
@@ -245,6 +271,72 @@ export function WorkerDetailPage() {
     }
   };
 
+  const handleSeedDocuments = async () => {
+    setSavingDocuments(true);
+    setDocumentError(null);
+    try {
+      const workerProfileId = await ensureWorkerProfileId();
+      for (const item of DEFAULT_DOCUMENT_ITEMS) {
+        await upsertDocumentStatus({
+          userId: user._id,
+          workerProfileId,
+          documentType: item.documentType,
+          status: "not_started",
+          required: true,
+          handledOffPlatform: true,
+        });
+      }
+    } catch (err: any) {
+      setDocumentError(err.message ?? "Failed to seed document checklist");
+    } finally {
+      setSavingDocuments(false);
+    }
+  };
+
+  const handleCreateDocument = async () => {
+    setSavingDocuments(true);
+    setDocumentError(null);
+    try {
+      const workerProfileId = await ensureWorkerProfileId();
+      await upsertDocumentStatus({
+        userId: user._id,
+        workerProfileId,
+        documentType: newDocumentType,
+        status: "not_started",
+        required: true,
+        handledOffPlatform: true,
+      });
+    } catch (err: any) {
+      setDocumentError(err.message ?? "Failed to create document record");
+    } finally {
+      setSavingDocuments(false);
+    }
+  };
+
+  const handleSaveDocument = async (
+    document: any,
+    updates: { status?: string; notes?: string; required?: boolean }
+  ) => {
+    if (!workerProfile?._id) return;
+    setSavingDocuments(true);
+    setDocumentError(null);
+    try {
+      await upsertDocumentStatus({
+        userId: user._id,
+        workerProfileId: workerProfile._id,
+        documentType: document.documentType,
+        status: updates.status ?? document.status,
+        required: updates.required ?? document.required,
+        handledOffPlatform: document.handledOffPlatform ?? true,
+        notes: updates.notes ?? document.notes,
+      });
+    } catch (err: any) {
+      setDocumentError(err.message ?? "Failed to update document record");
+    } finally {
+      setSavingDocuments(false);
+    }
+  };
+
   return (
     <div>
       <PageHeader
@@ -331,21 +423,100 @@ export function WorkerDetailPage() {
         </SectionCard>
 
         <SectionCard icon={FileText} title="Documents">
+          {documentError && (
+            <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {documentError}
+            </div>
+          )}
           {(documents ?? []).length === 0 ? (
-            <EmptyNote>No document metadata has been recorded yet. Sensitive tax and identity documents stay off-platform.</EmptyNote>
+            <div>
+              <EmptyNote>No document metadata has been recorded yet. Sensitive tax and identity documents stay off-platform.</EmptyNote>
+              <button
+                type="button"
+                onClick={handleSeedDocuments}
+                disabled={savingDocuments}
+                className="btn-primary mt-4"
+              >
+                {savingDocuments ? "Creating checklist..." : "Create default checklist"}
+              </button>
+            </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {documents.map((document: any) => (
-                <div key={document._id} className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{formatLabel(document.documentType)}</p>
-                    <p className="text-xs text-gray-500">
-                      {document.handledOffPlatform ? "Handled off-platform" : "Metadata only"}
-                    </p>
+                <div key={document._id} className="rounded-lg bg-gray-50 px-3 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{formatDocumentType(document.documentType)}</p>
+                      <p className="text-xs text-gray-500">
+                        {document.required ? "Required" : "Optional"}
+                        {document.reviewedAt ? ` | Reviewed ${formatDate(document.reviewedAt)}` : ""}
+                      </p>
+                    </div>
+                    <select
+                      className="input-field w-auto min-w-[145px] py-1.5 text-sm"
+                      value={document.status}
+                      disabled={savingDocuments}
+                      onChange={(event) => handleSaveDocument(document, { status: event.target.value })}
+                    >
+                      {DOCUMENT_STATUSES.map((status) => (
+                        <option key={status} value={status}>{formatLabel(status)}</option>
+                      ))}
+                    </select>
                   </div>
-                  <span className="badge bg-gray-100 text-gray-700">{formatLabel(document.status)}</span>
+                  <label className="mt-3 flex items-center gap-2 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={document.required}
+                      disabled={savingDocuments}
+                      onChange={(event) => handleSaveDocument(document, { required: event.target.checked })}
+                    />
+                    Required
+                  </label>
+                  <div className="mt-3">
+                    <textarea
+                      className="input-field text-sm"
+                      rows={2}
+                      placeholder="Add owner notes..."
+                      value={documentNoteDrafts[document._id] ?? document.notes ?? ""}
+                      onChange={(event) => setDocumentNoteDrafts((prev) => ({ ...prev, [document._id]: event.target.value }))}
+                    />
+                    <div className="mt-2 flex justify-end">
+                      <button
+                        type="button"
+                        disabled={savingDocuments}
+                        className="btn-secondary text-sm"
+                        onClick={() => handleSaveDocument(document, {
+                          notes: documentNoteDrafts[document._id] ?? document.notes ?? "",
+                        })}
+                      >
+                        Save Notes
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ))}
+              <div className="flex flex-col gap-2 border-t border-gray-100 pt-3 sm:flex-row">
+                <select
+                  className="input-field text-sm"
+                  value={newDocumentType}
+                  disabled={savingDocuments}
+                  onChange={(event) => setNewDocumentType(event.target.value)}
+                >
+                  {DEFAULT_DOCUMENT_ITEMS.map((item) => (
+                    <option key={item.documentType} value={item.documentType}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="btn-secondary text-sm"
+                  disabled={savingDocuments}
+                  onClick={handleCreateDocument}
+                >
+                  Add Document
+                </button>
+              </div>
             </div>
           )}
         </SectionCard>
