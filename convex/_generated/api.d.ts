@@ -33,6 +33,7 @@ import type * as crons from "../crons.js";
 import type * as employeeActions from "../employeeActions.js";
 import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_clientRelationships from "../lib/clientRelationships.js";
 import type * as lib_constants from "../lib/constants.js";
 import type * as lib_email from "../lib/email.js";
 import type * as lib_founderEmails from "../lib/founderEmails.js";
@@ -168,6 +169,7 @@ declare const fullApi: ApiFromModules<{
   employeeActions: typeof employeeActions;
   http: typeof http;
   "lib/auth": typeof lib_auth;
+  "lib/clientRelationships": typeof lib_clientRelationships;
   "lib/constants": typeof lib_constants;
   "lib/email": typeof lib_email;
   "lib/founderEmails": typeof lib_founderEmails;

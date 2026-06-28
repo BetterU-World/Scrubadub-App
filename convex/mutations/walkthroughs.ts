@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { getSessionUser } from "../lib/auth";
+import { ensureClientRelationshipForLead } from "../lib/clientRelationships";
 
 const walkthroughTypeValidator = v.union(
   v.literal("commercial"),
@@ -179,9 +180,13 @@ export const create = mutation({
     const companyId = owner.companyId!;
     await assertLinkedRecords(ctx, companyId, args);
     const now = Date.now();
+    const request = args.clientRequestId ? await ctx.db.get(args.clientRequestId) : null;
 
     return await ctx.db.insert("walkthroughs", {
       companyId,
+      clientRelationshipId: request
+        ? await ensureClientRelationshipForLead(ctx, request)
+        : undefined,
       clientRequestId: args.clientRequestId,
       status: "draft",
       ...buildWalkthroughPatch(args),
@@ -224,8 +229,10 @@ export const createFromClientRequest = mutation({
               ? "post_construction"
               : "residential";
     const now = Date.now();
+    const clientRelationshipId = await ensureClientRelationshipForLead(ctx, request);
     const walkthroughId = await ctx.db.insert("walkthroughs", {
       companyId: request.companyId,
+      clientRelationshipId,
       clientRequestId: request._id,
       propertyId: request.propertyId,
       title: `${request.businessName || request.requesterName} Walkthrough`,

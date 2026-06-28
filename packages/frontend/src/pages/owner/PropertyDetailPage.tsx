@@ -245,6 +245,12 @@ function DetailsTab({ property }: { property: any }) {
         </div>
       </div>
 
+      {property.clientRelationship && (
+        <div className="inline-flex w-fit rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
+          Client relationship: {property.clientRelationship.displayName}
+        </div>
+      )}
+
       {hasExpandedFields && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
           {property.squareFootage != null && (

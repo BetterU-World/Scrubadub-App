@@ -3,6 +3,25 @@ import { v } from "convex/values";
 import { assertCompanyAccess, getSessionUser } from "../lib/auth";
 import { withPerfLog } from "../lib/perfLog";
 
+async function decorateProperty(ctx: any, property: any) {
+  const relationship = property.clientRelationshipId
+    ? await ctx.db.get(property.clientRelationshipId)
+    : null;
+  return {
+    ...property,
+    clientRelationship:
+      relationship?.companyId === property.companyId
+        ? {
+            _id: relationship._id,
+            displayName: relationship.displayName,
+            businessName: relationship.businessName,
+            clientType: relationship.clientType,
+            status: relationship.status,
+          }
+        : null,
+  };
+}
+
 export const list = query({
   args: {
     companyId: v.id("companies"),
@@ -19,7 +38,8 @@ export const list = query({
 
     // Default: return only active properties. Pass activeOnly=false to get all.
     const activeOnly = args.activeOnly !== false;
-    return activeOnly ? all.filter((p) => p.active) : all;
+    const filtered = activeOnly ? all.filter((p) => p.active) : all;
+    return await Promise.all(filtered.map((property) => decorateProperty(ctx, property)));
   },
 });
 
@@ -33,7 +53,8 @@ export const listArchived = query({
       .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
       .collect();
 
-    return all.filter((p) => !p.active);
+    const archived = all.filter((p) => !p.active);
+    return await Promise.all(archived.map((property) => decorateProperty(ctx, property)));
   },
 });
 
@@ -44,7 +65,7 @@ export const get = query({
     const property = await ctx.db.get(args.propertyId);
     if (!property) return null;
     if (property.companyId !== user.companyId) throw new Error("Access denied");
-    return property;
+    return await decorateProperty(ctx, property);
   },
 });
 

@@ -2,6 +2,25 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwner } from "../lib/helpers";
 
+async function decorateProposal(ctx: any, proposal: any) {
+  const relationship = proposal.clientRelationshipId
+    ? await ctx.db.get(proposal.clientRelationshipId)
+    : null;
+  return {
+    ...proposal,
+    clientRelationship:
+      relationship?.companyId === proposal.companyId
+        ? {
+            _id: relationship._id,
+            displayName: relationship.displayName,
+            businessName: relationship.businessName,
+            clientType: relationship.clientType,
+            status: relationship.status,
+          }
+        : null,
+  };
+}
+
 /**
  * Get the proposal for a client request.
  * Owner-only; verifies the request and proposal belong to the caller's company.
@@ -28,6 +47,6 @@ export const getProposalByClientRequest = query({
     if (!proposal) return null;
     if (proposal.companyId !== owner.companyId) throw new Error("Access denied");
 
-    return proposal;
+    return await decorateProposal(ctx, proposal);
   },
 });

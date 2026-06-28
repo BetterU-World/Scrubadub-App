@@ -85,7 +85,23 @@ export const getRequestById = query({
       throw new Error("Access denied");
     }
 
-    return request;
+    const clientRelationship = request.clientRelationshipId
+      ? await ctx.db.get(request.clientRelationshipId)
+      : null;
+
+    return {
+      ...request,
+      clientRelationship:
+        clientRelationship?.companyId === request.companyId
+          ? {
+              _id: clientRelationship._id,
+              displayName: clientRelationship.displayName,
+              businessName: clientRelationship.businessName,
+              clientType: clientRelationship.clientType,
+              status: clientRelationship.status,
+            }
+          : null,
+    };
   },
 });
 

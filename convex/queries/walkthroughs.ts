@@ -14,6 +14,25 @@ function sortNewestFirst(items: any[]) {
   return items.sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
+async function decorateWalkthrough(ctx: any, walkthrough: any) {
+  const relationship = walkthrough.clientRelationshipId
+    ? await ctx.db.get(walkthrough.clientRelationshipId)
+    : null;
+  return {
+    ...walkthrough,
+    clientRelationship:
+      relationship?.companyId === walkthrough.companyId
+        ? {
+            _id: relationship._id,
+            displayName: relationship.displayName,
+            businessName: relationship.businessName,
+            clientType: relationship.clientType,
+            status: relationship.status,
+          }
+        : null,
+  };
+}
+
 export const getById = query({
   args: {
     userId: v.id("users"),
@@ -24,7 +43,7 @@ export const getById = query({
     const walkthrough = await ctx.db.get(args.walkthroughId);
     if (!walkthrough) return null;
     if (walkthrough.companyId !== owner.companyId) throw new Error("Access denied");
-    return walkthrough;
+    return await decorateWalkthrough(ctx, walkthrough);
   },
 });
 
@@ -46,9 +65,10 @@ export const listByClientRequest = query({
       )
       .collect();
 
-    return sortNewestFirst(
+    const scoped = sortNewestFirst(
       walkthroughs.filter((walkthrough: any) => walkthrough.companyId === owner.companyId)
     );
+    return await Promise.all(scoped.map((walkthrough: any) => decorateWalkthrough(ctx, walkthrough)));
   },
 });
 
@@ -70,9 +90,10 @@ export const listByCommercialAccount = query({
       )
       .collect();
 
-    return sortNewestFirst(
+    const scoped = sortNewestFirst(
       walkthroughs.filter((walkthrough: any) => walkthrough.companyId === owner.companyId)
     );
+    return await Promise.all(scoped.map((walkthrough: any) => decorateWalkthrough(ctx, walkthrough)));
   },
 });
 
@@ -92,8 +113,9 @@ export const listByProposal = query({
       .withIndex("by_proposal", (q: any) => q.eq("proposalId", args.proposalId))
       .collect();
 
-    return sortNewestFirst(
+    const scoped = sortNewestFirst(
       walkthroughs.filter((walkthrough: any) => walkthrough.companyId === owner.companyId)
     );
+    return await Promise.all(scoped.map((walkthrough: any) => decorateWalkthrough(ctx, walkthrough)));
   },
 });
