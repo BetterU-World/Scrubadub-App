@@ -9,6 +9,7 @@ import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ServiceAgreementCard } from "@/components/owner/ServiceAgreementCard";
+import { WalkthroughCard } from "@/components/owner/WalkthroughCard";
 import {
   User,
   Mail,
@@ -727,6 +728,15 @@ export function RequestDetailPage() {
         </div>
       </div>
 
+      <WalkthroughCard
+        clientRequestId={request._id}
+        allowCreate
+        onToast={(message, type) => {
+          setToast({ message, type });
+          setTimeout(() => setToast(null), type === "success" ? 2000 : 3000);
+        }}
+      />
+
       {/* Proposal */}
       <div className="card mt-4 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
@@ -895,6 +905,14 @@ export function RequestDetailPage() {
           </div>
         ) : (
           <div className="space-y-3">
+            <WalkthroughCard
+              proposalId={proposal._id}
+              compact
+              onToast={(message, type) => {
+                setToast({ message, type });
+                setTimeout(() => setToast(null), type === "success" ? 2000 : 3000);
+              }}
+            />
             <div className="rounded-md border border-gray-200 bg-gray-50 p-4 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <div>

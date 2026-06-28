@@ -80,6 +80,25 @@ export const createProposalFromLead = mutation({
       updatedAt: now,
     });
 
+    const walkthrough = await ctx.db
+      .query("walkthroughs")
+      .withIndex("by_clientRequest", (q: any) =>
+        q.eq("clientRequestId", args.clientRequestId)
+      )
+      .first();
+    if (
+      walkthrough &&
+      walkthrough.companyId === owner.companyId &&
+      walkthrough.status !== "archived" &&
+      !walkthrough.proposalId
+    ) {
+      await ctx.db.patch(walkthrough._id, {
+        proposalId,
+        status: walkthrough.status === "completed" ? "proposal_created" : walkthrough.status,
+        updatedAt: now,
+      });
+    }
+
     const stage = (request as any).leadStage ?? "new";
     if (["new", "contacted", "walkthrough_scheduled"].includes(stage)) {
       await ctx.db.patch(request._id, {

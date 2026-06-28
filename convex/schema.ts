@@ -624,6 +624,68 @@ export default defineSchema({
     .index("by_clientRequestId", ["clientRequestId"])
     .index("by_companyId_status", ["companyId", "status"]),
 
+  walkthroughs: defineTable({
+    companyId: v.id("companies"),
+    clientRequestId: v.optional(v.id("clientRequests")),
+    propertyId: v.optional(v.id("properties")),
+    commercialAccountId: v.optional(v.id("commercialAccounts")),
+    proposalId: v.optional(v.id("proposals")),
+    title: v.string(),
+    walkthroughType: v.union(
+      v.literal("commercial"),
+      v.literal("residential"),
+      v.literal("str"),
+      v.literal("move_in_out"),
+      v.literal("post_construction"),
+      v.literal("inspection"),
+      v.literal("custom")
+    ),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("completed"),
+      v.literal("proposal_created"),
+      v.literal("archived")
+    ),
+    scheduledDate: v.optional(v.string()),
+    completedAt: v.optional(v.number()),
+    contactName: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    address: v.optional(v.string()),
+    squareFootage: v.optional(v.number()),
+    bedrooms: v.optional(v.number()),
+    bathrooms: v.optional(v.number()),
+    serviceFrequencyRecommendation: v.optional(v.string()),
+    estimatedHours: v.optional(v.number()),
+    recommendedCleanerCount: v.optional(v.number()),
+    estimatedMonthlyValueCents: v.optional(v.number()),
+    rooms: v.optional(v.array(v.object({
+      name: v.string(),
+      roomType: v.string(),
+      notes: v.optional(v.string()),
+      condition: v.optional(v.string()),
+      estimatedMinutes: v.optional(v.number()),
+    }))),
+    scopeNotes: v.optional(v.string()),
+    supplyNotes: v.optional(v.string()),
+    accessNotes: v.optional(v.string()),
+    riskNotes: v.optional(v.string()),
+    staffingNotes: v.optional(v.string()),
+    proposalNotes: v.optional(v.string()),
+    photos: v.optional(v.array(v.object({
+      url: v.string(),
+      caption: v.optional(v.string()),
+      uploadedAt: v.number(),
+    }))),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_company", ["companyId"])
+    .index("by_clientRequest", ["clientRequestId"])
+    .index("by_property", ["propertyId"])
+    .index("by_commercialAccount", ["commercialAccountId"])
+    .index("by_proposal", ["proposalId"]),
+
   serviceAgreements: defineTable({
     companyId: v.id("companies"),
     proposalId: v.id("proposals"),
