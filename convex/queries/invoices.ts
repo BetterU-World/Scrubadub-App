@@ -12,11 +12,24 @@ async function requireOwnerCompany(ctx: any, userId: any) {
 
 async function decorateInvoice(ctx: any, invoice: any) {
   const account = await ctx.db.get(invoice.commercialAccountId);
+  const relationship = invoice.clientRelationshipId
+    ? await ctx.db.get(invoice.clientRelationshipId)
+    : null;
   const jobs = await Promise.all(invoice.jobIds.map((jobId: any) => ctx.db.get(jobId)));
   return {
     ...invoice,
     commercialAccountName:
       account?.companyId === invoice.companyId ? account.clientName : null,
+    clientRelationship:
+      relationship?.companyId === invoice.companyId
+        ? {
+            _id: relationship._id,
+            displayName: relationship.displayName,
+            businessName: relationship.businessName,
+            clientType: relationship.clientType,
+            status: relationship.status,
+          }
+        : null,
     jobs: jobs
       .filter((job: any) => job && job.companyId === invoice.companyId)
       .map((job: any) => ({

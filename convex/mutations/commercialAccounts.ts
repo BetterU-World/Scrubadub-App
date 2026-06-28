@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { getSessionUser } from "../lib/auth";
+import { ensureClientRelationshipForLead } from "../lib/clientRelationships";
 
 const frequencyValidator = v.union(
   v.literal("one_time"),
@@ -189,7 +190,7 @@ export const create = mutation({
       args.clientRelationshipId ??
       (agreement as any)?.clientRelationshipId ??
       (proposal as any)?.clientRelationshipId ??
-      (request as any)?.clientRelationshipId;
+      (request ? await ensureClientRelationshipForLead(ctx, request) : undefined);
     const accountPatch = await buildAccountPatch(ctx, companyId, {
       ...args,
       clientRelationshipId,
@@ -207,6 +208,7 @@ export const create = mutation({
     if (agreement && !agreement.commercialAccountId) {
       await ctx.db.patch(agreement._id, {
         commercialAccountId: accountId,
+        clientRelationshipId: agreement.clientRelationshipId ?? clientRelationshipId,
         updatedAt: now,
       });
     }
@@ -218,8 +220,15 @@ export const create = mutation({
       if (walkthrough && walkthrough.companyId === companyId && !walkthrough.commercialAccountId) {
         await ctx.db.patch(walkthrough._id, {
           commercialAccountId: accountId,
+          clientRelationshipId: walkthrough.clientRelationshipId ?? clientRelationshipId,
           updatedAt: now,
         });
+      }
+    }
+    if (request?.propertyId && clientRelationshipId) {
+      const property = await ctx.db.get(request.propertyId);
+      if (property && property.companyId === companyId && !property.clientRelationshipId) {
+        await ctx.db.patch(property._id, { clientRelationshipId });
       }
     }
     return accountId;
@@ -238,9 +247,22 @@ export const update = mutation({
     if (!account) throw new Error("Commercial account not found");
     if (account.companyId !== owner.companyId) throw new Error("Access denied");
 
+    const patch = await buildAccountPatch(ctx, owner.companyId, args);
     await ctx.db.patch(args.accountId, {
-      ...(await buildAccountPatch(ctx, owner.companyId, args)),
+      ...patch,
       updatedAt: Date.now(),
     });
+
+    if (patch.clientRelationshipId && account.clientRequestId) {
+      const request = await ctx.db.get(account.clientRequestId);
+      if (request?.companyId === owner.companyId && request.propertyId) {
+        const property = await ctx.db.get(request.propertyId);
+        if (property && property.companyId === owner.companyId && !property.clientRelationshipId) {
+          await ctx.db.patch(property._id, {
+            clientRelationshipId: patch.clientRelationshipId,
+          });
+        }
+      }
+    }
   },
 });

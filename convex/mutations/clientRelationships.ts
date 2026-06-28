@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwner, logAudit } from "../lib/helpers";
+import { ensureClientRelationshipForLead } from "../lib/clientRelationships";
 
 const clientTypeValidator = v.union(
   v.literal("residential"),
@@ -69,12 +70,6 @@ async function getOwnedRelationshipOrUndefined(
   return relationship._id;
 }
 
-function clientTypeFromLead(leadType: string | undefined) {
-  if (leadType === "commercial") return "commercial";
-  if (leadType === "str_airbnb") return "str";
-  return "residential";
-}
-
 export const create = mutation({
   args: {
     userId: v.id("users"),
@@ -136,27 +131,7 @@ export const createFromClientRequest = mutation({
     if (!request) throw new Error("Lead not found");
     if (request.companyId !== owner.companyId) throw new Error("Access denied");
 
-    if (request.clientRelationshipId) return request.clientRelationshipId;
-
-    const now = Date.now();
-    const businessName = cleanOptional((request as any).businessName, 200);
-    const relationshipId = await ctx.db.insert("clientRelationships", {
-      companyId: owner.companyId!,
-      displayName: businessName || cleanRequired(request.requesterName, "Client", 200),
-      clientType: clientTypeFromLead((request as any).leadType),
-      businessName,
-      primaryContactName: cleanOptional(request.requesterName, 200),
-      email: cleanEmail(request.requesterEmail),
-      phone: cleanOptional(request.requesterPhone, 50),
-      status: "active",
-      sourceClientRequestId: request._id,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    await ctx.db.patch(request._id, {
-      clientRelationshipId: relationshipId,
-    });
+    const relationshipId = await ensureClientRelationshipForLead(ctx, request);
 
     await logAudit(ctx, {
       companyId: owner.companyId!,

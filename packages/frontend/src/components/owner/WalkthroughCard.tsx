@@ -289,6 +289,11 @@ export function WalkthroughCard({
           <div>
             <h3 className="text-sm font-semibold text-gray-900">{t("walkthroughs.title")}</h3>
             <p className="text-xs text-gray-500">{t("walkthroughs.helper")}</p>
+            {walkthrough?.clientRelationship && (
+              <p className="mt-2 inline-flex rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
+                Client relationship: {walkthrough.clientRelationship.displayName}
+              </p>
+            )}
           </div>
         </div>
         {walkthrough && (

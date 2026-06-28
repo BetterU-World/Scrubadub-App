@@ -945,6 +945,11 @@ export function RequestDetailPage() {
                     {proposal.title || t("proposals.title")}
                   </h4>
                   <p className="mt-1 text-sm text-gray-600">{proposal.clientName}</p>
+                  {(proposal as any).clientRelationship && (
+                    <p className="mt-2 inline-flex rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
+                      Client relationship: {(proposal as any).clientRelationship.displayName}
+                    </p>
+                  )}
                 </div>
                 <span className="badge bg-white text-gray-700 capitalize self-start">
                   {t(`proposals.statuses.${proposal.status}`)}
@@ -1034,6 +1039,11 @@ export function RequestDetailPage() {
                         <h4 className="mt-1 text-base font-semibold text-gray-900">
                           {commercialAccount.clientName}
                         </h4>
+                        {commercialAccount.clientRelationship && (
+                          <p className="mt-2 inline-flex rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
+                            Client relationship: {commercialAccount.clientRelationship.displayName}
+                          </p>
+                        )}
                       </div>
                       <span className="badge bg-white text-gray-700 capitalize self-start">
                         {t(`commercialAccounts.statuses.${commercialAccount.status}`)}
@@ -1402,10 +1412,10 @@ export function RequestDetailPage() {
             Client relationship
           </h3>
         </div>
-        {(request as any).clientRelationshipId ? (
-          <p className="text-sm text-gray-600">
-            This lead is linked to a company client relationship.
-          </p>
+        {(request as any).clientRelationship ? (
+          <div className="inline-flex w-fit rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
+            {(request as any).clientRelationship.displayName}
+          </div>
         ) : (
           <>
             <p className="text-sm text-gray-500">

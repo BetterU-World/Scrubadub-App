@@ -18,13 +18,33 @@ async function getOwnedAgreement(ctx: any, userId: any, agreementId: any) {
   return agreement;
 }
 
+async function decorateAgreement(ctx: any, agreement: any) {
+  const relationship = agreement.clientRelationshipId
+    ? await ctx.db.get(agreement.clientRelationshipId)
+    : null;
+  return {
+    ...agreement,
+    clientRelationship:
+      relationship?.companyId === agreement.companyId
+        ? {
+            _id: relationship._id,
+            displayName: relationship.displayName,
+            businessName: relationship.businessName,
+            clientType: relationship.clientType,
+            status: relationship.status,
+          }
+        : null,
+  };
+}
+
 export const getById = query({
   args: {
     userId: v.id("users"),
     agreementId: v.id("serviceAgreements"),
   },
   handler: async (ctx, args) => {
-    return await getOwnedAgreement(ctx, args.userId, args.agreementId);
+    const agreement = await getOwnedAgreement(ctx, args.userId, args.agreementId);
+    return agreement ? await decorateAgreement(ctx, agreement) : null;
   },
 });
 
@@ -46,7 +66,7 @@ export const getByProposal = query({
 
     if (!agreement) return null;
     if (agreement.companyId !== owner.companyId) throw new Error("Access denied");
-    return agreement;
+    return await decorateAgreement(ctx, agreement);
   },
 });
 
@@ -72,6 +92,6 @@ export const getByCommercialAccount = query({
 
     if (!agreement) return null;
     if (agreement.companyId !== owner.companyId) throw new Error("Access denied");
-    return agreement;
+    return await decorateAgreement(ctx, agreement);
   },
 });

@@ -2,6 +2,7 @@ import { mutation, type MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import { requireOwner } from "../lib/helpers";
+import { ensureClientRelationshipForLead } from "../lib/clientRelationships";
 
 const proposalFrequencyValidator = v.union(
   v.literal("one_time"),
@@ -64,9 +65,10 @@ export const createProposalFromLead = mutation({
     if (existing) return existing._id;
 
     const now = Date.now();
+    const clientRelationshipId = await ensureClientRelationshipForLead(ctx, request);
     const proposalId = await ctx.db.insert("proposals", {
       companyId: request.companyId,
-      clientRelationshipId: (request as any).clientRelationshipId,
+      clientRelationshipId,
       clientRequestId: request._id,
       createdByUserId: owner._id,
       title: "Cleaning Proposal",
@@ -95,6 +97,7 @@ export const createProposalFromLead = mutation({
     ) {
       await ctx.db.patch(walkthrough._id, {
         proposalId,
+        clientRelationshipId: walkthrough.clientRelationshipId ?? clientRelationshipId,
         status: walkthrough.status === "completed" ? "proposal_created" : walkthrough.status,
         updatedAt: now,
       });

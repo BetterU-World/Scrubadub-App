@@ -124,6 +124,14 @@ export function CommercialInvoiceDetailPage() {
                   {invoice.commercialAccountName ?? t("commercialAccounts.summary")}
                 </Link>
               </div>
+              {invoice.clientRelationship && (
+                <div>
+                  <p className="text-xs font-medium text-gray-500">Client relationship</p>
+                  <p className="mt-1 inline-flex rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
+                    {invoice.clientRelationship.displayName}
+                  </p>
+                </div>
+              )}
               <div>
                 <p className="text-xs font-medium text-gray-500">{t("invoices.billingPeriod")}</p>
                 <p className="mt-1 text-sm text-gray-900">

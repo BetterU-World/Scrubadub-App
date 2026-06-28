@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { getSessionUser } from "../lib/auth";
+import { ensureClientRelationshipForLead } from "../lib/clientRelationships";
 
 const agreementFields = {
   title: v.string(),
@@ -98,12 +99,13 @@ export const createDraftFromAcceptedProposal = mutation({
     if (request.companyId !== companyId) throw new Error("Access denied");
 
     const now = Date.now();
+    const clientRelationshipId =
+      (account as any)?.clientRelationshipId ??
+      (proposal as any).clientRelationshipId ??
+      await ensureClientRelationshipForLead(ctx, request);
     const agreementId = await ctx.db.insert("serviceAgreements", {
       companyId,
-      clientRelationshipId:
-        (account as any)?.clientRelationshipId ??
-        (proposal as any).clientRelationshipId ??
-        (request as any).clientRelationshipId,
+      clientRelationshipId,
       proposalId: proposal._id,
       clientRequestId: proposal.clientRequestId,
       commercialAccountId: account?._id,
