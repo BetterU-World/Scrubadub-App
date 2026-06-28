@@ -18,6 +18,14 @@ export const inviteCleaner = action({
     name: v.string(),
     userId: v.id("users"),
     role: v.optional(v.union(v.literal("cleaner"), v.literal("maintenance"), v.literal("manager"))),
+    workerType: v.optional(
+      v.union(
+        v.literal("w2_employee"),
+        v.literal("contractor_1099"),
+        v.literal("maintenance_contractor"),
+        v.literal("vendor")
+      )
+    ),
     // Manager permission flags (only used when role === "manager")
     canSeeAllJobs: v.optional(v.boolean()),
     canCreateJobs: v.optional(v.boolean()),
@@ -91,6 +99,11 @@ export const inviteCleaner = action({
       internal.authInternal.createUser,
       createArgs as any
     );
+
+    await ctx.runMutation((internal as any).mutations.workers.ensureWorkerProfileForUser, {
+      userId: newUserId,
+      workerType: args.workerType,
+    });
 
     await ctx.runMutation(internal.authInternal.logAuditEntry, {
       companyId: args.companyId,
