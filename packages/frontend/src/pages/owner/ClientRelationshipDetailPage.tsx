@@ -1,13 +1,13 @@
 import { FormEvent, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { Link, useParams } from "wouter";
+import { Link, useLocation, useParams } from "wouter";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
-import { ArrowLeft, Home, Mail, Phone, Save, User, Wrench } from "lucide-react";
+import { ArrowLeft, Clock, Home, Mail, Plus, Phone, Save, User, Wrench } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 type ClientType = "residential" | "commercial" | "str" | "property_manager" | "marketplace";
@@ -23,7 +23,16 @@ const EMPTY_FORM = {
   primaryContactName: "",
   email: "",
   phone: "",
+  notes: "",
   status: "active" as RelationshipStatus,
+};
+
+const EMPTY_LEAD_FORM = {
+  requesterName: "",
+  requesterEmail: "",
+  requesterPhone: "",
+  businessName: "",
+  notes: "",
 };
 
 function formatDate(date: string | number | undefined, fallback: string) {
@@ -35,6 +44,12 @@ function formatDate(date: string | number | undefined, fallback: string) {
 function formatCents(cents: number | undefined, fallback: string) {
   if (cents == null) return fallback;
   return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(cents / 100);
+}
+
+function dateTimeLabel(timestamp: string | number | undefined, fallback: string) {
+  if (!timestamp) return fallback;
+  const date = typeof timestamp === "number" ? new Date(timestamp) : new Date(`${timestamp}T00:00:00`);
+  return date.toLocaleDateString();
 }
 
 function label(value: string) {
@@ -84,13 +99,76 @@ function RelatedSection({
   );
 }
 
+function SummaryCard({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <p className="text-xs font-medium text-gray-500">{label}</p>
+      <p className="mt-1 text-2xl font-semibold text-gray-900">{value}</p>
+    </div>
+  );
+}
+
+function buildTimeline(detail: any, t: any) {
+  const events: Array<{ at: number; label: string; sublabel?: string }> = [];
+  const push = (at: number | undefined, label: string, sublabel?: string) => {
+    if (at) events.push({ at, label, sublabel });
+  };
+  const pushDate = (date: string | undefined, label: string, sublabel?: string) => {
+    if (!date) return;
+    const parsed = new Date(`${date}T00:00:00`).getTime();
+    if (Number.isFinite(parsed)) events.push({ at: parsed, label, sublabel });
+  };
+
+  for (const lead of detail.leads) {
+    push(lead.createdAt, t("clientRelationships.timeline.leadCreated"), lead.businessName || lead.requesterName);
+  }
+  for (const walkthrough of detail.walkthroughs) {
+    push(walkthrough.createdAt, t("clientRelationships.timeline.walkthroughCreated"), walkthrough.title);
+    push(walkthrough.completedAt, t("clientRelationships.timeline.walkthroughCompleted"), walkthrough.title);
+  }
+  for (const proposal of detail.proposals) {
+    push(proposal.createdAt, t("clientRelationships.timeline.proposalCreated"), proposal.title);
+    push(proposal.sentAt, t("clientRelationships.timeline.proposalSent"), proposal.title);
+    push(proposal.acceptedAt, t("clientRelationships.timeline.proposalAccepted"), proposal.title);
+    push(proposal.declinedAt, t("clientRelationships.timeline.proposalDeclined"), proposal.title);
+  }
+  for (const agreement of detail.serviceAgreements) {
+    push(agreement.createdAt, t("clientRelationships.timeline.agreementCreated"), agreement.title);
+    push(agreement.sentAt, t("clientRelationships.timeline.agreementSent"), agreement.title);
+    push(agreement.signedAt, t("clientRelationships.timeline.agreementSigned"), agreement.title);
+    push(agreement.cancelledAt, t("clientRelationships.timeline.agreementCancelled"), agreement.title);
+  }
+  for (const account of detail.commercialAccounts) {
+    push(account.createdAt, t("clientRelationships.timeline.commercialAccountCreated"), account.clientName);
+  }
+  for (const invoice of detail.invoices) {
+    push(invoice.createdAt, t("clientRelationships.timeline.invoiceCreated"), invoice.invoiceNumber);
+    push(invoice.issuedAt, t("clientRelationships.timeline.invoiceIssued"), invoice.invoiceNumber);
+    push(invoice.paidAt, t("clientRelationships.timeline.invoicePaid"), invoice.invoiceNumber);
+    push(invoice.voidedAt, t("clientRelationships.timeline.invoiceVoid"), invoice.invoiceNumber);
+  }
+  for (const job of detail.jobs) {
+    pushDate(job.scheduledDate, t("clientRelationships.timeline.jobScheduled"), job.scheduledDate);
+    push(job.completedAt, t("clientRelationships.timeline.jobCompleted"), job.scheduledDate);
+    if (job.status === "approved") {
+      push(job.completedAt, t("clientRelationships.timeline.jobApproved"), job.scheduledDate);
+    }
+  }
+
+  return events.sort((a, b) => b.at - a.at).slice(0, 40);
+}
+
 export function ClientRelationshipDetailPage() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const params = useParams<{ id: string }>();
+  const [, setLocation] = useLocation();
   const [editing, setEditing] = useState(false);
+  const [showLeadForm, setShowLeadForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [creatingLead, setCreatingLead] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [leadForm, setLeadForm] = useState(EMPTY_LEAD_FORM);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const detail = useQuery(
@@ -100,6 +178,7 @@ export function ClientRelationshipDetailPage() {
       : "skip"
   );
   const updateRelationship = useMutation((api as any).mutations.clientRelationships.update);
+  const createLead = useMutation(api.mutations.clientRequests.createManualClientRequest);
 
   const relationship = detail?.relationship;
   const notSet = t("clientRelationships.notSet");
@@ -113,7 +192,15 @@ export function ClientRelationshipDetailPage() {
       primaryContactName: relationship.primaryContactName ?? "",
       email: relationship.email ?? "",
       phone: relationship.phone ?? "",
+      notes: relationship.notes ?? "",
       status: relationship.status ?? "active",
+    });
+    setLeadForm({
+      requesterName: relationship.primaryContactName || relationship.displayName || "",
+      requesterEmail: relationship.email || "",
+      requesterPhone: relationship.phone || "",
+      businessName: relationship.businessName || "",
+      notes: "",
     });
   }, [relationship?._id]);
 
@@ -140,6 +227,7 @@ export function ClientRelationshipDetailPage() {
         primaryContactName: form.primaryContactName || undefined,
         email: form.email || undefined,
         phone: form.phone || undefined,
+        notes: form.notes || undefined,
         status: form.status,
       });
       setEditing(false);
@@ -151,18 +239,111 @@ export function ClientRelationshipDetailPage() {
     }
   };
 
+  const handleCreateLead = async (event: FormEvent) => {
+    event.preventDefault();
+    setCreatingLead(true);
+    try {
+      const requestId = await createLead({
+        userId: user._id,
+        clientRelationshipId: relationship._id,
+        requesterName: leadForm.requesterName,
+        requesterEmail: leadForm.requesterEmail,
+        requesterPhone: leadForm.requesterPhone || undefined,
+        businessName: leadForm.businessName || undefined,
+        notes: leadForm.notes || undefined,
+        leadType: relationship.clientType === "commercial" ? "commercial" : "other",
+        leadStage: "new",
+      });
+      showToast(t("clientRelationships.leadCreated"), "success");
+      setLocation(`/requests/${requestId}`);
+    } catch (err: any) {
+      showToast(err.message || t("clientRelationships.leadCreateFailed"), "error");
+    } finally {
+      setCreatingLead(false);
+    }
+  };
+
+  const counts = {
+    leads: detail.leads.length,
+    properties: detail.properties.length,
+    commercialAccounts: detail.commercialAccounts.length,
+    openInvoices: detail.invoices.filter((invoice: any) => invoice.status === "issued").length,
+    upcomingJobs: detail.jobs.filter((job: any) =>
+      job.scheduledDate >= new Date().toISOString().slice(0, 10) &&
+      !["approved", "cancelled"].includes(job.status)
+    ).length,
+    completedJobs: detail.jobs.filter((job: any) => job.completedAt || job.status === "approved").length,
+  };
+  const totalLinkedRecords =
+    counts.leads +
+    counts.properties +
+    counts.commercialAccounts +
+    detail.walkthroughs.length +
+    detail.proposals.length +
+    detail.serviceAgreements.length +
+    detail.invoices.length +
+    detail.jobs.length;
+  const timeline = buildTimeline(detail, t);
+
   return (
     <div className="space-y-6">
       <PageHeader
         title={relationship.displayName}
         description={t("clientRelationships.detailDescription")}
         action={
-          <Link href="/clients" className="btn-secondary flex items-center gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            {t("clientRelationships.backToClients")}
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => setShowLeadForm((current) => !current)} className="btn-primary flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              {t("clientRelationships.createLead")}
+            </button>
+            <Link href="/clients" className="btn-secondary flex items-center gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              {t("clientRelationships.backToClients")}
+            </Link>
+          </div>
         }
       />
+
+      {showLeadForm && (
+        <form onSubmit={handleCreateLead} className="card space-y-4">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">{t("clientRelationships.createLead")}</h2>
+            <p className="mt-1 text-sm text-gray-500">{t("clientRelationships.createLeadHelper")}</p>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label={t("clientRelationships.fields.primaryContactName")}>
+              <input className="input-field mt-1" value={leadForm.requesterName} onChange={(event) => setLeadForm({ ...leadForm, requesterName: event.target.value })} required />
+            </Field>
+            <Field label={t("clientRelationships.fields.email")}>
+              <input type="email" className="input-field mt-1" value={leadForm.requesterEmail} onChange={(event) => setLeadForm({ ...leadForm, requesterEmail: event.target.value })} required />
+            </Field>
+            <Field label={t("clientRelationships.fields.phone")}>
+              <input className="input-field mt-1" value={leadForm.requesterPhone} onChange={(event) => setLeadForm({ ...leadForm, requesterPhone: event.target.value })} />
+            </Field>
+            <Field label={t("clientRelationships.fields.businessName")}>
+              <input className="input-field mt-1" value={leadForm.businessName} onChange={(event) => setLeadForm({ ...leadForm, businessName: event.target.value })} />
+            </Field>
+            <Field label={t("common.notes")}>
+              <textarea className="input-field mt-1" rows={3} value={leadForm.notes} onChange={(event) => setLeadForm({ ...leadForm, notes: event.target.value })} />
+            </Field>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button type="submit" disabled={creatingLead} className="btn-primary flex items-center gap-2 text-sm">
+              <Plus className="h-4 w-4" />
+              {creatingLead ? t("common.saving") : t("clientRelationships.createLead")}
+            </button>
+            <button type="button" onClick={() => setShowLeadForm(false)} className="btn-secondary text-sm">
+              {t("common.cancel")}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {totalLinkedRecords === 0 && (
+        <div className="rounded-lg border border-primary-200 bg-primary-50 p-4 text-sm text-primary-800">
+          {t("clientRelationships.empty.ready")}
+        </div>
+      )}
 
       <section className="card space-y-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -210,6 +391,9 @@ export function ClientRelationshipDetailPage() {
               <Field label={t("clientRelationships.fields.phone")}>
                 <input className="input-field mt-1" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} />
               </Field>
+              <Field label={t("clientRelationships.fields.notes")}>
+                <textarea className="input-field mt-1" rows={3} value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
+              </Field>
               <Field label={t("clientRelationships.fields.status")}>
                 <select className="input-field mt-1 capitalize" value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as RelationshipStatus })}>
                   {STATUSES.map((status) => (
@@ -229,6 +413,42 @@ export function ClientRelationshipDetailPage() {
             <Detail icon={Mail} label={t("clientRelationships.fields.email")} value={relationship.email || notSet} />
             <Detail icon={Phone} label={t("clientRelationships.fields.phone")} value={relationship.phone || notSet} />
             <Detail label={t("clientRelationships.clientUser")} value={relationship.hasClientUser ? t("clientRelationships.yes") : t("clientRelationships.no")} />
+            <div className="rounded-lg border border-gray-200 p-3 sm:col-span-2 lg:col-span-4">
+              <p className="text-xs font-medium text-gray-500">{t("clientRelationships.fields.notes")}</p>
+              <p className="mt-1 whitespace-pre-wrap text-sm text-gray-900">{relationship.notes || notSet}</p>
+            </div>
+          </div>
+        )}
+      </section>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+        <SummaryCard label={t("clientRelationships.summary.leads")} value={counts.leads} />
+        <SummaryCard label={t("clientRelationships.summary.properties")} value={counts.properties} />
+        <SummaryCard label={t("clientRelationships.summary.commercialAccounts")} value={counts.commercialAccounts} />
+        <SummaryCard label={t("clientRelationships.summary.openInvoices")} value={counts.openInvoices} />
+        <SummaryCard label={t("clientRelationships.summary.upcomingJobs")} value={counts.upcomingJobs} />
+        <SummaryCard label={t("clientRelationships.summary.completedJobs")} value={counts.completedJobs} />
+      </div>
+
+      <section className="card space-y-3">
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4 text-gray-500" />
+          <h2 className="text-base font-semibold text-gray-900">{t("clientRelationships.timeline.title")}</h2>
+        </div>
+        {timeline.length === 0 ? (
+          <p className="text-sm text-gray-500">{t("clientRelationships.timeline.empty")}</p>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {timeline.map((event, index) => (
+              <div key={`${event.at}-${event.label}-${index}`} className="flex gap-3 py-3 text-sm">
+                <div className="mt-1 h-2 w-2 rounded-full bg-primary-500" />
+                <div>
+                  <p className="font-medium text-gray-900">{event.label}</p>
+                  {event.sublabel && <p className="text-xs text-gray-500">{event.sublabel}</p>}
+                  <p className="text-xs text-gray-400">{dateTimeLabel(event.at, notSet)}</p>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </section>

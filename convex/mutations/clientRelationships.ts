@@ -24,6 +24,7 @@ const relationshipFields = {
   primaryContactName: v.optional(v.string()),
   email: v.optional(v.string()),
   phone: v.optional(v.string()),
+  notes: v.optional(v.string()),
   status: statusValidator,
 };
 
@@ -48,6 +49,7 @@ function patchFromArgs(args: any) {
     primaryContactName: cleanOptional(args.primaryContactName, 200),
     email: cleanEmail(args.email),
     phone: cleanOptional(args.phone, 50),
+    notes: cleanOptional(args.notes, 4000),
     status: args.status,
   };
 }

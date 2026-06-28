@@ -129,6 +129,7 @@ export default defineSchema({
     primaryContactName: v.optional(v.string()),
     email: v.optional(v.string()),
     phone: v.optional(v.string()),
+    notes: v.optional(v.string()),
     status: v.union(
       v.literal("active"),
       v.literal("inactive"),
