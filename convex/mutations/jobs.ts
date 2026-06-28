@@ -39,15 +39,19 @@ export const create = mutation({
     const initialStatus = args.requireConfirmation === false ? "confirmed" : "scheduled";
     const initialAcceptance = args.requireConfirmation === false ? "accepted" as const : "pending" as const;
 
+    const property = await ctx.db.get(args.propertyId);
+    if (!property || property.companyId !== args.companyId) {
+      throw new Error("Property not found");
+    }
+
     const { userId: _uid, ...jobData } = args;
     const jobId = await ctx.db.insert("jobs", {
       ...jobData,
+      clientRelationshipId: property.clientRelationshipId,
       status: initialStatus,
       acceptanceStatus: initialAcceptance,
       reworkCount: 0,
     });
-
-    const property = await ctx.db.get(args.propertyId);
 
     const recipientIds = args.assignedTeamId
       ? await getJobRecipientUserIds(ctx, { companyId: args.companyId, cleanerIds: args.cleanerIds, assignedTeamId: args.assignedTeamId })
@@ -136,6 +140,13 @@ export const update = mutation({
     }
     if (clearAssignedTeam || (updates.cleanerIds && updates.cleanerIds.length > 0)) {
       cleanUpdates.assignedTeamId = undefined;
+    }
+    if (updates.propertyId) {
+      const property = await ctx.db.get(updates.propertyId);
+      if (!property || property.companyId !== owner.companyId) {
+        throw new Error("Property not found");
+      }
+      cleanUpdates.clientRelationshipId = property.clientRelationshipId;
     }
     await ctx.db.patch(jobId, cleanUpdates);
 

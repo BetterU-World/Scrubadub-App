@@ -66,6 +66,7 @@ export const createProposalFromLead = mutation({
     const now = Date.now();
     const proposalId = await ctx.db.insert("proposals", {
       companyId: request.companyId,
+      clientRelationshipId: (request as any).clientRelationshipId,
       clientRequestId: request._id,
       createdByUserId: owner._id,
       title: "Cleaning Proposal",

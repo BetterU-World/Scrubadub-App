@@ -184,6 +184,7 @@ export const create = mutation({
 
     return await ctx.db.insert("invoices", {
       companyId: account.companyId,
+      clientRelationshipId: account.clientRelationshipId,
       commercialAccountId: account._id,
       title: cleanRequired(args.title, "Commercial Invoice", 200),
       invoiceNumber: await nextInvoiceNumber(ctx, account.companyId),
@@ -281,6 +282,7 @@ export const generateFromJobs = mutation({
     const totals = invoiceTotals(account);
     const invoiceId = await ctx.db.insert("invoices", {
       companyId: account.companyId,
+      clientRelationshipId: account.clientRelationshipId,
       commercialAccountId: account._id,
       title: `${account.clientName} Invoice`,
       invoiceNumber: await nextInvoiceNumber(ctx, account.companyId),

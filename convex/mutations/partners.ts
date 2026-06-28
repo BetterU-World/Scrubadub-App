@@ -84,10 +84,11 @@ export const connectByEmail = mutation({
       .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
       .first();
 
-    if (!targetUser || targetUser.role !== "owner") {
+    if (!targetUser || targetUser.role !== "owner" || !targetUser.companyId) {
       return { success: false as const, reason: "not_found" };
     }
-    if (targetUser.companyId === owner.companyId) {
+    const targetCompanyId = targetUser.companyId;
+    if (targetCompanyId === owner.companyId) {
       return { success: false as const, reason: "same_company" };
     }
 
@@ -97,12 +98,12 @@ export const connectByEmail = mutation({
       .withIndex("by_companyAId", (q) => q.eq("companyAId", owner.companyId))
       .collect();
     const forwardMatch = existingA.find(
-      (c) => c.companyBId === targetUser.companyId
+      (c) => c.companyBId === targetCompanyId
     );
 
     const existingB = await ctx.db
       .query("ownerConnections")
-      .withIndex("by_companyAId", (q) => q.eq("companyAId", targetUser.companyId))
+      .withIndex("by_companyAId", (q) => q.eq("companyAId", targetCompanyId))
       .collect();
     const reverseMatch = existingB.find(
       (c) => c.companyBId === owner.companyId
@@ -119,23 +120,23 @@ export const connectByEmail = mutation({
 
     const connId = await ctx.db.insert("ownerConnections", {
       companyAId: owner.companyId,
-      companyBId: targetUser.companyId,
+      companyBId: targetCompanyId,
       status: "pending",
       initiatorCompanyId: owner.companyId,
       createdAt: Date.now(),
     });
 
     // Notify recipient company's owners
-    const targetCompany = await ctx.db.get(targetUser.companyId);
+    const targetCompany = await ctx.db.get(targetCompanyId);
     const ownerCompany = await ctx.db.get(owner.companyId);
     const recipientOwners = await ctx.db
       .query("users")
-      .withIndex("by_companyId", (q) => q.eq("companyId", targetUser.companyId))
+      .withIndex("by_companyId", (q) => q.eq("companyId", targetCompanyId))
       .collect();
     const fromCompanyName = ownerCompany?.name ?? "A company";
     for (const ro of recipientOwners.filter((u) => u.role === "owner")) {
       await createNotification(ctx, {
-        companyId: targetUser.companyId,
+        companyId: targetCompanyId,
         userId: ro._id,
         type: "partner_request",
         title: "Partner Connection Request",

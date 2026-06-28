@@ -254,10 +254,12 @@ export const listCleanerJobsWithPaymentStatus = query({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
     const user = await getSessionUser(ctx, args.userId);
+    if (!user.companyId) throw new Error("Company access required");
+    const companyId = user.companyId;
 
     const jobs = await ctx.db
       .query("jobs")
-      .withIndex("by_companyId_status", (q) => q.eq("companyId", user.companyId))
+      .withIndex("by_companyId_status", (q) => q.eq("companyId", companyId))
       .collect();
 
     const results = [];

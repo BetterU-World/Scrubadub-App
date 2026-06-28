@@ -100,6 +100,10 @@ export const createDraftFromAcceptedProposal = mutation({
     const now = Date.now();
     const agreementId = await ctx.db.insert("serviceAgreements", {
       companyId,
+      clientRelationshipId:
+        (account as any)?.clientRelationshipId ??
+        (proposal as any).clientRelationshipId ??
+        (request as any).clientRelationshipId,
       proposalId: proposal._id,
       clientRequestId: proposal.clientRequestId,
       commercialAccountId: account?._id,

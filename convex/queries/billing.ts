@@ -68,6 +68,7 @@ export const getCompanyForBilling = internalQuery({
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId);
     if (!user) return null;
+    if (!user.companyId) return null;
     const company = await ctx.db.get(user.companyId);
     if (!company) return null;
     return {

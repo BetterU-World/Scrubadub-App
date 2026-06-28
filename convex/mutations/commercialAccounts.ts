@@ -18,6 +18,7 @@ const statusValidator = v.union(
 );
 
 const accountFields = {
+  clientRelationshipId: v.optional(v.id("clientRelationships")),
   clientName: v.string(),
   contactName: v.optional(v.string()),
   contactEmail: v.optional(v.string()),
@@ -78,8 +79,22 @@ async function assertTeamAssignment(ctx: any, teamId: any, companyId: any) {
   return teamId;
 }
 
+async function assertClientRelationship(ctx: any, relationshipId: any, companyId: any) {
+  if (!relationshipId) return undefined;
+  const relationship = await ctx.db.get(relationshipId);
+  if (!relationship || relationship.companyId !== companyId) {
+    throw new Error("Client relationship must belong to your company");
+  }
+  return relationshipId;
+}
+
 async function buildAccountPatch(ctx: any, companyId: any, args: any) {
   return {
+    clientRelationshipId: await assertClientRelationship(
+      ctx,
+      args.clientRelationshipId,
+      companyId
+    ),
     clientName: cleanRequired(args.clientName, "Commercial Account", 200),
     contactName: cleanOptional(args.contactName, 200),
     contactEmail: cleanOptional(args.contactEmail, 200)?.toLowerCase(),
@@ -157,8 +172,8 @@ export const create = mutation({
     }
 
     const clientRequestId = args.clientRequestId ?? proposal?.clientRequestId;
+    const request = clientRequestId ? await ctx.db.get(clientRequestId) : null;
     if (clientRequestId) {
-      const request = await ctx.db.get(clientRequestId);
       if (!request) throw new Error("Lead not found");
       if (request.companyId !== companyId) throw new Error("Access denied");
     }
@@ -170,13 +185,22 @@ export const create = mutation({
     }
 
     const now = Date.now();
+    const clientRelationshipId =
+      args.clientRelationshipId ??
+      (agreement as any)?.clientRelationshipId ??
+      (proposal as any)?.clientRelationshipId ??
+      (request as any)?.clientRelationshipId;
+    const accountPatch = await buildAccountPatch(ctx, companyId, {
+      ...args,
+      clientRelationshipId,
+    });
     const accountId = await ctx.db.insert("commercialAccounts", {
       companyId,
       clientRequestId,
       sourceLeadId: args.sourceLeadId ?? clientRequestId,
       sourceProposalId: args.sourceProposalId,
       serviceAgreementId: agreement?._id,
-      ...(await buildAccountPatch(ctx, companyId, args)),
+      ...accountPatch,
       createdAt: now,
       updatedAt: now,
     });

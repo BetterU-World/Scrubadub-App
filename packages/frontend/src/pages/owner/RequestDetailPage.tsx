@@ -75,6 +75,9 @@ export function RequestDetailPage() {
   const updateLeadDetailsMut = useMutation(
     api.mutations.clientRequests.updateLeadDetails
   );
+  const createClientRelationshipFromLead = useMutation(
+    (api as any).mutations.clientRelationships.createFromClientRequest
+  );
   const createProposal = useMutation(
     (api as any).mutations.proposals.createProposalFromLead
   );
@@ -160,6 +163,7 @@ export function RequestDetailPage() {
   const [contactingLoading, setContactingLoading] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [savingLeadDetails, setSavingLeadDetails] = useState(false);
+  const [creatingClientRelationship, setCreatingClientRelationship] = useState(false);
   const [leadTypeVal, setLeadTypeVal] = useState("booking_request");
   const [businessNameVal, setBusinessNameVal] = useState("");
   const [businessContactTitleVal, setBusinessContactTitleVal] = useState("");
@@ -468,6 +472,23 @@ export function RequestDetailPage() {
     }
   };
 
+  const handleCreateClientRelationship = async () => {
+    setCreatingClientRelationship(true);
+    try {
+      await createClientRelationshipFromLead({
+        userId: user!._id,
+        clientRequestId: request._id,
+      });
+      setToast({ message: "Client relationship created", type: "success" });
+      setTimeout(() => setToast(null), 2000);
+    } catch (err: any) {
+      setToast({ message: err.message || "Failed to create client relationship", type: "error" });
+      setTimeout(() => setToast(null), 3000);
+    } finally {
+      setCreatingClientRelationship(false);
+    }
+  };
+
   const handleSaveProposal = async () => {
     if (!proposal) return;
     setSavingProposal(true);
@@ -524,6 +545,7 @@ export function RequestDetailPage() {
     try {
       const payload = {
         userId: user!._id,
+        clientRelationshipId: ((request as any).clientRelationshipId || undefined) as any,
         clientName: accountForm.clientName,
         contactName: accountForm.contactName || undefined,
         contactEmail: accountForm.contactEmail || undefined,
@@ -1369,6 +1391,35 @@ export function RequestDetailPage() {
               )}
             </div>
           </div>
+        )}
+      </div>
+
+      {/* Client relationship */}
+      <div className="card mt-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Link2 className="w-4 h-4 text-gray-500" />
+          <h3 className="text-sm font-semibold text-gray-900">
+            Client relationship
+          </h3>
+        </div>
+        {(request as any).clientRelationshipId ? (
+          <p className="text-sm text-gray-600">
+            This lead is linked to a company client relationship.
+          </p>
+        ) : (
+          <>
+            <p className="text-sm text-gray-500">
+              Create a company-scoped client relationship from this lead. This does not create a client login.
+            </p>
+            <button
+              onClick={handleCreateClientRelationship}
+              disabled={creatingClientRelationship}
+              className="btn-secondary flex items-center gap-2 text-sm"
+            >
+              <Link2 className="w-4 h-4" />
+              {creatingClientRelationship ? "Creating..." : "Create Client Relationship"}
+            </button>
+          </>
         )}
       </div>
 

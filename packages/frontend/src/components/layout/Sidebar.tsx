@@ -66,6 +66,7 @@ const ownerSections: NavSection[] = [
     titleKey: "nav.hub",
     items: [
       { href: "/requests", labelKey: "nav.requests", icon: Inbox },
+      { href: "/clients", labelKey: "nav.clients", icon: Users },
       { href: "/commercial-accounts", labelKey: "nav.commercialAccounts", icon: Briefcase },
       { href: "/commercial-invoices", labelKey: "nav.commercialInvoices", icon: Receipt },
       { href: "/feedback", labelKey: "nav.feedback", icon: MessageSquare },
