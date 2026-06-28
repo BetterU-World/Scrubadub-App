@@ -359,6 +359,7 @@ export const generateCommercialJobsFromSchedule = mutation({
 
       await ctx.db.insert("jobs", {
         companyId: schedule.companyId,
+        clientRelationshipId: account.clientRelationshipId,
         propertyId: schedule.propertyId,
         cleanerIds: schedule.assignedCleanerId ? [schedule.assignedCleanerId] : [],
         assignedManagerId: schedule.assignedManagerId,

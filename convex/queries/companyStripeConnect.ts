@@ -27,6 +27,7 @@ export const getOwnerAndCompany = internalQuery({
     const user = await ctx.db.get(args.userId);
     if (!user || user.status === "inactive") return null;
     if (user.role !== "owner") return null;
+    if (!user.companyId) return null;
     const company = await ctx.db.get(user.companyId);
     if (!company) return null;
     return {

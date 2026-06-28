@@ -53,11 +53,16 @@ export function PropertyFormPage() {
     api.queries.properties.get,
     params.id && user ? { propertyId: params.id as Id<"properties">, userId: user._id } : "skip"
   );
+  const clientRelationships = useQuery(
+    (api as any).queries.clientRelationships.listForSelect,
+    user ? { userId: user._id } : "skip"
+  );
 
   const createProperty = useMutation(api.mutations.properties.create);
   const updateProperty = useMutation(api.mutations.properties.update);
 
   const [name, setName] = useState("");
+  const [clientRelationshipId, setClientRelationshipId] = useState("");
   const [type, setType] = useState<string>("residential");
   const [address, setAddress] = useState("");
   const [accessInstructions, setAccessInstructions] = useState("");
@@ -82,6 +87,7 @@ export function PropertyFormPage() {
   useEffect(() => {
     if (existing) {
       setName(existing.name);
+      setClientRelationshipId((existing as any).clientRelationshipId ?? "");
       setType(existing.type);
       setAddress(existing.address);
       setAccessInstructions(existing.accessInstructions ?? "");
@@ -112,6 +118,7 @@ export function PropertyFormPage() {
     try {
       const data = {
         name,
+        clientRelationshipId: clientRelationshipId || undefined,
         type: type as any,
         address,
         accessInstructions: accessInstructions || undefined,
@@ -195,6 +202,23 @@ export function PropertyFormPage() {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">{t("properties.address")} <span className="text-red-500">*</span></label>
           <input className="input-field" value={address} onChange={(e) => setAddress(e.target.value)} required placeholder="123 Main St, City, ST 12345" />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Client relationship</label>
+          <select
+            className="input-field"
+            value={clientRelationshipId}
+            onChange={(e) => setClientRelationshipId(e.target.value)}
+          >
+            <option value="">None</option>
+            {(clientRelationships ?? []).map((relationship: any) => (
+              <option key={relationship._id} value={relationship._id}>
+                {relationship.displayName}
+                {relationship.businessName ? ` - ${relationship.businessName}` : ""}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Property details — visible for all types */}

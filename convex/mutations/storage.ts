@@ -17,6 +17,7 @@ export const generateUploadUrl = mutation({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
     const user = await getSessionUser(ctx, args.userId);
+    if (!user.companyId) throw new Error("Company access required");
     await requireActiveSubscription(ctx, user.companyId);
     return await ctx.storage.generateUploadUrl();
   },

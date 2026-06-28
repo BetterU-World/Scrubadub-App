@@ -89,7 +89,7 @@ export const signIn = action({
     email: string;
     name: string;
     role: string;
-    companyId: Id<"companies">;
+    companyId?: Id<"companies">;
     status: string;
   }> => {
     const email = args.email.toLowerCase();

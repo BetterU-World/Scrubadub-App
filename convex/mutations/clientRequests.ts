@@ -184,6 +184,7 @@ export const createPropertyFromRequest = mutation({
 
     const propertyId = await ctx.db.insert("properties", {
       companyId: request.companyId,
+      clientRelationshipId: request.clientRelationshipId,
       name: snap.name || address,
       type: "residential" as const,
       address,

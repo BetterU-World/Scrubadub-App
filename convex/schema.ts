@@ -93,6 +93,56 @@ export default defineSchema({
     .index("by_referralCode", ["referralCode"])
     .index("by_referredByCode", ["referredByCode"]),
 
+  clientUsers: defineTable({
+    email: v.string(),
+    passwordHash: v.optional(v.string()),
+    displayName: v.string(),
+    phone: v.optional(v.string()),
+    language: v.optional(v.string()),
+    status: v.union(
+      v.literal("active"),
+      v.literal("disabled"),
+      v.literal("pending")
+    ),
+    inviteTokenHash: v.optional(v.string()),
+    inviteTokenExpiry: v.optional(v.number()),
+    resetToken: v.optional(v.string()),
+    resetTokenExpiry: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_email", ["email"])
+    .index("by_status", ["status"]),
+
+  clientRelationships: defineTable({
+    companyId: v.id("companies"),
+    clientUserId: v.optional(v.id("clientUsers")),
+    displayName: v.string(),
+    clientType: v.union(
+      v.literal("residential"),
+      v.literal("commercial"),
+      v.literal("str"),
+      v.literal("property_manager"),
+      v.literal("marketplace")
+    ),
+    businessName: v.optional(v.string()),
+    primaryContactName: v.optional(v.string()),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    status: v.union(
+      v.literal("active"),
+      v.literal("inactive"),
+      v.literal("archived")
+    ),
+    sourceClientRequestId: v.optional(v.id("clientRequests")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_clientUserId", ["clientUserId"])
+    .index("by_companyId_status", ["companyId", "status"])
+    .index("by_companyId_email", ["companyId", "email"]),
+
   teams: defineTable({
     companyId: v.id("companies"),
     name: v.string(),
@@ -122,6 +172,7 @@ export default defineSchema({
 
   properties: defineTable({
     companyId: v.id("companies"),
+    clientRelationshipId: v.optional(v.id("clientRelationships")),
     name: v.string(),
     type: v.union(
       v.literal("residential"),
@@ -167,6 +218,7 @@ export default defineSchema({
 
   jobs: defineTable({
     companyId: v.id("companies"),
+    clientRelationshipId: v.optional(v.id("clientRelationships")),
     propertyId: v.optional(v.id("properties")),
     cleanerIds: v.array(v.id("users")),
     type: v.union(
@@ -587,6 +639,7 @@ export default defineSchema({
 
   proposals: defineTable({
     companyId: v.id("companies"),
+    clientRelationshipId: v.optional(v.id("clientRelationships")),
     clientRequestId: v.id("clientRequests"),
     createdByUserId: v.id("users"),
     title: v.string(),
@@ -626,6 +679,7 @@ export default defineSchema({
 
   walkthroughs: defineTable({
     companyId: v.id("companies"),
+    clientRelationshipId: v.optional(v.id("clientRelationships")),
     clientRequestId: v.optional(v.id("clientRequests")),
     propertyId: v.optional(v.id("properties")),
     commercialAccountId: v.optional(v.id("commercialAccounts")),
@@ -688,6 +742,7 @@ export default defineSchema({
 
   serviceAgreements: defineTable({
     companyId: v.id("companies"),
+    clientRelationshipId: v.optional(v.id("clientRelationships")),
     proposalId: v.id("proposals"),
     clientRequestId: v.optional(v.id("clientRequests")),
     commercialAccountId: v.optional(v.id("commercialAccounts")),
@@ -721,6 +776,7 @@ export default defineSchema({
 
   commercialAccounts: defineTable({
     companyId: v.id("companies"),
+    clientRelationshipId: v.optional(v.id("clientRelationships")),
     sourceLeadId: v.optional(v.id("clientRequests")),
     clientRequestId: v.optional(v.id("clientRequests")),
     sourceProposalId: v.optional(v.id("proposals")),
@@ -796,6 +852,7 @@ export default defineSchema({
 
   invoices: defineTable({
     companyId: v.id("companies"),
+    clientRelationshipId: v.optional(v.id("clientRelationships")),
     commercialAccountId: v.id("commercialAccounts"),
     title: v.string(),
     invoiceNumber: v.string(),
@@ -826,6 +883,7 @@ export default defineSchema({
 
   clientRequests: defineTable({
     companyId: v.id("companies"),
+    clientRelationshipId: v.optional(v.id("clientRelationships")),
     createdAt: v.number(),
     status: v.union(
       v.literal("new"),

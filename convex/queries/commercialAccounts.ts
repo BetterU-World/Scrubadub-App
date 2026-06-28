@@ -11,11 +11,12 @@ async function requireOwnerCompany(ctx: any, userId: any) {
 }
 
 async function decorateAccount(ctx: any, account: any) {
-  const [manager, cleaner, team, request] = await Promise.all([
+  const [manager, cleaner, team, request, clientRelationship] = await Promise.all([
     account.assignedManagerId ? ctx.db.get(account.assignedManagerId) : null,
     account.assignedCleanerId ? ctx.db.get(account.assignedCleanerId) : null,
     account.assignedTeamId ? ctx.db.get(account.assignedTeamId) : null,
     account.clientRequestId ? ctx.db.get(account.clientRequestId) : null,
+    account.clientRelationshipId ? ctx.db.get(account.clientRelationshipId) : null,
   ]);
   const [property, proposal] = await Promise.all([
     request?.propertyId ? ctx.db.get(request.propertyId) : null,
@@ -30,6 +31,16 @@ async function decorateAccount(ctx: any, account: any) {
     assignedManagerName: manager?.name ?? null,
     assignedCleanerName: cleaner?.name ?? null,
     assignedTeamName: team?.name ?? null,
+    clientRelationship:
+      clientRelationship?.companyId === account.companyId
+        ? {
+            _id: clientRelationship._id,
+            displayName: clientRelationship.displayName,
+            businessName: clientRelationship.businessName,
+            clientType: clientRelationship.clientType,
+            status: clientRelationship.status,
+          }
+        : null,
     sourceLead: sourceLead
       ? {
           _id: sourceLead._id,
@@ -68,11 +79,12 @@ export const listByCompany = query({
     const owner = await requireOwnerCompany(ctx, args.userId);
     const companyId = owner.companyId!;
 
-    const accounts = args.status
+    const status = args.status;
+    const accounts = status
       ? await ctx.db
           .query("commercialAccounts")
           .withIndex("by_companyId_status", (q) =>
-            q.eq("companyId", companyId).eq("status", args.status)
+            q.eq("companyId", companyId).eq("status", status)
           )
           .collect()
       : await ctx.db

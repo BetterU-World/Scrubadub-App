@@ -1,5 +1,5 @@
 import { QueryCtx, MutationCtx } from "../_generated/server";
-import { Id } from "../_generated/dataModel";
+import { Doc, Id } from "../_generated/dataModel";
 
 export async function getAuthSessionId(
   ctx: QueryCtx
@@ -31,13 +31,18 @@ export async function requireAuth(ctx: QueryCtx, userId?: Id<"users">) {
   throw new Error("Not authenticated");
 }
 
-export async function requireOwner(ctx: QueryCtx, userId?: Id<"users">) {
+type CompanyOwner = Doc<"users"> & { companyId: Id<"companies">; role: "owner" };
+
+export async function requireOwner(
+  ctx: QueryCtx,
+  userId?: Id<"users">
+): Promise<CompanyOwner> {
   const user = await requireAuth(ctx, userId);
-  if (user.role === "owner" && user.companyId) return user;
+  if (user.role === "owner" && user.companyId) return user as CompanyOwner;
   // Identity resolved to non-owner; try explicit userId fallback
   if (userId) {
     const explicit = await ctx.db.get(userId);
-    if (explicit && explicit.status === "active" && explicit.role === "owner" && explicit.companyId) return explicit;
+    if (explicit && explicit.status === "active" && explicit.role === "owner" && explicit.companyId) return explicit as CompanyOwner;
   }
   throw new Error("Owner access required");
 }

@@ -7,6 +7,7 @@ export const create = mutation({
   args: {
     userId: v.optional(v.id("users")),
     companyId: v.id("companies"),
+    clientRelationshipId: v.optional(v.id("clientRelationships")),
     name: v.string(),
     type: v.union(
       v.literal("residential"),
@@ -37,6 +38,12 @@ export const create = mutation({
     const owner = await requireOwner(ctx, args.userId);
     if (owner.companyId !== args.companyId) throw new Error("Not your company");
     await requireActiveSubscription(ctx, args.companyId);
+    if (args.clientRelationshipId) {
+      const relationship = await ctx.db.get(args.clientRelationshipId);
+      if (!relationship || relationship.companyId !== args.companyId) {
+        throw new Error("Client relationship must belong to your company");
+      }
+    }
 
     const { userId: _uid, ...propData } = args;
     const propertyId = await ctx.db.insert("properties", {
@@ -131,6 +138,7 @@ export const update = mutation({
   args: {
     userId: v.optional(v.id("users")),
     propertyId: v.id("properties"),
+    clientRelationshipId: v.optional(v.id("clientRelationships")),
     name: v.string(),
     type: v.union(
       v.literal("residential"),
@@ -162,6 +170,12 @@ export const update = mutation({
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
     if (property.companyId !== owner.companyId) throw new Error("Not your company");
+    if (args.clientRelationshipId) {
+      const relationship = await ctx.db.get(args.clientRelationshipId);
+      if (!relationship || relationship.companyId !== owner.companyId) {
+        throw new Error("Client relationship must belong to your company");
+      }
+    }
 
     const { propertyId, userId: _uid, ...updates } = args;
     await ctx.db.patch(propertyId, updates);

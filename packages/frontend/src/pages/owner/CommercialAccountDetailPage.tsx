@@ -28,6 +28,7 @@ const FREQUENCIES = ["one_time", "weekly", "biweekly", "monthly", "quarterly", "
 const STATUSES: AccountStatus[] = ["active", "paused", "ended"];
 
 const EMPTY_FORM = {
+  clientRelationshipId: "",
   clientName: "",
   contactName: "",
   contactEmail: "",
@@ -125,6 +126,10 @@ export function CommercialAccountDetailPage() {
     api.queries.teams.listActiveForAssignment,
     user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
   );
+  const clientRelationships = useQuery(
+    (api as any).queries.clientRelationships.listForSelect,
+    user ? { userId: user._id } : "skip"
+  );
   const updateCommercialAccount = useMutation(
     (api as any).mutations.commercialAccounts.update
   );
@@ -132,6 +137,7 @@ export function CommercialAccountDetailPage() {
   useEffect(() => {
     if (!account) return;
     setForm({
+      clientRelationshipId: account.clientRelationshipId ?? "",
       clientName: account.clientName ?? "",
       contactName: account.contactName ?? "",
       contactEmail: account.contactEmail ?? "",
@@ -166,6 +172,7 @@ export function CommercialAccountDetailPage() {
       await updateCommercialAccount({
         userId: user._id,
         accountId: account._id,
+        clientRelationshipId: (form.clientRelationshipId || undefined) as any,
         clientName: form.clientName,
         contactName: form.contactName || undefined,
         contactEmail: form.contactEmail || undefined,
@@ -246,6 +253,22 @@ export function CommercialAccountDetailPage() {
                     ))}
                   </select>
                 </label>
+                <label className="block sm:col-span-2">
+                  <span className="text-xs font-medium text-gray-600">Client relationship</span>
+                  <select
+                    className="input-field mt-1"
+                    value={form.clientRelationshipId}
+                    onChange={(e) => setForm({ ...form, clientRelationshipId: e.target.value })}
+                  >
+                    <option value="">None</option>
+                    {(clientRelationships ?? []).map((relationship: any) => (
+                      <option key={relationship._id} value={relationship._id}>
+                        {relationship.displayName}
+                        {relationship.businessName ? ` - ${relationship.businessName}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -253,6 +276,10 @@ export function CommercialAccountDetailPage() {
                 <DetailItem
                   label={t("commercialAccounts.status")}
                   value={<span className="badge bg-gray-100 text-gray-700">{t(`commercialAccounts.statuses.${account.status}`)}</span>}
+                />
+                <DetailItem
+                  label="Client relationship"
+                  value={account.clientRelationship?.displayName ?? t("common.unassigned")}
                 />
               </div>
             )}

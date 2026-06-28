@@ -1,5 +1,8 @@
 import { QueryCtx } from "../_generated/server";
-import { Id } from "../_generated/dataModel";
+import { Doc, Id } from "../_generated/dataModel";
+
+type CompanyUser = Doc<"users"> & { companyId: Id<"companies"> };
+type CompanyOwner = CompanyUser & { role: "owner" };
 
 /**
  * Central auth helper. Resolves the session user via:
@@ -34,12 +37,12 @@ export async function assertCompanyAccess(
   ctx: QueryCtx,
   providedUserId: Id<"users"> | undefined,
   companyId: Id<"companies">
-) {
+): Promise<CompanyUser> {
   const user = await getSessionUser(ctx, providedUserId);
   if (!user.companyId || user.companyId !== companyId) {
     throw new Error("Access denied");
   }
-  return user;
+  return user as CompanyUser;
 }
 
 const SUPER_ADMIN_EMAILS = [
@@ -66,12 +69,12 @@ export async function requireSuperAdmin(
 export async function assertOwnerRole(
   ctx: QueryCtx,
   providedUserId?: Id<"users">
-) {
+): Promise<CompanyOwner> {
   const user = await getSessionUser(ctx, providedUserId);
-  if (user.role !== "owner") {
+  if (user.role !== "owner" || !user.companyId) {
     throw new Error("Owner access required");
   }
-  return user;
+  return user as CompanyOwner;
 }
 
 /** Check if a user has a specific manager permission flag. */

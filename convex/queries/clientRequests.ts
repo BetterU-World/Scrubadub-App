@@ -118,11 +118,12 @@ export const listRequestsForPipeline = query({
   },
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx, args.userId);
-    if (user.role !== "owner") throw new Error("Owner access required");
+    if (user.role !== "owner" || !user.companyId) throw new Error("Owner access required");
+    const companyId = user.companyId;
 
     const requests = await ctx.db
       .query("clientRequests")
-      .withIndex("by_companyId", (q) => q.eq("companyId", user.companyId))
+      .withIndex("by_companyId", (q) => q.eq("companyId", companyId))
       .take(REQUEST_LIST_CAP);
 
     // Treat missing leadStage as "new"
@@ -152,11 +153,12 @@ export const listFollowUps = query({
   },
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx, args.userId);
-    if (user.role !== "owner") throw new Error("Owner access required");
+    if (user.role !== "owner" || !user.companyId) throw new Error("Owner access required");
+    const companyId = user.companyId;
 
     const requests = await ctx.db
       .query("clientRequests")
-      .withIndex("by_companyId", (q) => q.eq("companyId", user.companyId))
+      .withIndex("by_companyId", (q) => q.eq("companyId", companyId))
       .take(REQUEST_LIST_CAP);
 
     const withFollowUp = requests.filter((r) => {
@@ -242,12 +244,13 @@ export const listClientFeedback = query({
   },
   handler: async (ctx, args) => {
     const user = await requireAuth(ctx, args.userId);
-    if (user.role !== "owner") throw new Error("Owner access required");
+    if (user.role !== "owner" || !user.companyId) throw new Error("Owner access required");
+    const companyId = user.companyId;
 
     // Get all company requests
     const requests = await ctx.db
       .query("clientRequests")
-      .withIndex("by_companyId", (q) => q.eq("companyId", user.companyId))
+      .withIndex("by_companyId", (q) => q.eq("companyId", companyId))
       .take(REQUEST_LIST_CAP);
 
     const requestMap = new Map(requests.map((r) => [r._id, r]));
