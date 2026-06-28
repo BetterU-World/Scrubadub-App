@@ -1329,6 +1329,59 @@
       "declined": "Declined"
     }
   },
+  "clientRelationships": {
+    "detailDescription": "Company-scoped client relationship and linked records.",
+    "backToClients": "Back to clients",
+    "notFound": "Client relationship not found",
+    "notSet": "Not set",
+    "saved": "Client relationship saved",
+    "saveFailed": "Failed to save client relationship",
+    "noBusinessName": "No business name",
+    "clientUser": "Client login",
+    "yes": "Yes",
+    "no": "No",
+    "fields": {
+      "displayName": "Display name",
+      "clientType": "Client type",
+      "businessName": "Business name",
+      "primaryContactName": "Primary contact",
+      "email": "Email",
+      "phone": "Phone",
+      "status": "Status"
+    },
+    "clientTypes": {
+      "residential": "Residential",
+      "commercial": "Commercial",
+      "str": "STR",
+      "property_manager": "Property manager",
+      "marketplace": "Marketplace"
+    },
+    "statuses": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "archived": "Archived"
+    },
+    "sections": {
+      "leads": "Related leads",
+      "properties": "Related properties",
+      "commercialAccounts": "Commercial accounts",
+      "walkthroughs": "Walkthroughs",
+      "proposals": "Proposals",
+      "serviceAgreements": "Service agreements",
+      "invoices": "Invoices",
+      "jobs": "Jobs"
+    },
+    "empty": {
+      "leads": "No leads linked yet.",
+      "properties": "No properties linked yet.",
+      "commercialAccounts": "No commercial accounts linked yet.",
+      "walkthroughs": "No walkthroughs yet.",
+      "proposals": "No proposals yet.",
+      "serviceAgreements": "No service agreements yet.",
+      "invoices": "No invoices yet.",
+      "jobs": "No jobs yet."
+    }
+  },
   "commercialAccounts": {
     "title": "Commercial Accounts",
     "description": "Manage accepted commercial clients and service relationships.",
