@@ -39,6 +39,7 @@ import { RequestListPage } from "@/pages/owner/RequestListPage";
 import { RequestDetailPage } from "@/pages/owner/RequestDetailPage";
 import { CommercialAccountListPage } from "@/pages/owner/CommercialAccountListPage";
 import { CommercialAccountDetailPage } from "@/pages/owner/CommercialAccountDetailPage";
+import { CommercialInvoiceDetailPage } from "@/pages/owner/CommercialInvoiceDetailPage";
 import { SiteSetupPage } from "@/pages/owner/SiteSetupPage";
 import { CleanerLeadsPage } from "@/pages/owner/CleanerLeadsPage";
 import { AffiliatePage } from "@/pages/owner/AffiliatePage";
@@ -212,7 +213,7 @@ export default function App() {
     "/login", "/signup", "/forgot-password", "/reset-password",
     "/invite", "/subscribe", "/billing", "/properties", "/employees",
     "/jobs", "/calendar", "/red-flags", "/performance", "/analytics",
-    "/partners", "/requests", "/commercial-accounts", "/feedback", "/cleaner-leads", "/audit-log", "/notifications", "/manuals",
+    "/partners", "/requests", "/commercial-accounts", "/commercial-invoices", "/feedback", "/cleaner-leads", "/audit-log", "/notifications", "/manuals",
     "/admin", "/site", "/affiliate", "/availability", "/owner", "/settings", "/payments",
     "/terms", "/privacy", "/contact", "/get-started", "/setup",
     "/inventory-templates",
@@ -322,6 +323,7 @@ export default function App() {
                 <Route path="/requests/pipeline" component={PipelinePage} />
                 <Route path="/requests/:id" component={RequestDetailPage} />
                 <Route path="/requests" component={RequestListPage} />
+                <Route path="/commercial-invoices/:id" component={CommercialInvoiceDetailPage} />
                 <Route path="/commercial-accounts/:id" component={CommercialAccountDetailPage} />
                 <Route path="/commercial-accounts" component={CommercialAccountListPage} />
                 <Route path="/feedback" component={FeedbackInboxPage} />
