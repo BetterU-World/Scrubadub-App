@@ -1,6 +1,7 @@
 import { internalMutation, mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwner, logAudit } from "../lib/helpers";
+import { getSessionUser } from "../lib/auth";
 
 const workerTypeValidator = v.union(
   v.literal("w2_employee"),
@@ -89,6 +90,16 @@ function defaultWorkerTypeForRole(role: ExistingWorkerRole) {
 
 function defaultEligibilityForStatus(status: string) {
   return status === "active" ? "eligible" as const : "ineligible" as const;
+}
+
+function nextProfileOnboardingStatus(items: Array<{ required?: boolean; status: string }>) {
+  const requiredItems = items.filter((item) => item.required !== false);
+  if (requiredItems.length === 0) return "complete";
+  if (requiredItems.some((item) => item.status === "blocked")) return "blocked";
+  if (requiredItems.every((item) => item.status === "complete" || item.status === "waived")) {
+    return "complete";
+  }
+  return "in_progress";
 }
 
 function cleanOptionalString(value: string | undefined, max = 4000) {
@@ -464,6 +475,57 @@ export const completeWorkerOnboardingItem = mutation({
       completedByUserId: owner._id,
       notes: args.notes !== undefined ? cleanOptionalString(args.notes) : item.notes,
       updatedAt: Date.now(),
+    });
+  },
+});
+
+export const completeMyOnboardingItem = mutation({
+  args: {
+    userId: v.id("users"),
+    onboardingItemId: v.id("workerOnboardingItems"),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const sessionUser = await getSessionUser(ctx, args.userId);
+    const db: any = ctx.db;
+    const item = await db.get(args.onboardingItemId);
+    if (!item || item.userId !== sessionUser._id) {
+      throw new Error("Onboarding item not found");
+    }
+
+    if (item.status !== "not_started" && item.status !== "in_progress") {
+      throw new Error("This onboarding item cannot be completed by the worker");
+    }
+
+    const profile = await db.get(item.workerProfileId);
+    if (!profile || profile.userId !== sessionUser._id || profile.companyId !== sessionUser.companyId) {
+      throw new Error("Worker profile not found");
+    }
+
+    const now = Date.now();
+    await db.patch(item._id, {
+      status: "complete",
+      completedAt: item.completedAt ?? now,
+      completedByUserId: sessionUser._id,
+      updatedAt: now,
+    });
+
+    const items = await db
+      .query("workerOnboardingItems")
+      .withIndex("by_workerProfileId", (q: any) => q.eq("workerProfileId", item.workerProfileId))
+      .collect();
+    const nextItems = items.map((existing: any) =>
+      existing._id === item._id
+        ? {
+            ...existing,
+            status: "complete",
+          }
+        : existing
+    );
+
+    await db.patch(item.workerProfileId, {
+      onboardingStatus: nextProfileOnboardingStatus(nextItems),
+      updatedAt: now,
     });
   },
 });

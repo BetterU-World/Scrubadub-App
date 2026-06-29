@@ -291,7 +291,7 @@ function PaymentSummarySection({ payments }: { payments: any[] }) {
         </div>
         {nextOpen ? (
           <p className="text-sm text-gray-600">
-            Next open item: <span className="font-medium text-gray-900">{nextOpen.jobLabel}</span> · {formatMoney(nextOpen.plannedPayCents)}
+            Next open item: <span className="font-medium text-gray-900">{nextOpen.jobLabel}</span> - {formatMoney(nextOpen.plannedPayCents)}
           </p>
         ) : (
           <EmptySummary>No open payment items.</EmptySummary>
@@ -318,7 +318,7 @@ function OnboardingSection({
 
   return (
     <section className="card">
-      <SectionHeader icon={FileText} title="Onboarding & Documents" action={<SectionLink href="/settings#documents">View Documents</SectionLink>} />
+      <SectionHeader icon={FileText} title="Onboarding & Documents" action={<SectionLink href="/settings#compliance">Open Compliance</SectionLink>} />
       {!profile ? (
         <EmptySummary>Your worker profile is not initialized yet.</EmptySummary>
       ) : (
@@ -328,7 +328,7 @@ function OnboardingSection({
               {needsAttention > 0 ? `${needsAttention} item${needsAttention === 1 ? "" : "s"} need attention` : "Onboarding is in good shape"}
             </p>
             <p className="text-xs mt-0.5">
-              Status: {formatLabel(profile.onboardingStatus)} · Eligibility: {formatLabel(profile.jobEligibilityStatus)}
+              Status: {formatLabel(profile.onboardingStatus)} - Eligibility: {formatLabel(profile.jobEligibilityStatus)}
             </p>
           </div>
           {incompleteOnboarding.slice(0, 2).map((item) => (
