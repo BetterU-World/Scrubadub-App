@@ -9,7 +9,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Link, useParams } from "wouter";
 import {
   Banknote,
-  Briefcase,
+  BarChart3,
   ClipboardCheck,
   FileText,
   ShieldCheck,
@@ -225,9 +225,11 @@ export function WorkerDetailPage() {
     (api as any).queries.workers.listWorkerOnboardingItems,
     user && workerProfile?._id ? { userId: user._id, workerProfileId: workerProfile._id } : "skip"
   );
-  const jobs = useQuery(
-    api.queries.jobs.list,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+  const performanceSummary = useQuery(
+    (api as any).queries.performance.getWorkerSummary,
+    user?.companyId && params.id
+      ? { companyId: user.companyId, userId: user._id, workerUserId: params.id as Id<"users"> }
+      : "skip"
   );
   const teams = useQuery(
     (api as any).queries.teams.list,
@@ -238,7 +240,7 @@ export function WorkerDetailPage() {
     !user ||
     employees === undefined ||
     workerProfile === undefined ||
-    jobs === undefined ||
+    performanceSummary === undefined ||
     teams === undefined ||
     (workerProfile?._id && (documents === undefined || onboardingItems === undefined))
   ) return <PageLoader />;
@@ -263,14 +265,6 @@ export function WorkerDetailPage() {
         .filter((membership: any) => membership.active && String(membership.userId) === params.id)
         .map((membership: any) => ({ ...membership, team }))
     );
-  const teamIds = new Set(activeTeams.map((membership: any) => membership.teamId));
-  const recentJobs = (jobs ?? [])
-    .filter((job: any) =>
-      job.cleanerIds?.some((id: Id<"users">) => String(id) === params.id) ||
-      String(job.assignedManagerId) === params.id ||
-      (job.assignedTeamId && teamIds.has(job.assignedTeamId))
-    );
-  recentJobs.sort((a: any, b: any) => (b.scheduledDate ?? "").localeCompare(a.scheduledDate ?? ""));
   const payProfile = workerProfile?.payProfile ?? {};
   const paymentDraft = paymentProfileDraft ?? {
     payType: payProfile.payType ?? "manual",
@@ -869,26 +863,66 @@ export function WorkerDetailPage() {
           )}
         </SectionCard>
 
-        <SectionCard icon={Briefcase} title="Recent Activity">
-          {recentJobs.length === 0 ? (
-            <EmptyNote>No recent worker activity is available yet.</EmptyNote>
-          ) : (
-            <div className="space-y-2">
-              {recentJobs.slice(0, 5).map((job: any) => (
-                <Link
-                  key={job._id}
-                  href={`/jobs/${job._id}`}
-                  className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2 hover:bg-gray-100"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{job.propertyName ?? "Job"}</p>
-                    <p className="text-xs text-gray-500">{job.scheduledDate}</p>
-                  </div>
-                  <span className="badge bg-gray-100 text-gray-700">{formatLabel(job.status)}</span>
-                </Link>
-              ))}
+        <SectionCard icon={BarChart3} title="Performance">
+          <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <DetailItem label="Jobs Completed" value={performanceSummary.jobsCompleted} />
+              <DetailItem label="Awaiting Review" value={performanceSummary.jobsAwaitingReview} />
+              <DetailItem label="Requiring Rework" value={performanceSummary.jobsRequiringRework} />
+              <DetailItem label="Active Jobs" value={performanceSummary.activeJobs} />
+              <DetailItem
+                label="Last Job Completed"
+                value={performanceSummary.lastJobCompleted
+                  ? formatDate(performanceSummary.lastJobCompleted.completedAt)
+                  : "No completed jobs yet"}
+              />
+              <DetailItem
+                label="Quality Score"
+                value={
+                  performanceSummary.averageCleanerScore != null
+                    ? `${performanceSummary.averageCleanerScore}/10`
+                    : performanceSummary.averageInspectionScore != null
+                      ? `${performanceSummary.averageInspectionScore}/10 inspection avg`
+                      : "Not enough score data"
+                }
+              />
+              <DetailItem label="Red Flags" value={performanceSummary.redFlagCount} />
+              <DetailItem
+                label="Assigned Teams"
+                value={activeTeams.length > 0
+                  ? activeTeams.map((membership: any) => membership.team?.name ?? "Unknown team").join(", ")
+                  : "No active team assignments"}
+              />
             </div>
-          )}
+
+            {performanceSummary.recentJobs.length === 0 ? (
+              <EmptyNote>No recent worker jobs are available yet.</EmptyNote>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase text-gray-400">Recent Jobs</p>
+                {performanceSummary.recentJobs.map((job: any) => (
+                  <Link
+                    key={job._id}
+                    href={`/jobs/${job._id}`}
+                    className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2 hover:bg-gray-100"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{job.propertyName ?? "Job"}</p>
+                      <p className="text-xs text-gray-500">
+                        {job.completedAt ? formatDate(job.completedAt) : job.scheduledDate}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {job.reworkCount > 0 && (
+                        <span className="badge bg-orange-100 text-orange-700">Rework {job.reworkCount}</span>
+                      )}
+                      <span className="badge bg-gray-100 text-gray-700">{formatLabel(job.status)}</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
         </SectionCard>
       </div>
     </div>
