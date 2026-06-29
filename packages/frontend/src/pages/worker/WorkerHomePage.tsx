@@ -318,7 +318,7 @@ function OnboardingSection({
 
   return (
     <section className="card">
-      <SectionHeader icon={FileText} title="Onboarding & Documents" action={<SectionLink href="/settings">View Documents</SectionLink>} />
+      <SectionHeader icon={FileText} title="Onboarding & Documents" action={<SectionLink href="/settings#documents">View Documents</SectionLink>} />
       {!profile ? (
         <EmptySummary>Your worker profile is not initialized yet.</EmptySummary>
       ) : (
