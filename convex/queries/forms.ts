@@ -48,25 +48,3 @@ export const getItems = query({
     return items.sort((a, b) => a.order - b.order);
   },
 });
-
-export const getItemsBySection = query({
-  args: {
-    formId: v.id("forms"),
-    section: v.string(),
-    userId: v.id("users"),
-  },
-  handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
-    const form = await ctx.db.get(args.formId);
-    if (!form) return [];
-    if (!(await canReadForm(ctx, form, user))) return [];
-
-    const items = await ctx.db
-      .query("formItems")
-      .withIndex("by_formId_section", (q) =>
-        q.eq("formId", args.formId).eq("section", args.section)
-      )
-      .collect();
-    return items.sort((a, b) => a.order - b.order);
-  },
-});

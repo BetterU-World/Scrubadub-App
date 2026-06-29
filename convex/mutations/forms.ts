@@ -123,38 +123,6 @@ export const updateScore = mutation({
   },
 });
 
-export const updateFinalPass = mutation({
-  args: {
-    formId: v.id("forms"),
-    finalPass: v.boolean(),
-    userId: v.optional(v.id("users")),
-  },
-  handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
-    const form = await requireEditable(ctx, args.formId);
-    await requireFormWorkspaceAccess(ctx, form as any, user);
-
-    await ctx.db.patch(args.formId, { finalPass: args.finalPass });
-  },
-});
-
-export const saveSignature = mutation({
-  args: {
-    formId: v.id("forms"),
-    signatureStorageId: v.id("_storage"),
-    userId: v.optional(v.id("users")),
-  },
-  handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
-    const form = await requireEditable(ctx, args.formId);
-    await requireFormWorkspaceAccess(ctx, form as any, user);
-
-    await ctx.db.patch(args.formId, {
-      signatureStorageId: args.signatureStorageId,
-    });
-  },
-});
-
 export const markAllComplete = mutation({
   args: { formId: v.id("forms"), userId: v.optional(v.id("users")) },
   handler: async (ctx, args) => {
