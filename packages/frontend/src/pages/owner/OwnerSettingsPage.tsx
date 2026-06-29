@@ -16,6 +16,7 @@ import {
   Banknote,
   Globe,
   Archive,
+  ClipboardCheck,
 } from "lucide-react";
 import { BillingSection } from "@/components/settings/BillingSection";
 
@@ -119,6 +120,22 @@ export function OwnerSettingsPage() {
         </Link>
 
         {/* ── Payments card ──────────────────────────────── */}
+        <Link
+          href="/owner/settings/onboarding"
+          className="card flex items-center gap-4 hover:bg-gray-50 transition-colors"
+        >
+          <div className="p-2 rounded-lg bg-primary-50 text-primary-600">
+            <ClipboardCheck className="w-5 h-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-gray-900">Onboarding</p>
+            <p className="text-sm text-gray-500">
+              Manage the company PDFs workers review during Compliance.
+            </p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-gray-400" />
+        </Link>
+
         <Link
           href="/owner/payments"
           className="card flex items-center gap-4 hover:bg-gray-50 transition-colors"

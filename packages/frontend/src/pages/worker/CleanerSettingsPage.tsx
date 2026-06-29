@@ -178,6 +178,43 @@ function onboardingStatusMessage(item: any) {
   }
 }
 
+function companyDocumentText(document: any) {
+  return `${document.documentKey ?? ""} ${document.title ?? ""}`.toLowerCase();
+}
+
+function matchesCompanyDocument(item: any, document: any) {
+  const itemValue = itemText(item);
+  const documentKey = document.documentKey ?? "";
+  if (documentKey && itemValue.includes(documentKey)) return true;
+
+  const matchTerms: Record<string, string[]> = {
+    company_values: ["company values", "values"],
+    worker_agreement: ["worker agreement"],
+    contractor_agreement: ["contractor agreement", "contract"],
+    employee_handbook: ["employee handbook", "handbook"],
+    safety_policy: ["safety policy", "safety"],
+    role_expectations: ["role expectations", "expectations"],
+    nda: ["nda", "nondisclosure", "confidentiality"],
+    additional_documents: ["additional document"],
+  };
+
+  return (matchTerms[documentKey] ?? []).some((term) => itemValue.includes(term));
+}
+
+function isAgreementCompanyDocument(document: any) {
+  const text = companyDocumentText(document);
+  return text.includes("agreement") || text.includes("nda") || text.includes("contract") || text.includes("handbook");
+}
+
+function isPolicyCompanyDocument(document: any) {
+  const text = companyDocumentText(document);
+  return text.includes("policy") || text.includes("values") || text.includes("expectation");
+}
+
+function isTrainingCompanyDocument(document: any) {
+  return companyDocumentText(document).includes("training");
+}
+
 function ProfileBasicsSection({ user, workerProfile }: { user: any; workerProfile: any }) {
   return (
     <SectionCard id="profile" icon={User} title="Profile Basics">
@@ -223,10 +260,12 @@ function OnboardingActionButton({
   item,
   onComplete,
   completing,
+  disabledReason,
 }: {
   item: any;
   onComplete: (item: any) => void;
   completing: boolean;
+  disabledReason?: string | null;
 }) {
   if (item.status === "complete") {
     return (
@@ -243,6 +282,9 @@ function OnboardingActionButton({
   }
   if (!isWorkerCompletable(item)) {
     return <span className="badge bg-gray-100 text-gray-700">{formatLabel(item.status)}</span>;
+  }
+  if (disabledReason) {
+    return <span className="badge bg-amber-100 text-amber-700">{disabledReason}</span>;
   }
 
   return (
@@ -262,11 +304,19 @@ function OnboardingItemRow({
   item,
   onComplete,
   completing,
+  onOpenCompanyDocument,
 }: {
   item: any;
   onComplete: (item: any) => void;
   completing: boolean;
+  onOpenCompanyDocument?: (document: any) => void;
 }) {
+  const companyDocument = item.companyDocument;
+  const waitingForOwnerUpload =
+    item.status !== "complete" &&
+    companyDocument?.required &&
+    !companyDocument.storageId;
+
   return (
     <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -276,11 +326,71 @@ function OnboardingItemRow({
             {item.required ? "Required" : "Optional"} - {onboardingStatusMessage(item)}
           </p>
         </div>
-        <OnboardingActionButton item={item} onComplete={onComplete} completing={completing} />
+        <OnboardingActionButton
+          item={item}
+          onComplete={onComplete}
+          completing={completing}
+          disabledReason={waitingForOwnerUpload ? "Waiting for Owner Upload" : null}
+        />
       </div>
+      {companyDocument && (
+        <div className="mt-3 flex flex-col gap-2 rounded bg-white px-2 py-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-gray-700">{companyDocument.title}</p>
+            <p className="text-xs text-gray-500">
+              {companyDocument.storageId ? "PDF available" : "Waiting for owner upload"}
+            </p>
+          </div>
+          {companyDocument.url ? (
+            <button
+              type="button"
+              className="btn-secondary flex items-center justify-center gap-1.5 text-sm"
+              onClick={() => onOpenCompanyDocument?.(companyDocument)}
+            >
+              <ExternalLink className="w-4 h-4" />
+              Open PDF
+            </button>
+          ) : (
+            <span className="badge bg-amber-100 text-amber-700">Waiting for Owner Upload</span>
+          )}
+        </div>
+      )}
       {item.notes && (
         <p className="mt-2 rounded bg-white px-2 py-1.5 text-xs text-gray-500">{item.notes}</p>
       )}
+    </div>
+  );
+}
+
+function CompanyDocumentRow({
+  document,
+  onOpenCompanyDocument,
+}: {
+  document: any;
+  onOpenCompanyDocument: (document: any) => void;
+}) {
+  return (
+    <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-gray-900">{document.title}</p>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {document.required ? "Required" : "Optional"} - {document.storageId ? "PDF available" : "Waiting for owner upload"}
+          </p>
+        </div>
+        {document.url ? (
+          <button
+            type="button"
+            className="btn-secondary flex items-center justify-center gap-1.5 text-sm"
+            onClick={() => onOpenCompanyDocument(document)}
+          >
+            <ExternalLink className="w-4 h-4" />
+            Open PDF
+          </button>
+        ) : (
+          <span className="badge bg-amber-100 text-amber-700">Waiting for Owner Upload</span>
+        )}
+      </div>
     </div>
   );
 }
@@ -321,9 +431,11 @@ function ComplianceGroup({
   icon: Icon,
   onboardingItems,
   documents = [],
+  companyDocuments = [],
   manuals = [],
   onComplete,
   completingItemId,
+  onOpenCompanyDocument,
   onOpenManual,
   openingManualId,
 }: {
@@ -333,13 +445,15 @@ function ComplianceGroup({
   icon: ComponentType<{ className?: string }>;
   onboardingItems: any[];
   documents?: any[];
+  companyDocuments?: any[];
   manuals?: any[];
   onComplete: (item: any) => void;
   completingItemId: string | null;
+  onOpenCompanyDocument: (document: any) => void;
   onOpenManual?: (manualId: string) => void;
   openingManualId?: string | null;
 }) {
-  const hasItems = onboardingItems.length > 0 || documents.length > 0 || manuals.length > 0;
+  const hasItems = onboardingItems.length > 0 || documents.length > 0 || companyDocuments.length > 0 || manuals.length > 0;
 
   return (
     <section id={id} className="scroll-mt-6 rounded-lg border border-gray-200 bg-white p-4">
@@ -363,6 +477,14 @@ function ComplianceGroup({
               item={item}
               onComplete={onComplete}
               completing={completingItemId === item._id}
+              onOpenCompanyDocument={onOpenCompanyDocument}
+            />
+          ))}
+          {companyDocuments.map((document) => (
+            <CompanyDocumentRow
+              key={document.documentKey}
+              document={document}
+              onOpenCompanyDocument={onOpenCompanyDocument}
             />
           ))}
           {documents.map((document) => (
@@ -436,21 +558,25 @@ function ComplianceSummary({
 function ComplianceHubSection({
   workerProfile,
   documents,
+  companyDocuments,
   onboardingItems,
   manuals,
   completingItemId,
   completionError,
   onComplete,
+  onOpenCompanyDocument,
   onOpenManual,
   openingManualId,
 }: {
   workerProfile: any;
   documents: any[];
+  companyDocuments: any[];
   onboardingItems: any[];
   manuals: any[];
   completingItemId: string | null;
   completionError: string | null;
   onComplete: (item: any) => void;
+  onOpenCompanyDocument: (document: any) => void;
   onOpenManual: (manualId: string) => void;
   openingManualId: string | null;
 }) {
@@ -462,12 +588,32 @@ function ComplianceHubSection({
   const completedCount = completedOnboarding.length + completedDocuments.length;
   const remainingCount = Math.max(totalCount - completedCount, 0);
 
-  const workerActionItems = requiredOnboarding.filter(isWorkerCompletable);
+  const companyDocumentByItemId = new Map<string, any>();
+  const matchedCompanyDocumentKeys = new Set<string>();
+  for (const item of onboardingItems) {
+    const companyDocument = companyDocuments.find((document) => matchesCompanyDocument(item, document));
+    if (companyDocument) {
+      companyDocumentByItemId.set(item._id, companyDocument);
+      matchedCompanyDocumentKeys.add(companyDocument.documentKey);
+    }
+  }
+
+  const enrichedOnboardingItems = onboardingItems.map((item) => ({
+    ...item,
+    companyDocument: companyDocumentByItemId.get(item._id),
+  }));
+  const workerActionItems = requiredOnboarding.filter((item) => {
+    const companyDocument = companyDocumentByItemId.get(item._id);
+    return isWorkerCompletable(item) && !(companyDocument?.required && !companyDocument.storageId);
+  });
   const waitingDocuments = documents.filter((document) => !isCompleteStatus(document.status));
+  const waitingCompanyDocuments = companyDocuments.filter((document) => document.required && !document.storageId);
   const blockedItems = onboardingItems.filter((item) => item.status === "blocked");
   const firstWorkerAction = workerActionItems[0];
   const nextAction = firstWorkerAction
     ? `Next: review and mark "${firstWorkerAction.title}" complete.`
+    : waitingCompanyDocuments.length > 0
+      ? `Next: wait for owner upload of "${waitingCompanyDocuments[0].title}".`
     : waitingDocuments.length > 0
       ? "Next: wait for owner review or follow your owner's document instructions."
       : blockedItems.length > 0
@@ -476,7 +622,7 @@ function ComplianceHubSection({
           ? "All assigned compliance items are complete."
           : "Review your remaining assigned compliance items.";
 
-  const workerVisibleItems = onboardingItems.filter((item) => !isOwnerControlledOnboarding(item));
+  const workerVisibleItems = enrichedOnboardingItems.filter((item) => !isOwnerControlledOnboarding(item));
   const agreementItems = workerVisibleItems.filter(isAgreementItem);
   const policyItems = workerVisibleItems.filter((item) => isPolicyItem(item) && !isAgreementItem(item));
   const trainingItems = workerVisibleItems.filter((item) => isTrainingItem(item) && !isAgreementItem(item) && !isPolicyItem(item));
@@ -490,7 +636,16 @@ function ComplianceHubSection({
     (document) => !agreementDocuments.includes(document) && !policyDocuments.includes(document) && !trainingDocuments.includes(document)
   );
   const ownerReviewDocuments = documents.filter((document) => !isCompleteStatus(document.status));
-  const ownerReviewItems = onboardingItems.filter(isOwnerControlledOnboarding);
+  const ownerReviewItems = enrichedOnboardingItems.filter(isOwnerControlledOnboarding);
+  const unmatchedCompanyDocuments = companyDocuments.filter((document) => !matchedCompanyDocumentKeys.has(document.documentKey));
+  const agreementCompanyDocuments = unmatchedCompanyDocuments.filter(isAgreementCompanyDocument);
+  const policyCompanyDocuments = unmatchedCompanyDocuments.filter((document) => isPolicyCompanyDocument(document) && !isAgreementCompanyDocument(document));
+  const trainingCompanyDocuments = unmatchedCompanyDocuments.filter(
+    (document) => isTrainingCompanyDocument(document) && !isAgreementCompanyDocument(document) && !isPolicyCompanyDocument(document)
+  );
+  const otherCompanyDocuments = unmatchedCompanyDocuments.filter(
+    (document) => !agreementCompanyDocuments.includes(document) && !policyCompanyDocuments.includes(document) && !trainingCompanyDocuments.includes(document)
+  );
 
   return (
     <SectionCard id="compliance" icon={ShieldCheck} title="Compliance & Onboarding" action={<SectionLink href="/">Back to Home</SectionLink>}>
@@ -519,9 +674,11 @@ function ComplianceHubSection({
             description="Review and acknowledge assigned agreements."
             icon={ClipboardCheck}
             onboardingItems={agreementItems}
+            companyDocuments={agreementCompanyDocuments}
             documents={agreementDocuments}
             onComplete={onComplete}
             completingItemId={completingItemId}
+            onOpenCompanyDocument={onOpenCompanyDocument}
           />
           <ComplianceGroup
             id="policies"
@@ -529,9 +686,11 @@ function ComplianceHubSection({
             description="Read company expectations and mark required policies reviewed."
             icon={ShieldCheck}
             onboardingItems={policyItems}
+            companyDocuments={policyCompanyDocuments}
             documents={policyDocuments}
             onComplete={onComplete}
             completingItemId={completingItemId}
+            onOpenCompanyDocument={onOpenCompanyDocument}
           />
           <ComplianceGroup
             id="training"
@@ -539,22 +698,26 @@ function ComplianceHubSection({
             description="Open training manuals and complete assigned training checklist items."
             icon={BookOpen}
             onboardingItems={[...trainingItems, ...otherOnboardingItems]}
+            companyDocuments={trainingCompanyDocuments}
             documents={trainingDocuments}
             manuals={manuals}
             onComplete={onComplete}
             completingItemId={completingItemId}
+            onOpenCompanyDocument={onOpenCompanyDocument}
             onOpenManual={onOpenManual}
             openingManualId={openingManualId}
           />
           <ComplianceGroup
             id="documents"
             title="Documents"
-            description="Document upload is not available yet. Your owner manages review, approval, waivers, and off-platform records."
+            description="Open company-provided documents here. Worker uploads remain off for V1."
             icon={FileText}
             onboardingItems={[]}
+            companyDocuments={otherCompanyDocuments}
             documents={otherDocuments}
             onComplete={onComplete}
             completingItemId={completingItemId}
+            onOpenCompanyDocument={onOpenCompanyDocument}
           />
           <ComplianceGroup
             id="owner-review"
@@ -565,6 +728,7 @@ function ComplianceHubSection({
             documents={ownerReviewDocuments}
             onComplete={onComplete}
             completingItemId={completingItemId}
+            onOpenCompanyDocument={onOpenCompanyDocument}
           />
         </div>
       )}
@@ -728,6 +892,10 @@ export function CleanerSettingsPage() {
     api.queries.manuals.getVisibleManuals,
     user?._id ? { userId: user._id } : "skip"
   );
+  const companyDocuments = useQuery(
+    (api as any).queries.companyOnboardingDocuments.listForWorker,
+    user?._id ? { userId: user._id } : "skip"
+  );
   const payments = useQuery(
     api.queries.cleanerPayments.listCleanerJobsWithPaymentStatus,
     user?._id ? { userId: user._id } : "skip"
@@ -751,6 +919,7 @@ export function CleanerSettingsPage() {
     connectStatus === undefined ||
     workerProfile === undefined ||
     manuals === undefined ||
+    companyDocuments === undefined ||
     payments === undefined ||
     (workerProfile?._id && (documents === undefined || onboardingItems === undefined))
   ) {
@@ -786,6 +955,12 @@ export function CleanerSettingsPage() {
       // Keep this card read-only; workers can still open Manuals from the main nav if a signed URL fails.
     } finally {
       setOpeningManualId(null);
+    }
+  };
+
+  const handleOpenCompanyDocument = (document: any) => {
+    if (document.url) {
+      window.open(document.url, "_blank");
     }
   };
 
@@ -831,11 +1006,13 @@ export function CleanerSettingsPage() {
           <ComplianceHubSection
             workerProfile={workerProfile}
             documents={documents ?? []}
+            companyDocuments={companyDocuments ?? []}
             onboardingItems={onboardingItems ?? []}
             manuals={manuals ?? []}
             completingItemId={completingItemId}
             completionError={completionError}
             onComplete={handleCompleteOnboardingItem}
+            onOpenCompanyDocument={handleOpenCompanyDocument}
             onOpenManual={handleOpenManual}
             openingManualId={openingManualId}
           />
