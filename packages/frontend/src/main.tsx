@@ -14,7 +14,6 @@ if (sentryDsn) {
     environment: import.meta.env.MODE,
     sampleRate: 1.0,
     // Keep noise low — only unhandled errors + explicit captures
-    autoSessionTracking: false,
   });
 }
 

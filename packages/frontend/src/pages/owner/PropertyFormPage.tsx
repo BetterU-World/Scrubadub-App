@@ -118,7 +118,7 @@ export function PropertyFormPage() {
     try {
       const data = {
         name,
-        clientRelationshipId: clientRelationshipId || undefined,
+        ...(clientRelationshipId ? { clientRelationshipId: clientRelationshipId as Id<"clientRelationships"> } : {}),
         type: type as any,
         address,
         accessInstructions: accessInstructions || undefined,

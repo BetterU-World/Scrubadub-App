@@ -172,7 +172,7 @@ export function ManagerJobDetailPage() {
               {job.type.replace(/_/g, " ")}
             </span>
             {inspectionSummary && (
-              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${severityColor(inspectionSummary.latestSeverity)}`}>
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${severityColor(inspectionSummary.latestSeverity ?? "none")}`}>
                 <ClipboardCheck className="w-3 h-3" />
                 {t("inspection.inspected")} {inspectionSummary.latestScore}/10
                 {inspectionSummary.latestSeverity !== "none" && (

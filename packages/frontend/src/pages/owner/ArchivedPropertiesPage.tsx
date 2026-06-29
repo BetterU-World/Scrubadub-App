@@ -73,7 +73,7 @@ export function ArchivedPropertiesPage() {
                   {property.address}
                 </div>
                 <div className="text-sm text-gray-500 capitalize mt-0.5">
-                  {t(`properties.propertyTypes.${property.type}`, property.type.replace(/_/g, " "))}
+                  {String(t(`properties.propertyTypes.${property.type}` as const, property.type.replace(/_/g, " ")))}
                   {property.beds != null && ` · ${property.beds} ${t("properties.beds").toLowerCase()}`}
                   {property.baths != null && ` · ${property.baths} ${t("properties.baths").toLowerCase()}`}
                 </div>

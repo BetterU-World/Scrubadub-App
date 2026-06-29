@@ -80,12 +80,14 @@ export function PropertyListPage() {
         }
       />
 
-      <ImportPropertiesDialog
-        open={showImport}
-        onOpenChange={setShowImport}
-        companyId={user.companyId}
-        userId={user._id}
-      />
+      {user.companyId && (
+        <ImportPropertiesDialog
+          open={showImport}
+          onOpenChange={setShowImport}
+          companyId={user.companyId}
+          userId={user._id}
+        />
+      )}
 
       {/* Batch action bar */}
       {selected.size > 0 && (
@@ -188,7 +190,7 @@ export function PropertyListPage() {
                     {property.address}
                   </div>
                   <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <span className="capitalize">{t(`properties.propertyTypes.${property.type}`, property.type.replace(/_/g, " "))}</span>
+                    <span className="capitalize">{String(t(`properties.propertyTypes.${property.type}` as const, property.type.replace(/_/g, " ")))}</span>
                     {(property.beds != null || property.baths != null) && (
                       <span className="text-gray-400">
                         {[
@@ -200,7 +202,7 @@ export function PropertyListPage() {
                   </div>
                   {property.amenities.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-3">
-                      {property.amenities.slice(0, 3).map((a) => (
+                      {property.amenities.slice(0, 3).map((a: string) => (
                         <span key={a} className="badge bg-gray-100 text-gray-600">
                           {a}
                         </span>

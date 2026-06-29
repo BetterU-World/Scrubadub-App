@@ -234,7 +234,7 @@ function DetailsTab({ property }: { property: any }) {
       <div className="flex items-center gap-2">
         <StatusBadge status={property.active ? "active" : "inactive"} />
         <span className="text-sm text-gray-500 capitalize">
-          {t(`properties.propertyTypes.${property.type}`, property.type.replace(/_/g, " "))}
+          {String(t(`properties.propertyTypes.${property.type}` as const, property.type.replace(/_/g, " ")))}
         </span>
       </div>
 
