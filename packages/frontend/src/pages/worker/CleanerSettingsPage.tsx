@@ -1,20 +1,24 @@
 import { useState } from "react";
 import type { ComponentType, ReactNode } from "react";
 import { Link } from "wouter";
-import { useQuery, useAction } from "convex/react";
+import { useQuery, useAction, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { PageLoader } from "@/components/ui/LoadingSpinner";
+import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import {
   AlertCircle,
   Banknote,
+  BookOpen,
   CalendarClock,
   CheckCircle,
   ChevronRight,
+  ClipboardCheck,
+  ExternalLink,
   FileText,
   Link2,
   LogOut,
+  ShieldCheck,
   User,
   Wrench,
 } from "lucide-react";
@@ -91,6 +95,89 @@ function EmptyNote({ children }: { children: ReactNode }) {
   return <p className="text-sm text-gray-500">{children}</p>;
 }
 
+function isCompleteStatus(status?: string | null) {
+  return status === "complete" || status === "reviewed" || status === "waived";
+}
+
+function isWorkerCompletable(item: any) {
+  return item.status === "not_started" || item.status === "in_progress";
+}
+
+function isOwnerControlledOnboarding(item: any) {
+  return item.status === "blocked" || item.status === "waived";
+}
+
+function itemText(item: any) {
+  return `${item.itemKey ?? ""} ${item.title ?? ""}`.toLowerCase();
+}
+
+function documentText(document: any) {
+  return `${document.documentType ?? ""}`.toLowerCase();
+}
+
+function isAgreementItem(item: any) {
+  const text = itemText(item);
+  return text.includes("agreement") || text.includes("nda") || text.includes("contract") || text.includes("handbook");
+}
+
+function isPolicyItem(item: any) {
+  const text = itemText(item);
+  return text.includes("policy") || text.includes("values") || text.includes("safety") || text.includes("expectation");
+}
+
+function isTrainingItem(item: any) {
+  const text = itemText(item);
+  return text.includes("training") || text.includes("manual") || text.includes("first_job");
+}
+
+function isAgreementDocument(document: any) {
+  const text = documentText(document);
+  return text.includes("agreement") || text.includes("handbook");
+}
+
+function isPolicyDocument(document: any) {
+  return documentText(document).includes("policy");
+}
+
+function isTrainingDocument(document: any) {
+  return documentText(document).includes("training");
+}
+
+function documentStatusMessage(document: any) {
+  switch (document.status) {
+    case "not_started":
+    case "requested":
+      return "Missing from worker records";
+    case "received":
+      return "Waiting for owner review";
+    case "reviewed":
+      return "Approved";
+    case "expired":
+      return "Expired - owner review needed";
+    case "waived":
+      return "Waived by owner";
+    default:
+      return formatLabel(document.status);
+  }
+}
+
+function onboardingStatusMessage(item: any) {
+  switch (item.status) {
+    case "not_started":
+      return "Ready for worker review";
+    case "in_progress":
+      return "In progress";
+    case "complete":
+      return item.completedAt ? `Completed ${formatDate(item.completedAt)}` : "Completed";
+    case "blocked":
+      return "Blocked - owner action required";
+    case "waived":
+      return "Waived by owner";
+    default:
+      return formatLabel(item.status);
+  }
+}
+
 function ProfileBasicsSection({ user, workerProfile }: { user: any; workerProfile: any }) {
   return (
     <SectionCard id="profile" icon={User} title="Profile Basics">
@@ -132,79 +219,353 @@ function WorkPreferencesSection({ user, workerProfile }: { user: any; workerProf
   );
 }
 
-function DocumentsSection({ documents, hasProfile }: { documents: any[]; hasProfile: boolean }) {
-  const required = documents.filter((document) => document.required !== false);
-  const ready = required.filter((document) => document.status === "reviewed" || document.status === "waived");
-  const needsAttention = required.filter((document) => document.status !== "reviewed" && document.status !== "waived");
+function OnboardingActionButton({
+  item,
+  onComplete,
+  completing,
+}: {
+  item: any;
+  onComplete: (item: any) => void;
+  completing: boolean;
+}) {
+  if (item.status === "complete") {
+    return (
+      <span className="badge bg-green-100 text-green-700">
+        Completed
+      </span>
+    );
+  }
+  if (item.status === "waived") {
+    return <span className="badge bg-gray-100 text-gray-700">Waived</span>;
+  }
+  if (item.status === "blocked") {
+    return <span className="badge bg-red-100 text-red-700">Owner Action</span>;
+  }
+  if (!isWorkerCompletable(item)) {
+    return <span className="badge bg-gray-100 text-gray-700">{formatLabel(item.status)}</span>;
+  }
 
   return (
-    <SectionCard id="documents" icon={FileText} title="Documents">
-      {!hasProfile ? (
-        <EmptyNote>Your worker profile has not been initialized yet.</EmptyNote>
-      ) : documents.length === 0 ? (
-        <EmptyNote>No document records have been added yet. Sensitive tax and identity documents may be handled off-platform.</EmptyNote>
+    <button
+      type="button"
+      onClick={() => onComplete(item)}
+      disabled={completing}
+      className="btn-secondary flex items-center justify-center gap-1.5 text-sm"
+    >
+      {completing ? <LoadingSpinner size="sm" /> : <CheckCircle className="w-4 h-4" />}
+      Mark Reviewed
+    </button>
+  );
+}
+
+function OnboardingItemRow({
+  item,
+  onComplete,
+  completing,
+}: {
+  item: any;
+  onComplete: (item: any) => void;
+  completing: boolean;
+}) {
+  return (
+    <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-gray-900">{item.title}</p>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {item.required ? "Required" : "Optional"} - {onboardingStatusMessage(item)}
+          </p>
+        </div>
+        <OnboardingActionButton item={item} onComplete={onComplete} completing={completing} />
+      </div>
+      {item.notes && (
+        <p className="mt-2 rounded bg-white px-2 py-1.5 text-xs text-gray-500">{item.notes}</p>
+      )}
+    </div>
+  );
+}
+
+function DocumentRow({ document }: { document: any }) {
+  const ownerAction =
+    document.status === "received" ||
+    document.status === "expired" ||
+    document.status === "requested" ||
+    document.status === "not_started";
+  return (
+    <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium text-gray-900">{formatLabel(document.documentType)}</p>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {document.required ? "Required" : "Optional"} - {documentStatusMessage(document)}
+          </p>
+          {document.reviewedAt && (
+            <p className="text-xs text-gray-400 mt-0.5">Reviewed {formatDate(document.reviewedAt)}</p>
+          )}
+        </div>
+        <span className={`badge ${isCompleteStatus(document.status) ? "bg-green-100 text-green-700" : ownerAction ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-700"}`}>
+          {ownerAction ? "Owner Review" : formatLabel(document.status)}
+        </span>
+      </div>
+      {document.notes && (
+        <p className="mt-2 rounded bg-white px-2 py-1.5 text-xs text-gray-500">{document.notes}</p>
+      )}
+    </div>
+  );
+}
+
+function ComplianceGroup({
+  id,
+  title,
+  description,
+  icon: Icon,
+  onboardingItems,
+  documents = [],
+  manuals = [],
+  onComplete,
+  completingItemId,
+  onOpenManual,
+  openingManualId,
+}: {
+  id: string;
+  title: string;
+  description: string;
+  icon: ComponentType<{ className?: string }>;
+  onboardingItems: any[];
+  documents?: any[];
+  manuals?: any[];
+  onComplete: (item: any) => void;
+  completingItemId: string | null;
+  onOpenManual?: (manualId: string) => void;
+  openingManualId?: string | null;
+}) {
+  const hasItems = onboardingItems.length > 0 || documents.length > 0 || manuals.length > 0;
+
+  return (
+    <section id={id} className="scroll-mt-6 rounded-lg border border-gray-200 bg-white p-4">
+      <div className="mb-3 flex items-start gap-2">
+        <div className="rounded-lg bg-gray-100 p-2 text-gray-600">
+          <Icon className="w-4 h-4" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-gray-900">{title}</h3>
+          <p className="text-sm text-gray-500">{description}</p>
+        </div>
+      </div>
+
+      {!hasItems ? (
+        <EmptyNote>Nothing assigned here yet.</EmptyNote>
       ) : (
-        <div className="space-y-3">
-          <div className="rounded-lg bg-gray-50 px-3 py-3">
-            <p className="text-sm font-semibold text-gray-900">
-              {ready.length}/{required.length} required documents reviewed or waived
-            </p>
-            <p className="text-xs text-gray-500 mt-0.5">
-              {needsAttention.length > 0 ? `${needsAttention.length} document${needsAttention.length === 1 ? "" : "s"} still need attention.` : "Required document records are up to date."}
-            </p>
-          </div>
-          {documents.slice(0, 4).map((document) => (
-            <div key={document._id} className="flex items-start justify-between gap-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
-              <div>
-                <p className="text-sm font-medium text-gray-900">{formatLabel(document.documentType)}</p>
-                <p className="text-xs text-gray-500">
-                  {document.required ? "Required" : "Optional"}
-                  {document.reviewedAt ? ` · Reviewed ${formatDate(document.reviewedAt)}` : ""}
-                </p>
+        <div className="space-y-2">
+          {onboardingItems.map((item) => (
+            <OnboardingItemRow
+              key={item._id}
+              item={item}
+              onComplete={onComplete}
+              completing={completingItemId === item._id}
+            />
+          ))}
+          {documents.map((document) => (
+            <DocumentRow key={document._id} document={document} />
+          ))}
+          {manuals.map((manual) => (
+            <div key={manual._id} className="flex flex-col gap-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-gray-900">{manual.title}</p>
+                {manual.description && <p className="text-xs text-gray-500 mt-0.5">{manual.description}</p>}
               </div>
-              <span className="badge bg-gray-100 text-gray-700">{formatLabel(document.status)}</span>
+              <button
+                type="button"
+                onClick={() => onOpenManual?.(manual._id)}
+                disabled={openingManualId === manual._id}
+                className="btn-secondary flex items-center justify-center gap-1.5 text-sm"
+              >
+                {openingManualId === manual._id ? <LoadingSpinner size="sm" /> : <ExternalLink className="w-4 h-4" />}
+                Open Manual
+              </button>
             </div>
           ))}
         </div>
       )}
-    </SectionCard>
+    </section>
   );
 }
 
-function OnboardingSection({
+function ComplianceSummary({
   workerProfile,
-  onboardingItems,
+  completedCount,
+  totalCount,
+  remainingCount,
+  nextAction,
 }: {
   workerProfile: any;
-  onboardingItems: any[];
+  completedCount: number;
+  totalCount: number;
+  remainingCount: number;
+  nextAction: string;
 }) {
-  const required = onboardingItems.filter((item) => item.required !== false);
-  const complete = required.filter((item) => item.status === "complete" || item.status === "waived");
-  const incomplete = required.filter((item) => item.status !== "complete" && item.status !== "waived");
+  const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+  const eligibility = workerProfile?.jobEligibilityStatus ?? "manual_review";
+  const isEligible = eligibility === "eligible" && remainingCount === 0;
 
   return (
-    <SectionCard id="onboarding" icon={CheckCircle} title="Onboarding" action={<SectionLink href="/">Back to Home</SectionLink>}>
+    <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-4">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="font-semibold text-gray-900">Compliance Summary</h3>
+            <span className={`badge ${isEligible ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
+              {isEligible ? "Eligible for Work" : formatLabel(eligibility)}
+            </span>
+          </div>
+          <p className="mt-1 text-sm text-gray-500">{nextAction}</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+          <DetailItem label="Complete" value={completedCount} />
+          <DetailItem label="Remaining" value={remainingCount} />
+          <DetailItem label="Progress" value={`${progress}%`} />
+        </div>
+      </div>
+      <div className="mt-4 h-2 overflow-hidden rounded-full bg-gray-200">
+        <div className="h-full rounded-full bg-primary-500 transition-all" style={{ width: `${progress}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function ComplianceHubSection({
+  workerProfile,
+  documents,
+  onboardingItems,
+  manuals,
+  completingItemId,
+  completionError,
+  onComplete,
+  onOpenManual,
+  openingManualId,
+}: {
+  workerProfile: any;
+  documents: any[];
+  onboardingItems: any[];
+  manuals: any[];
+  completingItemId: string | null;
+  completionError: string | null;
+  onComplete: (item: any) => void;
+  onOpenManual: (manualId: string) => void;
+  openingManualId: string | null;
+}) {
+  const requiredOnboarding = onboardingItems.filter((item) => item.required !== false);
+  const requiredDocuments = documents.filter((document) => document.required !== false);
+  const completedOnboarding = requiredOnboarding.filter((item) => isCompleteStatus(item.status));
+  const completedDocuments = requiredDocuments.filter((document) => isCompleteStatus(document.status));
+  const totalCount = requiredOnboarding.length + requiredDocuments.length;
+  const completedCount = completedOnboarding.length + completedDocuments.length;
+  const remainingCount = Math.max(totalCount - completedCount, 0);
+
+  const workerActionItems = requiredOnboarding.filter(isWorkerCompletable);
+  const waitingDocuments = documents.filter((document) => !isCompleteStatus(document.status));
+  const blockedItems = onboardingItems.filter((item) => item.status === "blocked");
+  const firstWorkerAction = workerActionItems[0];
+  const nextAction = firstWorkerAction
+    ? `Next: review and mark "${firstWorkerAction.title}" complete.`
+    : waitingDocuments.length > 0
+      ? "Next: wait for owner review or follow your owner's document instructions."
+      : blockedItems.length > 0
+        ? "Next: contact your owner to resolve blocked onboarding items."
+        : remainingCount === 0
+          ? "All assigned compliance items are complete."
+          : "Review your remaining assigned compliance items.";
+
+  const workerVisibleItems = onboardingItems.filter((item) => !isOwnerControlledOnboarding(item));
+  const agreementItems = workerVisibleItems.filter(isAgreementItem);
+  const policyItems = workerVisibleItems.filter((item) => isPolicyItem(item) && !isAgreementItem(item));
+  const trainingItems = workerVisibleItems.filter((item) => isTrainingItem(item) && !isAgreementItem(item) && !isPolicyItem(item));
+  const otherOnboardingItems = workerVisibleItems.filter(
+    (item) => !agreementItems.includes(item) && !policyItems.includes(item) && !trainingItems.includes(item)
+  );
+  const agreementDocuments = documents.filter(isAgreementDocument);
+  const policyDocuments = documents.filter(isPolicyDocument);
+  const trainingDocuments = documents.filter(isTrainingDocument);
+  const otherDocuments = documents.filter(
+    (document) => !agreementDocuments.includes(document) && !policyDocuments.includes(document) && !trainingDocuments.includes(document)
+  );
+  const ownerReviewDocuments = documents.filter((document) => !isCompleteStatus(document.status));
+  const ownerReviewItems = onboardingItems.filter(isOwnerControlledOnboarding);
+
+  return (
+    <SectionCard id="compliance" icon={ShieldCheck} title="Compliance & Onboarding" action={<SectionLink href="/">Back to Home</SectionLink>}>
       {!workerProfile ? (
         <EmptyNote>Your worker profile has not been initialized yet.</EmptyNote>
-      ) : onboardingItems.length === 0 ? (
-        <EmptyNote>No onboarding checklist items have been added yet.</EmptyNote>
       ) : (
-        <div className="space-y-3">
-          <div className={`rounded-lg px-3 py-3 ${incomplete.length > 0 ? "bg-amber-50 text-amber-800" : "bg-green-50 text-green-700"}`}>
-            <p className="text-sm font-semibold">
-              {complete.length}/{required.length} required items complete
-            </p>
-            <p className="text-xs mt-0.5">Overall status: {formatLabel(workerProfile.onboardingStatus)}</p>
-          </div>
-          {incomplete.slice(0, 4).map((item) => (
-            <div key={item._id} className="flex items-start justify-between gap-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
-              <div>
-                <p className="text-sm font-medium text-gray-900">{item.title}</p>
-                <p className="text-xs text-gray-500">{item.required ? "Required" : "Optional"}</p>
-              </div>
-              <span className="badge bg-amber-100 text-amber-700">{formatLabel(item.status)}</span>
+        <div className="space-y-4">
+          <ComplianceSummary
+            workerProfile={workerProfile}
+            completedCount={completedCount}
+            totalCount={totalCount}
+            remainingCount={remainingCount}
+            nextAction={nextAction}
+          />
+
+          {completionError && (
+            <div className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              {completionError}
             </div>
-          ))}
+          )}
+
+          <ComplianceGroup
+            id="agreements"
+            title="Agreements"
+            description="Review and acknowledge assigned agreements."
+            icon={ClipboardCheck}
+            onboardingItems={agreementItems}
+            documents={agreementDocuments}
+            onComplete={onComplete}
+            completingItemId={completingItemId}
+          />
+          <ComplianceGroup
+            id="policies"
+            title="Company Policies"
+            description="Read company expectations and mark required policies reviewed."
+            icon={ShieldCheck}
+            onboardingItems={policyItems}
+            documents={policyDocuments}
+            onComplete={onComplete}
+            completingItemId={completingItemId}
+          />
+          <ComplianceGroup
+            id="training"
+            title="Training"
+            description="Open training manuals and complete assigned training checklist items."
+            icon={BookOpen}
+            onboardingItems={[...trainingItems, ...otherOnboardingItems]}
+            documents={trainingDocuments}
+            manuals={manuals}
+            onComplete={onComplete}
+            completingItemId={completingItemId}
+            onOpenManual={onOpenManual}
+            openingManualId={openingManualId}
+          />
+          <ComplianceGroup
+            id="documents"
+            title="Documents"
+            description="Document upload is not available yet. Your owner manages review, approval, waivers, and off-platform records."
+            icon={FileText}
+            onboardingItems={[]}
+            documents={otherDocuments}
+            onComplete={onComplete}
+            completingItemId={completingItemId}
+          />
+          <ComplianceGroup
+            id="owner-review"
+            title="Owner Review / Waiting on Owner"
+            description="These items need owner review, waiver, or follow-up before they are fully compliant."
+            icon={AlertCircle}
+            onboardingItems={ownerReviewItems}
+            documents={ownerReviewDocuments}
+            onComplete={onComplete}
+            completingItemId={completingItemId}
+          />
         </div>
       )}
     </SectionCard>
@@ -254,7 +615,7 @@ function PaymentsSection({
 
       {nextOpenPayment && (
         <p className="mt-3 text-sm text-gray-600">
-          Next open item: <span className="font-medium text-gray-900">{nextOpenPayment.jobLabel}</span> · {formatMoney(nextOpenPayment.plannedPayCents)}
+          Next open item: <span className="font-medium text-gray-900">{nextOpenPayment.jobLabel}</span> - {formatMoney(nextOpenPayment.plannedPayCents)}
         </p>
       )}
 
@@ -363,6 +724,10 @@ export function CleanerSettingsPage() {
     (api as any).queries.workers.listWorkerOnboardingItems,
     user?._id && workerProfile?._id ? { userId: user._id, workerProfileId: workerProfile._id } : "skip"
   );
+  const manuals = useQuery(
+    api.queries.manuals.getVisibleManuals,
+    user?._id ? { userId: user._id } : "skip"
+  );
   const payments = useQuery(
     api.queries.cleanerPayments.listCleanerJobsWithPaymentStatus,
     user?._id ? { userId: user._id } : "skip"
@@ -370,8 +735,13 @@ export function CleanerSettingsPage() {
   const createAccountLink = useAction(
     api.actions.cleanerStripeConnect.createCleanerStripeAccountLink
   );
+  const getManualSignedUrl = useAction(api.actions.manuals.getManualSignedUrl);
+  const completeOnboardingItem = useMutation((api as any).mutations.workers.completeMyOnboardingItem);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [openingManualId, setOpeningManualId] = useState<string | null>(null);
+  const [completingItemId, setCompletingItemId] = useState<string | null>(null);
+  const [completionError, setCompletionError] = useState<string | null>(null);
 
   const params = new URLSearchParams(window.location.search);
   const stripeParam = params.get("stripe");
@@ -380,6 +750,7 @@ export function CleanerSettingsPage() {
     !user ||
     connectStatus === undefined ||
     workerProfile === undefined ||
+    manuals === undefined ||
     payments === undefined ||
     (workerProfile?._id && (documents === undefined || onboardingItems === undefined))
   ) {
@@ -406,6 +777,33 @@ export function CleanerSettingsPage() {
     }
   };
 
+  const handleOpenManual = async (manualId: string) => {
+    setOpeningManualId(manualId);
+    try {
+      const { url } = await getManualSignedUrl({ userId: user._id, manualId: manualId as any });
+      window.open(url, "_blank");
+    } catch {
+      // Keep this card read-only; workers can still open Manuals from the main nav if a signed URL fails.
+    } finally {
+      setOpeningManualId(null);
+    }
+  };
+
+  const handleCompleteOnboardingItem = async (item: any) => {
+    setCompletingItemId(item._id);
+    setCompletionError(null);
+    try {
+      await completeOnboardingItem({
+        userId: user._id,
+        onboardingItemId: item._id,
+      });
+    } catch (e: any) {
+      setCompletionError(e.message ?? "Could not complete this onboarding item.");
+    } finally {
+      setCompletingItemId(null);
+    }
+  };
+
   return (
     <div>
       <PageHeader
@@ -429,8 +827,19 @@ export function CleanerSettingsPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <ProfileBasicsSection user={user} workerProfile={workerProfile} />
         <WorkPreferencesSection user={user} workerProfile={workerProfile} />
-        <DocumentsSection documents={documents ?? []} hasProfile={!!workerProfile?._id} />
-        <OnboardingSection workerProfile={workerProfile} onboardingItems={onboardingItems ?? []} />
+        <div className="lg:col-span-2">
+          <ComplianceHubSection
+            workerProfile={workerProfile}
+            documents={documents ?? []}
+            onboardingItems={onboardingItems ?? []}
+            manuals={manuals ?? []}
+            completingItemId={completingItemId}
+            completionError={completionError}
+            onComplete={handleCompleteOnboardingItem}
+            onOpenManual={handleOpenManual}
+            openingManualId={openingManualId}
+          />
+        </div>
         <PaymentsSection
           connectStatus={connectStatus}
           payments={payments ?? []}
