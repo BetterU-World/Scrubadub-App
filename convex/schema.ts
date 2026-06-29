@@ -222,6 +222,28 @@ export default defineSchema({
     .index("by_userId", ["userId"])
     .index("by_workerProfileId_itemKey", ["workerProfileId", "itemKey"]),
 
+  companyOnboardingDocuments: defineTable({
+    companyId: v.id("companies"),
+    documentKey: v.string(),
+    title: v.string(),
+    description: v.optional(v.string()),
+    storageId: v.optional(v.id("_storage")),
+    required: v.boolean(),
+    roleVisibility: v.union(
+      v.literal("cleaner"),
+      v.literal("maintenance"),
+      v.literal("both")
+    ),
+    status: v.union(
+      v.literal("active"),
+      v.literal("inactive")
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_companyId_documentKey", ["companyId", "documentKey"]),
+
   clientUsers: defineTable({
     email: v.string(),
     passwordHash: v.optional(v.string()),
