@@ -125,16 +125,16 @@ const workerSections: NavSection[] = [
   {
     titleKey: "nav.dashboard",
     items: [
-      { href: "/", labelKey: "nav.myJobs", icon: ClipboardCheck },
+      { href: "/", labelKey: "nav.home", icon: LayoutDashboard },
+      { href: "/jobs", labelKey: "nav.jobs", icon: ClipboardCheck },
       { href: "/calendar", labelKey: "nav.calendar", icon: Calendar },
-      { href: "/availability", labelKey: "nav.myAvailability", icon: Clock },
+      { href: "/availability", labelKey: "nav.availability", icon: Clock },
     ],
   },
   {
     titleKey: "nav.hub",
     items: [
       { href: "/payments", labelKey: "nav.payments", icon: Banknote },
-      { href: "/affiliate", labelKey: "nav.affiliate", icon: Share2 },
       { href: "/notifications", labelKey: "nav.notifications", icon: Bell },
     ],
   },

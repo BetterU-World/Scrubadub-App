@@ -59,6 +59,7 @@ import { InventoryTemplatesPage } from "@/pages/owner/InventoryTemplatesPage";
 import { ArchivedPropertiesPage } from "@/pages/owner/ArchivedPropertiesPage";
 
 // Worker pages (cleaner + maintenance unified)
+import { WorkerHomePage } from "@/pages/worker/WorkerHomePage";
 import { WorkerJobListPage } from "@/pages/worker/WorkerJobListPage";
 import { WorkerJobDetailPage } from "@/pages/worker/WorkerJobDetailPage";
 import { WorkerJobFormPage } from "@/pages/worker/WorkerJobFormPage";
@@ -398,9 +399,10 @@ export default function App() {
           ) : isWorker ? (
             accessOk ? (
               <>
-                <Route path="/" component={WorkerJobListPage} />
+                <Route path="/" component={WorkerHomePage} />
                 <Route path="/jobs/:id" component={WorkerJobDetailPage} />
                 <Route path="/jobs/:id/form" component={WorkerJobFormPage} />
+                <Route path="/jobs" component={WorkerJobListPage} />
                 <Route path="/calendar" component={CalendarPage} />
                 <Route path="/availability" component={AvailabilityPage} />
                 <Route path="/payments" component={WorkerPaymentsPage} />

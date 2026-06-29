@@ -9,6 +9,9 @@ import {
   Bell,
   Share2,
   Clock,
+  Banknote,
+  BookOpen,
+  Settings,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { clsx } from "clsx";
@@ -34,10 +37,14 @@ const affiliateMobileNav = [
 ];
 
 const workerMobileNav = [
-  { href: "/", label: "Jobs", icon: ClipboardCheck },
+  { href: "/", label: "Home", icon: LayoutDashboard },
+  { href: "/jobs", label: "Jobs", icon: ClipboardCheck },
   { href: "/calendar", label: "Calendar", icon: Calendar },
-  { href: "/availability", label: "Hours", icon: Clock },
-  { href: "/notifications", label: "Alerts", icon: Bell },
+  { href: "/availability", label: "Availability", icon: Clock },
+  { href: "/payments", label: "Payments", icon: Banknote },
+  { href: "/notifications", label: "Notifications", icon: Bell },
+  { href: "/manuals", label: "Manuals", icon: BookOpen },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export function MobileNav() {
@@ -54,7 +61,7 @@ export function MobileNav() {
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
-      <div className="flex justify-around py-2">
+      <div className="flex justify-around gap-1 overflow-x-auto px-2 py-2">
         {nav.map((item) => {
           const isActive =
             item.href === "/"
@@ -65,7 +72,7 @@ export function MobileNav() {
               key={item.href}
               href={item.href}
               className={clsx(
-                "flex flex-col items-center gap-1 px-3 py-1 text-xs",
+                "flex min-w-[4.5rem] flex-col items-center gap-1 px-2 py-1 text-xs",
                 isActive ? "text-primary-600" : "text-gray-500"
               )}
             >

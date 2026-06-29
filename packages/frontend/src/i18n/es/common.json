@@ -37,11 +37,13 @@
     "companyPlaceholder": "Limpieza Brillante S.L."
   },
   "nav": {
+    "home": "Inicio",
     "overview": "Resumen",
     "properties": "Propiedades",
     "employees": "Trabajadores",
     "jobs": "Trabajos",
     "calendar": "Calendario",
+    "availability": "Disponibilidad",
     "redFlags": "Alertas",
     "performance": "Rendimiento",
     "analytics": "Analíticas",
