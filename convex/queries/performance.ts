@@ -2,6 +2,7 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { assertCompanyAccess } from "../lib/auth";
 import { withPerfLog } from "../lib/perfLog";
+import { getActiveTeamIdsForUser } from "../lib/teams";
 
 const COMPANY_QUERY_CAP = 5_000;
 
@@ -215,6 +216,144 @@ export const getLeaderboard = query({
     );
 
     return leaderboard.sort((a, b) => b.averageScore - a.averageScore);
+    });
+  },
+});
+
+export const getWorkerSummary = query({
+  args: {
+    workerUserId: v.id("users"),
+    companyId: v.id("companies"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    return await withPerfLog(ctx, "performance:workerSummary", async () => {
+      await assertCompanyAccess(ctx, args.userId, args.companyId);
+
+      const worker = await ctx.db.get(args.workerUserId);
+      if (!worker || worker.companyId !== args.companyId) {
+        throw new Error("Access denied");
+      }
+
+      const allJobs = await ctx.db
+        .query("jobs")
+        .withIndex("by_companyId_scheduledDate", (q) =>
+          q.eq("companyId", args.companyId)
+        )
+        .take(COMPANY_QUERY_CAP);
+
+      const activeTeamIds = await getActiveTeamIdsForUser(ctx, args.workerUserId, args.companyId);
+      const assignedJobs = allJobs.filter(
+        (job) =>
+          job.status !== "cancelled" &&
+          (job.cleanerIds.includes(args.workerUserId) ||
+            job.assignedManagerId === args.workerUserId ||
+            (job.assignedTeamId && activeTeamIds.has(job.assignedTeamId)))
+      );
+      const assignedJobIds = new Set(assignedJobs.map((job) => job._id));
+
+      const jobsCompleted = assignedJobs.filter((job) => job.status === "approved");
+      const jobsAwaitingReview = assignedJobs.filter((job) => job.status === "submitted");
+      const jobsRequiringRework = assignedJobs.filter((job) => job.status === "rework_requested");
+      const activeJobs = assignedJobs.filter((job) =>
+        job.status === "scheduled" ||
+        job.status === "confirmed" ||
+        job.status === "in_progress"
+      );
+      const lastJobCompleted = jobsCompleted
+        .filter((job) => job.completedAt)
+        .sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0))[0] ?? null;
+
+      const forms = await ctx.db
+        .query("forms")
+        .withIndex("by_cleanerId", (q) => q.eq("cleanerId", args.workerUserId))
+        .collect();
+      const scoredForms = forms.filter(
+        (form) =>
+          (form.status === "submitted" || form.status === "approved") &&
+          form.cleanerScore !== undefined &&
+          form.cleanerScore !== null
+      );
+      const averageCleanerScore = scoredForms.length > 0
+        ? Math.round(
+            (scoredForms.reduce((sum, form) => sum + (form.cleanerScore ?? 0), 0) /
+              scoredForms.length) *
+              10
+          ) / 10
+        : null;
+
+      const inspections = await ctx.db
+        .query("managerInspections")
+        .withIndex("by_companyId_createdAt", (q) => q.eq("companyId", args.companyId))
+        .take(COMPANY_QUERY_CAP);
+      const workerInspections = inspections.filter(
+        (inspection) =>
+          inspection.managerId === args.workerUserId ||
+          assignedJobIds.has(inspection.jobId)
+      );
+      const averageInspectionScore = workerInspections.length > 0
+        ? Math.round(
+            (workerInspections.reduce((sum, inspection) => sum + inspection.readinessScore, 0) /
+              workerInspections.length) *
+              10
+          ) / 10
+        : null;
+
+      const companyRedFlags = await ctx.db
+        .query("redFlags")
+        .withIndex("by_companyId_status", (q) =>
+          q.eq("companyId", args.companyId)
+        )
+        .take(COMPANY_QUERY_CAP);
+      const redFlagCount = companyRedFlags.filter((flag) => assignedJobIds.has(flag.jobId)).length;
+
+      const propertyIds = [...new Set(assignedJobs.map((job) => job.propertyId).filter(Boolean))];
+      const properties = await Promise.all(propertyIds.map((id) => ctx.db.get(id!)));
+      const propertyMap = new Map<string, NonNullable<(typeof properties)[number]>>();
+      for (const property of properties) {
+        if (property) propertyMap.set(property._id, property);
+      }
+
+      const recentJobs = [...assignedJobs]
+        .sort((a, b) => {
+          const latestA = Math.max(a.completedAt ?? 0, a.startedAt ?? 0, a._creationTime);
+          const latestB = Math.max(b.completedAt ?? 0, b.startedAt ?? 0, b._creationTime);
+          return latestB - latestA;
+        })
+        .slice(0, 5)
+        .map((job) => ({
+          _id: job._id,
+          propertyName: job.propertyId
+            ? propertyMap.get(job.propertyId)?.name ?? job.propertySnapshot?.name ?? "Unknown"
+            : job.propertySnapshot?.name ?? "Unknown",
+          scheduledDate: job.scheduledDate,
+          status: job.status,
+          completedAt: job.completedAt,
+          reworkCount: job.reworkCount,
+        }));
+
+      return {
+        jobsCompleted: jobsCompleted.length,
+        jobsAwaitingReview: jobsAwaitingReview.length,
+        jobsRequiringRework: jobsRequiringRework.length,
+        activeJobs: activeJobs.length,
+        lastJobCompleted: lastJobCompleted
+          ? {
+              _id: lastJobCompleted._id,
+              scheduledDate: lastJobCompleted.scheduledDate,
+              completedAt: lastJobCompleted.completedAt,
+              propertyName: lastJobCompleted.propertyId
+                ? propertyMap.get(lastJobCompleted.propertyId)?.name ??
+                  lastJobCompleted.propertySnapshot?.name ??
+                  "Unknown"
+                : lastJobCompleted.propertySnapshot?.name ?? "Unknown",
+            }
+          : null,
+        averageCleanerScore,
+        averageInspectionScore,
+        redFlagCount,
+        recentJobs,
+      };
     });
   },
 });
