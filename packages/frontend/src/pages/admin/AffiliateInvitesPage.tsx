@@ -4,6 +4,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
+import { EmptyState } from "@/components/ui/EmptyState";
 import {
   UserPlus,
   Copy,
@@ -77,12 +78,11 @@ export function AffiliateInvitesPage() {
       />
 
       {affiliates.length === 0 ? (
-        <div className="card text-center py-12">
-          <UserPlus className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500 text-sm">
-            No affiliate invites yet. Click "Invite Affiliate" to get started.
-          </p>
-        </div>
+        <EmptyState
+          icon={UserPlus}
+          title="No affiliate invites yet"
+          description='Click "Invite Affiliate" to get started.'
+        />
       ) : (
         <div className="card overflow-x-auto">
           <table className="w-full text-sm">

@@ -4,6 +4,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Link } from "wouter";
 import { MapPin, Clock, Users, Search, Eye } from "lucide-react";
@@ -97,9 +98,11 @@ export function ManagerJobListPage() {
 
       {/* Jobs list */}
       {filtered.length === 0 ? (
-        <div className="card text-center py-12 text-gray-400">
-          No jobs found
-        </div>
+        <EmptyState
+          icon={Search}
+          title="No jobs found"
+          description="Try adjusting your search or status filter."
+        />
       ) : (
         <div className="space-y-2">
           {filtered.map((job) => (

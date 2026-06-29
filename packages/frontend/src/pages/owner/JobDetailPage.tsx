@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { toFriendlyMessage } from "@/lib/friendlyError";
 import { requireUserId } from "@/lib/requireUserId";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { PageLoader } from "@/components/ui/LoadingSpinner";
+import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useParams, Link } from "wouter";
@@ -1016,7 +1016,10 @@ export function JobDetailPage() {
             </h3>
 
             {settlement === undefined ? (
-              <p className="text-sm text-gray-400">Loading...</p>
+              <div className="flex items-center gap-2 text-sm text-gray-400">
+                <LoadingSpinner size="sm" />
+                <span>{t("common.loading")}</span>
+              </div>
             ) : settlement === null ? (
               /* No settlement yet — create */
               <div className="space-y-3">

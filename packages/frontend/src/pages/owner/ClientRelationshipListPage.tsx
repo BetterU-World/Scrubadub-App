@@ -5,6 +5,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { Users, Plus, Save } from "lucide-react";
 
 type ClientType = "residential" | "commercial" | "str" | "property_manager" | "marketplace";
@@ -182,13 +183,11 @@ export function ClientRelationshipListPage() {
       )}
 
       {relationships.length === 0 ? (
-        <div className="card py-12 text-center">
-          <Users className="mx-auto h-10 w-10 text-gray-300" />
-          <h2 className="mt-3 text-lg font-semibold text-gray-900">No clients yet</h2>
-          <p className="mt-1 text-sm text-gray-500">
-            Create one here, or create one from an existing lead.
-          </p>
-        </div>
+        <EmptyState
+          icon={Users}
+          title="No clients yet"
+          description="Create one here, or create one from an existing lead."
+        />
       ) : (
         <div className="grid gap-3">
           {relationships.map((relationship: any) => (
