@@ -105,6 +105,13 @@ function formatDocumentType(value?: string | null) {
   return DEFAULT_DOCUMENT_ITEMS.find((item) => item.documentType === value)?.label ?? formatLabel(value);
 }
 
+const JOB_ELIGIBILITY_STATUSES = [
+  "eligible",
+  "limited",
+  "ineligible",
+  "manual_review",
+] as const;
+
 function nextProfileOnboardingStatus(items: Array<{ required?: boolean; status: string }>) {
   const requiredItems = items.filter((item) => item.required !== false);
   if (requiredItems.some((item) => item.status === "blocked")) return "blocked";
@@ -117,6 +124,60 @@ function nextProfileOnboardingStatus(items: Array<{ required?: boolean; status: 
   return "in_progress";
 }
 
+function getComplianceSummary({
+  workerProfile,
+  documents,
+  onboardingItems,
+}: {
+  workerProfile: any;
+  documents: any[];
+  onboardingItems: any[];
+}) {
+  const requiredDocuments = documents.filter((document) => document.required !== false);
+  const reviewedRequiredDocuments = requiredDocuments.filter((document) =>
+    document.status === "reviewed" || document.status === "waived"
+  );
+  const blockedOnboardingItems = onboardingItems.filter((item) => item.required !== false && item.status === "blocked");
+  const expiredDocuments = documents.filter((document) => document.status === "expired");
+  const waivedItemsAndDocuments = [
+    ...documents.filter((document) => document.status === "waived"),
+    ...onboardingItems.filter((item) => item.status === "waived"),
+  ];
+  const onboardingStatus = workerProfile?.onboardingStatus ?? "not_started";
+  const jobEligibilityStatus = workerProfile?.jobEligibilityStatus ?? "manual_review";
+  const requiredDocumentsReady = requiredDocuments.length === 0 ||
+    reviewedRequiredDocuments.length === requiredDocuments.length;
+
+  let overallStatus = "compliant";
+  if (
+    onboardingStatus === "blocked" ||
+    blockedOnboardingItems.length > 0 ||
+    expiredDocuments.length > 0 ||
+    jobEligibilityStatus === "ineligible"
+  ) {
+    overallStatus = "blocked";
+  } else if (jobEligibilityStatus === "manual_review") {
+    overallStatus = "manual_review";
+  } else if (
+    onboardingStatus !== "complete" ||
+    !requiredDocumentsReady ||
+    jobEligibilityStatus === "limited"
+  ) {
+    overallStatus = "needs_attention";
+  }
+
+  return {
+    overallStatus,
+    onboardingStatus,
+    jobEligibilityStatus,
+    requiredDocumentsCount: requiredDocuments.length,
+    reviewedRequiredDocumentsCount: reviewedRequiredDocuments.length,
+    blockedOnboardingItemsCount: blockedOnboardingItems.length,
+    expiredDocumentsCount: expiredDocuments.length,
+    waivedItemsAndDocumentsCount: waivedItemsAndDocuments.length,
+  };
+}
+
 export function WorkerDetailPage() {
   const { user } = useAuth();
   const params = useParams<{ id: string }>();
@@ -127,9 +188,13 @@ export function WorkerDetailPage() {
   const [documentError, setDocumentError] = useState<string | null>(null);
   const [documentNoteDrafts, setDocumentNoteDrafts] = useState<Record<string, string>>({});
   const [newDocumentType, setNewDocumentType] = useState<string>("contractor_agreement");
+  const [savingCompliance, setSavingCompliance] = useState(false);
+  const [complianceError, setComplianceError] = useState<string | null>(null);
+  const [complianceNotesDraft, setComplianceNotesDraft] = useState<string | null>(null);
 
   const upsertWorkerProfile = useMutation((api as any).mutations.workers.upsertWorkerProfile);
   const updateWorkerProfile = useMutation((api as any).mutations.workers.updateWorkerProfile);
+  const updateWorkerEligibility = useMutation((api as any).mutations.workers.updateWorkerEligibility);
   const upsertOnboardingItem = useMutation((api as any).mutations.workers.upsertWorkerOnboardingItem);
   const upsertDocumentStatus = useMutation((api as any).mutations.workers.upsertWorkerDocumentStatus);
 
@@ -196,6 +261,11 @@ export function WorkerDetailPage() {
     );
   recentJobs.sort((a: any, b: any) => (b.scheduledDate ?? "").localeCompare(a.scheduledDate ?? ""));
   const payProfile = workerProfile?.payProfile ?? {};
+  const complianceSummary = getComplianceSummary({
+    workerProfile,
+    documents: documents ?? [],
+    onboardingItems: onboardingItems ?? [],
+  });
 
   const ensureWorkerProfileId = async () => {
     if (workerProfile?._id) return workerProfile._id;
@@ -334,6 +404,40 @@ export function WorkerDetailPage() {
       setDocumentError(err.message ?? "Failed to update document record");
     } finally {
       setSavingDocuments(false);
+    }
+  };
+
+  const handleUpdateEligibility = async (jobEligibilityStatus: string) => {
+    setSavingCompliance(true);
+    setComplianceError(null);
+    try {
+      const workerProfileId = await ensureWorkerProfileId();
+      await updateWorkerEligibility({
+        userId: user._id,
+        workerProfileId,
+        jobEligibilityStatus,
+      });
+    } catch (err: any) {
+      setComplianceError(err.message ?? "Failed to update job eligibility");
+    } finally {
+      setSavingCompliance(false);
+    }
+  };
+
+  const handleSaveComplianceNotes = async () => {
+    setSavingCompliance(true);
+    setComplianceError(null);
+    try {
+      const workerProfileId = await ensureWorkerProfileId();
+      await updateWorkerProfile({
+        userId: user._id,
+        workerProfileId,
+        manualComplianceNotes: complianceNotesDraft ?? workerProfile?.manualComplianceNotes ?? "",
+      });
+    } catch (err: any) {
+      setComplianceError(err.message ?? "Failed to save compliance notes");
+    } finally {
+      setSavingCompliance(false);
     }
   };
 
@@ -521,16 +625,73 @@ export function WorkerDetailPage() {
           )}
         </SectionCard>
 
-        <SectionCard icon={ShieldCheck} title="Eligibility">
-          <div className="space-y-3">
-            <DetailItem label="Job Eligibility" value={formatLabel(workerProfile?.jobEligibilityStatus)} />
+        <SectionCard icon={ShieldCheck} title="Compliance">
+          {complianceError && (
+            <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {complianceError}
+            </div>
+          )}
+          <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <DetailItem label="Overall Compliance" value={formatLabel(complianceSummary.overallStatus)} />
+              <DetailItem label="Onboarding" value={formatLabel(complianceSummary.onboardingStatus)} />
+              <DetailItem
+                label="Required Documents"
+                value={`${complianceSummary.reviewedRequiredDocumentsCount}/${complianceSummary.requiredDocumentsCount} reviewed or waived`}
+              />
+              <DetailItem label="Blocked Onboarding Items" value={complianceSummary.blockedOnboardingItemsCount} />
+              <DetailItem label="Expired Documents" value={complianceSummary.expiredDocumentsCount} />
+              <DetailItem label="Waived Items/Documents" value={complianceSummary.waivedItemsAndDocumentsCount} />
+            </div>
+
+            {complianceSummary.overallStatus !== "compliant" && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                Compliance warnings are informational only. Scheduling and job assignment are unchanged.
+              </div>
+            )}
+
+            <div>
+              <label className="text-xs font-medium uppercase text-gray-400">Job Eligibility</label>
+              <select
+                className="input-field mt-1 text-sm"
+                value={complianceSummary.jobEligibilityStatus}
+                disabled={savingCompliance}
+                onChange={(event) => handleUpdateEligibility(event.target.value)}
+              >
+                {JOB_ELIGIBILITY_STATUSES.map((status) => (
+                  <option key={status} value={status}>{formatLabel(status)}</option>
+                ))}
+              </select>
+            </div>
+
             <DetailItem
               label="Eligible Roles"
               value={(workerProfile?.eligibleRoles ?? []).length > 0
                 ? workerProfile.eligibleRoles.map(formatLabel).join(", ")
                 : "Not set"}
             />
-            <DetailItem label="Compliance Notes" value={workerProfile?.manualComplianceNotes ?? "No notes yet"} />
+
+            <div>
+              <label className="text-xs font-medium uppercase text-gray-400">Manual Compliance Notes</label>
+              <textarea
+                className="input-field mt-1 text-sm"
+                rows={3}
+                placeholder="Add owner-only compliance notes..."
+                value={complianceNotesDraft ?? workerProfile?.manualComplianceNotes ?? ""}
+                disabled={savingCompliance}
+                onChange={(event) => setComplianceNotesDraft(event.target.value)}
+              />
+              <div className="mt-2 flex justify-end">
+                <button
+                  type="button"
+                  className="btn-secondary text-sm"
+                  disabled={savingCompliance}
+                  onClick={handleSaveComplianceNotes}
+                >
+                  Save Notes
+                </button>
+              </div>
+            </div>
           </div>
         </SectionCard>
 
