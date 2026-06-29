@@ -37,11 +37,13 @@
     "companyPlaceholder": "Sparkle Clean LLC"
   },
   "nav": {
+    "home": "Home",
     "overview": "Overview",
     "properties": "Properties",
     "employees": "Workers",
     "jobs": "Jobs",
     "calendar": "Calendar",
+    "availability": "Availability",
     "redFlags": "Red Flags",
     "performance": "Performance",
     "analytics": "Analytics",
