@@ -112,6 +112,14 @@ const JOB_ELIGIBILITY_STATUSES = [
   "manual_review",
 ] as const;
 
+const PAY_TYPES = [
+  "hourly",
+  "per_job",
+  "salary",
+  "vendor_invoice",
+  "manual",
+] as const;
+
 function nextProfileOnboardingStatus(items: Array<{ required?: boolean; status: string }>) {
   const requiredItems = items.filter((item) => item.required !== false);
   if (requiredItems.some((item) => item.status === "blocked")) return "blocked";
@@ -191,6 +199,9 @@ export function WorkerDetailPage() {
   const [savingCompliance, setSavingCompliance] = useState(false);
   const [complianceError, setComplianceError] = useState<string | null>(null);
   const [complianceNotesDraft, setComplianceNotesDraft] = useState<string | null>(null);
+  const [savingPaymentProfile, setSavingPaymentProfile] = useState(false);
+  const [paymentProfileError, setPaymentProfileError] = useState<string | null>(null);
+  const [paymentProfileDraft, setPaymentProfileDraft] = useState<Record<string, any> | null>(null);
 
   const upsertWorkerProfile = useMutation((api as any).mutations.workers.upsertWorkerProfile);
   const updateWorkerProfile = useMutation((api as any).mutations.workers.updateWorkerProfile);
@@ -261,6 +272,12 @@ export function WorkerDetailPage() {
     );
   recentJobs.sort((a: any, b: any) => (b.scheduledDate ?? "").localeCompare(a.scheduledDate ?? ""));
   const payProfile = workerProfile?.payProfile ?? {};
+  const paymentDraft = paymentProfileDraft ?? {
+    payType: payProfile.payType ?? "manual",
+    defaultRateCents: payProfile.defaultRateCents ?? "",
+    outsideAppPaymentNotes: payProfile.outsideAppPaymentNotes ?? "",
+    taxDocsHandledOffPlatform: payProfile.taxDocsHandledOffPlatform ?? true,
+  };
   const complianceSummary = getComplianceSummary({
     workerProfile,
     documents: documents ?? [],
@@ -438,6 +455,53 @@ export function WorkerDetailPage() {
       setComplianceError(err.message ?? "Failed to save compliance notes");
     } finally {
       setSavingCompliance(false);
+    }
+  };
+
+  const updatePaymentDraft = (updates: Record<string, any>) => {
+    setPaymentProfileDraft((current) => ({
+      ...(current ?? paymentDraft),
+      ...updates,
+    }));
+  };
+
+  const handleSavePaymentProfile = async () => {
+    if (!workerProfile?._id) return;
+    setSavingPaymentProfile(true);
+    setPaymentProfileError(null);
+    try {
+      const defaultRateValue = String(paymentDraft.defaultRateCents ?? "").trim();
+      const nextPayProfile: Record<string, any> = {
+        ...payProfile,
+        payType: paymentDraft.payType,
+        currency: payProfile.currency ?? "usd",
+        outsideAppPaymentNotes: paymentDraft.outsideAppPaymentNotes,
+        taxDocsHandledOffPlatform: paymentDraft.taxDocsHandledOffPlatform,
+        stripeConnectUserFieldSource: payProfile.stripeConnectUserFieldSource ?? "users",
+      };
+      if (payProfile.stripeConnectEnabled !== undefined) {
+        nextPayProfile.stripeConnectEnabled = payProfile.stripeConnectEnabled;
+      }
+      if (defaultRateValue) {
+        const defaultRateCents = Number(defaultRateValue);
+        if (!Number.isFinite(defaultRateCents) || defaultRateCents < 0) {
+          throw new Error("Default rate must be a positive number of cents");
+        }
+        nextPayProfile.defaultRateCents = defaultRateCents;
+      } else {
+        delete nextPayProfile.defaultRateCents;
+      }
+
+      await updateWorkerProfile({
+        userId: user._id,
+        workerProfileId: workerProfile._id,
+        payProfile: nextPayProfile,
+      });
+      setPaymentProfileDraft(null);
+    } catch (err: any) {
+      setPaymentProfileError(err.message ?? "Failed to save payment profile");
+    } finally {
+      setSavingPaymentProfile(false);
     }
   };
 
@@ -696,18 +760,98 @@ export function WorkerDetailPage() {
         </SectionCard>
 
         <SectionCard icon={Banknote} title="Payment Profile">
-          <div className="space-y-3">
-            <DetailItem label="Pay Type" value={formatLabel(payProfile.payType)} />
-            <DetailItem
-              label="Default Rate"
-              value={payProfile.defaultRateCents != null ? `$${(payProfile.defaultRateCents / 100).toFixed(2)}` : "Not set"}
-            />
-            <DetailItem label="Currency" value={(payProfile.currency ?? "usd").toUpperCase()} />
-            <DetailItem
-              label="Stripe Connect"
-              value={payProfile.stripeConnectEnabled ? "Enabled metadata" : "Not enabled in worker profile"}
-            />
-          </div>
+          {!workerProfile ? (
+            <EmptyNote>Worker profile has not been initialized yet.</EmptyNote>
+          ) : (
+            <div className="space-y-4">
+              {paymentProfileError && (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {paymentProfileError}
+                </div>
+              )}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <DetailItem label="Pay Type" value={formatLabel(payProfile.payType)} />
+                <DetailItem
+                  label="Default Rate"
+                  value={payProfile.defaultRateCents != null ? `$${(payProfile.defaultRateCents / 100).toFixed(2)}` : "Not set"}
+                />
+                <DetailItem label="Currency" value={(payProfile.currency ?? "usd").toUpperCase()} />
+                <DetailItem
+                  label="Stripe Connect"
+                  value={payProfile.stripeConnectEnabled ? "Enabled metadata" : "Not enabled in worker profile"}
+                />
+                <DetailItem
+                  label="Stripe Source"
+                  value={formatLabel(payProfile.stripeConnectUserFieldSource ?? "users")}
+                />
+                <DetailItem
+                  label="Tax Docs Off-Platform"
+                  value={payProfile.taxDocsHandledOffPlatform === false ? "No" : "Yes"}
+                />
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="text-xs font-medium uppercase text-gray-400">Pay Type</label>
+                  <select
+                    className="input-field mt-1 text-sm"
+                    value={paymentDraft.payType}
+                    disabled={savingPaymentProfile}
+                    onChange={(event) => updatePaymentDraft({ payType: event.target.value })}
+                  >
+                    {PAY_TYPES.map((payType) => (
+                      <option key={payType} value={payType}>{formatLabel(payType)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium uppercase text-gray-400">Default Rate Cents</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    className="input-field mt-1 text-sm"
+                    value={paymentDraft.defaultRateCents}
+                    disabled={savingPaymentProfile}
+                    onChange={(event) => updatePaymentDraft({ defaultRateCents: event.target.value })}
+                  />
+                </div>
+              </div>
+
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={paymentDraft.taxDocsHandledOffPlatform}
+                  disabled={savingPaymentProfile}
+                  onChange={(event) => updatePaymentDraft({ taxDocsHandledOffPlatform: event.target.checked })}
+                />
+                Tax documents handled off-platform
+              </label>
+
+              <div>
+                <label className="text-xs font-medium uppercase text-gray-400">Outside-App Payment Notes</label>
+                <textarea
+                  className="input-field mt-1 text-sm"
+                  rows={3}
+                  placeholder="Add owner-only payment notes..."
+                  value={paymentDraft.outsideAppPaymentNotes}
+                  disabled={savingPaymentProfile}
+                  onChange={(event) => updatePaymentDraft({ outsideAppPaymentNotes: event.target.value })}
+                />
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  className="btn-secondary text-sm"
+                  disabled={savingPaymentProfile}
+                  onClick={handleSavePaymentProfile}
+                >
+                  Save Payment Profile
+                </button>
+              </div>
+            </div>
+          )}
         </SectionCard>
 
         <SectionCard icon={Users} title="Teams">
