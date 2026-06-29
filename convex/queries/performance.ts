@@ -6,6 +6,20 @@ import { getActiveTeamIdsForUser } from "../lib/teams";
 
 const COMPANY_QUERY_CAP = 5_000;
 
+function emptyWorkerSummary() {
+  return {
+    jobsCompleted: 0,
+    jobsAwaitingReview: 0,
+    jobsRequiringRework: 0,
+    activeJobs: 0,
+    lastJobCompleted: null,
+    averageCleanerScore: null,
+    averageInspectionScore: null,
+    redFlagCount: 0,
+    recentJobs: [],
+  };
+}
+
 export const getCleanerStats = query({
   args: {
     cleanerId: v.id("users"),
@@ -232,7 +246,7 @@ export const getWorkerSummary = query({
 
       const worker = await ctx.db.get(args.workerUserId);
       if (!worker || worker.companyId !== args.companyId) {
-        throw new Error("Access denied");
+        return emptyWorkerSummary();
       }
 
       const allJobs = await ctx.db
