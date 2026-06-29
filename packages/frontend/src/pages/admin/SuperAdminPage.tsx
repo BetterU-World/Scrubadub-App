@@ -2,7 +2,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { PageLoader } from "@/components/ui/LoadingSpinner";
+import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import {
   Building2,
   Users,
@@ -74,7 +74,10 @@ export function SuperAdminPage() {
           <Users className="w-4 h-4 text-gray-400" /> All Companies &amp; Users
         </h3>
         {!companiesWithUsers ? (
-          <p className="text-sm text-gray-500">Loading…</p>
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <LoadingSpinner size="sm" />
+            <span>Loading...</span>
+          </div>
         ) : companiesWithUsers.length === 0 ? (
           <p className="text-sm text-gray-500">No companies found</p>
         ) : (

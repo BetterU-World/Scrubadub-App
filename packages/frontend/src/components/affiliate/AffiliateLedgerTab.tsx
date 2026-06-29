@@ -3,6 +3,7 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
+import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import {
   RefreshCw,
   Lock,
@@ -270,7 +271,12 @@ export function AffiliateLedgerTab() {
   const { userId, isLoading, user } = useAuth();
 
   if (isLoading) {
-    return <p className="text-sm text-gray-400 py-4">Loading...</p>;
+    return (
+      <div className="flex items-center gap-2 py-4 text-sm text-gray-400">
+        <LoadingSpinner size="sm" />
+        <span>Loading...</span>
+      </div>
+    );
   }
 
   if (!userId) {
@@ -539,7 +545,10 @@ function BatchDetailModal({
         </h3>
 
         {batch === undefined ? (
-          <p className="text-sm text-gray-400">Loading...</p>
+          <div className="flex items-center gap-2 text-sm text-gray-400">
+            <LoadingSpinner size="sm" />
+            <span>Loading...</span>
+          </div>
         ) : (
           <>
             <div className="grid grid-cols-2 gap-3 text-sm mb-4">
