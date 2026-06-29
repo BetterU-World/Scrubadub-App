@@ -30,7 +30,7 @@ export default defineSchema({
     contactEmail: v.optional(v.string()),
     contactPhone: v.optional(v.string()),
     serviceAreaText: v.optional(v.string()),
-    // Client portal – public booking-request link token
+    // Client portal - public booking-request link token
     publicRequestToken: v.optional(v.string()),
     // Default manager for new jobs
     defaultManagerId: v.optional(v.id("users")),
@@ -353,12 +353,12 @@ export default defineSchema({
     showerGlassDoorCount: v.optional(v.number()),
     maintenanceNotes: v.optional(v.string()),
     ownerNotes: v.optional(v.string()),
-    // ── Expanded property fields (SCRUB expansion) ────────────────
+    // Expanded property fields (SCRUB expansion)
     squareFootage: v.optional(v.number()),
     trashCanCount: v.optional(v.number()),
     restroomCount: v.optional(v.number()),
     active: v.boolean(),
-    // ── Property Inventory (Sprint 2) ──────────────────────────────
+    // Property Inventory (Sprint 2)
     inventoryItems: v.optional(v.array(v.object({
       name: v.string(),
       category: v.string(),
@@ -445,7 +445,7 @@ export default defineSchema({
       trashCanCount: v.optional(v.number()),
       restroomCount: v.optional(v.number()),
     })),
-    // ── Calendar sync source metadata ──────────────────────────────────
+    // Calendar sync source metadata
     source: v.optional(v.union(v.literal("manual"), v.literal("calendar_sync"))),
     sourceConnectionId: v.optional(v.id("calendarConnections")),
     sourcePlatform: v.optional(v.union(
@@ -454,7 +454,7 @@ export default defineSchema({
       v.literal("other")
     )),
     sourceReservationId: v.optional(v.id("calendarReservations")),
-    // ── Inventory checklist snapshot (Sprint 2, Batch 4) ──────────────
+    // Inventory checklist snapshot (Sprint 2, Batch 4)
     // Snapshotted from property at job start; cleaners report status per item.
     inventoryChecklist: v.optional(v.array(v.object({
       name: v.string(),
@@ -590,7 +590,7 @@ export default defineSchema({
     timestamp: v.number(),
   }).index("by_companyId_timestamp", ["companyId", "timestamp"]),
 
-  // ── Owner-to-Owner job sharing (Phase 1) ──────────────────────────
+  // Owner-to-Owner job sharing (Phase 1)
 
   partnerContacts: defineTable({
     companyId: v.id("companies"),
@@ -646,7 +646,7 @@ export default defineSchema({
     .index("by_toCompanyId", ["toCompanyId"])
     .index("by_toCompanyId_status", ["toCompanyId", "status"]),
 
-  // ── Owner Mini Sites (v1) ────────────────────────────────────────
+  // Owner Mini Sites (v1)
 
   companySites: defineTable({
     companyId: v.id("companies"),
@@ -666,7 +666,7 @@ export default defineSchema({
     .index("by_companyId", ["companyId"])
     .index("by_slug", ["slug"]),
 
-  // ── Cleaner Leads (v1) ──────────────────────────────────────────────
+  // Cleaner Leads (v1)
 
   cleanerLeads: defineTable({
     companyId: v.id("companies"),
@@ -689,9 +689,9 @@ export default defineSchema({
     .index("by_companyId_createdAt", ["companyId", "createdAt"])
     .index("by_companyId_status_createdAt", ["companyId", "status", "createdAt"]),
 
-  // ── Client Portal (Phase 1) ───────────────────────────────────────
+  // Client Portal (Phase 1)
 
-  // ── Affiliate Attribution (revenue tracking) ────────────────────
+  // Affiliate Attribution (revenue tracking)
   affiliateAttributions: defineTable({
     purchaserUserId: v.id("users"),
     referrerUserId: v.id("users"),
@@ -710,7 +710,7 @@ export default defineSchema({
     .index("by_stripeSubscriptionId", ["stripeSubscriptionId"])
     .index("by_stripeInvoiceId", ["stripeInvoiceId"]),
 
-  // ── Affiliate Ledger (payout-ready foundation) ─────────────────
+  // Affiliate Ledger (payout-ready foundation)
   affiliateLedger: defineTable({
     referrerUserId: v.id("users"),
     periodType: v.union(v.literal("monthly"), v.literal("weekly")),
@@ -738,7 +738,7 @@ export default defineSchema({
       "periodStart",
     ]),
 
-  // ── Affiliate Payout Batches (manual bookkeeping + Stripe) ──────
+  // Affiliate Payout Batches (manual bookkeeping + Stripe)
   affiliatePayoutBatches: defineTable({
     createdAt: v.number(),
     createdByUserId: v.id("users"),
@@ -767,7 +767,7 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_createdByUserId_createdAt", ["createdByUserId", "createdAt"]),
 
-  // ── Affiliate Payout Requests (affiliate-initiated) ──────────
+  // Affiliate Payout Requests (affiliate-initiated)
   affiliatePayoutRequests: defineTable({
     referrerUserId: v.id("users"),
     status: v.union(
@@ -1125,7 +1125,7 @@ export default defineSchema({
     .index("by_companyId_status", ["companyId", "status"])
     .index("by_portalToken", ["portalToken"]),
 
-  // ── Manuals Library (v1) ────────────────────────────────────────
+  // Manuals Library (v1)
   manuals: defineTable({
     title: v.string(),
     description: v.optional(v.string()),
@@ -1143,7 +1143,7 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_roleVisibility", ["roleVisibility"]),
 
-  // ── Client Feedback (from portal) ────────────────────────────────
+  // Client Feedback (from portal)
   clientFeedback: defineTable({
     clientRequestId: v.id("clientRequests"),
     createdAt: v.number(),
@@ -1158,7 +1158,7 @@ export default defineSchema({
     .index("by_clientRequestId_createdAt", ["clientRequestId", "createdAt"])
     .index("by_status_createdAt", ["status", "createdAt"]),
 
-  // ── Cleaner Availability (weekly recurring) ──────────────────────
+  // Cleaner Availability (weekly recurring)
   cleanerAvailability: defineTable({
     cleanerId: v.id("users"),
     dayOfWeek: v.number(), // 0=Sunday .. 6=Saturday
@@ -1167,14 +1167,14 @@ export default defineSchema({
     enabled: v.boolean(),
   }).index("by_cleanerId_dayOfWeek", ["cleanerId", "dayOfWeek"]),
 
-  // ── Cleaner Availability Overrides (date-level) ──────────────────
+  // Cleaner Availability Overrides (date-level)
   cleanerAvailabilityOverrides: defineTable({
     cleanerId: v.id("users"),
     date: v.string(), // "YYYY-MM-DD"
     unavailable: v.boolean(),
   }).index("by_cleanerId_date", ["cleanerId", "date"]),
 
-  // ── Cleaner Payments (owner → cleaner, per-job) ────────────────────
+  // Cleaner Payments (owner to cleaner, per-job)
   cleanerPayments: defineTable({
     companyId: v.id("companies"),
     jobId: v.id("jobs"),
@@ -1197,7 +1197,7 @@ export default defineSchema({
     .index("by_companyId", ["companyId"])
     .index("by_cleanerUserId", ["cleanerUserId"]),
 
-  // ── Cleaner Payment ↔ Job join table (batch support) ──────────────
+  // Cleaner Payment / Job join table (batch support)
   cleanerPaymentJobs: defineTable({
     cleanerPaymentId: v.id("cleanerPayments"),
     jobId: v.id("jobs"),
@@ -1206,7 +1206,7 @@ export default defineSchema({
     .index("by_cleanerPaymentId", ["cleanerPaymentId"])
     .index("by_jobId", ["jobId"]),
 
-  // ── Owner↔Owner Settlements (shared job payments) ──────────────────
+  // Owner-to-Owner Settlements (shared job payments)
   companySettlements: defineTable({
     fromCompanyId: v.id("companies"),
     toCompanyId: v.id("companies"),
@@ -1236,7 +1236,7 @@ export default defineSchema({
     .index("by_toCompany_status", ["toCompanyId", "status"])
     .index("by_originalJobId", ["originalJobId"]),
 
-  // ── Settlement Batches (batch pay multiple settlements to same partner) ──
+  // Settlement Batches (batch pay multiple settlements to same partner)
   settlementBatches: defineTable({
     fromCompanyId: v.id("companies"),
     toCompanyId: v.id("companies"),
@@ -1256,7 +1256,7 @@ export default defineSchema({
   })
     .index("by_fromCompanyId", ["fromCompanyId"]),
 
-  // ── Settlement Batch ↔ Settlement join table ──────────────────────
+  // Settlement Batch / Settlement join table
   settlementBatchItems: defineTable({
     batchId: v.id("settlementBatches"),
     settlementId: v.id("companySettlements"),
@@ -1264,7 +1264,7 @@ export default defineSchema({
     .index("by_batchId", ["batchId"])
     .index("by_settlementId", ["settlementId"]),
 
-  // ── Manager Inspections (QA house checks) ──────────────────────────
+  // Manager Inspections (QA house checks)
   managerInspections: defineTable({
     jobId: v.id("jobs"),
     companyId: v.id("companies"),
@@ -1285,7 +1285,7 @@ export default defineSchema({
     .index("by_jobId", ["jobId"])
     .index("by_companyId_createdAt", ["companyId", "createdAt"]),
 
-  // ── Inventory Templates (Sprint 2) ─────────────────────────────────
+  // Inventory Templates (Sprint 2)
   inventoryTemplates: defineTable({
     companyId: v.id("companies"),
     name: v.string(),
@@ -1301,14 +1301,14 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_companyId", ["companyId"]),
 
-  // ── Rate Limits (server-side sliding window) ──────────────────────
+  // Rate Limits (server-side sliding window)
   rateLimits: defineTable({
     key: v.string(),
     windowStartMs: v.number(),
     count: v.number(),
   }).index("by_key", ["key"]),
 
-  // ── Calendar Sync (iCal feed integration) ────────────────────────
+  // Calendar Sync (iCal feed integration)
 
   calendarConnections: defineTable({
     companyId: v.id("companies"),
@@ -1328,7 +1328,7 @@ export default defineSchema({
       v.literal("pending")
     ),
     lastSyncError: v.optional(v.string()),
-    // ISO date string — reservations with checkOut <= this date are skipped
+    // ISO date string - reservations with checkOut <= this date are skipped
     // on first sync to prevent historical job creation
     initialSyncCutoff: v.string(),
     consecutiveErrors: v.number(),
@@ -1382,7 +1382,7 @@ export default defineSchema({
     enabled: v.boolean(),
     jobType: v.string(),
     defaultDurationMinutes: v.number(),
-    // Maps to jobs.startTime — the time-of-day the job should begin.
+    // Maps to jobs.startTime - the time-of-day the job should begin.
     // System default is "16:00". Empty string means owner wants it blank.
     defaultStartTime: v.optional(v.string()),
   })
