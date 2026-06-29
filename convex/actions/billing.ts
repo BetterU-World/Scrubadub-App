@@ -27,44 +27,6 @@ function getStripe() {
   return new Stripe(process.env.STRIPE_SECRET_KEY!);
 }
 
-/** TEMPORARY DIAGNOSTIC — remove after debugging price issue */
-async function logCheckoutDiagnostic(action: string, priceId: string, stripe: Stripe) {
-  const raw = process.env.STRIPE_PRICE_SCRUB_PRO;
-  const key = process.env.STRIPE_SECRET_KEY ?? "";
-  const keyHint = key.length > 8 ? `${key.slice(0, 7)}...${key.slice(-4)}` : "(not set)";
-  console.log(
-    `[STRIPE-DIAG] action=${action} | priceEnvPresent=${raw !== undefined} | priceId=${priceId} | keyHint=${keyHint}`
-  );
-  try {
-    const acct = await stripe.accounts.retrieve();
-    console.log(
-      `[STRIPE-DIAG] account | id=${acct.id} | country=${acct.country} | currency=${acct.default_currency} | name=${acct.business_profile?.name ?? "(none)"}`
-    );
-  } catch (err: any) {
-    console.log(`[STRIPE-DIAG] account.retrieve FAILED | error=${err?.message ?? err}`);
-  }
-  try {
-    const list = await stripe.prices.list({ active: true, limit: 10 });
-    const recurring = list.data.filter((p) => p.type === "recurring");
-    console.log(`[STRIPE-DIAG] prices.list | total=${list.data.length} | recurring=${recurring.length}`);
-    for (const p of recurring) {
-      console.log(
-        `[STRIPE-DIAG]   price | id=${p.id} | active=${p.active} | livemode=${p.livemode} | interval=${p.recurring?.interval}/${p.recurring?.interval_count} | product=${p.product}`
-      );
-    }
-  } catch (err: any) {
-    console.log(`[STRIPE-DIAG] prices.list FAILED | error=${err?.message ?? err}`);
-  }
-  try {
-    const p = await stripe.prices.retrieve(priceId);
-    console.log(
-      `[STRIPE-DIAG] price.retrieve OK | id=${p.id} | livemode=${p.livemode} | active=${p.active} | type=${p.type} | recurring=${p.recurring ? p.recurring.interval + "/" + p.recurring.interval_count : "none"} | product=${p.product}`
-    );
-  } catch (err: any) {
-    console.log(`[STRIPE-DIAG] price.retrieve FAILED | error=${err?.message ?? err}`);
-  }
-}
-
 export const createCheckoutSession = action({
   args: {
     userId: v.id("users"),
@@ -106,8 +68,6 @@ export const createCheckoutSession = action({
     const selectedPlan: ScrubPlan = args.plan ?? "pro";
     const priceId = getPriceIdForPlan(selectedPlan);
     const internalTier = planToTier(selectedPlan);
-    await logCheckoutDiagnostic("billing.createCheckoutSession", priceId, stripe);
-
     const session: any = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",

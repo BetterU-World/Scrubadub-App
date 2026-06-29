@@ -30,14 +30,6 @@ const stripeWebhook = httpAction(async (ctx, request) => {
     return new Response("Webhook secret not configured", { status: 500 });
   }
 
-  console.log("[STRIPE-WEBHOOK] verifying signature", {
-    signaturePresent: !!signature,
-    signaturePrefix: signature.slice(0, 12),
-    bodyLength: payload.length,
-    bodyPrefix: payload.slice(0, 20),
-    secretsConfigured: secretCandidates.map((c) => c.label),
-  });
-
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
   let matchedSecret: string | null = null;
 
@@ -63,12 +55,6 @@ const stripeWebhook = httpAction(async (ctx, request) => {
   // event is guaranteed assigned when matchedSecret is truthy
   const verifiedEvent = event!;
 
-  console.log(`[STRIPE-WEBHOOK] received event`, {
-    eventId: verifiedEvent.id,
-    eventType: verifiedEvent.type,
-    verifiedWith: matchedSecret,
-  });
-
   try {
     switch (verifiedEvent.type) {
       case "customer.subscription.created":
@@ -80,14 +66,6 @@ const stripeWebhook = httpAction(async (ctx, request) => {
             ? subscription.customer
             : subscription.customer?.id ?? "";
         const priceId = subscription.items?.data?.[0]?.price?.id ?? "";
-
-        console.log(`[STRIPE-WEBHOOK] processing ${verifiedEvent.type}`, {
-          eventId: verifiedEvent.id,
-          subscriptionId: subscription.id,
-          customerId: subCustomerId,
-          priceId,
-          status: subscription.status,
-        });
 
         await ctx.runMutation(internal.mutations.billing.syncSubscription, {
           stripeCustomerId: subCustomerId,
@@ -107,10 +85,6 @@ const stripeWebhook = httpAction(async (ctx, request) => {
           });
         }
 
-        console.log(`[STRIPE-WEBHOOK] ${verifiedEvent.type} processed successfully`, {
-          eventId: verifiedEvent.id,
-          subscriptionId: subscription.id,
-        });
         break;
       }
       case "invoice.paid": {
@@ -126,15 +100,6 @@ const stripeWebhook = httpAction(async (ctx, request) => {
             ? rawSubscription
             : rawSubscription?.id ?? null;
 
-        console.log("[STRIPE-WEBHOOK] invoice.paid received", {
-          eventId: verifiedEvent.id,
-          invoiceId: invoice.id,
-          resolvedCustomerId: invoiceCustomerId,
-          resolvedSubscriptionId: invoiceSubscriptionId,
-          amountPaid: invoice.amount_paid,
-          currency: invoice.currency,
-        });
-
         if (invoiceCustomerId && invoiceSubscriptionId) {
           const attrArgs = {
             stripeCustomerId: invoiceCustomerId,
@@ -144,7 +109,6 @@ const stripeWebhook = httpAction(async (ctx, request) => {
             amountCents: invoice.amount_paid,
             currency: invoice.currency,
           };
-          console.log("[STRIPE-WEBHOOK] calling recordAttribution", { eventId: verifiedEvent.id });
           await ctx.runMutation(
             internal.mutations.billing.recordAttribution,
             attrArgs,
@@ -161,15 +125,6 @@ const stripeWebhook = httpAction(async (ctx, request) => {
       case "checkout.session.completed": {
         const session = verifiedEvent.data.object as Stripe.Checkout.Session;
         const meta = session.metadata ?? {};
-        console.log(`[STRIPE-WEBHOOK] checkout.session.completed`, {
-          eventId: verifiedEvent.id,
-          sessionId: session.id,
-          paymentStatus: session.payment_status,
-          mode: session.mode,
-          type: meta.type,
-          settlementId: meta.settlementId,
-        });
-
         // Handle settlement payments
         if (
           meta.type === "settlement_payment" &&
@@ -193,10 +148,6 @@ const stripeWebhook = httpAction(async (ctx, request) => {
                 : undefined,
             },
           );
-          console.log("[STRIPE-WEBHOOK] settlement marked paid", {
-            eventId: verifiedEvent.id,
-            settlementId: meta.settlementId,
-          });
         }
 
         // Handle settlement batch payments
@@ -221,10 +172,6 @@ const stripeWebhook = httpAction(async (ctx, request) => {
                 : undefined,
             },
           );
-          console.log("[STRIPE-WEBHOOK] settlement batch marked paid", {
-            eventId: verifiedEvent.id,
-            batchId: meta.batchId,
-          });
         }
 
         // Handle cleaner payout payments
@@ -249,28 +196,14 @@ const stripeWebhook = httpAction(async (ctx, request) => {
                 : undefined,
             },
           );
-          console.log("[STRIPE-WEBHOOK] cleaner payment marked paid", {
-            eventId: verifiedEvent.id,
-            cleanerPaymentId: meta.cleanerPaymentId,
-          });
         }
         break;
       }
       case "account.updated": {
-        const account = verifiedEvent.data.object as Stripe.Account;
-        console.log(`[STRIPE-WEBHOOK] account.updated`, {
-          eventId: verifiedEvent.id,
-          accountId: account.id,
-          payoutsEnabled: account.payouts_enabled,
-          detailsSubmitted: account.details_submitted,
-        });
         break;
       }
       case "invoice.payment_succeeded":
       case "invoice.payment_failed":
-        console.log(`[STRIPE-WEBHOOK] ${verifiedEvent.type}`, {
-          eventId: verifiedEvent.id,
-        });
         break;
       case "charge.refunded":
       case "invoice.voided": {
