@@ -27,7 +27,7 @@ export function SiteSetupPage() {
   const tokenEnsured = useRef(false);
   const [tokenError, setTokenError] = useState("");
   useEffect(() => {
-    if (!user || !site || site.publicRequestToken || tokenEnsured.current)
+    if (!user?.companyId || !site || site.publicRequestToken || tokenEnsured.current)
       return;
     tokenEnsured.current = true;
     ensureToken({ userId: user._id, companyId: user.companyId }).catch(
@@ -76,6 +76,7 @@ export function SiteSetupPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!user.companyId) return;
     setError("");
     setSaving(true);
     setSaved(false);
@@ -162,6 +163,7 @@ export function SiteSetupPage() {
             onClick={() => {
               setTokenError("");
               tokenEnsured.current = false;
+              if (!user.companyId) return;
               ensureToken({
                 userId: user._id,
                 companyId: user.companyId,

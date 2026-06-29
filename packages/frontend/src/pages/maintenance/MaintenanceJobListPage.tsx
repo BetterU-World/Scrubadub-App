@@ -38,7 +38,7 @@ export function MaintenanceJobListPage() {
   const [search, setSearch] = useState("");
   const jobs = useQuery(
     api.queries.jobs.getForCleaner,
-    user ? { cleanerId: user._id, companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId ? { cleanerId: user._id, companyId: user.companyId, userId: user._id } : "skip"
   );
 
   if (!user || jobs === undefined) return <PageLoader />;

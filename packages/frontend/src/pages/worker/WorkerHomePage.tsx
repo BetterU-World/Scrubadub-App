@@ -401,7 +401,7 @@ export function WorkerHomePage() {
 
   const jobs = useQuery(
     api.queries.jobs.getForCleaner,
-    user ? { cleanerId: user._id, companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId ? { cleanerId: user._id, companyId: user.companyId, userId: user._id } : "skip"
   ) as WorkerJob[] | undefined;
   const payments = useQuery(
     api.queries.cleanerPayments.listCleanerJobsWithPaymentStatus,

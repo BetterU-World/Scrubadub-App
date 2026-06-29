@@ -272,7 +272,7 @@ function FeedbackSection({ token }: { token: string }) {
 function StatusLabel({
   status,
 }: {
-  status: "new" | "accepted" | "declined" | "converted";
+  status: "new" | "accepted" | "declined" | "converted" | "contacted" | "archived";
 }) {
   const styles: Record<string, string> = {
     new: "bg-blue-100 text-blue-700",
@@ -284,7 +284,9 @@ function StatusLabel({
     new: "Pending",
     accepted: "Accepted",
     declined: "Declined",
+    contacted: "Contacted",
     converted: "Scheduled",
+    archived: "Archived",
   };
   return (
     <span

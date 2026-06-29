@@ -203,6 +203,7 @@ export function JobFormPage() {
         const id = await createJob({
           companyId: user!.companyId,
           userId: uid,
+          propertyId: propertyId as Id<"properties">,
           ...data,
           requireConfirmation: isPartnerMode ? false : requireConfirmation,
         });

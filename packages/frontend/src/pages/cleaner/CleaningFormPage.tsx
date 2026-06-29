@@ -315,6 +315,7 @@ export function CleaningFormPage() {
 
   const handleCreateRedFlag = async (itemId: Id<"formItems">) => {
     if (!rfNote.trim()) return;
+    if (!job.propertyId) return;
     await createRedFlag({
       companyId: job.companyId,
       propertyId: job.propertyId,
