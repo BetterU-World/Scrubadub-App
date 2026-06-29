@@ -1,151 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation, Link } from "wouter";
 import {
-  LayoutDashboard,
-  Building2,
-  Users,
-  Calendar,
-  ClipboardCheck,
-  Flag,
-  Bell,
-  Briefcase,
-  ScrollText,
   LogOut,
-  BarChart3,
-  TrendingUp,
-  Shield,
-  Settings,
-  BookOpen,
-  Handshake,
-  Inbox,
-  Globe,
-  UserPlus,
-  Share2,
-  MessageSquare,
   ChevronDown,
-  Clock,
-  Banknote,
-  Package,
-  Receipt,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { clsx } from "clsx";
 import { useTranslation } from "react-i18next";
-
-interface NavItem {
-  href: string;
-  labelKey: string;
-  icon: LucideIcon;
-}
-
-interface NavSection {
-  titleKey: string;
-  items: NavItem[];
-}
-
-const ownerSections: NavSection[] = [
-  {
-    titleKey: "nav.dashboard",
-    items: [
-      { href: "/", labelKey: "nav.overview", icon: LayoutDashboard },
-      { href: "/properties", labelKey: "nav.properties", icon: Building2 },
-      { href: "/inventory-templates", labelKey: "nav.inventoryTemplates", icon: Package },
-      { href: "/employees", labelKey: "nav.employees", icon: Users },
-      { href: "/jobs", labelKey: "nav.jobs", icon: ClipboardCheck },
-      { href: "/calendar", labelKey: "nav.calendar", icon: Calendar },
-      { href: "/red-flags", labelKey: "nav.redFlags", icon: Flag },
-      { href: "/performance", labelKey: "nav.performance", icon: BarChart3 },
-      { href: "/analytics", labelKey: "nav.analytics", icon: TrendingUp },
-      { href: "/partners", labelKey: "nav.partners", icon: Handshake },
-    ],
-  },
-  {
-    titleKey: "nav.hub",
-    items: [
-      { href: "/requests", labelKey: "nav.requests", icon: Inbox },
-      { href: "/clients", labelKey: "nav.clients", icon: Users },
-      { href: "/commercial-accounts", labelKey: "nav.commercialAccounts", icon: Briefcase },
-      { href: "/commercial-invoices", labelKey: "nav.commercialInvoices", icon: Receipt },
-      { href: "/feedback", labelKey: "nav.feedback", icon: MessageSquare },
-      { href: "/cleaner-leads", labelKey: "nav.cleanerLeads", icon: UserPlus },
-      { href: "/owner/payments", labelKey: "nav.payments", icon: Banknote },
-      { href: "/affiliate", labelKey: "nav.affiliate", icon: Share2 },
-      { href: "/notifications", labelKey: "nav.notifications", icon: Bell },
-    ],
-  },
-  {
-    titleKey: "nav.company",
-    items: [
-      { href: "/site", labelKey: "nav.mySite", icon: Globe },
-      { href: "/manuals", labelKey: "nav.manuals", icon: BookOpen },
-      { href: "/audit-log", labelKey: "nav.auditLog", icon: ScrollText },
-      { href: "/owner/settings", labelKey: "nav.settings", icon: Settings },
-    ],
-  },
-];
-
-const managerSections: NavSection[] = [
-  {
-    titleKey: "nav.dashboard",
-    items: [
-      { href: "/", labelKey: "nav.overview", icon: LayoutDashboard },
-      { href: "/jobs", labelKey: "nav.jobs", icon: ClipboardCheck },
-      { href: "/red-flags", labelKey: "nav.redFlags", icon: Flag },
-      { href: "/calendar", labelKey: "nav.calendar", icon: Calendar },
-    ],
-  },
-  {
-    titleKey: "nav.hub",
-    items: [
-      { href: "/affiliate", labelKey: "nav.affiliate", icon: Share2 },
-      { href: "/notifications", labelKey: "nav.notifications", icon: Bell },
-    ],
-  },
-  {
-    titleKey: "nav.company",
-    items: [
-      { href: "/manuals", labelKey: "nav.manuals", icon: BookOpen },
-    ],
-  },
-];
-
-const affiliateSections: NavSection[] = [
-  {
-    titleKey: "nav.hub",
-    items: [
-      { href: "/affiliate", labelKey: "nav.affiliate", icon: Share2 },
-    ],
-  },
-];
-
-const workerSections: NavSection[] = [
-  {
-    titleKey: "nav.dashboard",
-    items: [
-      { href: "/", labelKey: "nav.home", icon: LayoutDashboard },
-      { href: "/jobs", labelKey: "nav.jobs", icon: ClipboardCheck },
-      { href: "/calendar", labelKey: "nav.calendar", icon: Calendar },
-      { href: "/availability", labelKey: "nav.availability", icon: Clock },
-    ],
-  },
-  {
-    titleKey: "nav.hub",
-    items: [
-      { href: "/payments", labelKey: "nav.payments", icon: Banknote },
-      { href: "/notifications", labelKey: "nav.notifications", icon: Bell },
-    ],
-  },
-  {
-    titleKey: "nav.company",
-    items: [
-      { href: "/manuals", labelKey: "nav.manuals", icon: BookOpen },
-      { href: "/settings", labelKey: "nav.settings", icon: Settings },
-    ],
-  },
-];
+import { adminSection, getNavSectionsForRole } from "./navigation";
 
 const SECTIONS_STORAGE_KEY = "scrubadub.sidebar.sections";
 const DEFAULT_SECTIONS: Record<string, boolean> = { "nav.dashboard": true };
@@ -229,13 +93,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
     user?._id ? { userId: user._id } : "skip"
   );
 
-  const sections = user?.role === "owner"
-    ? ownerSections
-    : user?.role === "manager"
-      ? managerSections
-      : user?.role === "affiliate"
-        ? affiliateSections
-        : workerSections;
+  const sections = getNavSectionsForRole(user?.role);
 
   const toggleSection = (titleKey: string) => {
     setOpenSections((prev) => ({ ...prev, [titleKey]: !prev[titleKey] }));
@@ -292,36 +150,32 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
         ))}
         {isSuperAdmin && (
           <CollapsibleSection
-            title={t("nav.admin")}
-            isOpen={!!openSections["nav.admin"]}
-            onToggle={() => toggleSection("nav.admin")}
+            title={t(adminSection.titleKey)}
+            isOpen={!!openSections[adminSection.titleKey]}
+            onToggle={() => toggleSection(adminSection.titleKey)}
           >
-            <Link
-              href="/admin"
-              onClick={handleNavClick}
-              className={clsx(
-                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150",
-                location === "/admin"
-                  ? "bg-primary-50 text-primary-700"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              )}
-            >
-              <Shield className="w-5 h-5" />
-              {t("nav.admin")}
-            </Link>
-            <Link
-              href="/admin/affiliates"
-              onClick={handleNavClick}
-              className={clsx(
-                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150",
-                location.startsWith("/admin/affiliates")
-                  ? "bg-primary-50 text-primary-700"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-              )}
-            >
-              <UserPlus className="w-5 h-5" />
-              Affiliate Invites
-            </Link>
+            {adminSection.items.map((item) => {
+              const isActive =
+                item.href === "/admin"
+                  ? location === "/admin"
+                  : location.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={handleNavClick}
+                  className={clsx(
+                    "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150",
+                    isActive
+                      ? "bg-primary-50 text-primary-700"
+                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  )}
+                >
+                  <item.icon className="w-5 h-5" />
+                  {t(item.labelKey)}
+                </Link>
+              );
+            })}
           </CollapsibleSection>
         )}
       </nav>
