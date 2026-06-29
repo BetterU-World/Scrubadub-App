@@ -132,7 +132,7 @@ export default function App() {
   const [pathname] = useLocation();
   const storedUserId = localStorage.getItem("scrubadub_userId");
 
-  // ── Capture ?ref= param on first load ──
+  // Capture ?ref= param on first load
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const ref = params.get("ref");
@@ -177,13 +177,13 @@ export default function App() {
   if (isLoading) {
     redirectBranch = "auth-loading";
   } else if (!isAuthed && !isAuthenticated) {
-    redirectBranch = "no-auth→/login";
+    redirectBranch = "no-auth->/login";
   } else if (isAuthed && !isAuthenticated) {
     redirectBranch = "query-settling";
   } else if (!subSettled) {
     redirectBranch = "sub-loading";
   } else if (isOwner && !accessOk) {
-    redirectBranch = "no-access→/subscribe";
+    redirectBranch = "no-access->/subscribe";
   }
 
   // --- DEV banner (enable: localStorage.setItem("DEBUG_AUTH_BANNER","1"); location.reload();) ---
@@ -266,17 +266,17 @@ export default function App() {
     );
   }
 
-  // --- GUARD 1: Auth still loading — show spinner, NEVER redirect ---
+  // --- GUARD 1: Auth still loading - show spinner, NEVER redirect ---
   if (isLoading) {
     return <><Analytics />{devBanner}<PageLoader /></>;
   }
 
-  // --- GUARD 2: storedUserId exists but query hasn't resolved yet — wait ---
+  // --- GUARD 2: storedUserId exists but query hasn't resolved yet - wait ---
   if (isAuthed && !isAuthenticated) {
     return <><Analytics />{devBanner}<PageLoader /></>;
   }
 
-  // --- GUARD 3: Definitely not authenticated — show login routes ---
+  // --- GUARD 3: Definitely not authenticated - show login routes ---
   if (!isAuthed && !isAuthenticated) {
     return (
       <>
@@ -319,7 +319,7 @@ export default function App() {
     return <><Analytics />{devBanner}<PageLoader /></>;
   }
 
-  // --- GUARD 5: Fully resolved — render app with access control ---
+  // --- GUARD 5: Fully resolved - render app with access control ---
   return (
     <ErrorBoundary>
       <OfflineIndicator />
@@ -429,7 +429,7 @@ export default function App() {
               </Route>
             </>
           ) : (
-            /* Unknown role fallback — safe deny */
+            /* Unknown role fallback - safe deny */
             <Route>
               <SubscriptionInactive />
             </Route>

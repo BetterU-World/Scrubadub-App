@@ -1,7 +1,7 @@
 # Scrubadub-App Repository Audit
 
 **Date:** 2026-02-17
-**Scope:** Full repository audit — security, code quality, testing, CI/CD, architecture
+**Scope:** Full repository audit - security, code quality, testing, CI/CD, architecture
 
 ---
 
@@ -22,7 +22,7 @@ Scrubadub is a full-stack cleaning operations management platform (React + Conve
 
 ## 1. Security Audit
 
-### 1.1 CRITICAL — Weak Password Hashing
+### 1.1 CRITICAL - Weak Password Hashing
 
 **Files:** `convex/auth.ts:4-19`, `convex/mutations/employees.ts:60-66`
 
@@ -41,7 +41,7 @@ function simpleHash(password: string): string {
 ```
 
 **Problems:**
-- Not cryptographic — trivially reversible/brute-forceable
+- Not cryptographic - trivially reversible/brute-forceable
 - Password length leaked in the hash output
 - No per-password salt
 - No computational cost (no key stretching)
@@ -51,7 +51,7 @@ function simpleHash(password: string): string {
 
 ---
 
-### 1.2 HIGH — Missing Authorization on All Queries
+### 1.2 HIGH - Missing Authorization on All Queries
 
 **Files:** Every file in `convex/queries/`
 
@@ -74,7 +74,7 @@ Affected queries:
 
 ---
 
-### 1.3 HIGH — Unrestricted File Upload
+### 1.3 HIGH - Unrestricted File Upload
 
 **File:** `convex/mutations/storage.ts:4-9`
 
@@ -95,7 +95,7 @@ export const generateUploadUrl = mutation({
 
 ---
 
-### 1.4 HIGH — Weak Token Generation
+### 1.4 HIGH - Weak Token Generation
 
 **Files:** `convex/auth.ts:134-135`, `convex/mutations/employees.ts:21`
 
@@ -111,7 +111,7 @@ const resetToken = `pr_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
 ---
 
-### 1.5 HIGH — Invite Tokens Never Expire
+### 1.5 HIGH - Invite Tokens Never Expire
 
 **File:** `convex/mutations/employees.ts:46-90`
 
@@ -121,17 +121,17 @@ Invite tokens have no expiration timestamp. Once generated, they remain valid in
 
 ---
 
-### 1.6 MEDIUM — Weak Password Policy
+### 1.6 MEDIUM - Weak Password Policy
 
 **File:** `packages/frontend/src/pages/auth/SignupPage.tsx:19-22`
 
-Only enforces 6-character minimum with no complexity requirements. Validation is client-side only — no server-side check.
+Only enforces 6-character minimum with no complexity requirements. Validation is client-side only - no server-side check.
 
 **Fix:** Enforce 12+ characters, add complexity requirements, validate server-side.
 
 ---
 
-### 1.7 MEDIUM — User Enumeration via Error Messages
+### 1.7 MEDIUM - User Enumeration via Error Messages
 
 **File:** `convex/auth.ts:67-70`
 
@@ -141,7 +141,7 @@ Login returns different error messages for "email not found" vs "wrong password"
 
 ---
 
-### 1.8 MEDIUM — No Input Length Validation
+### 1.8 MEDIUM - No Input Length Validation
 
 **Files:** `convex/mutations/jobs.ts`, `convex/mutations/redFlags.ts`, `convex/mutations/forms.ts`
 
@@ -151,11 +151,11 @@ All text fields (`notes`, `note`, etc.) accept `v.string()` with no length limit
 
 ---
 
-### 1.9 LOW — No Rate Limiting
+### 1.9 LOW - No Rate Limiting
 
 No rate limiting on password reset, login attempts, or invite acceptance endpoints.
 
-### 1.10 LOW — No Content Security Policy
+### 1.10 LOW - No Content Security Policy
 
 No CSP headers configured on the frontend.
 
@@ -175,8 +175,8 @@ No CSP headers configured on the frontend.
 | `packages/frontend/src/pages/owner/JobDetailPage.tsx` | 96 | `job.cleaners as any[]` |
 | `packages/frontend/src/pages/owner/CalendarPage.tsx` | 294, 411, 438, 488 | Multiple `any` casts |
 | `packages/frontend/src/pages/cleaner/CleaningFormPage.tsx` | 357-358 | `as any` casts |
-| `packages/frontend/src/pages/owner/JobFormPage.tsx` | — | `type as any` |
-| `packages/frontend/src/pages/owner/PropertyFormPage.tsx` | — | `type as any` |
+| `packages/frontend/src/pages/owner/JobFormPage.tsx` | - | `type as any` |
+| `packages/frontend/src/pages/owner/PropertyFormPage.tsx` | - | `type as any` |
 
 **Fix:** Create proper TypeScript interfaces for Cleaner, Job-with-cleaners, Timeline items, and form categories.
 
@@ -282,7 +282,7 @@ Three mutations repeat the same "filter undefined values" pattern:
 | CONTRIBUTING guide | Missing |
 | CHANGELOG | Missing |
 
-### Package Scripts — Missing Essentials
+### Package Scripts - Missing Essentials
 
 Current scripts:
 ```
@@ -294,7 +294,7 @@ Missing:
 test, lint, format, type-check, clean, prepare (husky)
 ```
 
-### .gitignore — Incomplete
+### .gitignore - Incomplete
 
 Current entries cover basics (`node_modules/`, `dist/`, `.env`, `.env.local`, `.DS_Store`, `*.log`) but miss:
 - `.env.*.local`
