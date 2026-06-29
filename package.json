@@ -8,11 +8,17 @@
     "build": "npx convex deploy --cmd 'npm run build -w packages/frontend'",
     "dev": "concurrently \"npx convex dev\" \"npm run dev -w packages/frontend\"",
     "dev:frontend": "npm run dev -w packages/frontend",
-    "dev:convex": "npx convex dev"
+    "dev:convex": "npx convex dev",
+    "typecheck": "npm run typecheck:frontend && npm run typecheck:convex",
+    "typecheck:frontend": "npm exec tsc -- -p packages/frontend/tsconfig.json --noEmit",
+    "typecheck:convex": "npm exec tsc -- -p convex/tsconfig.json --noEmit",
+    "build:frontend": "npm run build -w packages/frontend",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@types/node": "^25.3.0",
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "vitest": "4.1.9"
   },
   "dependencies": {
     "@vercel/blob": "^2.3.0",
