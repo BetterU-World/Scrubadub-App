@@ -18,6 +18,29 @@ async function decorateWalkthrough(ctx: any, walkthrough: any) {
   const relationship = walkthrough.clientRelationshipId
     ? await ctx.db.get(walkthrough.clientRelationshipId)
     : null;
+  const directProperty = walkthrough.propertyId ? await ctx.db.get(walkthrough.propertyId) : null;
+  let clientRequest = walkthrough.clientRequestId
+    ? await ctx.db.get(walkthrough.clientRequestId)
+    : null;
+  const commercialAccount = walkthrough.commercialAccountId
+    ? await ctx.db.get(walkthrough.commercialAccountId)
+    : null;
+
+  if (!clientRequest && commercialAccount?.clientRequestId) {
+    clientRequest = await ctx.db.get(commercialAccount.clientRequestId);
+  }
+
+  const requestProperty =
+    !directProperty && clientRequest?.propertyId
+      ? await ctx.db.get(clientRequest.propertyId)
+      : null;
+  const property =
+    directProperty?.companyId === walkthrough.companyId
+      ? directProperty
+      : requestProperty?.companyId === walkthrough.companyId
+        ? requestProperty
+        : null;
+
   return {
     ...walkthrough,
     clientRelationship:
@@ -28,6 +51,22 @@ async function decorateWalkthrough(ctx: any, walkthrough: any) {
             businessName: relationship.businessName,
             clientType: relationship.clientType,
             status: relationship.status,
+          }
+        : null,
+    property: property
+      ? {
+          _id: property._id,
+          name: property.name,
+          type: property.type,
+          address: property.address,
+        }
+      : null,
+    clientRequest:
+      clientRequest?.companyId === walkthrough.companyId
+        ? {
+            _id: clientRequest._id,
+            leadType: clientRequest.leadType,
+            propertySnapshot: clientRequest.propertySnapshot,
           }
         : null,
   };

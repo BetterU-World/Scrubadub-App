@@ -5,6 +5,14 @@ import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { Archive, Check, ClipboardCheck, Plus, Save, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import {
+  groupsForPropertyIntelligenceType,
+  propertyTypeFromLeadType,
+  propertyTypeFromWalkthroughType,
+  PROPERTY_INTELLIGENCE_FIELD_SET_VERSION,
+  type PropertyIntelligenceField,
+  type StructuredPropertyResponse,
+} from "./propertyTypeFieldDefinitions";
 
 const TYPES = [
   "commercial",
@@ -37,6 +45,8 @@ const EMPTY_FORM = {
   riskNotes: "",
   staffingNotes: "",
   proposalNotes: "",
+  fieldSetVersion: PROPERTY_INTELLIGENCE_FIELD_SET_VERSION,
+  structuredResponses: [] as StructuredPropertyResponse[],
   rooms: [] as Array<{
     name: string;
     roomType: string;
@@ -83,6 +93,40 @@ function dateLabel(date: string | undefined, fallback: string) {
   return new Date(`${date}T00:00:00`).toLocaleDateString();
 }
 
+function hasStructuredValue(response: StructuredPropertyResponse) {
+  return (
+    response.textValue !== undefined ||
+    response.numberValue !== undefined ||
+    response.booleanValue !== undefined ||
+    (response.stringValues?.length ?? 0) > 0
+  );
+}
+
+function responseDisplayValue(
+  response: StructuredPropertyResponse,
+  field: PropertyIntelligenceField | undefined,
+  t: (key: string) => string
+) {
+  if (response.valueType === "boolean") {
+    return response.booleanValue
+      ? t("propertyIntelligence.values.yes")
+      : t("propertyIntelligence.values.no");
+  }
+  if (response.valueType === "number") {
+    return response.numberValue ?? "";
+  }
+  if (response.valueType === "text") {
+    return response.textValue ?? "";
+  }
+  const values = response.stringValues ?? [];
+  if (!field?.options) return values.join(", ");
+  return values
+    .map((value) => field.options?.find((option) => option.value === value)?.labelKey)
+    .filter(Boolean)
+    .map((labelKey) => t(labelKey!))
+    .join(", ");
+}
+
 function formFromWalkthrough(walkthrough: any) {
   return {
     title: walkthrough.title ?? "",
@@ -109,6 +153,8 @@ function formFromWalkthrough(walkthrough: any) {
     riskNotes: walkthrough.riskNotes ?? "",
     staffingNotes: walkthrough.staffingNotes ?? "",
     proposalNotes: walkthrough.proposalNotes ?? "",
+    fieldSetVersion: walkthrough.fieldSetVersion ?? PROPERTY_INTELLIGENCE_FIELD_SET_VERSION,
+    structuredResponses: walkthrough.structuredResponses ?? [],
     rooms: (walkthrough.rooms ?? []).map((room: any) => ({
       name: room.name ?? "",
       roomType: room.roomType ?? "",
@@ -169,6 +215,17 @@ export function WalkthroughCard({
       : byClientRequest;
   const walkthrough = (walkthroughs ?? []).find((item: any) => item.status !== "archived") ?? null;
   const isLoading = walkthroughs === undefined;
+  const resolvedPropertyType =
+    walkthrough?.property?.type ??
+    propertyTypeFromLeadType(walkthrough?.clientRequest?.leadType) ??
+    propertyTypeFromWalkthroughType(form.walkthroughType);
+  const intelligenceGroups = groupsForPropertyIntelligenceType(resolvedPropertyType);
+  const intelligenceFields = intelligenceGroups.flatMap((group) => group.fields);
+  const visibleIntelligenceResponses = (walkthrough?.structuredResponses ?? [])
+    .filter(hasStructuredValue)
+    .filter((response: StructuredPropertyResponse) =>
+      intelligenceFields.some((field) => field.key === response.key)
+    );
 
   useEffect(() => {
     if (!walkthrough || walkthrough._id === loadedId) return;
@@ -179,6 +236,187 @@ export function WalkthroughCard({
 
   const showToast = (message: string, type: "success" | "error") => {
     onToast?.(message, type);
+  };
+
+  const responseForField = (field: PropertyIntelligenceField) =>
+    form.structuredResponses.find((response) => response.key === field.key);
+
+  const removeStructuredResponse = (field: PropertyIntelligenceField) => {
+    setForm((current) => ({
+      ...current,
+      structuredResponses: current.structuredResponses.filter(
+        (response) => response.key !== field.key
+      ),
+    }));
+  };
+
+  const setStructuredResponse = (
+    field: PropertyIntelligenceField,
+    response: StructuredPropertyResponse | null
+  ) => {
+    setForm((current) => {
+      const remaining = current.structuredResponses.filter(
+        (item) => item.key !== field.key
+      );
+      return {
+        ...current,
+        structuredResponses: response ? [...remaining, response] : remaining,
+      };
+    });
+  };
+
+  const renderStructuredField = (field: PropertyIntelligenceField) => {
+    const response = responseForField(field);
+    const label = t(field.labelKey);
+
+    if (field.valueType === "number") {
+      return (
+        <label key={field.key}>
+          <span className="text-xs font-medium text-gray-600">{label}</span>
+          <input
+            type="number"
+            min="0"
+            className="input-field mt-1 text-sm"
+            value={response?.numberValue ?? ""}
+            onChange={(event) => {
+              const value = event.target.value;
+              if (!value.trim()) {
+                removeStructuredResponse(field);
+                return;
+              }
+              setStructuredResponse(field, {
+                key: field.key,
+                groupKey: field.groupKey,
+                valueType: field.valueType,
+                numberValue: Number(value),
+              });
+            }}
+          />
+        </label>
+      );
+    }
+
+    if (field.valueType === "boolean") {
+      return (
+        <label
+          key={field.key}
+          className="flex items-center gap-3 rounded-md border border-gray-200 px-3 py-2"
+        >
+          <input
+            type="checkbox"
+            checked={response?.booleanValue ?? false}
+            onChange={(event) =>
+              setStructuredResponse(field, {
+                key: field.key,
+                groupKey: field.groupKey,
+                valueType: field.valueType,
+                booleanValue: event.target.checked,
+              })
+            }
+            className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+          />
+          <span className="text-sm font-medium text-gray-700">{label}</span>
+        </label>
+      );
+    }
+
+    if (field.valueType === "select") {
+      return (
+        <label key={field.key}>
+          <span className="text-xs font-medium text-gray-600">{label}</span>
+          <select
+            className="input-field mt-1 text-sm"
+            value={response?.stringValues?.[0] ?? ""}
+            onChange={(event) => {
+              const value = event.target.value;
+              if (!value) {
+                removeStructuredResponse(field);
+                return;
+              }
+              setStructuredResponse(field, {
+                key: field.key,
+                groupKey: field.groupKey,
+                valueType: field.valueType,
+                stringValues: [value],
+              });
+            }}
+          >
+            <option value="">{t("common.select")}</option>
+            {(field.options ?? []).map((option) => (
+              <option key={option.value} value={option.value}>
+                {t(option.labelKey)}
+              </option>
+            ))}
+          </select>
+        </label>
+      );
+    }
+
+    if (field.valueType === "multi_select") {
+      const selected = response?.stringValues ?? [];
+      return (
+        <div key={field.key} className="sm:col-span-2">
+          <p className="text-xs font-medium text-gray-600">{label}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {(field.options ?? []).map((option) => {
+              const active = selected.includes(option.value);
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => {
+                    const next = active
+                      ? selected.filter((value) => value !== option.value)
+                      : [...selected, option.value];
+                    if (next.length === 0) {
+                      removeStructuredResponse(field);
+                      return;
+                    }
+                    setStructuredResponse(field, {
+                      key: field.key,
+                      groupKey: field.groupKey,
+                      valueType: field.valueType,
+                      stringValues: next,
+                    });
+                  }}
+                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                    active
+                      ? "bg-primary-100 text-primary-700 ring-1 ring-primary-300"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  {t(option.labelKey)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <label key={field.key} className="sm:col-span-2">
+        <span className="text-xs font-medium text-gray-600">{label}</span>
+        <textarea
+          className="input-field mt-1 text-sm"
+          rows={3}
+          value={response?.textValue ?? ""}
+          onChange={(event) => {
+            const value = event.target.value;
+            if (!value.trim()) {
+              removeStructuredResponse(field);
+              return;
+            }
+            setStructuredResponse(field, {
+              key: field.key,
+              groupKey: field.groupKey,
+              valueType: field.valueType,
+              textValue: value,
+            });
+          }}
+        />
+      </label>
+    );
   };
 
   const payloadFromForm = (current: any) => ({
@@ -211,6 +449,8 @@ export function WalkthroughCard({
     riskNotes: form.riskNotes || undefined,
     staffingNotes: form.staffingNotes || undefined,
     proposalNotes: form.proposalNotes || undefined,
+    fieldSetVersion: PROPERTY_INTELLIGENCE_FIELD_SET_VERSION,
+    structuredResponses: form.structuredResponses,
     rooms: form.rooms.map((room) => ({
       name: room.name,
       roomType: room.roomType,
@@ -397,6 +637,27 @@ export function WalkthroughCard({
             </label>
           ))}
 
+          <div className="space-y-4 border-t pt-4">
+            <div>
+              <h4 className="text-sm font-semibold text-gray-900">
+                {t("propertyIntelligence.title")}
+              </h4>
+              <p className="text-xs text-gray-500">
+                {t("propertyIntelligence.helper")}
+              </p>
+            </div>
+            {intelligenceGroups.map((group) => (
+              <div key={group.key} className="space-y-3 rounded-md border border-gray-200 p-3">
+                <h5 className="text-xs font-semibold uppercase text-gray-500">
+                  {t(group.titleKey)}
+                </h5>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {group.fields.map((field) => renderStructuredField(field))}
+                </div>
+              </div>
+            ))}
+          </div>
+
           <div className="space-y-3 border-t pt-4">
             <div className="flex items-center justify-between gap-2">
               <h4 className="text-sm font-semibold text-gray-900">{t("walkthroughs.rooms")}</h4>
@@ -551,6 +812,46 @@ export function WalkthroughCard({
             <p className="whitespace-pre-wrap rounded-md bg-gray-50 p-3 text-sm text-gray-700">
               {walkthrough.scopeNotes}
             </p>
+          )}
+          {visibleIntelligenceResponses.length > 0 && (
+            <div className="space-y-3 rounded-md border border-gray-200 p-3">
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900">
+                  {t("propertyIntelligence.title")}
+                </h4>
+                <p className="text-xs text-gray-500">
+                  {t("propertyIntelligence.summaryHelper")}
+                </p>
+              </div>
+              {intelligenceGroups.map((group) => {
+                const groupResponses = visibleIntelligenceResponses.filter(
+                  (response: StructuredPropertyResponse) => response.groupKey === group.key
+                );
+                if (groupResponses.length === 0) return null;
+                return (
+                  <div key={group.key}>
+                    <p className="text-xs font-semibold uppercase text-gray-500">
+                      {t(group.titleKey)}
+                    </p>
+                    <div className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                      {groupResponses.map((response: StructuredPropertyResponse) => {
+                        const field = group.fields.find((item) => item.key === response.key);
+                        return (
+                          <div key={response.key}>
+                            <p className="text-xs font-medium text-gray-500">
+                              {field ? t(field.labelKey) : response.key}
+                            </p>
+                            <p className="mt-0.5 text-gray-900">
+                              {responseDisplayValue(response, field, t)}
+                            </p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => setEditing(true)} className="btn-secondary text-sm">
