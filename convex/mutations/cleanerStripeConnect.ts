@@ -16,18 +16,3 @@ export const setCleanerStripeConnectAccount = internalMutation({
     });
   },
 });
-
-/**
- * Internal mutation: mark cleaner's connect onboarding as complete.
- */
-export const markCleanerConnectOnboarded = internalMutation({
-  args: {
-    userId: v.id("users"),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.userId, {
-      stripeConnectOnboardingStatus: "complete",
-      stripeConnectLastSyncAt: Date.now(),
-    });
-  },
-});
