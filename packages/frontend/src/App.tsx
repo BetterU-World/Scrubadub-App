@@ -99,6 +99,7 @@ import { PostCheckoutSetupPage } from "@/pages/public/PostCheckoutSetupPage";
 import { ClientLoginPage } from "@/pages/client/ClientLoginPage";
 import { ClientAcceptInvitePage } from "@/pages/client/ClientAcceptInvitePage";
 import { ClientHomePage } from "@/pages/client/ClientHomePage";
+import { ClientServiceAgreementPage } from "@/pages/client/ClientServiceAgreementPage";
 
 // SEO landing pages
 import { CleaningBusinessSoftwarePage } from "@/pages/seo/CleaningBusinessSoftwarePage";
@@ -236,6 +237,7 @@ export default function App() {
           <Switch>
             <Route path="/client/login" component={ClientLoginPage} />
             <Route path="/client/accept-invite/:token" component={ClientAcceptInvitePage} />
+            <Route path="/client/service-agreements/:agreementId" component={ClientServiceAgreementPage} />
             <Route path="/client/home" component={ClientHomePage} />
             <Route>
               <Redirect to="/client/login" />

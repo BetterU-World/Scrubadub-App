@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { FileCheck, FileSignature, Save, Send, Check, XCircle } from "lucide-react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
@@ -155,7 +155,9 @@ export function ServiceAgreementCard({
   );
   const updateAgreement = useMutation((api as any).mutations.serviceAgreements.update);
   const markReady = useMutation((api as any).mutations.serviceAgreements.markReady);
-  const markSent = useMutation((api as any).mutations.serviceAgreements.markSent);
+  const sendAgreement = useAction(
+    (api as any).serviceAgreementDeliveryActions.sendServiceAgreement
+  );
   const markSigned = useMutation((api as any).mutations.serviceAgreements.markSigned);
   const markCancelled = useMutation((api as any).mutations.serviceAgreements.markCancelled);
 
@@ -286,7 +288,7 @@ export function ServiceAgreementCard({
     setActionLoading(action);
     try {
       if (action === "ready") await markReady({ userId: user._id, agreementId: agreement._id });
-      if (action === "sent") await markSent({ userId: user._id, agreementId: agreement._id });
+      if (action === "sent") await sendAgreement({ userId: user._id, agreementId: agreement._id });
       if (action === "signed") await markSigned({ userId: user._id, agreementId: agreement._id });
       if (action === "cancelled") {
         await markCancelled({ userId: user._id, agreementId: agreement._id });
@@ -631,7 +633,7 @@ export function ServiceAgreementCard({
               className="btn-primary flex items-center gap-2 text-sm"
             >
               <Send className="h-4 w-4" />
-              {actionLoading === "sent" ? t("common.saving") : t("serviceAgreements.markSent")}
+              {actionLoading === "sent" ? t("common.saving") : t("serviceAgreements.send")}
             </button>
           )}
           {agreement.status === "sent" && (

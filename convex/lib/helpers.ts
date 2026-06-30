@@ -98,7 +98,9 @@ export async function createNotification(
       | "shared_job_rejected"
       | "new_client_request"
       | "inspection_submitted"
-      | "calendar_sync_alert";
+      | "calendar_sync_alert"
+      | "service_agreement_accepted"
+      | "service_agreement_declined";
     title: string;
     message: string;
     relatedJobId?: Id<"jobs">;

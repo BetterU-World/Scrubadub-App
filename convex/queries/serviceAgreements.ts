@@ -95,3 +95,94 @@ export const getByCommercialAccount = query({
     return await decorateAgreement(ctx, agreement);
   },
 });
+
+async function clientRelationshipIds(ctx: any, clientUserId: any) {
+  const clientUser = await ctx.db.get(clientUserId);
+  if (!clientUser || clientUser.status !== "active") return new Set<string>();
+
+  const relationships = await ctx.db
+    .query("clientRelationships")
+    .withIndex("by_clientUserId", (q: any) => q.eq("clientUserId", clientUserId))
+    .collect();
+
+  return new Set(
+    relationships
+      .filter((relationship: any) => relationship.status === "active")
+      .map((relationship: any) => String(relationship._id))
+  );
+}
+
+async function clientAgreementPayload(ctx: any, agreement: any) {
+  const company = await ctx.db.get(agreement.companyId);
+  return {
+    _id: agreement._id,
+    companyName: company?.companyDisplayName ?? company?.name ?? "Your Cleaning Company",
+    title: agreement.title,
+    status: agreement.status,
+    clientName: agreement.clientName,
+    propertyAddress: agreement.propertyAddress,
+    servicesIncluded: agreement.servicesIncluded,
+    serviceFrequency: agreement.serviceFrequency,
+    contractAmountCents: agreement.contractAmountCents,
+    priceSummary: agreement.priceSummary,
+    billingSchedule: agreement.billingSchedule,
+    effectiveStartDate: agreement.effectiveStartDate,
+    specialInstructions: agreement.specialInstructions,
+    exceptions: agreement.exceptions,
+    body: agreement.body,
+    sentAt: agreement.sentAt,
+    signedAt: agreement.signedAt,
+    declinedAt: agreement.declinedAt,
+    clientResponseNote: agreement.clientResponseNote,
+  };
+}
+
+export const listForClient = query({
+  args: {
+    clientUserId: v.id("clientUsers"),
+  },
+  handler: async (ctx, args) => {
+    const relationshipIds = await clientRelationshipIds(ctx, args.clientUserId);
+    if (relationshipIds.size === 0) return [];
+
+    const relationships = await ctx.db
+      .query("clientRelationships")
+      .withIndex("by_clientUserId", (q: any) => q.eq("clientUserId", args.clientUserId))
+      .collect();
+    const companyIds = Array.from(new Set(relationships.map((item: any) => String(item.companyId))));
+    const agreements: any[] = [];
+
+    for (const companyId of companyIds) {
+      const companyAgreements = await ctx.db
+        .query("serviceAgreements")
+        .withIndex("by_company", (q: any) => q.eq("companyId", companyId))
+        .collect();
+      agreements.push(
+        ...companyAgreements.filter(
+          (agreement: any) =>
+            agreement.clientRelationshipId &&
+            relationshipIds.has(String(agreement.clientRelationshipId)) &&
+            ["sent", "signed", "cancelled"].includes(agreement.status)
+        )
+      );
+    }
+
+    agreements.sort((a, b) => (b.sentAt ?? b.updatedAt) - (a.sentAt ?? a.updatedAt));
+    return await Promise.all(agreements.map((agreement) => clientAgreementPayload(ctx, agreement)));
+  },
+});
+
+export const getForClient = query({
+  args: {
+    clientUserId: v.id("clientUsers"),
+    agreementId: v.id("serviceAgreements"),
+  },
+  handler: async (ctx, args) => {
+    const relationshipIds = await clientRelationshipIds(ctx, args.clientUserId);
+    const agreement = await ctx.db.get(args.agreementId);
+    if (!agreement || !agreement.clientRelationshipId) return null;
+    if (!relationshipIds.has(String(agreement.clientRelationshipId))) return null;
+    if (!["sent", "signed", "cancelled"].includes(agreement.status)) return null;
+    return await clientAgreementPayload(ctx, agreement);
+  },
+});

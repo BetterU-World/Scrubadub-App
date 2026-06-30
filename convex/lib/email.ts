@@ -191,6 +191,102 @@ export async function sendProposalEmail(args: ProposalEmailArgs): Promise<boolea
   }
 }
 
+type ServiceAgreementEmailArgs = {
+  email: string;
+  viewUrl: string;
+  companyName: string;
+  companyLogoUrl?: string;
+  companyEmail?: string;
+  companyPhone?: string;
+  clientName: string;
+  agreement: {
+    title: string;
+    propertyAddress?: string | null;
+    serviceFrequencyLabel?: string | null;
+    priceSummary?: string | null;
+    billingSchedule?: string | null;
+    effectiveStartDate?: string | null;
+  };
+};
+
+export async function sendServiceAgreementEmail(
+  args: ServiceAgreementEmailArgs
+): Promise<boolean> {
+  const resend = getResendClient();
+  const appUrl = getAppUrl();
+  const logoUrl = args.companyLogoUrl || `${appUrl}/logo-icon.png`;
+
+  try {
+    const { error } = await resend.emails.send({
+      from: getFromEmail(),
+      to: args.email,
+      subject: "Your service agreement is ready",
+      html: `
+        <div style="margin:0; padding:0; background:#f3f4f6;">
+          <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; max-width:640px; margin:0 auto; padding:32px 16px;">
+            <div style="background:#ffffff; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden;">
+              <div style="padding:28px 28px 20px; border-bottom:1px solid #eef2f7;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                  <img src="${escapeHtml(logoUrl)}" alt="" width="44" height="44" style="border-radius:10px; object-fit:cover;" />
+                  <div>
+                    <p style="margin:0; color:#6b7280; font-size:13px;">Service agreement from</p>
+                    <h1 style="margin:2px 0 0; color:#111827; font-size:22px; line-height:1.25;">${escapeHtml(args.companyName)}</h1>
+                  </div>
+                </div>
+              </div>
+
+              <div style="padding:28px;">
+                <p style="margin:0 0 16px; color:#111827; font-size:17px; line-height:1.5;">Hi ${escapeHtml(args.clientName)},</p>
+                <p style="margin:0 0 22px; color:#374151; font-size:15px; line-height:1.7;">
+                  ${escapeHtml(args.companyName)} prepared your service agreement for review. Sign in to your SCRUB client portal to accept or decline it.
+                </p>
+
+                <div style="border:1px solid #e5e7eb; border-radius:10px; padding:18px; background:#fafafa; margin:0 0 22px;">
+                  <p style="margin:0 0 4px; color:#6b7280; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;">Agreement</p>
+                  <h2 style="margin:0 0 14px; color:#111827; font-size:20px; line-height:1.3;">${escapeHtml(args.agreement.title)}</h2>
+                  <table style="width:100%; border-collapse:collapse;">
+                    ${detailRow("Address", args.agreement.propertyAddress)}
+                    ${detailRow("Service frequency", args.agreement.serviceFrequencyLabel)}
+                    ${detailRow("Price", args.agreement.priceSummary)}
+                    ${detailRow("Billing schedule", args.agreement.billingSchedule)}
+                    ${detailRow("Start date", args.agreement.effectiveStartDate)}
+                  </table>
+                </div>
+
+                <p style="text-align:center; margin:30px 0 16px;">
+                  <a href="${escapeHtml(args.viewUrl)}" style="background-color:#111827; color:#ffffff; padding:13px 22px; border-radius:7px; text-decoration:none; display:inline-block; font-size:15px; font-weight:700;">
+                    View Agreement
+                  </a>
+                </p>
+                <p style="margin:0; color:#6b7280; font-size:13px; line-height:1.6; text-align:center;">
+                  This link opens your authenticated SCRUB client portal.
+                </p>
+              </div>
+
+              <div style="padding:18px 28px; background:#f9fafb; border-top:1px solid #eef2f7;">
+                <p style="margin:0; color:#6b7280; font-size:12px; line-height:1.6;">
+                  Sent by ${escapeHtml(args.companyName)} through SCRUB.
+                  ${args.companyEmail ? ` Contact: ${escapeHtml(args.companyEmail)}.` : ""}
+                  ${args.companyPhone ? ` ${escapeHtml(args.companyPhone)}.` : ""}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error("[email] Failed to send service agreement email:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[email] Error sending service agreement email:", err);
+    return false;
+  }
+}
+
 /**
  * Send a password reset email with a secure reset link.
  * Returns true if sent successfully, false otherwise.

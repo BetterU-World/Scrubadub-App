@@ -1733,6 +1733,7 @@
     "defaultTitle": "Commercial Service Agreement",
     "create": "Create Service Agreement",
     "created": "Service agreement created",
+    "send": "Send Service Agreement",
     "save": "Save Agreement",
     "saved": "Service agreement saved",
     "saveFailed": "Failed to save service agreement",
@@ -1773,6 +1774,18 @@
       "signed": "Signed",
       "cancelled": "Cancelled"
     }
+  },
+  "clientAgreements": {
+    "notFound": "Agreement unavailable",
+    "backToHome": "Back to client home",
+    "accept": "Accept Agreement",
+    "decline": "Decline",
+    "declineNote": "Decline note (optional)",
+    "accepted": "Agreement accepted",
+    "acceptedMessage": "Thank you. Your response has been shared with the provider.",
+    "declined": "Agreement declined",
+    "declinedMessage": "Your response has been shared with the provider.",
+    "actionFailed": "Unable to submit response"
   },
   "commercialSchedules": {
     "title": "Commercial Schedule",
