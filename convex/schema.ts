@@ -888,6 +888,22 @@ export default defineSchema({
       caption: v.optional(v.string()),
       uploadedAt: v.number(),
     }))),
+    fieldSetVersion: v.optional(v.string()),
+    structuredResponses: v.optional(v.array(v.object({
+      key: v.string(),
+      groupKey: v.string(),
+      valueType: v.union(
+        v.literal("text"),
+        v.literal("number"),
+        v.literal("boolean"),
+        v.literal("select"),
+        v.literal("multi_select")
+      ),
+      textValue: v.optional(v.string()),
+      numberValue: v.optional(v.number()),
+      booleanValue: v.optional(v.boolean()),
+      stringValues: v.optional(v.array(v.string())),
+    }))),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

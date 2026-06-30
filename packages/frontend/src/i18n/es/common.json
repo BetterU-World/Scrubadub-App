@@ -1517,6 +1517,87 @@
       "ended": "Finalizada"
     }
   },
+  "propertyIntelligence": {
+    "title": "Inteligencia de propiedad",
+    "helper": "Captura detalles operativos del sitio sin cambiar registros de propiedad.",
+    "summaryHelper": "Detalles estructurados del sitio capturados durante este recorrido.",
+    "values": {
+      "yes": "Si",
+      "no": "No"
+    },
+    "groups": {
+      "siteProfile": "Perfil del sitio",
+      "operations": "Operaciones",
+      "turnover": "Preparacion de rotacion",
+      "condition": "Condicion",
+      "constructionCleanup": "Limpieza post-construccion"
+    },
+    "fields": {
+      "restroomCount": "Cantidad de banos",
+      "breakroomCount": "Cantidad de areas de descanso",
+      "trashCanCount": "Cantidad de basureros",
+      "floorTypes": "Tipos de piso",
+      "highTouchAreas": "Areas de alto contacto",
+      "supplyRestockNeeds": "Reposicion de suministros",
+      "afterHoursAccess": "Acceso fuera de horario",
+      "securityAlarmNotes": "Notas de seguridad / alarma",
+      "bedCount": "Cantidad de camas",
+      "towelCount": "Cantidad de toallas",
+      "sheetSets": "Juegos de sabanas",
+      "pillowCount": "Cantidad de almohadas",
+      "amenities": "Amenidades",
+      "accessInstructions": "Instrucciones de acceso",
+      "laundryNotes": "Notas de lavanderia",
+      "resetNotes": "Notas de preparacion / reset",
+      "debrisLevel": "Nivel de escombros",
+      "applianceCleanoutNeeded": "Limpieza de electrodomesticos necesaria",
+      "cabinetDrawerCleanout": "Limpieza de gabinetes / cajones",
+      "conditionNotes": "Notas de condicion",
+      "dustLevel": "Nivel de polvo",
+      "debrisRemovalNeeded": "Retiro de escombros necesario",
+      "windowGlassCleanup": "Limpieza de ventanas / vidrio",
+      "paintAdhesiveResidue": "Residuos de pintura o adhesivo",
+      "ppeSafetyNotes": "Notas de EPP / seguridad",
+      "serviceNotes": "Notas de servicio"
+    },
+    "options": {
+      "floorTypes": {
+        "carpet": "Alfombra",
+        "tile": "Azulejo",
+        "hardwood": "Madera",
+        "vinyl": "Vinilo",
+        "concrete": "Concreto",
+        "stone": "Piedra",
+        "other": "Otro"
+      },
+      "highTouchAreas": {
+        "doorHandles": "Manijas",
+        "lightSwitches": "Interruptores",
+        "desks": "Escritorios",
+        "conferenceTables": "Mesas de conferencia",
+        "reception": "Recepcion",
+        "elevatorButtons": "Botones de elevador",
+        "railings": "Barandales",
+        "sharedEquipment": "Equipo compartido"
+      },
+      "amenities": {
+        "washerDryer": "Lavadora / secadora",
+        "hotTub": "Jacuzzi",
+        "pool": "Piscina",
+        "bbqGrill": "Parrilla",
+        "petsAllowed": "Mascotas permitidas",
+        "stairs": "Escaleras",
+        "elevator": "Elevador",
+        "smartLock": "Cerradura inteligente",
+        "garage": "Garaje"
+      },
+      "levels": {
+        "low": "Bajo",
+        "medium": "Medio",
+        "high": "Alto"
+      }
+    }
+  },
   "walkthroughs": {
     "title": "Recorrido",
     "helper": "Los recorridos ayudan a capturar detalles del sitio antes de crear una propuesta. La generacion de propuestas desde recorridos se agregara mas adelante.",

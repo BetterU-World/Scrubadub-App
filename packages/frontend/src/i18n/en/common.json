@@ -1517,6 +1517,87 @@
       "ended": "Ended"
     }
   },
+  "propertyIntelligence": {
+    "title": "Property Intelligence",
+    "helper": "Capture site-specific operating details without changing property records.",
+    "summaryHelper": "Structured site details captured during this walkthrough.",
+    "values": {
+      "yes": "Yes",
+      "no": "No"
+    },
+    "groups": {
+      "siteProfile": "Site profile",
+      "operations": "Operations",
+      "turnover": "Turnover setup",
+      "condition": "Condition",
+      "constructionCleanup": "Construction cleanup"
+    },
+    "fields": {
+      "restroomCount": "Restroom count",
+      "breakroomCount": "Breakroom count",
+      "trashCanCount": "Trash can count",
+      "floorTypes": "Floor types",
+      "highTouchAreas": "High-touch areas",
+      "supplyRestockNeeds": "Supply restock needs",
+      "afterHoursAccess": "After-hours access",
+      "securityAlarmNotes": "Security / alarm notes",
+      "bedCount": "Bed count",
+      "towelCount": "Towel count",
+      "sheetSets": "Sheet sets",
+      "pillowCount": "Pillow count",
+      "amenities": "Amenities",
+      "accessInstructions": "Access instructions",
+      "laundryNotes": "Laundry notes",
+      "resetNotes": "Staging / reset notes",
+      "debrisLevel": "Debris level",
+      "applianceCleanoutNeeded": "Appliance cleanout needed",
+      "cabinetDrawerCleanout": "Cabinet / drawer cleanout",
+      "conditionNotes": "Condition notes",
+      "dustLevel": "Dust level",
+      "debrisRemovalNeeded": "Debris removal needed",
+      "windowGlassCleanup": "Window / glass cleanup",
+      "paintAdhesiveResidue": "Paint or adhesive residue",
+      "ppeSafetyNotes": "PPE / safety notes",
+      "serviceNotes": "Service notes"
+    },
+    "options": {
+      "floorTypes": {
+        "carpet": "Carpet",
+        "tile": "Tile",
+        "hardwood": "Hardwood",
+        "vinyl": "Vinyl",
+        "concrete": "Concrete",
+        "stone": "Stone",
+        "other": "Other"
+      },
+      "highTouchAreas": {
+        "doorHandles": "Door handles",
+        "lightSwitches": "Light switches",
+        "desks": "Desks",
+        "conferenceTables": "Conference tables",
+        "reception": "Reception",
+        "elevatorButtons": "Elevator buttons",
+        "railings": "Railings",
+        "sharedEquipment": "Shared equipment"
+      },
+      "amenities": {
+        "washerDryer": "Washer / Dryer",
+        "hotTub": "Hot tub",
+        "pool": "Pool",
+        "bbqGrill": "BBQ grill",
+        "petsAllowed": "Pets allowed",
+        "stairs": "Stairs",
+        "elevator": "Elevator",
+        "smartLock": "Smart lock",
+        "garage": "Garage"
+      },
+      "levels": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      }
+    }
+  },
   "walkthroughs": {
     "title": "Walkthrough",
     "helper": "Walkthroughs help capture site details before creating a proposal. Proposal generation from walkthrough data will be added later.",

@@ -27,6 +27,22 @@ const photoValidator = v.object({
   uploadedAt: v.optional(v.number()),
 });
 
+const structuredResponseValidator = v.object({
+  key: v.string(),
+  groupKey: v.string(),
+  valueType: v.union(
+    v.literal("text"),
+    v.literal("number"),
+    v.literal("boolean"),
+    v.literal("select"),
+    v.literal("multi_select")
+  ),
+  textValue: v.optional(v.string()),
+  numberValue: v.optional(v.number()),
+  booleanValue: v.optional(v.boolean()),
+  stringValues: v.optional(v.array(v.string())),
+});
+
 const walkthroughFields = {
   propertyId: v.optional(v.id("properties")),
   commercialAccountId: v.optional(v.id("commercialAccounts")),
@@ -53,6 +69,25 @@ const walkthroughFields = {
   staffingNotes: v.optional(v.string()),
   proposalNotes: v.optional(v.string()),
   photos: v.optional(v.array(photoValidator)),
+  fieldSetVersion: v.optional(v.string()),
+  structuredResponses: v.optional(v.array(structuredResponseValidator)),
+};
+
+type StructuredResponseValueType =
+  | "text"
+  | "number"
+  | "boolean"
+  | "select"
+  | "multi_select";
+
+type StructuredResponse = {
+  key: string;
+  groupKey: string;
+  valueType: StructuredResponseValueType;
+  textValue?: string;
+  numberValue?: number;
+  booleanValue?: boolean;
+  stringValues?: string[];
 };
 
 async function requireOwnerCompany(ctx: any, userId: any) {
@@ -86,6 +121,47 @@ function cleanWholeCents(value: number | undefined, label: string) {
   if (cleaned === undefined) return undefined;
   if (!Number.isInteger(cleaned)) throw new Error(`${label} must be whole cents`);
   return cleaned;
+}
+
+function cleanStructuredResponses(responses: any[] | undefined) {
+  if (!responses) return undefined;
+  return responses
+    .slice(0, 200)
+    .map((response) => {
+      const valueType = response.valueType;
+      const cleaned: StructuredResponse = {
+        key: cleanRequired(response.key, "", 100),
+        groupKey: cleanRequired(response.groupKey, "", 100),
+        valueType,
+      };
+
+      if (!cleaned.key || !cleaned.groupKey) return null;
+
+      if (valueType === "text") {
+        cleaned.textValue = cleanOptional(response.textValue, 4000);
+      } else if (valueType === "number") {
+        cleaned.numberValue = cleanNumber(response.numberValue, cleaned.key, 1_000_000);
+      } else if (valueType === "boolean") {
+        cleaned.booleanValue = response.booleanValue === true;
+      } else if (valueType === "select") {
+        const value = cleanOptional(response.stringValues?.[0], 200);
+        cleaned.stringValues = value ? [value] : undefined;
+      } else if (valueType === "multi_select") {
+        const rawValues: string[] = (response.stringValues ?? [])
+          .map((value: string) => cleanOptional(value, 200))
+          .filter((value: string | undefined): value is string => Boolean(value));
+        const values = Array.from(new Set<string>(rawValues)).slice(0, 50);
+        cleaned.stringValues = values.length ? values : undefined;
+      }
+
+      const hasValue =
+        cleaned.textValue !== undefined ||
+        cleaned.numberValue !== undefined ||
+        cleaned.booleanValue !== undefined ||
+        cleaned.stringValues !== undefined;
+      return hasValue ? cleaned : null;
+    })
+    .filter((response): response is StructuredResponse => response !== null);
 }
 
 async function assertLinkedRecords(ctx: any, companyId: any, args: any) {
@@ -158,6 +234,8 @@ function buildWalkthroughPatch(args: any) {
         uploadedAt: photo.uploadedAt ?? Date.now(),
       }))
       .filter((photo: any) => photo.url),
+    fieldSetVersion: cleanOptional(args.fieldSetVersion, 50),
+    structuredResponses: cleanStructuredResponses(args.structuredResponses),
   };
 }
 
