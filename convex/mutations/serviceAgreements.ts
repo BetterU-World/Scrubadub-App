@@ -86,6 +86,14 @@ function plainValue(value: string | undefined, fallback = "To be confirmed") {
   return value?.trim() || fallback;
 }
 
+function firstText(...values: Array<string | null | undefined>) {
+  for (const value of values) {
+    const trimmed = value?.trim();
+    if (trimmed) return trimmed;
+  }
+  return undefined;
+}
+
 function cleanAmount(value: number | undefined) {
   if (value === undefined) return undefined;
   if (!Number.isFinite(value) || value < 0 || !Number.isInteger(value)) {
@@ -127,6 +135,25 @@ async function getDefaultServiceAgreementTemplate(ctx: any, companyId: any) {
     .first();
 
   return template?.companyId === companyId ? template : null;
+}
+
+async function getLatestAgreementWalkthrough(ctx: any, companyId: any, proposal: any) {
+  const [proposalWalkthroughs, leadWalkthroughs] = await Promise.all([
+    ctx.db
+      .query("walkthroughs")
+      .withIndex("by_proposal", (q: any) => q.eq("proposalId", proposal._id))
+      .collect(),
+    ctx.db
+      .query("walkthroughs")
+      .withIndex("by_clientRequest", (q: any) =>
+        q.eq("clientRequestId", proposal.clientRequestId)
+      )
+      .collect(),
+  ]);
+
+  return [...proposalWalkthroughs, ...leadWalkthroughs]
+    .filter((walkthrough: any) => walkthrough.companyId === companyId && walkthrough.status !== "archived")
+    .sort((a: any, b: any) => b.updatedAt - a.updatedAt)[0];
 }
 
 function buildAgreementPatch(args: any) {
@@ -193,18 +220,32 @@ export const createDraftFromAcceptedProposal = mutation({
     if (!request) throw new Error("Lead not found");
     if (request.companyId !== companyId) throw new Error("Access denied");
 
-    const [companyName, template] = await Promise.all([
+    const [companyName, template, property, walkthrough] = await Promise.all([
       getCompanyDisplayName(ctx, companyId),
       getDefaultServiceAgreementTemplate(ctx, companyId),
+      request.propertyId ? ctx.db.get(request.propertyId) : null,
+      getLatestAgreementWalkthrough(ctx, companyId, proposal),
     ]);
     const now = Date.now();
     const clientRelationshipId =
       (account as any)?.clientRelationshipId ??
       (proposal as any).clientRelationshipId ??
       await ensureClientRelationshipForLead(ctx, request);
-    const clientName = proposal.businessName || proposal.clientName || request.requesterName;
-    const propertyAddress =
-      proposal.propertyAddress || request.propertySnapshot?.address || undefined;
+    const relationship: any = clientRelationshipId ? await ctx.db.get(clientRelationshipId) : null;
+    const clientName = firstText(
+      proposal.businessName,
+      relationship?.businessName,
+      relationship?.displayName,
+      proposal.clientName,
+      request.requesterName
+    );
+    const propertyAddress = firstText(
+      proposal.propertyAddress,
+      (account as any)?.serviceAddress,
+      property?.address,
+      walkthrough?.address,
+      request.propertySnapshot?.address
+    );
     const contractAmountCents = proposal.monthlyPriceCents ?? proposal.oneTimePriceCents;
     const priceSummary =
       proposal.monthlyPriceCents != null
@@ -212,8 +253,14 @@ export const createDraftFromAcceptedProposal = mutation({
         : proposal.oneTimePriceCents != null
           ? `${formatCents(proposal.oneTimePriceCents)} one-time`
           : undefined;
-    const servicesIncluded =
-      proposal.scopeOfWork || request.requestedService || request.notes || undefined;
+    const servicesIncluded = firstText(
+      proposal.scopeOfWork,
+      walkthrough?.proposalNotes,
+      walkthrough?.scopeNotes,
+      walkthrough?.serviceFrequencyRecommendation,
+      request.requestedService,
+      request.notes
+    );
     const billingSchedule =
       proposal.monthlyPriceCents != null
         ? "Monthly"
@@ -221,14 +268,20 @@ export const createDraftFromAcceptedProposal = mutation({
           ? "One-time"
           : undefined;
     const effectiveStartDate = request.requestedDate ?? undefined;
-    const specialInstructions =
-      proposal.notes || (request as any).leadNotes || request.notes || undefined;
+    const serviceFrequency =
+      proposal.serviceFrequency ?? (request as any).estimatedFrequency ?? undefined;
+    const specialInstructions = firstText(
+      proposal.notes,
+      walkthrough?.accessNotes,
+      (request as any).leadNotes,
+      request.notes
+    );
     const exceptions = "None specified";
     const mergeValues = {
       company_name: plainValue(companyName, "Your Cleaning Company"),
       client_name: plainValue(clientName, "Client"),
       property_address: plainValue(propertyAddress),
-      service_frequency: plainValue(formatFrequency(proposal.serviceFrequency)),
+      service_frequency: plainValue(formatFrequency(serviceFrequency)),
       contract_price: plainValue(priceSummary),
       billing_schedule: plainValue(billingSchedule),
       start_date: plainValue(effectiveStartDate),
@@ -256,7 +309,7 @@ export const createDraftFromAcceptedProposal = mutation({
       exceptions,
       body,
       effectiveStartDate,
-      serviceFrequency: proposal.serviceFrequency,
+      serviceFrequency,
       contractAmountCents,
       paymentTerms: billingSchedule,
       scopeOfWork: proposal.scopeOfWork,
