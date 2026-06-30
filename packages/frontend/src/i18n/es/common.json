@@ -1733,6 +1733,7 @@
     "defaultTitle": "Acuerdo comercial de servicio",
     "create": "Crear acuerdo de servicio",
     "created": "Acuerdo creado",
+    "send": "Enviar acuerdo de servicio",
     "save": "Guardar acuerdo",
     "saved": "Acuerdo guardado",
     "saveFailed": "No se pudo guardar el acuerdo",
@@ -1773,6 +1774,18 @@
       "signed": "Firmado",
       "cancelled": "Cancelado"
     }
+  },
+  "clientAgreements": {
+    "notFound": "Acuerdo no disponible",
+    "backToHome": "Volver al inicio del cliente",
+    "accept": "Aceptar acuerdo",
+    "decline": "Rechazar",
+    "declineNote": "Nota de rechazo (opcional)",
+    "accepted": "Acuerdo aceptado",
+    "acceptedMessage": "Gracias. Tu respuesta se compartio con el proveedor.",
+    "declined": "Acuerdo rechazado",
+    "declinedMessage": "Tu respuesta se compartio con el proveedor.",
+    "actionFailed": "No se pudo enviar la respuesta"
   },
   "commercialSchedules": {
     "title": "Programa comercial",

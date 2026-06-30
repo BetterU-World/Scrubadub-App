@@ -156,10 +156,14 @@ export function ClientHomePage() {
           <Section title={t("clientHome.serviceAgreements")} empty={t("clientHome.noServiceAgreements")} count={home.serviceAgreements.length}>
             <div className="divide-y divide-gray-100">
               {home.serviceAgreements.map((agreement: any) => (
-                <div key={agreement._id} className="py-3 text-sm">
+                <Link
+                  key={agreement._id}
+                  href={`/client/service-agreements/${agreement._id}`}
+                  className="block py-3 text-sm hover:text-primary-700"
+                >
                   <p className="font-medium text-gray-900">{agreement.title}</p>
                   <p className="text-gray-500">{agreement.status}</p>
-                </div>
+                </Link>
               ))}
             </div>
           </Section>

@@ -20,7 +20,8 @@ export function ClientLoginPage() {
     setLoading(true);
     try {
       await signIn({ email, password });
-      window.location.assign("/client/home");
+      const next = new URLSearchParams(window.location.search).get("next");
+      window.location.assign(next?.startsWith("/client/") ? next : "/client/home");
     } catch (err: any) {
       setError(err.message || t("clientAuth.signInFailed"));
     } finally {

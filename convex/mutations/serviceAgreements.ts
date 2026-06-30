@@ -2,6 +2,7 @@ import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { getSessionUser } from "../lib/auth";
 import { ensureClientRelationshipForLead } from "../lib/clientRelationships";
+import { createNotification } from "../lib/helpers";
 
 const agreementFields = {
   title: v.string(),
@@ -74,6 +75,11 @@ function formatCents(cents: number | undefined) {
 }
 
 function cleanOptional(value: string | undefined, max = 4000) {
+  const trimmed = value?.trim().slice(0, max);
+  return trimmed || undefined;
+}
+
+function cleanNote(value: string | undefined, max = 1000) {
   const trimmed = value?.trim().slice(0, max);
   return trimmed || undefined;
 }
@@ -185,6 +191,52 @@ async function getOwnedAgreement(ctx: any, userId: any, agreementId: any) {
   if (!agreement) throw new Error("Service agreement not found");
   if (agreement.companyId !== owner.companyId) throw new Error("Access denied");
   return { owner, agreement };
+}
+
+async function getClientOwnedAgreement(ctx: any, clientUserId: any, agreementId: any) {
+  const clientUser = await ctx.db.get(clientUserId);
+  if (!clientUser || clientUser.status !== "active") {
+    throw new Error("Client access required");
+  }
+
+  const agreement = await ctx.db.get(agreementId);
+  if (!agreement?.clientRelationshipId) throw new Error("Agreement not found");
+
+  const relationship = await ctx.db.get(agreement.clientRelationshipId);
+  if (
+    !relationship ||
+    relationship.clientUserId !== clientUserId ||
+    relationship.status !== "active" ||
+    relationship.companyId !== agreement.companyId
+  ) {
+    throw new Error("Access denied");
+  }
+
+  return { clientUser, agreement };
+}
+
+async function notifyOwnerOfAgreementResponse(
+  ctx: any,
+  agreement: any,
+  type: "service_agreement_accepted" | "service_agreement_declined",
+  title: string,
+  message: string
+) {
+  const owner = await ctx.db
+    .query("users")
+    .withIndex("by_companyId", (q: any) => q.eq("companyId", agreement.companyId))
+    .filter((q: any) => q.eq(q.field("role"), "owner"))
+    .first();
+
+  if (!owner) return;
+  await createNotification(ctx, {
+    companyId: agreement.companyId,
+    userId: owner._id,
+    type,
+    title,
+    message,
+    relatedClientRequestId: agreement.clientRequestId,
+  });
 }
 
 export const createDraftFromAcceptedProposal = mutation({
@@ -409,5 +461,75 @@ export const markCancelled = mutation({
       cancelledAt: agreement.cancelledAt ?? now,
       updatedAt: now,
     });
+  },
+});
+
+export const clientAccept = mutation({
+  args: {
+    clientUserId: v.id("clientUsers"),
+    agreementId: v.id("serviceAgreements"),
+  },
+  handler: async (ctx, args) => {
+    const { clientUser, agreement } = await getClientOwnedAgreement(
+      ctx,
+      args.clientUserId,
+      args.agreementId
+    );
+    if (agreement.status !== "sent") {
+      throw new Error("This agreement is not ready for response");
+    }
+
+    const now = Date.now();
+    await ctx.db.patch(args.agreementId, {
+      status: "signed",
+      signedAt: agreement.signedAt ?? now,
+      signerName: clientUser.displayName,
+      clientRespondedAt: now,
+      updatedAt: now,
+    });
+
+    await notifyOwnerOfAgreementResponse(
+      ctx,
+      agreement,
+      "service_agreement_accepted",
+      "Service agreement accepted",
+      `${clientUser.displayName} accepted ${agreement.title}.`
+    );
+  },
+});
+
+export const clientDecline = mutation({
+  args: {
+    clientUserId: v.id("clientUsers"),
+    agreementId: v.id("serviceAgreements"),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { clientUser, agreement } = await getClientOwnedAgreement(
+      ctx,
+      args.clientUserId,
+      args.agreementId
+    );
+    if (agreement.status !== "sent") {
+      throw new Error("This agreement is not ready for response");
+    }
+
+    const now = Date.now();
+    await ctx.db.patch(args.agreementId, {
+      status: "cancelled",
+      declinedAt: agreement.declinedAt ?? now,
+      cancelledAt: agreement.cancelledAt ?? now,
+      clientResponseNote: cleanNote(args.note),
+      clientRespondedAt: now,
+      updatedAt: now,
+    });
+
+    await notifyOwnerOfAgreementResponse(
+      ctx,
+      agreement,
+      "service_agreement_declined",
+      "Service agreement declined",
+      `${clientUser.displayName} declined ${agreement.title}.`
+    );
   },
 });

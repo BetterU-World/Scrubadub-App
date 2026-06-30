@@ -164,17 +164,19 @@ export const getClientHome = query({
         oneTimePriceCents: proposal.oneTimePriceCents,
         status: proposal.status,
       })),
-      serviceAgreements: related.serviceAgreements.map((agreement) => ({
-        _id: agreement._id,
-        clientRelationshipId: agreement.clientRelationshipId,
-        title: agreement.title,
-        status: agreement.status,
-        effectiveStartDate: agreement.effectiveStartDate,
-        effectiveEndDate: agreement.effectiveEndDate,
-        renewalDate: agreement.renewalDate,
-        serviceFrequency: agreement.serviceFrequency,
-        contractAmountCents: agreement.contractAmountCents,
-      })),
+      serviceAgreements: related.serviceAgreements
+        .filter((agreement) => ["sent", "signed", "cancelled"].includes(agreement.status))
+        .map((agreement) => ({
+          _id: agreement._id,
+          clientRelationshipId: agreement.clientRelationshipId,
+          title: agreement.title,
+          status: agreement.status,
+          effectiveStartDate: agreement.effectiveStartDate,
+          effectiveEndDate: agreement.effectiveEndDate,
+          renewalDate: agreement.renewalDate,
+          serviceFrequency: agreement.serviceFrequency,
+          contractAmountCents: agreement.contractAmountCents,
+        })),
     };
   },
 });

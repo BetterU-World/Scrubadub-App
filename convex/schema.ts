@@ -571,7 +571,9 @@ export default defineSchema({
       v.literal("shared_job_rejected"),
       v.literal("new_client_request"),
       v.literal("inspection_submitted"),
-      v.literal("calendar_sync_alert")
+      v.literal("calendar_sync_alert"),
+      v.literal("service_agreement_accepted"),
+      v.literal("service_agreement_declined")
     ),
     title: v.string(),
     message: v.string(),
@@ -978,6 +980,8 @@ export default defineSchema({
     publicTokenHash: v.optional(v.string()),
     publicTokenCreatedAt: v.optional(v.number()),
     signerName: v.optional(v.string()),
+    clientResponseNote: v.optional(v.string()),
+    clientRespondedAt: v.optional(v.number()),
     declinedAt: v.optional(v.number()),
     voidedAt: v.optional(v.number()),
   })
