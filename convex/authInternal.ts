@@ -168,18 +168,6 @@ export const consumeInviteToken = internalMutation({
   },
 });
 
-export const setInviteToken = internalMutation({
-  args: {
-    userId: v.id("users"),
-    inviteToken: v.string(),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.userId, {
-      inviteToken: args.inviteToken,
-    });
-  },
-});
-
 const PAST_DUE_GRACE_MS = 3 * 24 * 60 * 60 * 1000;
 
 export const checkSubscription = internalQuery({
@@ -195,34 +183,6 @@ export const checkSubscription = internalQuery({
       if (Date.now() < periodEnd + PAST_DUE_GRACE_MS) return;
     }
     throw new Error("Subscription inactive. Please update billing to continue.");
-  },
-});
-
-export const upsertSubscription = internalMutation({
-  args: {
-    stripeCustomerId: v.string(),
-    stripeSubscriptionId: v.string(),
-    status: v.string(),
-    currentPeriodEnd: v.number(),
-  },
-  handler: async (ctx, args) => {
-    const company = await ctx.db
-      .query("companies")
-      .withIndex("by_stripeCustomerId", (q) =>
-        q.eq("stripeCustomerId", args.stripeCustomerId)
-      )
-      .first();
-    if (!company) {
-      console.warn(
-        `No company found for Stripe customer ${args.stripeCustomerId}`
-      );
-      return;
-    }
-    await ctx.db.patch(company._id, {
-      stripeSubscriptionId: args.stripeSubscriptionId,
-      subscriptionStatus: args.status as any,
-      currentPeriodEnd: args.currentPeriodEnd,
-    });
   },
 });
 

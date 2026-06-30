@@ -15,17 +15,3 @@ export const setCompanyStripeConnectAccount = internalMutation({
     });
   },
 });
-
-/**
- * Internal mutation: mark company as onboarded (timestamp).
- */
-export const markCompanyConnectOnboarded = internalMutation({
-  args: {
-    companyId: v.id("companies"),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.companyId, {
-      stripeConnectOnboardedAt: Date.now(),
-    });
-  },
-});

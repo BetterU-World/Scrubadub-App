@@ -29,7 +29,6 @@ import type * as authInternal from "../authInternal.js";
 import type * as authQueries from "../authQueries.js";
 import type * as clientAuthActions from "../clientAuthActions.js";
 import type * as clientAuthInternal from "../clientAuthInternal.js";
-import type * as clientPortalActions from "../clientPortalActions.js";
 import type * as clientPortalInternal from "../clientPortalInternal.js";
 import type * as crons from "../crons.js";
 import type * as employeeActions from "../employeeActions.js";
@@ -71,7 +70,6 @@ import type * as mutations_commercialSchedules from "../mutations/commercialSche
 import type * as mutations_companies from "../mutations/companies.js";
 import type * as mutations_companySites from "../mutations/companySites.js";
 import type * as mutations_companyStripeConnect from "../mutations/companyStripeConnect.js";
-import type * as mutations_devReset from "../mutations/devReset.js";
 import type * as mutations_employees from "../mutations/employees.js";
 import type * as mutations_forms from "../mutations/forms.js";
 import type * as mutations_inspections from "../mutations/inspections.js";
@@ -135,7 +133,6 @@ import type * as queries_proposals from "../queries/proposals.js";
 import type * as queries_redFlags from "../queries/redFlags.js";
 import type * as queries_serviceAgreements from "../queries/serviceAgreements.js";
 import type * as queries_settlements from "../queries/settlements.js";
-import type * as queries_storage from "../queries/storage.js";
 import type * as queries_stripeConnect from "../queries/stripeConnect.js";
 import type * as queries_teams from "../queries/teams.js";
 import type * as queries_walkthroughs from "../queries/walkthroughs.js";
@@ -169,7 +166,6 @@ declare const fullApi: ApiFromModules<{
   authQueries: typeof authQueries;
   clientAuthActions: typeof clientAuthActions;
   clientAuthInternal: typeof clientAuthInternal;
-  clientPortalActions: typeof clientPortalActions;
   clientPortalInternal: typeof clientPortalInternal;
   crons: typeof crons;
   employeeActions: typeof employeeActions;
@@ -211,7 +207,6 @@ declare const fullApi: ApiFromModules<{
   "mutations/companies": typeof mutations_companies;
   "mutations/companySites": typeof mutations_companySites;
   "mutations/companyStripeConnect": typeof mutations_companyStripeConnect;
-  "mutations/devReset": typeof mutations_devReset;
   "mutations/employees": typeof mutations_employees;
   "mutations/forms": typeof mutations_forms;
   "mutations/inspections": typeof mutations_inspections;
@@ -275,7 +270,6 @@ declare const fullApi: ApiFromModules<{
   "queries/redFlags": typeof queries_redFlags;
   "queries/serviceAgreements": typeof queries_serviceAgreements;
   "queries/settlements": typeof queries_settlements;
-  "queries/storage": typeof queries_storage;
   "queries/stripeConnect": typeof queries_stripeConnect;
   "queries/teams": typeof queries_teams;
   "queries/walkthroughs": typeof queries_walkthroughs;

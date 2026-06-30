@@ -10,7 +10,6 @@ import {
   sendPasswordResetEmail,
   sendInviteEmail,
   sendAffiliateInviteEmail,
-  sendSupportEmail,
   sendPartnerInviteEmail,
   sendClientInviteEmail,
 } from "../lib/email";
@@ -110,29 +109,6 @@ export const sendPasswordReset = internalAction({
     const sent = await sendPasswordResetEmail(args.email, args.token);
     if (!sent) {
       console.error("[emailNotifications] Password reset email failed for", args.email);
-    }
-  },
-});
-
-/**
- * Internal action: send employee invite email.
- * Scheduled from mutations via ctx.scheduler.runAfter(0, ...).
- */
-/**
- * Internal action: send support/contact form email.
- * Scheduled from the public submitContactForm action.
- */
-export const sendSupport = internalAction({
-  args: {
-    name: v.string(),
-    email: v.string(),
-    subject: v.string(),
-    message: v.string(),
-  },
-  handler: async (_ctx, args) => {
-    const sent = await sendSupportEmail(args.name, args.email, args.subject, args.message);
-    if (!sent) {
-      console.error("[emailNotifications] Support email failed from", args.email);
     }
   },
 });
