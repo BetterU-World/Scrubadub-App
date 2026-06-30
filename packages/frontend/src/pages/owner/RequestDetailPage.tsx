@@ -957,14 +957,6 @@ export function RequestDetailPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            <WalkthroughCard
-              proposalId={proposal._id}
-              compact
-              onToast={(message, type) => {
-                setToast({ message, type });
-                setTimeout(() => setToast(null), type === "success" ? 2000 : 3000);
-              }}
-            />
             <div className="rounded-md border border-gray-200 bg-gray-50 p-4 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <div>
@@ -1030,18 +1022,6 @@ export function RequestDetailPage() {
                 )}
               </div>
             </div>
-            {proposal.scopeOfWork && (
-              <div className="border-t pt-3">
-                <p className="text-xs font-medium text-gray-500 mb-1">{t("proposals.scopeOfWork")}</p>
-                <p className="text-sm text-gray-600 whitespace-pre-wrap">{proposal.scopeOfWork}</p>
-              </div>
-            )}
-            {proposal.notes && (
-              <div className="border-t pt-3">
-                <p className="text-xs font-medium text-gray-500 mb-1">{t("common.notes")}</p>
-                <p className="text-sm text-gray-600 whitespace-pre-wrap">{proposal.notes}</p>
-              </div>
-            )}
             {proposal.status === "accepted" && (
               <div className="space-y-3">
                 <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm font-medium text-green-800 flex items-center gap-2">
@@ -1053,9 +1033,15 @@ export function RequestDetailPage() {
                   canCreate
                   source={{
                     title: `${proposal.businessName || proposal.clientName} ${t("serviceAgreements.title")}`,
-                    clientName: proposal.businessName || proposal.clientName || request.requesterName,
+                    clientName:
+                      proposal.businessName ||
+                      (request as any).clientRelationship?.businessName ||
+                      (request as any).clientRelationship?.displayName ||
+                      proposal.clientName ||
+                      request.requesterName,
                     propertyAddress: proposal.propertyAddress || request.propertySnapshot?.address || "",
-                    servicesIncluded: proposal.scopeOfWork,
+                    servicesIncluded:
+                      proposal.scopeOfWork || request.requestedService || request.notes || "",
                     priceSummary: formatProposalAmount(
                       proposal.monthlyPriceCents,
                       proposal.oneTimePriceCents
@@ -1393,6 +1379,18 @@ export function RequestDetailPage() {
                     </button>
                   </div>
                 )}
+              </div>
+            )}
+            {proposal.scopeOfWork && (
+              <div className="border-t pt-3">
+                <p className="text-xs font-medium text-gray-500 mb-1">{t("proposals.scopeOfWork")}</p>
+                <p className="text-sm text-gray-600 whitespace-pre-wrap">{proposal.scopeOfWork}</p>
+              </div>
+            )}
+            {proposal.notes && (
+              <div className="border-t pt-3">
+                <p className="text-xs font-medium text-gray-500 mb-1">{t("common.notes")}</p>
+                <p className="text-sm text-gray-600 whitespace-pre-wrap">{proposal.notes}</p>
               </div>
             )}
             {proposal.status === "declined" && (
