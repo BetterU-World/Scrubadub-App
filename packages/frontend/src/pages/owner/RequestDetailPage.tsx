@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useLocation } from "wouter";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
@@ -88,6 +88,9 @@ export function RequestDetailPage() {
   );
   const markProposalDeclined = useMutation(
     (api as any).mutations.proposals.markProposalDeclined
+  );
+  const sendProposalEmail = useAction(
+    (api as any).proposalDeliveryActions.sendProposal
   );
   const createCommercialAccount = useMutation(
     (api as any).mutations.commercialAccounts.create
@@ -458,6 +461,9 @@ export function RequestDetailPage() {
   const formatDate = (date?: string) =>
     date ? new Date(`${date}T00:00:00`).toLocaleDateString() : t("common.unassigned");
 
+  const formatTimestamp = (timestamp?: number) =>
+    timestamp ? new Date(timestamp).toLocaleString() : t("common.unassigned");
+
   const handleCreateProposal = async () => {
     setCreatingProposal(true);
     try {
@@ -534,6 +540,30 @@ export function RequestDetailPage() {
     } catch (err: any) {
       setToast({ message: err.message || t("proposals.actionFailed"), type: "error" });
       setTimeout(() => setToast(null), 3000);
+    } finally {
+      setProposalActionLoading(null);
+    }
+  };
+
+  const handleSendProposalEmail = async () => {
+    if (!proposal) return;
+    setProposalActionLoading("email");
+    try {
+      await sendProposalEmail({ userId: user!._id, proposalId: proposal._id });
+      setToast({
+        message:
+          proposal.status === "sent"
+            ? t("proposals.resentSuccess")
+            : t("proposals.sendSuccess"),
+        type: "success",
+      });
+      setTimeout(() => setToast(null), 2500);
+    } catch (err: any) {
+      setToast({
+        message: err.message || t("proposals.sendFailed"),
+        type: "error",
+      });
+      setTimeout(() => setToast(null), 3500);
     } finally {
       setProposalActionLoading(null);
     }
@@ -992,6 +1022,12 @@ export function RequestDetailPage() {
                   <p className="text-xs font-medium text-gray-500">{t("proposals.status")}</p>
                   <p className="text-gray-900">{t(`proposals.statuses.${proposal.status}`)}</p>
                 </div>
+                {proposal.sentAt && (
+                  <div>
+                    <p className="text-xs font-medium text-gray-500">{t("proposals.sentAt")}</p>
+                    <p className="text-gray-900">{formatTimestamp(proposal.sentAt)}</p>
+                  </div>
+                )}
               </div>
             </div>
             {proposal.scopeOfWork && (
@@ -1370,17 +1406,35 @@ export function RequestDetailPage() {
                 </button>
               )}
               {proposal.status === "draft" && (
-                <button
-                  onClick={() => handleProposalAction("sent")}
-                  disabled={proposalActionLoading === "sent"}
-                  className="btn-primary flex items-center gap-2 text-sm"
-                >
-                  <Send className="w-4 h-4" />
-                  {proposalActionLoading === "sent" ? t("common.saving") : t("proposals.markAsSent")}
-                </button>
+                <>
+                  <button
+                    onClick={handleSendProposalEmail}
+                    disabled={proposalActionLoading === "email"}
+                    className="btn-primary flex items-center gap-2 text-sm"
+                  >
+                    <Send className="w-4 h-4" />
+                    {proposalActionLoading === "email" ? t("common.saving") : t("proposals.sendProposal")}
+                  </button>
+                  <button
+                    onClick={() => handleProposalAction("sent")}
+                    disabled={proposalActionLoading === "sent"}
+                    className="btn-secondary flex items-center gap-2 text-sm"
+                  >
+                    <Send className="w-4 h-4" />
+                    {proposalActionLoading === "sent" ? t("common.saving") : t("proposals.markSentWithoutEmail")}
+                  </button>
+                </>
               )}
               {proposal.status === "sent" && (
                 <>
+                  <button
+                    onClick={handleSendProposalEmail}
+                    disabled={proposalActionLoading === "email"}
+                    className="btn-secondary flex items-center gap-2 text-sm"
+                  >
+                    <Send className="w-4 h-4" />
+                    {proposalActionLoading === "email" ? t("common.saving") : t("proposals.resendProposal")}
+                  </button>
                   <button
                     onClick={() => handleProposalAction("accepted")}
                     disabled={proposalActionLoading === "accepted"}

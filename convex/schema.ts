@@ -827,12 +827,16 @@ export default defineSchema({
     sentAt: v.optional(v.number()),
     acceptedAt: v.optional(v.number()),
     declinedAt: v.optional(v.number()),
+    proposalTokenHash: v.optional(v.string()),
+    proposalTokenCreatedAt: v.optional(v.number()),
+    proposalResponseNote: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_companyId", ["companyId"])
     .index("by_clientRequestId", ["clientRequestId"])
-    .index("by_companyId_status", ["companyId", "status"]),
+    .index("by_companyId_status", ["companyId", "status"])
+    .index("by_proposalTokenHash", ["proposalTokenHash"]),
 
   walkthroughs: defineTable({
     companyId: v.id("companies"),
