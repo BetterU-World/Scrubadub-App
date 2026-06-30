@@ -28,6 +28,169 @@ function getAppUrl(): string {
   return APP_URL.replace(/\/+$/, "");
 }
 
+function escapeHtml(value: unknown): string {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function paragraphHtml(value: string): string {
+  return escapeHtml(value).replace(/\n/g, "<br />");
+}
+
+function detailRow(label: string, value: string | null | undefined): string {
+  if (!value) return "";
+  return `
+    <tr>
+      <td style="color: #6b7280; font-size: 14px; padding: 8px 0; vertical-align: top;">${escapeHtml(label)}</td>
+      <td style="color: #111827; font-size: 14px; padding: 8px 0; text-align: right; font-weight: 600;">${escapeHtml(value)}</td>
+    </tr>
+  `;
+}
+
+type ProposalEmailArgs = {
+  email: string;
+  viewUrl: string;
+  companyName: string;
+  companyLogoUrl?: string;
+  companyEmail?: string;
+  companyPhone?: string;
+  clientName: string;
+  proposal: {
+    title: string;
+    businessName?: string | null;
+    propertyAddress?: string | null;
+    requestedDate?: string | null;
+    serviceFrequencyLabel?: string | null;
+    serviceFrequencyNotes?: string | null;
+    scopeOfWork?: string | null;
+    notes?: string | null;
+    monthlyPriceLabel?: string | null;
+    oneTimePriceLabel?: string | null;
+  };
+  walkthroughSummary?: {
+    squareFootage?: number | null;
+    estimatedHours?: number | null;
+    serviceFrequencyRecommendation?: string | null;
+    proposalNotes?: string | null;
+  };
+};
+
+export async function sendProposalEmail(args: ProposalEmailArgs): Promise<boolean> {
+  const resend = getResendClient();
+  const appUrl = getAppUrl();
+  const logoUrl = args.companyLogoUrl || `${appUrl}/logo-icon.png`;
+  const proposal = args.proposal;
+  const estimateParts = [
+    proposal.monthlyPriceLabel ? `${proposal.monthlyPriceLabel} per month` : null,
+    proposal.oneTimePriceLabel ? `${proposal.oneTimePriceLabel} one-time` : null,
+  ].filter(Boolean);
+  const estimate = estimateParts.length ? estimateParts.join(" + ") : null;
+  const walkthrough = args.walkthroughSummary;
+  const walkthroughDetails = walkthrough
+    ? [
+        walkthrough.squareFootage ? `${walkthrough.squareFootage.toLocaleString()} sq ft` : null,
+        walkthrough.estimatedHours ? `${walkthrough.estimatedHours} estimated hours` : null,
+        walkthrough.serviceFrequencyRecommendation ?? null,
+      ].filter(Boolean)
+    : [];
+
+  try {
+    const { error } = await resend.emails.send({
+      from: getFromEmail(),
+      to: args.email,
+      subject: `${args.companyName} sent your cleaning proposal`,
+      html: `
+        <div style="margin:0; padding:0; background:#f3f4f6;">
+          <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; max-width:640px; margin:0 auto; padding:32px 16px;">
+            <div style="background:#ffffff; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden;">
+              <div style="padding:28px 28px 20px; border-bottom:1px solid #eef2f7;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                  <img src="${escapeHtml(logoUrl)}" alt="" width="44" height="44" style="border-radius:10px; object-fit:cover;" />
+                  <div>
+                    <p style="margin:0; color:#6b7280; font-size:13px;">Proposal from</p>
+                    <h1 style="margin:2px 0 0; color:#111827; font-size:22px; line-height:1.25;">${escapeHtml(args.companyName)}</h1>
+                  </div>
+                </div>
+              </div>
+
+              <div style="padding:28px;">
+                <p style="margin:0 0 16px; color:#111827; font-size:17px; line-height:1.5;">Hi ${escapeHtml(args.clientName)},</p>
+                <p style="margin:0 0 22px; color:#374151; font-size:15px; line-height:1.7;">
+                  ${escapeHtml(args.companyName)} prepared a cleaning proposal for your review. You can view the full proposal and accept or decline securely through SCRUB.
+                </p>
+
+                <div style="border:1px solid #e5e7eb; border-radius:10px; padding:18px; background:#fafafa; margin:0 0 22px;">
+                  <p style="margin:0 0 4px; color:#6b7280; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;">Proposal</p>
+                  <h2 style="margin:0 0 14px; color:#111827; font-size:20px; line-height:1.3;">${escapeHtml(proposal.title)}</h2>
+                  <table style="width:100%; border-collapse:collapse;">
+                    ${detailRow("Business / property", proposal.businessName || proposal.propertyAddress || null)}
+                    ${detailRow("Address", proposal.businessName ? proposal.propertyAddress : null)}
+                    ${detailRow("Service frequency", proposal.serviceFrequencyLabel)}
+                    ${detailRow("Recommended schedule", proposal.serviceFrequencyNotes || proposal.requestedDate || null)}
+                    ${detailRow("Estimated value", estimate)}
+                  </table>
+                </div>
+
+                ${proposal.scopeOfWork ? `
+                  <div style="margin:0 0 20px;">
+                    <p style="margin:0 0 6px; color:#111827; font-size:14px; font-weight:700;">Scope summary</p>
+                    <p style="margin:0; color:#374151; font-size:14px; line-height:1.7;">${paragraphHtml(proposal.scopeOfWork)}</p>
+                  </div>
+                ` : ""}
+
+                ${proposal.notes ? `
+                  <div style="margin:0 0 20px;">
+                    <p style="margin:0 0 6px; color:#111827; font-size:14px; font-weight:700;">Notes</p>
+                    <p style="margin:0; color:#374151; font-size:14px; line-height:1.7;">${paragraphHtml(proposal.notes)}</p>
+                  </div>
+                ` : ""}
+
+                ${walkthroughDetails.length || walkthrough?.proposalNotes ? `
+                  <div style="border-left:3px solid #111827; padding-left:14px; margin:0 0 24px;">
+                    <p style="margin:0 0 6px; color:#111827; font-size:14px; font-weight:700;">Walkthrough summary</p>
+                    ${walkthroughDetails.length ? `<p style="margin:0 0 6px; color:#374151; font-size:14px; line-height:1.7;">${escapeHtml(walkthroughDetails.join(" - "))}</p>` : ""}
+                    ${walkthrough?.proposalNotes ? `<p style="margin:0; color:#374151; font-size:14px; line-height:1.7;">${paragraphHtml(walkthrough.proposalNotes)}</p>` : ""}
+                  </div>
+                ` : ""}
+
+                <p style="text-align:center; margin:30px 0 16px;">
+                  <a href="${escapeHtml(args.viewUrl)}" style="background-color:#111827; color:#ffffff; padding:13px 22px; border-radius:7px; text-decoration:none; display:inline-block; font-size:15px; font-weight:700;">
+                    View Proposal
+                  </a>
+                </p>
+                <p style="margin:0; color:#6b7280; font-size:13px; line-height:1.6; text-align:center;">
+                  After reviewing, you can accept or decline the proposal securely in SCRUB.
+                </p>
+              </div>
+
+              <div style="padding:18px 28px; background:#f9fafb; border-top:1px solid #eef2f7;">
+                <p style="margin:0; color:#6b7280; font-size:12px; line-height:1.6;">
+                  Sent by ${escapeHtml(args.companyName)} through SCRUB.
+                  ${args.companyEmail ? ` Contact: ${escapeHtml(args.companyEmail)}.` : ""}
+                  ${args.companyPhone ? ` ${escapeHtml(args.companyPhone)}.` : ""}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error("[email] Failed to send proposal email:", error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("[email] Error sending proposal email:", err);
+    return false;
+  }
+}
+
 /**
  * Send a password reset email with a secure reset link.
  * Returns true if sent successfully, false otherwise.

@@ -90,6 +90,7 @@ import { PublicRequestPage } from "@/pages/public/PublicRequestPage";
 import { PublicSitePage } from "@/pages/public/PublicSitePage";
 import { CleanerStubPage } from "@/pages/public/CleanerStubPage";
 import { ClientPortalPage } from "@/pages/public/ClientPortalPage";
+import { ProposalViewPage } from "@/pages/public/ProposalViewPage";
 import { TermsPage } from "@/pages/public/TermsPage";
 import { PrivacyPage } from "@/pages/public/PrivacyPage";
 import { ContactPage } from "@/pages/public/ContactPage";
@@ -216,6 +217,17 @@ export default function App() {
     );
   }
 
+  if (pathname.startsWith("/proposal/")) {
+    return (
+      <>
+        <Analytics />
+        <ErrorBoundary>
+          <Route path="/proposal/:token" component={ProposalViewPage} />
+        </ErrorBoundary>
+      </>
+    );
+  }
+
   if (pathname.startsWith("/client/")) {
     return (
       <>
@@ -241,7 +253,7 @@ export default function App() {
     "/invite", "/subscribe", "/billing", "/properties", "/employees",
     "/client",
     "/jobs", "/calendar", "/red-flags", "/performance", "/analytics",
-    "/partners", "/requests", "/clients", "/commercial-accounts", "/commercial-invoices", "/feedback", "/cleaner-leads", "/audit-log", "/notifications", "/manuals",
+    "/partners", "/requests", "/clients", "/commercial-accounts", "/commercial-invoices", "/feedback", "/cleaner-leads", "/audit-log", "/notifications", "/manuals", "/proposal",
     "/admin", "/site", "/affiliate", "/availability", "/owner", "/settings", "/payments",
     "/terms", "/privacy", "/contact", "/get-started", "/setup",
     "/inventory-templates",
