@@ -1053,6 +1053,21 @@ export function RequestDetailPage() {
                   canCreate
                   source={{
                     title: `${proposal.businessName || proposal.clientName} ${t("serviceAgreements.title")}`,
+                    clientName: proposal.businessName || proposal.clientName || request.requesterName,
+                    propertyAddress: proposal.propertyAddress || request.propertySnapshot?.address || "",
+                    servicesIncluded: proposal.scopeOfWork,
+                    priceSummary: formatProposalAmount(
+                      proposal.monthlyPriceCents,
+                      proposal.oneTimePriceCents
+                    ),
+                    billingSchedule:
+                      proposal.monthlyPriceCents != null
+                        ? "Monthly"
+                        : proposal.oneTimePriceCents != null
+                          ? "One-time"
+                          : "",
+                    specialInstructions: proposal.notes || (request as any).leadNotes || request.notes || "",
+                    exceptions: "None specified",
                     serviceFrequency: proposal.serviceFrequency,
                     contractAmountCents: proposal.monthlyPriceCents ?? proposal.oneTimePriceCents,
                     effectiveStartDate: request.requestedDate ?? "",

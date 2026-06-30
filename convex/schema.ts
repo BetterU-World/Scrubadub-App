@@ -917,20 +917,49 @@ export default defineSchema({
     .index("by_commercialAccount", ["commercialAccountId"])
     .index("by_proposal", ["proposalId"]),
 
+  documentTemplates: defineTable({
+    companyId: v.id("companies"),
+    type: v.union(
+      v.literal("service_agreement"),
+      v.literal("proposal"),
+      v.literal("employee_agreement"),
+      v.literal("nda"),
+      v.literal("safety_policy"),
+      v.literal("other")
+    ),
+    name: v.string(),
+    body: v.string(),
+    isDefault: v.optional(v.boolean()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_company_type", ["companyId", "type"])
+    .index("by_company_type_default", ["companyId", "type", "isDefault"]),
+
   serviceAgreements: defineTable({
     companyId: v.id("companies"),
     clientRelationshipId: v.optional(v.id("clientRelationships")),
     proposalId: v.id("proposals"),
     clientRequestId: v.optional(v.id("clientRequests")),
     commercialAccountId: v.optional(v.id("commercialAccounts")),
+    templateId: v.optional(v.id("documentTemplates")),
     title: v.string(),
     status: v.union(
       v.literal("draft"),
+      v.literal("ready"),
       v.literal("sent"),
       v.literal("signed"),
       v.literal("cancelled")
     ),
     agreementType: v.literal("commercial_cleaning"),
+    clientName: v.optional(v.string()),
+    propertyAddress: v.optional(v.string()),
+    servicesIncluded: v.optional(v.string()),
+    priceSummary: v.optional(v.string()),
+    billingSchedule: v.optional(v.string()),
+    specialInstructions: v.optional(v.string()),
+    exceptions: v.optional(v.string()),
+    body: v.optional(v.string()),
     effectiveStartDate: v.optional(v.string()),
     effectiveEndDate: v.optional(v.string()),
     renewalDate: v.optional(v.string()),
@@ -942,9 +971,15 @@ export default defineSchema({
     notes: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
+    readyAt: v.optional(v.number()),
     sentAt: v.optional(v.number()),
     signedAt: v.optional(v.number()),
     cancelledAt: v.optional(v.number()),
+    publicTokenHash: v.optional(v.string()),
+    publicTokenCreatedAt: v.optional(v.number()),
+    signerName: v.optional(v.string()),
+    declinedAt: v.optional(v.number()),
+    voidedAt: v.optional(v.number()),
   })
     .index("by_company", ["companyId"])
     .index("by_proposal", ["proposalId"])
