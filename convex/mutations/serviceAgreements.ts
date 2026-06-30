@@ -5,6 +5,14 @@ import { ensureClientRelationshipForLead } from "../lib/clientRelationships";
 
 const agreementFields = {
   title: v.string(),
+  clientName: v.optional(v.string()),
+  propertyAddress: v.optional(v.string()),
+  servicesIncluded: v.optional(v.string()),
+  priceSummary: v.optional(v.string()),
+  billingSchedule: v.optional(v.string()),
+  specialInstructions: v.optional(v.string()),
+  exceptions: v.optional(v.string()),
+  body: v.optional(v.string()),
   effectiveStartDate: v.optional(v.string()),
   effectiveEndDate: v.optional(v.string()),
   renewalDate: v.optional(v.string()),
@@ -16,12 +24,53 @@ const agreementFields = {
   notes: v.optional(v.string()),
 };
 
+const FALLBACK_SERVICE_AGREEMENT_TEMPLATE = `# Service Agreement
+
+This Service Agreement is between {{company_name}} and {{client_name}} for cleaning services at {{property_address}}.
+
+## Services Included
+{{services_included}}
+
+## Schedule and Pricing
+Service frequency: {{service_frequency}}
+Contract price: {{contract_price}}
+Billing schedule: {{billing_schedule}}
+Start date: {{start_date}}
+
+## Special Instructions
+{{special_instructions}}
+
+## Exceptions
+{{exceptions}}
+
+The parties agree that this draft reflects the accepted proposal details and may be updated by the service provider before final signature.`;
+
 async function requireOwnerCompany(ctx: any, userId: any) {
   const user = await getSessionUser(ctx, userId);
   if (user.role !== "owner" || !user.companyId) {
     throw new Error("Owner access required");
   }
   return user;
+}
+
+function formatFrequency(value: string | undefined) {
+  const labels: Record<string, string> = {
+    one_time: "One-time",
+    weekly: "Weekly",
+    biweekly: "Biweekly",
+    monthly: "Monthly",
+    quarterly: "Quarterly",
+    custom: "Custom",
+  };
+  return value ? labels[value] ?? value : "";
+}
+
+function formatCents(cents: number | undefined) {
+  if (cents == null) return "";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(cents / 100);
 }
 
 function cleanOptional(value: string | undefined, max = 4000) {
@@ -33,6 +82,10 @@ function cleanRequired(value: string, fallback: string, max = 200) {
   return value.trim().slice(0, max) || fallback;
 }
 
+function plainValue(value: string | undefined, fallback = "To be confirmed") {
+  return value?.trim() || fallback;
+}
+
 function cleanAmount(value: number | undefined) {
   if (value === undefined) return undefined;
   if (!Number.isFinite(value) || value < 0 || !Number.isInteger(value)) {
@@ -42,9 +95,51 @@ function cleanAmount(value: number | undefined) {
   return value;
 }
 
+function renderTemplate(body: string, values: Record<string, string>) {
+  return body.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_match, key) => {
+    return values[key] ?? "";
+  });
+}
+
+async function getCompanyDisplayName(ctx: any, companyId: any) {
+  const [company, site] = await Promise.all([
+    ctx.db.get(companyId),
+    ctx.db
+      .query("companySites")
+      .withIndex("by_companyId", (q: any) => q.eq("companyId", companyId))
+      .first(),
+  ]);
+
+  return (
+    site?.brandName ??
+    company?.companyDisplayName ??
+    company?.name ??
+    "Your Cleaning Company"
+  );
+}
+
+async function getDefaultServiceAgreementTemplate(ctx: any, companyId: any) {
+  const template = await (ctx.db as any)
+    .query("documentTemplates")
+    .withIndex("by_company_type_default", (q: any) =>
+      q.eq("companyId", companyId).eq("type", "service_agreement").eq("isDefault", true)
+    )
+    .first();
+
+  return template?.companyId === companyId ? template : null;
+}
+
 function buildAgreementPatch(args: any) {
   return {
     title: cleanRequired(args.title, "Commercial Service Agreement", 200),
+    clientName: cleanOptional(args.clientName, 200),
+    propertyAddress: cleanOptional(args.propertyAddress, 500),
+    servicesIncluded: cleanOptional(args.servicesIncluded, 6000),
+    priceSummary: cleanOptional(args.priceSummary, 500),
+    billingSchedule: cleanOptional(args.billingSchedule, 1000),
+    specialInstructions: cleanOptional(args.specialInstructions, 4000),
+    exceptions: cleanOptional(args.exceptions, 4000),
+    body: cleanOptional(args.body, 20000),
     effectiveStartDate: cleanOptional(args.effectiveStartDate, 50),
     effectiveEndDate: cleanOptional(args.effectiveEndDate, 50),
     renewalDate: cleanOptional(args.renewalDate, 50),
@@ -98,22 +193,72 @@ export const createDraftFromAcceptedProposal = mutation({
     if (!request) throw new Error("Lead not found");
     if (request.companyId !== companyId) throw new Error("Access denied");
 
+    const [companyName, template] = await Promise.all([
+      getCompanyDisplayName(ctx, companyId),
+      getDefaultServiceAgreementTemplate(ctx, companyId),
+    ]);
     const now = Date.now();
     const clientRelationshipId =
       (account as any)?.clientRelationshipId ??
       (proposal as any).clientRelationshipId ??
       await ensureClientRelationshipForLead(ctx, request);
-    const agreementId = await ctx.db.insert("serviceAgreements", {
+    const clientName = proposal.businessName || proposal.clientName || request.requesterName;
+    const propertyAddress =
+      proposal.propertyAddress || request.propertySnapshot?.address || undefined;
+    const contractAmountCents = proposal.monthlyPriceCents ?? proposal.oneTimePriceCents;
+    const priceSummary =
+      proposal.monthlyPriceCents != null
+        ? `${formatCents(proposal.monthlyPriceCents)} per month`
+        : proposal.oneTimePriceCents != null
+          ? `${formatCents(proposal.oneTimePriceCents)} one-time`
+          : undefined;
+    const servicesIncluded =
+      proposal.scopeOfWork || request.requestedService || request.notes || undefined;
+    const billingSchedule =
+      proposal.monthlyPriceCents != null
+        ? "Monthly"
+        : proposal.oneTimePriceCents != null
+          ? "One-time"
+          : undefined;
+    const effectiveStartDate = request.requestedDate ?? undefined;
+    const specialInstructions =
+      proposal.notes || (request as any).leadNotes || request.notes || undefined;
+    const exceptions = "None specified";
+    const mergeValues = {
+      company_name: plainValue(companyName, "Your Cleaning Company"),
+      client_name: plainValue(clientName, "Client"),
+      property_address: plainValue(propertyAddress),
+      service_frequency: plainValue(formatFrequency(proposal.serviceFrequency)),
+      contract_price: plainValue(priceSummary),
+      billing_schedule: plainValue(billingSchedule),
+      start_date: plainValue(effectiveStartDate),
+      services_included: plainValue(servicesIncluded),
+      special_instructions: plainValue(specialInstructions, "None specified"),
+      exceptions,
+    };
+    const body = renderTemplate(template?.body ?? FALLBACK_SERVICE_AGREEMENT_TEMPLATE, mergeValues);
+    const agreementId = await (ctx.db as any).insert("serviceAgreements", {
       companyId,
       clientRelationshipId,
       proposalId: proposal._id,
       clientRequestId: proposal.clientRequestId,
       commercialAccountId: account?._id,
+      templateId: template?._id,
       title: `${proposal.businessName || proposal.clientName} Service Agreement`,
       status: "draft",
       agreementType: "commercial_cleaning",
+      clientName,
+      propertyAddress,
+      servicesIncluded,
+      priceSummary,
+      billingSchedule,
+      specialInstructions,
+      exceptions,
+      body,
+      effectiveStartDate,
       serviceFrequency: proposal.serviceFrequency,
-      contractAmountCents: proposal.monthlyPriceCents ?? proposal.oneTimePriceCents,
+      contractAmountCents,
+      paymentTerms: billingSchedule,
       scopeOfWork: proposal.scopeOfWork,
       notes: proposal.notes,
       createdAt: now,
@@ -146,6 +291,22 @@ export const update = mutation({
     await ctx.db.patch(args.agreementId, {
       ...buildAgreementPatch(args),
       updatedAt: Date.now(),
+    });
+  },
+});
+
+export const markReady = mutation({
+  args: { userId: v.id("users"), agreementId: v.id("serviceAgreements") },
+  handler: async (ctx, args) => {
+    const { agreement } = await getOwnedAgreement(ctx, args.userId, args.agreementId);
+    if (agreement.status === "signed" || agreement.status === "cancelled") {
+      throw new Error("Signed or cancelled agreements cannot be marked ready");
+    }
+    const now = Date.now();
+    await (ctx.db as any).patch(args.agreementId, {
+      status: "ready",
+      readyAt: agreement.readyAt ?? now,
+      updatedAt: now,
     });
   },
 });

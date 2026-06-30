@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { FileSignature, Save, Send, Check, XCircle } from "lucide-react";
+import { FileCheck, FileSignature, Save, Send, Check, XCircle } from "lucide-react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,6 +13,14 @@ type ToastType = "success" | "error";
 
 type AgreementSource = {
   title?: string;
+  clientName?: string;
+  propertyAddress?: string;
+  servicesIncluded?: string;
+  priceSummary?: string;
+  billingSchedule?: string;
+  specialInstructions?: string;
+  exceptions?: string;
+  body?: string;
   serviceFrequency?: string;
   contractAmountCents?: number;
   effectiveStartDate?: string;
@@ -23,6 +31,14 @@ type AgreementSource = {
 
 type AgreementForm = {
   title: string;
+  clientName: string;
+  propertyAddress: string;
+  servicesIncluded: string;
+  priceSummary: string;
+  billingSchedule: string;
+  specialInstructions: string;
+  exceptions: string;
+  body: string;
   effectiveStartDate: string;
   effectiveEndDate: string;
   renewalDate: string;
@@ -36,6 +52,14 @@ type AgreementForm = {
 
 const EMPTY_FORM: AgreementForm = {
   title: "",
+  clientName: "",
+  propertyAddress: "",
+  servicesIncluded: "",
+  priceSummary: "",
+  billingSchedule: "",
+  specialInstructions: "",
+  exceptions: "",
+  body: "",
   effectiveStartDate: "",
   effectiveEndDate: "",
   renewalDate: "",
@@ -130,6 +154,7 @@ export function ServiceAgreementCard({
     (api as any).mutations.serviceAgreements.createDraftFromAcceptedProposal
   );
   const updateAgreement = useMutation((api as any).mutations.serviceAgreements.update);
+  const markReady = useMutation((api as any).mutations.serviceAgreements.markReady);
   const markSent = useMutation((api as any).mutations.serviceAgreements.markSent);
   const markSigned = useMutation((api as any).mutations.serviceAgreements.markSigned);
   const markCancelled = useMutation((api as any).mutations.serviceAgreements.markCancelled);
@@ -138,6 +163,14 @@ export function ServiceAgreementCard({
     if (agreement && agreement._id !== loadedId) {
       setForm({
         title: agreement.title ?? "",
+        clientName: agreement.clientName ?? "",
+        propertyAddress: agreement.propertyAddress ?? "",
+        servicesIncluded: agreement.servicesIncluded ?? "",
+        priceSummary: agreement.priceSummary ?? "",
+        billingSchedule: agreement.billingSchedule ?? "",
+        specialInstructions: agreement.specialInstructions ?? "",
+        exceptions: agreement.exceptions ?? "",
+        body: agreement.body ?? "",
         effectiveStartDate: agreement.effectiveStartDate ?? "",
         effectiveEndDate: agreement.effectiveEndDate ?? "",
         renewalDate: agreement.renewalDate ?? "",
@@ -161,6 +194,14 @@ export function ServiceAgreementCard({
     setForm({
       ...EMPTY_FORM,
       title: source.title ?? t("serviceAgreements.defaultTitle"),
+      clientName: source.clientName ?? "",
+      propertyAddress: source.propertyAddress ?? "",
+      servicesIncluded: source.servicesIncluded ?? source.scopeOfWork ?? "",
+      priceSummary: source.priceSummary ?? "",
+      billingSchedule: source.billingSchedule ?? "",
+      specialInstructions: source.specialInstructions ?? source.notes ?? "",
+      exceptions: source.exceptions ?? "",
+      body: source.body ?? "",
       effectiveStartDate: source.effectiveStartDate ?? "",
       renewalDate: source.renewalDate ?? "",
       serviceFrequency: source.serviceFrequency ?? "",
@@ -210,6 +251,14 @@ export function ServiceAgreementCard({
         userId: user._id,
         agreementId: agreement._id,
         title: form.title,
+        clientName: form.clientName || undefined,
+        propertyAddress: form.propertyAddress || undefined,
+        servicesIncluded: form.servicesIncluded || undefined,
+        priceSummary: form.priceSummary || undefined,
+        billingSchedule: form.billingSchedule || undefined,
+        specialInstructions: form.specialInstructions || undefined,
+        exceptions: form.exceptions || undefined,
+        body: form.body || undefined,
         effectiveStartDate: form.effectiveStartDate || undefined,
         effectiveEndDate: form.effectiveEndDate || undefined,
         renewalDate: form.renewalDate || undefined,
@@ -232,10 +281,11 @@ export function ServiceAgreementCard({
     }
   };
 
-  const handleAction = async (action: "sent" | "signed" | "cancelled") => {
+  const handleAction = async (action: "ready" | "sent" | "signed" | "cancelled") => {
     if (!agreement) return;
     setActionLoading(action);
     try {
+      if (action === "ready") await markReady({ userId: user._id, agreementId: agreement._id });
       if (action === "sent") await markSent({ userId: user._id, agreementId: agreement._id });
       if (action === "signed") await markSigned({ userId: user._id, agreementId: agreement._id });
       if (action === "cancelled") {
@@ -249,7 +299,7 @@ export function ServiceAgreementCard({
     }
   };
 
-  const canEdit = agreement && (agreement.status === "draft" || agreement.status === "sent");
+  const canEdit = agreement && ["draft", "ready", "sent"].includes(agreement.status);
 
   if (!agreement && hideWhenMissing) return null;
 
@@ -298,6 +348,20 @@ export function ServiceAgreementCard({
                 className="input-field mt-1"
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
+              />
+            </Field>
+            <Field label={t("serviceAgreements.clientName")}>
+              <input
+                className="input-field mt-1"
+                value={form.clientName}
+                onChange={(e) => setForm({ ...form, clientName: e.target.value })}
+              />
+            </Field>
+            <Field label={t("serviceAgreements.propertyAddress")}>
+              <input
+                className="input-field mt-1"
+                value={form.propertyAddress}
+                onChange={(e) => setForm({ ...form, propertyAddress: e.target.value })}
               />
             </Field>
             <Field label={t("serviceAgreements.contractAmount")}>
@@ -349,6 +413,30 @@ export function ServiceAgreementCard({
               />
             </Field>
           </div>
+          <Field label={t("serviceAgreements.servicesIncluded")}>
+            <textarea
+              className="input-field mt-1"
+              rows={3}
+              value={form.servicesIncluded}
+              onChange={(e) => setForm({ ...form, servicesIncluded: e.target.value })}
+            />
+          </Field>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label={t("serviceAgreements.priceSummary")}>
+              <input
+                className="input-field mt-1"
+                value={form.priceSummary}
+                onChange={(e) => setForm({ ...form, priceSummary: e.target.value })}
+              />
+            </Field>
+            <Field label={t("serviceAgreements.billingSchedule")}>
+              <input
+                className="input-field mt-1"
+                value={form.billingSchedule}
+                onChange={(e) => setForm({ ...form, billingSchedule: e.target.value })}
+              />
+            </Field>
+          </div>
           <Field label={t("serviceAgreements.paymentTerms")}>
             <input
               className="input-field mt-1"
@@ -364,12 +452,36 @@ export function ServiceAgreementCard({
               onChange={(e) => setForm({ ...form, scopeOfWork: e.target.value })}
             />
           </Field>
+          <Field label={t("serviceAgreements.specialInstructions")}>
+            <textarea
+              className="input-field mt-1"
+              rows={3}
+              value={form.specialInstructions}
+              onChange={(e) => setForm({ ...form, specialInstructions: e.target.value })}
+            />
+          </Field>
+          <Field label={t("serviceAgreements.exceptions")}>
+            <textarea
+              className="input-field mt-1"
+              rows={3}
+              value={form.exceptions}
+              onChange={(e) => setForm({ ...form, exceptions: e.target.value })}
+            />
+          </Field>
           <Field label={t("serviceAgreements.terms")}>
             <textarea
               className="input-field mt-1"
               rows={3}
               value={form.terms}
               onChange={(e) => setForm({ ...form, terms: e.target.value })}
+            />
+          </Field>
+          <Field label={t("serviceAgreements.body")}>
+            <textarea
+              className="input-field mt-1 font-mono text-xs"
+              rows={10}
+              value={form.body}
+              onChange={(e) => setForm({ ...form, body: e.target.value })}
             />
           </Field>
           <Field label={t("common.notes")}>
@@ -400,6 +512,14 @@ export function ServiceAgreementCard({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Detail label={t("serviceAgreements.agreementTitle")} value={agreement.title} />
             <Detail
+              label={t("serviceAgreements.clientName")}
+              value={agreement.clientName || t("commercialAccounts.notSet")}
+            />
+            <Detail
+              label={t("serviceAgreements.propertyAddress")}
+              value={agreement.propertyAddress || t("commercialAccounts.notSet")}
+            />
+            <Detail
               label={t("serviceAgreements.contractAmount")}
               value={formatPrice(agreement.contractAmountCents, t("commercialAccounts.notSet"))}
             />
@@ -424,6 +544,21 @@ export function ServiceAgreementCard({
               value={formatDate(agreement.renewalDate, t("commercialAccounts.notSet"))}
             />
           </div>
+          {agreement.servicesIncluded && (
+            <Detail
+              label={t("serviceAgreements.servicesIncluded")}
+              value={<p className="whitespace-pre-wrap">{agreement.servicesIncluded}</p>}
+            />
+          )}
+          {agreement.priceSummary && (
+            <Detail label={t("serviceAgreements.priceSummary")} value={agreement.priceSummary} />
+          )}
+          {agreement.billingSchedule && (
+            <Detail
+              label={t("serviceAgreements.billingSchedule")}
+              value={agreement.billingSchedule}
+            />
+          )}
           {agreement.paymentTerms && (
             <Detail label={t("serviceAgreements.paymentTerms")} value={agreement.paymentTerms} />
           )}
@@ -433,10 +568,32 @@ export function ServiceAgreementCard({
               value={<p className="whitespace-pre-wrap">{agreement.scopeOfWork}</p>}
             />
           )}
+          {agreement.specialInstructions && (
+            <Detail
+              label={t("serviceAgreements.specialInstructions")}
+              value={<p className="whitespace-pre-wrap">{agreement.specialInstructions}</p>}
+            />
+          )}
+          {agreement.exceptions && (
+            <Detail
+              label={t("serviceAgreements.exceptions")}
+              value={<p className="whitespace-pre-wrap">{agreement.exceptions}</p>}
+            />
+          )}
           {agreement.terms && (
             <Detail
               label={t("serviceAgreements.terms")}
               value={<p className="whitespace-pre-wrap">{agreement.terms}</p>}
+            />
+          )}
+          {agreement.body && (
+            <Detail
+              label={t("serviceAgreements.body")}
+              value={
+                <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
+                  <p className="whitespace-pre-wrap text-sm leading-6 text-gray-700">{agreement.body}</p>
+                </div>
+              }
             />
           )}
           {agreement.notes && (
@@ -456,6 +613,17 @@ export function ServiceAgreementCard({
             </button>
           )}
           {agreement.status === "draft" && (
+            <button
+              type="button"
+              onClick={() => handleAction("ready")}
+              disabled={actionLoading === "ready"}
+              className="btn-secondary flex items-center gap-2 text-sm"
+            >
+              <FileCheck className="h-4 w-4" />
+              {actionLoading === "ready" ? t("common.saving") : t("serviceAgreements.markReady")}
+            </button>
+          )}
+          {(agreement.status === "draft" || agreement.status === "ready") && (
             <button
               type="button"
               onClick={() => handleAction("sent")}
@@ -479,7 +647,7 @@ export function ServiceAgreementCard({
                 : t("serviceAgreements.markSignedOutside")}
             </button>
           )}
-          {(agreement.status === "draft" || agreement.status === "sent") && (
+          {["draft", "ready", "sent"].includes(agreement.status) && (
             <button
               type="button"
               onClick={() => handleAction("cancelled")}
