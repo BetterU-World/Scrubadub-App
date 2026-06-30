@@ -52,6 +52,7 @@ import { PipelinePage } from "@/pages/owner/PipelinePage";
 import { StripeConnectPage } from "@/pages/owner/StripeConnectPage";
 import { OwnerSettingsPage } from "@/pages/owner/OwnerSettingsPage";
 import { CompanyProfilePage } from "@/pages/owner/CompanyProfilePage";
+import { CompanyDocumentsPage } from "@/pages/owner/CompanyDocumentsPage";
 import { CompanyOnboardingDocumentsPage } from "@/pages/owner/CompanyOnboardingDocumentsPage";
 import { SettlementsPage } from "@/pages/owner/SettlementsPage";
 import { PaymentsHubPage } from "@/pages/owner/PaymentsHubPage";
@@ -385,6 +386,7 @@ export default function App() {
                 <Route path="/owner/settings/billing" component={StripeConnectPage} />
                 <Route path="/owner/settings/archived-properties" component={ArchivedPropertiesPage} />
                 <Route path="/owner/settings/onboarding" component={CompanyOnboardingDocumentsPage} />
+                <Route path="/owner/settings/documents" component={CompanyDocumentsPage} />
                 <Route path="/owner/settings/company" component={CompanyProfilePage} />
                 <Route path="/owner/settings" component={OwnerSettingsPage} />
               </>

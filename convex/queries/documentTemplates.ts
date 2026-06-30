@@ -33,7 +33,9 @@ export const listByType = query({
       )
       .collect();
 
-    return templates.sort((a: any, b: any) => b.updatedAt - a.updatedAt);
+    return templates
+      .filter((template: any) => template.status !== "archived")
+      .sort((a: any, b: any) => b.updatedAt - a.updatedAt);
   },
 });
 
