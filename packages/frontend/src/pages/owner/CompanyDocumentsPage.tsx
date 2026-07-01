@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
+import { Link } from "wouter";
 import {
+  ArrowRight,
   CheckCircle,
   FileSignature,
   FileText,
@@ -255,10 +257,33 @@ export function CompanyDocumentsPage() {
               Edit your reusable agreement template
             </h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
-              Edit the reusable service agreement template your company uses after proposals
-              are accepted. New agreement drafts snapshot the rendered text, so later template
-              edits do not change agreements already created.
+              This template is used when SCRUB creates a service agreement from an accepted
+              proposal. Auto-fill fields like Client Name, Price, and Property Address are filled
+              during agreement generation. Editing this template only affects future agreements,
+              not agreements already created, sent, or signed.
             </p>
+          </div>
+
+          <div className="rounded-lg border border-blue-100 bg-blue-50 p-4">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-blue-950">How this works</h3>
+                <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-6 text-blue-900">
+                  <li>Edit your reusable template.</li>
+                  <li>Use auto-fill fields for client, property, proposal, and agreement details.</li>
+                  <li>Save the template.</li>
+                  <li>When a proposal is accepted, create a Service Agreement from the request or proposal page.</li>
+                  <li>SCRUB fills in the saved template and stores a snapshot for that client.</li>
+                </ol>
+              </div>
+              <Link
+                href="/requests"
+                className="btn-secondary inline-flex shrink-0 items-center justify-center gap-2 text-sm"
+              >
+                Go to Requests
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
           </div>
 
           <div>
