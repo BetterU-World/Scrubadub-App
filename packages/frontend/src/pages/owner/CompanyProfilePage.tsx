@@ -1,61 +1,122 @@
-import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
-import { useTranslation } from "react-i18next";
+
+type SettingsForm = {
+  logoUrl: string;
+  companyName: string;
+  phone: string;
+  email: string;
+  website: string;
+  address: string;
+  licenseNumber: string;
+  insuranceInformation: string;
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  emailSignature: string;
+  documentHeader: string;
+  documentFooter: string;
+  defaultFont: string;
+  defaultDateFormat: string;
+  defaultCurrency: string;
+};
+
+const EMPTY_FORM: SettingsForm = {
+  logoUrl: "",
+  companyName: "",
+  phone: "",
+  email: "",
+  website: "",
+  address: "",
+  licenseNumber: "",
+  insuranceInformation: "",
+  primaryColor: "",
+  secondaryColor: "",
+  accentColor: "",
+  emailSignature: "",
+  documentHeader: "",
+  documentFooter: "",
+  defaultFont: "",
+  defaultDateFormat: "MM/dd/yyyy",
+  defaultCurrency: "USD",
+};
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <label className="block">
+      <span className="text-sm font-medium text-gray-700">{label}</span>
+      {children}
+    </label>
+  );
+}
 
 export function CompanyProfilePage() {
-  const { t } = useTranslation();
   const { user } = useAuth();
-
-  const profile = useQuery(
-    api.queries.companies.getCompanyProfile,
-    user?._id ? { userId: user._id } : "skip",
+  const settings = useQuery(
+    (api as any).queries.companies.getCompanySettings,
+    user?._id ? { userId: user._id } : "skip"
   );
+  const updateSettings = useMutation((api as any).mutations.companies.upsertCompanySettings);
 
-  const updateProfile = useMutation(
-    api.mutations.companies.updateCompanyProfile,
-  );
-
-  const [displayName, setDisplayName] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
-  const [serviceArea, setServiceArea] = useState("");
-
+  const [form, setForm] = useState<SettingsForm>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [toast, setToast] = useState<string | null>(null);
 
-  // Seed form when profile loads
   useEffect(() => {
-    if (profile) {
-      setDisplayName(profile.companyDisplayName ?? profile.name ?? "");
-      setContactEmail(profile.contactEmail ?? "");
-      setContactPhone(profile.contactPhone ?? "");
-      setServiceArea(profile.serviceAreaText ?? "");
-    }
-  }, [profile]);
+    if (!settings) return;
+    setForm({
+      logoUrl: settings.logoUrl ?? "",
+      companyName: settings.companyName ?? "",
+      phone: settings.phone ?? "",
+      email: settings.email ?? "",
+      website: settings.website ?? "",
+      address: settings.address ?? "",
+      licenseNumber: settings.licenseNumber ?? "",
+      insuranceInformation: settings.insuranceInformation ?? "",
+      primaryColor: settings.primaryColor ?? "",
+      secondaryColor: settings.secondaryColor ?? "",
+      accentColor: settings.accentColor ?? "",
+      emailSignature: settings.emailSignature ?? "",
+      documentHeader: settings.documentHeader ?? "",
+      documentFooter: settings.documentFooter ?? "",
+      defaultFont: settings.defaultFont ?? "",
+      defaultDateFormat: settings.defaultDateFormat ?? "MM/dd/yyyy",
+      defaultCurrency: settings.defaultCurrency ?? "USD",
+    });
+  }, [settings]);
 
-  if (!user || profile === undefined) return <PageLoader />;
+  if (!user || settings === undefined) return <PageLoader />;
+
+  const set = (key: keyof SettingsForm, value: string) => {
+    setForm((current) => ({ ...current, [key]: value }));
+  };
 
   const handleSave = async () => {
     setSaving(true);
     setError("");
     try {
-      await updateProfile({
+      await updateSettings({
         userId: user._id,
-        companyDisplayName: displayName.trim(),
-        contactEmail: contactEmail.trim(),
-        contactPhone: contactPhone.trim(),
-        serviceAreaText: serviceArea.trim(),
+        ...Object.fromEntries(
+          Object.entries(form).map(([key, value]) => [key, value.trim() || undefined])
+        ),
       });
-      setToast(t("companyProfile.profileSaved"));
+      setToast("Company identity saved");
       setTimeout(() => setToast(null), 3000);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : t("companyProfile.failedToSave");
-      setError(msg);
+    } catch (err: any) {
+      setError(err.message || "Failed to save company identity");
     } finally {
       setSaving(false);
     }
@@ -64,91 +125,169 @@ export function CompanyProfilePage() {
   return (
     <div>
       <PageHeader
-        title={t("companyProfile.title")}
-        description={t("companyProfile.description")}
+        title="Identity / Branding"
+        description="Set the company identity SCRUB uses for document templates."
       />
 
-      <div className="max-w-lg space-y-5">
+      <div className="max-w-4xl space-y-5">
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             {error}
           </div>
         )}
 
-        {/* Display name */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            {t("companyProfile.displayName")}
-          </label>
-          <input
-            type="text"
-            className="input"
-            placeholder={profile?.name ?? ""}
-            value={displayName}
-            onChange={(e) => setDisplayName(e.target.value)}
-          />
-          <p className="mt-1 text-xs text-gray-400">
-            {t("companyProfile.displayNameHelper")}
-          </p>
-        </div>
+        <section className="card space-y-4">
+          <h2 className="text-base font-semibold text-gray-900">Identity</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Logo URL">
+              <input
+                className="input-field mt-1"
+                value={form.logoUrl}
+                onChange={(event) => set("logoUrl", event.target.value)}
+                placeholder="https://example.com/logo.png"
+              />
+            </Field>
+            <Field label="Company name">
+              <input
+                className="input-field mt-1"
+                value={form.companyName}
+                onChange={(event) => set("companyName", event.target.value)}
+              />
+            </Field>
+            <Field label="Phone">
+              <input
+                className="input-field mt-1"
+                value={form.phone}
+                onChange={(event) => set("phone", event.target.value)}
+              />
+            </Field>
+            <Field label="Email">
+              <input
+                type="email"
+                className="input-field mt-1"
+                value={form.email}
+                onChange={(event) => set("email", event.target.value)}
+              />
+            </Field>
+            <Field label="Website">
+              <input
+                className="input-field mt-1"
+                value={form.website}
+                onChange={(event) => set("website", event.target.value)}
+              />
+            </Field>
+            <Field label="Address">
+              <input
+                className="input-field mt-1"
+                value={form.address}
+                onChange={(event) => set("address", event.target.value)}
+              />
+            </Field>
+            <Field label="License number">
+              <input
+                className="input-field mt-1"
+                value={form.licenseNumber}
+                onChange={(event) => set("licenseNumber", event.target.value)}
+              />
+            </Field>
+            <Field label="Default currency">
+              <input
+                className="input-field mt-1"
+                value={form.defaultCurrency}
+                onChange={(event) => set("defaultCurrency", event.target.value.toUpperCase())}
+              />
+            </Field>
+          </div>
+          <Field label="Insurance information">
+            <textarea
+              className="input-field mt-1"
+              rows={3}
+              value={form.insuranceInformation}
+              onChange={(event) => set("insuranceInformation", event.target.value)}
+            />
+          </Field>
+        </section>
 
-        {/* Contact email */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            {t("companyProfile.contactEmail")}
-          </label>
-          <input
-            type="email"
-            className="input"
-            placeholder="info@example.com"
-            value={contactEmail}
-            onChange={(e) => setContactEmail(e.target.value)}
-          />
-        </div>
+        <section className="card space-y-4">
+          <h2 className="text-base font-semibold text-gray-900">Branding Defaults</h2>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label="Primary color">
+              <input
+                className="input-field mt-1"
+                value={form.primaryColor}
+                onChange={(event) => set("primaryColor", event.target.value)}
+                placeholder="#2563eb"
+              />
+            </Field>
+            <Field label="Secondary color">
+              <input
+                className="input-field mt-1"
+                value={form.secondaryColor}
+                onChange={(event) => set("secondaryColor", event.target.value)}
+                placeholder="#0f172a"
+              />
+            </Field>
+            <Field label="Accent color">
+              <input
+                className="input-field mt-1"
+                value={form.accentColor}
+                onChange={(event) => set("accentColor", event.target.value)}
+                placeholder="#14b8a6"
+              />
+            </Field>
+            <Field label="Default font">
+              <input
+                className="input-field mt-1"
+                value={form.defaultFont}
+                onChange={(event) => set("defaultFont", event.target.value)}
+                placeholder="Inter"
+              />
+            </Field>
+            <Field label="Default date format">
+              <input
+                className="input-field mt-1"
+                value={form.defaultDateFormat}
+                onChange={(event) => set("defaultDateFormat", event.target.value)}
+              />
+            </Field>
+          </div>
+        </section>
 
-        {/* Contact phone */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            {t("companyProfile.contactPhone")}
-          </label>
-          <input
-            type="tel"
-            className="input"
-            placeholder="(555) 123-4567"
-            value={contactPhone}
-            onChange={(e) => setContactPhone(e.target.value)}
-          />
-        </div>
+        <section className="card space-y-4">
+          <h2 className="text-base font-semibold text-gray-900">Document Defaults</h2>
+          <Field label="Email signature">
+            <textarea
+              className="input-field mt-1"
+              rows={3}
+              value={form.emailSignature}
+              onChange={(event) => set("emailSignature", event.target.value)}
+            />
+          </Field>
+          <Field label="Document header">
+            <textarea
+              className="input-field mt-1"
+              rows={3}
+              value={form.documentHeader}
+              onChange={(event) => set("documentHeader", event.target.value)}
+            />
+          </Field>
+          <Field label="Document footer">
+            <textarea
+              className="input-field mt-1"
+              rows={3}
+              value={form.documentFooter}
+              onChange={(event) => set("documentFooter", event.target.value)}
+            />
+          </Field>
+        </section>
 
-        {/* Service area */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            {t("companyProfile.serviceArea")}
-          </label>
-          <textarea
-            className="input min-h-[80px]"
-            placeholder={t("companyProfile.serviceAreaPlaceholder")}
-            value={serviceArea}
-            onChange={(e) => setServiceArea(e.target.value)}
-          />
-          <p className="mt-1 text-xs text-gray-400">
-            {t("companyProfile.serviceAreaHelper")}
-          </p>
-        </div>
-
-        {/* Save */}
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="btn-primary"
-        >
-          {saving ? t("common.saving") : t("companyProfile.saveChanges")}
+        <button type="button" onClick={handleSave} disabled={saving} className="btn-primary">
+          {saving ? "Saving..." : "Save identity"}
         </button>
       </div>
 
-      {/* Toast */}
       {toast && (
-        <div className="fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium bg-green-600 text-white">
+        <div className="fixed right-4 top-4 z-50 rounded-lg bg-green-600 px-4 py-3 text-sm font-medium text-white shadow-lg">
           {toast}
         </div>
       )}

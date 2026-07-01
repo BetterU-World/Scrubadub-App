@@ -3,6 +3,11 @@ import { v } from "convex/values";
 import { getSessionUser } from "../lib/auth";
 import { ensureClientRelationshipForLead } from "../lib/clientRelationships";
 import { createNotification } from "../lib/helpers";
+import {
+  buildServiceAgreementMergeValues,
+  FALLBACK_SERVICE_AGREEMENT_TEMPLATE,
+  renderDocumentTemplate,
+} from "../lib/documentMergeFields";
 
 const agreementFields = {
   title: v.string(),
@@ -24,27 +29,6 @@ const agreementFields = {
   terms: v.optional(v.string()),
   notes: v.optional(v.string()),
 };
-
-const FALLBACK_SERVICE_AGREEMENT_TEMPLATE = `# Service Agreement
-
-This Service Agreement is between {{company_name}} and {{client_name}} for cleaning services at {{property_address}}.
-
-## Services Included
-{{services_included}}
-
-## Schedule and Pricing
-Service frequency: {{service_frequency}}
-Contract price: {{contract_price}}
-Billing schedule: {{billing_schedule}}
-Start date: {{start_date}}
-
-## Special Instructions
-{{special_instructions}}
-
-## Exceptions
-{{exceptions}}
-
-The parties agree that this draft reflects the accepted proposal details and may be updated by the service provider before final signature.`;
 
 async function requireOwnerCompany(ctx: any, userId: any) {
   const user = await getSessionUser(ctx, userId);
@@ -88,10 +72,6 @@ function cleanRequired(value: string, fallback: string, max = 200) {
   return value.trim().slice(0, max) || fallback;
 }
 
-function plainValue(value: string | undefined, fallback = "To be confirmed") {
-  return value?.trim() || fallback;
-}
-
 function firstText(...values: Array<string | null | undefined>) {
   for (const value of values) {
     const trimmed = value?.trim();
@@ -107,29 +87,6 @@ function cleanAmount(value: number | undefined) {
   }
   if (value > 1_000_000_000) throw new Error("Agreement amount is too large");
   return value;
-}
-
-function renderTemplate(body: string, values: Record<string, string>) {
-  return body.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_match, key) => {
-    return values[key] ?? "";
-  });
-}
-
-async function getCompanyDisplayName(ctx: any, companyId: any) {
-  const [company, site] = await Promise.all([
-    ctx.db.get(companyId),
-    ctx.db
-      .query("companySites")
-      .withIndex("by_companyId", (q: any) => q.eq("companyId", companyId))
-      .first(),
-  ]);
-
-  return (
-    site?.brandName ??
-    company?.companyDisplayName ??
-    company?.name ??
-    "Your Cleaning Company"
-  );
 }
 
 async function getDefaultServiceAgreementTemplate(ctx: any, companyId: any) {
@@ -272,8 +229,7 @@ export const createDraftFromAcceptedProposal = mutation({
     if (!request) throw new Error("Lead not found");
     if (request.companyId !== companyId) throw new Error("Access denied");
 
-    const [companyName, template, property, walkthrough] = await Promise.all([
-      getCompanyDisplayName(ctx, companyId),
+    const [template, property, walkthrough] = await Promise.all([
       getDefaultServiceAgreementTemplate(ctx, companyId),
       request.propertyId ? ctx.db.get(request.propertyId) : null,
       getLatestAgreementWalkthrough(ctx, companyId, proposal),
@@ -329,19 +285,21 @@ export const createDraftFromAcceptedProposal = mutation({
       request.notes
     );
     const exceptions = "None specified";
-    const mergeValues = {
-      company_name: plainValue(companyName, "Your Cleaning Company"),
-      client_name: plainValue(clientName, "Client"),
-      property_address: plainValue(propertyAddress),
-      service_frequency: plainValue(formatFrequency(serviceFrequency)),
-      contract_price: plainValue(priceSummary),
-      billing_schedule: plainValue(billingSchedule),
-      start_date: plainValue(effectiveStartDate),
-      services_included: plainValue(servicesIncluded),
-      special_instructions: plainValue(specialInstructions, "None specified"),
+    const mergeValues = await buildServiceAgreementMergeValues(ctx, companyId, {
+      clientName,
+      propertyAddress,
+      serviceFrequency: formatFrequency(serviceFrequency),
+      priceSummary,
+      billingSchedule,
+      effectiveStartDate,
+      servicesIncluded,
+      specialInstructions,
       exceptions,
-    };
-    const body = renderTemplate(template?.body ?? FALLBACK_SERVICE_AGREEMENT_TEMPLATE, mergeValues);
+    });
+    const body = renderDocumentTemplate(
+      template?.body ?? FALLBACK_SERVICE_AGREEMENT_TEMPLATE,
+      mergeValues
+    );
     const agreementId = await (ctx.db as any).insert("serviceAgreements", {
       companyId,
       clientRelationshipId,

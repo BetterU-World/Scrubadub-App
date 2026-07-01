@@ -38,6 +38,30 @@ export default defineSchema({
     .index("by_stripeCustomerId", ["stripeCustomerId"])
     .index("by_publicRequestToken", ["publicRequestToken"]),
 
+  companySettings: defineTable({
+    companyId: v.id("companies"),
+    logoStorageId: v.optional(v.id("_storage")),
+    logoUrl: v.optional(v.string()),
+    companyName: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    email: v.optional(v.string()),
+    website: v.optional(v.string()),
+    address: v.optional(v.string()),
+    licenseNumber: v.optional(v.string()),
+    insuranceInformation: v.optional(v.string()),
+    primaryColor: v.optional(v.string()),
+    secondaryColor: v.optional(v.string()),
+    accentColor: v.optional(v.string()),
+    emailSignature: v.optional(v.string()),
+    documentHeader: v.optional(v.string()),
+    documentFooter: v.optional(v.string()),
+    defaultFont: v.optional(v.string()),
+    defaultDateFormat: v.optional(v.string()),
+    defaultCurrency: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_companyId", ["companyId"]),
+
   users: defineTable({
     email: v.string(),
     passwordHash: v.string(),
@@ -932,6 +956,18 @@ export default defineSchema({
     name: v.string(),
     body: v.string(),
     isDefault: v.optional(v.boolean()),
+    source: v.optional(
+      v.union(
+        v.literal("scrub_default"),
+        v.literal("scrub_editor"),
+        v.literal("uploaded_pdf")
+      )
+    ),
+    status: v.optional(v.union(v.literal("active"), v.literal("archived"))),
+    version: v.optional(v.number()),
+    description: v.optional(v.string()),
+    mergeFieldSet: v.optional(v.string()),
+    createdByUserId: v.optional(v.id("users")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

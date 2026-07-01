@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { getSessionUser } from "../lib/auth";
+import { FALLBACK_SERVICE_AGREEMENT_TEMPLATE } from "../lib/documentMergeFields";
 
 const documentTypeValidator = v.union(
   v.literal("service_agreement"),
@@ -9,6 +10,12 @@ const documentTypeValidator = v.union(
   v.literal("nda"),
   v.literal("safety_policy"),
   v.literal("other")
+);
+
+const templateSourceValidator = v.union(
+  v.literal("scrub_default"),
+  v.literal("scrub_editor"),
+  v.literal("uploaded_pdf")
 );
 
 async function requireOwnerCompany(ctx: any, userId: any) {
@@ -50,6 +57,7 @@ export const create = mutation({
     name: v.string(),
     body: v.string(),
     isDefault: v.optional(v.boolean()),
+    source: v.optional(templateSourceValidator),
   },
   handler: async (ctx, args) => {
     const owner = await requireOwnerCompany(ctx, args.userId);
@@ -65,6 +73,11 @@ export const create = mutation({
       name: cleanRequired(args.name, "Document Template", 200),
       body: cleanRequired(args.body, "", 20000),
       isDefault: args.isDefault ?? false,
+      source: args.source ?? "scrub_editor",
+      status: "active",
+      version: 1,
+      mergeFieldSet: args.type,
+      createdByUserId: owner._id,
       createdAt: now,
       updatedAt: now,
     });
@@ -78,6 +91,7 @@ export const update = mutation({
     name: v.string(),
     body: v.string(),
     isDefault: v.optional(v.boolean()),
+    source: v.optional(templateSourceValidator),
   },
   handler: async (ctx, args) => {
     const owner = await requireOwnerCompany(ctx, args.userId);
@@ -93,6 +107,9 @@ export const update = mutation({
       name: cleanRequired(args.name, "Document Template", 200),
       body: cleanRequired(args.body, "", 20000),
       isDefault: args.isDefault ?? false,
+      source: args.source ?? template.source ?? "scrub_editor",
+      status: template.status ?? "active",
+      version: (template.version ?? 1) + 1,
       updatedAt: Date.now(),
     });
   },
@@ -112,7 +129,38 @@ export const setDefault = mutation({
     await clearDefaultTemplates(ctx, owner.companyId, template.type, String(template._id));
     await (ctx.db as any).patch(args.templateId, {
       isDefault: true,
+      status: template.status ?? "active",
       updatedAt: Date.now(),
+    });
+  },
+});
+
+export const restoreScrubDefault = mutation({
+  args: {
+    userId: v.id("users"),
+    type: documentTypeValidator,
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwnerCompany(ctx, args.userId);
+    if (args.type !== "service_agreement") {
+      throw new Error("SCRUB defaults are only available for service agreements in V1");
+    }
+
+    await clearDefaultTemplates(ctx, owner.companyId, args.type);
+    const now = Date.now();
+    return await (ctx.db as any).insert("documentTemplates", {
+      companyId: owner.companyId,
+      type: args.type,
+      name: "SCRUB Service Agreement",
+      body: FALLBACK_SERVICE_AGREEMENT_TEMPLATE,
+      isDefault: true,
+      source: "scrub_default",
+      status: "active",
+      version: 1,
+      mergeFieldSet: args.type,
+      createdByUserId: owner._id,
+      createdAt: now,
+      updatedAt: now,
     });
   },
 });
