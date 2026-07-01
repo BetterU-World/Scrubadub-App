@@ -1,10 +1,9 @@
-import { useRef } from "react";
-import { Save } from "lucide-react";
+import { useRef, useState } from "react";
+import { Eye, Save } from "lucide-react";
 import { DocumentPreview } from "@/components/documents/DocumentPreview";
 import { MergeFieldSidebar } from "@/components/documents/MergeFieldSidebar";
 import {
   SERVICE_AGREEMENT_FIELDS,
-  tokenForField,
   type MergeFieldDefinition,
 } from "@/lib/documentMergeFields";
 
@@ -28,6 +27,7 @@ export function TemplateEditor({
   onSave,
 }: Props) {
   const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const insertToken = (token: string) => {
     const textarea = textAreaRef.current;
@@ -47,7 +47,7 @@ export function TemplateEditor({
   };
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
+    <div className="space-y-4">
       <div className="space-y-4">
         <label className="block">
           <span className="text-sm font-medium text-gray-700">Template name</span>
@@ -59,9 +59,13 @@ export function TemplateEditor({
         </label>
         <label className="block">
           <span className="text-sm font-medium text-gray-700">Template body</span>
+          <span className="mt-1 block text-xs text-gray-500">
+            Write the reusable agreement language. SCRUB will fill fields like client name,
+            property address, and pricing when it creates a new agreement.
+          </span>
           <textarea
             ref={textAreaRef}
-            className="input-field mt-1 min-h-[320px] font-mono text-xs leading-5"
+            className="input-field mt-2 min-h-[300px] font-mono text-xs leading-5"
             value={body}
             onChange={(event) => onBodyChange(event.target.value)}
           />
@@ -74,19 +78,27 @@ export function TemplateEditor({
             className="btn-primary flex items-center gap-2 text-sm"
           >
             <Save className="h-4 w-4" />
-            {saving ? "Saving..." : "Save template"}
+            {saving ? "Saving..." : "Save Template"}
           </button>
           <button
             type="button"
-            onClick={() => insertToken(tokenForField("company_name"))}
-            className="btn-secondary text-sm"
+            onClick={() => setPreviewOpen((open) => !open)}
+            className="btn-secondary flex items-center gap-2 text-sm"
           >
-            Insert company name
+            <Eye className="h-4 w-4" />
+            {previewOpen ? "Hide preview" : "Preview"}
           </button>
         </div>
-        <DocumentPreview body={body} />
+        {previewOpen && <DocumentPreview body={body} />}
       </div>
-      <MergeFieldSidebar fields={fields} onInsert={insertToken} />
+      <details className="rounded-md border border-gray-200 bg-gray-50">
+        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold text-gray-900">
+          Add auto-fill fields
+        </summary>
+        <div className="border-t border-gray-200 p-3">
+          <MergeFieldSidebar fields={fields} onInsert={insertToken} />
+        </div>
+      </details>
     </div>
   );
 }

@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { CheckCircle, FileSignature, RotateCcw } from "lucide-react";
+import {
+  CheckCircle,
+  FileSignature,
+  FileText,
+  Lock,
+  RotateCcw,
+  ShieldCheck,
+  Upload,
+  Users,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { api } from "../../../../../convex/_generated/api";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
@@ -36,6 +46,52 @@ type TemplateRecord = {
   source?: string;
   updatedAt: number;
 };
+
+type DocumentCard = {
+  title: string;
+  description: string;
+  status: "editable" | "coming_soon";
+  icon: LucideIcon;
+};
+
+const DOCUMENT_CARDS: DocumentCard[] = [
+  {
+    title: "Service Agreement",
+    description: "Reusable agreement created after a proposal is accepted.",
+    status: "editable",
+    icon: FileSignature,
+  },
+  {
+    title: "Proposal Template",
+    description: "Reusable proposal layouts and language.",
+    status: "coming_soon",
+    icon: FileText,
+  },
+  {
+    title: "Employee Agreement",
+    description: "Worker agreements and onboarding language.",
+    status: "coming_soon",
+    icon: Users,
+  },
+  {
+    title: "NDA",
+    description: "Confidentiality documents for workers and partners.",
+    status: "coming_soon",
+    icon: Lock,
+  },
+  {
+    title: "Safety Policy",
+    description: "Standard safety expectations and acknowledgements.",
+    status: "coming_soon",
+    icon: ShieldCheck,
+  },
+  {
+    title: "Additional Documents",
+    description: "Company PDFs and other reusable documents.",
+    status: "coming_soon",
+    icon: Upload,
+  },
+];
 
 export function CompanyDocumentsPage() {
   const { user } = useAuth();
@@ -140,7 +196,7 @@ export function CompanyDocumentsPage() {
     <div>
       <PageHeader
         title="Documents"
-        description="Manage reusable SCRUB document templates for your company."
+        description="Manage the company documents SCRUB can reuse as your business grows."
       />
 
       <div className="max-w-6xl space-y-4">
@@ -150,28 +206,91 @@ export function CompanyDocumentsPage() {
           </div>
         )}
 
-        <section className="card space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-primary-50 p-2 text-primary-600">
-                <FileSignature className="h-5 w-5" />
+        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {DOCUMENT_CARDS.map((document) => {
+            const Icon = document.icon;
+            const editable = document.status === "editable";
+            return (
+              <div
+                key={document.title}
+                className={`rounded-lg border p-4 ${
+                  editable
+                    ? "border-primary-200 bg-white shadow-sm"
+                    : "border-gray-200 bg-gray-50 text-gray-500"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className={`rounded-lg p-2 ${
+                      editable ? "bg-primary-50 text-primary-600" : "bg-gray-100 text-gray-400"
+                    }`}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h2 className="font-semibold text-gray-900">{document.title}</h2>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                          editable
+                            ? "bg-green-100 text-green-700"
+                            : "bg-gray-200 text-gray-600"
+                        }`}
+                      >
+                        {editable ? "Editable" : "Coming soon"}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm text-gray-500">{document.description}</p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <h2 className="text-base font-semibold text-gray-900">Service Agreement</h2>
-                <p className="text-sm text-gray-500">
-                  Active template mode: SCRUB editor
-                </p>
+            );
+          })}
+        </section>
+
+        <section className="card space-y-5">
+          <div>
+            <p className="text-xs font-semibold uppercase text-primary-700">Service Agreement</p>
+            <h2 className="mt-1 text-xl font-semibold text-gray-900">
+              Edit your reusable agreement template
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600">
+              Edit the reusable service agreement template your company uses after proposals
+              are accepted. New agreement drafts snapshot the rendered text, so later template
+              edits do not change agreements already created.
+            </p>
+          </div>
+
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">Template mode</h3>
+            <div className="mt-2 grid gap-3 md:grid-cols-3">
+              <button
+                type="button"
+                onClick={restoreDefault}
+                disabled={saving}
+                className="rounded-md border border-gray-200 bg-white p-3 text-left hover:bg-gray-50 disabled:opacity-60"
+              >
+                <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                  <RotateCcw className="h-4 w-4 text-gray-400" />
+                  Use SCRUB Template
+                </div>
+                <p className="mt-1 text-xs text-gray-500">Restore a fresh SCRUB default copy.</p>
+              </button>
+              <div className="rounded-md border border-primary-300 bg-primary-50 p-3">
+                <div className="flex items-center gap-2 text-sm font-medium text-primary-900">
+                  <CheckCircle className="h-4 w-4 text-primary-600" />
+                  Create/Edit in SCRUB Editor
+                </div>
+                <p className="mt-1 text-xs text-primary-700">Active for V1.</p>
+              </div>
+              <div className="rounded-md border border-gray-200 bg-gray-50 p-3 opacity-75">
+                <div className="flex items-center gap-2 text-sm font-medium text-gray-500">
+                  <Upload className="h-4 w-4" />
+                  Upload PDF
+                </div>
+                <p className="mt-1 text-xs text-gray-500">Coming soon.</p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={restoreDefault}
-              disabled={saving}
-              className="btn-secondary flex items-center gap-2 text-sm"
-            >
-              <RotateCcw className="h-4 w-4" />
-              Restore SCRUB default
-            </button>
           </div>
 
           <div className="grid gap-3 md:grid-cols-3">
@@ -207,17 +326,17 @@ export function CompanyDocumentsPage() {
               </div>
             )}
           </div>
-        </section>
 
-        {selectedTemplate && !selectedTemplate.isDefault && (
-          <button
-            type="button"
-            onClick={() => makeDefault(selectedTemplate._id)}
-            className="btn-secondary text-sm"
-          >
-            Set selected template as default
-          </button>
-        )}
+          {selectedTemplate && !selectedTemplate.isDefault && (
+            <button
+              type="button"
+              onClick={() => makeDefault(selectedTemplate._id)}
+              className="btn-secondary text-sm"
+            >
+              Set selected template as default
+            </button>
+          )}
+        </section>
 
         <section className="card">
           <TemplateEditor
