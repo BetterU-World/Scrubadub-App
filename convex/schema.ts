@@ -888,6 +888,19 @@ export default defineSchema({
       v.literal("archived")
     ),
     scheduledDate: v.optional(v.string()),
+    scheduledStartTime: v.optional(v.string()),
+    scheduledEndTime: v.optional(v.string()),
+    assignedManagerId: v.optional(v.id("users")),
+    appointmentStatus: v.optional(v.union(
+      v.literal("draft"),
+      v.literal("scheduled"),
+      v.literal("completed"),
+      v.literal("cancelled")
+    )),
+    schedulingNotes: v.optional(v.string()),
+    scheduledAt: v.optional(v.number()),
+    rescheduledAt: v.optional(v.number()),
+    cancelledAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
     contactName: v.optional(v.string()),
     contactEmail: v.optional(v.string()),
