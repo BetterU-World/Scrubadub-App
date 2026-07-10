@@ -108,6 +108,12 @@ export function RequestDetailPage() {
         }
       : "skip"
   );
+  const leadWalkthroughs = useQuery(
+    (api as any).queries.walkthroughs.listByClientRequest,
+    params.id && user ? { userId: user._id, clientRequestId: params.id as Id<"clientRequests"> } : "skip"
+  );
+  const activeWalkthrough = (leadWalkthroughs ?? []).find((item: any) => item.status !== "archived");
+  const proposalUnlocked = activeWalkthrough?.status === "completed" || activeWalkthrough?.appointmentStatus === "completed";
   const commercialAccount = useQuery(
     (api as any).queries.commercialAccounts.getByProposal,
     proposal && user
@@ -810,7 +816,11 @@ export function RequestDetailPage() {
           )}
         </div>
 
-        {!proposal ? (
+        {!proposalUnlocked ? (
+          <p className="rounded-md bg-gray-50 p-3 text-sm text-gray-600">
+            Complete the walkthrough to begin building a proposal.
+          </p>
+        ) : !proposal ? (
           <button
             onClick={handleCreateProposal}
             disabled={creatingProposal}

@@ -50,6 +50,11 @@ const walkthroughFields = {
   title: v.string(),
   walkthroughType: walkthroughTypeValidator,
   scheduledDate: v.optional(v.string()),
+  scheduledStartTime: v.optional(v.string()),
+  scheduledEndTime: v.optional(v.string()),
+  assignedManagerId: v.optional(v.id("users")),
+  appointmentStatus: v.optional(v.union(v.literal("draft"), v.literal("scheduled"), v.literal("completed"), v.literal("cancelled"))),
+  schedulingNotes: v.optional(v.string()),
   contactName: v.optional(v.string()),
   contactEmail: v.optional(v.string()),
   contactPhone: v.optional(v.string()),
@@ -188,6 +193,12 @@ async function assertLinkedRecords(ctx: any, companyId: any, args: any) {
       throw new Error("Proposal must match the linked lead");
     }
   }
+  if (args.assignedManagerId) {
+    const manager = await ctx.db.get(args.assignedManagerId);
+    if (!manager || manager.companyId !== companyId || manager.role !== "manager") {
+      throw new Error("Assigned manager is invalid");
+    }
+  }
 }
 
 function buildWalkthroughPatch(args: any) {
@@ -198,6 +209,11 @@ function buildWalkthroughPatch(args: any) {
     title: cleanRequired(args.title, "Walkthrough", 200),
     walkthroughType: args.walkthroughType,
     scheduledDate: cleanOptional(args.scheduledDate, 50),
+    scheduledStartTime: cleanOptional(args.scheduledStartTime, 20),
+    scheduledEndTime: cleanOptional(args.scheduledEndTime, 20),
+    assignedManagerId: args.assignedManagerId,
+    appointmentStatus: args.appointmentStatus,
+    schedulingNotes: cleanOptional(args.schedulingNotes, 2000),
     contactName: cleanOptional(args.contactName, 200),
     contactEmail: cleanOptional(args.contactEmail, 200)?.toLowerCase(),
     contactPhone: cleanOptional(args.contactPhone, 50),
@@ -278,12 +294,18 @@ export const createFromClientRequest = mutation({
   args: {
     userId: v.id("users"),
     clientRequestId: v.id("clientRequests"),
+    scheduledDate: v.string(),
+    scheduledStartTime: v.string(),
+    scheduledEndTime: v.optional(v.string()),
+    assignedManagerId: v.optional(v.id("users")),
+    schedulingNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const owner = await requireOwnerCompany(ctx, args.userId);
     const request = await ctx.db.get(args.clientRequestId);
     if (!request) throw new Error("Lead not found");
     if (request.companyId !== owner.companyId) throw new Error("Access denied");
+    await assertLinkedRecords(ctx, owner.companyId, args);
 
     const existing = await ctx.db
       .query("walkthroughs")
@@ -316,7 +338,13 @@ export const createFromClientRequest = mutation({
       title: `${request.businessName || request.requesterName} Walkthrough`,
       walkthroughType,
       status: "draft",
-      scheduledDate: request.requestedDate,
+      scheduledDate: cleanRequired(args.scheduledDate, "", 50),
+      scheduledStartTime: cleanRequired(args.scheduledStartTime, "", 20),
+      scheduledEndTime: cleanOptional(args.scheduledEndTime, 20),
+      assignedManagerId: args.assignedManagerId,
+      appointmentStatus: "scheduled",
+      schedulingNotes: cleanOptional(args.schedulingNotes, 2000),
+      scheduledAt: now,
       contactName: request.requesterName,
       contactEmail: request.requesterEmail,
       contactPhone: request.requesterPhone,
@@ -351,12 +379,17 @@ export const update = mutation({
     ...walkthroughFields,
   },
   handler: async (ctx, args) => {
-    const { owner } = await getOwnedWalkthrough(ctx, args.userId, args.walkthroughId);
+    const { owner, walkthrough } = await getOwnedWalkthrough(ctx, args.userId, args.walkthroughId);
     await assertLinkedRecords(ctx, owner.companyId, args);
 
+    const wasScheduled = walkthrough.appointmentStatus === "scheduled";
+    const scheduleChanged = walkthrough.scheduledDate !== args.scheduledDate || walkthrough.scheduledStartTime !== args.scheduledStartTime;
     await ctx.db.patch(args.walkthroughId, {
       clientRequestId: args.clientRequestId,
       ...buildWalkthroughPatch(args),
+      scheduledAt: !wasScheduled && args.appointmentStatus === "scheduled" ? Date.now() : walkthrough.scheduledAt,
+      rescheduledAt: wasScheduled && scheduleChanged ? Date.now() : walkthrough.rescheduledAt,
+      cancelledAt: args.appointmentStatus === "cancelled" ? Date.now() : walkthrough.cancelledAt,
       updatedAt: Date.now(),
     });
   },
@@ -372,6 +405,7 @@ export const complete = mutation({
     const now = Date.now();
     await ctx.db.patch(args.walkthroughId, {
       status: "completed",
+      appointmentStatus: "completed",
       completedAt: now,
       updatedAt: now,
     });

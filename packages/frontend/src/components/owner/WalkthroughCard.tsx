@@ -28,6 +28,11 @@ const EMPTY_FORM = {
   title: "",
   walkthroughType: "commercial",
   scheduledDate: "",
+  scheduledStartTime: "",
+  scheduledEndTime: "",
+  assignedManagerId: "",
+  appointmentStatus: "draft",
+  schedulingNotes: "",
   contactName: "",
   contactEmail: "",
   contactPhone: "",
@@ -132,6 +137,11 @@ function formFromWalkthrough(walkthrough: any) {
     title: walkthrough.title ?? "",
     walkthroughType: walkthrough.walkthroughType ?? "commercial",
     scheduledDate: walkthrough.scheduledDate ?? "",
+    scheduledStartTime: walkthrough.scheduledStartTime ?? "",
+    scheduledEndTime: walkthrough.scheduledEndTime ?? "",
+    assignedManagerId: walkthrough.assignedManagerId ?? "",
+    appointmentStatus: walkthrough.appointmentStatus ?? (walkthrough.status === "completed" ? "completed" : walkthrough.scheduledDate ? "scheduled" : "draft"),
+    schedulingNotes: walkthrough.schedulingNotes ?? "",
     contactName: walkthrough.contactName ?? "",
     contactEmail: walkthrough.contactEmail ?? "",
     contactPhone: walkthrough.contactPhone ?? "",
@@ -167,6 +177,19 @@ function formFromWalkthrough(walkthrough: any) {
       caption: photo.caption ?? "",
     })),
   };
+}
+
+function SchedulingFields({ form, setForm, managers, showStatus = false }: any) {
+  return (
+    <div className="grid grid-cols-1 gap-3 rounded-lg border border-primary-100 bg-primary-50/40 p-3 sm:grid-cols-2">
+      <label><span className="text-xs font-medium text-gray-600">Date</span><input required type="date" className="input-field mt-1 text-sm" value={form.scheduledDate} onChange={(e) => setForm({ ...form, scheduledDate: e.target.value })} /></label>
+      <label><span className="text-xs font-medium text-gray-600">Start time</span><input required type="time" className="input-field mt-1 text-sm" value={form.scheduledStartTime} onChange={(e) => setForm({ ...form, scheduledStartTime: e.target.value })} /></label>
+      <label><span className="text-xs font-medium text-gray-600">End time (optional)</span><input type="time" className="input-field mt-1 text-sm" value={form.scheduledEndTime} onChange={(e) => setForm({ ...form, scheduledEndTime: e.target.value })} /></label>
+      <label><span className="text-xs font-medium text-gray-600">Assigned manager</span><select className="input-field mt-1 text-sm" value={form.assignedManagerId} onChange={(e) => setForm({ ...form, assignedManagerId: e.target.value })}><option value="">Unassigned</option>{managers.map((manager: any) => <option key={manager._id} value={manager._id}>{manager.name || manager.email}</option>)}</select></label>
+      {showStatus && <label><span className="text-xs font-medium text-gray-600">Appointment status</span><select className="input-field mt-1 text-sm" value={form.appointmentStatus} onChange={(e) => setForm({ ...form, appointmentStatus: e.target.value })}><option value="draft">Draft</option><option value="scheduled">Scheduled</option><option value="cancelled">Cancelled</option>{form.appointmentStatus === "completed" && <option value="completed">Completed</option>}</select></label>}
+      <label className="sm:col-span-2"><span className="text-xs font-medium text-gray-600">Scheduling notes</span><textarea rows={2} className="input-field mt-1 text-sm" value={form.schedulingNotes} onChange={(e) => setForm({ ...form, schedulingNotes: e.target.value })} /></label>
+    </div>
+  );
 }
 
 export function WalkthroughCard({
@@ -207,6 +230,10 @@ export function WalkthroughCard({
   const updateWalkthrough = useMutation((api as any).mutations.walkthroughs.update);
   const completeWalkthrough = useMutation((api as any).mutations.walkthroughs.complete);
   const archiveWalkthrough = useMutation((api as any).mutations.walkthroughs.archive);
+  const managers = useQuery(
+    api.queries.employees.getManagers,
+    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+  );
 
   const walkthroughs = commercialAccountId
     ? byCommercialAccount
@@ -429,6 +456,11 @@ export function WalkthroughCard({
     title: form.title,
     walkthroughType: form.walkthroughType,
     scheduledDate: form.scheduledDate || undefined,
+    scheduledStartTime: form.scheduledStartTime || undefined,
+    scheduledEndTime: form.scheduledEndTime || undefined,
+    assignedManagerId: form.assignedManagerId || undefined,
+    appointmentStatus: form.appointmentStatus,
+    schedulingNotes: form.schedulingNotes || undefined,
     contactName: form.contactName || undefined,
     contactEmail: form.contactEmail || undefined,
     contactPhone: form.contactPhone || undefined,
@@ -469,7 +501,19 @@ export function WalkthroughCard({
     if (!clientRequestId || !user) return;
     setSaving(true);
     try {
-      await createFromLead({ userId: user._id, clientRequestId });
+      if (!form.scheduledDate || !form.scheduledStartTime) {
+        showToast("Select a walkthrough date and start time", "error");
+        return;
+      }
+      await createFromLead({
+        userId: user._id,
+        clientRequestId,
+        scheduledDate: form.scheduledDate,
+        scheduledStartTime: form.scheduledStartTime,
+        scheduledEndTime: form.scheduledEndTime || undefined,
+        assignedManagerId: form.assignedManagerId || undefined,
+        schedulingNotes: form.schedulingNotes || undefined,
+      });
       showToast(t("walkthroughs.created"), "success");
     } catch (err: any) {
       showToast(err.message || t("walkthroughs.createFailed"), "error");
@@ -545,20 +589,25 @@ export function WalkthroughCard({
 
       {!walkthrough ? (
         allowCreate ? (
-          <button
-            type="button"
-            onClick={handleCreate}
-            disabled={saving}
-            className="btn-primary flex w-full items-center justify-center gap-2 text-sm sm:w-auto"
-          >
-            <Plus className="h-4 w-4" />
-            {saving ? t("common.saving") : t("walkthroughs.create")}
-          </button>
+          editing ? (
+            <div className="space-y-3">
+              <SchedulingFields form={form} setForm={setForm} managers={managers ?? []} />
+              <div className="flex gap-2">
+                <button type="button" onClick={handleCreate} disabled={saving} className="btn-primary text-sm">{saving ? t("common.saving") : "Schedule Walkthrough"}</button>
+                <button type="button" onClick={() => setEditing(false)} className="btn-secondary text-sm">{t("common.cancel")}</button>
+              </div>
+            </div>
+          ) : (
+            <button type="button" onClick={() => setEditing(true)} className="btn-primary flex w-full items-center justify-center gap-2 text-sm sm:w-auto">
+              <Plus className="h-4 w-4" /> Schedule Walkthrough
+            </button>
+          )
         ) : (
           <p className="text-sm text-gray-500">{t("walkthroughs.noneLinked")}</p>
         )
       ) : editing ? (
         <div className="space-y-4">
+          <SchedulingFields form={form} setForm={setForm} managers={managers ?? []} showStatus />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label>
               <span className="text-xs font-medium text-gray-600">{t("walkthroughs.fields.formTitle")}</span>
@@ -795,6 +844,9 @@ export function WalkthroughCard({
               <p className="text-xs font-medium text-gray-500">{t("walkthroughs.fields.scheduledDate")}</p>
               <p className="mt-1 text-gray-900">{dateLabel(walkthrough.scheduledDate, t("common.unassigned"))}</p>
             </div>
+            <div><p className="text-xs font-medium text-gray-500">Scheduled time</p><p className="mt-1 text-gray-900">{walkthrough.scheduledStartTime ? `${walkthrough.scheduledStartTime}${walkthrough.scheduledEndTime ? `–${walkthrough.scheduledEndTime}` : ""}` : t("common.unassigned")}</p></div>
+            <div><p className="text-xs font-medium text-gray-500">Assigned manager</p><p className="mt-1 text-gray-900">{walkthrough.assignedManager?.name || t("common.unassigned")}</p></div>
+            <div><p className="text-xs font-medium text-gray-500">Appointment status</p><p className="mt-1 capitalize text-gray-900">{walkthrough.appointmentStatus ?? (walkthrough.status === "completed" ? "completed" : "draft")}</p></div>
             <div>
               <p className="text-xs font-medium text-gray-500">{t("walkthroughs.fields.frequency")}</p>
               <p className="mt-1 text-gray-900">{walkthrough.serviceFrequencyRecommendation || t("common.unassigned")}</p>
@@ -857,7 +909,7 @@ export function WalkthroughCard({
             <button type="button" onClick={() => setEditing(true)} className="btn-secondary text-sm">
               {t("walkthroughs.edit")}
             </button>
-            {walkthrough.status === "draft" && (
+            {walkthrough.status === "draft" && walkthrough.appointmentStatus !== "cancelled" && (
               <button type="button" onClick={handleComplete} disabled={saving} className="btn-primary flex items-center gap-2 text-sm">
                 <Check className="h-4 w-4" />
                 {t("walkthroughs.markCompleted")}

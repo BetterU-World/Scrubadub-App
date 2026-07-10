@@ -15,6 +15,9 @@ function sortNewestFirst(items: any[]) {
 }
 
 async function decorateWalkthrough(ctx: any, walkthrough: any) {
+  const assignedManager = walkthrough.assignedManagerId
+    ? await ctx.db.get(walkthrough.assignedManagerId)
+    : null;
   const relationship = walkthrough.clientRelationshipId
     ? await ctx.db.get(walkthrough.clientRelationshipId)
     : null;
@@ -43,6 +46,9 @@ async function decorateWalkthrough(ctx: any, walkthrough: any) {
 
   return {
     ...walkthrough,
+    assignedManager: assignedManager?.companyId === walkthrough.companyId
+      ? { _id: assignedManager._id, name: assignedManager.name, email: assignedManager.email }
+      : null,
     clientRelationship:
       relationship?.companyId === walkthrough.companyId
         ? {
