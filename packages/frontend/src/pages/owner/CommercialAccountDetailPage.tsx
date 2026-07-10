@@ -11,6 +11,7 @@ import { CommercialScheduleCard } from "@/components/owner/CommercialScheduleCar
 import { ServiceAgreementCard } from "@/components/owner/ServiceAgreementCard";
 import { WalkthroughCard } from "@/components/owner/WalkthroughCard";
 import { CommercialInvoiceCard } from "@/components/owner/CommercialInvoiceCard";
+import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
 import {
   Building2,
   ClipboardCheck,
@@ -358,11 +359,7 @@ export function CommercialAccountDetailPage() {
             )}
           </section>
 
-          <section className="card">
-            <div className="mb-4 flex items-center gap-2">
-              <Users className="h-5 w-5 text-gray-400" />
-              <h2 className="text-lg font-semibold text-gray-900">{t("commercialAccounts.assignments")}</h2>
-            </div>
+          <CollapsibleSection title={t("commercialAccounts.assignments")} icon={<Users className="h-5 w-5" />}>
             {editing ? (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <label className="block">
@@ -400,10 +397,9 @@ export function CommercialAccountDetailPage() {
                 <DetailItem label={t("commercialAccounts.assignedTeam")} value={account.assignedTeamName ?? t("common.unassigned")} />
               </div>
             )}
-          </section>
+          </CollapsibleSection>
 
-          <section className="card">
-            <h2 className="mb-4 text-lg font-semibold text-gray-900">{t("common.notes")}</h2>
+          <CollapsibleSection title={t("common.notes")}>
             {editing ? (
               <textarea className="input-field" rows={4} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
             ) : (
@@ -411,7 +407,7 @@ export function CommercialAccountDetailPage() {
                 {account.notes || t("commercialAccounts.noNotes")}
               </p>
             )}
-          </section>
+          </CollapsibleSection>
         </div>
 
         <aside className="space-y-6">
@@ -464,6 +460,7 @@ export function CommercialAccountDetailPage() {
               }}
               onToast={showToast}
             />
+            <CollapsibleSection title="Schedule">
             <CommercialScheduleCard
               commercialAccountId={account._id}
               accountName={account.clientName}
@@ -474,10 +471,13 @@ export function CommercialAccountDetailPage() {
               defaultTeamId={account.assignedTeamId}
               onToast={showToast}
             />
+            </CollapsibleSection>
+            <CollapsibleSection title="Invoices">
             <CommercialInvoiceCard
               commercialAccountId={account._id}
               onToast={showToast}
             />
+            </CollapsibleSection>
             <ComingSoonCard icon={User} title={t("commercialAccounts.clientPortal")} label={comingSoon} />
           </div>
         </aside>
