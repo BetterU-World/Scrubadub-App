@@ -1502,15 +1502,23 @@ export function RequestDetailPage() {
       </div>
 
       {/* Lead Pipeline controls */}
-      <div className="card mt-4 space-y-4">
-        <h3 className="text-sm font-semibold text-gray-900">{t("requests.leadPipeline")}</h3>
+      <CollapsibleSection
+        title={t("requests.leadPipeline")}
+        subtitle={t("requests.leadPipelineHelper")}
+        defaultExpanded
+        className="mt-4"
+      >
 
         {/* Stage selector */}
-        <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">
-            {t("requests.leadStage")}
-          </label>
-          <div className="flex gap-1.5 flex-wrap">
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-gray-700">
+            {t("requests.currentStage", {
+              stage: t(`requests.leadStages.${(request as any).leadStage ?? "new"}`, {
+                defaultValue: t("requests.leadStages.unknown"),
+              }),
+            })}
+          </p>
+          <div className="flex flex-wrap gap-2" role="group" aria-label={t("requests.leadStage")}>
             {([
               "new",
               "contacted",
@@ -1530,25 +1538,27 @@ export function RequestDetailPage() {
                     key={stage}
                     onClick={async () => {
                       try {
+                        const stageLabel = t(`requests.leadStages.${stage}`);
                         await updateLeadStage({
                           userId: user!._id,
                           requestId: request._id,
                           leadStage: stage,
                         });
-                        setToast({ message: t("requests.stageUpdated", { stage }), type: "success" });
+                        setToast({ message: t("requests.stageUpdated", { stage: stageLabel }), type: "success" });
                         setTimeout(() => setToast(null), 2000);
                       } catch (err: any) {
                         setToast({ message: err.message || "Failed", type: "error" });
                         setTimeout(() => setToast(null), 3000);
                       }
                     }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${
+                    aria-pressed={isActive}
+                    className={`min-h-9 rounded-full border px-3 py-2 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 ${
                       isActive
-                        ? "bg-primary-600 text-white"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        ? "border-primary-600 bg-primary-600 text-white shadow-sm"
+                        : "border-gray-300 bg-white text-gray-700 hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700"
                     }`}
                   >
-                    {stage}
+                    {t(`requests.leadStages.${stage}`)}
                   </button>
                 );
               }
@@ -1819,7 +1829,7 @@ export function RequestDetailPage() {
             </p>
           )}
         </div>
-      </div>
+      </CollapsibleSection>
 
       {/* Client Feedback link */}
       <div className="card mt-4 space-y-3">
