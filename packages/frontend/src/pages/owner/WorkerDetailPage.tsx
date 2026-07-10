@@ -6,6 +6,7 @@ import { useState } from "react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
 import { Link, useParams } from "wouter";
 import {
   Banknote,
@@ -15,7 +16,6 @@ import {
   ShieldCheck,
   Users,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 
 function formatLabel(value?: string | null) {
   if (!value) return "Not set";
@@ -39,28 +39,6 @@ function DetailItem({ label, value }: { label: string; value: React.ReactNode })
       <p className="text-xs font-medium uppercase text-gray-400">{label}</p>
       <div className="mt-1 text-sm font-medium text-gray-900">{value}</div>
     </div>
-  );
-}
-
-function SectionCard({
-  icon: Icon,
-  title,
-  children,
-}: {
-  icon: LucideIcon;
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="card">
-      <div className="flex items-center gap-2 mb-4">
-        <div className="p-2 rounded-lg bg-gray-100 text-gray-600">
-          <Icon className="w-4 h-4" />
-        </div>
-        <h2 className="font-semibold text-gray-900">{title}</h2>
-      </div>
-      {children}
-    </section>
   );
 }
 
@@ -507,7 +485,7 @@ export function WorkerDetailPage() {
         action={<Link href="/employees" className="btn-secondary">Back to Workers</Link>}
       />
 
-      <div className="card mb-6">
+      <CollapsibleSection title="Identity" defaultExpanded className="mb-6">
         <div className="grid gap-4 md:grid-cols-4">
           <DetailItem label="Email" value={workerUser?.email ?? "Not set"} />
           <DetailItem label="Phone" value={workerUser?.phone ?? "Not set"} />
@@ -518,10 +496,10 @@ export function WorkerDetailPage() {
           <DetailItem label="Onboarding" value={formatLabel(workerProfile?.onboardingStatus)} />
           <DetailItem label="Eligibility" value={formatLabel(workerProfile?.jobEligibilityStatus)} />
         </div>
-      </div>
+      </CollapsibleSection>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <SectionCard icon={ClipboardCheck} title="Onboarding">
+        <CollapsibleSection icon={<ClipboardCheck className="h-5 w-5" />} title="Onboarding">
           {onboardingError && (
             <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               {onboardingError}
@@ -582,9 +560,9 @@ export function WorkerDetailPage() {
               ))}
             </div>
           )}
-        </SectionCard>
+        </CollapsibleSection>
 
-        <SectionCard icon={FileText} title="Documents">
+        <CollapsibleSection icon={<FileText className="h-5 w-5" />} title="Documents">
           {documentError && (
             <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               {documentError}
@@ -681,9 +659,9 @@ export function WorkerDetailPage() {
               </div>
             </div>
           )}
-        </SectionCard>
+        </CollapsibleSection>
 
-        <SectionCard icon={ShieldCheck} title="Compliance">
+        <CollapsibleSection icon={<ShieldCheck className="h-5 w-5" />} title="Compliance">
           {complianceError && (
             <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               {complianceError}
@@ -751,9 +729,9 @@ export function WorkerDetailPage() {
               </div>
             </div>
           </div>
-        </SectionCard>
+        </CollapsibleSection>
 
-        <SectionCard icon={Banknote} title="Payment Profile">
+        <CollapsibleSection icon={<Banknote className="h-5 w-5" />} title="Payment Profile">
           {!workerProfile ? (
             <EmptyNote>Worker profile has not been initialized yet.</EmptyNote>
           ) : (
@@ -846,9 +824,9 @@ export function WorkerDetailPage() {
               </div>
             </div>
           )}
-        </SectionCard>
+        </CollapsibleSection>
 
-        <SectionCard icon={Users} title="Teams">
+        <CollapsibleSection icon={<Users className="h-5 w-5" />} title="Teams">
           {activeTeams.length === 0 ? (
             <EmptyNote>This worker is not an active member of any team.</EmptyNote>
           ) : (
@@ -861,9 +839,9 @@ export function WorkerDetailPage() {
               ))}
             </div>
           )}
-        </SectionCard>
+        </CollapsibleSection>
 
-        <SectionCard icon={BarChart3} title="Performance">
+        <CollapsibleSection icon={<BarChart3 className="h-5 w-5" />} title="Performance" defaultExpanded>
           <div className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <DetailItem label="Jobs Completed" value={performanceSummary.jobsCompleted} />
@@ -923,7 +901,7 @@ export function WorkerDetailPage() {
               </div>
             )}
           </div>
-        </SectionCard>
+        </CollapsibleSection>
       </div>
     </div>
   );

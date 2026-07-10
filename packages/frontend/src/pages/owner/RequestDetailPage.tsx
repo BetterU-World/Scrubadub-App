@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ServiceAgreementCard } from "@/components/owner/ServiceAgreementCard";
 import { WalkthroughCard } from "@/components/owner/WalkthroughCard";
+import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
 import {
   User,
   Mail,
@@ -786,35 +787,25 @@ export function RequestDetailPage() {
         </div>
       </div>
 
-      <WalkthroughCard
-        clientRequestId={request._id}
-        allowCreate
-        onToast={(message, type) => {
-          setToast({ message, type });
-          setTimeout(() => setToast(null), type === "success" ? 2000 : 3000);
-        }}
-      />
+      <CollapsibleSection title={t("walkthroughs.title")} defaultExpanded className="mt-4" contentClassName="-m-4 mt-0">
+        <WalkthroughCard
+          clientRequestId={request._id}
+          allowCreate
+          onToast={(message, type) => {
+            setToast({ message, type });
+            setTimeout(() => setToast(null), type === "success" ? 2000 : 3000);
+          }}
+        />
+      </CollapsibleSection>
 
       {/* Proposal */}
-      <div className="card mt-4 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-gray-500" />
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900">
-                {t("proposals.title")}
-              </h3>
-              <p className="text-xs text-gray-500">
-                {proposal ? t("proposals.description") : t("proposals.emptyDesc")}
-              </p>
-            </div>
-          </div>
-          {proposal && (
-            <span className="badge bg-primary-50 text-primary-700 capitalize self-start">
-              {t(`proposals.statuses.${proposal.status}`)}
-            </span>
-          )}
-        </div>
+      <CollapsibleSection
+        title={t("proposals.title")}
+        subtitle={proposal ? t("proposals.description") : t("proposals.emptyDesc")}
+        icon={<FileText className="h-4 w-4" />}
+        badge={proposal ? <span className="badge bg-primary-50 text-primary-700 capitalize">{t(`proposals.statuses.${proposal.status}`)}</span> : undefined}
+        className="mt-4"
+      >
 
         {!proposalUnlocked ? (
           <p className="rounded-md bg-gray-50 p-3 text-sm text-gray-600">
@@ -1479,7 +1470,7 @@ export function RequestDetailPage() {
             </div>
           </div>
         )}
-      </div>
+      </CollapsibleSection>
 
       {/* Client relationship */}
       <div className="card mt-4 space-y-3">
