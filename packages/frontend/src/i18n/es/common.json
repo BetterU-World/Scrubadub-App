@@ -1497,8 +1497,11 @@
     "profile": "Perfil",
     "providers": "Empresas de limpieza",
     "relationships": "Empresas de limpieza",
+    "needsAttention": "Requiere tu atención",
     "upcomingJobs": "Próximos servicios",
     "completedJobs": "Historial de servicios",
+    "recentActivity": "Actividad reciente",
+    "completedService": "Servicio completado",
     "properties": "Ubicaciones de servicio",
     "invoices": "Facturas",
     "proposals": "Propuestas",
@@ -1506,13 +1509,23 @@
     "noRelationships": "Aún no hay empresas de limpieza vinculadas a tu cuenta.",
     "noUpcomingJobs": "No hay próximos servicios programados.",
     "noCompletedJobs": "Los servicios completados aparecerán aquí.",
+    "noRecentActivity": "Los servicios completados aparecerán aquí.",
     "noProperties": "Aún no se han agregado ubicaciones de servicio.",
     "noInvoices": "No hay facturas disponibles.",
+    "noOtherInvoices": "Todas las facturas actuales se muestran arriba.",
     "noProposals": "No hay propuestas de servicio pendientes de revisión.",
+    "noOtherProposals": "Todas las propuestas actuales se muestran arriba.",
     "noServiceAgreements": "No hay acuerdos de servicio disponibles.",
+    "noOtherServiceAgreements": "Todos los acuerdos actuales se muestran arriba.",
     "notSet": "No proporcionado",
     "dueDate": "Vence el {{date}}",
-    "signInRequired": "Inicia sesión para ver tu cuenta."
+    "signInRequired": "Inicia sesión para ver tu cuenta.",
+    "attention": {
+      "proposalReady": "Propuesta lista",
+      "agreementReady": "Acuerdo listo",
+      "invoiceDueSoon": "Factura próxima a vencer",
+      "invoiceOverdue": "Factura vencida"
+    }
   },
   "clientPresentation": {
     "statuses": {
