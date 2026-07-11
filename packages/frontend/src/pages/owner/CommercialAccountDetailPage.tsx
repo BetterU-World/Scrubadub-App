@@ -131,6 +131,12 @@ export function CommercialAccountDetailPage() {
     (api as any).queries.clientRelationships.listForSelect,
     user ? { userId: user._id } : "skip"
   );
+  const commercialSchedules = useQuery(
+    (api as any).queries.commercialSchedules.getByCommercialAccount,
+    params.id && user
+      ? { userId: user._id, commercialAccountId: params.id as Id<"commercialAccounts"> }
+      : "skip"
+  );
   const updateCommercialAccount = useMutation(
     (api as any).mutations.commercialAccounts.update
   );
@@ -157,7 +163,7 @@ export function CommercialAccountDetailPage() {
     });
   }, [account?._id]);
 
-  if (!user || account === undefined) return <PageLoader />;
+  if (!user || account === undefined || commercialSchedules === undefined) return <PageLoader />;
   if (!account) {
     return <div className="py-12 text-center text-gray-500">{t("commercialAccounts.notFound")}</div>;
   }
@@ -166,6 +172,16 @@ export function CommercialAccountDetailPage() {
     setToast({ message, type });
     setTimeout(() => setToast(null), type === "success" ? 2000 : 3000);
   };
+  const scheduledServiceLocations = Array.from(
+    new Map(
+      commercialSchedules
+        .filter((schedule: any) => schedule.propertyId && schedule.propertyName)
+        .map((schedule: any) => [
+          schedule.propertyId,
+          { _id: schedule.propertyId, name: schedule.propertyName },
+        ])
+    ).values()
+  ) as Array<{ _id: Id<"properties">; name: string }>;
 
   const handleSave = async () => {
     setSaving(true);
@@ -415,19 +431,41 @@ export function CommercialAccountDetailPage() {
         </div>
 
         <aside className="space-y-6">
-          <section className="card">
-            <div className="mb-4 flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-gray-400" />
-              <h2 className="text-lg font-semibold text-gray-900">{t("commercialAccounts.linkedProperty")}</h2>
-            </div>
-            {account.linkedProperty ? (
+          {account.linkedProperty && (
+            <section className="card">
+              <div className="mb-4 flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-gray-400" />
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">{t("commercialAccounts.sourceProperty")}</h2>
+                  <p className="text-xs text-gray-500">{t("commercialAccounts.sourcePropertyHelper")}</p>
+                </div>
+              </div>
               <Link href={`/properties/${account.linkedProperty._id}`} className="block rounded-lg border border-gray-200 p-3 hover:bg-gray-50">
                 <p className="font-medium text-gray-900">{account.linkedProperty.name}</p>
                 <p className="mt-1 text-sm text-gray-500">{account.linkedProperty.address}</p>
                 <p className="mt-2 text-xs capitalize text-gray-400">{account.linkedProperty.type}</p>
               </Link>
+            </section>
+          )}
+
+          <section className="card">
+            <div className="mb-4 flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-gray-400" />
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">{t("commercialAccounts.scheduledServiceLocations")}</h2>
+                <p className="text-xs text-gray-500">{t("commercialAccounts.scheduledServiceLocationsHelper")}</p>
+              </div>
+            </div>
+            {scheduledServiceLocations.length > 0 ? (
+              <div className="space-y-2">
+                {scheduledServiceLocations.map((property) => (
+                  <Link key={property._id} href={`/properties/${property._id}`} className="block rounded-lg border border-gray-200 p-3 text-sm font-medium text-gray-900 hover:bg-gray-50 hover:text-primary-700">
+                    {property.name}
+                  </Link>
+                ))}
+              </div>
             ) : (
-              <p className="text-sm text-gray-500">{t("commercialAccounts.noLinkedProperty")}</p>
+              <p className="text-sm text-gray-500">{t("commercialAccounts.noScheduledServiceLocations")}</p>
             )}
           </section>
 

@@ -683,8 +683,8 @@ export function WalkthroughCard({
           {linkedProperty && (
             <div className="space-y-3 rounded-md border border-primary-200 bg-primary-50/30 p-3">
               <div>
-                <h4 className="text-sm font-semibold text-gray-900">{t("walkthroughs.propertyInformation")}</h4>
-                <p className="text-xs text-gray-500">{t("walkthroughs.propertyInformationHelper")}</p>
+                <h4 className="text-sm font-semibold text-gray-900">{t("walkthroughs.propertyRecord")}</h4>
+                <p className="text-xs text-gray-500">{t("walkthroughs.propertyRecordHelper")}</p>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="sm:col-span-2"><span className="text-xs font-medium text-gray-600">{t("walkthroughs.fields.address")}</span><input className="input-field mt-1 text-sm" value={propertyForm.address} onChange={(e) => setPropertyForm({ ...propertyForm, address: e.target.value })} /></label>
@@ -736,9 +736,6 @@ export function WalkthroughCard({
             </label>}
             {[
               ...(!linkedProperty ? [["squareFootage", "number"], ["bedrooms", "number"], ["bathrooms", "number"]] : []),
-              ["estimatedHours", "number"],
-              ["recommendedCleanerCount", "number"],
-              ["estimatedMonthlyValue", "number"],
             ].map(([key, type]) => (
               <label key={key}>
                 <span className="text-xs font-medium text-gray-600">{t(`walkthroughs.fields.${key}`)}</span>
@@ -752,19 +749,13 @@ export function WalkthroughCard({
                 />
               </label>
             ))}
-            <label className="sm:col-span-2">
-              <span className="text-xs font-medium text-gray-600">{t("walkthroughs.fields.frequency")}</span>
-              <input className="input-field mt-1 text-sm" value={form.serviceFrequencyRecommendation} onChange={(e) => setForm({ ...form, serviceFrequencyRecommendation: e.target.value })} />
-            </label>
           </div>
 
           {[
-            "scopeNotes",
             "supplyNotes",
             "accessNotes",
             "riskNotes",
             "staffingNotes",
-            "proposalNotes",
           ].map((key) => (
             <label key={key} className="block">
               <span className="text-xs font-medium text-gray-600">{t(`walkthroughs.fields.${key}`)}</span>
@@ -909,6 +900,31 @@ export function WalkthroughCard({
             ))}
           </div>
 
+          <div className="space-y-3 rounded-md border border-amber-200 bg-amber-50/30 p-3">
+            <div>
+              <h4 className="text-sm font-semibold text-gray-900">{t("walkthroughs.proposalRecommendations")}</h4>
+              <p className="text-xs text-gray-500">{t("walkthroughs.proposalRecommendationsHelper")}</p>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {(["estimatedHours", "recommendedCleanerCount", "estimatedMonthlyValue"] as const).map((key) => (
+                <label key={key}>
+                  <span className="text-xs font-medium text-gray-600">{t(`walkthroughs.fields.${key}`)}</span>
+                  <input type="number" min="0" step={key === "estimatedMonthlyValue" ? "0.01" : "1"} className="input-field mt-1 text-sm" value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} />
+                </label>
+              ))}
+              <label className="sm:col-span-2">
+                <span className="text-xs font-medium text-gray-600">{t("walkthroughs.fields.frequency")}</span>
+                <input className="input-field mt-1 text-sm" value={form.serviceFrequencyRecommendation} onChange={(e) => setForm({ ...form, serviceFrequencyRecommendation: e.target.value })} />
+              </label>
+            </div>
+            {(["scopeNotes", "proposalNotes"] as const).map((key) => (
+              <label key={key} className="block">
+                <span className="text-xs font-medium text-gray-600">{t(`walkthroughs.fields.${key}`)}</span>
+                <textarea className="input-field mt-1 text-sm" rows={3} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} />
+              </label>
+            ))}
+          </div>
+
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-2 text-sm">
               <Save className="h-4 w-4" />
@@ -924,8 +940,8 @@ export function WalkthroughCard({
         <div className="space-y-3">
           {linkedProperty && (
             <div className="rounded-md border border-primary-200 bg-primary-50/30 p-3">
-              <h4 className="text-sm font-semibold text-gray-900">{t("walkthroughs.propertyInformation")}</h4>
-              <p className="text-xs text-gray-500">{t("walkthroughs.propertyInformationHelper")}</p>
+              <h4 className="text-sm font-semibold text-gray-900">{t("walkthroughs.propertyRecord")}</h4>
+              <p className="text-xs text-gray-500">{t("walkthroughs.propertyRecordHelper")}</p>
               <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
                 <div className="sm:col-span-3"><p className="text-xs font-medium text-gray-500">{t("walkthroughs.fields.address")}</p><p>{propertyFormFromWalkthrough(walkthrough).address || t("common.unassigned")}</p></div>
                 {(["squareFootage", "beds", "baths", "pillowCount", "sheetSets", "towelCount", "restroomCount", "trashCanCount"] as const).map((key) => <div key={key}><p className="text-xs font-medium text-gray-500">{t(`properties.${key}`)}</p><p>{propertyFormFromWalkthrough(walkthrough)[key] || t("common.unassigned")}</p></div>)}
@@ -952,24 +968,7 @@ export function WalkthroughCard({
             <div><p className="text-xs font-medium text-gray-500">Scheduled time</p><p className="mt-1 text-gray-900">{walkthrough.scheduledStartTime ? `${walkthrough.scheduledStartTime}${walkthrough.scheduledEndTime ? `–${walkthrough.scheduledEndTime}` : ""}` : t("common.unassigned")}</p></div>
             <div><p className="text-xs font-medium text-gray-500">Assigned manager</p><p className="mt-1 text-gray-900">{walkthrough.assignedManager?.name || t("common.unassigned")}</p></div>
             <div><p className="text-xs font-medium text-gray-500">Appointment status</p><p className="mt-1 capitalize text-gray-900">{walkthrough.appointmentStatus ?? (walkthrough.status === "completed" ? "completed" : "draft")}</p></div>
-            <div>
-              <p className="text-xs font-medium text-gray-500">{t("walkthroughs.fields.frequency")}</p>
-              <p className="mt-1 text-gray-900">{walkthrough.serviceFrequencyRecommendation || t("common.unassigned")}</p>
-            </div>
-            <div>
-              <p className="text-xs font-medium text-gray-500">{t("walkthroughs.fields.estimatedHours")}</p>
-              <p className="mt-1 text-gray-900">{walkthrough.estimatedHours ?? t("common.unassigned")}</p>
-            </div>
-            <div>
-              <p className="text-xs font-medium text-gray-500">{t("walkthroughs.fields.estimatedMonthlyValue")}</p>
-              <p className="mt-1 text-gray-900">{money(walkthrough.estimatedMonthlyValueCents, t("common.unassigned"))}</p>
-            </div>
           </div>
-          {walkthrough.scopeNotes && (
-            <p className="whitespace-pre-wrap rounded-md bg-gray-50 p-3 text-sm text-gray-700">
-              {walkthrough.scopeNotes}
-            </p>
-          )}
           {visibleIntelligenceResponses.length > 0 && (
             <div className="space-y-3 rounded-md border border-gray-200 p-3">
               <div>
@@ -1010,6 +1009,17 @@ export function WalkthroughCard({
               })}
             </div>
           )}
+          <div className="space-y-3 rounded-md border border-amber-200 bg-amber-50/30 p-3">
+            <div><h4 className="text-sm font-semibold text-gray-900">{t("walkthroughs.proposalRecommendations")}</h4><p className="text-xs text-gray-500">{t("walkthroughs.proposalRecommendationsHelper")}</p></div>
+            <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+              <div><p className="text-xs font-medium text-gray-500">{t("walkthroughs.fields.frequency")}</p><p className="mt-1 text-gray-900">{walkthrough.serviceFrequencyRecommendation || t("common.unassigned")}</p></div>
+              <div><p className="text-xs font-medium text-gray-500">{t("walkthroughs.fields.estimatedHours")}</p><p className="mt-1 text-gray-900">{walkthrough.estimatedHours ?? t("common.unassigned")}</p></div>
+              <div><p className="text-xs font-medium text-gray-500">{t("walkthroughs.fields.recommendedCleanerCount")}</p><p className="mt-1 text-gray-900">{walkthrough.recommendedCleanerCount ?? t("common.unassigned")}</p></div>
+              <div><p className="text-xs font-medium text-gray-500">{t("walkthroughs.fields.estimatedMonthlyValue")}</p><p className="mt-1 text-gray-900">{money(walkthrough.estimatedMonthlyValueCents, t("common.unassigned"))}</p></div>
+            </div>
+            {walkthrough.scopeNotes && <p className="whitespace-pre-wrap rounded-md bg-white/70 p-3 text-sm text-gray-700">{walkthrough.scopeNotes}</p>}
+            {walkthrough.proposalNotes && <p className="whitespace-pre-wrap rounded-md bg-white/70 p-3 text-sm text-gray-700">{walkthrough.proposalNotes}</p>}
+          </div>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => setEditing(true)} className="btn-secondary text-sm">
               {t("walkthroughs.edit")}
