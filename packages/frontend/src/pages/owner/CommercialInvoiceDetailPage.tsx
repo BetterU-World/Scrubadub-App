@@ -126,10 +126,13 @@ export function CommercialInvoiceDetailPage() {
               </div>
               {invoice.clientRelationship && (
                 <div>
-                  <p className="text-xs font-medium text-gray-500">Client relationship</p>
-                  <p className="mt-1 inline-flex rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
+                  <p className="text-xs font-medium text-gray-500">{t("invoices.client")}</p>
+                  <Link
+                    href={`/clients/${invoice.clientRelationship._id}`}
+                    className="mt-1 inline-flex rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100"
+                  >
                     {invoice.clientRelationship.displayName}
-                  </p>
+                  </Link>
                 </div>
               )}
               <div>

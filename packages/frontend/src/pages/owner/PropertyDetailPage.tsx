@@ -116,6 +116,7 @@ export function PropertyDetailPage() {
 
       <PageHeader
         title={property.name}
+        description={t("properties.detailDescription")}
         action={
           <div className="flex gap-2">
             <button
@@ -247,9 +248,12 @@ function DetailsTab({ property }: { property: any }) {
       </div>
 
       {property.clientRelationship && (
-        <div className="inline-flex w-fit rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
-          Client relationship: {property.clientRelationship.displayName}
-        </div>
+        <Link
+          href={`/clients/${property.clientRelationship._id}`}
+          className="inline-flex w-fit rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100"
+        >
+          {t("properties.clientLabel")}: {property.clientRelationship.displayName}
+        </Link>
       )}
 
       {hasExpandedFields && (
