@@ -124,8 +124,8 @@ export function CompanyOnboardingDocumentsPage() {
   return (
     <div>
       <PageHeader
-        title="Company Onboarding"
-        description="Manage the company PDFs workers review and acknowledge during Compliance."
+        title="Worker Documents"
+        description="Company-uploaded PDFs used during worker onboarding and compliance. Documents become available to the selected workers after upload and activation."
         action={
           <Link href="/owner/settings" className="btn-secondary flex items-center gap-2">
             <ArrowLeft className="w-4 h-4" />
