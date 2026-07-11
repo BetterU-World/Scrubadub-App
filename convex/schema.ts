@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { bedroomsValidator } from "./lib/propertyBedrooms";
 
 export default defineSchema({
   companies: defineTable({
@@ -371,6 +372,7 @@ export default defineSchema({
     linenTypes: v.optional(v.array(v.string())),
     supplies: v.optional(v.array(v.string())),
     beds: v.optional(v.number()),
+    bedrooms: v.optional(bedroomsValidator),
     baths: v.optional(v.number()),
     linenCount: v.optional(v.number()),
     hasStandaloneTub: v.optional(v.boolean()),

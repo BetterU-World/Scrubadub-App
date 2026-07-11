@@ -2,6 +2,7 @@ import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwner, logAudit } from "../lib/helpers";
 import { requireActiveSubscription } from "../lib/subscriptionGating";
+import { bedroomsValidator, deriveBedroomAggregates, normalizeBedrooms } from "../lib/propertyBedrooms";
 
 export const create = mutation({
   args: {
@@ -24,6 +25,7 @@ export const create = mutation({
     linenTypes: v.optional(v.array(v.string())),
     supplies: v.optional(v.array(v.string())),
     beds: v.optional(v.number()),
+    bedrooms: v.optional(bedroomsValidator),
     baths: v.optional(v.number()),
     linenCount: v.optional(v.number()),
     hasStandaloneTub: v.optional(v.boolean()),
@@ -46,8 +48,11 @@ export const create = mutation({
     }
 
     const { userId: _uid, ...propData } = args;
+    const bedrooms = normalizeBedrooms(args.bedrooms);
     const propertyId = await ctx.db.insert("properties", {
       ...propData,
+      bedrooms,
+      ...(bedrooms ? deriveBedroomAggregates(bedrooms) : {}),
       active: true,
     });
 
@@ -155,6 +160,7 @@ export const update = mutation({
     linenTypes: v.optional(v.array(v.string())),
     supplies: v.optional(v.array(v.string())),
     beds: v.optional(v.number()),
+    bedrooms: v.optional(bedroomsValidator),
     baths: v.optional(v.number()),
     linenCount: v.optional(v.number()),
     hasStandaloneTub: v.optional(v.boolean()),
@@ -178,7 +184,12 @@ export const update = mutation({
     }
 
     const { propertyId, userId: _uid, ...updates } = args;
-    await ctx.db.patch(propertyId, updates);
+    const bedrooms = normalizeBedrooms(args.bedrooms);
+    await ctx.db.patch(propertyId, {
+      ...updates,
+      bedrooms,
+      ...(bedrooms ? deriveBedroomAggregates(bedrooms) : {}),
+    });
 
     await logAudit(ctx, {
       companyId: owner.companyId,

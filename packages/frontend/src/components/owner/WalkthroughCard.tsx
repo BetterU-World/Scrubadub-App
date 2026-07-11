@@ -5,6 +5,7 @@ import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { Archive, Check, ClipboardCheck, Plus, Save, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { BedroomsDisplay } from "./PropertyBedrooms";
 import {
   groupsForPropertyIntelligenceType,
   propertyTypeFromLeadType,
@@ -693,6 +694,7 @@ export function WalkthroughCard({
                 <label className="sm:col-span-2"><span className="text-xs font-medium text-gray-600">{t("properties.accessInstructions")}</span><textarea rows={3} className="input-field mt-1 text-sm" value={propertyForm.accessInstructions} onChange={(e) => setPropertyForm({ ...propertyForm, accessInstructions: e.target.value })} /></label>
                 <label className="sm:col-span-2"><span className="text-xs font-medium text-gray-600">{t("properties.amenities")}</span><input className="input-field mt-1 text-sm" value={propertyForm.amenities.join(", ")} onChange={(e) => setPropertyForm({ ...propertyForm, amenities: e.target.value.split(",").map((value) => value.trim()).filter(Boolean) })} /></label>
               </div>
+              {linkedProperty.bedrooms?.length > 0 && <div><p className="mb-2 text-xs font-medium text-gray-600">{t("properties.bedroomProfile.title")}</p><BedroomsDisplay bedrooms={linkedProperty.bedrooms} compact /></div>}
             </div>
           )}
           <div>
@@ -930,6 +932,7 @@ export function WalkthroughCard({
                 <div className="sm:col-span-3"><p className="text-xs font-medium text-gray-500">{t("properties.accessInstructions")}</p><p className="whitespace-pre-wrap">{propertyFormFromWalkthrough(walkthrough).accessInstructions || t("common.unassigned")}</p></div>
                 <div className="sm:col-span-3"><p className="text-xs font-medium text-gray-500">{t("properties.amenities")}</p><p>{propertyFormFromWalkthrough(walkthrough).amenities.join(", ") || t("common.unassigned")}</p></div>
               </div>
+              {linkedProperty.bedrooms?.length > 0 && <div className="mt-3"><p className="mb-2 text-xs font-medium text-gray-500">{t("properties.bedroomProfile.title")}</p><BedroomsDisplay bedrooms={linkedProperty.bedrooms} compact /></div>}
             </div>
           )}
           <div><h4 className="text-sm font-semibold text-gray-900">{t("walkthroughs.findings")}</h4><p className="text-xs text-gray-500">{t("walkthroughs.findingsHelper")}</p></div>

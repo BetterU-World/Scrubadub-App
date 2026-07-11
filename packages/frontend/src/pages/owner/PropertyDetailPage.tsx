@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useParams, Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
+import { BedroomsDisplay } from "@/components/owner/PropertyBedrooms";
 import {
   INVENTORY_CATEGORIES,
   INVENTORY_CATEGORY_LABELS,
@@ -288,6 +289,13 @@ function DetailsTab({ property }: { property: any }) {
               <div className="text-xs text-gray-500 mt-1">{t("properties.baths")}</div>
             </div>
           )}
+        </div>
+      )}
+
+      {!isCommercialOrOffice && property.bedrooms?.length > 0 && (
+        <div>
+          <h3 className="text-sm font-medium text-gray-500 mb-2">{t("properties.bedroomProfile.title")}</h3>
+          <BedroomsDisplay bedrooms={property.bedrooms} />
         </div>
       )}
 
