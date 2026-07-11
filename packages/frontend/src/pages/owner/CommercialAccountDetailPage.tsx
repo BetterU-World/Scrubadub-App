@@ -255,13 +255,13 @@ export function CommercialAccountDetailPage() {
                   </select>
                 </label>
                 <label className="block sm:col-span-2">
-                  <span className="text-xs font-medium text-gray-600">Client relationship</span>
+                  <span className="text-xs font-medium text-gray-600">{t("commercialAccounts.client")}</span>
                   <select
                     className="input-field mt-1"
                     value={form.clientRelationshipId}
                     onChange={(e) => setForm({ ...form, clientRelationshipId: e.target.value })}
                   >
-                    <option value="">None</option>
+                    <option value="">{t("commercialAccounts.noClient")}</option>
                     {(clientRelationships ?? []).map((relationship: any) => (
                       <option key={relationship._id} value={relationship._id}>
                         {relationship.displayName}
@@ -279,8 +279,12 @@ export function CommercialAccountDetailPage() {
                   value={<span className="badge bg-gray-100 text-gray-700">{t(`commercialAccounts.statuses.${account.status}`)}</span>}
                 />
                 <DetailItem
-                  label="Client relationship"
-                  value={account.clientRelationship?.displayName ?? t("common.unassigned")}
+                  label={t("commercialAccounts.client")}
+                  value={account.clientRelationship ? (
+                    <Link href={`/clients/${account.clientRelationship._id}`} className="font-medium text-primary-600 hover:text-primary-700">
+                      {account.clientRelationship.displayName}
+                    </Link>
+                  ) : t("common.unassigned")}
                 />
               </div>
             )}
@@ -433,9 +437,22 @@ export function CommercialAccountDetailPage() {
               <h2 className="text-lg font-semibold text-gray-900">{t("commercialAccounts.source")}</h2>
             </div>
             {account.sourceLead ? (
-              <Link href={`/requests/${account.sourceLead._id}`} className="text-sm font-medium text-primary-600 hover:text-primary-700">
-                {account.sourceProposal?.title ?? account.sourceLead.businessName ?? account.sourceLead.requesterName}
-              </Link>
+              <div className="space-y-3 text-sm">
+                <div>
+                  <p className="text-xs font-medium text-gray-500">{t("commercialAccounts.sourceLead")}</p>
+                  <Link href={`/requests/${account.sourceLead._id}`} className="mt-1 block font-medium text-primary-600 hover:text-primary-700">
+                    {account.sourceLead.businessName ?? account.sourceLead.requesterName}
+                  </Link>
+                </div>
+                {account.sourceProposal && (
+                  <div>
+                    <p className="text-xs font-medium text-gray-500">{t("commercialAccounts.sourceProposal")}</p>
+                    <Link href={`/requests/${account.sourceLead._id}`} className="mt-1 block font-medium text-primary-600 hover:text-primary-700">
+                      {account.sourceProposal.title}
+                    </Link>
+                  </div>
+                )}
+              </div>
             ) : (
               <p className="text-sm text-gray-500">{t("common.unavailable")}</p>
             )}
