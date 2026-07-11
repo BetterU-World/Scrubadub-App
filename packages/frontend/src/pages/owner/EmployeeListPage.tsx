@@ -216,7 +216,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
             <span className="text-xs text-gray-400">({cleanerUsage.planName} plan)</span>
           </div>
           {cleanerCapReached && (
-            <Link href="/settings" className="text-sm font-medium text-primary-600 hover:text-primary-700">
+            <Link href="/owner/settings" className="text-sm font-medium text-primary-600 hover:text-primary-700">
               Upgrade Plan
             </Link>
           )}
@@ -612,7 +612,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                     <p className="text-sm font-medium text-amber-800">
                       Your {cleanerUsage?.planName} plan includes {cleanerUsage?.limit === 1 ? "1 cleaner" : `up to ${cleanerUsage?.limit} cleaners`}. Upgrade to add more cleaners.
                     </p>
-                    <Link href="/settings" className="text-sm font-medium text-primary-600 hover:text-primary-700 mt-1 inline-block">
+                    <Link href="/owner/settings" className="text-sm font-medium text-primary-600 hover:text-primary-700 mt-1 inline-block">
                       Upgrade Plan
                     </Link>
                   </div>

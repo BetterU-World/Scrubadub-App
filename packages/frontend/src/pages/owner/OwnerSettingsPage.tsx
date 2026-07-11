@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ComponentType } from "react";
 import { Link } from "wouter";
 import { useQuery, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -7,35 +7,65 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 import {
-  Building2,
-  Bell,
-  ChevronRight,
-  CheckCircle,
-  Link2,
-  ExternalLink,
-  Banknote,
-  Globe,
   Archive,
+  Banknote,
+  Bell,
+  Building2,
+  CheckCircle,
+  ChevronRight,
   ClipboardCheck,
+  ExternalLink,
   FileText,
+  Globe,
+  Link2,
+  Users,
 } from "lucide-react";
 import { BillingSection } from "@/components/settings/BillingSection";
+
+function SettingsLink({
+  href,
+  icon: Icon,
+  title,
+  description,
+}: {
+  href: string;
+  icon: ComponentType<{ className?: string; "aria-hidden"?: boolean | "true" | "false" }>;
+  title: string;
+  description: string;
+}) {
+  return (
+    <Link href={href} className="card flex items-center gap-4 transition-colors hover:bg-gray-50">
+      <div className="rounded-lg bg-primary-50 p-2 text-primary-600">
+        <Icon className="h-5 w-5" aria-hidden="true" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="font-medium text-gray-900">{title}</p>
+        <p className="text-sm text-gray-500">{description}</p>
+      </div>
+      <ChevronRight className="h-4 w-4 text-gray-400" aria-hidden="true" />
+    </Link>
+  );
+}
+
+function SectionHeading({ id, children }: { id: string; children: string }) {
+  return (
+    <h2 id={id} className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">
+      {children}
+    </h2>
+  );
+}
 
 export function OwnerSettingsPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
-
   const connectStatus = useQuery(
     api.queries.companyStripeConnect.getCompanyConnectStatus,
     user?._id ? { userId: user._id } : "skip",
   );
-
   const createAccountLink = useAction(
     api.actions.companyStripeConnect.createCompanyStripeAccountLink,
   );
-
   const [loading, setLoading] = useState<string | null>(null);
-
   const isConnected = !!connectStatus?.stripeConnectAccountId;
 
   const handleManageStripe = async () => {
@@ -53,163 +83,86 @@ export function OwnerSettingsPage() {
 
   return (
     <div>
-      <PageHeader title={t("settings.title")} />
-      <div className="max-w-lg space-y-2">
-        {/* ── Billing & Subscription (paying for Scrubadub) ──── */}
-        <BillingSection />
+      <PageHeader title={t("settings.title")} description={t("settings.description")} />
+      <div className="max-w-lg space-y-8">
+        <section aria-labelledby="settings-company-heading">
+          <SectionHeading id="settings-company-heading">{t("settings.groups.company")}</SectionHeading>
+          <SettingsLink
+            href="/owner/settings/company"
+            icon={Building2}
+            title={t("settings.companyProfile")}
+            description={t("settings.companyProfileDesc")}
+          />
+        </section>
 
-        {/* ── Stripe Connect / Payouts (receiving money) ─────── */}
-        {isConnected ? (
-          <div className="card">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 rounded-lg bg-green-100 text-green-600">
-                <CheckCircle className="w-5 h-5" />
+        <section aria-labelledby="settings-team-heading">
+          <SectionHeading id="settings-team-heading">{t("settings.groups.teamDocuments")}</SectionHeading>
+          <div className="space-y-2">
+            <SettingsLink href="/owner/settings/documents" icon={FileText} title={t("settings.documentsHub")} description={t("settings.documentsHubDesc")} />
+            <SettingsLink href="/owner/settings/onboarding" icon={ClipboardCheck} title={t("settings.workerDocuments")} description={t("settings.workerDocumentsDesc")} />
+            <SettingsLink href="/employees" icon={Users} title={t("settings.workersAccess")} description={t("settings.workersAccessDesc")} />
+          </div>
+        </section>
+
+        <section aria-labelledby="settings-billing-heading">
+          <SectionHeading id="settings-billing-heading">{t("settings.groups.billingPayments")}</SectionHeading>
+          <p className="mb-3 -mt-2 text-sm text-gray-500">{t("settings.billingPaymentsDesc")}</p>
+          <div className="space-y-2">
+            <BillingSection />
+            {isConnected ? (
+              <div className="card">
+                <div className="mb-3 flex items-center gap-3">
+                  <div className="rounded-lg bg-green-100 p-2 text-green-600">
+                    <CheckCircle className="h-5 w-5" aria-hidden="true" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-gray-900">{t("settings.customerPaymentsConnected")}</p>
+                    <p className="text-sm text-gray-500">{t("settings.payoutsConnectedDesc")}</p>
+                  </div>
+                </div>
+                <button onClick={handleManageStripe} disabled={loading !== null} className="btn-secondary flex items-center gap-1.5 text-sm">
+                  <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                  {loading === "manage" ? t("settings.opening") : t("settings.managePayoutAccount")}
+                </button>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-gray-900">
-                  {t("settings.payoutsConnected")}
-                </p>
-                <p className="text-sm text-gray-500">
-                  {t("settings.payoutsConnectedDesc")}
-                </p>
+            ) : (
+              <SettingsLink
+                href="/owner/settings/billing"
+                icon={Link2}
+                title={t("settings.customerPayments")}
+                description={t("settings.payoutsNotConnectedDesc")}
+              />
+            )}
+            <SettingsLink href="/owner/payments" icon={Banknote} title={t("settings.paymentsLabel")} description={t("settings.paymentsDesc")} />
+          </div>
+        </section>
+
+        <section aria-labelledby="settings-preferences-heading">
+          <SectionHeading id="settings-preferences-heading">{t("settings.groups.preferencesData")}</SectionHeading>
+          <div className="space-y-2">
+            <SettingsLink
+              href="/owner/settings/archived-properties"
+              icon={Archive}
+              title={t("settings.archivedProperties")}
+              description={t("settings.archivedPropertiesDesc")}
+            />
+            <div className="card flex items-center gap-4 border-dashed bg-gray-50 opacity-60" aria-disabled="true">
+              <div className="rounded-lg bg-gray-100 p-2 text-gray-400"><Bell className="h-5 w-5" aria-hidden="true" /></div>
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-gray-500">{t("settings.notifications")}</p>
+                <p className="text-sm text-gray-400">{t("settings.comingSoon")}</p>
               </div>
             </div>
-            <button
-              onClick={handleManageStripe}
-              disabled={loading !== null}
-              className="btn-secondary text-sm flex items-center gap-1.5"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              {loading === "manage" ? t("settings.opening") : t("settings.managePayoutAccount")}
-            </button>
-          </div>
-        ) : (
-          <Link
-            href="/owner/settings/billing"
-            className="card flex items-center gap-4 hover:bg-gray-50 transition-colors"
-          >
-            <div className="p-2 rounded-lg bg-primary-50 text-primary-600">
-              <Link2 className="w-5 h-5" />
+            <div className="card flex items-center gap-4">
+              <div className="rounded-lg bg-primary-50 p-2 text-primary-600"><Globe className="h-5 w-5" aria-hidden="true" /></div>
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-gray-900">{t("settings.language")}</p>
+                <p className="text-sm text-gray-500">{t("settings.languageDesc")}</p>
+              </div>
+              <LanguageSwitcher />
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-medium text-gray-900">
-                {t("settings.payoutsNotConnected")}
-              </p>
-              <p className="text-sm text-gray-500">
-                {t("settings.payoutsNotConnectedDesc")}
-              </p>
-            </div>
-            <ChevronRight className="w-4 h-4 text-gray-400" />
-          </Link>
-        )}
-
-        {/* ── Company Profile card ──────────────────────────── */}
-        <Link
-          href="/owner/settings/company"
-          className="card flex items-center gap-4 hover:bg-gray-50 transition-colors"
-        >
-          <div className="p-2 rounded-lg bg-primary-50 text-primary-600">
-            <Building2 className="w-5 h-5" />
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-medium text-gray-900">{t("settings.companyProfile")}</p>
-            <p className="text-sm text-gray-500">
-              {t("settings.companyProfileDesc")}
-            </p>
-          </div>
-          <ChevronRight className="w-4 h-4 text-gray-400" />
-        </Link>
-
-        <Link
-          href="/owner/settings/documents"
-          className="card flex items-center gap-4 hover:bg-gray-50 transition-colors"
-        >
-          <div className="p-2 rounded-lg bg-primary-50 text-primary-600">
-            <FileText className="w-5 h-5" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-medium text-gray-900">Documents</p>
-            <p className="text-sm text-gray-500">
-              Manage company document templates and merge fields.
-            </p>
-          </div>
-          <ChevronRight className="w-4 h-4 text-gray-400" />
-        </Link>
-
-        {/* ── Payments card ──────────────────────────────── */}
-        <Link
-          href="/owner/settings/onboarding"
-          className="card flex items-center gap-4 hover:bg-gray-50 transition-colors"
-        >
-          <div className="p-2 rounded-lg bg-primary-50 text-primary-600">
-            <ClipboardCheck className="w-5 h-5" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-medium text-gray-900">Onboarding</p>
-            <p className="text-sm text-gray-500">
-              Manage the company PDFs workers review during Compliance.
-            </p>
-          </div>
-          <ChevronRight className="w-4 h-4 text-gray-400" />
-        </Link>
-
-        <Link
-          href="/owner/payments"
-          className="card flex items-center gap-4 hover:bg-gray-50 transition-colors"
-        >
-          <div className="p-2 rounded-lg bg-primary-50 text-primary-600">
-            <Banknote className="w-5 h-5" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-medium text-gray-900">{t("settings.paymentsLabel")}</p>
-            <p className="text-sm text-gray-500">
-              {t("settings.paymentsDesc")}
-            </p>
-          </div>
-          <ChevronRight className="w-4 h-4 text-gray-400" />
-        </Link>
-
-        {/* ── Archived Properties ─────────────────────────── */}
-        <Link
-          href="/owner/settings/archived-properties"
-          className="card flex items-center gap-4 hover:bg-gray-50 transition-colors"
-        >
-          <div className="p-2 rounded-lg bg-primary-50 text-primary-600">
-            <Archive className="w-5 h-5" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-medium text-gray-900">{t("settings.archivedProperties")}</p>
-            <p className="text-sm text-gray-500">
-              {t("settings.archivedPropertiesDesc")}
-            </p>
-          </div>
-          <ChevronRight className="w-4 h-4 text-gray-400" />
-        </Link>
-
-        {/* ── Disabled items ───────────────────────────────── */}
-        <div
-          className="card flex items-center gap-4 opacity-50 cursor-not-allowed"
-        >
-          <div className="p-2 rounded-lg bg-gray-100 text-gray-400">
-            <Bell className="w-5 h-5" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-medium text-gray-400">{t("settings.notifications")}</p>
-            <p className="text-sm text-gray-400">{t("settings.comingSoon")}</p>
-          </div>
-        </div>
-
-        {/* Language */}
-        <div className="card flex items-center gap-4">
-          <div className="p-2 rounded-lg bg-primary-50 text-primary-600">
-            <Globe className="w-5 h-5" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-medium text-gray-900">{t("settings.language")}</p>
-            <p className="text-sm text-gray-500">{t("settings.languageDesc")}</p>
-          </div>
-          <LanguageSwitcher />
-        </div>
+        </section>
       </div>
     </div>
   );
