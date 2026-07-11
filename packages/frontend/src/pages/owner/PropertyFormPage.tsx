@@ -8,6 +8,7 @@ import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useLocation, useParams } from "wouter";
 import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { BedroomsEditor, PropertyBedroom } from "@/components/owner/PropertyBedrooms";
 
 const PROPERTY_TYPES = [
   { value: "residential", labelKey: "properties.propertyTypes.residential" },
@@ -74,6 +75,7 @@ export function PropertyFormPage() {
   const [towelCount, setTowelCount] = useState<number | undefined>(undefined);
   const [sheetSets, setSheetSets] = useState<number | undefined>(undefined);
   const [pillowCount, setPillowCount] = useState<number | undefined>(undefined);
+  const [bedrooms, setBedrooms] = useState<PropertyBedroom[]>([]);
   const [hasStandaloneTub, setHasStandaloneTub] = useState(false);
   const [showerGlassDoorCount, setShowerGlassDoorCount] = useState<number | undefined>(undefined);
   const [squareFootage, setSquareFootage] = useState<number | undefined>(undefined);
@@ -98,6 +100,7 @@ export function PropertyFormPage() {
       setTowelCount(existing.towelCount ?? undefined);
       setSheetSets(existing.sheetSets ?? undefined);
       setPillowCount(existing.pillowCount ?? undefined);
+      setBedrooms((existing as any).bedrooms ?? []);
       setHasStandaloneTub((existing as any).hasStandaloneTub ?? false);
       setShowerGlassDoorCount((existing as any).showerGlassDoorCount ?? undefined);
       setSquareFootage((existing as any).squareFootage ?? undefined);
@@ -129,6 +132,7 @@ export function PropertyFormPage() {
         towelCount: towelCount ?? undefined,
         sheetSets: sheetSets ?? undefined,
         pillowCount: pillowCount ?? undefined,
+        bedrooms: bedrooms.length ? bedrooms : undefined,
         hasStandaloneTub: hasStandaloneTub || undefined,
         showerGlassDoorCount: showerGlassDoorCount ?? undefined,
         squareFootage: squareFootage ?? undefined,
@@ -270,6 +274,7 @@ export function PropertyFormPage() {
             <input
               type="number"
               min={0}
+              disabled={bedrooms.length > 0}
               className="input-field"
               value={beds ?? ""}
               onChange={(e) => setBeds(e.target.value ? parseInt(e.target.value, 10) : undefined)}
@@ -292,6 +297,10 @@ export function PropertyFormPage() {
         )}
 
         {/* Bathroom details — hidden for commercial/office */}
+        {type !== "commercial" && type !== "office" && (
+          <BedroomsEditor bedrooms={bedrooms} onChange={setBedrooms} />
+        )}
+
         {type !== "commercial" && type !== "office" && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">{t("properties.bathroomDetails")}</label>
@@ -379,6 +388,7 @@ export function PropertyFormPage() {
               <input
                 type="number"
                 min={0}
+                disabled={bedrooms.length > 0}
                 className="input-field"
                 value={sheetSets ?? ""}
                 onChange={(e) => setSheetSets(e.target.value ? parseInt(e.target.value, 10) : undefined)}
@@ -412,6 +422,7 @@ export function PropertyFormPage() {
               <input
                 type="number"
                 min={0}
+                disabled={bedrooms.length > 0}
                 className="input-field"
                 value={pillowCount ?? ""}
                 onChange={(e) => setPillowCount(e.target.value ? parseInt(e.target.value, 10) : undefined)}
