@@ -6,6 +6,7 @@ import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
+import { Link } from "wouter";
 
 type ToastType = "success" | "error";
 type ScheduleStatus = "active" | "paused" | "ended";
@@ -351,7 +352,7 @@ export function CommercialScheduleCard({
             </label>
             <label className="block">
               <span className="text-xs font-medium text-gray-600">
-                {t("commercialSchedules.property")}
+                {t("commercialSchedules.serviceLocation")}
               </span>
               <select
                 className="input-field mt-1"
@@ -603,8 +604,12 @@ export function CommercialScheduleCard({
                   value={schedule.defaultDueTime ?? t("common.unassigned")}
                 />
                 <Detail
-                  label={t("commercialSchedules.property")}
-                  value={schedule.propertyName ?? t("common.unassigned")}
+                  label={t("commercialSchedules.serviceLocation")}
+                  value={schedule.propertyId && schedule.propertyName ? (
+                    <Link href={`/properties/${schedule.propertyId}`} className="font-medium text-primary-600 hover:text-primary-700">
+                      {schedule.propertyName}
+                    </Link>
+                  ) : t("common.unassigned")}
                 />
                 <Detail
                   label={t("commercialSchedules.assignedCleaner")}
