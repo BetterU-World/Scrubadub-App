@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, type ReactNode } from "react";
 import { Save } from "lucide-react";
 import { DocumentPreview } from "@/components/documents/DocumentPreview";
 import { MergeFieldSidebar } from "@/components/documents/MergeFieldSidebar";
@@ -16,6 +16,7 @@ type Props = {
   onNameChange: (value: string) => void;
   onBodyChange: (value: string) => void;
   onSave: () => void;
+  defaultAction?: ReactNode;
 };
 
 export function TemplateEditor({
@@ -26,6 +27,7 @@ export function TemplateEditor({
   onNameChange,
   onBodyChange,
   onSave,
+  defaultAction,
 }: Props) {
   const textAreaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -49,6 +51,12 @@ export function TemplateEditor({
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
       <div className="space-y-4">
+        <div>
+          <h2 className="text-base font-semibold text-gray-900">Edit Template</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            Edit the client-facing template used to create new service agreements.
+          </p>
+        </div>
         <label className="block">
           <span className="text-sm font-medium text-gray-700">Template name</span>
           <input
@@ -76,6 +84,7 @@ export function TemplateEditor({
             <Save className="h-4 w-4" />
             {saving ? "Saving..." : "Save template"}
           </button>
+          {defaultAction}
           <button
             type="button"
             onClick={() => insertToken(tokenForField("company_name"))}

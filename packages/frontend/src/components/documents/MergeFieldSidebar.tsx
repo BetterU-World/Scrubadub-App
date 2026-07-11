@@ -1,4 +1,5 @@
-import { Copy, Plus } from "lucide-react";
+import { useState } from "react";
+import { Check, Copy, Plus } from "lucide-react";
 import { tokenForField, type MergeFieldDefinition } from "@/lib/documentMergeFields";
 
 type Props = {
@@ -7,6 +8,7 @@ type Props = {
 };
 
 export function MergeFieldSidebar({ fields, onInsert }: Props) {
+  const [copiedToken, setCopiedToken] = useState<string | null>(null);
   const grouped = fields.reduce<Record<string, MergeFieldDefinition[]>>((acc, field) => {
     acc[field.category] = [...(acc[field.category] ?? []), field];
     return acc;
@@ -14,10 +16,18 @@ export function MergeFieldSidebar({ fields, onInsert }: Props) {
 
   const copy = async (token: string) => {
     await navigator.clipboard?.writeText(token);
+    setCopiedToken(token);
+    setTimeout(() => setCopiedToken(null), 1500);
   };
 
   return (
     <aside className="space-y-4">
+      <div>
+        <h2 className="text-base font-semibold text-gray-900">Merge Fields</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          Insert fields that SCRUB replaces with agreement details when a client document is created.
+        </p>
+      </div>
       {Object.entries(grouped).map(([category, categoryFields]) => (
         <div key={category}>
           <h3 className="text-xs font-semibold uppercase text-gray-500">{category}</h3>
@@ -40,6 +50,7 @@ export function MergeFieldSidebar({ fields, onInsert }: Props) {
                         className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
                         onClick={() => onInsert(token)}
                         title="Insert field"
+                        aria-label={`Insert ${field.label}`}
                       >
                         <Plus className="h-3.5 w-3.5" />
                       </button>
@@ -48,9 +59,14 @@ export function MergeFieldSidebar({ fields, onInsert }: Props) {
                       type="button"
                       className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
                       onClick={() => copy(token)}
-                      title="Copy field"
+                      title={copiedToken === token ? "Copied" : "Copy field"}
+                      aria-label={`Copy ${field.label}`}
                     >
-                      <Copy className="h-3.5 w-3.5" />
+                      {copiedToken === token ? (
+                        <Check className="h-3.5 w-3.5 text-green-600" />
+                      ) : (
+                        <Copy className="h-3.5 w-3.5" />
+                      )}
                     </button>
                   </div>
                 </div>

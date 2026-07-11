@@ -21,8 +21,14 @@ export const SERVICE_AGREEMENT_FIELDS: MergeFieldDefinition[] = [
   { key: "client_name", label: "Client name", category: "Client" },
   { key: "property_address", label: "Property address", category: "Property" },
   { key: "proposal_price", label: "Proposal price", category: "Proposal" },
+  { key: "contract_price", label: "Contract price", category: "Agreement" },
+  { key: "billing_schedule", label: "Billing schedule", category: "Agreement" },
   { key: "service_frequency", label: "Service frequency", category: "Agreement" },
   { key: "agreement_start_date", label: "Agreement start date", category: "Agreement" },
+  { key: "start_date", label: "Start date", category: "Agreement" },
+  { key: "services_included", label: "Services included", category: "Agreement" },
+  { key: "special_instructions", label: "Special instructions", category: "Agreement" },
+  { key: "exceptions", label: "Exceptions", category: "Agreement" },
   { key: "today", label: "Today", category: "System" },
 ];
 
