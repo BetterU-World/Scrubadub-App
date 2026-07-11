@@ -190,6 +190,58 @@ export const update = mutation({
   },
 });
 
+/** Update only canonical property facts exposed by a linked walkthrough. */
+export const updateWalkthroughFacts = mutation({
+  args: {
+    userId: v.optional(v.id("users")),
+    propertyId: v.id("properties"),
+    address: v.string(),
+    squareFootage: v.optional(v.number()),
+    beds: v.optional(v.number()),
+    baths: v.optional(v.number()),
+    amenities: v.array(v.string()),
+    accessInstructions: v.optional(v.string()),
+    pillowCount: v.optional(v.number()),
+    sheetSets: v.optional(v.number()),
+    towelCount: v.optional(v.number()),
+    restroomCount: v.optional(v.number()),
+    trashCanCount: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwner(ctx, args.userId);
+    const property = await ctx.db.get(args.propertyId);
+    if (!property) throw new Error("Property not found");
+    if (property.companyId !== owner.companyId) throw new Error("Not your company");
+
+    const address = args.address.trim();
+    if (!address) throw new Error("Address is required");
+    const numericFacts = [
+      args.squareFootage, args.beds, args.baths, args.pillowCount, args.sheetSets,
+      args.towelCount, args.restroomCount, args.trashCanCount,
+    ];
+    if (numericFacts.some((value) => value !== undefined && (!Number.isFinite(value) || value < 0))) {
+      throw new Error("Property counts must be non-negative numbers");
+    }
+
+    const { propertyId, userId: _uid, ...updates } = args;
+    await ctx.db.patch(propertyId, {
+      ...updates,
+      address,
+      accessInstructions: args.accessInstructions?.trim() || undefined,
+      amenities: Array.from(new Set(args.amenities.map((value) => value.trim()).filter(Boolean))),
+    });
+
+    await logAudit(ctx, {
+      companyId: owner.companyId,
+      userId: owner._id,
+      action: "update_property",
+      entityType: "property",
+      entityId: propertyId,
+      details: "Updated from linked walkthrough",
+    });
+  },
+});
+
 // ── Property Inventory Item mutations (Sprint 2) ──────────────────────
 
 const inventoryItemValidator = v.object({

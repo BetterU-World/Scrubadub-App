@@ -24,6 +24,17 @@ const TYPES = [
   "custom",
 ] as const;
 
+const LINKED_PROPERTY_INTELLIGENCE_KEYS = new Set([
+  "bedCount", "amenities", "accessInstructions", "pillowCount", "sheetSets",
+  "towelCount", "restroomCount", "trashCanCount",
+]);
+
+const EMPTY_PROPERTY_FORM = {
+  address: "", squareFootage: "", beds: "", baths: "", amenities: [] as string[],
+  accessInstructions: "", pillowCount: "", sheetSets: "", towelCount: "",
+  restroomCount: "", trashCanCount: "",
+};
+
 const EMPTY_FORM = {
   title: "",
   walkthroughType: "commercial",
@@ -179,6 +190,36 @@ function formFromWalkthrough(walkthrough: any) {
   };
 }
 
+function legacyStructuredValue(walkthrough: any, key: string) {
+  const response = (walkthrough.structuredResponses ?? []).find((item: any) => item.key === key);
+  return response?.numberValue ?? response?.textValue ?? response?.stringValues;
+}
+
+function propertyFormFromWalkthrough(walkthrough: any) {
+  const property = walkthrough.property;
+  const numberValue = (canonical: number | undefined, topLevel: number | undefined, key?: string) => {
+    const value = canonical ?? (key ? legacyStructuredValue(walkthrough, key) : undefined) ?? topLevel;
+    return value != null ? String(value) : "";
+  };
+  const stringValue = (canonical: string | undefined, topLevel: string | undefined, key?: string) =>
+    canonical?.trim() ? canonical : (key ? legacyStructuredValue(walkthrough, key) : undefined) || topLevel || "";
+  const canonicalAmenities = property?.amenities;
+  const legacyAmenities = legacyStructuredValue(walkthrough, "amenities");
+  return {
+    address: stringValue(property?.address, walkthrough.address),
+    squareFootage: numberValue(property?.squareFootage, walkthrough.squareFootage),
+    beds: numberValue(property?.beds, walkthrough.bedrooms, "bedCount"),
+    baths: numberValue(property?.baths, walkthrough.bathrooms),
+    amenities: canonicalAmenities?.length ? canonicalAmenities : Array.isArray(legacyAmenities) ? legacyAmenities : [],
+    accessInstructions: stringValue(property?.accessInstructions, undefined, "accessInstructions"),
+    pillowCount: numberValue(property?.pillowCount, undefined, "pillowCount"),
+    sheetSets: numberValue(property?.sheetSets, undefined, "sheetSets"),
+    towelCount: numberValue(property?.towelCount, undefined, "towelCount"),
+    restroomCount: numberValue(property?.restroomCount, undefined, "restroomCount"),
+    trashCanCount: numberValue(property?.trashCanCount, undefined, "trashCanCount"),
+  };
+}
+
 function SchedulingFields({ form, setForm, managers, showStatus = false }: any) {
   return (
     <div className="grid grid-cols-1 gap-3 rounded-lg border border-primary-100 bg-primary-50/40 p-3 sm:grid-cols-2">
@@ -206,6 +247,7 @@ export function WalkthroughCard({
   const [saving, setSaving] = useState(false);
   const [loadedId, setLoadedId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [propertyForm, setPropertyForm] = useState(EMPTY_PROPERTY_FORM);
 
   const byClientRequest = useQuery(
     (api as any).queries.walkthroughs.listByClientRequest,
@@ -230,6 +272,7 @@ export function WalkthroughCard({
   const updateWalkthrough = useMutation((api as any).mutations.walkthroughs.update);
   const completeWalkthrough = useMutation((api as any).mutations.walkthroughs.complete);
   const archiveWalkthrough = useMutation((api as any).mutations.walkthroughs.archive);
+  const updatePropertyFacts = useMutation((api as any).mutations.properties.updateWalkthroughFacts);
   const managers = useQuery(
     api.queries.employees.getManagers,
     user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
@@ -248,8 +291,18 @@ export function WalkthroughCard({
     propertyTypeFromWalkthroughType(form.walkthroughType);
   const intelligenceGroups = groupsForPropertyIntelligenceType(resolvedPropertyType);
   const intelligenceFields = intelligenceGroups.flatMap((group) => group.fields);
+  const linkedProperty = walkthrough?.propertyId ? walkthrough.property ?? null : null;
+  const walkthroughIntelligenceGroups = linkedProperty
+    ? intelligenceGroups.map((group) => ({
+        ...group,
+        fields: group.fields.filter((field) => !LINKED_PROPERTY_INTELLIGENCE_KEYS.has(field.key)),
+      })).filter((group) => group.fields.length > 0)
+    : intelligenceGroups;
   const visibleIntelligenceResponses = (walkthrough?.structuredResponses ?? [])
     .filter(hasStructuredValue)
+    .filter((response: StructuredPropertyResponse) =>
+      !linkedProperty || !LINKED_PROPERTY_INTELLIGENCE_KEYS.has(response.key)
+    )
     .filter((response: StructuredPropertyResponse) =>
       intelligenceFields.some((field) => field.key === response.key)
     );
@@ -257,6 +310,7 @@ export function WalkthroughCard({
   useEffect(() => {
     if (!walkthrough || walkthrough._id === loadedId) return;
     setForm(formFromWalkthrough(walkthrough));
+    if (walkthrough.property) setPropertyForm(propertyFormFromWalkthrough(walkthrough));
     setLoadedId(walkthrough._id);
     setEditing(false);
   }, [walkthrough, loadedId]);
@@ -526,6 +580,23 @@ export function WalkthroughCard({
     if (!walkthrough) return;
     setSaving(true);
     try {
+      if (linkedProperty) {
+        await updatePropertyFacts({
+          userId: user!._id,
+          propertyId: linkedProperty._id,
+          address: propertyForm.address,
+          squareFootage: optionalNumber(propertyForm.squareFootage, t("walkthroughs.invalidNumber")),
+          beds: optionalNumber(propertyForm.beds, t("walkthroughs.invalidNumber")),
+          baths: optionalNumber(propertyForm.baths, t("walkthroughs.invalidNumber")),
+          amenities: propertyForm.amenities,
+          accessInstructions: propertyForm.accessInstructions || undefined,
+          pillowCount: optionalNumber(propertyForm.pillowCount, t("walkthroughs.invalidNumber")),
+          sheetSets: optionalNumber(propertyForm.sheetSets, t("walkthroughs.invalidNumber")),
+          towelCount: optionalNumber(propertyForm.towelCount, t("walkthroughs.invalidNumber")),
+          restroomCount: optionalNumber(propertyForm.restroomCount, t("walkthroughs.invalidNumber")),
+          trashCanCount: optionalNumber(propertyForm.trashCanCount, t("walkthroughs.invalidNumber")),
+        });
+      }
       await updateWalkthrough(payloadFromForm(walkthrough));
       setEditing(false);
       showToast(t("walkthroughs.saved"), "success");
@@ -608,6 +679,26 @@ export function WalkthroughCard({
       ) : editing ? (
         <div className="space-y-4">
           <SchedulingFields form={form} setForm={setForm} managers={managers ?? []} showStatus />
+          {linkedProperty && (
+            <div className="space-y-3 rounded-md border border-primary-200 bg-primary-50/30 p-3">
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900">{t("walkthroughs.propertyInformation")}</h4>
+                <p className="text-xs text-gray-500">{t("walkthroughs.propertyInformationHelper")}</p>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <label className="sm:col-span-2"><span className="text-xs font-medium text-gray-600">{t("walkthroughs.fields.address")}</span><input className="input-field mt-1 text-sm" value={propertyForm.address} onChange={(e) => setPropertyForm({ ...propertyForm, address: e.target.value })} /></label>
+                {(["squareFootage", "beds", "baths", "pillowCount", "sheetSets", "towelCount", "restroomCount", "trashCanCount"] as const).map((key) => (
+                  <label key={key}><span className="text-xs font-medium text-gray-600">{t(`properties.${key}`)}</span><input type="number" min="0" className="input-field mt-1 text-sm" value={propertyForm[key]} onChange={(e) => setPropertyForm({ ...propertyForm, [key]: e.target.value })} /></label>
+                ))}
+                <label className="sm:col-span-2"><span className="text-xs font-medium text-gray-600">{t("properties.accessInstructions")}</span><textarea rows={3} className="input-field mt-1 text-sm" value={propertyForm.accessInstructions} onChange={(e) => setPropertyForm({ ...propertyForm, accessInstructions: e.target.value })} /></label>
+                <label className="sm:col-span-2"><span className="text-xs font-medium text-gray-600">{t("properties.amenities")}</span><input className="input-field mt-1 text-sm" value={propertyForm.amenities.join(", ")} onChange={(e) => setPropertyForm({ ...propertyForm, amenities: e.target.value.split(",").map((value) => value.trim()).filter(Boolean) })} /></label>
+              </div>
+            </div>
+          )}
+          <div>
+            <h4 className="text-sm font-semibold text-gray-900">{t("walkthroughs.findings")}</h4>
+            <p className="text-xs text-gray-500">{t("walkthroughs.findingsHelper")}</p>
+          </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label>
               <span className="text-xs font-medium text-gray-600">{t("walkthroughs.fields.formTitle")}</span>
@@ -637,14 +728,12 @@ export function WalkthroughCard({
               <span className="text-xs font-medium text-gray-600">{t("walkthroughs.fields.contactPhone")}</span>
               <input className="input-field mt-1 text-sm" value={form.contactPhone} onChange={(e) => setForm({ ...form, contactPhone: e.target.value })} />
             </label>
-            <label className="sm:col-span-2">
+            {!linkedProperty && <label className="sm:col-span-2">
               <span className="text-xs font-medium text-gray-600">{t("walkthroughs.fields.address")}</span>
               <input className="input-field mt-1 text-sm" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
-            </label>
+            </label>}
             {[
-              ["squareFootage", "number"],
-              ["bedrooms", "number"],
-              ["bathrooms", "number"],
+              ...(!linkedProperty ? [["squareFootage", "number"], ["bedrooms", "number"], ["bathrooms", "number"]] : []),
               ["estimatedHours", "number"],
               ["recommendedCleanerCount", "number"],
               ["estimatedMonthlyValue", "number"],
@@ -695,7 +784,7 @@ export function WalkthroughCard({
                 {t("propertyIntelligence.helper")}
               </p>
             </div>
-            {intelligenceGroups.map((group) => (
+            {walkthroughIntelligenceGroups.map((group) => (
               <div key={group.key} className="space-y-3 rounded-md border border-gray-200 p-3">
                 <h5 className="text-xs font-semibold uppercase text-gray-500">
                   {t(group.titleKey)}
@@ -831,6 +920,19 @@ export function WalkthroughCard({
         </div>
       ) : (
         <div className="space-y-3">
+          {linkedProperty && (
+            <div className="rounded-md border border-primary-200 bg-primary-50/30 p-3">
+              <h4 className="text-sm font-semibold text-gray-900">{t("walkthroughs.propertyInformation")}</h4>
+              <p className="text-xs text-gray-500">{t("walkthroughs.propertyInformationHelper")}</p>
+              <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
+                <div className="sm:col-span-3"><p className="text-xs font-medium text-gray-500">{t("walkthroughs.fields.address")}</p><p>{propertyFormFromWalkthrough(walkthrough).address || t("common.unassigned")}</p></div>
+                {(["squareFootage", "beds", "baths", "pillowCount", "sheetSets", "towelCount", "restroomCount", "trashCanCount"] as const).map((key) => <div key={key}><p className="text-xs font-medium text-gray-500">{t(`properties.${key}`)}</p><p>{propertyFormFromWalkthrough(walkthrough)[key] || t("common.unassigned")}</p></div>)}
+                <div className="sm:col-span-3"><p className="text-xs font-medium text-gray-500">{t("properties.accessInstructions")}</p><p className="whitespace-pre-wrap">{propertyFormFromWalkthrough(walkthrough).accessInstructions || t("common.unassigned")}</p></div>
+                <div className="sm:col-span-3"><p className="text-xs font-medium text-gray-500">{t("properties.amenities")}</p><p>{propertyFormFromWalkthrough(walkthrough).amenities.join(", ") || t("common.unassigned")}</p></div>
+              </div>
+            </div>
+          )}
+          <div><h4 className="text-sm font-semibold text-gray-900">{t("walkthroughs.findings")}</h4><p className="text-xs text-gray-500">{t("walkthroughs.findingsHelper")}</p></div>
           <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
             <div>
               <p className="text-xs font-medium text-gray-500">{t("walkthroughs.fields.formTitle")}</p>
@@ -875,7 +977,7 @@ export function WalkthroughCard({
                   {t("propertyIntelligence.summaryHelper")}
                 </p>
               </div>
-              {intelligenceGroups.map((group) => {
+              {walkthroughIntelligenceGroups.map((group) => {
                 const groupResponses = visibleIntelligenceResponses.filter(
                   (response: StructuredPropertyResponse) => response.groupKey === group.key
                 );
