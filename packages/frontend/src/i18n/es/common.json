@@ -605,6 +605,9 @@
     },
     "description": "Gestiona tus propiedades de limpieza",
     "addProperty": "Agregar propiedad",
+    "clientRelationship": "Cliente",
+    "noClient": "Sin cliente",
+    "clientRelationshipHelper": "Un cliente es la identidad del cliente. Vincular esta ubicación de servicio a un cliente es opcional.",
     "noPropertiesYet": "Aún no hay propiedades",
     "noPropertiesDesc": "Agrega tu primera propiedad para comenzar",
     "notFound": "Propiedad no encontrada",
@@ -1394,6 +1397,8 @@
     }
   },
   "clientRelationships": {
+    "addProperty": "Agregar propiedad",
+    "propertiesHelper": "Las propiedades son las ubicaciones de servicio que pertenecen a este cliente.",
     "detailDescription": "Relacion de cliente de la empresa y registros vinculados.",
     "backToClients": "Volver a clientes",
     "notFound": "Relacion de cliente no encontrada",

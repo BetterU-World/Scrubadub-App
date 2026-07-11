@@ -1,4 +1,4 @@
-import { useState, FormEvent, useEffect } from "react";
+import { useState, FormEvent, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
@@ -49,6 +49,11 @@ export function PropertyFormPage() {
   const [, setLocation] = useLocation();
   const params = useParams<{ id?: string }>();
   const isEditing = !!params.id;
+  const requestedClientRelationshipId = isEditing
+    ? null
+    : new URLSearchParams(window.location.search).get("clientRelationshipId");
+  const clientSelectionTouched = useRef(false);
+  const clientPreselectionResolved = useRef(false);
 
   const existing = useQuery(
     api.queries.properties.get,
@@ -110,6 +115,22 @@ export function PropertyFormPage() {
       setOwnerNotes(existing.ownerNotes ?? "");
     }
   }, [existing]);
+
+  useEffect(() => {
+    if (
+      isEditing ||
+      clientRelationships === undefined ||
+      clientPreselectionResolved.current
+    ) return;
+
+    clientPreselectionResolved.current = true;
+    if (!requestedClientRelationshipId || clientSelectionTouched.current) return;
+
+    const matchingClient = clientRelationships.find(
+      (relationship: any) => relationship._id === requestedClientRelationshipId
+    );
+    if (matchingClient) setClientRelationshipId(matchingClient._id);
+  }, [clientRelationships, isEditing, requestedClientRelationshipId]);
 
   if (isEditing && existing === undefined) return <PageLoader />;
 
@@ -209,13 +230,16 @@ export function PropertyFormPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Client relationship</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("properties.clientRelationship")}</label>
           <select
             className="input-field"
             value={clientRelationshipId}
-            onChange={(e) => setClientRelationshipId(e.target.value)}
+            onChange={(e) => {
+              clientSelectionTouched.current = true;
+              setClientRelationshipId(e.target.value);
+            }}
           >
-            <option value="">None</option>
+            <option value="">{t("properties.noClient")}</option>
             {(clientRelationships ?? []).map((relationship: any) => (
               <option key={relationship._id} value={relationship._id}>
                 {relationship.displayName}
@@ -223,6 +247,7 @@ export function PropertyFormPage() {
               </option>
             ))}
           </select>
+          <p className="mt-1 text-xs text-gray-500">{t("properties.clientRelationshipHelper")}</p>
         </div>
 
         {/* Property details — visible for all types */}

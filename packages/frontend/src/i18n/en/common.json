@@ -605,6 +605,9 @@
     },
     "description": "Manage your cleaning properties",
     "addProperty": "Add Property",
+    "clientRelationship": "Client",
+    "noClient": "No client",
+    "clientRelationshipHelper": "A client is the customer identity. Linking this service location to a client is optional.",
     "noPropertiesYet": "No properties yet",
     "noPropertiesDesc": "Add your first property to get started",
     "notFound": "Property not found",
@@ -1394,6 +1397,8 @@
     }
   },
   "clientRelationships": {
+    "addProperty": "Add Property",
+    "propertiesHelper": "Properties are the service locations that belong to this client.",
     "detailDescription": "Company-scoped client relationship and linked records.",
     "backToClients": "Back to clients",
     "notFound": "Client relationship not found",
