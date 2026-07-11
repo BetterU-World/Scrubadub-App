@@ -1,16 +1,18 @@
 import { Link } from "wouter";
 import type { ReactNode } from "react";
 import { useQuery } from "convex/react";
-import { api } from "../../../../../convex/_generated/api";
-import { PageLoader } from "@/components/ui/LoadingSpinner";
-import { useClientAuth } from "@/hooks/useClientAuth";
 import { useTranslation } from "react-i18next";
+import { api } from "../../../../../convex/_generated/api";
+import { ClientPortalShell } from "@/components/client/ClientPortalShell";
+import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { ServiceAgreementStatusBadge } from "@/components/ui/ServiceAgreementStatusBadge";
+import { useClientAuth } from "@/hooks/useClientAuth";
 import { getClientStatusTranslationKey } from "@/lib/clientPresentation";
 
 const DUE_SOON_DAYS = 7;
 const ATTENTION_LIMIT = 5;
-const RECENT_ACTIVITY_LIMIT = 3;
+const RECENT_SERVICE_LIMIT = 3;
+const UPCOMING_SERVICE_LIMIT = 3;
 
 function formatDate(date: string | number | undefined, fallback: string) {
   if (!date) return fallback;
@@ -38,13 +40,17 @@ function localDateString() {
 }
 
 function Section({
+  id,
   title,
+  description,
   empty,
   children,
   count,
   emphasis = "standard",
 }: {
+  id?: string;
   title: string;
+  description?: string;
   empty: string;
   children: ReactNode;
   count?: number;
@@ -57,11 +63,14 @@ function Section({
       : "border-gray-200 bg-white shadow-sm";
 
   return (
-    <section className={`space-y-3 rounded-xl border p-6 ${styles}`}>
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+    <section id={id} className={`scroll-mt-32 space-y-3 rounded-xl border p-5 sm:p-6 ${styles}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-gray-900">{title}</h2>
+          {description && <p className="mt-1 text-sm text-gray-500">{description}</p>}
+        </div>
         {count !== undefined && count > 0 && (
-          <span className="badge bg-gray-100 text-gray-700">{count}</span>
+          <span className="badge bg-gray-100 text-gray-700" aria-label={`${count} ${title}`}>{count}</span>
         )}
       </div>
       {count === 0 ? <p className="text-sm text-gray-500">{empty}</p> : children}
@@ -91,6 +100,9 @@ function AttentionCard({ item, t }: { item: AttentionItem; t: (key: string, opti
         {item.detail && <p className="text-sm font-semibold text-gray-900">{item.detail}</p>}
       </div>
       {item.companyName && <p className="mt-2 text-sm text-gray-600">{item.companyName}</p>}
+      <p className="mt-3 text-sm font-medium text-primary-700">
+        {item.href ? t("clientHome.reviewAgreement") : t("clientHome.viewDetailsBelow")}
+      </p>
     </>
   );
 
@@ -101,6 +113,15 @@ function AttentionCard({ item, t }: { item: AttentionItem; t: (key: string, opti
     </Link>
   ) : (
     <div className={classes}>{content}</div>
+  );
+}
+
+function GroupHeading({ title, description }: { title: string; description: string }) {
+  return (
+    <div>
+      <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+      <p className="mt-1 text-sm text-gray-500">{description}</p>
+    </div>
   );
 }
 
@@ -128,6 +149,18 @@ export function ClientHomePage() {
     home.relationships.map((relationship: any) => [String(relationship._id), relationship.companyName])
   );
   const companyFor = (record: any) => companyByRelationshipId.get(String(record.clientRelationshipId));
+  const propertyById = new Map(home.properties.map((property: any) => [String(property._id), property]));
+  const accountById = new Map(home.commercialAccounts.map((account: any) => [String(account._id), account]));
+  const locationFor = (job: any) => {
+    const property: any = job.propertyId ? propertyById.get(String(job.propertyId)) : undefined;
+    const account: any = job.commercialAccountId ? accountById.get(String(job.commercialAccountId)) : undefined;
+    return property
+      ? { name: property.name, address: property.address }
+      : account
+        ? { name: account.clientName, address: account.serviceAddress }
+        : null;
+  };
+  const serviceType = (job: any) => t(`jobTypes.${job.type}`, { defaultValue: String(job.type).replace(/_/g, " ") });
   const today = localDateString();
   const attentionItems: AttentionItem[] = [];
 
@@ -171,29 +204,30 @@ export function ClientHomePage() {
   }
 
   const displayedAttention = attentionItems.sort((a, b) => a.priority - b.priority).slice(0, ATTENTION_LIMIT);
-  const attentionIds = new Set(displayedAttention.map((item) => `${item.kind}:${item.id}`));
-  const visibleInvoices = home.invoices.filter((invoice: any) => !attentionIds.has(`invoice:${invoice._id}`));
-  const visibleProposals = home.proposals.filter((proposal: any) => !attentionIds.has(`proposal:${proposal._id}`));
-  const visibleAgreements = home.serviceAgreements.filter((agreement: any) => !attentionIds.has(`agreement:${agreement._id}`));
-  const nextJob = home.upcomingJobs[0];
-  const recentJobs = home.completedJobs.slice(0, RECENT_ACTIVITY_LIMIT);
+  const inProgressService = home.upcomingJobs.find((job: any) => job.status === "in_progress");
+  const featuredService = inProgressService ?? home.upcomingJobs[0];
+  const additionalUpcoming = home.upcomingJobs
+    .filter((job: any) => job._id !== featuredService?._id)
+    .slice(0, UPCOMING_SERVICE_LIMIT);
+  const recentServices = home.completedJobs.slice(0, RECENT_SERVICE_LIMIT);
+  const locations = [...home.properties, ...home.commercialAccounts];
+  const navItems = [
+    { href: "#overview", label: t("clientHome.navigation.overview") },
+    { href: "#documents", label: t("clientHome.navigation.documents") },
+    { href: "#billing", label: t("clientHome.navigation.billing") },
+    { href: "#locations", label: t("clientHome.navigation.locations") },
+    { href: "#account", label: t("clientHome.navigation.account") },
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-          <div className="flex items-center gap-3">
-            <img src="/logo-icon.png" alt="SCRUB" className="h-9 w-9" />
-            <div>
-              <h1 className="text-lg font-semibold text-gray-900">{t("clientHome.title")}</h1>
-              <p className="text-sm text-gray-500">{home.clientUser.displayName}</p>
-            </div>
-          </div>
-          <button type="button" onClick={signOut} className="btn-secondary text-sm">{t("auth.signOut")}</button>
+    <ClientPortalShell clientName={home.clientUser.displayName} onSignOut={signOut} navigation={navItems}>
+      <main className="space-y-8 px-4 py-6 sm:py-8">
+        <div id="overview" className="scroll-mt-32">
+          <p className="text-sm font-medium text-primary-700">{t("clientHome.welcome", { name: home.clientUser.displayName })}</p>
+          <h1 className="mt-1 text-2xl font-semibold text-gray-900 sm:text-3xl">{t("clientHome.overviewTitle")}</h1>
+          <p className="mt-2 max-w-2xl text-sm text-gray-600">{t("clientHome.overviewDescription")}</p>
         </div>
-      </header>
 
-      <main className="mx-auto max-w-6xl space-y-6 px-4 py-6">
         {displayedAttention.length > 0 && (
           <Section title={t("clientHome.needsAttention")} empty="" count={displayedAttention.length} emphasis="primary">
             <div className="grid gap-3 md:grid-cols-2">
@@ -202,124 +236,179 @@ export function ClientHomePage() {
           </Section>
         )}
 
-        <Section title={t("clientHome.upcomingJobs")} empty={t("clientHome.noUpcomingJobs")} count={nextJob ? 1 : 0} emphasis="primary">
-          {nextJob && (
-            <div className="text-sm">
-              <p className="text-lg font-semibold text-gray-900">{formatDate(nextJob.scheduledDate, t("clientHome.notSet"))}</p>
-              <p className="mt-1 text-gray-600">
-                {nextJob.startTime || t("clientHome.notSet")} · {t(getClientStatusTranslationKey("job", nextJob.status))}
-              </p>
-              {companyFor(nextJob) && <p className="mt-2 text-gray-500">{companyFor(nextJob)}</p>}
-            </div>
-          )}
-        </Section>
-
-        <Section title={t("clientHome.recentActivity")} empty={t("clientHome.noRecentActivity")} count={recentJobs.length}>
-          <div className="divide-y divide-gray-100">
-            {recentJobs.map((job: any) => (
-              <div key={job._id} className="py-3 text-sm first:pt-0 last:pb-0">
-                <p className="font-medium text-gray-900">{t("clientHome.completedService")}</p>
-                <p className="text-gray-500">{formatDate(job.completedAt || job.scheduledDate, t("clientHome.notSet"))}</p>
-                {companyFor(job) && <p className="text-gray-500">{companyFor(job)}</p>}
+        <Section
+          title={inProgressService ? t("clientHome.serviceInProgress") : t("clientHome.nextService")}
+          empty={t("clientHome.noUpcomingJobs")}
+          count={featuredService ? 1 : 0}
+          emphasis="primary"
+        >
+          {featuredService && (() => {
+            const location = locationFor(featuredService);
+            return (
+              <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                <div>
+                  <p className="text-lg font-semibold text-gray-900">{serviceType(featuredService)}</p>
+                  {location && (
+                    <div className="mt-1 text-sm text-gray-600">
+                      <p>{location.name}</p>
+                      {location.address && <p>{location.address}</p>}
+                    </div>
+                  )}
+                  {companyFor(featuredService) && <p className="mt-2 text-sm text-gray-500">{companyFor(featuredService)}</p>}
+                </div>
+                <div className="text-left sm:text-right">
+                  <p className="font-semibold text-gray-900">{formatDate(featuredService.scheduledDate, t("clientHome.notSet"))}</p>
+                  <p className="mt-1 text-sm text-gray-600">
+                    {featuredService.startTime || t("clientHome.timeToBeConfirmed")}
+                  </p>
+                  <p className="mt-2 text-sm font-medium text-primary-700">
+                    {t(getClientStatusTranslationKey("job", featuredService.status))}
+                  </p>
+                </div>
               </div>
-            ))}
-          </div>
+            );
+          })()}
         </Section>
 
         <div className="grid gap-4 lg:grid-cols-2">
-          <Section
-            title={t("clientHome.invoices")}
-            empty={home.invoices.length ? t("clientHome.noOtherInvoices") : t("clientHome.noInvoices")}
-            count={visibleInvoices.length}
-          >
+          <Section title={t("clientHome.upcomingServices")} empty={t("clientHome.noAdditionalUpcoming")} count={additionalUpcoming.length}>
             <div className="divide-y divide-gray-100">
-              {visibleInvoices.map((invoice: any) => (
-                <div key={invoice._id} className="flex justify-between gap-3 py-3 text-sm">
+              {additionalUpcoming.map((job: any) => {
+                const location = locationFor(job);
+                return (
+                  <div key={job._id} className="grid gap-2 py-3 text-sm first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_auto]">
+                    <div>
+                      <p className="font-medium text-gray-900">{serviceType(job)}</p>
+                      {location && <p className="text-gray-500">{location.name}{location.address ? ` · ${location.address}` : ""}</p>}
+                    </div>
+                    <div className="sm:text-right">
+                      <p className="text-gray-900">{formatDate(job.scheduledDate, t("clientHome.notSet"))}</p>
+                      <p className="text-gray-500">{job.startTime || t("clientHome.timeToBeConfirmed")}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Section>
+
+          <Section title={t("clientHome.recentServices")} empty={t("clientHome.noRecentActivity")} count={recentServices.length}>
+            <div className="divide-y divide-gray-100">
+              {recentServices.map((job: any) => {
+                const location = locationFor(job);
+                return (
+                  <div key={job._id} className="py-3 text-sm first:pt-0 last:pb-0">
+                    <p className="font-medium text-gray-900">{serviceType(job)}</p>
+                    <p className="text-gray-500">{formatDate(job.completedAt || job.scheduledDate, t("clientHome.notSet"))}</p>
+                    {location && <p className="text-gray-500">{location.name}</p>}
+                  </div>
+                );
+              })}
+            </div>
+          </Section>
+        </div>
+
+        <div id="documents" className="scroll-mt-32 space-y-4">
+          <GroupHeading title={t("clientHome.documents")} description={t("clientHome.documentsDescription")} />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Section title={t("clientHome.serviceAgreements")} empty={t("clientHome.noServiceAgreements")} count={home.serviceAgreements.length}>
+              <div className="divide-y divide-gray-100">
+                {home.serviceAgreements.map((agreement: any) => (
+                  <Link
+                    key={agreement._id}
+                    href={`/client/service-agreements/${agreement._id}`}
+                    className="block rounded-sm py-3 text-sm hover:text-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium text-gray-900">{agreement.title}</p>
+                        {companyFor(agreement) && <p className="mt-1 text-gray-500">{companyFor(agreement)}</p>}
+                      </div>
+                      <ServiceAgreementStatusBadge agreement={agreement} audience="client" />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </Section>
+
+            <Section title={t("clientHome.proposals")} description={t("clientHome.proposalsDescription")} empty={t("clientHome.noProposals")} count={home.proposals.length}>
+              <div className="divide-y divide-gray-100">
+                {home.proposals.map((proposal: any) => (
+                  <div key={proposal._id} className="py-3 text-sm first:pt-0 last:pb-0">
+                    <p className="font-medium text-gray-900">{proposal.title}</p>
+                    <p className="text-gray-500">{t(getClientStatusTranslationKey("proposal", proposal.status))}</p>
+                    {companyFor(proposal) && <p className="text-gray-500">{companyFor(proposal)}</p>}
+                  </div>
+                ))}
+              </div>
+            </Section>
+          </div>
+        </div>
+
+        <div id="billing" className="scroll-mt-32 space-y-4">
+          <GroupHeading title={t("clientHome.billing")} description={t("clientHome.billingDescription")} />
+          <Section title={t("clientHome.invoices")} description={t("clientHome.invoicesDescription")} empty={t("clientHome.noInvoices")} count={home.invoices.length}>
+            <div className="divide-y divide-gray-100">
+              {home.invoices.map((invoice: any) => (
+                <div key={invoice._id} className="grid gap-2 py-3 text-sm first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_auto]">
                   <div>
-                    <p className="font-medium text-gray-900">{invoice.invoiceNumber}</p>
+                    <p className="font-medium text-gray-900">{invoice.title || invoice.invoiceNumber}</p>
+                    {invoice.title && <p className="text-gray-500">{invoice.invoiceNumber}</p>}
                     <p className="text-gray-500">
                       {t(getClientStatusTranslationKey("invoice", invoice.status))}
                       {invoice.dueDate && ` · ${t("clientHome.dueDate", { date: formatDate(invoice.dueDate, "") })}`}
                     </p>
+                    {companyFor(invoice) && <p className="text-gray-500">{companyFor(invoice)}</p>}
                   </div>
-                  <p className="font-medium text-gray-900">{formatCents(invoice.totalCents)}</p>
+                  <p className="font-semibold text-gray-900 sm:text-right">{formatCents(invoice.totalCents)}</p>
                 </div>
-              ))}
-            </div>
-          </Section>
-
-          <Section
-            title={t("clientHome.proposals")}
-            empty={home.proposals.length ? t("clientHome.noOtherProposals") : t("clientHome.noProposals")}
-            count={visibleProposals.length}
-          >
-            <div className="divide-y divide-gray-100">
-              {visibleProposals.map((proposal: any) => (
-                <div key={proposal._id} className="py-3 text-sm">
-                  <p className="font-medium text-gray-900">{proposal.title}</p>
-                  <p className="text-gray-500">{t(getClientStatusTranslationKey("proposal", proposal.status))}</p>
-                </div>
-              ))}
-            </div>
-          </Section>
-
-          <Section
-            title={t("clientHome.serviceAgreements")}
-            empty={home.serviceAgreements.length ? t("clientHome.noOtherServiceAgreements") : t("clientHome.noServiceAgreements")}
-            count={visibleAgreements.length}
-          >
-            <div className="divide-y divide-gray-100">
-              {visibleAgreements.map((agreement: any) => (
-                <Link
-                  key={agreement._id}
-                  href={`/client/service-agreements/${agreement._id}`}
-                  className="block py-3 text-sm hover:text-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-                >
-                  <p className="font-medium text-gray-900">{agreement.title}</p>
-                  <ServiceAgreementStatusBadge agreement={agreement} audience="client" className="mt-1" />
-                </Link>
               ))}
             </div>
           </Section>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Section title={t("clientHome.properties")} empty={t("clientHome.noProperties")} count={home.properties.length + home.commercialAccounts.length} emphasis="reference">
-            <div className="divide-y divide-gray-100">
-              {[...home.properties, ...home.commercialAccounts].map((item: any) => (
-                <div key={item._id} className="py-3 text-sm">
-                  <p className="font-medium text-gray-900">{item.name || item.clientName}</p>
-                  <p className="text-gray-500">{item.address || item.serviceAddress || t("clientHome.notSet")}</p>
-                </div>
-              ))}
-            </div>
-          </Section>
-
-          <Section title={t("clientHome.relationships")} empty={t("clientHome.noRelationships")} count={home.relationships.length} emphasis="reference">
+        <div id="locations" className="scroll-mt-32 space-y-4">
+          <GroupHeading title={t("clientHome.properties")} description={t("clientHome.locationsDescription")} />
+          <Section title={t("clientHome.serviceLocationsOnFile")} empty={t("clientHome.noProperties")} count={locations.length} emphasis="reference">
             <div className="grid gap-3 sm:grid-cols-2">
-              {home.relationships.map((relationship: any) => (
-                <div key={relationship._id} className="rounded-lg border border-gray-200 p-3">
-                  <p className="font-medium text-gray-900">{relationship.companyName}</p>
-                  <p className="text-sm text-gray-500">{relationship.businessName || relationship.displayName}</p>
+              {locations.map((item: any) => (
+                <div key={item._id} className="rounded-lg border border-gray-200 p-4 text-sm">
+                  <p className="font-medium text-gray-900">{item.name || item.clientName}</p>
+                  <p className="mt-1 text-gray-500">{item.address || item.serviceAddress || t("clientHome.notSet")}</p>
                 </div>
               ))}
             </div>
           </Section>
         </div>
 
-        <Section title={t("clientHome.profile")} empty="" emphasis="reference">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <p className="text-xs font-medium text-gray-500">{t("auth.email")}</p>
-              <p className="text-sm text-gray-900">{home.clientUser.email}</p>
-            </div>
-            <div>
-              <p className="text-xs font-medium text-gray-500">{t("common.phone")}</p>
-              <p className="text-sm text-gray-900">{home.clientUser.phone || t("clientHome.notSet")}</p>
-            </div>
+        <div id="account" className="scroll-mt-32 space-y-4">
+          <GroupHeading title={t("clientHome.accountInformation")} description={t("clientHome.accountDescription")} />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Section title={t("clientHome.contactInformation")} empty="" emphasis="reference">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <p className="text-xs font-medium text-gray-500">{t("auth.email")}</p>
+                  <p className="text-sm text-gray-900 break-words">{home.clientUser.email}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-gray-500">{t("common.phone")}</p>
+                  <p className="text-sm text-gray-900">{home.clientUser.phone || t("clientHome.notSet")}</p>
+                </div>
+              </div>
+            </Section>
+
+            <Section title={t("clientHome.relationships")} empty={t("clientHome.noRelationships")} count={home.relationships.length} emphasis="reference">
+              <div className="grid gap-3 sm:grid-cols-2">
+                {home.relationships.map((relationship: any) => (
+                  <div key={relationship._id} className="rounded-lg border border-gray-200 p-3">
+                    <p className="font-medium text-gray-900">{relationship.companyName}</p>
+                    <p className="text-sm text-gray-500">{relationship.businessName || relationship.displayName}</p>
+                  </div>
+                ))}
+              </div>
+            </Section>
           </div>
-        </Section>
+        </div>
       </main>
-    </div>
+    </ClientPortalShell>
   );
 }

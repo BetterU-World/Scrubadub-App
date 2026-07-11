@@ -8,6 +8,8 @@ import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { useClientAuth } from "@/hooks/useClientAuth";
 import { useTranslation } from "react-i18next";
 import { CheckCircle, XCircle } from "lucide-react";
+import { ClientPortalShell } from "@/components/client/ClientPortalShell";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ServiceAgreementStatusBadge } from "@/components/ui/ServiceAgreementStatusBadge";
 
 function formatCents(cents: number | undefined, fallback: string) {
@@ -42,6 +44,8 @@ export function ClientServiceAgreementPage() {
   const acceptAgreement = useMutation((api as any).mutations.serviceAgreements.clientAccept);
   const declineAgreement = useMutation((api as any).mutations.serviceAgreements.clientDecline);
   const [note, setNote] = useState("");
+  const [showDecline, setShowDecline] = useState(false);
+  const [confirmDecline, setConfirmDecline] = useState(false);
   const [loadingAction, setLoadingAction] = useState<"accept" | "decline" | null>(null);
   const [error, setError] = useState("");
 
@@ -50,27 +54,27 @@ export function ClientServiceAgreementPage() {
   if (!clientUserId) {
     const next = encodeURIComponent(`/client/service-agreements/${agreementId ?? ""}`);
     return (
-      <Shell>
+      <ClientPortalShell contentClassName="max-w-3xl">
         <div className="card mx-auto max-w-md text-center">
           <h1 className="mb-3 text-xl font-semibold text-gray-900">{t("clientHome.signInRequired")}</h1>
           <Link href={`/client/login?next=${next}`} className="btn-primary inline-block">
             {t("clientAuth.signIn")}
           </Link>
         </div>
-      </Shell>
+      </ClientPortalShell>
     );
   }
 
   if (!agreement) {
     return (
-      <Shell onSignOut={signOut}>
+      <ClientPortalShell onSignOut={signOut} contentClassName="max-w-3xl">
         <div className="card py-12 text-center">
           <h1 className="text-xl font-semibold text-gray-900">{t("clientAgreements.notFound")}</h1>
           <Link href="/client/home" className="mt-4 inline-block text-sm text-primary-600 hover:underline">
             {t("clientAgreements.backToHome")}
           </Link>
         </div>
-      </Shell>
+      </ClientPortalShell>
     );
   }
 
@@ -95,6 +99,8 @@ export function ClientServiceAgreementPage() {
         agreementId: agreement._id,
         note: note.trim() || undefined,
       });
+      setConfirmDecline(false);
+      setShowDecline(false);
     } catch (err: any) {
       setError(err.message || t("clientAgreements.actionFailed"));
     } finally {
@@ -103,7 +109,7 @@ export function ClientServiceAgreementPage() {
   };
 
   return (
-    <Shell onSignOut={signOut}>
+    <ClientPortalShell clientName={agreement.clientName} onSignOut={signOut} contentClassName="max-w-3xl">
       <main className="mx-auto max-w-3xl space-y-4 px-4 py-6">
         <section className="card space-y-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -172,18 +178,6 @@ export function ClientServiceAgreementPage() {
           )}
           {canRespond && (
             <>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  {t("clientAgreements.declineNote")}
-                </label>
-                <textarea
-                  className="input-field mt-1"
-                  rows={3}
-                  maxLength={1000}
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
-                />
-              </div>
               {error && <p className="text-sm text-red-600">{error}</p>}
               <div className="flex flex-col gap-2 sm:flex-row">
                 <button
@@ -198,18 +192,55 @@ export function ClientServiceAgreementPage() {
                 <button
                   type="button"
                   disabled={loadingAction !== null}
-                  onClick={handleDecline}
-                  className="btn-secondary flex flex-1 items-center justify-center gap-2"
+                  onClick={() => setShowDecline((current) => !current)}
+                  className="btn-secondary flex items-center justify-center gap-2 sm:flex-none"
+                  aria-expanded={showDecline}
+                  aria-controls="decline-agreement-panel"
                 >
                   <XCircle className="h-4 w-4" />
-                  {loadingAction === "decline" ? t("common.saving") : t("clientAgreements.decline")}
+                  {t("clientAgreements.decline")}
                 </button>
               </div>
+              {showDecline && (
+                <div id="decline-agreement-panel" className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                  <div>
+                    <label htmlFor="decline-note" className="block text-sm font-medium text-gray-700">
+                      {t("clientAgreements.declineNote")}
+                    </label>
+                    <textarea
+                      id="decline-note"
+                      className="input-field mt-1"
+                      rows={3}
+                      maxLength={1000}
+                      value={note}
+                      onChange={(event) => setNote(event.target.value)}
+                    />
+                  </div>
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <button type="button" className="btn-secondary" onClick={() => setShowDecline(false)}>
+                      {t("common.cancel")}
+                    </button>
+                    <button type="button" className="btn-secondary" onClick={() => setConfirmDecline(true)}>
+                      {t("clientAgreements.continueDecline")}
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </section>
       </main>
-    </Shell>
+      <ConfirmDialog
+        open={confirmDecline}
+        onOpenChange={setConfirmDecline}
+        title={t("clientAgreements.confirmDeclineTitle")}
+        description={t("clientAgreements.confirmDeclineDescription")}
+        confirmLabel={t("clientAgreements.confirmDecline")}
+        confirmVariant="danger"
+        onConfirm={handleDecline}
+        loading={loadingAction === "decline"}
+      />
+    </ClientPortalShell>
   );
 }
 
@@ -221,28 +252,6 @@ function Result({ icon, title, message }: { icon: ReactNode; title: string; mess
       </div>
       <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
       <p className="mt-1 text-sm text-gray-500">{message}</p>
-    </div>
-  );
-}
-
-function Shell({ children, onSignOut }: { children: ReactNode; onSignOut?: () => void }) {
-  const { t } = useTranslation();
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4">
-          <Link href="/client/home" className="flex items-center gap-3">
-            <img src="/logo-icon.png" alt="SCRUB" className="h-9 w-9" />
-            <span className="text-base font-semibold text-gray-900">SCRUB</span>
-          </Link>
-          {onSignOut && (
-            <button type="button" onClick={onSignOut} className="btn-secondary text-sm">
-              {t("auth.signOut")}
-            </button>
-          )}
-        </div>
-      </header>
-      {children}
     </div>
   );
 }
