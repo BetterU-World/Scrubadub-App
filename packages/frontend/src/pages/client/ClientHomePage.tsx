@@ -6,6 +6,7 @@ import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { useClientAuth } from "@/hooks/useClientAuth";
 import { useTranslation } from "react-i18next";
 import { ServiceAgreementStatusBadge } from "@/components/ui/ServiceAgreementStatusBadge";
+import { getClientStatusTranslationKey } from "@/lib/clientPresentation";
 
 function formatDate(date: string | number | undefined, fallback: string) {
   if (!date) return fallback;
@@ -20,7 +21,7 @@ function formatCents(cents: number | undefined) {
 
 function Section({ title, empty, children, count }: { title: string; empty: string; children: ReactNode; count: number }) {
   return (
-    <section className="card space-y-3">
+    <section className="space-y-3 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold text-gray-900">{title}</h2>
         <span className="badge bg-gray-100 text-gray-700">{count}</span>
@@ -66,7 +67,7 @@ export function ClientHomePage() {
       </header>
 
       <main className="mx-auto max-w-6xl space-y-6 px-4 py-6">
-        <section className="card">
+        <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <h2 className="text-base font-semibold text-gray-900">{t("clientHome.profile")}</h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
             <div>
@@ -101,7 +102,9 @@ export function ClientHomePage() {
               {home.upcomingJobs.map((job: any) => (
                 <div key={job._id} className="py-3 text-sm">
                   <p className="font-medium text-gray-900">{formatDate(job.scheduledDate, t("clientHome.notSet"))}</p>
-                  <p className="text-gray-500">{job.startTime || t("clientHome.notSet")} · {job.status}</p>
+                  <p className="text-gray-500">
+                    {job.startTime || t("clientHome.notSet")} · {t(getClientStatusTranslationKey("job", job.status))}
+                  </p>
                 </div>
               ))}
             </div>
@@ -112,7 +115,7 @@ export function ClientHomePage() {
               {home.completedJobs.map((job: any) => (
                 <div key={job._id} className="py-3 text-sm">
                   <p className="font-medium text-gray-900">{formatDate(job.scheduledDate, t("clientHome.notSet"))}</p>
-                  <p className="text-gray-500">{job.status}</p>
+                  <p className="text-gray-500">{t(getClientStatusTranslationKey("job", job.status))}</p>
                 </div>
               ))}
             </div>
@@ -135,7 +138,10 @@ export function ClientHomePage() {
                 <div key={invoice._id} className="flex justify-between gap-3 py-3 text-sm">
                   <div>
                     <p className="font-medium text-gray-900">{invoice.invoiceNumber}</p>
-                    <p className="text-gray-500">{invoice.status} · {formatDate(invoice.dueDate, t("clientHome.notSet"))}</p>
+                    <p className="text-gray-500">
+                      {t(getClientStatusTranslationKey("invoice", invoice.status))}
+                      {invoice.dueDate && ` · ${t("clientHome.dueDate", { date: formatDate(invoice.dueDate, "") })}`}
+                    </p>
                   </div>
                   <p className="font-medium text-gray-900">{formatCents(invoice.totalCents)}</p>
                 </div>
@@ -148,7 +154,7 @@ export function ClientHomePage() {
               {home.proposals.map((proposal: any) => (
                 <div key={proposal._id} className="py-3 text-sm">
                   <p className="font-medium text-gray-900">{proposal.title}</p>
-                  <p className="text-gray-500">{proposal.status}</p>
+                  <p className="text-gray-500">{t(getClientStatusTranslationKey("proposal", proposal.status))}</p>
                 </div>
               ))}
             </div>
