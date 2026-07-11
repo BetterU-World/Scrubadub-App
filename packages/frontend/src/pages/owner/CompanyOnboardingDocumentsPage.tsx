@@ -15,19 +15,22 @@ import {
 } from "lucide-react";
 
 const ROLE_OPTIONS = [
-  { value: "both", label: "Cleaners + Maintenance" },
+  { value: "both", label: "All workers" },
   { value: "cleaner", label: "Cleaners" },
-  { value: "maintenance", label: "Maintenance" },
+  { value: "maintenance", label: "Maintenance workers" },
 ] as const;
 
 const STATUS_OPTIONS = [
-  { value: "active", label: "Active" },
-  { value: "inactive", label: "Inactive" },
+  { value: "active", label: "Visible to selected workers" },
+  { value: "inactive", label: "Hidden from workers" },
 ] as const;
 
-function formatDate(value?: number | null) {
-  if (!value) return "Not uploaded yet";
-  return new Date(value).toLocaleDateString();
+function deliverySummary(document: any) {
+  if (document.status !== "active") return "Hidden from workers";
+  if (!document.storageId) return "Not available until a PDF is uploaded";
+  if (document.roleVisibility === "cleaner") return "Available to cleaners";
+  if (document.roleVisibility === "maintenance") return "Available to maintenance workers";
+  return "Available to all workers";
 }
 
 export function CompanyOnboardingDocumentsPage() {
@@ -125,7 +128,7 @@ export function CompanyOnboardingDocumentsPage() {
     <div>
       <PageHeader
         title="Worker Documents"
-        description="Company-uploaded PDFs used during worker onboarding and compliance. Documents become available to the selected workers after upload and activation."
+        description="Upload and manage the PDFs workers use during onboarding and compliance. Each card shows who can access the document and whether owner action is needed."
         action={
           <Link href="/owner/settings" className="btn-secondary flex items-center gap-2">
             <ArrowLeft className="w-4 h-4" />
@@ -143,13 +146,15 @@ export function CompanyOnboardingDocumentsPage() {
       <div className="space-y-3 max-w-4xl">
         {documents.map((document: any) => {
           const busy = busyKey === document.documentKey;
+          const hasPdf = Boolean(document.storageId);
+          const needsUpload = !hasPdf && document.required && document.status === "active";
           return (
             <section key={document.documentKey} className="card">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <div className="rounded-lg bg-gray-100 p-2 text-gray-600">
-                      <FileText className="w-4 h-4" />
+                      <FileText className="w-4 h-4" aria-hidden="true" />
                     </div>
                     <div>
                       <h2 className="font-semibold text-gray-900">{document.title}</h2>
@@ -158,25 +163,33 @@ export function CompanyOnboardingDocumentsPage() {
                   </div>
 
                   <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                    <span className={`badge ${document.storageId ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
-                      {document.storageId ? "PDF Uploaded" : "Waiting for Upload"}
+                    <span className={`badge ${hasPdf ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
+                      {hasPdf ? "Uploaded" : "Not Uploaded"}
                     </span>
                     <span className={`badge ${document.required ? "bg-primary-100 text-primary-700" : "bg-gray-100 text-gray-700"}`}>
                       {document.required ? "Required" : "Optional"}
                     </span>
-                    <span className={`badge ${document.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}`}>
-                      {document.status === "active" ? "Active" : "Inactive"}
+                    <span className={`badge ${document.status === "active" && hasPdf ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}`}>
+                      {deliverySummary(document)}
                     </span>
                   </div>
 
-                  <p className="mt-2 text-xs text-gray-400">
-                    Last updated: {formatDate(document.updatedAt)}
-                  </p>
+                  {needsUpload && (
+                    <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
+                      Action needed: upload this required document so assigned workers can review it.
+                    </p>
+                  )}
+
+                  {document.updatedAt && (
+                    <p className="mt-2 text-xs text-gray-400">
+                      {hasPdf ? "Updated" : "Settings updated"}: {new Date(document.updatedAt).toLocaleDateString()}
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid gap-2 sm:grid-cols-2 lg:w-[360px]">
                   <label className="text-xs font-medium uppercase text-gray-400 sm:col-span-2">
-                    Role Visibility
+                    Worker Audience
                     <select
                       className="input-field mt-1 text-sm"
                       value={document.roleVisibility}
@@ -190,7 +203,7 @@ export function CompanyOnboardingDocumentsPage() {
                   </label>
 
                   <label className="text-xs font-medium uppercase text-gray-400">
-                    Status
+                    Visibility
                     <select
                       className="input-field mt-1 text-sm"
                       value={document.status}
@@ -209,7 +222,7 @@ export function CompanyOnboardingDocumentsPage() {
                     disabled={busy}
                     onClick={() => saveMetadata(document, { required: !document.required })}
                   >
-                    <ToggleLeft className="w-4 h-4" />
+                    <ToggleLeft className="w-4 h-4" aria-hidden="true" />
                     {document.required ? "Make Optional" : "Make Required"}
                   </button>
 
@@ -218,6 +231,7 @@ export function CompanyOnboardingDocumentsPage() {
                     type="file"
                     accept="application/pdf"
                     className="hidden"
+                    aria-label={`Upload PDF for ${document.title}`}
                     onChange={(event) => uploadPdf(document, event.target.files?.[0])}
                   />
 
@@ -227,35 +241,33 @@ export function CompanyOnboardingDocumentsPage() {
                     disabled={busy}
                     onClick={() => fileInputRefs.current[document.documentKey]?.click()}
                   >
-                    {busy ? <LoadingSpinner size="sm" /> : <Upload className="w-4 h-4" />}
-                    {document.storageId ? "Replace PDF" : "Upload PDF"}
+                    {busy ? <LoadingSpinner size="sm" /> : <Upload className="w-4 h-4" aria-hidden="true" />}
+                    {hasPdf ? "Replace PDF" : "Upload PDF"}
                   </button>
 
-                  {document.url ? (
+                  {hasPdf && document.url && (
                     <a
                       href={document.url}
                       target="_blank"
                       rel="noreferrer"
                       className="btn-secondary flex items-center justify-center gap-2 text-sm"
                     >
-                      <ExternalLink className="w-4 h-4" />
+                      <ExternalLink className="w-4 h-4" aria-hidden="true" />
                       Open PDF
                     </a>
-                  ) : (
-                    <button type="button" className="btn-secondary text-sm opacity-50" disabled>
-                      Open PDF
-                    </button>
                   )}
 
-                  <button
-                    type="button"
-                    className="btn-secondary flex items-center justify-center gap-2 text-sm text-red-600"
-                    disabled={busy || !document.storageId}
-                    onClick={() => handleRemovePdf(document)}
-                  >
-                    <X className="w-4 h-4" />
-                    Remove PDF
-                  </button>
+                  {hasPdf && (
+                    <button
+                      type="button"
+                      className="flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm text-gray-500 hover:bg-red-50 hover:text-red-600"
+                      disabled={busy}
+                      onClick={() => handleRemovePdf(document)}
+                    >
+                      <X className="w-4 h-4" aria-hidden="true" />
+                      Remove PDF
+                    </button>
+                  )}
                 </div>
               </div>
             </section>
