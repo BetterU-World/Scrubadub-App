@@ -84,14 +84,20 @@ function RelatedSection({
   empty,
   children,
   count,
+  action,
 }: {
   title: string;
   empty: string;
   children: ReactNode;
   count: number;
+  action?: ReactNode;
 }) {
   return (
-    <CollapsibleSection title={title} badge={<span className="badge bg-gray-100 text-gray-700">{count}</span>}>
+    <CollapsibleSection
+      title={title}
+      badge={<span className="badge bg-gray-100 text-gray-700">{count}</span>}
+      actions={action}
+    >
       {count === 0 ? <p className="text-sm text-gray-500">{empty}</p> : children}
     </CollapsibleSection>
   );
@@ -516,7 +522,21 @@ export function ClientRelationshipDetailPage() {
           </div>
         </RelatedSection>
 
-        <RelatedSection title={t("clientRelationships.sections.properties")} empty={t("clientRelationships.empty.properties")} count={detail.properties.length}>
+        <RelatedSection
+          title={t("clientRelationships.sections.properties")}
+          empty={t("clientRelationships.empty.properties")}
+          count={detail.properties.length}
+          action={
+            <Link
+              href={`/properties/new?clientRelationshipId=${encodeURIComponent(relationship._id)}`}
+              className="btn-secondary flex items-center gap-1.5 px-2 py-1 text-xs"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {t("clientRelationships.addProperty")}
+            </Link>
+          }
+        >
+          <p className="pb-2 text-xs text-gray-500">{t("clientRelationships.propertiesHelper")}</p>
           <div className="divide-y divide-gray-100">
             {detail.properties.map((property: any) => (
               <Link key={property._id} href={`/properties/${property._id}`} className="flex items-center gap-3 py-3 text-sm hover:text-primary-700">
