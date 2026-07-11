@@ -1815,6 +1815,16 @@
       "sent": "Enviado",
       "signed": "Firmado",
       "cancelled": "Cancelado"
+    },
+    "presentation": {
+      "not_created": "No creado",
+      "draft": "Borrador",
+      "ready": "Listo",
+      "sent": "Enviado",
+      "actionRequired": "AcciÃ³n requerida",
+      "accepted": "Aceptado",
+      "declined": "Rechazado",
+      "cancelled": "Cancelado"
     }
   },
   "clientAgreements": {
@@ -1827,6 +1837,8 @@
     "acceptedMessage": "Gracias. Tu respuesta se compartio con el proveedor.",
     "declined": "Acuerdo rechazado",
     "declinedMessage": "Tu respuesta se compartio con el proveedor.",
+    "cancelled": "Acuerdo cancelado",
+    "cancelledMessage": "Este acuerdo ya no estÃ¡ disponible para aceptaciÃ³n.",
     "actionFailed": "No se pudo enviar la respuesta"
   },
   "commercialSchedules": {

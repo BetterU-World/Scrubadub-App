@@ -8,6 +8,7 @@ import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { useClientAuth } from "@/hooks/useClientAuth";
 import { useTranslation } from "react-i18next";
 import { CheckCircle, XCircle } from "lucide-react";
+import { ServiceAgreementStatusBadge } from "@/components/ui/ServiceAgreementStatusBadge";
 
 function formatCents(cents: number | undefined, fallback: string) {
   if (cents == null) return fallback;
@@ -112,9 +113,7 @@ export function ClientServiceAgreementPage() {
               </p>
               <h1 className="mt-2 text-2xl font-semibold text-gray-900">{agreement.title}</h1>
             </div>
-            <span className="badge bg-gray-100 text-gray-700 capitalize">
-              {t(`serviceAgreements.statuses.${agreement.status}`)}
-            </span>
+            <ServiceAgreementStatusBadge agreement={agreement} audience="client" />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -157,11 +156,18 @@ export function ClientServiceAgreementPage() {
               message={t("clientAgreements.acceptedMessage")}
             />
           )}
-          {agreement.status === "cancelled" && (
+          {agreement.status === "cancelled" && agreement.declinedAt && (
             <Result
               icon={<XCircle className="h-6 w-6 text-red-600" />}
               title={t("clientAgreements.declined")}
               message={agreement.clientResponseNote || t("clientAgreements.declinedMessage")}
+            />
+          )}
+          {agreement.status === "cancelled" && !agreement.declinedAt && (
+            <Result
+              icon={<XCircle className="h-6 w-6 text-gray-500" />}
+              title={t("clientAgreements.cancelled")}
+              message={t("clientAgreements.cancelledMessage")}
             />
           )}
           {canRespond && (

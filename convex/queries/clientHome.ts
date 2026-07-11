@@ -171,6 +171,7 @@ export const getClientHome = query({
           clientRelationshipId: agreement.clientRelationshipId,
           title: agreement.title,
           status: agreement.status,
+          declinedAt: agreement.declinedAt,
           effectiveStartDate: agreement.effectiveStartDate,
           effectiveEndDate: agreement.effectiveEndDate,
           renewalDate: agreement.renewalDate,
