@@ -1623,6 +1623,10 @@
     }
   },
   "walkthroughs": {
+    "propertyInformation": "Información de la propiedad",
+    "propertyInformationHelper": "Datos permanentes de la propiedad vinculada. Los cambios actualizan el perfil de la propiedad.",
+    "findings": "Hallazgos del recorrido",
+    "findingsHelper": "Observaciones, alcance, riesgos, recomendaciones y estimaciones específicos de la visita.",
     "title": "Recorrido",
     "helper": "Los recorridos ayudan a capturar detalles del sitio antes de crear una propuesta. La generacion de propuestas desde recorridos se agregara mas adelante.",
     "create": "Crear recorrido",

@@ -1623,6 +1623,10 @@
     }
   },
   "walkthroughs": {
+    "propertyInformation": "Property Information",
+    "propertyInformationHelper": "Persistent facts from the linked Property. Edits update the Property profile.",
+    "findings": "Walkthrough Findings",
+    "findingsHelper": "Visit-specific observations, scope, risks, recommendations, and estimates.",
     "title": "Walkthrough",
     "helper": "Walkthroughs help capture site details before creating a proposal. Proposal generation from walkthrough data will be added later.",
     "create": "Create Walkthrough",

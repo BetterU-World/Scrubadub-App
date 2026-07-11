@@ -65,6 +65,16 @@ async function decorateWalkthrough(ctx: any, walkthrough: any) {
           name: property.name,
           type: property.type,
           address: property.address,
+          squareFootage: property.squareFootage,
+          beds: property.beds,
+          baths: property.baths,
+          amenities: property.amenities,
+          accessInstructions: property.accessInstructions,
+          pillowCount: property.pillowCount,
+          sheetSets: property.sheetSets,
+          towelCount: property.towelCount,
+          restroomCount: property.restroomCount,
+          trashCanCount: property.trashCanCount,
         }
       : null,
     clientRequest:
