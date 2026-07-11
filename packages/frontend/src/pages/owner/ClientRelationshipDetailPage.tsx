@@ -10,6 +10,7 @@ import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { ArrowLeft, Clock, Home, Mail, Plus, Phone, Save, User, Wrench } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
+import { ServiceAgreementStatusBadge } from "@/components/ui/ServiceAgreementStatusBadge";
 
 type ClientType = "residential" | "commercial" | "str" | "property_manager" | "marketplace";
 type RelationshipStatus = "active" | "inactive" | "archived";
@@ -576,7 +577,7 @@ export function ClientRelationshipDetailPage() {
                   <span className="block font-medium text-gray-900">{agreement.title}</span>
                   <span className="text-xs text-gray-500">{formatCents(agreement.contractAmountCents, notSet)}</span>
                 </span>
-                <span className="badge bg-gray-100 text-gray-700 capitalize">{t(`serviceAgreements.statuses.${agreement.status}`)}</span>
+                <ServiceAgreementStatusBadge agreement={agreement} />
               </div>
             ))}
           </div>

@@ -5,6 +5,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { useClientAuth } from "@/hooks/useClientAuth";
 import { useTranslation } from "react-i18next";
+import { ServiceAgreementStatusBadge } from "@/components/ui/ServiceAgreementStatusBadge";
 
 function formatDate(date: string | number | undefined, fallback: string) {
   if (!date) return fallback;
@@ -162,7 +163,7 @@ export function ClientHomePage() {
                   className="block py-3 text-sm hover:text-primary-700"
                 >
                   <p className="font-medium text-gray-900">{agreement.title}</p>
-                  <p className="text-gray-500">{agreement.status}</p>
+                  <ServiceAgreementStatusBadge agreement={agreement} audience="client" className="mt-1" />
                 </Link>
               ))}
             </div>

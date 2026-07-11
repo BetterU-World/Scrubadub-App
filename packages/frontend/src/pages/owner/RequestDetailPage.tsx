@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ServiceAgreementCard } from "@/components/owner/ServiceAgreementCard";
 import { WalkthroughCard } from "@/components/owner/WalkthroughCard";
 import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
+import { ServiceAgreementStatusBadge } from "@/components/ui/ServiceAgreementStatusBadge";
 import {
   User,
   Mail,
@@ -107,6 +108,12 @@ export function RequestDetailPage() {
           userId: user._id,
           clientRequestId: params.id as Id<"clientRequests">,
         }
+      : "skip"
+  );
+  const serviceAgreement = useQuery(
+    (api as any).queries.serviceAgreements.getByProposal,
+    proposal?.status === "accepted" && user
+      ? { userId: user._id, proposalId: proposal._id }
       : "skip"
   );
   const leadWalkthroughs = useQuery(
@@ -803,7 +810,12 @@ export function RequestDetailPage() {
         title={t("proposals.title")}
         subtitle={proposal ? t("proposals.description") : t("proposals.emptyDesc")}
         icon={<FileText className="h-4 w-4" />}
-        badge={proposal ? <span className="badge bg-primary-50 text-primary-700 capitalize">{t(`proposals.statuses.${proposal.status}`)}</span> : undefined}
+        badge={proposal ? <>
+          <span className="badge bg-primary-50 text-primary-700 capitalize">{t(`proposals.statuses.${proposal.status}`)}</span>
+          {proposal.status === "accepted" && serviceAgreement !== undefined && (
+            <ServiceAgreementStatusBadge agreement={serviceAgreement} />
+          )}
+        </> : undefined}
         className="mt-4"
       >
 

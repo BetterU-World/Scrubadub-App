@@ -6,6 +6,7 @@ import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
+import { ServiceAgreementStatusBadge } from "@/components/ui/ServiceAgreementStatusBadge";
 
 const FREQUENCIES = ["one_time", "weekly", "biweekly", "monthly", "quarterly", "custom"] as const;
 
@@ -320,11 +321,7 @@ export function ServiceAgreementCard({
             )}
           </div>
         </div>
-        {agreement && (
-          <span className="badge bg-gray-100 text-gray-700">
-            {t(`serviceAgreements.statuses.${agreement.status}`)}
-          </span>
-        )}
+        {(agreement || !hideWhenMissing) && <ServiceAgreementStatusBadge agreement={agreement} />}
       </div>
 
       {!agreement ? (

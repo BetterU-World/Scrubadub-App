@@ -1815,6 +1815,16 @@
       "sent": "Sent",
       "signed": "Signed",
       "cancelled": "Cancelled"
+    },
+    "presentation": {
+      "not_created": "Not Created",
+      "draft": "Draft",
+      "ready": "Ready",
+      "sent": "Sent",
+      "actionRequired": "Action Required",
+      "accepted": "Accepted",
+      "declined": "Declined",
+      "cancelled": "Cancelled"
     }
   },
   "clientAgreements": {
@@ -1827,6 +1837,8 @@
     "acceptedMessage": "Thank you. Your response has been shared with the provider.",
     "declined": "Agreement declined",
     "declinedMessage": "Your response has been shared with the provider.",
+    "cancelled": "Agreement cancelled",
+    "cancelledMessage": "This agreement is no longer available for acceptance.",
     "actionFailed": "Unable to submit response"
   },
   "commercialSchedules": {
