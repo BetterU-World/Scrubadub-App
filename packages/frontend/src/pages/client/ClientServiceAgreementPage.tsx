@@ -226,6 +226,7 @@ function Result({ icon, title, message }: { icon: ReactNode; title: string; mess
 }
 
 function Shell({ children, onSignOut }: { children: ReactNode; onSignOut?: () => void }) {
+  const { t } = useTranslation();
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="border-b border-gray-200 bg-white">
@@ -236,7 +237,7 @@ function Shell({ children, onSignOut }: { children: ReactNode; onSignOut?: () =>
           </Link>
           {onSignOut && (
             <button type="button" onClick={onSignOut} className="btn-secondary text-sm">
-              Sign out
+              {t("auth.signOut")}
             </button>
           )}
         </div>
