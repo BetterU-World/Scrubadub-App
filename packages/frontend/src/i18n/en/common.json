@@ -1497,8 +1497,11 @@
     "profile": "Profile",
     "providers": "Cleaning companies",
     "relationships": "Cleaning companies",
+    "needsAttention": "Needs Your Attention",
     "upcomingJobs": "Upcoming service",
     "completedJobs": "Service history",
+    "recentActivity": "Recent Activity",
+    "completedService": "Completed service",
     "properties": "Service locations",
     "invoices": "Invoices",
     "proposals": "Proposals",
@@ -1506,13 +1509,23 @@
     "noRelationships": "No cleaning companies are connected to your account yet.",
     "noUpcomingJobs": "No upcoming service is currently scheduled.",
     "noCompletedJobs": "Completed service visits will appear here.",
+    "noRecentActivity": "Completed service visits will appear here.",
     "noProperties": "No service locations have been added yet.",
     "noInvoices": "No invoices are available.",
+    "noOtherInvoices": "All current invoice items are shown above.",
     "noProposals": "No service proposals are awaiting review.",
+    "noOtherProposals": "All current proposal items are shown above.",
     "noServiceAgreements": "No service agreements are available.",
+    "noOtherServiceAgreements": "All current agreement items are shown above.",
     "notSet": "Not provided",
     "dueDate": "Due {{date}}",
-    "signInRequired": "Please sign in to view your account."
+    "signInRequired": "Please sign in to view your account.",
+    "attention": {
+      "proposalReady": "Proposal Ready",
+      "agreementReady": "Agreement Ready",
+      "invoiceDueSoon": "Invoice Due Soon",
+      "invoiceOverdue": "Invoice Overdue"
+    }
   },
   "clientPresentation": {
     "statuses": {
