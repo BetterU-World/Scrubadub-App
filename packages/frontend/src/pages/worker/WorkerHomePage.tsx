@@ -18,7 +18,7 @@ import {
   Users,
 } from "lucide-react";
 import { api } from "../../../../../convex/_generated/api";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 
@@ -401,31 +401,31 @@ export function WorkerHomePage() {
 
   const jobs = useQuery(
     api.queries.jobs.getForCleaner,
-    user?.companyId ? { cleanerId: user._id, companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId ? { cleanerId: user._id, companyId: user.companyId, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   ) as WorkerJob[] | undefined;
   const payments = useQuery(
     api.queries.cleanerPayments.listCleanerJobsWithPaymentStatus,
-    user?._id ? { userId: user._id } : "skip"
+    user?._id ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
   const teams = useQuery(
     (api as any).queries.teams.listMyTeams,
-    user?._id ? { userId: user._id } : "skip"
+    user?._id ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
   const workerProfile = useQuery(
     (api as any).queries.workers.getWorkerProfileForUser,
-    user?._id ? { userId: user._id } : "skip"
+    user?._id ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
   const unreadCount = useQuery(
     api.queries.notifications.unreadCount,
-    user?._id ? { userId: user._id } : "skip"
+    user?._id ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
   const documents = useQuery(
     (api as any).queries.workers.listWorkerDocuments,
-    user?._id && workerProfile?._id ? { userId: user._id, workerProfileId: workerProfile._id } : "skip"
+    user?._id && workerProfile?._id ? { userId: user._id, sessionToken: getStaffSessionToken(), workerProfileId: workerProfile._id } : "skip"
   );
   const onboardingItems = useQuery(
     (api as any).queries.workers.listWorkerOnboardingItems,
-    user?._id && workerProfile?._id ? { userId: user._id, workerProfileId: workerProfile._id } : "skip"
+    user?._id && workerProfile?._id ? { userId: user._id, sessionToken: getStaffSessionToken(), workerProfileId: workerProfile._id } : "skip"
   );
 
   if (

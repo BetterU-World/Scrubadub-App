@@ -2,7 +2,8 @@ import { mutation, MutationCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
-import { requireAuth, requireOwner, logAudit, createNotification } from "../lib/helpers";
+import { logAudit, createNotification } from "../lib/helpers";
+import { requireOwnerSession, requireWorkerSession } from "../lib/sessionAuth";
 import { getFormTemplate } from "../lib/constants";
 import { getJobRecipientUserIds, isUserAssignedToJob } from "../lib/teams";
 
@@ -11,16 +12,17 @@ export const createFromTemplate = mutation({
     jobId: v.id("jobs"),
     companyId: v.id("companies"),
     cleanerId: v.id("users"),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.cleanerId);
+    const user = await requireWorkerSession(ctx, args.sessionToken, args.cleanerId);
     // Verify company access
     if (user.companyId !== args.companyId) throw new Error("Access denied");
     // Verify cleaner is assigned to this job
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== user.companyId) throw new Error("Access denied");
-    if (!(await isUserAssignedToJob(ctx, job, user._id)) && user.role !== "owner" && !(user.role === "manager" && job.assignedManagerId === user._id)) {
+    if (!(await isUserAssignedToJob(ctx, job, user._id)) && !(user.role === "manager" && job.assignedManagerId === user._id)) {
       throw new Error("Not assigned to this job");
     }
 
@@ -90,16 +92,17 @@ export const updateItem = mutation({
     isRedFlag: v.optional(v.boolean()),
     photoStorageId: v.optional(v.id("_storage")),
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
+    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
     const item = await ctx.db.get(args.itemId);
     if (!item) throw new Error("Item not found");
 
     const form = await requireEditable(ctx, item.formId);
     await requireFormWorkspaceAccess(ctx, form as any, user);
 
-    const { itemId, userId: _uid, ...updates } = args;
+    const { itemId, userId: _uid, sessionToken: _sessionToken, ...updates } = args;
     const cleanUpdates: Record<string, any> = {};
     for (const [key, val] of Object.entries(updates)) {
       if (val !== undefined) cleanUpdates[key] = val;
@@ -113,9 +116,10 @@ export const updateScore = mutation({
     formId: v.id("forms"),
     cleanerScore: v.number(),
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
+    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
     const form = await requireEditable(ctx, args.formId);
     await requireFormWorkspaceAccess(ctx, form as any, user);
 
@@ -124,9 +128,9 @@ export const updateScore = mutation({
 });
 
 export const markAllComplete = mutation({
-  args: { formId: v.id("forms"), userId: v.optional(v.id("users")) },
+  args: { formId: v.id("forms"), userId: v.optional(v.id("users")), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
+    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
     const form = await requireEditable(ctx, args.formId);
     await requireFormWorkspaceAccess(ctx, form as any, user);
 
@@ -147,9 +151,10 @@ export const addPhoto = mutation({
     formId: v.id("forms"),
     photoStorageId: v.id("_storage"),
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
+    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
     const form = await requireEditable(ctx, args.formId);
     await requireFormWorkspaceAccess(ctx, form as any, user);
 
@@ -165,9 +170,10 @@ export const approve = mutation({
     formId: v.id("forms"),
     notes: v.optional(v.string()),
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const form = await ctx.db.get(args.formId);
     if (!form) throw new Error("Form not found");
     if (form.companyId !== owner.companyId) throw new Error("Access denied");
@@ -252,9 +258,10 @@ export const requestRework = mutation({
     formId: v.id("forms"),
     notes: v.string(),
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const form = await ctx.db.get(args.formId);
     if (!form) throw new Error("Form not found");
     if (form.companyId !== owner.companyId) throw new Error("Access denied");
@@ -298,11 +305,12 @@ export const submit = mutation({
   args: {
     formId: v.id("forms"),
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     maintenanceCost: v.optional(v.number()),
     maintenanceVendor: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
+    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
     const form = await ctx.db.get(args.formId);
     if (!form) throw new Error("Form not found");
     if (form.cleanerId !== user._id) {

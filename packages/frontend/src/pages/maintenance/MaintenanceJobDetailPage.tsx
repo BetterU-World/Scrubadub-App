@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -15,7 +15,7 @@ export function MaintenanceJobDetailPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const job = useQuery(api.queries.jobs.get,
-    user ? { jobId: params.id as Id<"jobs">, userId: user._id } : "skip"
+    user ? { jobId: params.id as Id<"jobs">, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
   const acceptJob = useMutation(api.mutations.jobs.acceptJob);
   const denyJob = useMutation(api.mutations.jobs.denyJob);
@@ -46,11 +46,12 @@ export function MaintenanceJobDetailPage() {
 
   const handleStartJob = async () => {
     if (!user) return;
-    await startJob({ jobId: job._id, userId: user._id });
+    await startJob({ jobId: job._id, userId: user._id, sessionToken: getStaffSessionToken() });
     await createForm({
       jobId: job._id,
       companyId: job.companyId,
       cleanerId: user._id,
+      sessionToken: getStaffSessionToken(),
     });
     setLocation(`/jobs/${job._id}/form`);
   };
@@ -59,7 +60,7 @@ export function MaintenanceJobDetailPage() {
     if (!user) return;
     setCompleting(true);
     try {
-      await completeJob({ jobId: job._id, notes: completionNotes || undefined, userId: user._id });
+      await completeJob({ jobId: job._id, notes: completionNotes || undefined, userId: user._id, sessionToken: getStaffSessionToken() });
       setShowComplete(false);
     } catch (err: any) {
       console.error(err);
@@ -147,7 +148,7 @@ export function MaintenanceJobDetailPage() {
                   if (!user) return;
                   setAccepting(true);
                   try {
-                    await acceptJob({ jobId: job._id, userId: user._id });
+                    await acceptJob({ jobId: job._id, userId: user._id, sessionToken: getStaffSessionToken() });
                     setToast({ message: "Job accepted", type: "success" });
                     setTimeout(() => setToast(null), 3000);
                   } catch (err: any) {
@@ -172,7 +173,7 @@ export function MaintenanceJobDetailPage() {
 
           {canArrive && !canAccept && (
             <button
-              onClick={async () => { await arriveJob({ jobId: job._id, userId: user!._id }); }}
+              onClick={async () => { await arriveJob({ jobId: job._id, userId: user!._id, sessionToken: getStaffSessionToken() }); }}
               className="btn-secondary w-full flex items-center justify-center gap-2 py-3"
             >
               <MapPinCheck className="w-5 h-5" /> I've Arrived
@@ -242,7 +243,7 @@ export function MaintenanceJobDetailPage() {
                   if (!user) return;
                   setDenying(true);
                   try {
-                    await denyJob({ jobId: job._id, reason: denyReason || undefined, userId: user._id });
+                    await denyJob({ jobId: job._id, reason: denyReason || undefined, userId: user._id, sessionToken: getStaffSessionToken() });
                     setShowDeny(false);
                     setToast({ message: "Job denied", type: "success" });
                     setTimeout(() => setToast(null), 3000);

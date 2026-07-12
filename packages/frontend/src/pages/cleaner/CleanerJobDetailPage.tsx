@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -24,7 +24,7 @@ export function CleanerJobDetailPage() {
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const job = useQuery(api.queries.jobs.get,
-    user ? { jobId: params.id as Id<"jobs">, userId: user._id } : "skip"
+    user ? { jobId: params.id as Id<"jobs">, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
   const acceptJob = useMutation(api.mutations.jobs.acceptJob);
   const denyJob = useMutation(api.mutations.jobs.denyJob);
@@ -40,7 +40,7 @@ export function CleanerJobDetailPage() {
   const formItems = useQuery(
     api.queries.forms.getItems,
     job && job !== null && (job as any).form?._id && user
-      ? { formId: (job as any).form._id, userId: user._id }
+      ? { formId: (job as any).form._id, userId: user._id, sessionToken: getStaffSessionToken() }
       : "skip"
   );
 
@@ -88,11 +88,12 @@ export function CleanerJobDetailPage() {
 
   const handleStartJob = async () => {
     if (!user) return;
-    await startJob({ jobId: job._id, userId: user._id });
+    await startJob({ jobId: job._id, userId: user._id, sessionToken: getStaffSessionToken() });
     await createForm({
       jobId: job._id,
       companyId: job.companyId,
       cleanerId: user._id,
+      sessionToken: getStaffSessionToken(),
     });
     // Stay on job detail page — inventory checklist is shown inline
   };
@@ -101,7 +102,7 @@ export function CleanerJobDetailPage() {
     if (!user) return;
     setCompleting(true);
     try {
-      await completeJob({ jobId: job._id, notes: completionNotes || undefined, userId: user._id });
+      await completeJob({ jobId: job._id, notes: completionNotes || undefined, userId: user._id, sessionToken: getStaffSessionToken() });
       setShowComplete(false);
     } catch (err: any) {
       console.error(err);
@@ -202,7 +203,7 @@ export function CleanerJobDetailPage() {
                     if (!user) return;
                     setAccepting(true);
                     try {
-                      await acceptJob({ jobId: job._id, userId: user._id });
+                      await acceptJob({ jobId: job._id, userId: user._id, sessionToken: getStaffSessionToken() });
                       setToast({ message: t("jobs.jobAccepted"), type: "success" });
                       setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
@@ -227,7 +228,7 @@ export function CleanerJobDetailPage() {
 
             {canArrive && !canAccept && (
               <button
-                onClick={async () => { await arriveJob({ jobId: job._id, userId: user!._id }); }}
+                onClick={async () => { await arriveJob({ jobId: job._id, userId: user!._id, sessionToken: getStaffSessionToken() }); }}
                 className="btn-secondary w-full flex items-center justify-center gap-2 py-3"
               >
                 <MapPinCheck className="w-5 h-5" /> {t("jobs.iveArrived")}
@@ -352,7 +353,7 @@ export function CleanerJobDetailPage() {
                   if (!user) return;
                   setDenying(true);
                   try {
-                    await denyJob({ jobId: job._id, reason: denyReason || undefined, userId: user._id });
+                    await denyJob({ jobId: job._id, reason: denyReason || undefined, userId: user._id, sessionToken: getStaffSessionToken() });
                     setShowDeny(false);
                     setToast({ message: t("jobs.jobDenied"), type: "success" });
                     setTimeout(() => setToast(null), 3000);
@@ -393,7 +394,7 @@ export function CleanerJobDetailPage() {
                   if (!user) return;
                   setCleanerCancelling(true);
                   try {
-                    await cleanerCancelJob({ jobId: job._id, reason: cleanerCancelReason || undefined, userId: user._id });
+                    await cleanerCancelJob({ jobId: job._id, reason: cleanerCancelReason || undefined, userId: user._id, sessionToken: getStaffSessionToken() });
                     setShowCleanerCancel(false);
                     setToast({ message: t("jobs.jobCancelled"), type: "success" });
                     setTimeout(() => setToast(null), 3000);
@@ -489,6 +490,7 @@ function InventoryChecklistSection({
       await updateItem({
         jobId,
         userId,
+        sessionToken: getStaffSessionToken(),
         itemName,
         status,
         ...(reportedQty !== undefined ? { reportedQty } : {}),

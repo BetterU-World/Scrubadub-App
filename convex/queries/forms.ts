@@ -1,6 +1,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { getSessionUser, hasManagerPermission } from "../lib/auth";
+import { hasManagerPermission } from "../lib/auth";
+import { requireVerifiedStaffSession } from "../lib/sessionAuth";
 import { isUserAssignedToJob } from "../lib/teams";
 
 async function canReadForm(ctx: any, form: any, user: any) {
@@ -15,9 +16,9 @@ async function canReadForm(ctx: any, form: any, user: any) {
 }
 
 export const getByJob = query({
-  args: { jobId: v.id("jobs"), userId: v.id("users") },
+  args: { jobId: v.id("jobs"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) return null;
     if (job.companyId !== user.companyId) throw new Error("Access denied");
@@ -34,9 +35,9 @@ export const getByJob = query({
 });
 
 export const getItems = query({
-  args: { formId: v.id("forms"), userId: v.id("users") },
+  args: { formId: v.id("forms"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
     const form = await ctx.db.get(args.formId);
     if (!form) return [];
     if (!(await canReadForm(ctx, form, user))) return [];

@@ -193,15 +193,15 @@ export function WorkerDetailPage() {
   );
   const workerProfile = useQuery(
     (api as any).queries.workers.getWorkerProfileForUser,
-    user && params.id ? { userId: user._id, workerUserId: params.id as Id<"users"> } : "skip"
+    user && params.id ? { userId: user._id, sessionToken, workerUserId: params.id as Id<"users"> } : "skip"
   );
   const documents = useQuery(
     (api as any).queries.workers.listWorkerDocuments,
-    user && workerProfile?._id ? { userId: user._id, workerProfileId: workerProfile._id } : "skip"
+    user && workerProfile?._id ? { userId: user._id, sessionToken, workerProfileId: workerProfile._id } : "skip"
   );
   const onboardingItems = useQuery(
     (api as any).queries.workers.listWorkerOnboardingItems,
-    user && workerProfile?._id ? { userId: user._id, workerProfileId: workerProfile._id } : "skip"
+    user && workerProfile?._id ? { userId: user._id, sessionToken, workerProfileId: workerProfile._id } : "skip"
   );
   const performanceSummary = useQuery(
     (api as any).queries.performance.getWorkerSummary,
@@ -260,6 +260,7 @@ export function WorkerDetailPage() {
     if (workerProfile?._id) return workerProfile._id;
     return await upsertWorkerProfile({
       userId: user._id,
+      sessionToken,
       workerUserId: workerUser._id,
     });
   };
@@ -267,6 +268,7 @@ export function WorkerDetailPage() {
   const syncProfileOnboardingStatus = async (workerProfileId: string, items: any[]) => {
     await updateWorkerProfile({
       userId: user._id,
+      sessionToken,
       workerProfileId,
       onboardingStatus: nextProfileOnboardingStatus(items),
     });
@@ -285,6 +287,7 @@ export function WorkerDetailPage() {
       for (const item of seededItems) {
         await upsertOnboardingItem({
           userId: user._id,
+          sessionToken,
           workerProfileId,
           itemKey: item.itemKey,
           title: item.title,
@@ -312,6 +315,7 @@ export function WorkerDetailPage() {
       };
       await upsertOnboardingItem({
         userId: user._id,
+        sessionToken,
         workerProfileId: workerProfile._id,
         itemKey: item.itemKey,
         title: item.title,
@@ -338,6 +342,7 @@ export function WorkerDetailPage() {
       for (const item of DEFAULT_DOCUMENT_ITEMS) {
         await upsertDocumentStatus({
           userId: user._id,
+          sessionToken,
           workerProfileId,
           documentType: item.documentType,
           status: "not_started",
@@ -359,6 +364,7 @@ export function WorkerDetailPage() {
       const workerProfileId = await ensureWorkerProfileId();
       await upsertDocumentStatus({
         userId: user._id,
+        sessionToken,
         workerProfileId,
         documentType: newDocumentType,
         status: "not_started",
@@ -382,6 +388,7 @@ export function WorkerDetailPage() {
     try {
       await upsertDocumentStatus({
         userId: user._id,
+        sessionToken,
         workerProfileId: workerProfile._id,
         documentType: document.documentType,
         status: updates.status ?? document.status,
@@ -403,6 +410,7 @@ export function WorkerDetailPage() {
       const workerProfileId = await ensureWorkerProfileId();
       await updateWorkerEligibility({
         userId: user._id,
+        sessionToken,
         workerProfileId,
         jobEligibilityStatus,
       });
@@ -420,6 +428,7 @@ export function WorkerDetailPage() {
       const workerProfileId = await ensureWorkerProfileId();
       await updateWorkerProfile({
         userId: user._id,
+        sessionToken,
         workerProfileId,
         manualComplianceNotes: complianceNotesDraft ?? workerProfile?.manualComplianceNotes ?? "",
       });
@@ -466,6 +475,7 @@ export function WorkerDetailPage() {
 
       await updateWorkerProfile({
         userId: user._id,
+        sessionToken,
         workerProfileId: workerProfile._id,
         payProfile: nextPayProfile,
       });

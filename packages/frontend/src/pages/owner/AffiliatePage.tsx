@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { HowItWorks } from "@/components/ui/HowItWorks";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
@@ -50,7 +50,7 @@ function AffiliatePageInner({
   const ensureReferralCode = useMutation(api.mutations.affiliate.ensureReferralCode);
   const referrals = useQuery(
     api.queries.affiliate.getMyReferrals,
-    { userId },
+    { userId, sessionToken: getStaffSessionToken() },
   );
 
   const [referralCode, setReferralCode] = useState<string | null>(
@@ -65,7 +65,7 @@ function AffiliatePageInner({
   function attemptEnsureCode() {
     setGenerating(true);
     setGenError(false);
-    ensureReferralCode({ userId })
+    ensureReferralCode({ userId, sessionToken: getStaffSessionToken() })
       .then((code) => setReferralCode(code))
       .catch((err) => {
         console.error("Failed to generate referral code:", err);

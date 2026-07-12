@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 
@@ -47,11 +47,11 @@ export function AvailabilityPage() {
 
   const weekly = useQuery(
     api.queries.availability.getMyWeeklyAvailability,
-    user ? { userId: user._id } : "skip"
+    user ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
   const overrides = useQuery(
     api.queries.availability.getMyOverrides,
-    user ? { userId: user._id } : "skip"
+    user ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
 
   const setWeekly = useMutation(
@@ -111,7 +111,7 @@ export function AvailabilityPage() {
   const handleSaveWeekly = async () => {
     setSavingWeekly(true);
     try {
-      await setWeekly({ userId: user._id, availability: days });
+      await setWeekly({ userId: user._id, sessionToken: getStaffSessionToken(), availability: days });
       showToast("Availability saved");
     } catch (err: any) {
       showToast(err.message || "Failed to save");
@@ -125,6 +125,7 @@ export function AvailabilityPage() {
     try {
       await setOverride({
         userId: user._id,
+        sessionToken: getStaffSessionToken(),
         date,
         unavailable,
       });

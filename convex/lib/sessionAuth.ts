@@ -12,6 +12,10 @@ declare const process: { env: Record<string, string | undefined> };
 type DbCtx = QueryCtx | MutationCtx;
 type ActiveStaff = Doc<"users"> & { status: "active" };
 type ActiveOwner = ActiveStaff & { role: "owner"; companyId: Id<"companies"> };
+export type ActiveWorker = ActiveStaff & {
+  role: "cleaner" | "maintenance" | "manager";
+  companyId: Id<"companies">;
+};
 export type ActiveOwnerManager = ActiveStaff & {
   role: "owner" | "manager";
   companyId: Id<"companies">;
@@ -75,6 +79,48 @@ export async function requireOwnerSession(
   const user = await requireVerifiedStaffSession(ctx, sessionToken, claimedUserId);
   if (user.role !== "owner" || !user.companyId) throw new Error("Owner session required");
   return user as ActiveOwner;
+}
+
+export async function requireWorkerSession(
+  ctx: DbCtx,
+  sessionToken: string,
+  claimedUserId?: Id<"users">
+): Promise<ActiveWorker> {
+  const user = await requireVerifiedStaffSession(ctx, sessionToken, claimedUserId);
+  if (
+    (user.role !== "cleaner" && user.role !== "maintenance" && user.role !== "manager") ||
+    !user.companyId
+  ) {
+    throw new Error("Worker session required");
+  }
+  return user as ActiveWorker;
+}
+
+export async function requireWorkerCompany(
+  ctx: DbCtx,
+  sessionToken: string,
+  companyId: Id<"companies">,
+  claimedUserId?: Id<"users">
+): Promise<ActiveWorker> {
+  const user = await requireWorkerSession(ctx, sessionToken, claimedUserId);
+  if (user.companyId !== companyId) throw new Error("Access denied");
+  return user;
+}
+
+export async function requireActiveWorkerProfile(
+  ctx: DbCtx,
+  sessionToken: string,
+  claimedUserId?: Id<"users">
+) {
+  const user = await requireWorkerSession(ctx, sessionToken, claimedUserId);
+  const profile = await ctx.db
+    .query("workerProfiles")
+    .withIndex("by_userId", (q) => q.eq("userId", user._id))
+    .first();
+  if (!profile || profile.workerStatus !== "active") {
+    throw new Error("Active worker profile required");
+  }
+  return { user, profile };
 }
 
 /**

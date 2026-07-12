@@ -111,10 +111,10 @@ describe("owner and manager session migration", () => {
     await expect(t.query(api.queries.dashboard.getStats, { companyId: companyA, userId: ownerA, sessionToken: expired.sessionToken })).rejects.toThrow("verified session is required");
   });
 
-  it("retains worker, client, and affiliate compatibility", async () => {
+  it("requires worker sessions while retaining client compatibility", async () => {
     const t = makeTest();
     const { companyA, workerA, affiliate } = await seed(t);
-    await expect(t.query(api.queries.jobs.list, { companyId: companyA, userId: workerA })).resolves.toHaveLength(1);
+    await expect(t.query(api.queries.jobs.list, { companyId: companyA, userId: workerA, sessionToken: "" })).rejects.toThrow("verified session is required");
     await expect(t.query(api.authQueries.getCurrentUser, { userId: affiliate })).resolves.toMatchObject({ _id: affiliate });
     expect(typeof api.clientAuthActions.signIn).toBe("object");
   });

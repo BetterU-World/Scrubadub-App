@@ -1,8 +1,8 @@
 import { mutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
-import { requireAuth, logAudit, createNotification } from "../lib/helpers";
-import { requireOwnerSession } from "../lib/sessionAuth";
+import { logAudit, createNotification } from "../lib/helpers";
+import { requireOwnerSession, requireWorkerSession } from "../lib/sessionAuth";
 import { requireActiveSubscription } from "../lib/subscriptionGating";
 import { assertTeamInCompany, canSubmitFinalJob, getJobRecipientUserIds, isUserAssignedToJob } from "../lib/teams";
 
@@ -195,9 +195,9 @@ export const cancel = mutation({
 });
 
 export const acceptJob = mutation({
-  args: { jobId: v.id("jobs"), userId: v.optional(v.id("users")) },
+  args: { jobId: v.id("jobs"), userId: v.optional(v.id("users")), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
+    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (!(await isUserAssignedToJob(ctx, job, user._id))) throw new Error("Not assigned to this job");
@@ -237,9 +237,9 @@ export const acceptJob = mutation({
 });
 
 export const denyJob = mutation({
-  args: { jobId: v.id("jobs"), reason: v.optional(v.string()), userId: v.optional(v.id("users")) },
+  args: { jobId: v.id("jobs"), reason: v.optional(v.string()), userId: v.optional(v.id("users")), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
+    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (!(await isUserAssignedToJob(ctx, job, user._id))) throw new Error("Not assigned to this job");
@@ -284,9 +284,9 @@ export const denyJob = mutation({
  * Resets the job so the owner can reassign.
  */
 export const cleanerCancelJob = mutation({
-  args: { jobId: v.id("jobs"), reason: v.optional(v.string()), userId: v.optional(v.id("users")) },
+  args: { jobId: v.id("jobs"), reason: v.optional(v.string()), userId: v.optional(v.id("users")), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
+    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (!(await isUserAssignedToJob(ctx, job, user._id))) throw new Error("Not assigned to this job");
@@ -395,9 +395,9 @@ export const reassignJob = mutation({
 });
 
 export const arriveJob = mutation({
-  args: { jobId: v.id("jobs"), userId: v.optional(v.id("users")) },
+  args: { jobId: v.id("jobs"), userId: v.optional(v.id("users")), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
+    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (!(await isUserAssignedToJob(ctx, job, user._id))) throw new Error("Not assigned to this job");
@@ -409,9 +409,9 @@ export const arriveJob = mutation({
 });
 
 export const startJob = mutation({
-  args: { jobId: v.id("jobs"), userId: v.optional(v.id("users")) },
+  args: { jobId: v.id("jobs"), userId: v.optional(v.id("users")), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
+    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (!(await isUserAssignedToJob(ctx, job, user._id))) throw new Error("Not assigned to this job");
@@ -469,9 +469,10 @@ export const completeJob = mutation({
     jobId: v.id("jobs"),
     notes: v.optional(v.string()),
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
+    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (!(await canSubmitFinalJob(ctx, job, user))) throw new Error("Only a team lead, assigned manager, or owner can submit this job");
@@ -760,6 +761,7 @@ export const updateInventoryChecklistItem = mutation({
   args: {
     jobId: v.id("jobs"),
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     itemName: v.string(),
     status: v.union(
       v.literal("ok"),
@@ -771,7 +773,7 @@ export const updateInventoryChecklistItem = mutation({
     note: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
+    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (!(await isUserAssignedToJob(ctx, job, user._id))) throw new Error("Not assigned to this job");

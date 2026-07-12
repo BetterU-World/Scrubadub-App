@@ -1,11 +1,11 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { getSessionUser } from "../lib/auth";
+import { requireVerifiedStaffSession } from "../lib/sessionAuth";
 
 export const list = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    await getSessionUser(ctx, args.userId);
+    await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
 
     const notifications = await ctx.db
       .query("notifications")
@@ -16,9 +16,9 @@ export const list = query({
 });
 
 export const unreadCount = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    await getSessionUser(ctx, args.userId);
+    await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
 
     const unread = await ctx.db
       .query("notifications")

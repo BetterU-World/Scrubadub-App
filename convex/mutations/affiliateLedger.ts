@@ -2,10 +2,10 @@ import { mutation, MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
 import {
-  getSessionUser,
   isSuperAdminEmail,
   requireSuperAdmin,
 } from "../lib/auth";
+import { requireAffiliateSession } from "../lib/sessionAuth";
 
 const AFFILIATE_RATE = 0.10;
 
@@ -126,13 +126,14 @@ async function upsertLedgerForPeriod(
 export const upsertMyLedgerForPeriod = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     periodType: v.optional(
       v.union(v.literal("monthly"), v.literal("weekly"))
     ),
     periodStart: v.string(), // "YYYY-MM-DD"
   },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireAffiliateSession(ctx, args.sessionToken, args.userId);
     const periodType = args.periodType ?? "monthly";
     const periodStartMs = parsePeriodStart(args.periodStart);
     return upsertLedgerForPeriod(ctx, user._id, periodType, periodStartMs);
@@ -146,12 +147,13 @@ export const upsertMyLedgerForPeriod = mutation({
 export const upsertMyCurrentPeriodLedger = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     periodType: v.optional(
       v.union(v.literal("monthly"), v.literal("weekly"))
     ),
   },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireAffiliateSession(ctx, args.sessionToken, args.userId);
     const periodType = args.periodType ?? "monthly";
     return upsertLedgerForPeriod(ctx, user._id, periodType, Date.now());
   },
@@ -163,11 +165,12 @@ export const upsertMyCurrentPeriodLedger = mutation({
 export const lockLedgerPeriod = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     ledgerId: v.id("affiliateLedger"),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireAffiliateSession(ctx, args.sessionToken, args.userId);
 
     const entry = await ctx.db.get(args.ledgerId);
     if (!entry) throw new Error("Ledger entry not found");

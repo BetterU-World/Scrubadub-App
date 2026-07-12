@@ -1,7 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { getSessionUser } from "../lib/auth";
-import { requireOwnerManagerCompany } from "../lib/sessionAuth";
+import { requireOwnerManagerCompany, requireVerifiedStaffSession } from "../lib/sessionAuth";
 
 async function withMembers(ctx: any, team: any) {
   const memberships = await ctx.db
@@ -64,9 +63,9 @@ export const listActiveForAssignment = query({
 });
 
 export const listMyTeams = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
     if (!user.companyId) return [];
     const memberships = await ctx.db
       .query("teamMembers")
@@ -80,9 +79,9 @@ export const listMyTeams = query({
 });
 
 export const get = query({
-  args: { teamId: v.id("teams"), userId: v.id("users") },
+  args: { teamId: v.id("teams"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
     const team = await ctx.db.get(args.teamId);
     if (!team) return null;
     if (!user.companyId || team.companyId !== user.companyId) throw new Error("Access denied");

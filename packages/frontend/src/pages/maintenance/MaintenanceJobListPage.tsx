@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -38,7 +38,7 @@ export function MaintenanceJobListPage() {
   const [search, setSearch] = useState("");
   const jobs = useQuery(
     api.queries.jobs.getForCleaner,
-    user?.companyId ? { cleanerId: user._id, companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId ? { cleanerId: user._id, companyId: user.companyId, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
 
   if (!user || jobs === undefined) return <PageLoader />;

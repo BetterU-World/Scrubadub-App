@@ -2,7 +2,7 @@ import { useState, FormEvent, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { requireUserId } from "@/lib/requireUserId";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
@@ -94,7 +94,7 @@ export function JobFormPage() {
   // Availability lookup for the selected date
   const cleanerAvailability = useQuery(
     api.queries.availability.listCleanersWithAvailability,
-    user && scheduledDate ? { userId: user._id, date: scheduledDate } : "skip"
+    user && scheduledDate ? { userId: user._id, sessionToken: getStaffSessionToken(), date: scheduledDate } : "skip"
   );
   const unavailableSet = new Set(
     (cleanerAvailability ?? [])

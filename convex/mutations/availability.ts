@@ -1,11 +1,12 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { requireAuth } from "../lib/helpers";
+import { requireWorkerSession } from "../lib/sessionAuth";
 
 /** Cleaner sets their weekly availability (bulk upsert for all 7 days) */
 export const setWeeklyAvailability = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     availability: v.array(
       v.object({
         dayOfWeek: v.number(),
@@ -16,7 +17,7 @@ export const setWeeklyAvailability = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
+    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
     if (user.role !== "cleaner" && user.role !== "maintenance") {
       throw new Error("Only cleaners can set availability");
     }
@@ -67,11 +68,12 @@ export const setWeeklyAvailability = mutation({
 export const setAvailabilityOverride = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     date: v.string(),
     unavailable: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
+    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
     if (user.role !== "cleaner" && user.role !== "maintenance") {
       throw new Error("Only cleaners can set availability overrides");
     }

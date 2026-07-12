@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { useQuery, useAction, useMutation } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { HowItWorks } from "@/components/ui/HowItWorks";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
@@ -132,7 +132,7 @@ export function ManualsPage() {
   const { user } = useAuth();
   const manuals = useQuery(
     api.queries.manuals.getVisibleManuals,
-    user ? { userId: user._id } : "skip"
+    user ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
   const exportedManuals = useQuery(
     api.queries.manuals.exportManuals,
@@ -162,7 +162,7 @@ export function ManualsPage() {
   const handleOpen = async (manualId: typeof manuals[number]["_id"]) => {
     setLoadingId(manualId);
     try {
-      const { url } = await getSignedUrl({ userId: user._id, manualId });
+      const { url } = await getSignedUrl({ userId: user._id, sessionToken: getStaffSessionToken(), manualId });
       window.open(url, "_blank");
     } catch {
       // action threw — access denied or not found
