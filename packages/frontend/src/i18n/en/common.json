@@ -1398,6 +1398,41 @@
       "declined": "Declined"
     }
   },
+  "relationshipDiagnostics": {
+    "title": "Relationship Diagnostics",
+    "explanation": "A historical consistency check for records that may be disconnected from a Client.",
+    "readOnlyNotice": "Read-only check — no data was changed.",
+    "emptyState": "No likely historical omissions or relationship conflicts were found in the records checked.",
+    "boundedNotice": "This is a bounded check of recent records and may not represent every historical record.",
+    "sampleNotice": "Shows up to {{count}} actionable findings per record type.",
+    "viewRecord": "View record",
+    "classifications": {
+      "healthy": "Healthy",
+      "intentionally_unlinked": "Intentionally unlinked",
+      "historical_omission": "Historical omission",
+      "needs_review": "Needs review"
+    },
+    "entities": {
+      "leads": "Leads",
+      "properties": "Properties",
+      "walkthroughs": "Walkthroughs",
+      "proposals": "Proposals",
+      "serviceAgreements": "Service agreements",
+      "commercialAccounts": "Commercial accounts",
+      "jobs": "Jobs",
+      "invoices": "Invoices"
+    },
+    "reasons": {
+      "lead_property_missing_client": "A linked Lead identifies one Client, but this Property has no direct Client.",
+      "calendar_job_missing_client": "Calendar source records identify one Client, but this Job has no direct Client.",
+      "red_flag_job_missing_client": "Red Flag source records identify one Client, but this maintenance Job has no direct Client.",
+      "pipeline_missing_client": "The existing source chain identifies one Client, but this record has no direct Client.",
+      "invoice_missing_client": "The Commercial Account identifies one Client, but this Invoice has no direct Client.",
+      "conflicting_clients": "Authoritative source records point to different Clients.",
+      "cross_company_evidence": "A relationship reference does not belong to this company.",
+      "dangling_client": "The stored Client reference no longer resolves to a Client record."
+    }
+  },
   "clientRelationships": {
     "addProperty": "Add Property",
     "propertiesHelper": "Properties are the service locations that belong to this client.",

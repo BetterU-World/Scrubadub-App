@@ -1398,6 +1398,41 @@
       "declined": "Rechazada"
     }
   },
+  "relationshipDiagnostics": {
+    "title": "Diagnóstico de relaciones",
+    "explanation": "Una revisión de consistencia histórica para registros que podrían estar desconectados de un cliente.",
+    "readOnlyNotice": "Revisión de solo lectura: no se modificaron datos.",
+    "emptyState": "No se encontraron omisiones históricas probables ni conflictos de relaciones en los registros revisados.",
+    "boundedNotice": "Esta es una revisión limitada de registros recientes y puede no representar todos los registros históricos.",
+    "sampleNotice": "Muestra hasta {{count}} hallazgos que requieren atención por tipo de registro.",
+    "viewRecord": "Ver registro",
+    "classifications": {
+      "healthy": "Correcto",
+      "intentionally_unlinked": "Sin vincular intencionalmente",
+      "historical_omission": "Omisión histórica",
+      "needs_review": "Requiere revisión"
+    },
+    "entities": {
+      "leads": "Prospectos",
+      "properties": "Propiedades",
+      "walkthroughs": "Recorridos",
+      "proposals": "Propuestas",
+      "serviceAgreements": "Acuerdos de servicio",
+      "commercialAccounts": "Cuentas comerciales",
+      "jobs": "Trabajos",
+      "invoices": "Facturas"
+    },
+    "reasons": {
+      "lead_property_missing_client": "Un prospecto vinculado identifica a un cliente, pero esta propiedad no tiene un cliente directo.",
+      "calendar_job_missing_client": "Los registros de origen del calendario identifican a un cliente, pero este trabajo no tiene un cliente directo.",
+      "red_flag_job_missing_client": "Los registros de origen de la alerta identifican a un cliente, pero este trabajo de mantenimiento no tiene un cliente directo.",
+      "pipeline_missing_client": "La cadena de origen existente identifica a un cliente, pero este registro no tiene un cliente directo.",
+      "invoice_missing_client": "La cuenta comercial identifica a un cliente, pero esta factura no tiene un cliente directo.",
+      "conflicting_clients": "Los registros de origen autorizados apuntan a clientes diferentes.",
+      "cross_company_evidence": "Una referencia de relación no pertenece a esta empresa.",
+      "dangling_client": "La referencia de cliente guardada ya no corresponde a un registro de cliente."
+    }
+  },
   "clientRelationships": {
     "addProperty": "Agregar propiedad",
     "propertiesHelper": "Las propiedades son las ubicaciones de servicio que pertenecen a este cliente.",
