@@ -1,14 +1,14 @@
 import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
-import { assertOwnerRole } from "../lib/auth";
+import { requireOwnerSession } from "../lib/sessionAuth";
 
 /**
  * Public query: returns the company's Stripe Connect status.
  */
 export const getCompanyConnectStatus = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await assertOwnerRole(ctx, args.userId);
+    const user = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const company = await ctx.db.get(user.companyId);
     if (!company) throw new Error("Company not found");
     return {

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useParams, useLocation } from "wouter";
 import {
@@ -298,7 +298,7 @@ export function CleaningFormPage() {
     if (!form) return;
     setUploadingPhoto(true);
     try {
-      const url = await generateUploadUrl({ userId: user!._id });
+      const url = await generateUploadUrl({ userId: user!._id, sessionToken: getStaffSessionToken() });
       const result = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": file.type },

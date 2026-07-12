@@ -6,6 +6,7 @@ import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { getStripeClientOrNull } from "../lib/stripe";
+import { requireStaffSession } from "../lib/sessions";
 
 /**
  * Create a Stripe Account Link for cleaner Express onboarding.
@@ -13,14 +14,15 @@ import { getStripeClientOrNull } from "../lib/stripe";
  * Returns the URL to redirect the cleaner to.
  */
 export const createCleanerStripeAccountLink = action({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
+    const principal = await requireStaffSession(ctx, args.sessionToken, args.userId);
     const stripe = getStripeClientOrNull();
     if (!stripe) throw new Error("Stripe is not configured");
 
     const data = await ctx.runQuery(
       internal.queries.cleanerStripeConnect.getCleanerForConnect,
-      { userId: args.userId },
+      { userId: principal.userId },
     );
     if (!data) throw new Error("User not found");
 

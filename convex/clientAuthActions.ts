@@ -8,7 +8,7 @@ import { hashPassword, verifyBcryptPassword } from "./lib/password";
 import { generateSecureToken, hashToken, INVITE_TOKEN_EXPIRY_MS } from "./lib/tokens";
 import { validateEmail, validatePassword } from "./lib/validation";
 import { validateRequiredEnv } from "./lib/validateEnv";
-import { issueSession } from "./lib/sessions";
+import { issueSession, requireOwnerSession } from "./lib/sessions";
 
 validateRequiredEnv();
 
@@ -28,6 +28,7 @@ function displayNameForRelationship(relationship: any) {
 export const inviteClient = action({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     relationshipId: v.id("clientRelationships"),
   },
   handler: async (ctx, args): Promise<{
@@ -35,9 +36,10 @@ export const inviteClient = action({
     emailSent: boolean;
     status: "pending" | "active";
   }> => {
+    const principal = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const { relationship } = await ctx.runQuery(
       internal.clientAuthInternal.getRelationshipForOwner,
-      args
+      { userId: principal.userId, relationshipId: args.relationshipId }
     );
 
     const email = cleanEmail(relationship.email || "");

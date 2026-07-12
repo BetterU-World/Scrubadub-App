@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -55,7 +55,7 @@ export function AffiliateInvitesPage() {
 
   const affiliates = useQuery(
     api.queries.affiliateInvites.listAffiliateInvites,
-    user ? { callerUserId: user._id } : "skip"
+    user ? { callerUserId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
 
   if (!user) return <PageLoader />;
@@ -169,6 +169,7 @@ function AffiliateRow({
     try {
       const result = await resendInvite({
         callerUserId,
+        sessionToken: getStaffSessionToken(),
         targetUserId: affiliate._id as any,
       });
       await navigator.clipboard.writeText(result.inviteUrl);
@@ -185,6 +186,7 @@ function AffiliateRow({
     try {
       await revokeInvite({
         callerUserId,
+        sessionToken: getStaffSessionToken(),
         targetUserId: affiliate._id as any,
       });
       showToast("Affiliate revoked");
@@ -294,6 +296,7 @@ function InviteModal({
     try {
       const res = await inviteAffiliate({
         callerUserId,
+        sessionToken: getStaffSessionToken(),
         email: email.trim(),
         name: name.trim(),
         sendEmail,

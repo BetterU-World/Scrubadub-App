@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { clsx } from "clsx";
 import { useTranslation } from "react-i18next";
 import { adminSection, getNavSectionsForRole } from "./navigation";
@@ -90,7 +90,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
 
   const isSuperAdmin = useQuery(
     api.queries.admin.isSuperAdmin,
-    user?._id ? { userId: user._id } : "skip"
+    user?._id ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
 
   const sections = getNavSectionsForRole(user?.role);

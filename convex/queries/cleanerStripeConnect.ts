@@ -1,14 +1,14 @@
 import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
-import { getSessionUser } from "../lib/auth";
+import { requireVerifiedStaffSession } from "../lib/sessionAuth";
 
 /**
  * Public query: returns the cleaner's own Stripe Connect status.
  */
 export const getCleanerConnectStatus = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
     return {
       stripeConnectAccountId: user.stripeConnectAccountId ?? null,
       stripeConnectOnboardingStatus: user.stripeConnectOnboardingStatus ?? null,

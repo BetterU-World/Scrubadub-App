@@ -9,6 +9,7 @@ import { getStripeClientOrNull } from "../lib/stripe";
 import Stripe from "stripe";
 import { ActionCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
+import { requireOwnerSession } from "../lib/sessions";
 
 /**
  * Shared helper: load owner+company and ensure a Connect account exists.
@@ -62,9 +63,10 @@ async function ensureConnectAccount(
  * Creates one if it doesn't exist, returns the account ID.
  */
 export const ensureCompanyStripeConnectAccount = action({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const { accountId } = await ensureConnectAccount(ctx, args.userId);
+    const principal = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const { accountId } = await ensureConnectAccount(ctx, principal.userId);
     return accountId;
   },
 });
@@ -74,9 +76,10 @@ export const ensureCompanyStripeConnectAccount = action({
  * Returns the URL to redirect the owner to.
  */
 export const createCompanyStripeAccountLink = action({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const { stripe, accountId } = await ensureConnectAccount(ctx, args.userId);
+    const principal = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const { stripe, accountId } = await ensureConnectAccount(ctx, principal.userId);
 
     const appUrl =
       process.env.APP_URL ?? "http://localhost:5173";
@@ -96,14 +99,15 @@ export const createCompanyStripeAccountLink = action({
  * Create a $1 test Checkout Session with destination charge.
  */
 export const createCompanyStripeTestCheckout = action({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args): Promise<{ url: string | null }> => {
+    const principal = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const stripe = getStripeClientOrNull();
     if (!stripe) throw new Error("Stripe is not configured");
 
     const data: any = await ctx.runQuery(
       internal.queries.companyStripeConnect.getOwnerAndCompany,
-      { userId: args.userId }
+      { userId: principal.userId }
     );
     if (!data) throw new Error("Owner or company not found");
     if (!data.stripeConnectAccountId) {

@@ -9,7 +9,7 @@ import {
   requireStaffSession,
 } from "./lib/sessions";
 
-const sessionApi = (internal as any).sessionInternal;
+const sessionApi: any = (internal as any).sessionInternal;
 
 export const getPrincipal = action({
   args: { sessionToken: v.string() },
@@ -41,9 +41,9 @@ export const revokeCurrent = action({
 
 export const revokeAllStaffSessions = action({
   args: { sessionToken: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ revoked: number }> => {
     const principal = await requireStaffSession(ctx, args.sessionToken);
-    const revoked = await ctx.runMutation(sessionApi.revokeAllForStaff, {
+    const revoked: number = await ctx.runMutation(sessionApi.revokeAllForStaff, {
       userId: principal.userId,
       now: Date.now(),
       reason: "revoke_all",
@@ -54,9 +54,9 @@ export const revokeAllStaffSessions = action({
 
 export const revokeAllClientSessions = action({
   args: { sessionToken: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ revoked: number }> => {
     const principal = await requireClientSession(ctx, args.sessionToken);
-    const revoked = await ctx.runMutation(sessionApi.revokeAllForClient, {
+    const revoked: number = await ctx.runMutation(sessionApi.revokeAllForClient, {
       clientUserId: principal.clientUserId,
       now: Date.now(),
       reason: "revoke_all",

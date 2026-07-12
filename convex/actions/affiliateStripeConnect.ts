@@ -6,6 +6,7 @@ import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { getStripeClientOrNull } from "../lib/stripe";
+import { requireStaffSession } from "../lib/sessions";
 
 /**
  * Get or create an affiliate Stripe Connect account for the user.
@@ -16,14 +17,15 @@ import { getStripeClientOrNull } from "../lib/stripe";
  * 3. Create a new Express account
  */
 export const getOrCreateAffiliateStripeAccount = action({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args): Promise<string> => {
+    const principal = await requireStaffSession(ctx, args.sessionToken, args.userId);
     const stripe = getStripeClientOrNull();
     if (!stripe) throw new Error("Stripe is not configured");
 
     const data: any = await ctx.runQuery(
       internal.queries.stripeConnect.getUserAndCompanyForAffiliateConnect,
-      { userId: args.userId }
+      { userId: principal.userId }
     );
     if (!data) throw new Error("User not found");
 
@@ -37,7 +39,7 @@ export const getOrCreateAffiliateStripeAccount = action({
       await ctx.runMutation(
         internal.mutations.stripeConnect.setAffiliateStripeAccount,
         {
-          userId: args.userId,
+          userId: principal.userId,
           affiliateStripeAccountId: data.companyStripeConnectAccountId,
         }
       );
@@ -58,7 +60,7 @@ export const getOrCreateAffiliateStripeAccount = action({
     await ctx.runMutation(
       internal.mutations.stripeConnect.setAffiliateStripeAccount,
       {
-        userId: args.userId,
+        userId: principal.userId,
         affiliateStripeAccountId: account.id,
       }
     );
@@ -72,14 +74,15 @@ export const getOrCreateAffiliateStripeAccount = action({
  * Calls getOrCreateAffiliateStripeAccount internally via shared logic.
  */
 export const createAffiliateStripeAccountLink = action({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
+    const principal = await requireStaffSession(ctx, args.sessionToken, args.userId);
     const stripe = getStripeClientOrNull();
     if (!stripe) throw new Error("Stripe is not configured");
 
     const data = await ctx.runQuery(
       internal.queries.stripeConnect.getUserAndCompanyForAffiliateConnect,
-      { userId: args.userId }
+      { userId: principal.userId }
     );
     if (!data) throw new Error("User not found");
 
@@ -106,7 +109,7 @@ export const createAffiliateStripeAccountLink = action({
       await ctx.runMutation(
         internal.mutations.stripeConnect.setAffiliateStripeAccount,
         {
-          userId: args.userId,
+          userId: principal.userId,
           affiliateStripeAccountId: accountId,
         }
       );

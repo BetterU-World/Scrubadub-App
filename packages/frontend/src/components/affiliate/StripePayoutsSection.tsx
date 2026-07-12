@@ -3,7 +3,7 @@ import { useQuery, useAction } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { CheckCircle, ExternalLink, Settings } from "lucide-react";
 
@@ -20,6 +20,7 @@ function StripePayoutsInner({ userId }: { userId: Id<"users"> }) {
   const { t } = useTranslation();
   const status = useQuery(api.queries.stripeConnect.getAffiliateConnectStatus, {
     userId,
+    sessionToken: getStaffSessionToken(),
   });
   const createAccountLink = useAction(
     api.actions.affiliateStripeConnect.createAffiliateStripeAccountLink
@@ -39,7 +40,7 @@ function StripePayoutsInner({ userId }: { userId: Id<"users"> }) {
     setLoading(true);
     setError(null);
     try {
-      const result = await createAccountLink({ userId });
+      const result = await createAccountLink({ userId, sessionToken: getStaffSessionToken() });
       if (result?.url) {
         window.location.href = result.url;
       }

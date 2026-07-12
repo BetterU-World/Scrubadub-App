@@ -3,7 +3,7 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { toFriendlyMessage } from "@/lib/friendlyError";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
@@ -79,7 +79,7 @@ export function SettlementsPage() {
     setPayingId(settlementId);
     setError(null);
     try {
-      const result = await createCheckout({ userId: user!._id, settlementId });
+      const result = await createCheckout({ userId: user!._id, sessionToken: getStaffSessionToken(), settlementId });
       if (result?.url) window.location.href = result.url;
     } catch (e: any) {
       console.error("Checkout error:", e);
@@ -130,7 +130,7 @@ export function SettlementsPage() {
     try {
       const settlementIds = group.items.map((i) => i._id);
       const batchId = await createBatch({ userId: user!._id, settlementIds });
-      const result = await createBatchCheckout({ userId: user!._id, batchId });
+      const result = await createBatchCheckout({ userId: user!._id, sessionToken: getStaffSessionToken(), batchId });
       if (result?.url) window.location.href = result.url;
     } catch (e: any) {
       console.error("Checkout error:", e);

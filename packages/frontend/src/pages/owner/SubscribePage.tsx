@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { toFriendlyMessage } from "@/lib/friendlyError";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { HowItWorks } from "@/components/ui/HowItWorks";
@@ -40,6 +40,7 @@ export function SubscribePage() {
     try {
       const url = await createCheckout({
         userId: user._id,
+        sessionToken: getStaffSessionToken(),
         tier: "cleaning_owner",
         plan,
       });
@@ -55,7 +56,7 @@ export function SubscribePage() {
   const handleManageBilling = async () => {
     setLoading("portal");
     try {
-      const url = await createPortal({ userId: user._id });
+      const url = await createPortal({ userId: user._id, sessionToken: getStaffSessionToken() });
       if (url) window.location.href = url;
     } catch (e: any) {
       alert(e.message ?? "Something went wrong");

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -81,7 +81,7 @@ export function ManagerJobDetailPage() {
     setUploading(true);
     try {
       for (const file of Array.from(e.target.files) as File[]) {
-        const url = await generateUploadUrl({ userId: user._id });
+        const url = await generateUploadUrl({ userId: user._id, sessionToken: getStaffSessionToken() });
         const res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": file.type },

@@ -2,7 +2,7 @@ import { useState, type ComponentType } from "react";
 import { Link } from "wouter";
 import { useQuery, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
@@ -60,7 +60,7 @@ export function OwnerSettingsPage() {
   const { user } = useAuth();
   const connectStatus = useQuery(
     api.queries.companyStripeConnect.getCompanyConnectStatus,
-    user?._id ? { userId: user._id } : "skip",
+    user?._id ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip",
   );
   const createAccountLink = useAction(
     api.actions.companyStripeConnect.createCompanyStripeAccountLink,
@@ -72,7 +72,7 @@ export function OwnerSettingsPage() {
     if (!user) return;
     setLoading("manage");
     try {
-      const result = await createAccountLink({ userId: user._id });
+      const result = await createAccountLink({ userId: user._id, sessionToken: getStaffSessionToken() });
       if (result?.url) window.location.href = result.url;
     } catch {
       window.location.href = "/owner/settings/billing";

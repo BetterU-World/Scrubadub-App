@@ -9,6 +9,7 @@ import { generateSecureToken, INVITE_TOKEN_EXPIRY_MS } from "./lib/tokens";
 import { validatePassword, validateEmail, validateName } from "./lib/validation";
 import { validateRequiredEnv } from "./lib/validateEnv";
 import { issueSession } from "./lib/sessions";
+import { requireOwnerSession } from "./lib/sessions";
 
 validateRequiredEnv();
 
@@ -18,6 +19,7 @@ export const inviteCleaner = action({
     email: v.string(),
     name: v.string(),
     userId: v.id("users"),
+    sessionToken: v.string(),
     role: v.optional(v.union(v.literal("cleaner"), v.literal("maintenance"), v.literal("manager"))),
     workerType: v.optional(
       v.union(
@@ -36,10 +38,12 @@ export const inviteCleaner = action({
     canManageSchedule: v.optional(v.boolean()),
   },
   handler: async (ctx, args): Promise<{ token: string; userId: Id<"users">; emailSent: boolean }> => {
+    const principal = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    if (principal.companyId !== args.companyId) throw new Error("Access denied");
     // Verify the caller is an active owner of the target company
     const isOwner: boolean = await ctx.runQuery(
       internal.clientPortalInternal.verifyOwner,
-      { userId: args.userId, companyId: args.companyId }
+      { userId: principal.userId, companyId: principal.companyId }
     );
     if (!isOwner) {
       throw new Error("Owner access required");
@@ -108,7 +112,7 @@ export const inviteCleaner = action({
 
     await ctx.runMutation(internal.authInternal.logAuditEntry, {
       companyId: args.companyId,
-      userId: args.userId,
+      userId: principal.userId,
       action: `invite_${role}`,
       entityType: "user",
       entityId: newUserId,
@@ -132,13 +136,16 @@ export const inviteCleaner = action({
 export const resendInviteEmail = action({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     companyId: v.id("companies"),
     employeeEmail: v.string(),
   },
   handler: async (ctx, args): Promise<{ emailSent: boolean }> => {
+    const principal = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    if (principal.companyId !== args.companyId) throw new Error("Access denied");
     const isOwner: boolean = await ctx.runQuery(
       internal.clientPortalInternal.verifyOwner,
-      { userId: args.userId, companyId: args.companyId }
+      { userId: principal.userId, companyId: principal.companyId }
     );
     if (!isOwner) throw new Error("Owner access required");
 

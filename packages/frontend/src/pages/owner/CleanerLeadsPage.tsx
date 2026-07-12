@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { useTimeAgo } from "@/hooks/useTimeAgo";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
@@ -119,6 +119,7 @@ export function CleanerLeadsPage() {
         email: inviteEmail,
         name: inviteName,
         userId: user._id,
+        sessionToken: getStaffSessionToken(),
         role: inviteRole,
       });
       setInviteLink(`${window.location.origin}/invite/${result.token}`);

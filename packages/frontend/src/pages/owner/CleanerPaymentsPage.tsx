@@ -3,7 +3,7 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { toFriendlyMessage } from "@/lib/friendlyError";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
@@ -146,6 +146,7 @@ export function CleanerPaymentsPage() {
       });
       const result = await createCheckout({
         userId: user!._id,
+        sessionToken: getStaffSessionToken(),
         cleanerPaymentId: paymentId,
       });
       if (result?.url) window.location.href = result.url;

@@ -1,15 +1,15 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireSuperAdmin } from "../lib/auth";
+import { requireSuperadminSession } from "../lib/sessionAuth";
 
 /**
  * List all affiliate users (pending, active, inactive/revoked).
  * Superadmin only. Returns data needed for the founder invite management UI.
  */
 export const listAffiliateInvites = query({
-  args: { callerUserId: v.id("users") },
+  args: { callerUserId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    await requireSuperAdmin(ctx, args.callerUserId);
+    await requireSuperadminSession(ctx, args.sessionToken, args.callerUserId);
 
     // Collect all affiliate-role users. For v1 the count is small
     // (invite-only), so a full scan with filter is acceptable.

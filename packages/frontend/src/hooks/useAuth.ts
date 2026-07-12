@@ -8,6 +8,9 @@ const REF_KEY = "scrubadub_ref";
 // Temporary Security V2 migration credential. This remains in localStorage only
 // until the app adopts provider-backed transport or a same-origin cookie layer.
 export const STAFF_SESSION_KEY = "scrubadub_staffSessionToken";
+export function getStaffSessionToken(): string {
+  return localStorage.getItem(STAFF_SESSION_KEY) ?? "";
+}
 
 interface AuthUser {
   _id: Id<"users">;
@@ -121,6 +124,7 @@ export function useAuth() {
   return {
     user: user as AuthUser | null | undefined,
     userId,
+    sessionToken: getStaffSessionToken(),
     isLoading,
     isAuthenticated: !!user,
     signUp,
