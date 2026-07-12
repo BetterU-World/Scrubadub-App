@@ -2,6 +2,7 @@ import { useState, FormEvent } from "react";
 import { Link } from "wouter";
 import { useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
+import { STAFF_SESSION_KEY } from "../../hooks/useAuth";
 import { CheckCircle } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { PasswordInput } from "@/components/ui/PasswordInput";
@@ -53,6 +54,7 @@ export function PostCheckoutSetupPage() {
         companyName,
       });
       localStorage.setItem("scrubadub_userId", String(result.userId));
+      localStorage.setItem(STAFF_SESSION_KEY, result.sessionToken);
       window.location.assign("/");
     } catch (err: any) {
       setError(err.message || "Setup failed. Please try again.");

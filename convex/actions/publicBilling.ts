@@ -15,6 +15,7 @@ import {
 } from "../lib/validation";
 
 import { planToEnvVar, planToTier, type ScrubPlan } from "../lib/plans";
+import { issueSession } from "../lib/sessions";
 
 function getPriceIdForPlan(plan: ScrubPlan): string {
   const envVar = planToEnvVar(plan);
@@ -107,7 +108,13 @@ export const completePublicSetup = action({
   handler: async (
     ctx,
     args
-  ): Promise<{ userId: Id<"users">; companyId: Id<"companies"> }> => {
+  ): Promise<{
+    userId: Id<"users">;
+    companyId: Id<"companies">;
+    sessionToken: string;
+    sessionExpiresAt: number;
+    sessionIdleExpiresAt: number;
+  }> => {
     validatePassword(args.password);
     validateName(args.name);
     validateName(args.companyName);
@@ -232,6 +239,7 @@ export const completePublicSetup = action({
       });
     }
 
-    return { userId, companyId };
+    const authSession = await issueSession(ctx, { principalType: "staff", userId });
+    return { userId, companyId, ...authSession };
   },
 });

@@ -1,6 +1,7 @@
 import { useState, FormEvent } from "react";
 import { useQuery, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
+import { STAFF_SESSION_KEY } from "../../hooks/useAuth";
 import { useParams, useLocation } from "wouter";
 import { LoadingSpinner, PageLoader } from "@/components/ui/LoadingSpinner";
 import { PasswordInput } from "@/components/ui/PasswordInput";
@@ -47,6 +48,7 @@ export function AcceptInvitePage() {
     try {
       const result = await acceptInvite({ token: params.token!, password });
       localStorage.setItem("scrubadub_userId", String(result.userId));
+      localStorage.setItem(STAFF_SESSION_KEY, result.sessionToken);
       window.location.assign("/");
     } catch (err: any) {
       setError(err.message || "Failed to accept invite");

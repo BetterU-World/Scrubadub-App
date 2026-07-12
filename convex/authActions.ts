@@ -13,6 +13,7 @@ import {
 import { generateSecureToken, hashToken, RESET_TOKEN_EXPIRY_MS } from "./lib/tokens";
 import { validatePassword, validateEmail, validateName } from "./lib/validation";
 import { validateRequiredEnv } from "./lib/validateEnv";
+import { issueSession } from "./lib/sessions";
 
 validateRequiredEnv();
 
@@ -31,7 +32,13 @@ export const signUp = action({
   handler: async (
     ctx,
     args
-  ): Promise<{ userId: Id<"users">; companyId: Id<"companies"> }> => {
+  ): Promise<{
+    userId: Id<"users">;
+    companyId: Id<"companies">;
+    sessionToken: string;
+    sessionExpiresAt: number;
+    sessionIdleExpiresAt: number;
+  }> => {
     validateEmail(args.email);
     validatePassword(args.password);
     validateName(args.name);
@@ -72,7 +79,8 @@ export const signUp = action({
       }
     );
 
-    return { userId, companyId };
+    const session = await issueSession(ctx, { principalType: "staff", userId });
+    return { userId, companyId, ...session };
   },
 });
 
@@ -91,6 +99,9 @@ export const signIn = action({
     role: string;
     companyId?: Id<"companies">;
     status: string;
+    sessionToken: string;
+    sessionExpiresAt: number;
+    sessionIdleExpiresAt: number;
   }> => {
     const email = args.email.toLowerCase();
 
@@ -125,6 +136,7 @@ export const signIn = action({
 
     if (!passwordValid) throw new Error(genericError);
 
+    const session = await issueSession(ctx, { principalType: "staff", userId: user._id });
     return {
       userId: user._id,
       email: user.email,
@@ -132,6 +144,7 @@ export const signIn = action({
       role: user.role,
       companyId: user.companyId,
       status: user.status,
+      ...session,
     };
   },
 });

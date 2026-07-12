@@ -8,6 +8,7 @@ import { hashPassword, verifyBcryptPassword } from "./lib/password";
 import { generateSecureToken, hashToken, INVITE_TOKEN_EXPIRY_MS } from "./lib/tokens";
 import { validateEmail, validatePassword } from "./lib/validation";
 import { validateRequiredEnv } from "./lib/validateEnv";
+import { issueSession } from "./lib/sessions";
 
 validateRequiredEnv();
 
@@ -120,7 +121,12 @@ export const acceptInvite = action({
     token: v.string(),
     password: v.string(),
   },
-  handler: async (ctx, args): Promise<{ clientUserId: Id<"clientUsers"> }> => {
+  handler: async (ctx, args): Promise<{
+    clientUserId: Id<"clientUsers">;
+    sessionToken: string;
+    sessionExpiresAt: number;
+    sessionIdleExpiresAt: number;
+  }> => {
     validatePassword(args.password);
 
     await ctx.runMutation(internal.rateLimitInternal.enforce, {
@@ -155,7 +161,8 @@ export const acceptInvite = action({
       passwordHash: shouldSetPassword ? await hashPassword(args.password) : undefined,
     });
 
-    return { clientUserId };
+    const session = await issueSession(ctx, { principalType: "client", clientUserId });
+    return { clientUserId, ...session };
   },
 });
 
@@ -164,7 +171,12 @@ export const signIn = action({
     email: v.string(),
     password: v.string(),
   },
-  handler: async (ctx, args): Promise<{ clientUserId: Id<"clientUsers"> }> => {
+  handler: async (ctx, args): Promise<{
+    clientUserId: Id<"clientUsers">;
+    sessionToken: string;
+    sessionExpiresAt: number;
+    sessionIdleExpiresAt: number;
+  }> => {
     const email = cleanEmail(args.email);
     await ctx.runMutation(internal.rateLimitInternal.enforce, {
       key: `ce:${email}:clientSignIn`,
@@ -183,6 +195,10 @@ export const signIn = action({
     const ok = await verifyBcryptPassword(args.password, clientUser.passwordHash);
     if (!ok) throw new Error(genericError);
 
-    return { clientUserId: clientUser._id };
+    const session = await issueSession(ctx, {
+      principalType: "client",
+      clientUserId: clientUser._id,
+    });
+    return { clientUserId: clientUser._id, ...session };
   },
 });
