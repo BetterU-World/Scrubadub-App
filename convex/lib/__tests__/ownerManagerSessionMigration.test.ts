@@ -52,6 +52,34 @@ describe("owner and manager session migration", () => {
     await expect(t.query(api.queries.properties.get, { propertyId: propertyA, userId: ownerB, sessionToken: auth.sessionToken })).rejects.toThrow("does not match");
   });
 
+  it("loads the owner worker roster only from a verified owner session", async () => {
+    const t = makeTest();
+    const { companyA, ownerA, ownerB } = await seed(t);
+    const auth = await login(t, "owner-a@pr3.test");
+    const listWorkersForCompany = (api as any).queries.workers.listWorkersForCompany;
+
+    await expect(t.query(listWorkersForCompany, {
+      companyId: companyA,
+      userId: ownerA,
+      sessionToken: auth.sessionToken,
+      includeArchived: true,
+    })).resolves.toEqual([]);
+
+    await expect(t.query(listWorkersForCompany, {
+      companyId: companyA,
+      userId: ownerB,
+      sessionToken: auth.sessionToken,
+      includeArchived: true,
+    })).rejects.toThrow("does not match");
+
+    await expect(t.query(listWorkersForCompany, {
+      companyId: companyA,
+      userId: ownerA,
+      sessionToken: "",
+      includeArchived: true,
+    })).rejects.toThrow("verified session is required");
+  });
+
   it("rejects cross-company owner access and legacy owner identity", async () => {
     const t = makeTest();
     const { companyB, ownerA, propertyB } = await seed(t);
