@@ -397,7 +397,9 @@ export default defineSchema({
       notes: v.optional(v.string()),
     }))),
     inventoryTemplateId: v.optional(v.id("inventoryTemplates")),
-  }).index("by_companyId", ["companyId"]),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_companyId_clientRelationshipId", ["companyId", "clientRelationshipId"]),
 
   jobs: defineTable({
     companyId: v.id("companies"),
@@ -500,6 +502,7 @@ export default defineSchema({
   })
     .index("by_companyId_status", ["companyId", "status"])
     .index("by_companyId_scheduledDate", ["companyId", "scheduledDate"])
+    .index("by_companyId_clientRelationshipId_scheduledDate", ["companyId", "clientRelationshipId", "scheduledDate"])
     .index("by_propertyId", ["propertyId"])
     .index("by_commercialAccount", ["commercialAccountId"])
     .index("by_commercialSchedule", ["commercialScheduleId"]),
@@ -862,6 +865,7 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_companyId", ["companyId"])
+    .index("by_companyId_clientRelationshipId_updatedAt", ["companyId", "clientRelationshipId", "updatedAt"])
     .index("by_clientRequestId", ["clientRequestId"])
     .index("by_companyId_status", ["companyId", "status"])
     .index("by_proposalTokenHash", ["proposalTokenHash"]),
@@ -953,6 +957,7 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_company", ["companyId"])
+    .index("by_companyId_clientRelationshipId_updatedAt", ["companyId", "clientRelationshipId", "updatedAt"])
     .index("by_clientRequest", ["clientRequestId"])
     .index("by_property", ["propertyId"])
     .index("by_commercialAccount", ["commercialAccountId"])
@@ -1037,6 +1042,7 @@ export default defineSchema({
     voidedAt: v.optional(v.number()),
   })
     .index("by_company", ["companyId"])
+    .index("by_companyId_clientRelationshipId_updatedAt", ["companyId", "clientRelationshipId", "updatedAt"])
     .index("by_proposal", ["proposalId"])
     .index("by_clientRequest", ["clientRequestId"])
     .index("by_commercialAccount", ["commercialAccountId"]),
@@ -1079,6 +1085,7 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_companyId", ["companyId"])
+    .index("by_companyId_clientRelationshipId_updatedAt", ["companyId", "clientRelationshipId", "updatedAt"])
     .index("by_sourceProposalId", ["sourceProposalId"])
     .index("by_clientRequestId", ["clientRequestId"])
     .index("by_companyId_status", ["companyId", "status"]),
@@ -1145,6 +1152,7 @@ export default defineSchema({
     voidedAt: v.optional(v.number()),
   })
     .index("by_company", ["companyId"])
+    .index("by_companyId_clientRelationshipId_updatedAt", ["companyId", "clientRelationshipId", "updatedAt"])
     .index("by_commercialAccount", ["commercialAccountId"])
     .index("by_status", ["status"]),
 
@@ -1232,6 +1240,7 @@ export default defineSchema({
     createdByUserId: v.optional(v.id("users")),
   })
     .index("by_companyId", ["companyId"])
+    .index("by_companyId_clientRelationshipId_createdAt", ["companyId", "clientRelationshipId", "createdAt"])
     .index("by_companyId_status", ["companyId", "status"])
     .index("by_portalToken", ["portalToken"]),
 

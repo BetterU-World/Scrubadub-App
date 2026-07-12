@@ -3,7 +3,6 @@ import { v } from "convex/values";
 import { requireOwner } from "../lib/helpers";
 
 const RELATIONSHIP_LIST_CAP = 2_000;
-const DETAIL_LIST_CAP = 500;
 
 async function requireOwnedRelationship(ctx: any, userId: any, relationshipId: any) {
   const owner = await requireOwner(ctx, userId);
@@ -17,27 +16,35 @@ async function countsForRelationship(ctx: any, relationship: any) {
   const [requests, accounts, properties, invoices] = await Promise.all([
     ctx.db
       .query("clientRequests")
-      .withIndex("by_companyId", (q: any) => q.eq("companyId", relationship.companyId))
+      .withIndex("by_companyId_clientRelationshipId_createdAt", (q: any) =>
+        q.eq("companyId", relationship.companyId).eq("clientRelationshipId", relationship._id)
+      )
       .collect(),
     ctx.db
       .query("commercialAccounts")
-      .withIndex("by_companyId", (q: any) => q.eq("companyId", relationship.companyId))
+      .withIndex("by_companyId_clientRelationshipId_updatedAt", (q: any) =>
+        q.eq("companyId", relationship.companyId).eq("clientRelationshipId", relationship._id)
+      )
       .collect(),
     ctx.db
       .query("properties")
-      .withIndex("by_companyId", (q: any) => q.eq("companyId", relationship.companyId))
+      .withIndex("by_companyId_clientRelationshipId", (q: any) =>
+        q.eq("companyId", relationship.companyId).eq("clientRelationshipId", relationship._id)
+      )
       .collect(),
     ctx.db
       .query("invoices")
-      .withIndex("by_company", (q: any) => q.eq("companyId", relationship.companyId))
+      .withIndex("by_companyId_clientRelationshipId_updatedAt", (q: any) =>
+        q.eq("companyId", relationship.companyId).eq("clientRelationshipId", relationship._id)
+      )
       .collect(),
   ]);
 
   return {
-    requestCount: requests.filter((item: any) => item.clientRelationshipId === relationship._id).length,
-    commercialAccountCount: accounts.filter((item: any) => item.clientRelationshipId === relationship._id).length,
-    propertyCount: properties.filter((item: any) => item.clientRelationshipId === relationship._id).length,
-    invoiceCount: invoices.filter((item: any) => item.clientRelationshipId === relationship._id).length,
+    requestCount: requests.length,
+    commercialAccountCount: accounts.length,
+    propertyCount: properties.length,
+    invoiceCount: invoices.length,
   };
 }
 
@@ -109,15 +116,6 @@ export const getById = query({
   },
 });
 
-async function relatedByRelationship(ctx: any, table: any, index: string, companyId: any, relationshipId: any) {
-  const records = await ctx.db
-    .query(table)
-    .withIndex(index, (q: any) => q.eq("companyId", companyId))
-    .take(DETAIL_LIST_CAP);
-
-  return records.filter((record: any) => record.clientRelationshipId === relationshipId);
-}
-
 export const getClientRelationshipDetail = query({
   args: {
     userId: v.id("users"),
@@ -155,14 +153,38 @@ export const getClientRelationshipDetail = query({
       invoices,
       jobs,
     ] = await Promise.all([
-      relatedByRelationship(ctx, "clientRequests", "by_companyId", companyId, relationshipId),
-      relatedByRelationship(ctx, "properties", "by_companyId", companyId, relationshipId),
-      relatedByRelationship(ctx, "commercialAccounts", "by_companyId", companyId, relationshipId),
-      relatedByRelationship(ctx, "walkthroughs", "by_company", companyId, relationshipId),
-      relatedByRelationship(ctx, "proposals", "by_companyId", companyId, relationshipId),
-      relatedByRelationship(ctx, "serviceAgreements", "by_company", companyId, relationshipId),
-      relatedByRelationship(ctx, "invoices", "by_company", companyId, relationshipId),
-      relatedByRelationship(ctx, "jobs", "by_companyId_scheduledDate", companyId, relationshipId),
+      ctx.db.query("clientRequests")
+        .withIndex("by_companyId_clientRelationshipId_createdAt", (q: any) =>
+          q.eq("companyId", companyId).eq("clientRelationshipId", relationshipId)
+        ).order("desc").collect(),
+      ctx.db.query("properties")
+        .withIndex("by_companyId_clientRelationshipId", (q: any) =>
+          q.eq("companyId", companyId).eq("clientRelationshipId", relationshipId)
+        ).collect(),
+      ctx.db.query("commercialAccounts")
+        .withIndex("by_companyId_clientRelationshipId_updatedAt", (q: any) =>
+          q.eq("companyId", companyId).eq("clientRelationshipId", relationshipId)
+        ).order("desc").collect(),
+      ctx.db.query("walkthroughs")
+        .withIndex("by_companyId_clientRelationshipId_updatedAt", (q: any) =>
+          q.eq("companyId", companyId).eq("clientRelationshipId", relationshipId)
+        ).order("desc").collect(),
+      ctx.db.query("proposals")
+        .withIndex("by_companyId_clientRelationshipId_updatedAt", (q: any) =>
+          q.eq("companyId", companyId).eq("clientRelationshipId", relationshipId)
+        ).order("desc").collect(),
+      ctx.db.query("serviceAgreements")
+        .withIndex("by_companyId_clientRelationshipId_updatedAt", (q: any) =>
+          q.eq("companyId", companyId).eq("clientRelationshipId", relationshipId)
+        ).order("desc").collect(),
+      ctx.db.query("invoices")
+        .withIndex("by_companyId_clientRelationshipId_updatedAt", (q: any) =>
+          q.eq("companyId", companyId).eq("clientRelationshipId", relationshipId)
+        ).order("desc").collect(),
+      ctx.db.query("jobs")
+        .withIndex("by_companyId_clientRelationshipId_scheduledDate", (q: any) =>
+          q.eq("companyId", companyId).eq("clientRelationshipId", relationshipId)
+        ).order("desc").collect(),
     ]);
 
     return {
@@ -185,14 +207,14 @@ export const getClientRelationshipDetail = query({
         inviteStatus,
         hasClientUser: Boolean(relationship.clientUserId),
       },
-      leads: leads.sort((a: any, b: any) => b.createdAt - a.createdAt),
+      leads,
       properties: properties.sort((a: any, b: any) => a.name.localeCompare(b.name)),
-      commercialAccounts: commercialAccounts.sort((a: any, b: any) => b.updatedAt - a.updatedAt),
-      walkthroughs: walkthroughs.sort((a: any, b: any) => b.updatedAt - a.updatedAt),
-      proposals: proposals.sort((a: any, b: any) => b.updatedAt - a.updatedAt),
-      serviceAgreements: serviceAgreements.sort((a: any, b: any) => b.updatedAt - a.updatedAt),
-      invoices: invoices.sort((a: any, b: any) => b.updatedAt - a.updatedAt),
-      jobs: jobs.sort((a: any, b: any) => b.scheduledDate.localeCompare(a.scheduledDate)),
+      commercialAccounts,
+      walkthroughs,
+      proposals,
+      serviceAgreements,
+      invoices,
+      jobs,
     };
   },
 });
