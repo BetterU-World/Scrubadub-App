@@ -1,6 +1,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { assertOwnerRole, getSessionUser } from "../lib/auth";
+import { requireOwnerSession } from "../lib/sessionAuth";
 
 const workerRoleValues = ["cleaner", "manager", "maintenance"] as const;
 
@@ -42,11 +43,12 @@ async function enrichProfile(ctx: any, profile: any) {
 export const listWorkersForCompany = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     companyId: v.optional(v.id("companies")),
     includeArchived: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const owner = await assertOwnerRole(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const companyId = args.companyId ?? owner.companyId;
     if (companyId !== owner.companyId) throw new Error("Access denied");
 
