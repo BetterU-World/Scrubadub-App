@@ -5,6 +5,9 @@ import { Id } from "../../../../convex/_generated/dataModel";
 
 const STORAGE_KEY = "scrubadub_userId";
 const REF_KEY = "scrubadub_ref";
+// Temporary Security V2 migration credential. This remains in localStorage only
+// until the app adopts provider-backed transport or a same-origin cookie layer.
+export const STAFF_SESSION_KEY = "scrubadub_staffSessionToken";
 
 interface AuthUser {
   _id: Id<"users">;
@@ -40,6 +43,7 @@ export function useAuth() {
   // ✅ Convex Actions
   const signUpAction = useAction(api.authActions.signUp);
   const signInAction = useAction(api.authActions.signIn);
+  const revokeSession = useAction((api as any).sessionActions.revokeCurrent);
   const setReferredByCode = useMutation(api.mutations.affiliate.setReferredByCode);
 
   // ✅ Query current user
@@ -86,6 +90,7 @@ export function useAuth() {
     }) => {
       const result = await signUpAction(args);
       localStorage.setItem(STORAGE_KEY, String(result.userId));
+      localStorage.setItem(STAFF_SESSION_KEY, result.sessionToken);
       setUserId(result.userId);
       return result;
     },
@@ -97,6 +102,7 @@ export function useAuth() {
       const result = await signInAction(args);
       const uid = String(result.userId);
       localStorage.setItem(STORAGE_KEY, uid);
+      localStorage.setItem(STAFF_SESSION_KEY, result.sessionToken);
       setUserId(uid as Id<"users">);
       return result;
     },
@@ -104,10 +110,13 @@ export function useAuth() {
   );
 
   const signOut = useCallback(() => {
+    const sessionToken = localStorage.getItem(STAFF_SESSION_KEY);
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STAFF_SESSION_KEY);
     setUserId(null);
+    if (sessionToken) void revokeSession({ sessionToken }).catch(() => {});
     window.location.assign("/login");
-  }, []);
+  }, [revokeSession]);
 
   return {
     user: user as AuthUser | null | undefined,

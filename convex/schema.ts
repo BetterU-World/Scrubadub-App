@@ -118,6 +118,43 @@ export default defineSchema({
     .index("by_referralCode", ["referralCode"])
     .index("by_referredByCode", ["referredByCode"]),
 
+  // Security V2 compatibility sessions. The raw token is returned once and
+  // never stored; tokenHash is a peppered SHA-256 digest.
+  authSessions: defineTable(
+    v.union(
+      v.object({
+        principalType: v.literal("staff"),
+        userId: v.id("users"),
+        tokenHash: v.string(),
+        version: v.literal(1),
+        createdAt: v.number(),
+        lastUsedAt: v.number(),
+        expiresAt: v.number(),
+        idleExpiresAt: v.number(),
+        revokedAt: v.optional(v.number()),
+        revokedReason: v.optional(v.string()),
+        deviceLabel: v.optional(v.string()),
+      }),
+      v.object({
+        principalType: v.literal("client"),
+        clientUserId: v.id("clientUsers"),
+        tokenHash: v.string(),
+        version: v.literal(1),
+        createdAt: v.number(),
+        lastUsedAt: v.number(),
+        expiresAt: v.number(),
+        idleExpiresAt: v.number(),
+        revokedAt: v.optional(v.number()),
+        revokedReason: v.optional(v.string()),
+        deviceLabel: v.optional(v.string()),
+      })
+    )
+  )
+    .index("by_tokenHash", ["tokenHash"])
+    .index("by_userId", ["userId"])
+    .index("by_clientUserId", ["clientUserId"])
+    .index("by_expiresAt", ["expiresAt"]),
+
   workerProfiles: defineTable({
     companyId: v.id("companies"),
     userId: v.id("users"),

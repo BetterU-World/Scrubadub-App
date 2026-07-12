@@ -53,7 +53,7 @@ export function ClientAcceptInvitePage() {
     setLoading(true);
     try {
       const result = await acceptInvite({ token: params.token!, password });
-      setSignedInClient(result.clientUserId);
+      setSignedInClient(result.clientUserId, result.sessionToken);
       window.location.assign("/client/home");
     } catch (err: any) {
       setError(err.message || t("clientAuth.acceptFailed"));

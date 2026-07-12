@@ -8,6 +8,7 @@ import { hashPassword } from "./lib/password";
 import { generateSecureToken, INVITE_TOKEN_EXPIRY_MS } from "./lib/tokens";
 import { validatePassword, validateEmail, validateName } from "./lib/validation";
 import { validateRequiredEnv } from "./lib/validateEnv";
+import { issueSession } from "./lib/sessions";
 
 validateRequiredEnv();
 
@@ -167,6 +168,9 @@ export const acceptInvite = action({
     name: string;
     role: string;
     companyId?: Id<"companies">;
+    sessionToken: string;
+    sessionExpiresAt: number;
+    sessionIdleExpiresAt: number;
   }> => {
     validatePassword(args.password);
 
@@ -214,12 +218,14 @@ export const acceptInvite = action({
       );
     }
 
+    const session = await issueSession(ctx, { principalType: "staff", userId: user._id });
     return {
       userId: user._id,
       email: user.email,
       name: user.name,
       role: user.role,
       companyId: user.companyId,
+      ...session,
     };
   },
 });
