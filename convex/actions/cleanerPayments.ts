@@ -6,6 +6,7 @@ import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { getStripeClientOrNull } from "../lib/stripe";
+import { requireOwnerSession } from "../lib/sessions";
 
 const CHECKOUT_LIMIT = 3;
 const CHECKOUT_WINDOW_MS = 60_000; // 60 seconds
@@ -20,12 +21,14 @@ const PLATFORM_FEE_CENTS = 200; // $2
 export const createCleanerPaymentCheckout = action({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     cleanerPaymentId: v.id("cleanerPayments"),
   },
   handler: async (ctx, args): Promise<{ url: string | null }> => {
+    const principal = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     // Rate limit: 3 checkout creations per 60s per user
     await ctx.runMutation(internal.rateLimitInternal.enforce, {
-      key: `u:${args.userId}:createCleanerPaymentCheckout`,
+      key: `u:${principal.userId}:createCleanerPaymentCheckout`,
       limit: CHECKOUT_LIMIT,
       windowMs: CHECKOUT_WINDOW_MS,
     });
@@ -36,7 +39,7 @@ export const createCleanerPaymentCheckout = action({
     // Fetch caller (payer) info
     const payer: any = await ctx.runQuery(
       internal.queries.companyStripeConnect.getOwnerAndCompany,
-      { userId: args.userId },
+      { userId: principal.userId },
     );
     if (!payer) throw new Error("Owner or company not found");
 
@@ -96,7 +99,7 @@ export const createCleanerPaymentCheckout = action({
           cleanerPaymentId: String(args.cleanerPaymentId),
           jobId: String(data.jobId),
           companyId: String(data.companyId),
-          payerUserId: String(args.userId),
+          payerUserId: String(principal.userId),
         },
       },
       metadata: {
@@ -104,7 +107,7 @@ export const createCleanerPaymentCheckout = action({
         cleanerPaymentId: String(args.cleanerPaymentId),
         jobId: String(data.jobId),
         companyId: String(data.companyId),
-        payerUserId: String(args.userId),
+        payerUserId: String(principal.userId),
       },
       success_url: `${appUrl}/owner/jobs/${data.jobId}?payment=success`,
       cancel_url: `${appUrl}/owner/jobs/${data.jobId}?payment=cancel`,

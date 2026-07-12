@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { Link2, CreditCard, CheckCircle, AlertCircle } from "lucide-react";
@@ -10,7 +10,7 @@ export function StripeConnectPage() {
   const { user } = useAuth();
   const connectStatus = useQuery(
     api.queries.companyStripeConnect.getCompanyConnectStatus,
-    user?._id ? { userId: user._id } : "skip"
+    user?._id ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
   const createAccountLink = useAction(
     api.actions.companyStripeConnect.createCompanyStripeAccountLink
@@ -37,7 +37,7 @@ export function StripeConnectPage() {
     setLoading("connect");
     setError(null);
     try {
-      const result = await createAccountLink({ userId: user._id });
+      const result = await createAccountLink({ userId: user._id, sessionToken: getStaffSessionToken() });
       if (result?.url) {
         window.location.href = result.url;
       }
@@ -52,7 +52,7 @@ export function StripeConnectPage() {
     setLoading("test");
     setError(null);
     try {
-      const result = await createTestCheckout({ userId: user._id });
+      const result = await createTestCheckout({ userId: user._id, sessionToken: getStaffSessionToken() });
       if (result?.url) {
         window.location.href = result.url;
       }

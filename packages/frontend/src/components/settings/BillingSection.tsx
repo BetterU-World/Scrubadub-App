@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import {
   CreditCard,
   ExternalLink,
@@ -119,7 +119,7 @@ export function BillingSection() {
   const handleManageBilling = async () => {
     setLoading("portal");
     try {
-      const url = await createPortal({ userId: user._id });
+      const url = await createPortal({ userId: user._id, sessionToken: getStaffSessionToken() });
       if (url) window.location.href = url;
     } catch {
       showToast("Unable to open billing portal. Please try again.", "error");

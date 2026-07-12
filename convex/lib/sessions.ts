@@ -4,10 +4,14 @@ import type { ActionCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { generateSecureToken, hashToken } from "./tokens";
-
-export const SESSION_ABSOLUTE_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
-export const SESSION_IDLE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
-export const SESSION_TOUCH_INTERVAL_MS = 15 * 60 * 1000;
+import { isSuperAdminEmail } from "./auth";
+import {
+  SESSION_ABSOLUTE_EXPIRY_MS,
+  SESSION_IDLE_EXPIRY_MS,
+  SESSION_REQUIRED_ERROR,
+  SESSION_TOUCH_INTERVAL_MS,
+} from "./sessionConstants";
+export { SESSION_ABSOLUTE_EXPIRY_MS, SESSION_IDLE_EXPIRY_MS, SESSION_TOUCH_INTERVAL_MS };
 
 type StaffBinding = { principalType: "staff"; userId: Id<"users"> };
 type ClientBinding = { principalType: "client"; clientUserId: Id<"clientUsers"> };
@@ -103,9 +107,55 @@ export async function getPrincipalFromSessionToken(
   return principal;
 }
 
-export async function requireStaffSession(ctx: ActionCtx, token: string) {
-  const principal = await getPrincipalFromSessionToken(ctx, token);
+export async function requireStaffSession(
+  ctx: ActionCtx,
+  token: string,
+  claimedUserId?: Id<"users">
+): Promise<StaffSessionPrincipal> {
+  if (!token) console.warn("[security] rejected legacy-only high-risk request");
+  let principal: SessionPrincipal;
+  try {
+    principal = await getPrincipalFromSessionToken(ctx, token);
+  } catch {
+    throw new Error(SESSION_REQUIRED_ERROR);
+  }
   if (principal.kind !== "staff") throw new Error("Staff session required");
+  if (claimedUserId && claimedUserId !== principal.userId) {
+    console.warn("[security] session principal mismatch rejected");
+    throw new Error("Session principal does not match the requested user");
+  }
+  return principal;
+}
+
+export async function requireOwnerSession(
+  ctx: ActionCtx,
+  token: string,
+  claimedUserId?: Id<"users">
+): Promise<StaffSessionPrincipal & { role: "owner"; companyId: Id<"companies"> }> {
+  const principal = await requireStaffSession(ctx, token, claimedUserId);
+  if (principal.role !== "owner" || !principal.companyId) throw new Error("Owner session required");
+  return principal as typeof principal & { role: "owner"; companyId: Id<"companies"> };
+}
+
+export async function requireAffiliateSession(
+  ctx: ActionCtx,
+  token: string,
+  claimedUserId?: Id<"users">
+): Promise<StaffSessionPrincipal> {
+  const principal = await requireStaffSession(ctx, token, claimedUserId);
+  if (principal.role !== "affiliate") throw new Error("Affiliate session required");
+  return principal;
+}
+
+export async function requireSuperadminSession(
+  ctx: ActionCtx,
+  token: string,
+  claimedUserId?: Id<"users">
+): Promise<StaffSessionPrincipal> {
+  const principal = await requireStaffSession(ctx, token, claimedUserId);
+  const user = await ctx.runQuery(sessionApi.getStaffPrincipal, { userId: principal.userId });
+  if (!user || !isSuperAdminEmail(user.email)) throw new Error("Super admin session required");
+  console.info("[security] verified founder allowlist access", { userId: String(principal.userId) });
   return principal;
 }
 

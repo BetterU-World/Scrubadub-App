@@ -1,6 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { getSessionUser, requireSuperAdmin } from "../lib/auth";
+import { requireVerifiedStaffSession, requireSuperadminSession } from "../lib/sessionAuth";
 
 /**
  * Create a payout request for locked ledger rows. Affiliate-initiated.
@@ -9,11 +9,12 @@ import { getSessionUser, requireSuperAdmin } from "../lib/auth";
 export const createPayoutRequest = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     ledgerIds: v.array(v.id("affiliateLedger")),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
 
     // Require Stripe Connect for payouts — affiliates must connect
     // their account before they can request money out.
@@ -85,11 +86,12 @@ export const createPayoutRequest = mutation({
 export const cancelMyPayoutRequest = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     requestId: v.id("affiliatePayoutRequests"),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
 
     const request = await ctx.db.get(args.requestId);
     if (!request) throw new Error("Payout request not found");
@@ -132,11 +134,12 @@ export const cancelMyPayoutRequest = mutation({
 export const approvePayoutRequest = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     requestId: v.id("affiliatePayoutRequests"),
     adminNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireSuperAdmin(ctx, args.userId);
+    await requireSuperadminSession(ctx, args.sessionToken, args.userId);
 
     const request = await ctx.db.get(args.requestId);
     if (!request) throw new Error("Payout request not found");
@@ -167,11 +170,12 @@ export const approvePayoutRequest = mutation({
 export const denyPayoutRequest = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     requestId: v.id("affiliatePayoutRequests"),
     adminNotes: v.string(),
   },
   handler: async (ctx, args) => {
-    await requireSuperAdmin(ctx, args.userId);
+    await requireSuperadminSession(ctx, args.sessionToken, args.userId);
 
     if (!args.adminNotes.trim()) {
       throw new Error("Denial reason is required");
@@ -217,12 +221,13 @@ export const denyPayoutRequest = mutation({
 export const completePayoutRequestAsBatch = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     requestId: v.id("affiliatePayoutRequests"),
     method: v.string(),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const admin = await requireSuperAdmin(ctx, args.userId);
+    const admin = await requireSuperadminSession(ctx, args.sessionToken, args.userId);
 
     const request = await ctx.db.get(args.requestId);
     if (!request) throw new Error("Payout request not found");

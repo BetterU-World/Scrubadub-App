@@ -1,6 +1,6 @@
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import {
@@ -18,12 +18,12 @@ export function SuperAdminPage() {
 
   const stats = useQuery(
     api.queries.admin.getPlatformStats,
-    user ? { userId: user._id } : "skip"
+    user ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
 
   const companiesWithUsers = useQuery(
     api.queries.admin.getCompaniesWithUsers,
-    user ? { userId: user._id } : "skip"
+    user ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
 
   if (!user) return <PageLoader />;

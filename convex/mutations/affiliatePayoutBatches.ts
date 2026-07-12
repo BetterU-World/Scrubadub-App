@@ -1,6 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { requireSuperAdmin } from "../lib/auth";
+import { requireSuperadminSession } from "../lib/sessionAuth";
 
 /**
  * Create a payout batch from selected locked ledger rows and mark them paid.
@@ -9,12 +9,13 @@ import { requireSuperAdmin } from "../lib/auth";
 export const createPayoutBatchAndMarkPaid = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     ledgerIds: v.array(v.id("affiliateLedger")),
     method: v.string(),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await requireSuperAdmin(ctx, args.userId);
+    const user = await requireSuperadminSession(ctx, args.sessionToken, args.userId);
 
     if (args.ledgerIds.length === 0) {
       throw new Error("No ledger entries selected");
@@ -75,11 +76,12 @@ export const createPayoutBatchAndMarkPaid = mutation({
 export const voidPayoutBatchAndRevertPaid = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     batchId: v.id("affiliatePayoutBatches"),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireSuperAdmin(ctx, args.userId);
+    await requireSuperadminSession(ctx, args.sessionToken, args.userId);
 
     const batch = await ctx.db.get(args.batchId);
     if (!batch) throw new Error("Payout batch not found");

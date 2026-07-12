@@ -3,7 +3,7 @@ import { useParams } from "wouter";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import {
@@ -102,7 +102,7 @@ function PayoutRequestInner({
 }) {
   const request = useQuery(
     api.queries.affiliatePayoutRequests.getMyPayoutRequest,
-    { userId, requestId }
+    { userId, sessionToken: getStaffSessionToken(), requestId }
   );
   const cancelRequest = useMutation(
     api.mutations.affiliatePayoutRequests.cancelMyPayoutRequest
@@ -120,6 +120,7 @@ function PayoutRequestInner({
     try {
       await cancelRequest({
         userId,
+        sessionToken: getStaffSessionToken(),
         requestId,
         notes: cancelNotes.trim() || undefined,
       });

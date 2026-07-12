@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { toFriendlyMessage } from "@/lib/friendlyError";
 import { requireUserId } from "@/lib/requireUserId";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -795,6 +795,7 @@ export function JobDetailPage() {
                               });
                               const result = await createCleanerPaymentCheckout({
                                 userId: uid,
+                                sessionToken: getStaffSessionToken(),
                                 cleanerPaymentId: paymentId,
                               });
                               if (result?.url) window.location.href = result.url;
@@ -1122,6 +1123,7 @@ export function JobDetailPage() {
                       try {
                         const result = await createSettlementCheckout({
                           userId: uid,
+                          sessionToken: getStaffSessionToken(),
                           settlementId: settlement._id,
                         });
                         if (result?.url) window.location.href = result.url;

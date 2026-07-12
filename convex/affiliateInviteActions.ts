@@ -7,31 +7,12 @@ import type { Id } from "./_generated/dataModel";
 import { generateSecureToken } from "./lib/tokens";
 import { validateEmail, validateName } from "./lib/validation";
 import { validateRequiredEnv } from "./lib/validateEnv";
-import { isSuperAdminEmail } from "./lib/auth";
+import { requireSuperadminSession } from "./lib/sessions";
 
 validateRequiredEnv();
 
 /** Affiliate invite expiry: 7 days */
 const AFFILIATE_INVITE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
-
-/**
- * Verify caller is a superadmin via internal query + email check.
- * Actions cannot use requireSuperAdmin() directly (no QueryCtx),
- * so we fetch the user record and check the email list.
- */
-async function verifySuperAdmin(
-  ctx: { runQuery: Function },
-  callerUserId: Id<"users">
-) {
-  const caller: any = await ctx.runQuery(internal.authQueries.getUser, {
-    userId: callerUserId,
-  });
-  if (!caller) throw new Error("Authentication required");
-  if (!isSuperAdminEmail(caller.email)) {
-    throw new Error("Super admin access required");
-  }
-  return caller;
-}
 
 /**
  * Create an affiliate invite. Superadmin only.
@@ -40,6 +21,7 @@ async function verifySuperAdmin(
 export const inviteAffiliate = action({
   args: {
     callerUserId: v.id("users"),
+    sessionToken: v.string(),
     email: v.string(),
     name: v.string(),
     sendEmail: v.optional(v.boolean()),
@@ -50,7 +32,7 @@ export const inviteAffiliate = action({
     inviteUrl: string;
   }> => {
     // 1. Verify superadmin
-    await verifySuperAdmin(ctx, args.callerUserId);
+    const principal = await requireSuperadminSession(ctx as any, args.sessionToken, args.callerUserId);
 
     // 2. Validate inputs
     validateEmail(args.email);
@@ -84,7 +66,7 @@ export const inviteAffiliate = action({
         name: args.name,
         inviteToken: token,
         inviteTokenExpiry: Date.now() + AFFILIATE_INVITE_EXPIRY_MS,
-        affiliateInvitedBy: args.callerUserId,
+        affiliateInvitedBy: principal.userId,
       }
     );
 
@@ -111,6 +93,7 @@ export const inviteAffiliate = action({
 export const resendAffiliateInvite = action({
   args: {
     callerUserId: v.id("users"),
+    sessionToken: v.string(),
     targetUserId: v.id("users"),
   },
   handler: async (ctx, args): Promise<{
@@ -118,7 +101,7 @@ export const resendAffiliateInvite = action({
     inviteUrl: string;
   }> => {
     // 1. Verify superadmin
-    await verifySuperAdmin(ctx, args.callerUserId);
+    await requireSuperadminSession(ctx as any, args.sessionToken, args.callerUserId);
 
     // 2. Rate limit
     await ctx.runMutation(internal.rateLimitInternal.enforce, {

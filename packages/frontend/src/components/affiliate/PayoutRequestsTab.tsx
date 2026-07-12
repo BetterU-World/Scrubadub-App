@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import {
   CheckCircle,
   XCircle,
@@ -99,7 +99,7 @@ function RequestDetailModal({
   const { t } = useTranslation();
   const request = useQuery(
     api.queries.affiliatePayoutRequests.getPayoutRequestAdmin,
-    { userId, requestId }
+    { userId, sessionToken: getStaffSessionToken(), requestId }
   );
   const approve = useMutation(
     api.mutations.affiliatePayoutRequests.approvePayoutRequest
@@ -136,18 +136,21 @@ function RequestDetailModal({
       if (action === "approve") {
         await approve({
           userId,
+          sessionToken: getStaffSessionToken(),
           requestId,
           adminNotes: adminNotes.trim() || undefined,
         });
       } else if (action === "deny") {
         await deny({
           userId,
+          sessionToken: getStaffSessionToken(),
           requestId,
           adminNotes: adminNotes.trim(),
         });
       } else if (action === "complete") {
         await complete({
           userId,
+          sessionToken: getStaffSessionToken(),
           requestId,
           method,
           notes: adminNotes.trim() || undefined,
@@ -458,6 +461,7 @@ function PayoutRequestsInner({
     api.queries.affiliatePayoutRequests.listPayoutRequestsAdmin,
     {
       userId,
+      sessionToken: getStaffSessionToken(),
       status: (statusFilter || undefined) as any,
       limit: 20,
     }

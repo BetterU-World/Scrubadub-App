@@ -6,6 +6,7 @@ import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { getStripeClientOrNull } from "../lib/stripe";
+import { requireOwnerSession } from "../lib/sessions";
 
 const CHECKOUT_LIMIT = 3;
 const CHECKOUT_WINDOW_MS = 60_000; // 60 seconds
@@ -23,12 +24,14 @@ const PLATFORM_FEE_CENTS = 200; // $2
 export const createSettlementPayCheckout = action({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     settlementId: v.id("companySettlements"),
   },
   handler: async (ctx, args): Promise<{ url: string | null }> => {
+    const principal = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     // Rate limit: 3 checkout creations per 60s per user
     await ctx.runMutation(internal.rateLimitInternal.enforce, {
-      key: `u:${args.userId}:createSettlementPayCheckout`,
+      key: `u:${principal.userId}:createSettlementPayCheckout`,
       limit: CHECKOUT_LIMIT,
       windowMs: CHECKOUT_WINDOW_MS,
     });
@@ -39,7 +42,7 @@ export const createSettlementPayCheckout = action({
     // Fetch caller (payer) info
     const payer: any = await ctx.runQuery(
       internal.queries.companyStripeConnect.getOwnerAndCompany,
-      { userId: args.userId },
+      { userId: principal.userId },
     );
     if (!payer) throw new Error("Owner or company not found");
 
@@ -95,7 +98,7 @@ export const createSettlementPayCheckout = action({
           settlementId: args.settlementId,
           payerCompanyId: String(payer.companyId),
           recipientCompanyId: String(data.toCompanyId),
-          payerUserId: String(args.userId),
+          payerUserId: String(principal.userId),
         },
       },
       metadata: {
@@ -103,7 +106,7 @@ export const createSettlementPayCheckout = action({
         settlementId: args.settlementId,
         payerCompanyId: String(payer.companyId),
         recipientCompanyId: String(data.toCompanyId),
-        payerUserId: String(args.userId),
+        payerUserId: String(principal.userId),
       },
       success_url: `${appUrl}/owner/settlements?payment=success&settlement=${args.settlementId}`,
       cancel_url: `${appUrl}/owner/settlements?payment=cancel`,
@@ -119,12 +122,14 @@ export const createSettlementPayCheckout = action({
 export const createSettlementBatchCheckout = action({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     batchId: v.id("settlementBatches"),
   },
   handler: async (ctx, args): Promise<{ url: string | null }> => {
+    const principal = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     // Rate limit: 3 checkout creations per 60s per user
     await ctx.runMutation(internal.rateLimitInternal.enforce, {
-      key: `u:${args.userId}:createSettlementBatchCheckout`,
+      key: `u:${principal.userId}:createSettlementBatchCheckout`,
       limit: CHECKOUT_LIMIT,
       windowMs: CHECKOUT_WINDOW_MS,
     });
@@ -134,7 +139,7 @@ export const createSettlementBatchCheckout = action({
 
     const payer: any = await ctx.runQuery(
       internal.queries.companyStripeConnect.getOwnerAndCompany,
-      { userId: args.userId },
+      { userId: principal.userId },
     );
     if (!payer) throw new Error("Owner or company not found");
 
@@ -187,7 +192,7 @@ export const createSettlementBatchCheckout = action({
           batchId: String(args.batchId),
           payerCompanyId: String(payer.companyId),
           recipientCompanyId: String(data.toCompanyId),
-          payerUserId: String(args.userId),
+          payerUserId: String(principal.userId),
         },
       },
       metadata: {
@@ -195,7 +200,7 @@ export const createSettlementBatchCheckout = action({
         batchId: String(args.batchId),
         payerCompanyId: String(payer.companyId),
         recipientCompanyId: String(data.toCompanyId),
-        payerUserId: String(args.userId),
+        payerUserId: String(principal.userId),
       },
       success_url: `${appUrl}/owner/settlements?payment=success`,
       cancel_url: `${appUrl}/owner/settlements?payment=cancel`,

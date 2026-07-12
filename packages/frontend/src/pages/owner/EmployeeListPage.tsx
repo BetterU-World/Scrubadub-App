@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { HowItWorks } from "@/components/ui/HowItWorks";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
@@ -142,6 +142,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
         email: inviteEmail,
         name: inviteName,
         userId: user._id,
+        sessionToken: getStaffSessionToken(),
         role: inviteRole,
         workerType: inviteWorkerType,
       };
@@ -518,6 +519,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                       try {
                         const result = await resendInviteEmail({
                           userId: user._id,
+                          sessionToken: getStaffSessionToken(),
                           companyId: user.companyId!,
                           employeeEmail: inviteEmail,
                         });

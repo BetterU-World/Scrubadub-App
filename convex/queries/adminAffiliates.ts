@@ -1,6 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireSuperAdmin } from "../lib/auth";
+import { requireSuperadminSession } from "../lib/sessionAuth";
 
 /**
  * List users who have at least one affiliateLedger entry (i.e. are referrers).
@@ -9,11 +9,12 @@ import { requireSuperAdmin } from "../lib/auth";
 export const listAffiliateCandidates = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     search: v.optional(v.string()),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await requireSuperAdmin(ctx, args.userId);
+    await requireSuperadminSession(ctx, args.sessionToken, args.userId);
     const limit = args.limit ?? 50;
 
     // Collect all distinct referrerUserIds from ledger
@@ -71,6 +72,7 @@ export const listAffiliateCandidates = query({
 export const getLedgerForReferrer = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     referrerUserId: v.id("users"),
     periodType: v.optional(
       v.union(v.literal("monthly"), v.literal("weekly"))
@@ -82,7 +84,7 @@ export const getLedgerForReferrer = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await requireSuperAdmin(ctx, args.userId);
+    await requireSuperadminSession(ctx, args.sessionToken, args.userId);
     const limit = args.limit ?? 50;
 
     let entries = await ctx.db
@@ -118,6 +120,7 @@ export const getLedgerForReferrer = query({
 export const listPayoutBatchesForReferrer = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     referrerUserId: v.id("users"),
     status: v.optional(
       v.union(v.literal("recorded"), v.literal("voided"))
@@ -126,7 +129,7 @@ export const listPayoutBatchesForReferrer = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await requireSuperAdmin(ctx, args.userId);
+    await requireSuperadminSession(ctx, args.sessionToken, args.userId);
     const limit = args.limit ?? 20;
 
     // Get ledger entries for this referrer that have a payoutBatchId

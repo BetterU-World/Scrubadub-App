@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { Link } from "wouter";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import {
@@ -79,6 +79,7 @@ export function CompanyOnboardingDocumentsPage() {
     try {
       await validateUpload({
         userId: user._id,
+        sessionToken: getStaffSessionToken(),
         mimeType: file.type,
         size: file.size,
         fileName: file.name,
@@ -86,7 +87,7 @@ export function CompanyOnboardingDocumentsPage() {
       if (file.type !== "application/pdf") {
         throw new Error("Only PDF files are supported for onboarding documents");
       }
-      const uploadUrl = await generateUploadUrl({ userId: user._id });
+      const uploadUrl = await generateUploadUrl({ userId: user._id, sessionToken: getStaffSessionToken() });
       const result = await fetch(uploadUrl, {
         method: "POST",
         headers: { "Content-Type": file.type },

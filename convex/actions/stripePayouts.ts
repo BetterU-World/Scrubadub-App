@@ -4,6 +4,7 @@ import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { getStripeClientOrNull } from "../lib/stripe";
+import { requireSuperadminSession } from "../lib/sessions";
 
 /**
  * Pay an existing payout batch via Stripe Connect Transfer.
@@ -12,9 +13,11 @@ import { getStripeClientOrNull } from "../lib/stripe";
 export const payPayoutBatchViaStripe = action({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     batchId: v.id("affiliatePayoutBatches"),
   },
   handler: async (ctx, args) => {
+    const principal = await requireSuperadminSession(ctx, args.sessionToken, args.userId);
     const stripe = getStripeClientOrNull();
     if (!stripe) {
       return { ok: false as const, reason: "not_configured" };
@@ -25,7 +28,7 @@ export const payPayoutBatchViaStripe = action({
     try {
       data = await ctx.runQuery(
         internal.queries.affiliatePayoutBatches.getBatchPayoutData,
-        { userId: args.userId, batchId: args.batchId }
+        { userId: principal.userId, batchId: args.batchId }
       );
     } catch (err: any) {
       return { ok: false as const, reason: err.message ?? "Validation failed" };

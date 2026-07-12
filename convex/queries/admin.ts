@@ -1,11 +1,12 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireSuperAdmin, isSuperAdminEmail } from "../lib/auth";
+import { isSuperAdminEmail } from "../lib/auth";
+import { requireSuperadminSession, requireVerifiedStaffSession } from "../lib/sessionAuth";
 
 export const getPlatformStats = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    await requireSuperAdmin(ctx, args.userId);
+    await requireSuperadminSession(ctx, args.sessionToken, args.userId);
 
     const now = Date.now();
     const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
@@ -87,9 +88,9 @@ export const getPlatformStats = query({
 });
 
 export const getCompaniesWithUsers = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    await requireSuperAdmin(ctx, args.userId);
+    await requireSuperadminSession(ctx, args.sessionToken, args.userId);
 
     const SCAN_CAP = 10_000;
     const companies = await ctx.db.query("companies").take(SCAN_CAP);
@@ -113,10 +114,12 @@ export const getCompaniesWithUsers = query({
 });
 
 export const isSuperAdmin = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const user = await ctx.db.get(args.userId);
-    if (!user) return false;
+    // This eligibility probe is rendered in the ordinary sidebar. Legacy-only
+    // users must fail closed without crashing unrelated navigation.
+    if (!args.sessionToken) return false;
+    const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
     return isSuperAdminEmail(user.email);
   },
 });

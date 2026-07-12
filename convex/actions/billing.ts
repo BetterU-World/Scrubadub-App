@@ -9,6 +9,7 @@ import { internal } from "../_generated/api";
 import { v } from "convex/values";
 
 import { planToEnvVar, planToTier, type ScrubPlan } from "../lib/plans";
+import { requireOwnerSession } from "../lib/sessions";
 
 /**
  * Resolve the Stripe price ID for a given plan.
@@ -30,13 +31,15 @@ function getStripe() {
 export const createCheckoutSession = action({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     tier: v.union(v.literal("cleaning_owner"), v.literal("str_owner")),
     plan: v.optional(v.union(v.literal("solo"), v.literal("team"), v.literal("pro"))),
   },
   handler: async (ctx: any, args: any): Promise<any> => {
+    const principal = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const data: any = await ctx.runQuery(
       internal.queries.billing.getCompanyForBilling,
-      { userId: args.userId }
+      { userId: principal.userId }
     );
     if (!data) throw new Error("User or company not found");
     if (data.role !== "owner") throw new Error("Only owners can subscribe");
@@ -49,7 +52,7 @@ export const createCheckoutSession = action({
     if (!customerId) {
       const customer: any = await stripe.customers.create({
         email: data.email,
-        metadata: { companyId: data.companyId, ownerUserId: args.userId },
+        metadata: { companyId: data.companyId, ownerUserId: principal.userId },
       });
 
       customerId = customer.id as string;
@@ -76,7 +79,7 @@ export const createCheckoutSession = action({
         trial_period_days: 14,
         metadata: {
           companyId: data.companyId,
-          ownerUserId: args.userId,
+          ownerUserId: principal.userId,
           tier: internalTier,
         },
       },
@@ -85,7 +88,7 @@ export const createCheckoutSession = action({
       cancel_url: `${APP_URL}/billing/cancel`,
       metadata: {
         companyId: data.companyId,
-        ownerUserId: args.userId,
+        ownerUserId: principal.userId,
         tier: internalTier,
       },
     });
@@ -97,11 +100,13 @@ export const createCheckoutSession = action({
 export const createBillingPortalSession = action({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
   },
   handler: async (ctx: any, args: any): Promise<any> => {
+    const principal = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const data: any = await ctx.runQuery(
       internal.queries.billing.getCompanyForBilling,
-      { userId: args.userId }
+      { userId: principal.userId }
     );
     if (!data) throw new Error("User or company not found");
     if (data.role !== "owner") throw new Error("Only owners can manage billing");

@@ -6,6 +6,7 @@ import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { getStripeClientOrNull } from "../lib/stripe";
+import { requireStaffSession } from "../lib/sessions";
 
 /**
  * Quick check whether STRIPE_SECRET_KEY is configured.
@@ -25,9 +26,11 @@ export const isStripeConfigured = action({
 export const startStripeConnectOnboarding = action({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     returnTo: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const principal = await requireStaffSession(ctx, args.sessionToken, args.userId);
     const stripe = getStripeClientOrNull();
     if (!stripe) {
       return { ok: false as const, reason: "not_configured" };
@@ -36,7 +39,7 @@ export const startStripeConnectOnboarding = action({
     // Fetch user via internal query (auth check)
     const user = await ctx.runQuery(
       internal.queries.stripeConnect.getUserForStripeConnect,
-      { userId: args.userId }
+      { userId: principal.userId }
     );
     if (!user) {
       return { ok: false as const, reason: "user_not_found" };
@@ -60,7 +63,7 @@ export const startStripeConnectOnboarding = action({
 
       await ctx.runMutation(
         internal.mutations.stripeConnect.setStripeConnectAccount,
-        { userId: args.userId, stripeConnectAccountId: accountId }
+        { userId: principal.userId, stripeConnectAccountId: accountId }
       );
     }
 
@@ -80,8 +83,9 @@ export const startStripeConnectOnboarding = action({
  * Fetch the latest Stripe Connect account status and persist to DB.
  */
 export const syncMyStripeConnectStatus = action({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
+    const principal = await requireStaffSession(ctx, args.sessionToken, args.userId);
     const stripe = getStripeClientOrNull();
     if (!stripe) {
       return { ok: false as const, reason: "not_configured" };
@@ -89,7 +93,7 @@ export const syncMyStripeConnectStatus = action({
 
     const user = await ctx.runQuery(
       internal.queries.stripeConnect.getUserForStripeConnect,
-      { userId: args.userId }
+      { userId: principal.userId }
     );
     if (!user || !user.stripeConnectAccountId) {
       return { ok: false as const, reason: "no_account" };
@@ -113,7 +117,7 @@ export const syncMyStripeConnectStatus = action({
     await ctx.runMutation(
       internal.mutations.stripeConnect.syncStripeConnectFields,
       {
-        userId: args.userId,
+        userId: principal.userId,
         payoutsEnabled,
         detailsSubmitted,
         requirementsDue,

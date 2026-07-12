@@ -1,15 +1,15 @@
 import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
-import { getSessionUser } from "../lib/auth";
+import { requireVerifiedStaffSession } from "../lib/sessionAuth";
 
 /**
  * Public query: returns the caller's Stripe Connect onboarding state.
  * Reactive — updates live when the user record changes.
  */
 export const getMyStripeConnectStatus = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
     return {
       stripeConnectAccountId: user.stripeConnectAccountId ?? null,
       onboardingStatus: user.stripeConnectOnboardingStatus ?? "not_started",
@@ -41,9 +41,9 @@ export const getUserForStripeConnect = internalQuery({
  * Public query: returns the caller's affiliate Stripe Connect state.
  */
 export const getAffiliateConnectStatus = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
     return {
       affiliateStripeAccountId: user.affiliateStripeAccountId ?? null,
       affiliateStripeOnboardedAt: user.affiliateStripeOnboardedAt ?? null,

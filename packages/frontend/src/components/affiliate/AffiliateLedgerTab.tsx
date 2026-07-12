@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import {
   RefreshCw,
@@ -509,7 +509,7 @@ function BatchDetailModal({
     setStripeBusy(true);
     setStripeError(null);
     try {
-      const result = await payViaStripe({ userId, batchId });
+      const result = await payViaStripe({ userId, sessionToken: getStaffSessionToken(), batchId });
       if (!result.ok) {
         setStripeError(result.reason ?? "Payment failed");
       }
@@ -1030,7 +1030,7 @@ function ViewAsSelector({
 
   const candidates = useQuery(
     api.queries.adminAffiliates.listAffiliateCandidates,
-    { userId, search: search || undefined, limit: 20 }
+    { userId, sessionToken: getStaffSessionToken(), search: search || undefined, limit: 20 }
   );
 
   return (
@@ -1287,7 +1287,7 @@ function MyPayoutRequestsList({
   const [expanded, setExpanded] = useState(false);
   const requests = useQuery(
     api.queries.affiliatePayoutRequests.getMyPayoutRequests,
-    { userId, limit: 5 }
+    { userId, sessionToken: getStaffSessionToken(), limit: 5 }
   );
 
   if (requests === undefined) return null;
@@ -1396,6 +1396,7 @@ function AffiliateLedgerInner({
     isViewingOther
       ? {
           userId,
+          sessionToken: getStaffSessionToken(),
           referrerUserId: viewAsReferrer!,
           status: (statusFilter || undefined) as any,
         }
@@ -1408,7 +1409,7 @@ function AffiliateLedgerInner({
   const referrerBatches = useQuery(
     api.queries.adminAffiliates.listPayoutBatchesForReferrer,
     isViewingOther
-      ? { userId, referrerUserId: viewAsReferrer!, limit: 10 }
+      ? { userId, sessionToken: getStaffSessionToken(), referrerUserId: viewAsReferrer!, limit: 10 }
       : "skip"
   );
 
@@ -1611,6 +1612,7 @@ function AffiliateLedgerInner({
     try {
       await createBatch({
         userId,
+        sessionToken: getStaffSessionToken(),
         ledgerIds: [...selectedIds],
         method,
         notes: notes.trim() || undefined,
@@ -1632,6 +1634,7 @@ function AffiliateLedgerInner({
     try {
       await voidBatch({
         userId,
+        sessionToken: getStaffSessionToken(),
         batchId,
         notes: notes.trim() || undefined,
       });
@@ -1650,6 +1653,7 @@ function AffiliateLedgerInner({
     try {
       const result = await createPayoutRequest({
         userId,
+        sessionToken: getStaffSessionToken(),
         ledgerIds: ledgerIds as Id<"affiliateLedger">[],
         notes: notes.trim() || undefined,
       });

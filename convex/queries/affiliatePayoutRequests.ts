@@ -1,6 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { getSessionUser, requireSuperAdmin } from "../lib/auth";
+import { requireVerifiedStaffSession, requireSuperadminSession } from "../lib/sessionAuth";
 
 /**
  * List the current user's payout requests, newest first.
@@ -8,11 +8,12 @@ import { getSessionUser, requireSuperAdmin } from "../lib/auth";
 export const getMyPayoutRequests = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     cursor: v.optional(v.number()),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
     const limit = args.limit ?? 20;
 
     let entries = await ctx.db
@@ -42,10 +43,11 @@ export const getMyPayoutRequests = query({
 export const getMyPayoutRequest = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     requestId: v.id("affiliatePayoutRequests"),
   },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
 
     const request = await ctx.db.get(args.requestId);
     if (!request) throw new Error("Payout request not found");
@@ -80,6 +82,7 @@ export const getMyPayoutRequest = query({
 export const listPayoutRequestsAdmin = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     status: v.optional(
       v.union(
         v.literal("submitted"),
@@ -93,7 +96,7 @@ export const listPayoutRequestsAdmin = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await requireSuperAdmin(ctx, args.userId);
+    await requireSuperadminSession(ctx, args.sessionToken, args.userId);
     const limit = args.limit ?? 20;
 
     let entries;
@@ -143,10 +146,11 @@ export const listPayoutRequestsAdmin = query({
 export const getPayoutRequestAdmin = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     requestId: v.id("affiliatePayoutRequests"),
   },
   handler: async (ctx, args) => {
-    await requireSuperAdmin(ctx, args.userId);
+    await requireSuperadminSession(ctx, args.sessionToken, args.userId);
 
     const request = await ctx.db.get(args.requestId);
     if (!request) throw new Error("Payout request not found");

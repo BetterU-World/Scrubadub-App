@@ -3,7 +3,7 @@ import type { ComponentType, ReactNode } from "react";
 import { Link } from "wouter";
 import { useQuery, useAction, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import {
@@ -874,7 +874,7 @@ export function CleanerSettingsPage() {
   const { user, signOut } = useAuth();
   const connectStatus = useQuery(
     api.queries.cleanerStripeConnect.getCleanerConnectStatus,
-    user?._id ? { userId: user._id } : "skip"
+    user?._id ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
   const workerProfile = useQuery(
     (api as any).queries.workers.getWorkerProfileForUser,
@@ -935,7 +935,7 @@ export function CleanerSettingsPage() {
     setLoading(true);
     setError(null);
     try {
-      const result = await createAccountLink({ userId: user._id });
+      const result = await createAccountLink({ userId: user._id, sessionToken: getStaffSessionToken() });
       if (result?.url) {
         window.location.href = result.url;
       }

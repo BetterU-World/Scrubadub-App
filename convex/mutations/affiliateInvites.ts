@@ -1,6 +1,6 @@
 import { internalMutation, mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { requireSuperAdmin } from "../lib/auth";
+import { requireSuperadminSession } from "../lib/sessionAuth";
 
 // ── Internal mutation: create an affiliate user record ─────────────
 // Separate from authInternal.createUser because that mutation's validators
@@ -88,10 +88,11 @@ export const ensureReferralCodeInternal = internalMutation({
 export const revokeAffiliateInvite = mutation({
   args: {
     callerUserId: v.id("users"),
+    sessionToken: v.string(),
     targetUserId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    await requireSuperAdmin(ctx, args.callerUserId);
+    await requireSuperadminSession(ctx, args.sessionToken, args.callerUserId);
 
     const target = await ctx.db.get(args.targetUserId);
     if (!target) throw new Error("User not found");

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAction } from "convex/react";
 import { useLocation } from "wouter";
 import { api } from "../../../../../convex/_generated/api";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 
 /**
@@ -34,7 +34,7 @@ function StripeReturnInner({ userId }: { userId: import("../../../../../convex/_
     if (ran.current) return;
     ran.current = true;
 
-    syncStatus({ userId })
+    syncStatus({ userId, sessionToken: getStaffSessionToken() })
       .then(() => navigate("/affiliate"))
       .catch((err) => {
         console.error("Stripe sync failed:", err);

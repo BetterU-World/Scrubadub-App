@@ -4,7 +4,7 @@ import { Link, useLocation, useParams } from "wouter";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { ArrowLeft, Clock, Home, Mail, Plus, Phone, Save, User, Wrench } from "lucide-react";
@@ -275,6 +275,7 @@ export function ClientRelationshipDetailPage() {
     try {
       const result = await inviteClient({
         userId: user._id,
+        sessionToken: getStaffSessionToken(),
         relationshipId: relationship._id,
       });
       if (result.status === "active") {
