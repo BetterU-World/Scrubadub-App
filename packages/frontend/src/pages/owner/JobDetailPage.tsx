@@ -72,7 +72,7 @@ export function JobDetailPage() {
   );
   const sharedStatus = useQuery(
     api.queries.partners.getSharedJobStatus,
-    user && job ? { jobId: params.id as Id<"jobs">, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
+    user && job ? { jobId: params.id as Id<"jobs">, userId: user._id } : "skip"
   );
   const incomingShared = useQuery(
     api.queries.partners.getIncomingSharedStatus,
@@ -91,7 +91,7 @@ export function JobDetailPage() {
   );
   const inspectionSummary = useQuery(
     api.queries.inspections.getSummary,
-    user && job ? { jobId: params.id as Id<"jobs">, userId: user._id } : "skip"
+    user && job ? { jobId: params.id as Id<"jobs">, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
   const reopenInspection = useMutation(api.mutations.inspections.reopenInspection);
 

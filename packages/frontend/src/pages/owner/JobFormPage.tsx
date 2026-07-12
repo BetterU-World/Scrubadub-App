@@ -43,7 +43,7 @@ export function JobFormPage() {
   );
   const cleaners = useQuery(
     api.queries.employees.getCleaners,
-    user?.companyId ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
+    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
   );
   const maintenanceWorkers = useQuery(
     api.queries.employees.getMaintenanceWorkers,

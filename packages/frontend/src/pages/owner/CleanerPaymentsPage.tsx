@@ -122,6 +122,7 @@ export function CleanerPaymentsPage() {
       try {
         await updatePlannedPay({
           userId: user!._id,
+          sessionToken: getStaffSessionToken(),
           jobId: jobId as Id<"jobs">,
           amountCents: cents,
         });
