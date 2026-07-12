@@ -61,7 +61,25 @@ export async function ensureClientRelationshipForLead(
   ctx: { db: any },
   request: any
 ) {
-  if (request.clientRelationshipId) return request.clientRelationshipId;
+  const backfillLinkedProperty = async (clientRelationshipId: Id<"clientRelationships">) => {
+    if (!request.propertyId) return;
+    const property = await ctx.db.get(request.propertyId);
+    if (
+      property?.companyId === request.companyId &&
+      !property.clientRelationshipId
+    ) {
+      await ctx.db.patch(property._id, { clientRelationshipId });
+    }
+  };
+
+  if (request.clientRelationshipId) {
+    const relationship = await ctx.db.get(request.clientRelationshipId);
+    if (!relationship || relationship.companyId !== request.companyId) {
+      throw new Error("Client relationship must belong to the lead's company");
+    }
+    await backfillLinkedProperty(relationship._id);
+    return relationship._id;
+  }
 
   const email = cleanEmail(request.requesterEmail);
   const businessName = cleanOptional(request.businessName, 200);
@@ -76,6 +94,7 @@ export async function ensureClientRelationshipForLead(
     await ctx.db.patch(request._id, {
       clientRelationshipId: existing._id,
     });
+    await backfillLinkedProperty(existing._id);
     return existing._id;
   }
 
@@ -97,6 +116,7 @@ export async function ensureClientRelationshipForLead(
   await ctx.db.patch(request._id, {
     clientRelationshipId: relationshipId,
   });
+  await backfillLinkedProperty(relationshipId);
 
   return relationshipId;
 }
