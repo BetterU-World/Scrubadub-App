@@ -35,17 +35,17 @@ export function ManagerJobDetailPage() {
 
   const job = useQuery(
     api.queries.jobs.get,
-    user ? { jobId, userId: user._id } : "skip"
+    user ? { jobId, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
 
   const inspections = useQuery(
     api.queries.inspections.getByJob,
-    user && job ? { jobId, userId: user._id } : "skip"
+    user && job ? { jobId, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
 
   const inspectionSummary = useQuery(
     api.queries.inspections.getSummary,
-    user && job ? { jobId, userId: user._id } : "skip"
+    user && job ? { jobId, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
 
   const submitInspection = useMutation(api.mutations.inspections.submit);
@@ -107,6 +107,7 @@ export function ManagerJobDetailPage() {
         .map((s) => s.trim())
         .filter(Boolean);
       await submitInspection({
+        sessionToken: getStaffSessionToken(),
         userId: user._id,
         jobId,
         readinessScore: score,
@@ -491,7 +492,7 @@ export function ManagerJobDetailPage() {
                             className="btn-primary text-xs px-2 py-1"
                             onClick={async () => {
                               try {
-                                await resolveRedFlag({ flagId: flag._id, userId: user._id, note: resolveNote.trim() || undefined });
+                                await resolveRedFlag({ flagId: flag._id, userId: user._id, sessionToken: getStaffSessionToken(), note: resolveNote.trim() || undefined });
                                 setResolvingFlag(null);
                                 setResolveNote("");
                                 setToast({ message: t("inspection.flagResolved"), type: "success" });
@@ -515,7 +516,7 @@ export function ManagerJobDetailPage() {
                               className="text-xs text-blue-600 hover:text-blue-700 font-medium"
                               onClick={async () => {
                                 try {
-                                  await updateLifecycle({ flagId: flag._id, userId: user._id, status: "in_progress" });
+                                  await updateLifecycle({ flagId: flag._id, userId: user._id, sessionToken: getStaffSessionToken(), status: "in_progress" });
                                   setToast({ message: t("redFlags.markedInProgress"), type: "success" });
                                   setTimeout(() => setToast(null), 3000);
                                 } catch (err: any) {
@@ -537,7 +538,7 @@ export function ManagerJobDetailPage() {
                             className="text-xs text-gray-500 hover:text-gray-600 font-medium"
                             onClick={async () => {
                               try {
-                                await updateLifecycle({ flagId: flag._id, userId: user._id, status: "wont_fix" });
+                                await updateLifecycle({ flagId: flag._id, userId: user._id, sessionToken: getStaffSessionToken(), status: "wont_fix" });
                                 setToast({ message: t("redFlags.markedWontFix"), type: "success" });
                                 setTimeout(() => setToast(null), 3000);
                               } catch (err: any) {

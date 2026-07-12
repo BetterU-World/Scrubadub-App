@@ -31,7 +31,7 @@ function defaultWorkerTypeForRole(
 }
 
 export function EmployeeListPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const employees = useQuery(
     api.queries.employees.list,
@@ -39,14 +39,14 @@ export function EmployeeListPage() {
   );
   const workerProfiles = useQuery(
     (api as any).queries.workers.listWorkersForCompany,
-    user?.companyId ? { companyId: user.companyId, userId: user._id, includeArchived: true } : "skip"
+    user?.companyId ? { companyId: user.companyId, userId: user._id, sessionToken, includeArchived: true } : "skip"
   );
   const inviteCleaner = useAction(api.employeeActions.inviteCleaner);
   const resendInviteEmail = useAction(api.employeeActions.resendInviteEmail);
   const updateStatus = useMutation(api.mutations.employees.updateEmployeeStatus);
   const teams = useQuery(
     (api as any).queries.teams.list,
-    user?.companyId ? { companyId: user.companyId, userId: user._id, includeArchived: true } : "skip"
+    user?.companyId ? { companyId: user.companyId, userId: user._id, sessionToken, includeArchived: true } : "skip"
   );
   const createTeam = useMutation((api as any).mutations.teams.create);
   const updateTeam = useMutation((api as any).mutations.teams.update);
@@ -117,7 +117,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
   // Default manager
   const companyProfile = useQuery(
     api.queries.companies.getCompanyProfile,
-    user ? { userId: user._id } : "skip"
+    user ? { userId: user._id, sessionToken } : "skip"
   );
   const setDefaultManager = useMutation(api.mutations.companies.setDefaultManager);
 
@@ -252,10 +252,10 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
             onClick={async () => {
               try {
                 if (editingTeamId) {
-                  await updateTeam({ userId: user._id, teamId: editingTeamId as any, name: teamName, description: teamDescription || undefined });
+                  await updateTeam({ userId: user._id, sessionToken, teamId: editingTeamId as any, name: teamName, description: teamDescription || undefined });
                   setToast("Team updated");
                 } else {
-                  await createTeam({ userId: user._id, companyId: user.companyId!, name: teamName, description: teamDescription || undefined });
+                  await createTeam({ userId: user._id, sessionToken, companyId: user.companyId!, name: teamName, description: teamDescription || undefined });
                   setToast("Team created");
                 }
                 setTeamName("");
@@ -297,7 +297,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                     </button>
                     <button
                       className="text-sm text-gray-600 hover:text-gray-800 font-medium flex items-center gap-1"
-                      onClick={() => setTeamActive({ userId: user._id, teamId: team._id, active: !team.active })}
+                      onClick={() => setTeamActive({ userId: user._id, sessionToken, teamId: team._id, active: !team.active })}
                     >
                       {team.active ? <Archive className="w-3.5 h-3.5" /> : <RotateCcw className="w-3.5 h-3.5" />}
                       {team.active ? "Archive" : "Reactivate"}
@@ -315,12 +315,12 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                         <select
                           className="input-field py-1 text-xs w-auto"
                           value={member.role}
-                          onChange={(e) => setTeamMemberRoleMut({ userId: user._id, membershipId: member._id, role: e.target.value as "lead" | "member" })}
+                          onChange={(e) => setTeamMemberRoleMut({ userId: user._id, sessionToken, membershipId: member._id, role: e.target.value as "lead" | "member" })}
                         >
                           <option value="member">member</option>
                           <option value="lead">lead</option>
                         </select>
-                        <button className="text-red-600 hover:text-red-700" onClick={() => removeTeamMember({ userId: user._id, membershipId: member._id })} title="Remove member">
+                        <button className="text-red-600 hover:text-red-700" onClick={() => removeTeamMember({ userId: user._id, sessionToken, membershipId: member._id })} title="Remove member">
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -347,7 +347,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                       <button
                         className="btn-secondary text-sm"
                         disabled={!teamMemberUserId[team._id]}
-                        onClick={() => addTeamMember({ userId: user._id, teamId: team._id, memberUserId: teamMemberUserId[team._id] as any, role: teamMemberRole[team._id] ?? "member" })}
+                        onClick={() => addTeamMember({ userId: user._id, sessionToken, teamId: team._id, memberUserId: teamMemberUserId[team._id] as any, role: teamMemberRole[team._id] ?? "member" })}
                       >
                         Add
                       </button>
@@ -373,6 +373,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
               onChange={async (e) => {
                 if (!user) return;
                 await setDefaultManager({
+                  sessionToken,
                   userId: user._id,
                   managerId: e.target.value ? (e.target.value as any) : undefined,
                 });

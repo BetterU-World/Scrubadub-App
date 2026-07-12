@@ -1,6 +1,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { assertCompanyAccess, getSessionUser } from "../lib/auth";
+import { getSessionUser } from "../lib/auth";
+import { requireOwnerManagerCompany } from "../lib/sessionAuth";
 
 async function withMembers(ctx: any, team: any) {
   const memberships = await ctx.db
@@ -34,10 +35,11 @@ export const list = query({
   args: {
     companyId: v.id("companies"),
     userId: v.id("users"),
+    sessionToken: v.string(),
     includeArchived: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    await assertCompanyAccess(ctx, args.userId, args.companyId);
+    await requireOwnerManagerCompany(ctx, args.sessionToken, args.companyId, args.userId);
     const teams = await ctx.db
       .query("teams")
       .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
@@ -49,9 +51,9 @@ export const list = query({
 });
 
 export const listActiveForAssignment = query({
-  args: { companyId: v.id("companies"), userId: v.id("users") },
+  args: { companyId: v.id("companies"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    await assertCompanyAccess(ctx, args.userId, args.companyId);
+    await requireOwnerManagerCompany(ctx, args.sessionToken, args.companyId, args.userId);
     const teams = await ctx.db
       .query("teams")
       .withIndex("by_companyId_active", (q) => q.eq("companyId", args.companyId).eq("active", true))

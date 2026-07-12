@@ -1,11 +1,13 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { getSessionUser, hasManagerPermission } from "../lib/auth";
-import { createNotification, logAudit, requireOwner } from "../lib/helpers";
+import { hasManagerPermission } from "../lib/auth";
+import { createNotification, logAudit } from "../lib/helpers";
+import { requireOwnerManagerSession, requireOwnerSession } from "../lib/sessionAuth";
 
 export const submit = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     jobId: v.id("jobs"),
     readinessScore: v.number(),
     severity: v.union(
@@ -20,7 +22,7 @@ export const submit = mutation({
     photoStorageIds: v.optional(v.array(v.id("_storage"))),
   },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
     if (user.role !== "manager") throw new Error("Manager access required");
 
     const job = await ctx.db.get(args.jobId);
@@ -114,9 +116,10 @@ export const reopenInspection = mutation({
   args: {
     jobId: v.id("jobs"),
     userId: v.id("users"),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Access denied");

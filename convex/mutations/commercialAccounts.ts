@@ -1,6 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { getSessionUser } from "../lib/auth";
+import { requireOwnerSession } from "../lib/sessionAuth";
 import { ensureClientRelationshipForLead } from "../lib/clientRelationships";
 
 const frequencyValidator = v.union(
@@ -36,8 +36,8 @@ const accountFields = {
   notes: v.optional(v.string()),
 };
 
-async function requireOwnerCompany(ctx: any, userId: any) {
-  const user = await getSessionUser(ctx, userId);
+async function requireOwnerCompany(ctx: any, sessionToken: string, userId: any) {
+  const user = await requireOwnerSession(ctx, sessionToken, userId);
   if (user.role !== "owner" || !user.companyId) {
     throw new Error("Owner access required");
   }
@@ -126,6 +126,7 @@ async function buildAccountPatch(ctx: any, companyId: any, args: any) {
 export const create = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     clientRequestId: v.optional(v.id("clientRequests")),
     sourceLeadId: v.optional(v.id("clientRequests")),
     sourceProposalId: v.optional(v.id("proposals")),
@@ -133,7 +134,7 @@ export const create = mutation({
     ...accountFields,
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerCompany(ctx, args.userId);
+    const owner = await requireOwnerCompany(ctx, args.sessionToken, args.userId);
     const companyId = owner.companyId!;
 
     const proposal = args.sourceProposalId
@@ -238,11 +239,12 @@ export const create = mutation({
 export const update = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     accountId: v.id("commercialAccounts"),
     ...accountFields,
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerCompany(ctx, args.userId);
+    const owner = await requireOwnerCompany(ctx, args.sessionToken, args.userId);
     const account = await ctx.db.get(args.accountId);
     if (!account) throw new Error("Commercial account not found");
     if (account.companyId !== owner.companyId) throw new Error("Access denied");

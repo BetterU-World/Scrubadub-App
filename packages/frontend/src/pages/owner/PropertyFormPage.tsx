@@ -44,7 +44,7 @@ const AMENITY_KEYS: Record<string, string> = {
 };
 
 export function PropertyFormPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const params = useParams<{ id?: string }>();
@@ -57,11 +57,11 @@ export function PropertyFormPage() {
 
   const existing = useQuery(
     api.queries.properties.get,
-    params.id && user ? { propertyId: params.id as Id<"properties">, userId: user._id } : "skip"
+    params.id && user ? { propertyId: params.id as Id<"properties">, userId: user._id, sessionToken } : "skip"
   );
   const clientRelationships = useQuery(
     (api as any).queries.clientRelationships.listForSelect,
-    user ? { userId: user._id } : "skip"
+    user ? { userId: user._id, sessionToken } : "skip"
   );
 
   const createProperty = useMutation(api.mutations.properties.create);
@@ -163,11 +163,11 @@ export function PropertyFormPage() {
         ownerNotes: ownerNotes || undefined,
       };
       if (isEditing) {
-        await updateProperty({ propertyId: params.id as Id<"properties">, userId: user._id, ...data });
+        await updateProperty({ propertyId: params.id as Id<"properties">, userId: user._id, sessionToken, ...data });
         sessionStorage.setItem("scrubadub_toast", t("properties.propertyUpdated"));
         setLocation(`/properties/${params.id}`);
       } else {
-        const id = await createProperty({ companyId: user.companyId, userId: user._id, ...data });
+        const id = await createProperty({ companyId: user.companyId, userId: user._id, sessionToken, ...data });
         sessionStorage.setItem("scrubadub_toast", t("properties.propertyCreated"));
         setLocation(`/properties/${id}`);
       }

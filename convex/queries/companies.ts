@@ -1,14 +1,14 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { assertOwnerRole } from "../lib/auth";
+import { requireOwnerSession } from "../lib/sessionAuth";
 
 /**
  * Returns the company profile fields for the settings page.
  */
 export const getCompanyProfile = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await assertOwnerRole(ctx, args.userId);
+    const user = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const company = await ctx.db.get(user.companyId);
     if (!company) throw new Error("Company not found");
     return {
@@ -24,9 +24,9 @@ export const getCompanyProfile = query({
 });
 
 export const getCompanySettings = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await assertOwnerRole(ctx, args.userId);
+    const user = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const company = await ctx.db.get(user.companyId);
     if (!company) throw new Error("Company not found");
 

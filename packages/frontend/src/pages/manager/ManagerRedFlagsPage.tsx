@@ -18,7 +18,7 @@ type ActiveAction = {
 } | null;
 
 export function ManagerRedFlagsPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const [statusFilter, setStatusFilter] = useState("open");
   const [activeAction, setActiveAction] = useState<ActiveAction>(null);
@@ -28,7 +28,7 @@ export function ManagerRedFlagsPage() {
   const flags = useQuery(
     api.queries.redFlags.listForManager,
     user?.companyId
-      ? { companyId: user.companyId, userId: user._id, status: statusFilter || undefined }
+      ? { companyId: user.companyId, userId: user._id, sessionToken, status: statusFilter || undefined }
       : "skip"
   );
   const updateLifecycle = useMutation(api.mutations.redFlags.managerUpdateLifecycle);
@@ -40,6 +40,7 @@ export function ManagerRedFlagsPage() {
       flagId: flagId as Id<"redFlags">,
       status,
       userId: user!._id,
+      sessionToken,
       ...(note.trim() ? { note: note.trim() } : {}),
     });
     setActiveAction(null);

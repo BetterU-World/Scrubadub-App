@@ -62,7 +62,7 @@ function getWeekRange(): [string, string] {
 }
 
 export function JobListPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const [statusFilter, setStatusFilter] = useState(() => {
     const params = new URLSearchParams(window.location.search);
@@ -79,7 +79,7 @@ export function JobListPage() {
   const jobs = useQuery(
     api.queries.jobs.list,
     user?.companyId
-      ? { companyId: user.companyId, userId: user._id, status: statusFilter || undefined, sort }
+      ? { companyId: user.companyId, userId: user._id, sessionToken, status: statusFilter || undefined, sort }
       : "skip"
   );
 

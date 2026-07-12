@@ -131,7 +131,7 @@ export function ServiceAgreementCard({
   source?: AgreementSource;
   onToast?: (message: string, type: ToastType) => void;
 }) {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -141,12 +141,12 @@ export function ServiceAgreementCard({
 
   const agreementByProposal = useQuery(
     (api as any).queries.serviceAgreements.getByProposal,
-    proposalId && user ? { userId: user._id, proposalId } : "skip"
+    proposalId && user ? { userId: user._id, sessionToken, proposalId } : "skip"
   );
   const agreementByAccount = useQuery(
     (api as any).queries.serviceAgreements.getByCommercialAccount,
     !proposalId && commercialAccountId && user
-      ? { userId: user._id, commercialAccountId }
+      ? { userId: user._id, sessionToken, commercialAccountId }
       : "skip"
   );
   const agreement = proposalId ? agreementByProposal : agreementByAccount;
@@ -236,7 +236,7 @@ export function ServiceAgreementCard({
     if (!proposalId) return;
     setActionLoading("create");
     try {
-      await createDraft({ userId: user._id, proposalId });
+      await createDraft({ userId: user._id, sessionToken, proposalId });
       setEditing(true);
       showToast(t("serviceAgreements.created"), "success");
     } catch (err: any) {
@@ -252,6 +252,7 @@ export function ServiceAgreementCard({
     try {
       await updateAgreement({
         userId: user._id,
+        sessionToken,
         agreementId: agreement._id,
         title: form.title,
         clientName: form.clientName || undefined,
@@ -288,11 +289,11 @@ export function ServiceAgreementCard({
     if (!agreement) return;
     setActionLoading(action);
     try {
-      if (action === "ready") await markReady({ userId: user._id, agreementId: agreement._id });
+      if (action === "ready") await markReady({ userId: user._id, sessionToken, agreementId: agreement._id });
       if (action === "sent") await sendAgreement({ userId: user._id, agreementId: agreement._id });
-      if (action === "signed") await markSigned({ userId: user._id, agreementId: agreement._id });
+      if (action === "signed") await markSigned({ userId: user._id, sessionToken, agreementId: agreement._id });
       if (action === "cancelled") {
-        await markCancelled({ userId: user._id, agreementId: agreement._id });
+        await markCancelled({ userId: user._id, sessionToken, agreementId: agreement._id });
       }
       showToast(t(`serviceAgreements.${action}Success`), "success");
     } catch (err: any) {

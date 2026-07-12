@@ -99,7 +99,7 @@ function ComingSoonCard({
 }
 
 export function CommercialAccountDetailPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const params = useParams<{ id: string }>();
   const notSet = t("commercialAccounts.notSet");
@@ -112,7 +112,7 @@ export function CommercialAccountDetailPage() {
   const account = useQuery(
     (api as any).queries.commercialAccounts.getById,
     params.id && user
-      ? { userId: user._id, accountId: params.id as Id<"commercialAccounts"> }
+      ? { userId: user._id, sessionToken, accountId: params.id as Id<"commercialAccounts"> }
       : "skip"
   );
   const managers = useQuery(
@@ -125,11 +125,11 @@ export function CommercialAccountDetailPage() {
   );
   const teams = useQuery(
     api.queries.teams.listActiveForAssignment,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
   const clientRelationships = useQuery(
     (api as any).queries.clientRelationships.listForSelect,
-    user ? { userId: user._id } : "skip"
+    user ? { userId: user._id, sessionToken } : "skip"
   );
   const commercialSchedules = useQuery(
     (api as any).queries.commercialSchedules.getByCommercialAccount,
@@ -188,6 +188,7 @@ export function CommercialAccountDetailPage() {
     try {
       await updateCommercialAccount({
         userId: user._id,
+        sessionToken,
         accountId: account._id,
         clientRelationshipId: (form.clientRelationshipId || undefined) as any,
         clientName: form.clientName,

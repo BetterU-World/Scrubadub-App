@@ -40,7 +40,7 @@ import {
 import { useTranslation } from "react-i18next";
 
 export function RequestDetailPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const params = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
@@ -106,6 +106,7 @@ export function RequestDetailPage() {
     params.id && user
       ? {
           userId: user._id,
+          sessionToken,
           clientRequestId: params.id as Id<"clientRequests">,
         }
       : "skip"
@@ -113,12 +114,12 @@ export function RequestDetailPage() {
   const serviceAgreement = useQuery(
     (api as any).queries.serviceAgreements.getByProposal,
     proposal?.status === "accepted" && user
-      ? { userId: user._id, proposalId: proposal._id }
+      ? { userId: user._id, sessionToken, proposalId: proposal._id }
       : "skip"
   );
   const leadWalkthroughs = useQuery(
     (api as any).queries.walkthroughs.listByClientRequest,
-    params.id && user ? { userId: user._id, clientRequestId: params.id as Id<"clientRequests"> } : "skip"
+    params.id && user ? { userId: user._id, sessionToken, clientRequestId: params.id as Id<"clientRequests"> } : "skip"
   );
   const activeWalkthrough = (leadWalkthroughs ?? []).find((item: any) => item.status !== "archived");
   const proposalUnlocked = activeWalkthrough?.status === "completed" || activeWalkthrough?.appointmentStatus === "completed";
@@ -127,6 +128,7 @@ export function RequestDetailPage() {
     proposal && user
       ? {
           userId: user._id,
+          sessionToken,
           proposalId: proposal._id,
         }
       : "skip"
@@ -146,7 +148,7 @@ export function RequestDetailPage() {
   const teams = useQuery(
     api.queries.teams.listActiveForAssignment,
     proposal?.status === "accepted" && user?.companyId
-      ? { companyId: user.companyId, userId: user._id }
+      ? { companyId: user.companyId, userId: user._id, sessionToken }
       : "skip"
   );
 
@@ -481,7 +483,7 @@ export function RequestDetailPage() {
   const handleCreateProposal = async () => {
     setCreatingProposal(true);
     try {
-      await createProposal({ userId: user!._id, clientRequestId: request._id });
+      await createProposal({ userId: user!._id, sessionToken, clientRequestId: request._id });
       setToast({ message: t("proposals.created"), type: "success" });
       setTimeout(() => setToast(null), 2000);
     } catch (err: any) {
@@ -496,6 +498,7 @@ export function RequestDetailPage() {
     setCreatingClientRelationship(true);
     try {
       await createClientRelationshipFromLead({
+        sessionToken,
         userId: user!._id,
         clientRequestId: request._id,
       });
@@ -514,6 +517,7 @@ export function RequestDetailPage() {
     setSavingProposal(true);
     try {
       await updateProposalMut({
+        sessionToken,
         userId: user!._id,
         proposalId: proposal._id,
         title: proposalForm.title,
@@ -543,11 +547,11 @@ export function RequestDetailPage() {
     setProposalActionLoading(action);
     try {
       if (action === "sent") {
-        await markProposalSent({ userId: user!._id, proposalId: proposal._id });
+        await markProposalSent({ userId: user!._id, sessionToken, proposalId: proposal._id });
       } else if (action === "accepted") {
-        await markProposalAccepted({ userId: user!._id, proposalId: proposal._id });
+        await markProposalAccepted({ userId: user!._id, sessionToken, proposalId: proposal._id });
       } else {
-        await markProposalDeclined({ userId: user!._id, proposalId: proposal._id });
+        await markProposalDeclined({ userId: user!._id, sessionToken, proposalId: proposal._id });
       }
       setToast({ message: t(`proposals.${action}Success`), type: "success" });
       setTimeout(() => setToast(null), 2000);
@@ -607,11 +611,13 @@ export function RequestDetailPage() {
       };
       if (commercialAccount) {
         await updateCommercialAccount({
+          sessionToken,
           ...payload,
           accountId: commercialAccount._id,
         });
       } else {
         await createCommercialAccount({
+          sessionToken,
           ...payload,
           clientRequestId: request._id,
           sourceLeadId: request._id,

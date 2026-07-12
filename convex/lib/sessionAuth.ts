@@ -12,6 +12,10 @@ declare const process: { env: Record<string, string | undefined> };
 type DbCtx = QueryCtx | MutationCtx;
 type ActiveStaff = Doc<"users"> & { status: "active" };
 type ActiveOwner = ActiveStaff & { role: "owner"; companyId: Id<"companies"> };
+export type ActiveOwnerManager = ActiveStaff & {
+  role: "owner" | "manager";
+  companyId: Id<"companies">;
+};
 
 async function hashSessionToken(token: string) {
   const pepper = process.env.TOKEN_PEPPER;
@@ -71,6 +75,58 @@ export async function requireOwnerSession(
   const user = await requireVerifiedStaffSession(ctx, sessionToken, claimedUserId);
   if (user.role !== "owner" || !user.companyId) throw new Error("Owner session required");
   return user as ActiveOwner;
+}
+
+/**
+ * Resolve caller identity for ordinary owner and manager application workflows.
+ * The optional claimed ID is checked only for migration safety and never selects
+ * or overrides the authenticated principal.
+ */
+export async function requireOwnerManagerSession(
+  ctx: DbCtx,
+  sessionToken: string,
+  claimedUserId?: Id<"users">
+): Promise<ActiveOwnerManager> {
+  const user = await requireVerifiedStaffSession(ctx, sessionToken, claimedUserId);
+  if ((user.role !== "owner" && user.role !== "manager") || !user.companyId) {
+    throw new Error("Owner or manager session required");
+  }
+  return user as ActiveOwnerManager;
+}
+
+export async function requireOwnerManagerCompany(
+  ctx: DbCtx,
+  sessionToken: string,
+  companyId: Id<"companies">,
+  claimedUserId?: Id<"users">
+): Promise<ActiveOwnerManager> {
+  const user = await requireOwnerManagerSession(ctx, sessionToken, claimedUserId);
+  if (user.companyId !== companyId) throw new Error("Access denied");
+  return user;
+}
+
+/**
+ * Migration bridge for endpoints shared with roles scheduled for later PRs.
+ * Owners and managers always require a verified session. Only the explicitly
+ * listed compatibility roles may continue using a legacy claimed ID.
+ */
+export async function requireOwnerManagerOrCompatibleRole(
+  ctx: DbCtx,
+  sessionToken: string | undefined,
+  claimedUserId: Id<"users"> | undefined,
+  compatibleRoles: readonly string[]
+): Promise<ActiveStaff> {
+  if (sessionToken) {
+    return await requireOwnerManagerSession(ctx, sessionToken, claimedUserId);
+  }
+  if (claimedUserId) {
+    const user = await ctx.db.get(claimedUserId);
+    if (user && user.status === "active" && compatibleRoles.includes(user.role)) {
+      return user as ActiveStaff;
+    }
+  }
+  console.warn("[security] rejected legacy-only owner/manager request");
+  throw new Error(SESSION_REQUIRED_ERROR);
 }
 
 export async function requireAffiliateSession(

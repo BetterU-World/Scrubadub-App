@@ -1,15 +1,17 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { assertCompanyAccess, getSessionUser, hasManagerPermission } from "../lib/auth";
+import { hasManagerPermission } from "../lib/auth";
+import { requireOwnerManagerCompany, requireOwnerManagerSession } from "../lib/sessionAuth";
 
 /** Get all inspections for a specific job. */
 export const getByJob = query({
   args: {
     jobId: v.id("jobs"),
     userId: v.id("users"),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) return [];
     if (job.companyId !== user.companyId) return [];
@@ -18,9 +20,6 @@ export const getByJob = query({
     if (user.role === "manager" && !hasManagerPermission(user, "canSeeAllJobs")) {
       if (job.assignedManagerId !== user._id) return [];
     }
-
-    // Cleaners/maintenance should not see inspections
-    if (user.role === "cleaner" || user.role === "maintenance") return [];
 
     const inspections = await ctx.db
       .query("managerInspections")
@@ -56,10 +55,11 @@ export const getInspectionRedFlags = query({
   args: {
     companyId: v.id("companies"),
     userId: v.id("users"),
+    sessionToken: v.string(),
     status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await assertCompanyAccess(ctx, args.userId, args.companyId);
+    await requireOwnerManagerCompany(ctx, args.sessionToken, args.companyId, args.userId);
 
     const inspections = await ctx.db
       .query("managerInspections")
@@ -101,15 +101,13 @@ export const getSummary = query({
   args: {
     jobId: v.id("jobs"),
     userId: v.id("users"),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) return null;
     if (job.companyId !== user.companyId) return null;
-
-    // Cleaners/maintenance should not see inspection summaries
-    if (user.role === "cleaner" || user.role === "maintenance") return null;
 
     // Manager visibility
     if (user.role === "manager" && !hasManagerPermission(user, "canSeeAllJobs")) {

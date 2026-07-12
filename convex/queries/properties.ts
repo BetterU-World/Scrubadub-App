@@ -1,6 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { assertCompanyAccess, getSessionUser } from "../lib/auth";
+import { requireOwnerManagerCompany, requireOwnerManagerSession } from "../lib/sessionAuth";
 import { withPerfLog } from "../lib/perfLog";
 
 async function decorateProperty(ctx: any, property: any) {
@@ -26,10 +26,11 @@ export const list = query({
   args: {
     companyId: v.id("companies"),
     userId: v.id("users"),
+    sessionToken: v.string(),
     activeOnly: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    await assertCompanyAccess(ctx, args.userId, args.companyId);
+    await requireOwnerManagerCompany(ctx, args.sessionToken, args.companyId, args.userId);
 
     const all = await ctx.db
       .query("properties")
@@ -44,9 +45,9 @@ export const list = query({
 });
 
 export const listArchived = query({
-  args: { companyId: v.id("companies"), userId: v.id("users") },
+  args: { companyId: v.id("companies"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    await assertCompanyAccess(ctx, args.userId, args.companyId);
+    await requireOwnerManagerCompany(ctx, args.sessionToken, args.companyId, args.userId);
 
     const all = await ctx.db
       .query("properties")
@@ -59,9 +60,9 @@ export const listArchived = query({
 });
 
 export const get = query({
-  args: { propertyId: v.id("properties"), userId: v.id("users") },
+  args: { propertyId: v.id("properties"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
     const property = await ctx.db.get(args.propertyId);
     if (!property) return null;
     if (property.companyId !== user.companyId) throw new Error("Access denied");
@@ -70,10 +71,10 @@ export const get = query({
 });
 
 export const getHistory = query({
-  args: { propertyId: v.id("properties"), userId: v.id("users") },
+  args: { propertyId: v.id("properties"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
     return await withPerfLog(ctx, "properties:getHistory", async () => {
-      const user = await getSessionUser(ctx, args.userId);
+      const user = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
       const property = await ctx.db.get(args.propertyId);
       if (!property) return { timeline: [], totalJobs: 0, totalRedFlags: 0, openRedFlags: 0 };
       if (property.companyId !== user.companyId) throw new Error("Access denied");

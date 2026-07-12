@@ -43,7 +43,7 @@ export function JobDetailPage() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const job = useQuery(api.queries.jobs.get,
-    user ? { jobId: params.id as Id<"jobs">, userId: user._id } : "skip"
+    user ? { jobId: params.id as Id<"jobs">, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
   const formItems = useQuery(
     api.queries.forms.getItems,
@@ -72,7 +72,7 @@ export function JobDetailPage() {
   );
   const sharedStatus = useQuery(
     api.queries.partners.getSharedJobStatus,
-    user && job ? { jobId: params.id as Id<"jobs">, userId: user._id } : "skip"
+    user && job ? { jobId: params.id as Id<"jobs">, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
   const incomingShared = useQuery(
     api.queries.partners.getIncomingSharedStatus,
@@ -87,7 +87,7 @@ export function JobDetailPage() {
   // Manager inspections
   const inspections = useQuery(
     api.queries.inspections.getByJob,
-    user && job ? { jobId: params.id as Id<"jobs">, userId: user._id } : "skip"
+    user && job ? { jobId: params.id as Id<"jobs">, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
   const inspectionSummary = useQuery(
     api.queries.inspections.getSummary,
@@ -422,7 +422,7 @@ export function JobDetailPage() {
                 <button
                   onClick={async () => {
                     try {
-                      await reopenInspection({ jobId: params.id as Id<"jobs">, userId: user!._id });
+                      await reopenInspection({ jobId: params.id as Id<"jobs">, userId: user!._id, sessionToken: getStaffSessionToken() });
                       setToast({ message: t("jobs.reinspectionRequested"), type: "success" });
                       setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
@@ -748,6 +748,7 @@ export function JobDetailPage() {
                               try {
                                 const amountCents = Math.round(Number(cleanerPayAmount) * 100);
                                 await updatePlannedCleanerPay({
+                                  sessionToken: getStaffSessionToken(),
                                   userId: uid,
                                   jobId: params.id as Id<"jobs">,
                                   amountCents,
@@ -784,6 +785,7 @@ export function JobDetailPage() {
                               const amountCents = Math.round(Number(cleanerPayAmount) * 100);
                               // Also persist as planned pay
                               await updatePlannedCleanerPay({
+                                sessionToken: getStaffSessionToken(),
                                 userId: uid,
                                 jobId: params.id as Id<"jobs">,
                                 amountCents,
@@ -832,6 +834,7 @@ export function JobDetailPage() {
                           try {
                             const amountCents = Math.round(Number(cleanerPayAmount) * 100);
                             await updatePlannedCleanerPay({
+                              sessionToken: getStaffSessionToken(),
                               userId: uid,
                               jobId: params.id as Id<"jobs">,
                               amountCents,
@@ -1248,7 +1251,7 @@ export function JobDetailPage() {
                     const uid = requireUserId(user);
                     if (!uid) return;
                     try {
-                      await ownerStartJobMut({ jobId: job._id, userId: uid });
+                      await ownerStartJobMut({ jobId: job._id, userId: uid, sessionToken: getStaffSessionToken() });
                       setToast({ message: t("jobs.cleanStarted"), type: "success" });
                       setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
@@ -1267,7 +1270,7 @@ export function JobDetailPage() {
                     const uid = requireUserId(user);
                     if (!uid) return;
                     try {
-                      await ownerCompleteJobMut({ jobId: job._id, userId: uid });
+                      await ownerCompleteJobMut({ jobId: job._id, userId: uid, sessionToken: getStaffSessionToken() });
                       setToast({ message: t("jobs.cleanCompleted"), type: "success" });
                       setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
@@ -1331,6 +1334,7 @@ export function JobDetailPage() {
                     setOwnerInspSubmitting(true);
                     try {
                       await ownerSubmitInspectionMut({
+                        sessionToken: getStaffSessionToken(),
                         userId: uid,
                         jobId: job._id,
                         readinessScore: ownerInspScore,
@@ -1369,7 +1373,7 @@ export function JobDetailPage() {
         onConfirm={async () => {
           const uid = requireUserId(user);
           if (!uid) return;
-          await cancelJob({ jobId: job._id, userId: uid });
+          await cancelJob({ jobId: job._id, userId: uid, sessionToken: getStaffSessionToken() });
           setShowCancel(false);
         }}
       />
@@ -1584,6 +1588,7 @@ export function JobDetailPage() {
                   setReassigning(true);
                   try {
                     await reassignJob({
+                      sessionToken: getStaffSessionToken(),
                       jobId: job._id,
                       newCleanerId: reassignCleanerId as Id<"users">,
                       userId: uid,

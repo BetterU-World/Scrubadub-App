@@ -1,7 +1,8 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { requireAuth, requireOwner, logAudit, createNotification } from "../lib/helpers";
+import { requireAuth, logAudit, createNotification } from "../lib/helpers";
 import { hasManagerPermission } from "../lib/auth";
+import { requireOwnerManagerSession, requireOwnerSession } from "../lib/sessionAuth";
 
 export const create = mutation({
   args: {
@@ -78,9 +79,10 @@ export const updateStatus = mutation({
     ),
     ownerNote: v.optional(v.string()),
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const flag = await ctx.db.get(args.flagId);
     if (!flag) throw new Error("Red flag not found");
     if (flag.companyId !== owner.companyId) throw new Error("Access denied");
@@ -110,9 +112,10 @@ export const managerResolveRedFlag = mutation({
     flagId: v.id("redFlags"),
     note: v.optional(v.string()),
     userId: v.id("users"),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
+    const user = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
     if (user.role !== "manager") throw new Error("Manager access required");
     if (!hasManagerPermission(user, "canResolveRedFlags")) throw new Error("Permission denied: canResolveRedFlags required");
 
@@ -148,9 +151,10 @@ export const managerUpdateLifecycle = mutation({
     ),
     note: v.optional(v.string()),
     userId: v.id("users"),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
+    const user = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
     if (user.role !== "manager") throw new Error("Manager access required");
     if (!hasManagerPermission(user, "canResolveRedFlags")) throw new Error("Permission denied: canResolveRedFlags required");
 
@@ -187,9 +191,10 @@ export const createMaintenanceJob = mutation({
     notes: v.optional(v.string()),
     durationMinutes: v.optional(v.number()),
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const flag = await ctx.db.get(args.flagId);
     if (!flag) throw new Error("Red flag not found");
     if (flag.companyId !== owner.companyId) throw new Error("Access denied");

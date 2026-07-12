@@ -1,12 +1,14 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwner, logAudit } from "../lib/helpers";
+import { logAudit } from "../lib/helpers";
+import { requireOwnerSession } from "../lib/sessionAuth";
 import { requireActiveSubscription } from "../lib/subscriptionGating";
 import { bedroomsValidator, deriveBedroomAggregates, normalizeBedrooms } from "../lib/propertyBedrooms";
 
 export const create = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     companyId: v.id("companies"),
     clientRelationshipId: v.optional(v.id("clientRelationships")),
     name: v.string(),
@@ -37,7 +39,7 @@ export const create = mutation({
     restroomCount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     if (owner.companyId !== args.companyId) throw new Error("Not your company");
     await requireActiveSubscription(ctx, args.companyId);
     if (args.clientRelationshipId) {
@@ -71,6 +73,7 @@ export const create = mutation({
 export const bulkCreate = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     companyId: v.id("companies"),
     properties: v.array(
       v.object({
@@ -93,7 +96,7 @@ export const bulkCreate = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     if (owner.companyId !== args.companyId) throw new Error("Not your company");
     await requireActiveSubscription(ctx, args.companyId);
 
@@ -142,6 +145,7 @@ export const bulkCreate = mutation({
 export const update = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     propertyId: v.id("properties"),
     clientRelationshipId: v.optional(v.id("clientRelationships")),
     name: v.string(),
@@ -172,7 +176,7 @@ export const update = mutation({
     restroomCount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
     if (property.companyId !== owner.companyId) throw new Error("Not your company");
@@ -205,6 +209,7 @@ export const update = mutation({
 export const updateWalkthroughFacts = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     propertyId: v.id("properties"),
     address: v.string(),
     squareFootage: v.optional(v.number()),
@@ -219,7 +224,7 @@ export const updateWalkthroughFacts = mutation({
     trashCanCount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
     if (property.companyId !== owner.companyId) throw new Error("Not your company");
@@ -269,11 +274,12 @@ const inventoryItemValidator = v.object({
 export const updateInventoryItems = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     propertyId: v.id("properties"),
     items: v.array(inventoryItemValidator),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
     if (property.companyId !== owner.companyId) throw new Error("Not your company");
@@ -294,11 +300,12 @@ export const updateInventoryItems = mutation({
 export const addInventoryItem = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     propertyId: v.id("properties"),
     item: inventoryItemValidator,
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
     if (property.companyId !== owner.companyId) throw new Error("Not your company");
@@ -331,11 +338,12 @@ export const addInventoryItem = mutation({
 export const removeInventoryItem = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     propertyId: v.id("properties"),
     itemName: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
     if (property.companyId !== owner.companyId) throw new Error("Not your company");
@@ -360,9 +368,9 @@ export const removeInventoryItem = mutation({
 });
 
 export const toggleActive = mutation({
-  args: { propertyId: v.id("properties"), userId: v.optional(v.id("users")) },
+  args: { propertyId: v.id("properties"), userId: v.optional(v.id("users")), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
     if (property.companyId !== owner.companyId) throw new Error("Not your company");

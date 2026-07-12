@@ -1,6 +1,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { assertCompanyAccess, getSessionUser, hasManagerPermission } from "../lib/auth";
+import { hasManagerPermission } from "../lib/auth";
+import { requireOwnerManagerCompany, requireOwnerManagerSession } from "../lib/sessionAuth";
 import { withPerfLog } from "../lib/perfLog";
 
 const RED_FLAG_CAP = 2_000;
@@ -9,11 +10,12 @@ export const listByCompany = query({
   args: {
     companyId: v.id("companies"),
     userId: v.id("users"),
+    sessionToken: v.string(),
     status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     return await withPerfLog(ctx, "redFlags:listByCompany", async () => {
-      await assertCompanyAccess(ctx, args.userId, args.companyId);
+      await requireOwnerManagerCompany(ctx, args.sessionToken, args.companyId, args.userId);
 
       let flags;
       if (args.status) {
@@ -52,10 +54,11 @@ export const listForManager = query({
   args: {
     companyId: v.id("companies"),
     userId: v.id("users"),
+    sessionToken: v.string(),
     status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
     if (user.role !== "manager") throw new Error("Manager access required");
     if (user.companyId !== args.companyId) throw new Error("Access denied");
 
@@ -103,9 +106,9 @@ export const listForManager = query({
 });
 
 export const listByJob = query({
-  args: { jobId: v.id("jobs"), userId: v.id("users") },
+  args: { jobId: v.id("jobs"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) return [];
     if (job.companyId !== user.companyId) throw new Error("Access denied");

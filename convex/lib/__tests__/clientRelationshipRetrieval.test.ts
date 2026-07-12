@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { convexTest } from "convex-test";
 import schema from "../../schema";
 import { api } from "../../_generated/api";
+import { hashPassword } from "../password";
 
 const modules = import.meta.glob("../../**/*.ts");
 
@@ -10,6 +11,7 @@ function testBackend() {
 }
 
 async function seedCompany(t: ReturnType<typeof testBackend>, suffix: string) {
+  const passwordHash = await hashPassword("test-password-123");
   return await t.run(async (ctx) => {
     const companyId = await ctx.db.insert("companies", {
       name: `Company ${suffix}`,
@@ -17,7 +19,7 @@ async function seedCompany(t: ReturnType<typeof testBackend>, suffix: string) {
     });
     const ownerId = await ctx.db.insert("users", {
       email: `owner-${suffix}@example.com`,
-      passwordHash: "test",
+      passwordHash,
       name: `Owner ${suffix}`,
       companyId,
       role: "owner",
@@ -39,13 +41,27 @@ async function seedClient(t: ReturnType<typeof testBackend>, companyId: any, suf
 }
 
 async function getDetail(t: ReturnType<typeof testBackend>, ownerId: any, relationshipId: any) {
+  const owner = await t.run((ctx) => ctx.db.get(ownerId));
+  const auth = await t.action(api.authActions.signIn, {
+    email: owner!.email,
+    password: "test-password-123",
+  });
   return await t.query(api.queries.clientRelationships.getClientRelationshipDetail, {
     userId: ownerId,
+    sessionToken: auth.sessionToken,
     relationshipId,
   });
 }
 
 describe("Client Detail relationship retrieval", () => {
+  beforeEach(() => {
+    process.env.TOKEN_PEPPER = "test-token-pepper";
+    process.env.STRIPE_SECRET_KEY = "test-stripe-key";
+    process.env.STRIPE_WEBHOOK_ACCOUNT_SECRET = "test-webhook-secret";
+    process.env.RESEND_API_KEY = "test-resend-key";
+    process.env.RESEND_FROM_EMAIL = "test@example.com";
+    process.env.APP_URL = "http://localhost:5173";
+  });
   it("returns the stable response shape with empty arrays for a Client without related records", async () => {
     const t = testBackend();
     const { companyId, ownerId } = await seedCompany(t, "empty");
@@ -315,8 +331,13 @@ describe("Client Detail relationship retrieval", () => {
     expect(detail?.invoices.map((item) => item._id)).toEqual(ids.invoices);
     expect(detail?.jobs.map((item) => item._id)).toEqual(ids.jobs);
 
+    const auth = await t.action(api.authActions.signIn, {
+      email: "owner-complete@example.com",
+      password: "test-password-123",
+    });
     const client = await t.query(api.queries.clientRelationships.getById, {
       userId: ownerId,
+      sessionToken: auth.sessionToken,
       relationshipId,
     });
     expect(client?.counts).toEqual({

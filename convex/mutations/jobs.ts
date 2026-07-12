@@ -1,13 +1,15 @@
 import { mutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
-import { requireOwner, requireAuth, logAudit, createNotification } from "../lib/helpers";
+import { requireAuth, logAudit, createNotification } from "../lib/helpers";
+import { requireOwnerSession } from "../lib/sessionAuth";
 import { requireActiveSubscription } from "../lib/subscriptionGating";
 import { assertTeamInCompany, canSubmitFinalJob, getJobRecipientUserIds, isUserAssignedToJob } from "../lib/teams";
 
 export const create = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     companyId: v.id("companies"),
     propertyId: v.id("properties"),
     cleanerIds: v.array(v.id("users")),
@@ -28,7 +30,7 @@ export const create = mutation({
     assignedManagerId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     if (owner.companyId !== args.companyId) throw new Error("Not your company");
     await requireActiveSubscription(ctx, args.companyId);
     if (args.assignedTeamId) {
@@ -44,7 +46,7 @@ export const create = mutation({
       throw new Error("Property not found");
     }
 
-    const { userId: _uid, ...jobData } = args;
+    const { userId: _uid, sessionToken: _sessionToken, ...jobData } = args;
     const jobId = await ctx.db.insert("jobs", {
       ...jobData,
       clientRelationshipId: property.clientRelationshipId,
@@ -95,6 +97,7 @@ export const create = mutation({
 export const update = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     jobId: v.id("jobs"),
     propertyId: v.optional(v.id("properties")),
     cleanerIds: v.optional(v.array(v.id("users"))),
@@ -118,7 +121,7 @@ export const update = mutation({
     clearAssignedManager: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
@@ -128,7 +131,7 @@ export const update = mutation({
       if (args.cleanerIds && args.cleanerIds.length > 0) throw new Error("Choose either individual cleaners or a team");
     }
 
-    const { jobId, userId: _uid, clearAssignedManager, clearAssignedTeam, ...updates } = args;
+    const { jobId, userId: _uid, sessionToken: _sessionToken, clearAssignedManager, clearAssignedTeam, ...updates } = args;
     // Remove undefined values
     const cleanUpdates: Record<string, any> = {};
     for (const [key, val] of Object.entries(updates)) {
@@ -161,9 +164,9 @@ export const update = mutation({
 });
 
 export const cancel = mutation({
-  args: { jobId: v.id("jobs"), userId: v.optional(v.id("users")) },
+  args: { jobId: v.id("jobs"), userId: v.optional(v.id("users")), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
@@ -336,9 +339,10 @@ export const reassignJob = mutation({
     jobId: v.id("jobs"),
     newCleanerId: v.id("users"),
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
@@ -578,9 +582,9 @@ export const completeJob = mutation({
  * Lighter-weight alternative to the cleaner startJob flow.
  */
 export const ownerStartJob = mutation({
-  args: { jobId: v.id("jobs"), userId: v.id("users") },
+  args: { jobId: v.id("jobs"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
@@ -612,9 +616,10 @@ export const ownerCompleteJob = mutation({
     jobId: v.id("jobs"),
     notes: v.optional(v.string()),
     userId: v.id("users"),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
@@ -653,6 +658,7 @@ export const ownerCompleteJob = mutation({
 export const ownerSubmitInspection = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     jobId: v.id("jobs"),
     readinessScore: v.number(),
     severity: v.union(
@@ -666,7 +672,7 @@ export const ownerSubmitInspection = mutation({
     issues: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
@@ -721,11 +727,12 @@ export const ownerSubmitInspection = mutation({
 export const updatePlannedCleanerPay = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     jobId: v.id("jobs"),
     amountCents: v.number(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     if (args.amountCents < 100) {
       throw new Error("Minimum planned pay is $1.00");

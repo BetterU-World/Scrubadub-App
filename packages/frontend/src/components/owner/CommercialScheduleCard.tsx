@@ -79,7 +79,7 @@ export function CommercialScheduleCard({
   defaultTeamId?: Id<"teams">;
   onToast?: (message: string, type: ToastType) => void;
 }) {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -104,12 +104,12 @@ export function CommercialScheduleCard({
   );
   const teams = useQuery(
     api.queries.teams.listActiveForAssignment,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
   const properties = useQuery(
     api.queries.properties.list,
     user?.companyId
-      ? { companyId: user.companyId, userId: user._id, activeOnly: false }
+      ? { companyId: user.companyId, userId: user._id, sessionToken, activeOnly: false }
       : "skip"
   );
 

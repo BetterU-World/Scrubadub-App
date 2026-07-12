@@ -1,6 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { getSessionUser } from "../lib/auth";
+import { requireOwnerSession } from "../lib/sessionAuth";
 
 const documentTypeValidator = v.union(
   v.literal("service_agreement"),
@@ -11,8 +11,8 @@ const documentTypeValidator = v.union(
   v.literal("other")
 );
 
-async function requireOwnerCompany(ctx: any, userId: any) {
-  const user = await getSessionUser(ctx, userId);
+async function requireOwnerCompany(ctx: any, sessionToken: string, userId: any) {
+  const user = await requireOwnerSession(ctx, sessionToken, userId);
   if (user.role !== "owner" || !user.companyId) {
     throw new Error("Owner access required");
   }
@@ -22,10 +22,11 @@ async function requireOwnerCompany(ctx: any, userId: any) {
 export const listByType = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     type: documentTypeValidator,
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerCompany(ctx, args.userId);
+    const owner = await requireOwnerCompany(ctx, args.sessionToken, args.userId);
     const templates = await (ctx.db as any)
       .query("documentTemplates")
       .withIndex("by_company_type", (q: any) =>
@@ -42,10 +43,11 @@ export const listByType = query({
 export const getDefaultByType = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     type: documentTypeValidator,
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerCompany(ctx, args.userId);
+    const owner = await requireOwnerCompany(ctx, args.sessionToken, args.userId);
     return await (ctx.db as any)
       .query("documentTemplates")
       .withIndex("by_company_type_default", (q: any) =>
