@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { RelationshipDiagnostics } from "@/components/owner/RelationshipDiagnostics";
 import { Users, Plus, Save } from "lucide-react";
 
 type ClientType = "residential" | "commercial" | "str" | "property_manager" | "marketplace";
@@ -218,6 +219,8 @@ export function ClientRelationshipListPage() {
           ))}
         </div>
       )}
+
+      <RelationshipDiagnostics userId={user._id} />
 
       {toast && (
         <div className={`fixed right-4 top-4 z-50 rounded-lg px-4 py-3 text-sm font-medium text-white shadow-lg ${toast.type === "success" ? "bg-green-600" : "bg-red-600"}`}>
