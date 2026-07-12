@@ -97,17 +97,17 @@ export function CleaningFormPage() {
   const [, setLocation] = useLocation();
 
   const job = useQuery(api.queries.jobs.get,
-    user ? { jobId: params.id as Id<"jobs">, userId: user._id } : "skip"
+    user ? { jobId: params.id as Id<"jobs">, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
 
   const form = useQuery(
     api.queries.forms.getByJob,
-    job && user ? { jobId: job._id, userId: user._id } : "skip"
+    job && user ? { jobId: job._id, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
 
   const formItems = useQuery(
     api.queries.forms.getItems,
-    form && user ? { formId: form._id, userId: user._id } : "skip"
+    form && user ? { formId: form._id, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
 
   const updateItem = useMutation(api.mutations.forms.updateItem);
@@ -174,7 +174,7 @@ export function CleaningFormPage() {
     const hasUncompleted = formItems.some((i) => !i.completed);
     if (hasUncompleted) {
       fastModeInitRef.current = true;
-      markAllComplete({ formId: form._id, userId: user._id });
+      markAllComplete({ formId: form._id, userId: user._id, sessionToken: getStaffSessionToken() });
     } else {
       fastModeInitRef.current = true;
     }
@@ -285,11 +285,11 @@ export function CleaningFormPage() {
       }, 500);
     }
 
-    await updateItem({ itemId, completed: willBeCompleted, userId: user!._id });
+    await updateItem({ itemId, completed: willBeCompleted, userId: user!._id, sessionToken: getStaffSessionToken() });
   };
 
   const handleSaveNote = async (itemId: Id<"formItems">) => {
-    await updateItem({ itemId, note: noteText || undefined, userId: user!._id });
+    await updateItem({ itemId, note: noteText || undefined, userId: user!._id, sessionToken: getStaffSessionToken() });
     setShowNoteFor(null);
     setNoteText("");
   };
@@ -305,7 +305,7 @@ export function CleaningFormPage() {
         body: file,
       });
       const { storageId } = await result.json();
-      await addPhoto({ formId: form._id, photoStorageId: storageId, userId: user!._id });
+      await addPhoto({ formId: form._id, photoStorageId: storageId, userId: user!._id, sessionToken: getStaffSessionToken() });
     } catch (err) {
       console.error(err);
     } finally {
@@ -325,8 +325,9 @@ export function CleaningFormPage() {
       severity: rfSeverity as any,
       note: rfNote,
       userId: user!._id,
+      sessionToken: getStaffSessionToken(),
     });
-    await updateItem({ itemId, isRedFlag: true, userId: user!._id });
+    await updateItem({ itemId, isRedFlag: true, userId: user!._id, sessionToken: getStaffSessionToken() });
     setShowRedFlag(null);
     setRfNote("");
   };
@@ -335,15 +336,15 @@ export function CleaningFormPage() {
     const next = !fastMode;
     setFastMode(next);
     if (next && form) {
-      await markAllComplete({ formId: form._id, userId: user!._id });
+      await markAllComplete({ formId: form._id, userId: user!._id, sessionToken: getStaffSessionToken() });
     }
   };
 
   const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      await updateScore({ formId: form._id, cleanerScore: selfScore, userId: user!._id });
-      await submitForm({ formId: form._id, userId: user!._id });
+      await updateScore({ formId: form._id, cleanerScore: selfScore, userId: user!._id, sessionToken: getStaffSessionToken() });
+      await submitForm({ formId: form._id, userId: user!._id, sessionToken: getStaffSessionToken() });
       clearFormCache();
       setLocation(`/jobs/${job._id}`);
     } catch (err) {

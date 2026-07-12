@@ -1,7 +1,7 @@
 import { internalMutation, mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwner, logAudit } from "../lib/helpers";
-import { getSessionUser } from "../lib/auth";
+import { logAudit } from "../lib/helpers";
+import { requireActiveWorkerProfile, requireOwnerSession } from "../lib/sessionAuth";
 
 const workerTypeValidator = v.union(
   v.literal("w2_employee"),
@@ -186,9 +186,9 @@ export const ensureWorkerProfileForUser = internalMutation({
 });
 
 export const backfillCompanyWorkerProfiles = mutation({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const db: any = ctx.db;
     const users = await ctx.db
       .query("users")
@@ -228,6 +228,7 @@ export const backfillCompanyWorkerProfiles = mutation({
 export const upsertWorkerProfile = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     workerUserId: v.id("users"),
     workerType: v.optional(workerTypeValidator),
     workerStatus: v.optional(workerStatusValidator),
@@ -239,7 +240,7 @@ export const upsertWorkerProfile = mutation({
     manualComplianceNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const db: any = ctx.db;
     const target = await requireCompanyWorkerUser({ ...ctx, db }, owner, args.workerUserId);
     const existing = await getExistingProfileForUser({ ...ctx, db }, target._id);
@@ -287,6 +288,7 @@ export const upsertWorkerProfile = mutation({
 export const updateWorkerProfile = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     workerProfileId: v.id("workerProfiles"),
     workerType: v.optional(workerTypeValidator),
     primaryRole: v.optional(workerRoleValidator),
@@ -296,7 +298,7 @@ export const updateWorkerProfile = mutation({
     manualComplianceNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const db: any = ctx.db;
     await requireOwnedProfile({ ...ctx, db }, owner, args.workerProfileId);
 
@@ -317,11 +319,12 @@ export const updateWorkerProfile = mutation({
 export const setWorkerStatus = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     workerProfileId: v.id("workerProfiles"),
     workerStatus: workerStatusValidator,
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const db: any = ctx.db;
     await requireOwnedProfile({ ...ctx, db }, owner, args.workerProfileId);
     await db.patch(args.workerProfileId, {
@@ -334,12 +337,13 @@ export const setWorkerStatus = mutation({
 export const updateWorkerEligibility = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     workerProfileId: v.id("workerProfiles"),
     jobEligibilityStatus: jobEligibilityStatusValidator,
     eligibleRoles: v.optional(v.array(workerRoleValidator)),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const db: any = ctx.db;
     await requireOwnedProfile({ ...ctx, db }, owner, args.workerProfileId);
     await db.patch(args.workerProfileId, {
@@ -353,6 +357,7 @@ export const updateWorkerEligibility = mutation({
 export const upsertWorkerDocumentStatus = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     workerProfileId: v.id("workerProfiles"),
     documentType: documentTypeValidator,
     status: documentStatusValidator,
@@ -363,7 +368,7 @@ export const upsertWorkerDocumentStatus = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const db: any = ctx.db;
     const profile = await requireOwnedProfile({ ...ctx, db }, owner, args.workerProfileId);
     const now = Date.now();
@@ -405,6 +410,7 @@ export const upsertWorkerDocumentStatus = mutation({
 export const upsertWorkerOnboardingItem = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     workerProfileId: v.id("workerProfiles"),
     itemKey: v.string(),
     title: v.string(),
@@ -413,7 +419,7 @@ export const upsertWorkerOnboardingItem = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const db: any = ctx.db;
     const profile = await requireOwnedProfile({ ...ctx, db }, owner, args.workerProfileId);
     const now = Date.now();
@@ -458,11 +464,12 @@ export const upsertWorkerOnboardingItem = mutation({
 export const completeWorkerOnboardingItem = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     onboardingItemId: v.id("workerOnboardingItems"),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const db: any = ctx.db;
     const item = await db.get(args.onboardingItemId);
     if (!item || item.companyId !== owner.companyId) {
@@ -482,11 +489,12 @@ export const completeWorkerOnboardingItem = mutation({
 export const completeMyOnboardingItem = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     onboardingItemId: v.id("workerOnboardingItems"),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const sessionUser = await getSessionUser(ctx, args.userId);
+    const { user: sessionUser } = await requireActiveWorkerProfile(ctx, args.sessionToken, args.userId);
     const db: any = ctx.db;
     const item = await db.get(args.onboardingItemId);
     if (!item || item.userId !== sessionUser._id) {

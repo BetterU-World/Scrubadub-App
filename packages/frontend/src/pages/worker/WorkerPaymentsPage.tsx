@@ -1,6 +1,6 @@
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { DollarSign, CreditCard } from "lucide-react";
@@ -12,7 +12,7 @@ export function WorkerPaymentsPage() {
 
   const jobs = useQuery(
     api.queries.cleanerPayments.listCleanerJobsWithPaymentStatus,
-    user?._id ? { userId: user._id } : "skip",
+    user?._id ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip",
   );
 
   if (!user) return <PageLoader />;

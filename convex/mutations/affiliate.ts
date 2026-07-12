@@ -1,6 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { getSessionUser } from "../lib/auth";
+import { requireAffiliateSession, requireVerifiedStaffSession } from "../lib/sessionAuth";
 
 /**
  * Generate a URL-safe referral code (8-12 chars, lowercase a-z0-9).
@@ -16,9 +16,9 @@ function generateCode(): string {
 }
 
 export const ensureReferralCode = mutation({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireAffiliateSession(ctx, args.sessionToken, args.userId);
 
     // Already has a code — return it immediately
     if (user.referralCode) {
@@ -44,9 +44,9 @@ export const ensureReferralCode = mutation({
 });
 
 export const setReferredByCode = mutation({
-  args: { userId: v.id("users"), refCode: v.string() },
+  args: { userId: v.id("users"), sessionToken: v.string(), refCode: v.string() },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
 
     // Already attributed — do nothing
     if (user.referredByCode) return;

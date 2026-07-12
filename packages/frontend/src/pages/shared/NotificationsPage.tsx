@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -14,7 +14,7 @@ export function NotificationsPage() {
   const { t } = useTranslation();
   const notifications = useQuery(
     api.queries.notifications.list,
-    user ? { userId: user._id } : "skip"
+    user ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
   const markAsRead = useMutation(api.mutations.notifications.markAsRead);
   const markAllAsRead = useMutation(api.mutations.notifications.markAllAsRead);
@@ -30,7 +30,7 @@ export function NotificationsPage() {
     const latestTs = notifications[0]._creationTime;
     const timer = setTimeout(() => {
       autoMarkRef.current = true;
-      markReadUpTo({ userId: user._id, seenThroughTs: latestTs });
+      markReadUpTo({ userId: user._id, sessionToken: getStaffSessionToken(), seenThroughTs: latestTs });
     }, 1000);
     return () => clearTimeout(timer);
   }, [user, notifications, markReadUpTo]);
@@ -47,7 +47,7 @@ export function NotificationsPage() {
         action={
           unreadCount > 0 && (
             <button
-              onClick={() => markAllAsRead({ userId: user._id })}
+              onClick={() => markAllAsRead({ userId: user._id, sessionToken: getStaffSessionToken() })}
               className="btn-secondary flex items-center gap-2"
             >
               <CheckCheck className="w-4 h-4" /> {t("notifications.markAllRead")}
@@ -64,7 +64,7 @@ export function NotificationsPage() {
             <div
               key={n._id}
               onClick={() => {
-                if (!n.read) markAsRead({ notificationId: n._id, userId: user._id });
+                if (!n.read) markAsRead({ notificationId: n._id, userId: user._id, sessionToken: getStaffSessionToken() });
               }}
               className={`card cursor-pointer transition-all duration-500 ease-out ${
                 n.read ? "opacity-60 border-transparent bg-white" : "border-primary-200 bg-primary-50/20"

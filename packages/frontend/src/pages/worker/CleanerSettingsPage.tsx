@@ -878,27 +878,27 @@ export function CleanerSettingsPage() {
   );
   const workerProfile = useQuery(
     (api as any).queries.workers.getWorkerProfileForUser,
-    user?._id ? { userId: user._id } : "skip"
+    user?._id ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
   const documents = useQuery(
     (api as any).queries.workers.listWorkerDocuments,
-    user?._id && workerProfile?._id ? { userId: user._id, workerProfileId: workerProfile._id } : "skip"
+    user?._id && workerProfile?._id ? { userId: user._id, sessionToken: getStaffSessionToken(), workerProfileId: workerProfile._id } : "skip"
   );
   const onboardingItems = useQuery(
     (api as any).queries.workers.listWorkerOnboardingItems,
-    user?._id && workerProfile?._id ? { userId: user._id, workerProfileId: workerProfile._id } : "skip"
+    user?._id && workerProfile?._id ? { userId: user._id, sessionToken: getStaffSessionToken(), workerProfileId: workerProfile._id } : "skip"
   );
   const manuals = useQuery(
     api.queries.manuals.getVisibleManuals,
-    user?._id ? { userId: user._id } : "skip"
+    user?._id ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
   const companyDocuments = useQuery(
     (api as any).queries.companyOnboardingDocuments.listForWorker,
-    user?._id ? { userId: user._id } : "skip"
+    user?._id ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
   const payments = useQuery(
     api.queries.cleanerPayments.listCleanerJobsWithPaymentStatus,
-    user?._id ? { userId: user._id } : "skip"
+    user?._id ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
   const createAccountLink = useAction(
     api.actions.cleanerStripeConnect.createCleanerStripeAccountLink
@@ -949,7 +949,7 @@ export function CleanerSettingsPage() {
   const handleOpenManual = async (manualId: string) => {
     setOpeningManualId(manualId);
     try {
-      const { url } = await getManualSignedUrl({ userId: user._id, manualId: manualId as any });
+      const { url } = await getManualSignedUrl({ userId: user._id, sessionToken: getStaffSessionToken(), manualId: manualId as any });
       window.open(url, "_blank");
     } catch {
       // Keep this card read-only; workers can still open Manuals from the main nav if a signed URL fails.
@@ -970,6 +970,7 @@ export function CleanerSettingsPage() {
     try {
       await completeOnboardingItem({
         userId: user._id,
+        sessionToken: getStaffSessionToken(),
         onboardingItemId: item._id,
       });
     } catch (e: any) {

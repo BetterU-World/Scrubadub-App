@@ -59,7 +59,7 @@ export function LiveJobBanner() {
       ? {
           companyId: user.companyId,
           userId: user._id,
-          sessionToken: user.role === "owner" || user.role === "manager" ? sessionToken : undefined,
+          sessionToken,
         }
       : "skip"
   );

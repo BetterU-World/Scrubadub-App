@@ -1387,6 +1387,7 @@ function AffiliateLedgerInner({
       ? "skip"
       : {
           userId,
+          sessionToken: getStaffSessionToken(),
           status: (statusFilter || undefined) as any,
         }
   );
@@ -1524,7 +1525,7 @@ function AffiliateLedgerInner({
   async function handleRefresh(periodStart: string, label: string) {
     setRefreshing(label);
     try {
-      await upsertForPeriod({ userId, periodStart });
+      await upsertForPeriod({ userId, sessionToken: getStaffSessionToken(), periodStart });
     } catch (err) {
       console.error("Failed to refresh ledger:", err);
     } finally {
@@ -1552,6 +1553,7 @@ function AffiliateLedgerInner({
       if (modalTarget.action === "lock") {
         await lockPeriod({
           userId,
+          sessionToken: getStaffSessionToken(),
           ledgerId: modalTarget.id,
           notes: trimmedNotes,
         });

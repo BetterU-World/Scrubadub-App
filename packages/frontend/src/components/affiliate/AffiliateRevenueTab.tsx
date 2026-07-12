@@ -2,7 +2,7 @@ import { useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { DollarSign, Building2, FileText, TrendingUp, Percent } from "lucide-react";
 
 function formatCents(cents: number): string {
@@ -48,11 +48,11 @@ function AffiliateRevenueInner({ userId }: { userId: Id<"users"> }) {
   const { t } = useTranslation();
   const summary = useQuery(
     api.queries.affiliateAttributions.getMyAttributionSummary,
-    { userId },
+    { userId, sessionToken: getStaffSessionToken() },
   );
   const attributions = useQuery(
     api.queries.affiliateAttributions.listMyAttributions,
-    { userId },
+    { userId, sessionToken: getStaffSessionToken() },
   );
 
   if (summary === undefined || attributions === undefined) {

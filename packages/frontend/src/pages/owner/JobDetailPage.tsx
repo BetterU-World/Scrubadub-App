@@ -47,7 +47,7 @@ export function JobDetailPage() {
   );
   const formItems = useQuery(
     api.queries.forms.getItems,
-    job?.form && user ? { formId: job.form._id, userId: user._id } : "skip"
+    job?.form && user ? { formId: job.form._id, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
 
   const cancelJob = useMutation(api.mutations.jobs.cancel);
@@ -63,7 +63,7 @@ export function JobDetailPage() {
   const cleanerAvailability = useQuery(
     api.queries.availability.listCleanersWithAvailability,
     user && job?.scheduledDate
-      ? { userId: user._id, date: job.scheduledDate }
+      ? { userId: user._id, sessionToken: getStaffSessionToken(), date: job.scheduledDate }
       : "skip"
   );
   const connections = useQuery(
@@ -595,7 +595,7 @@ export function JobDetailPage() {
                     if (!uid || !job.form) return;
                     setApproving(true);
                     try {
-                      await approveForm({ formId: job.form._id, notes: approveNotes || undefined, userId: uid });
+                      await approveForm({ formId: job.form._id, notes: approveNotes || undefined, userId: uid, sessionToken: getStaffSessionToken() });
                       setToast({ message: t("jobs.jobApproved"), type: "success" });
                       setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
@@ -1463,7 +1463,7 @@ export function JobDetailPage() {
                   const uid = requireUserId(user);
                   if (!uid || !reworkNotes.trim() || !job.form) return;
                   try {
-                    await requestFormRework({ formId: job.form._id, notes: reworkNotes, userId: uid });
+                    await requestFormRework({ formId: job.form._id, notes: reworkNotes, userId: uid, sessionToken: getStaffSessionToken() });
                     setShowRework(false);
                     setReworkNotes("");
                     setToast({ message: t("jobs.reworkRequested"), type: "success" });

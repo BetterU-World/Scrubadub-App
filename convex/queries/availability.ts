@@ -1,13 +1,13 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireAuth, requireOwner } from "../lib/helpers";
+import { requireOwnerSession, requireWorkerSession } from "../lib/sessionAuth";
 import { withPerfLog } from "../lib/perfLog";
 
 /** Cleaner reads their own weekly availability */
 export const getMyWeeklyAvailability = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
+    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
     return ctx.db
       .query("cleanerAvailability")
       .withIndex("by_cleanerId_dayOfWeek", (q) => q.eq("cleanerId", user._id))
@@ -17,9 +17,9 @@ export const getMyWeeklyAvailability = query({
 
 /** Cleaner reads their own overrides for the next 14 days */
 export const getMyOverrides = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
+    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
     return ctx.db
       .query("cleanerAvailabilityOverrides")
       .withIndex("by_cleanerId_date", (q) => q.eq("cleanerId", user._id))
@@ -31,11 +31,12 @@ export const getMyOverrides = query({
 export const getCleanerAvailabilityForDate = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     cleanerId: v.id("users"),
     date: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     // Verify the cleaner belongs to the caller's company
     const cleaner = await ctx.db.get(args.cleanerId);
@@ -81,11 +82,12 @@ export const getCleanerAvailabilityForDate = query({
 export const listCleanersWithAvailability = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     date: v.string(),
   },
   handler: async (ctx, args) => {
     return await withPerfLog(ctx, "availability:listCleaners", async () => {
-      const owner = await requireOwner(ctx, args.userId);
+      const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
       // Get all active cleaners in company
       const users = await ctx.db

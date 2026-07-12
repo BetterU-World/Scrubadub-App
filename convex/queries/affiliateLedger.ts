@@ -1,10 +1,11 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { getSessionUser } from "../lib/auth";
+import { requireAffiliateSession } from "../lib/sessionAuth";
 
 export const getMyLedger = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     periodType: v.optional(
       v.union(v.literal("monthly"), v.literal("weekly"))
     ),
@@ -15,7 +16,7 @@ export const getMyLedger = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireAffiliateSession(ctx, args.sessionToken, args.userId);
     const limit = args.limit ?? 50;
 
     let entries = await ctx.db

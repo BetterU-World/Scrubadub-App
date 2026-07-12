@@ -1,16 +1,16 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
-import { getSessionUser } from "../lib/auth";
+import { requireAffiliateSession } from "../lib/sessionAuth";
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const AFFILIATE_RATE = 0.10;
 
 export const getMyAttributionSummary = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireAffiliateSession(ctx, args.sessionToken, args.userId);
 
     const attributions = await ctx.db
       .query("affiliateAttributions")
@@ -68,11 +68,12 @@ export const getMyAttributionSummary = query({
 export const listMyAttributions = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     cursor: v.optional(v.number()),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireAffiliateSession(ctx, args.sessionToken, args.userId);
     const limit = args.limit ?? 50;
 
     let attributions = await ctx.db

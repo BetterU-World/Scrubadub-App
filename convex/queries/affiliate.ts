@@ -1,12 +1,12 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { getSessionUser } from "../lib/auth";
+import { requireAffiliateSession } from "../lib/sessionAuth";
 
 export const getMyReferrals = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId).catch(() => null);
-    if (!user || !user.referralCode) return [];
+    const user = await requireAffiliateSession(ctx, args.sessionToken, args.userId);
+    if (!user.referralCode) return [];
 
     const referred = await ctx.db
       .query("users")

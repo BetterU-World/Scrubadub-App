@@ -8,11 +8,11 @@ import { internal } from "../_generated/api";
 import { get } from "@vercel/blob";
 
 export const getManualSignedUrl = action({
-  args: { userId: v.id("users"), manualId: v.id("manuals") },
+  args: { userId: v.id("users"), sessionToken: v.string(), manualId: v.id("manuals") },
   handler: async (ctx, args) => {
     const manual = await ctx.runQuery(
       internal.queries.manuals.validateManualAccess,
-      { userId: args.userId, manualId: args.manualId }
+      { userId: args.userId, sessionToken: args.sessionToken, manualId: args.manualId }
     );
 
     const token = process.env.BLOB_READ_WRITE_TOKEN;

@@ -1,6 +1,6 @@
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { Link } from "wouter";
 import { Bell } from "lucide-react";
 
@@ -8,7 +8,7 @@ export function NotificationBell() {
   const { user } = useAuth();
   const count = useQuery(
     api.queries.notifications.unreadCount,
-    user ? { userId: user._id } : "skip"
+    user ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
 
   return (

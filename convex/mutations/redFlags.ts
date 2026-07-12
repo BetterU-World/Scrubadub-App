@@ -1,12 +1,13 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { requireAuth, logAudit, createNotification } from "../lib/helpers";
+import { logAudit, createNotification } from "../lib/helpers";
 import { hasManagerPermission } from "../lib/auth";
-import { requireOwnerManagerSession, requireOwnerSession } from "../lib/sessionAuth";
+import { requireOwnerManagerSession, requireOwnerSession, requireWorkerSession } from "../lib/sessionAuth";
 
 export const create = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     companyId: v.id("companies"),
     propertyId: v.id("properties"),
     jobId: v.id("jobs"),
@@ -28,14 +29,14 @@ export const create = mutation({
     photoStorageId: v.optional(v.id("_storage")),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
+    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
     // Verify company access
     if (user.companyId !== args.companyId) throw new Error("Access denied");
     // Verify job belongs to this company
     const job = await ctx.db.get(args.jobId);
     if (!job || job.companyId !== user.companyId) throw new Error("Access denied");
 
-    const { userId: _uid, ...flagData } = args;
+    const { userId: _uid, sessionToken: _sessionToken, ...flagData } = args;
     const flagId = await ctx.db.insert("redFlags", {
       ...flagData,
       status: "open",

@@ -13,17 +13,17 @@ export function MaintenanceFormPage() {
   const [, setLocation] = useLocation();
 
   const job = useQuery(api.queries.jobs.get,
-    user ? { jobId: params.id as Id<"jobs">, userId: user._id } : "skip"
+    user ? { jobId: params.id as Id<"jobs">, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
 
   const form = useQuery(
     api.queries.forms.getByJob,
-    job && user ? { jobId: job._id, userId: user._id } : "skip"
+    job && user ? { jobId: job._id, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
 
   const formItems = useQuery(
     api.queries.forms.getItems,
-    form && user ? { formId: form._id, userId: user._id } : "skip"
+    form && user ? { formId: form._id, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
 
   const updateItem = useMutation(api.mutations.forms.updateItem);
@@ -52,11 +52,11 @@ export function MaintenanceFormPage() {
   const photoCount = (form as any).photoStorageIds?.length ?? 0;
 
   const handleToggleItem = async (itemId: Id<"formItems">, completed: boolean) => {
-    await updateItem({ itemId, completed: !completed, userId: user!._id });
+    await updateItem({ itemId, completed: !completed, userId: user!._id, sessionToken: getStaffSessionToken() });
   };
 
   const handleSaveNote = async (itemId: Id<"formItems">) => {
-    await updateItem({ itemId, note: noteText || undefined, userId: user!._id });
+    await updateItem({ itemId, note: noteText || undefined, userId: user!._id, sessionToken: getStaffSessionToken() });
     setShowNoteFor(null);
     setNoteText("");
   };
@@ -72,7 +72,7 @@ export function MaintenanceFormPage() {
         body: file,
       });
       const { storageId } = await result.json();
-      await addPhoto({ formId: form._id, photoStorageId: storageId, userId: user!._id });
+      await addPhoto({ formId: form._id, photoStorageId: storageId, userId: user!._id, sessionToken: getStaffSessionToken() });
     } catch (err) {
       console.error(err);
     } finally {
@@ -87,6 +87,7 @@ export function MaintenanceFormPage() {
       await submitForm({
         formId: form._id,
         userId: user!._id,
+        sessionToken: getStaffSessionToken(),
         ...(Number.isFinite(parsedCost) && parsedCost > 0 ? { maintenanceCost: parsedCost } : {}),
         ...(vendor.trim() ? { maintenanceVendor: vendor.trim() } : {}),
       });

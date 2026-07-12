@@ -1,6 +1,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { assertOwnerRole, getSessionUser, isWorkerRole } from "../lib/auth";
+import { assertOwnerRole, isWorkerRole } from "../lib/auth";
+import { requireWorkerSession } from "../lib/sessionAuth";
 import {
   STANDARD_COMPANY_ONBOARDING_DOCUMENTS,
   isVisibleToWorkerRole,
@@ -62,9 +63,9 @@ export const listForOwner = query({
 });
 
 export const listForWorker = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
     if (!user.companyId || !isWorkerRole(user.role)) {
       throw new Error("Worker access required");
     }

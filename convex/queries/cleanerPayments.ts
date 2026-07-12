@@ -1,6 +1,7 @@
 import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
-import { assertOwnerRole, getSessionUser } from "../lib/auth";
+import { assertOwnerRole } from "../lib/auth";
+import { requireWorkerSession } from "../lib/sessionAuth";
 import { withPerfLog } from "../lib/perfLog";
 
 /**
@@ -149,9 +150,10 @@ export const listCleanerPaymentsForCompany = query({
 export const listMyCleanerPayments = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
 
     const payments = await ctx.db
       .query("cleanerPayments")
@@ -251,9 +253,9 @@ export const listUnpaidJobsForCompany = query({
  * Combines job data with cleanerPayment records.
  */
 export const listCleanerJobsWithPaymentStatus = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
     if (!user.companyId) throw new Error("Company access required");
     const companyId = user.companyId;
 

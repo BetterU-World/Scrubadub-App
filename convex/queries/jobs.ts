@@ -1,7 +1,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { assertCompanyAccess, hasManagerPermission } from "../lib/auth";
-import { requireOwnerManagerCompany, requireOwnerManagerOrCompatibleRole } from "../lib/sessionAuth";
+import { hasManagerPermission } from "../lib/auth";
+import { requireOwnerManagerCompany, requireVerifiedStaffSession, requireWorkerCompany } from "../lib/sessionAuth";
 import { withPerfLog } from "../lib/perfLog";
 import { getActiveTeamIdsForUser } from "../lib/teams";
 
@@ -12,18 +12,13 @@ export const list = query({
   args: {
     companyId: v.id("companies"),
     userId: v.id("users"),
-    sessionToken: v.optional(v.string()),
+    sessionToken: v.string(),
     status: v.optional(v.string()),
     sort: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     return await withPerfLog(ctx, "jobs:list", async () => {
-      const user = await requireOwnerManagerOrCompatibleRole(
-        ctx,
-        args.sessionToken,
-        args.userId,
-        ["cleaner", "maintenance"]
-      );
+      const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
       if (user.companyId !== args.companyId) throw new Error("Access denied");
 
       const sort = args.sort || "soonest";
@@ -169,14 +164,9 @@ export const list = query({
 });
 
 export const get = query({
-  args: { jobId: v.id("jobs"), userId: v.id("users"), sessionToken: v.optional(v.string()) },
+  args: { jobId: v.id("jobs"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await requireOwnerManagerOrCompatibleRole(
-      ctx,
-      args.sessionToken,
-      args.userId,
-      ["cleaner", "maintenance"]
-    );
+    const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) return null;
     if (job.companyId !== user.companyId) throw new Error("Access denied");
@@ -258,10 +248,11 @@ export const getForCleaner = query({
     cleanerId: v.id("users"),
     companyId: v.id("companies"),
     userId: v.id("users"),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
     return await withPerfLog(ctx, "jobs:getForCleaner", async () => {
-      const user = await assertCompanyAccess(ctx, args.userId, args.companyId);
+      const user = await requireWorkerCompany(ctx, args.sessionToken, args.companyId, args.userId);
       if ((user.role === "cleaner" || user.role === "maintenance") && user._id !== args.cleanerId) {
         throw new Error("Access denied");
       }

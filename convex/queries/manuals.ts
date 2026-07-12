@@ -1,11 +1,12 @@
 import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
-import { getSessionUser, requireSuperAdmin } from "../lib/auth";
+import { requireSuperAdmin } from "../lib/auth";
+import { requireVerifiedStaffSession } from "../lib/sessionAuth";
 
 export const getVisibleManuals = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
 
     const allManuals = await ctx.db.query("manuals").collect();
 
@@ -42,9 +43,9 @@ export const exportManuals = query({
 
 /** Internal query used by the getManualSignedUrl action. */
 export const validateManualAccess = internalQuery({
-  args: { userId: v.id("users"), manualId: v.id("manuals") },
+  args: { userId: v.id("users"), sessionToken: v.string(), manualId: v.id("manuals") },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
     const manual = await ctx.db.get(args.manualId);
     if (!manual) throw new Error("Manual not found");
 

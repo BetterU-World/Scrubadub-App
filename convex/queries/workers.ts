@@ -1,7 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { assertOwnerRole, getSessionUser } from "../lib/auth";
-import { requireOwnerSession } from "../lib/sessionAuth";
+import { requireOwnerSession, requireVerifiedStaffSession } from "../lib/sessionAuth";
 
 const workerRoleValues = ["cleaner", "manager", "maintenance"] as const;
 
@@ -71,11 +70,12 @@ export const listWorkersForCompany = query({
 export const getWorkerDetail = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     workerProfileId: v.optional(v.id("workerProfiles")),
     workerUserId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    const owner = await assertOwnerRole(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     if (!args.workerProfileId && !args.workerUserId) {
       throw new Error("Worker profile or user required");
     }
@@ -130,10 +130,11 @@ export const getWorkerDetail = query({
 export const getWorkerProfileForUser = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     workerUserId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    const sessionUser = await getSessionUser(ctx, args.userId);
+    const sessionUser = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
     const targetUserId = args.workerUserId ?? sessionUser._id;
     const profile = await getProfileForUser(ctx, targetUserId);
     if (!profile) return null;
@@ -149,10 +150,11 @@ export const getWorkerProfileForUser = query({
 export const listWorkerDocuments = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     workerProfileId: v.id("workerProfiles"),
   },
   handler: async (ctx, args) => {
-    const sessionUser = await getSessionUser(ctx, args.userId);
+    const sessionUser = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
     const db: any = ctx.db;
     const profile = await db.get(args.workerProfileId);
     if (!profile) throw new Error("Worker profile not found");
@@ -171,10 +173,11 @@ export const listWorkerDocuments = query({
 export const listWorkerOnboardingItems = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     workerProfileId: v.id("workerProfiles"),
   },
   handler: async (ctx, args) => {
-    const sessionUser = await getSessionUser(ctx, args.userId);
+    const sessionUser = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
     const db: any = ctx.db;
     const profile = await db.get(args.workerProfileId);
     if (!profile) throw new Error("Worker profile not found");
@@ -191,9 +194,9 @@ export const listWorkerOnboardingItems = query({
 });
 
 export const listCompanyUsersMissingWorkerProfiles = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const owner = await assertOwnerRole(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const users = await ctx.db
       .query("users")
       .withIndex("by_companyId", (q) => q.eq("companyId", owner.companyId))
