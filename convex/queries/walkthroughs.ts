@@ -1,9 +1,9 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { getSessionUser } from "../lib/auth";
+import { requireOwnerSession } from "../lib/sessionAuth";
 
-async function requireOwnerCompany(ctx: any, userId: any) {
-  const user = await getSessionUser(ctx, userId);
+async function requireOwnerCompany(ctx: any, sessionToken: string, userId: any) {
+  const user = await requireOwnerSession(ctx, sessionToken, userId);
   if (user.role !== "owner" || !user.companyId) {
     throw new Error("Owner access required");
   }
@@ -92,10 +92,11 @@ async function decorateWalkthrough(ctx: any, walkthrough: any) {
 export const getById = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     walkthroughId: v.id("walkthroughs"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerCompany(ctx, args.userId);
+    const owner = await requireOwnerCompany(ctx, args.sessionToken, args.userId);
     const walkthrough = await ctx.db.get(args.walkthroughId);
     if (!walkthrough) return null;
     if (walkthrough.companyId !== owner.companyId) throw new Error("Access denied");
@@ -106,10 +107,11 @@ export const getById = query({
 export const listByClientRequest = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     clientRequestId: v.id("clientRequests"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerCompany(ctx, args.userId);
+    const owner = await requireOwnerCompany(ctx, args.sessionToken, args.userId);
     const request = await ctx.db.get(args.clientRequestId);
     if (!request) return [];
     if (request.companyId !== owner.companyId) throw new Error("Access denied");
@@ -131,10 +133,11 @@ export const listByClientRequest = query({
 export const listByCommercialAccount = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     commercialAccountId: v.id("commercialAccounts"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerCompany(ctx, args.userId);
+    const owner = await requireOwnerCompany(ctx, args.sessionToken, args.userId);
     const account = await ctx.db.get(args.commercialAccountId);
     if (!account) return [];
     if (account.companyId !== owner.companyId) throw new Error("Access denied");
@@ -156,10 +159,11 @@ export const listByCommercialAccount = query({
 export const listByProposal = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     proposalId: v.id("proposals"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerCompany(ctx, args.userId);
+    const owner = await requireOwnerCompany(ctx, args.sessionToken, args.userId);
     const proposal = await ctx.db.get(args.proposalId);
     if (!proposal) return [];
     if (proposal.companyId !== owner.companyId) throw new Error("Access denied");

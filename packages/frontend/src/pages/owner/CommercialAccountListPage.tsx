@@ -28,14 +28,14 @@ function formatDate(date: string | undefined, fallback: string) {
 }
 
 export function CommercialAccountListPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const [status, setStatus] = useState<AccountStatus>("active");
   const notSet = t("commercialAccounts.notSet");
 
   const accounts = useQuery(
     (api as any).queries.commercialAccounts.listByCompany,
-    user ? { userId: user._id, status } : "skip"
+    user ? { userId: user._id, sessionToken, status } : "skip"
   );
 
   if (!user || accounts === undefined) return <PageLoader />;

@@ -17,7 +17,7 @@ type ActiveAction =
   | null;
 
 export function RedFlagsDashboard() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const [statusFilter, setStatusFilter] = useState("open");
   const [activeAction, setActiveAction] = useState<ActiveAction>(null);
@@ -25,7 +25,7 @@ export function RedFlagsDashboard() {
   const flags = useQuery(
     api.queries.redFlags.listByCompany,
     user?.companyId
-      ? { companyId: user.companyId, userId: user._id, status: statusFilter || undefined }
+      ? { companyId: user.companyId, userId: user._id, sessionToken, status: statusFilter || undefined }
       : "skip"
   );
   const maintenanceWorkers = useQuery(
@@ -42,6 +42,7 @@ export function RedFlagsDashboard() {
       flagId: flagId as Id<"redFlags">,
       status,
       userId: user!._id,
+      sessionToken,
       ...(ownerNote.trim() ? { ownerNote: ownerNote.trim() } : {}),
     });
     setActiveAction(null);
@@ -57,6 +58,7 @@ export function RedFlagsDashboard() {
       scheduledDate,
       cleanerIds: cleanerIds as Id<"users">[],
       userId: user!._id,
+      sessionToken,
       ...(notes.trim() ? { notes: notes.trim() } : {}),
       ...(durationMinutes.trim() ? { durationMinutes: parseInt(durationMinutes, 10) } : {}),
     });

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { SuccessModal, shouldShowSuccessModal } from "@/components/owner/SuccessModal";
@@ -29,7 +29,7 @@ export function DashboardPage() {
   const { t } = useTranslation();
   const stats = useQuery(
     api.queries.dashboard.getStats,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId ? { companyId: user.companyId, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
 
   // Success modal for first-time owners

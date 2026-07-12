@@ -1,13 +1,13 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { assertCompanyAccess } from "../lib/auth";
+import { requireOwnerManagerCompany } from "../lib/sessionAuth";
 import { withPerfLog } from "../lib/perfLog";
 
 export const getStats = query({
-  args: { companyId: v.id("companies"), userId: v.id("users") },
+  args: { companyId: v.id("companies"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
     return await withPerfLog(ctx, "dashboard:getStats", async () => {
-    await assertCompanyAccess(ctx, args.userId, args.companyId);
+    await requireOwnerManagerCompany(ctx, args.sessionToken, args.companyId, args.userId);
 
     const properties = await ctx.db
       .query("properties")

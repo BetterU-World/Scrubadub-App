@@ -1,11 +1,11 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwner } from "../lib/helpers";
+import { requireOwnerSession } from "../lib/sessionAuth";
 
 const RELATIONSHIP_LIST_CAP = 2_000;
 
-async function requireOwnedRelationship(ctx: any, userId: any, relationshipId: any) {
-  const owner = await requireOwner(ctx, userId);
+async function requireOwnedRelationship(ctx: any, sessionToken: string, userId: any, relationshipId: any) {
+  const owner = await requireOwnerSession(ctx, sessionToken, userId);
   const relationship = await ctx.db.get(relationshipId);
   if (!relationship) return { owner, relationship: null };
   if (relationship.companyId !== owner.companyId) throw new Error("Access denied");
@@ -51,12 +51,13 @@ async function countsForRelationship(ctx: any, relationship: any) {
 export const list = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     status: v.optional(
       v.union(v.literal("active"), v.literal("inactive"), v.literal("archived"))
     ),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const relationships = await ctx.db
       .query("clientRelationships")
       .withIndex("by_companyId", (q) => q.eq("companyId", owner.companyId))
@@ -74,9 +75,10 @@ export const list = query({
 export const listForSelect = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const relationships = await ctx.db
       .query("clientRelationships")
       .withIndex("by_companyId_status", (q) =>
@@ -100,11 +102,13 @@ export const listForSelect = query({
 export const getById = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     relationshipId: v.id("clientRelationships"),
   },
   handler: async (ctx, args) => {
     const { relationship } = await requireOwnedRelationship(
       ctx,
+      args.sessionToken,
       args.userId,
       args.relationshipId
     );
@@ -119,11 +123,13 @@ export const getById = query({
 export const getClientRelationshipDetail = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     relationshipId: v.id("clientRelationships"),
   },
   handler: async (ctx, args) => {
     const { relationship } = await requireOwnedRelationship(
       ctx,
+      args.sessionToken,
       args.userId,
       args.relationshipId
     );

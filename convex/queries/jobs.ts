@@ -1,6 +1,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { assertCompanyAccess, getSessionUser, hasManagerPermission } from "../lib/auth";
+import { assertCompanyAccess, hasManagerPermission } from "../lib/auth";
+import { requireOwnerManagerCompany, requireOwnerManagerOrCompatibleRole } from "../lib/sessionAuth";
 import { withPerfLog } from "../lib/perfLog";
 import { getActiveTeamIdsForUser } from "../lib/teams";
 
@@ -11,12 +12,19 @@ export const list = query({
   args: {
     companyId: v.id("companies"),
     userId: v.id("users"),
+    sessionToken: v.optional(v.string()),
     status: v.optional(v.string()),
     sort: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     return await withPerfLog(ctx, "jobs:list", async () => {
-      const user = await assertCompanyAccess(ctx, args.userId, args.companyId);
+      const user = await requireOwnerManagerOrCompatibleRole(
+        ctx,
+        args.sessionToken,
+        args.userId,
+        ["cleaner", "maintenance"]
+      );
+      if (user.companyId !== args.companyId) throw new Error("Access denied");
 
       const sort = args.sort || "soonest";
 
@@ -161,9 +169,14 @@ export const list = query({
 });
 
 export const get = query({
-  args: { jobId: v.id("jobs"), userId: v.id("users") },
+  args: { jobId: v.id("jobs"), userId: v.id("users"), sessionToken: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const user = await getSessionUser(ctx, args.userId);
+    const user = await requireOwnerManagerOrCompatibleRole(
+      ctx,
+      args.sessionToken,
+      args.userId,
+      ["cleaner", "maintenance"]
+    );
     const job = await ctx.db.get(args.jobId);
     if (!job) return null;
     if (job.companyId !== user.companyId) throw new Error("Access denied");
@@ -289,10 +302,11 @@ export const getForManager = query({
   args: {
     companyId: v.id("companies"),
     userId: v.id("users"),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
     return await withPerfLog(ctx, "jobs:getForManager", async () => {
-      const user = await assertCompanyAccess(ctx, args.userId, args.companyId);
+      const user = await requireOwnerManagerCompany(ctx, args.sessionToken, args.companyId, args.userId);
       if (user.role !== "manager") throw new Error("Manager access required");
 
       const allJobs = await ctx.db
@@ -359,12 +373,13 @@ export const getCalendarJobs = query({
   args: {
     companyId: v.id("companies"),
     userId: v.id("users"),
+    sessionToken: v.string(),
     startDate: v.string(),
     endDate: v.string(),
   },
   handler: async (ctx, args) => {
     return await withPerfLog(ctx, "jobs:getCalendarJobs", async () => {
-      const user = await assertCompanyAccess(ctx, args.userId, args.companyId);
+      const user = await requireOwnerManagerCompany(ctx, args.sessionToken, args.companyId, args.userId);
 
       const jobs = await ctx.db
         .query("jobs")
@@ -385,16 +400,6 @@ export const getCalendarJobs = query({
         const managerTeamIds = await getActiveTeamIdsForUser(ctx, user._id, args.companyId);
         filtered = filtered.filter(
           (j) => j.assignedManagerId === user._id || (j.assignedTeamId && managerTeamIds.has(j.assignedTeamId))
-        );
-      }
-
-      // Cleaner/maintenance visibility scoping: direct jobs plus active team jobs.
-      if (user.role === "cleaner" || user.role === "maintenance") {
-        const activeTeamIds = await getActiveTeamIdsForUser(ctx, user._id, args.companyId);
-        filtered = filtered.filter(
-          (j) =>
-            j.cleanerIds.includes(user._id) ||
-            (j.assignedTeamId && activeTeamIds.has(j.assignedTeamId))
         );
       }
 

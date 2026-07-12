@@ -1,7 +1,7 @@
 import { mutation, type MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
-import { requireOwner } from "../lib/helpers";
+import { requireOwnerSession } from "../lib/sessionAuth";
 import { ensureClientRelationshipForLead } from "../lib/clientRelationships";
 
 const proposalFrequencyValidator = v.union(
@@ -33,10 +33,11 @@ function cleanPrice(value: number | undefined) {
 
 async function getOwnedProposal(
   ctx: MutationCtx,
+  sessionToken: string,
   userId: Id<"users">,
   proposalId: Id<"proposals">
 ) {
-  const owner = await requireOwner(ctx, userId);
+  const owner = await requireOwnerSession(ctx, sessionToken, userId);
   const proposal = await ctx.db.get(proposalId);
   if (!proposal) throw new Error("Proposal not found");
   if (proposal.companyId !== owner.companyId) throw new Error("Access denied");
@@ -47,10 +48,11 @@ async function getOwnedProposal(
 export const createProposalFromLead = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     clientRequestId: v.id("clientRequests"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     const request = await ctx.db.get(args.clientRequestId);
     if (!request) throw new Error("Request not found");
@@ -119,6 +121,7 @@ export const createProposalFromLead = mutation({
 export const updateProposal = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     proposalId: v.id("proposals"),
     title: v.string(),
     clientName: v.string(),
@@ -132,7 +135,7 @@ export const updateProposal = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { proposal } = await getOwnedProposal(ctx, args.userId, args.proposalId);
+    const { proposal } = await getOwnedProposal(ctx, args.sessionToken, args.userId, args.proposalId);
     if (proposal.status === "accepted" || proposal.status === "declined") {
       throw new Error("Accepted or declined proposals cannot be edited");
     }
@@ -154,9 +157,9 @@ export const updateProposal = mutation({
 });
 
 export const markProposalSent = mutation({
-  args: { userId: v.id("users"), proposalId: v.id("proposals") },
+  args: { userId: v.id("users"), sessionToken: v.string(), proposalId: v.id("proposals") },
   handler: async (ctx, args) => {
-    const { proposal } = await getOwnedProposal(ctx, args.userId, args.proposalId);
+    const { proposal } = await getOwnedProposal(ctx, args.sessionToken, args.userId, args.proposalId);
     const now = Date.now();
     await ctx.db.patch(args.proposalId, {
       status: "sent",
@@ -171,9 +174,9 @@ export const markProposalSent = mutation({
 });
 
 export const markProposalAccepted = mutation({
-  args: { userId: v.id("users"), proposalId: v.id("proposals") },
+  args: { userId: v.id("users"), sessionToken: v.string(), proposalId: v.id("proposals") },
   handler: async (ctx, args) => {
-    const { proposal } = await getOwnedProposal(ctx, args.userId, args.proposalId);
+    const { proposal } = await getOwnedProposal(ctx, args.sessionToken, args.userId, args.proposalId);
     const now = Date.now();
     await ctx.db.patch(args.proposalId, {
       status: "accepted",
@@ -188,9 +191,9 @@ export const markProposalAccepted = mutation({
 });
 
 export const markProposalDeclined = mutation({
-  args: { userId: v.id("users"), proposalId: v.id("proposals") },
+  args: { userId: v.id("users"), sessionToken: v.string(), proposalId: v.id("proposals") },
   handler: async (ctx, args) => {
-    const { proposal } = await getOwnedProposal(ctx, args.userId, args.proposalId);
+    const { proposal } = await getOwnedProposal(ctx, args.sessionToken, args.userId, args.proposalId);
     const request = await ctx.db.get(proposal.clientRequestId) as Doc<"clientRequests"> | null;
     const now = Date.now();
     const requestPatch: Record<string, unknown> = {

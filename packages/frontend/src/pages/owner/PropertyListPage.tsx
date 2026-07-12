@@ -14,7 +14,7 @@ import { useTranslation } from "react-i18next";
 import { ImportPropertiesDialog } from "./ImportPropertiesDialog";
 
 export function PropertyListPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const [showImport, setShowImport] = useState(false);
   const [selected, setSelected] = useState<Set<Id<"properties">>>(new Set());
@@ -23,7 +23,7 @@ export function PropertyListPage() {
 
   const properties = useQuery(
     api.queries.properties.list,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
 
   const toggleActive = useMutation(api.mutations.properties.toggleActive);
@@ -51,7 +51,7 @@ export function PropertyListPage() {
     setArchiving(true);
     try {
       for (const id of selected) {
-        await toggleActive({ propertyId: id, userId: user._id });
+        await toggleActive({ propertyId: id, userId: user._id, sessionToken });
       }
       setSelected(new Set());
       setShowArchiveConfirm(false);

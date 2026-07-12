@@ -37,10 +37,10 @@ function label(value: string) {
 }
 
 export function ClientRelationshipListPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const relationships = useQuery(
     (api as any).queries.clientRelationships.list,
-    user ? { userId: user._id } : "skip"
+    user ? { userId: user._id, sessionToken } : "skip"
   );
   const createRelationship = useMutation((api as any).mutations.clientRelationships.create);
 
@@ -62,6 +62,7 @@ export function ClientRelationshipListPage() {
     try {
       await createRelationship({
         userId: user._id,
+        sessionToken,
         displayName: form.displayName,
         clientType: form.clientType,
         businessName: form.businessName || undefined,

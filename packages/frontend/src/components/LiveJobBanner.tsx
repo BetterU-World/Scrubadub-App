@@ -51,11 +51,17 @@ function statusColor(status: string): string {
 }
 
 export function LiveJobBanner() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
 
   const jobs = useQuery(
     api.queries.jobs.list,
-    user && user.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+    user && user.companyId
+      ? {
+          companyId: user.companyId,
+          userId: user._id,
+          sessionToken: user.role === "owner" || user.role === "manager" ? sessionToken : undefined,
+        }
+      : "skip"
   );
 
   if (!user || !jobs) return null;

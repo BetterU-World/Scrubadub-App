@@ -1,6 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { getSessionUser } from "../lib/auth";
+import { requireOwnerSession } from "../lib/sessionAuth";
 import { ensureClientRelationshipForLead } from "../lib/clientRelationships";
 
 const walkthroughTypeValidator = v.union(
@@ -95,8 +95,8 @@ type StructuredResponse = {
   stringValues?: string[];
 };
 
-async function requireOwnerCompany(ctx: any, userId: any) {
-  const user = await getSessionUser(ctx, userId);
+async function requireOwnerCompany(ctx: any, sessionToken: string, userId: any) {
+  const user = await requireOwnerSession(ctx, sessionToken, userId);
   if (user.role !== "owner" || !user.companyId) {
     throw new Error("Owner access required");
   }
@@ -255,8 +255,8 @@ function buildWalkthroughPatch(args: any) {
   };
 }
 
-async function getOwnedWalkthrough(ctx: any, userId: any, walkthroughId: any) {
-  const owner = await requireOwnerCompany(ctx, userId);
+async function getOwnedWalkthrough(ctx: any, sessionToken: string, userId: any, walkthroughId: any) {
+  const owner = await requireOwnerCompany(ctx, sessionToken, userId);
   const walkthrough = await ctx.db.get(walkthroughId);
   if (!walkthrough) throw new Error("Walkthrough not found");
   if (walkthrough.companyId !== owner.companyId) throw new Error("Access denied");
@@ -266,11 +266,12 @@ async function getOwnedWalkthrough(ctx: any, userId: any, walkthroughId: any) {
 export const create = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     clientRequestId: v.optional(v.id("clientRequests")),
     ...walkthroughFields,
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerCompany(ctx, args.userId);
+    const owner = await requireOwnerCompany(ctx, args.sessionToken, args.userId);
     const companyId = owner.companyId!;
     await assertLinkedRecords(ctx, companyId, args);
     const now = Date.now();
@@ -293,6 +294,7 @@ export const create = mutation({
 export const createFromClientRequest = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     clientRequestId: v.id("clientRequests"),
     scheduledDate: v.string(),
     scheduledStartTime: v.string(),
@@ -301,7 +303,7 @@ export const createFromClientRequest = mutation({
     schedulingNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerCompany(ctx, args.userId);
+    const owner = await requireOwnerCompany(ctx, args.sessionToken, args.userId);
     const request = await ctx.db.get(args.clientRequestId);
     if (!request) throw new Error("Lead not found");
     if (request.companyId !== owner.companyId) throw new Error("Access denied");
@@ -374,12 +376,13 @@ export const createFromClientRequest = mutation({
 export const update = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     walkthroughId: v.id("walkthroughs"),
     clientRequestId: v.optional(v.id("clientRequests")),
     ...walkthroughFields,
   },
   handler: async (ctx, args) => {
-    const { owner, walkthrough } = await getOwnedWalkthrough(ctx, args.userId, args.walkthroughId);
+    const { owner, walkthrough } = await getOwnedWalkthrough(ctx, args.sessionToken, args.userId, args.walkthroughId);
     await assertLinkedRecords(ctx, owner.companyId, args);
 
     const wasScheduled = walkthrough.appointmentStatus === "scheduled";
@@ -398,10 +401,11 @@ export const update = mutation({
 export const complete = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     walkthroughId: v.id("walkthroughs"),
   },
   handler: async (ctx, args) => {
-    await getOwnedWalkthrough(ctx, args.userId, args.walkthroughId);
+    await getOwnedWalkthrough(ctx, args.sessionToken, args.userId, args.walkthroughId);
     const now = Date.now();
     await ctx.db.patch(args.walkthroughId, {
       status: "completed",
@@ -415,10 +419,11 @@ export const complete = mutation({
 export const archive = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     walkthroughId: v.id("walkthroughs"),
   },
   handler: async (ctx, args) => {
-    await getOwnedWalkthrough(ctx, args.userId, args.walkthroughId);
+    await getOwnedWalkthrough(ctx, args.sessionToken, args.userId, args.walkthroughId);
     await ctx.db.patch(args.walkthroughId, {
       status: "archived",
       updatedAt: Date.now(),

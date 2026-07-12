@@ -29,7 +29,7 @@ import { useTranslation } from "react-i18next";
 type ViewMode = "month" | "week" | "day";
 
 export function CalendarPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -72,6 +72,7 @@ export function CalendarPage() {
       ? {
           companyId: user.companyId,
           userId: user._id,
+          sessionToken,
           startDate: format(rangeStart, "yyyy-MM-dd"),
           endDate: format(rangeEnd, "yyyy-MM-dd"),
         }
@@ -81,7 +82,7 @@ export function CalendarPage() {
   // Query properties for filter dropdown
   const properties = useQuery(
     api.queries.properties.list,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
 
   // Query cleaners for filter dropdown

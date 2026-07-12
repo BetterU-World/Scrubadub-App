@@ -46,10 +46,10 @@ type TemplateRecord = {
 };
 
 export function CompanyDocumentsPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const templates = useQuery(
     (api as any).queries.documentTemplates.listByType,
-    user?._id ? { userId: user._id, type: "service_agreement" } : "skip",
+    user?._id ? { userId: user._id, sessionToken, type: "service_agreement" } : "skip",
   ) as TemplateRecord[] | undefined;
   const workerDocuments = useQuery(
     (api as any).queries.companyOnboardingDocuments.listForOwner,
@@ -123,6 +123,7 @@ export function CompanyDocumentsPage() {
       if (selectedTemplate) {
         await updateTemplate({
           userId: user._id,
+          sessionToken,
           templateId: selectedTemplate._id,
           name,
           body,
@@ -132,6 +133,7 @@ export function CompanyDocumentsPage() {
       } else {
         const templateId = await createTemplate({
           userId: user._id,
+          sessionToken,
           type: "service_agreement",
           name,
           body,
@@ -154,6 +156,7 @@ export function CompanyDocumentsPage() {
     try {
       const templateId = await restoreScrubDefault({
         userId: user._id,
+        sessionToken,
         type: "service_agreement",
       });
       setSelectedId(templateId);
@@ -191,7 +194,7 @@ export function CompanyDocumentsPage() {
   const makeDefault = async (templateId: string) => {
     setError("");
     try {
-      await setDefault({ userId: user._id, templateId });
+      await setDefault({ userId: user._id, sessionToken, templateId });
       showToast("Default template updated");
     } catch (err: any) {
       setError(err.message || "Failed to set default template");

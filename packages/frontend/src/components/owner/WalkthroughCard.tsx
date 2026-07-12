@@ -242,7 +242,7 @@ export function WalkthroughCard({
   allowCreate = false,
   onToast,
 }: WalkthroughCardProps) {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -253,19 +253,19 @@ export function WalkthroughCard({
   const byClientRequest = useQuery(
     (api as any).queries.walkthroughs.listByClientRequest,
     user && clientRequestId && !commercialAccountId && !proposalId
-      ? { userId: user._id, clientRequestId }
+      ? { userId: user._id, sessionToken, clientRequestId }
       : "skip"
   );
   const byCommercialAccount = useQuery(
     (api as any).queries.walkthroughs.listByCommercialAccount,
     user && commercialAccountId
-      ? { userId: user._id, commercialAccountId }
+      ? { userId: user._id, sessionToken, commercialAccountId }
       : "skip"
   );
   const byProposal = useQuery(
     (api as any).queries.walkthroughs.listByProposal,
     user && proposalId && !commercialAccountId
-      ? { userId: user._id, proposalId }
+      ? { userId: user._id, sessionToken, proposalId }
       : "skip"
   );
 
@@ -503,6 +503,7 @@ export function WalkthroughCard({
 
   const payloadFromForm = (current: any) => ({
     userId: user!._id,
+    sessionToken,
     walkthroughId: current._id,
     clientRequestId: current.clientRequestId,
     propertyId: current.propertyId,
@@ -562,6 +563,7 @@ export function WalkthroughCard({
       }
       await createFromLead({
         userId: user._id,
+        sessionToken,
         clientRequestId,
         scheduledDate: form.scheduledDate,
         scheduledStartTime: form.scheduledStartTime,
@@ -584,6 +586,7 @@ export function WalkthroughCard({
       if (linkedProperty) {
         await updatePropertyFacts({
           userId: user!._id,
+          sessionToken,
           propertyId: linkedProperty._id,
           address: propertyForm.address,
           squareFootage: optionalNumber(propertyForm.squareFootage, t("walkthroughs.invalidNumber")),
@@ -612,7 +615,7 @@ export function WalkthroughCard({
     if (!walkthrough || !user) return;
     setSaving(true);
     try {
-      await completeWalkthrough({ userId: user._id, walkthroughId: walkthrough._id });
+      await completeWalkthrough({ userId: user._id, sessionToken, walkthroughId: walkthrough._id });
       showToast(t("walkthroughs.completed"), "success");
     } catch (err: any) {
       showToast(err.message || t("walkthroughs.actionFailed"), "error");
@@ -625,7 +628,7 @@ export function WalkthroughCard({
     if (!walkthrough || !user) return;
     setSaving(true);
     try {
-      await archiveWalkthrough({ userId: user._id, walkthroughId: walkthrough._id });
+      await archiveWalkthrough({ userId: user._id, sessionToken, walkthroughId: walkthrough._id });
       showToast(t("walkthroughs.archived"), "success");
     } catch (err: any) {
       showToast(err.message || t("walkthroughs.actionFailed"), "error");

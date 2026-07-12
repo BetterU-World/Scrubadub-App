@@ -62,10 +62,10 @@ function Field({
 }
 
 export function CompanyProfilePage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const settings = useQuery(
     (api as any).queries.companies.getCompanySettings,
-    user?._id ? { userId: user._id } : "skip"
+    user?._id ? { userId: user._id, sessionToken } : "skip"
   );
   const updateSettings = useMutation((api as any).mutations.companies.upsertCompanySettings);
 
@@ -108,6 +108,7 @@ export function CompanyProfilePage() {
     setError("");
     try {
       await updateSettings({
+        sessionToken,
         userId: user._id,
         ...Object.fromEntries(
           Object.entries(form).map(([key, value]) => [key, value.trim() || undefined])

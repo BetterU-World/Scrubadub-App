@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
-import { useAuth } from "@/hooks/useAuth";
+import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -20,7 +20,7 @@ export function ManagerJobListPage() {
   const jobs = useQuery(
     api.queries.jobs.getForManager,
     user?.companyId
-      ? { companyId: user.companyId, userId: user._id }
+      ? { companyId: user.companyId, userId: user._id, sessionToken: getStaffSessionToken() }
       : "skip"
   );
 

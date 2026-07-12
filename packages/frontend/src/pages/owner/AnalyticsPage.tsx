@@ -30,18 +30,18 @@ function completionDate(j: { completedAt?: number; scheduledDate: string }): str
 }
 
 export function AnalyticsPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
 
   const allJobs = useQuery(
     api.queries.jobs.list,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
 
   const allFlags = useQuery(
     api.queries.redFlags.listByCompany,
     user?.companyId
-      ? { companyId: user.companyId, userId: user._id }
+      ? { companyId: user.companyId, userId: user._id, sessionToken }
       : "skip"
   );
 

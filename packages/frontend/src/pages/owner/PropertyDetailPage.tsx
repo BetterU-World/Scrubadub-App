@@ -57,7 +57,7 @@ type Tab = "details" | "inventory" | "history" | "calendar";
 export function PropertyDetailPage() {
   const params = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<Tab>("details");
   const [toast, setToast] = useState<string | null>(null);
@@ -75,13 +75,13 @@ export function PropertyDetailPage() {
   }, []);
 
   const property = useQuery(api.queries.properties.get,
-    user ? { propertyId: params.id as Id<"properties">, userId: user._id } : "skip"
+    user ? { propertyId: params.id as Id<"properties">, userId: user._id, sessionToken } : "skip"
   );
   const toggleActive = useMutation(api.mutations.properties.toggleActive);
 
   const history = useQuery(
     api.queries.properties.getHistory,
-    activeTab === "history" && user ? { propertyId: params.id as Id<"properties">, userId: user._id } : "skip"
+    activeTab === "history" && user ? { propertyId: params.id as Id<"properties">, userId: user._id, sessionToken } : "skip"
   );
 
   if (property === undefined) return <PageLoader />;
@@ -105,7 +105,7 @@ export function PropertyDetailPage() {
         onConfirm={async () => {
           setToggling(true);
           try {
-            await toggleActive({ propertyId: property._id, userId: user!._id });
+            await toggleActive({ propertyId: property._id, userId: user!._id, sessionToken });
             setShowArchiveConfirm(false);
           } finally {
             setToggling(false);
@@ -196,6 +196,7 @@ export function PropertyDetailPage() {
         <InventoryTab
           property={property}
           userId={user!._id}
+          sessionToken={sessionToken}
         />
       )}
       {activeTab === "history" && (
@@ -432,9 +433,11 @@ const EMPTY_ITEM: InventoryItem = {
 function InventoryTab({
   property,
   userId,
+  sessionToken,
 }: {
   property: any;
   userId: Id<"users">;
+  sessionToken: string;
 }) {
   const { t } = useTranslation();
   const items: InventoryItem[] = property.inventoryItems ?? [];
@@ -467,7 +470,7 @@ function InventoryTab({
   const handleAdd = async (item: InventoryItem) => {
     setSaving(true);
     try {
-      await addItem({ userId, propertyId: property._id, item });
+      await addItem({ userId, sessionToken, propertyId: property._id, item });
       setShowAddForm(false);
       showToast(t("properties.inventory.itemAdded"));
     } catch (e: any) {
@@ -481,7 +484,7 @@ function InventoryTab({
     if (!removeTarget) return;
     setSaving(true);
     try {
-      await removeItem({ userId, propertyId: property._id, itemName: removeTarget });
+      await removeItem({ userId, sessionToken, propertyId: property._id, itemName: removeTarget });
       setRemoveTarget(null);
       showToast(t("properties.inventory.itemRemoved"));
     } catch (e: any) {
@@ -496,7 +499,7 @@ function InventoryTab({
     try {
       const newItems = [...items];
       newItems[index] = updated;
-      await updateItems({ userId, propertyId: property._id, items: newItems });
+      await updateItems({ userId, sessionToken, propertyId: property._id, items: newItems });
       setEditingIndex(null);
       showToast(t("properties.inventory.inventoryUpdated"));
     } catch (e: any) {

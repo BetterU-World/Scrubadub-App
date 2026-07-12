@@ -5,6 +5,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { Upload, X, AlertCircle, CheckCircle2, XCircle, MinusCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { getStaffSessionToken } from "@/hooks/useAuth";
 import Papa from "papaparse";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -513,6 +514,7 @@ export function ImportPropertiesDialog({
       try {
         const batchResult = await bulkCreate({
           userId,
+          sessionToken: getStaffSessionToken(),
           companyId,
           properties: batch,
         });

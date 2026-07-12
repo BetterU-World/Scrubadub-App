@@ -1,11 +1,22 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { convexTest } from "convex-test";
 import schema from "../../schema";
 import { api, internal } from "../../_generated/api";
+import { hashPassword } from "../password";
 
 const modules = import.meta.glob("../../**/*.ts");
 
+beforeEach(() => {
+  process.env.TOKEN_PEPPER = "test-token-pepper";
+  process.env.STRIPE_SECRET_KEY = "test-stripe-key";
+  process.env.STRIPE_WEBHOOK_ACCOUNT_SECRET = "test-webhook-secret";
+  process.env.RESEND_API_KEY = "test-resend-key";
+  process.env.RESEND_FROM_EMAIL = "test@example.com";
+  process.env.APP_URL = "http://localhost:5173";
+});
+
 async function seedCompany(t: ReturnType<typeof convexTest>, suffix: string) {
+  const passwordHash = await hashPassword("test-password-123");
   return await t.run(async (ctx) => {
     const companyId = await ctx.db.insert("companies", {
       name: `Company ${suffix}`,
@@ -13,7 +24,7 @@ async function seedCompany(t: ReturnType<typeof convexTest>, suffix: string) {
     });
     const ownerId = await ctx.db.insert("users", {
       email: `owner-${suffix}@example.com`,
-      passwordHash: "test",
+      passwordHash,
       name: `Owner ${suffix}`,
       companyId,
       role: "owner",
@@ -79,8 +90,14 @@ async function seedLead(
 }
 
 async function createWalkthrough(t: ReturnType<typeof convexTest>, ownerId: any, leadId: any) {
+  const owner = await t.run((ctx) => ctx.db.get(ownerId));
+  const auth = await t.action(api.authActions.signIn, {
+    email: owner!.email,
+    password: "test-password-123",
+  });
   return await t.mutation(api.mutations.walkthroughs.createFromClientRequest, {
     userId: ownerId,
+    sessionToken: auth.sessionToken,
     clientRequestId: leadId,
     scheduledDate: "2030-01-10",
     scheduledStartTime: "09:00",
@@ -126,8 +143,13 @@ describe("relationship propagation", () => {
     const leadId = await seedLead(t, companyId, "lead-create", { propertyId });
 
     const walkthroughId = await createWalkthrough(t, ownerId, leadId);
+    const auth = await t.action(api.authActions.signIn, {
+      email: "owner-lead-create@example.com",
+      password: "test-password-123",
+    });
     const proposalId = await t.mutation(api.mutations.proposals.createProposalFromLead, {
       userId: ownerId,
+      sessionToken: auth.sessionToken,
       clientRequestId: leadId,
     });
 
@@ -254,8 +276,13 @@ describe("relationship propagation", () => {
       });
     });
 
+    const auth = await t.action(api.authActions.signIn, {
+      email: `owner-maintenance-${linked}@example.com`,
+      password: "test-password-123",
+    });
     const maintenanceJobId = await t.mutation(api.mutations.redFlags.createMaintenanceJob, {
       userId: ownerId,
+      sessionToken: auth.sessionToken,
       flagId,
       scheduledDate: "2030-01-12",
       cleanerIds: [],

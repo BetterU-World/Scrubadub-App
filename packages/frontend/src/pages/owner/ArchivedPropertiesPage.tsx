@@ -11,14 +11,14 @@ import { Archive, MapPin, RotateCcw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 export function ArchivedPropertiesPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const [restoreTarget, setRestoreTarget] = useState<Id<"properties"> | null>(null);
   const [restoring, setRestoring] = useState(false);
 
   const archived = useQuery(
     api.queries.properties.listArchived,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
 
   const toggleActive = useMutation(api.mutations.properties.toggleActive);
@@ -29,7 +29,7 @@ export function ArchivedPropertiesPage() {
     if (!restoreTarget) return;
     setRestoring(true);
     try {
-      await toggleActive({ propertyId: restoreTarget, userId: user._id });
+      await toggleActive({ propertyId: restoreTarget, userId: user._id, sessionToken });
       setRestoreTarget(null);
     } finally {
       setRestoring(false);

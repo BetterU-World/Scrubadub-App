@@ -165,7 +165,7 @@ function getComplianceSummary({
 }
 
 export function WorkerDetailPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const params = useParams<{ id: string }>();
   const [savingOnboarding, setSavingOnboarding] = useState(false);
   const [onboardingError, setOnboardingError] = useState<string | null>(null);
@@ -211,7 +211,7 @@ export function WorkerDetailPage() {
   );
   const teams = useQuery(
     (api as any).queries.teams.list,
-    user?.companyId ? { companyId: user.companyId, userId: user._id, includeArchived: true } : "skip"
+    user?.companyId ? { companyId: user.companyId, userId: user._id, sessionToken, includeArchived: true } : "skip"
   );
 
   if (

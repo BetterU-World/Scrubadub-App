@@ -1,6 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { getSessionUser } from "../lib/auth";
+import { requireOwnerSession } from "../lib/sessionAuth";
 import { ensureClientRelationshipForLead } from "../lib/clientRelationships";
 import { createNotification } from "../lib/helpers";
 import {
@@ -30,8 +30,8 @@ const agreementFields = {
   notes: v.optional(v.string()),
 };
 
-async function requireOwnerCompany(ctx: any, userId: any) {
-  const user = await getSessionUser(ctx, userId);
+async function requireOwnerCompany(ctx: any, sessionToken: string, userId: any) {
+  const user = await requireOwnerSession(ctx, sessionToken, userId);
   if (user.role !== "owner" || !user.companyId) {
     throw new Error("Owner access required");
   }
@@ -142,8 +142,8 @@ function buildAgreementPatch(args: any) {
   };
 }
 
-async function getOwnedAgreement(ctx: any, userId: any, agreementId: any) {
-  const owner = await requireOwnerCompany(ctx, userId);
+async function getOwnedAgreement(ctx: any, sessionToken: string, userId: any, agreementId: any) {
+  const owner = await requireOwnerCompany(ctx, sessionToken, userId);
   const agreement = await ctx.db.get(agreementId);
   if (!agreement) throw new Error("Service agreement not found");
   if (agreement.companyId !== owner.companyId) throw new Error("Access denied");
@@ -199,10 +199,11 @@ async function notifyOwnerOfAgreementResponse(
 export const createDraftFromAcceptedProposal = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     proposalId: v.id("proposals"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerCompany(ctx, args.userId);
+    const owner = await requireOwnerCompany(ctx, args.sessionToken, args.userId);
     const companyId = owner.companyId!;
     const proposal = await ctx.db.get(args.proposalId);
     if (!proposal) throw new Error("Proposal not found");
@@ -342,11 +343,12 @@ export const createDraftFromAcceptedProposal = mutation({
 export const update = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     agreementId: v.id("serviceAgreements"),
     ...agreementFields,
   },
   handler: async (ctx, args) => {
-    const { agreement } = await getOwnedAgreement(ctx, args.userId, args.agreementId);
+    const { agreement } = await getOwnedAgreement(ctx, args.sessionToken, args.userId, args.agreementId);
     if (agreement.status === "signed" || agreement.status === "cancelled") {
       throw new Error("Signed or cancelled agreements cannot be edited");
     }
@@ -359,9 +361,10 @@ export const update = mutation({
 });
 
 export const markReady = mutation({
-  args: { userId: v.id("users"), agreementId: v.id("serviceAgreements") },
+  args: { userId: v.id("users"),
+    sessionToken: v.string(), agreementId: v.id("serviceAgreements") },
   handler: async (ctx, args) => {
-    const { agreement } = await getOwnedAgreement(ctx, args.userId, args.agreementId);
+    const { agreement } = await getOwnedAgreement(ctx, args.sessionToken, args.userId, args.agreementId);
     if (agreement.status === "signed" || agreement.status === "cancelled") {
       throw new Error("Signed or cancelled agreements cannot be marked ready");
     }
@@ -375,9 +378,10 @@ export const markReady = mutation({
 });
 
 export const markSent = mutation({
-  args: { userId: v.id("users"), agreementId: v.id("serviceAgreements") },
+  args: { userId: v.id("users"),
+    sessionToken: v.string(), agreementId: v.id("serviceAgreements") },
   handler: async (ctx, args) => {
-    const { agreement } = await getOwnedAgreement(ctx, args.userId, args.agreementId);
+    const { agreement } = await getOwnedAgreement(ctx, args.sessionToken, args.userId, args.agreementId);
     if (agreement.status === "signed" || agreement.status === "cancelled") {
       throw new Error("Signed or cancelled agreements cannot be marked sent");
     }
@@ -391,9 +395,10 @@ export const markSent = mutation({
 });
 
 export const markSigned = mutation({
-  args: { userId: v.id("users"), agreementId: v.id("serviceAgreements") },
+  args: { userId: v.id("users"),
+    sessionToken: v.string(), agreementId: v.id("serviceAgreements") },
   handler: async (ctx, args) => {
-    const { agreement } = await getOwnedAgreement(ctx, args.userId, args.agreementId);
+    const { agreement } = await getOwnedAgreement(ctx, args.sessionToken, args.userId, args.agreementId);
     if (agreement.status === "cancelled") {
       throw new Error("Cancelled agreements cannot be signed");
     }
@@ -407,9 +412,10 @@ export const markSigned = mutation({
 });
 
 export const markCancelled = mutation({
-  args: { userId: v.id("users"), agreementId: v.id("serviceAgreements") },
+  args: { userId: v.id("users"),
+    sessionToken: v.string(), agreementId: v.id("serviceAgreements") },
   handler: async (ctx, args) => {
-    const { agreement } = await getOwnedAgreement(ctx, args.userId, args.agreementId);
+    const { agreement } = await getOwnedAgreement(ctx, args.sessionToken, args.userId, args.agreementId);
     if (agreement.status === "signed") {
       throw new Error("Signed agreements cannot be cancelled");
     }

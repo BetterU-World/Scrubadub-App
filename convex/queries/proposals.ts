@@ -1,6 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwner } from "../lib/helpers";
+import { requireOwnerSession } from "../lib/sessionAuth";
 
 async function decorateProposal(ctx: any, proposal: any) {
   const relationship = proposal.clientRelationshipId
@@ -28,10 +28,11 @@ async function decorateProposal(ctx: any, proposal: any) {
 export const getProposalByClientRequest = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     clientRequestId: v.id("clientRequests"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     const request = await ctx.db.get(args.clientRequestId);
     if (!request) return null;

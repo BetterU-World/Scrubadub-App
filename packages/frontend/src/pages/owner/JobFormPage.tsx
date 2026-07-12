@@ -20,7 +20,7 @@ const JOB_TYPES = [
 ] as const;
 
 export function JobFormPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const [, setLocation] = useLocation();
   const params = useParams<{ id?: string }>();
@@ -28,7 +28,7 @@ export function JobFormPage() {
 
   const existing = useQuery(
     api.queries.jobs.get,
-    params.id && user ? { jobId: params.id as Id<"jobs">, userId: user._id } : "skip"
+    params.id && user ? { jobId: params.id as Id<"jobs">, userId: user._id, sessionToken } : "skip"
   );
 
   // Detect shared/copied job: has propertySnapshot but no owned propertyId
@@ -39,7 +39,7 @@ export function JobFormPage() {
 
   const properties = useQuery(
     api.queries.properties.list,
-    user?.companyId && !isSharedJob ? { companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId && !isSharedJob ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
   const cleaners = useQuery(
     api.queries.employees.getCleaners,
@@ -56,11 +56,11 @@ export function JobFormPage() {
   );
   const teams = useQuery(
     (api as any).queries.teams.listActiveForAssignment,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
   const companyProfile = useQuery(
     api.queries.companies.getCompanyProfile,
-    user ? { userId: user._id } : "skip"
+    user ? { userId: user._id, sessionToken } : "skip"
   );
 
   const connections = useQuery(
@@ -190,6 +190,7 @@ export function JobFormPage() {
       };
       if (isEditing) {
         await updateJob({
+          sessionToken,
           jobId: params.id as Id<"jobs">,
           userId: uid,
           ...data,
@@ -201,6 +202,7 @@ export function JobFormPage() {
         setLocation(`/jobs/${params.id}`);
       } else {
         const id = await createJob({
+          sessionToken,
           companyId: user!.companyId,
           userId: uid,
           propertyId: propertyId as Id<"properties">,

@@ -1,6 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { assertOwnerRole } from "../lib/auth";
+import { requireOwnerSession } from "../lib/sessionAuth";
 
 /**
  * Update company-level profile defaults.
@@ -9,13 +9,14 @@ import { assertOwnerRole } from "../lib/auth";
 export const updateCompanyProfile = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     companyDisplayName: v.optional(v.string()),
     contactEmail: v.optional(v.string()),
     contactPhone: v.optional(v.string()),
     serviceAreaText: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await assertOwnerRole(ctx, args.userId);
+    const user = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const company = await ctx.db.get(user.companyId);
     if (!company) throw new Error("Company not found");
 
@@ -54,6 +55,7 @@ function cleanColor(value: string | undefined) {
 export const upsertCompanySettings = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     logoUrl: v.optional(v.string()),
     companyName: v.optional(v.string()),
     phone: v.optional(v.string()),
@@ -73,7 +75,7 @@ export const upsertCompanySettings = mutation({
     defaultCurrency: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await assertOwnerRole(ctx, args.userId);
+    const user = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const now = Date.now();
     const patch = {
       logoUrl: cleanOptional(args.logoUrl, 1000),
@@ -125,10 +127,11 @@ export const upsertCompanySettings = mutation({
 export const setDefaultManager = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     managerId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    const user = await assertOwnerRole(ctx, args.userId);
+    const user = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const company = await ctx.db.get(user.companyId);
     if (!company) throw new Error("Company not found");
 

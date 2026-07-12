@@ -163,7 +163,7 @@ function buildTimeline(detail: any, t: any) {
 }
 
 export function ClientRelationshipDetailPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const params = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
@@ -180,7 +180,7 @@ export function ClientRelationshipDetailPage() {
   const detail = useQuery(
     (api as any).queries.clientRelationships.getClientRelationshipDetail,
     user && params.id
-      ? { userId: user._id, relationshipId: params.id as Id<"clientRelationships"> }
+      ? { userId: user._id, sessionToken, relationshipId: params.id as Id<"clientRelationships"> }
       : "skip"
   );
   const updateRelationship = useMutation((api as any).mutations.clientRelationships.update);
@@ -227,6 +227,7 @@ export function ClientRelationshipDetailPage() {
     try {
       await updateRelationship({
         userId: user._id,
+        sessionToken,
         relationshipId: relationship._id,
         displayName: form.displayName,
         clientType: form.clientType,

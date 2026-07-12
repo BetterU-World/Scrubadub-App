@@ -1,6 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { getSessionUser } from "../lib/auth";
+import { requireOwnerSession } from "../lib/sessionAuth";
 import { FALLBACK_SERVICE_AGREEMENT_TEMPLATE } from "../lib/documentMergeFields";
 
 const documentTypeValidator = v.union(
@@ -18,8 +18,8 @@ const templateSourceValidator = v.union(
   v.literal("uploaded_pdf")
 );
 
-async function requireOwnerCompany(ctx: any, userId: any) {
-  const user = await getSessionUser(ctx, userId);
+async function requireOwnerCompany(ctx: any, sessionToken: string, userId: any) {
+  const user = await requireOwnerSession(ctx, sessionToken, userId);
   if (user.role !== "owner" || !user.companyId) {
     throw new Error("Owner access required");
   }
@@ -53,6 +53,7 @@ async function clearDefaultTemplates(ctx: any, companyId: any, type: string, kee
 export const create = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     type: documentTypeValidator,
     name: v.string(),
     body: v.string(),
@@ -60,7 +61,7 @@ export const create = mutation({
     source: v.optional(templateSourceValidator),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerCompany(ctx, args.userId);
+    const owner = await requireOwnerCompany(ctx, args.sessionToken, args.userId);
     const now = Date.now();
 
     if (args.isDefault) {
@@ -87,6 +88,7 @@ export const create = mutation({
 export const update = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     templateId: v.id("documentTemplates"),
     name: v.string(),
     body: v.string(),
@@ -94,7 +96,7 @@ export const update = mutation({
     source: v.optional(templateSourceValidator),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerCompany(ctx, args.userId);
+    const owner = await requireOwnerCompany(ctx, args.sessionToken, args.userId);
     const template = await (ctx.db as any).get(args.templateId);
     if (!template) throw new Error("Document template not found");
     if (template.companyId !== owner.companyId) throw new Error("Access denied");
@@ -118,10 +120,11 @@ export const update = mutation({
 export const setDefault = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     templateId: v.id("documentTemplates"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerCompany(ctx, args.userId);
+    const owner = await requireOwnerCompany(ctx, args.sessionToken, args.userId);
     const template = await (ctx.db as any).get(args.templateId);
     if (!template) throw new Error("Document template not found");
     if (template.companyId !== owner.companyId) throw new Error("Access denied");
@@ -138,10 +141,11 @@ export const setDefault = mutation({
 export const restoreScrubDefault = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     type: documentTypeValidator,
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerCompany(ctx, args.userId);
+    const owner = await requireOwnerCompany(ctx, args.sessionToken, args.userId);
     if (args.type !== "service_agreement") {
       throw new Error("SCRUB defaults are only available for service agreements in V1");
     }
