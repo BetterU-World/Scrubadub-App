@@ -198,6 +198,7 @@ export const createMaintenanceJob = mutation({
 
     const jobId = await ctx.db.insert("jobs", {
       companyId: flag.companyId,
+      clientRelationshipId: property?.clientRelationshipId,
       propertyId: flag.propertyId,
       cleanerIds: args.cleanerIds,
       type: "maintenance",

@@ -163,6 +163,7 @@ async function maybeCreateJobForReservation(
 
   const jobId = await ctx.db.insert("jobs", {
     companyId: reservation.companyId,
+    clientRelationshipId: property?.clientRelationshipId,
     propertyId: reservation.propertyId,
     cleanerIds: [],
     type: jobType,
