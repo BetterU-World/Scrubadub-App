@@ -189,7 +189,7 @@ export function WorkerDetailPage() {
 
   const employees = useQuery(
     api.queries.employees.list,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId && sessionToken ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
   const workerProfile = useQuery(
     (api as any).queries.workers.getWorkerProfileForUser,
@@ -205,8 +205,8 @@ export function WorkerDetailPage() {
   );
   const performanceSummary = useQuery(
     (api as any).queries.performance.getWorkerSummary,
-    user?.companyId && params.id
-      ? { companyId: user.companyId, userId: user._id, workerUserId: params.id as Id<"users"> }
+    user?.companyId && params.id && sessionToken
+      ? { companyId: user.companyId, userId: user._id, sessionToken, workerUserId: params.id as Id<"users"> }
       : "skip"
   );
   const teams = useQuery(

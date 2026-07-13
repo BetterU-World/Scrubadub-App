@@ -1,6 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { assertCompanyAccess } from "../lib/auth";
+import { requireStaffCompany } from "../lib/sessionAuth";
 import { withPerfLog } from "../lib/perfLog";
 import { getActiveTeamIdsForUser } from "../lib/teams";
 
@@ -25,9 +25,10 @@ export const getCleanerStats = query({
     cleanerId: v.id("users"),
     companyId: v.id("companies"),
     userId: v.id("users"),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    await assertCompanyAccess(ctx, args.userId, args.companyId);
+    await requireStaffCompany(ctx, args.sessionToken, args.companyId, args.userId);
 
     // Verify the cleaner belongs to the same company
     const cleaner = await ctx.db.get(args.cleanerId);
@@ -123,10 +124,11 @@ export const getLeaderboard = query({
   args: {
     companyId: v.id("companies"),
     userId: v.id("users"),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
     return await withPerfLog(ctx, "performance:leaderboard", async () => {
-    await assertCompanyAccess(ctx, args.userId, args.companyId);
+    await requireStaffCompany(ctx, args.sessionToken, args.companyId, args.userId);
 
     const allUsers = await ctx.db
       .query("users")
@@ -239,10 +241,11 @@ export const getWorkerSummary = query({
     workerUserId: v.id("users"),
     companyId: v.id("companies"),
     userId: v.id("users"),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
     return await withPerfLog(ctx, "performance:workerSummary", async () => {
-      await assertCompanyAccess(ctx, args.userId, args.companyId);
+      await requireStaffCompany(ctx, args.sessionToken, args.companyId, args.userId);
 
       const worker = await ctx.db.get(args.workerUserId);
       if (!worker || worker.companyId !== args.companyId) {

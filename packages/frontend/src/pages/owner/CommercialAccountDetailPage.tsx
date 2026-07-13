@@ -117,11 +117,11 @@ export function CommercialAccountDetailPage() {
   );
   const managers = useQuery(
     api.queries.employees.getManagers,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId && sessionToken ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
   const cleaners = useQuery(
     api.queries.employees.getCleaners,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId && sessionToken ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
   const teams = useQuery(
     api.queries.teams.listActiveForAssignment,

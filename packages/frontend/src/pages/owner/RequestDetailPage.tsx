@@ -47,8 +47,8 @@ export function RequestDetailPage() {
 
   const request = useQuery(
     api.queries.clientRequests.getRequestById,
-    params.id && user
-      ? { id: params.id as Id<"clientRequests">, userId: user._id }
+    params.id && user && sessionToken
+      ? { id: params.id as Id<"clientRequests">, userId: user._id, sessionToken }
       : "skip"
   );
 
@@ -103,7 +103,7 @@ export function RequestDetailPage() {
 
   const proposal = useQuery(
     (api as any).queries.proposals.getProposalByClientRequest,
-    params.id && user
+    params.id && user && sessionToken
       ? {
           userId: user._id,
           sessionToken,
@@ -135,14 +135,14 @@ export function RequestDetailPage() {
   );
   const managers = useQuery(
     api.queries.employees.getManagers,
-    proposal?.status === "accepted" && user?.companyId
-      ? { companyId: user.companyId, userId: user._id }
+    proposal?.status === "accepted" && user?.companyId && sessionToken
+      ? { companyId: user.companyId, userId: user._id, sessionToken }
       : "skip"
   );
   const cleaners = useQuery(
     api.queries.employees.getCleaners,
-    proposal?.status === "accepted" && user?.companyId
-      ? { companyId: user.companyId, userId: user._id }
+    proposal?.status === "accepted" && user?.companyId && sessionToken
+      ? { companyId: user.companyId, userId: user._id, sessionToken }
       : "skip"
   );
   const teams = useQuery(
@@ -154,9 +154,10 @@ export function RequestDetailPage() {
 
   const latestFeedback = useQuery(
     api.queries.clientRequests.getLatestFeedbackForRequest,
-    params.id && user
+    params.id && user && sessionToken
       ? {
           userId: user._id,
+          sessionToken,
           clientRequestId: params.id as Id<"clientRequests">,
         }
       : "skip"
@@ -350,6 +351,7 @@ export function RequestDetailPage() {
       await updateStatus({
         requestId: request._id,
         userId: user!._id,
+        sessionToken,
         status: "contacted",
       });
       setToast({ message: t("requests.markedAsContacted"), type: "success" });
@@ -368,6 +370,7 @@ export function RequestDetailPage() {
       await archiveRequest({
         requestId: request._id,
         userId: user!._id,
+        sessionToken,
       });
       setToast({ message: t("requests.requestArchived"), type: "success" });
       setTimeout(() => setToast(null), 3000);
@@ -403,7 +406,7 @@ export function RequestDetailPage() {
   const handleCreateProperty = async () => {
     setCreatingProperty(true);
     try {
-      await createProperty({ requestId: request._id, userId: user!._id });
+      await createProperty({ requestId: request._id, userId: user!._id, sessionToken });
       setToast({ message: t("requests.propertyCreated"), type: "success" });
       setTimeout(() => setToast(null), 3000);
     } catch (err: any) {
@@ -419,6 +422,7 @@ export function RequestDetailPage() {
     try {
       const result = await generatePortalLink({
         userId: user!._id,
+        sessionToken,
         clientRequestId: request._id,
       });
       const h = window.location.hostname;
@@ -646,6 +650,7 @@ export function RequestDetailPage() {
       await updateStatus({
         requestId: request._id,
         userId: user!._id,
+        sessionToken,
         status: "declined",
       });
       setShowDecline(false);
@@ -1559,6 +1564,7 @@ export function RequestDetailPage() {
                         const stageLabel = t(`requests.leadStages.${stage}`);
                         await updateLeadStage({
                           userId: user!._id,
+                          sessionToken,
                           requestId: request._id,
                           leadStage: stage,
                         });
@@ -1703,6 +1709,7 @@ export function RequestDetailPage() {
                 }
                 await updateLeadDetailsMut({
                   userId: user!._id,
+                  sessionToken,
                   requestId: request._id,
                   leadType: leadTypeVal as any,
                   businessName: businessNameVal,
@@ -1749,6 +1756,7 @@ export function RequestDetailPage() {
                 try {
                   await updateLeadNotesMut({
                     userId: user!._id,
+                    sessionToken,
                     requestId: request._id,
                     leadNotes: leadNotesVal,
                   });
@@ -1794,6 +1802,7 @@ export function RequestDetailPage() {
                     : undefined;
                   await updateNextFollowUpMut({
                     userId: user!._id,
+                    sessionToken,
                     requestId: request._id,
                     nextFollowUpAt: ts,
                   });
@@ -1822,6 +1831,7 @@ export function RequestDetailPage() {
                   try {
                     await updateNextFollowUpMut({
                       userId: user!._id,
+                      sessionToken,
                       requestId: request._id,
                       nextFollowUpAt: undefined,
                     });

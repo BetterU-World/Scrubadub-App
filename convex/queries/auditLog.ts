@@ -1,18 +1,19 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { assertCompanyAccess } from "../lib/auth";
+import { requireOwnerSession } from "../lib/sessionAuth";
 import { withPerfLog } from "../lib/perfLog";
 
 export const list = query({
   args: {
     companyId: v.id("companies"),
     userId: v.id("users"),
+    sessionToken: v.string(),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     return await withPerfLog(ctx, "auditLog:list", async () => {
-      const user = await assertCompanyAccess(ctx, args.userId, args.companyId);
-      if (user.role !== "owner") throw new Error("Owner access required");
+      const user = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+      if (user.companyId !== args.companyId) throw new Error("Access denied");
 
       const logs = await ctx.db
         .query("auditLog")

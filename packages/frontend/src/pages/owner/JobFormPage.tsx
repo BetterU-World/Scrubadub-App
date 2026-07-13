@@ -43,16 +43,16 @@ export function JobFormPage() {
   );
   const cleaners = useQuery(
     api.queries.employees.getCleaners,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId && sessionToken ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
   const maintenanceWorkers = useQuery(
     api.queries.employees.getMaintenanceWorkers,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId && sessionToken ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
 
   const managers = useQuery(
     api.queries.employees.getManagers,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId && sessionToken ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
   const teams = useQuery(
     (api as any).queries.teams.listActiveForAssignment,
@@ -224,6 +224,7 @@ export function JobFormPage() {
           await updateRequestStatus({
             requestId: sourceRequestId as Id<"clientRequests">,
             userId: uid,
+            sessionToken,
             status: "converted",
           }).catch(() => {
             // non-blocking — job was created successfully

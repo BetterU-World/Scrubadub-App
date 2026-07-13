@@ -25,7 +25,7 @@ import { useTranslation } from "react-i18next";
 const LS_MANUAL_READ = "scrubadub_onboarding_manual_read";
 
 export function DashboardPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const stats = useQuery(
     api.queries.dashboard.getStats,
@@ -36,8 +36,8 @@ export function DashboardPage() {
   const [showSuccess, setShowSuccess] = useState(shouldShowSuccessModal);
   const mySite = useQuery(
     api.queries.companySites.getMySite,
-    user?.companyId && user?.role === "owner" && showSuccess
-      ? { companyId: user.companyId, userId: user._id }
+    user?.companyId && user?.role === "owner" && showSuccess && sessionToken
+      ? { companyId: user.companyId, userId: user._id, sessionToken }
       : "skip"
   );
 

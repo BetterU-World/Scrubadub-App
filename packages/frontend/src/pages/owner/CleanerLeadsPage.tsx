@@ -33,7 +33,7 @@ const STATUS_OPTIONS = [
 ];
 
 export function CleanerLeadsPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const timeAgo = useTimeAgo();
   const [statusFilter, setStatusFilter] = useState("");
@@ -41,9 +41,10 @@ export function CleanerLeadsPage() {
 
   const leads = useQuery(
     api.queries.cleanerLeads.getCompanyCleanerLeads,
-    user?._id
+    user?._id && sessionToken
       ? {
           userId: user._id,
+          sessionToken,
           status: (statusFilter as any) || undefined,
         }
       : "skip"
@@ -51,8 +52,8 @@ export function CleanerLeadsPage() {
 
   const selectedLead = useQuery(
     api.queries.cleanerLeads.getCleanerLeadById,
-    selectedId && user?._id
-      ? { id: selectedId, userId: user._id }
+    selectedId && user?._id && sessionToken
+      ? { id: selectedId, userId: user._id, sessionToken }
       : "skip"
   );
 
@@ -144,7 +145,7 @@ export function CleanerLeadsPage() {
   ) => {
     setUpdating(true);
     try {
-      await updateStatus({ leadId, userId: user._id, status });
+      await updateStatus({ leadId, userId: user._id, sessionToken, status });
       setToast({ message: t("cleanerLeads.markedAs", { status }), type: "success" });
       setTimeout(() => setToast(null), 3000);
     } catch (err: any) {

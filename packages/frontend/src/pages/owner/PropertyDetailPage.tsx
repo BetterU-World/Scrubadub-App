@@ -451,7 +451,7 @@ function InventoryTab({
   // Templates query
   const templates = useQuery(
     api.queries.inventoryTemplates.list,
-    { companyId: property.companyId, userId }
+    { companyId: property.companyId, userId, sessionToken }
   );
 
   // UI state
@@ -515,6 +515,7 @@ function InventoryTab({
     try {
       await applyTemplate({
         userId,
+        sessionToken,
         templateId: templateConfirm as Id<"inventoryTemplates">,
         propertyId: property._id,
       });

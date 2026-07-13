@@ -12,7 +12,7 @@ import { useTranslation } from "react-i18next";
 import { useTimeAgo } from "@/hooks/useTimeAgo";
 
 export function RequestListPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const timeAgo = useTimeAgo();
   const [statusFilter, setStatusFilter] = useState("");
@@ -46,10 +46,11 @@ export function RequestListPage() {
 
   const requests = useQuery(
     api.queries.clientRequests.getCompanyRequests,
-    user?.companyId
+    user?.companyId && sessionToken
       ? {
           companyId: user.companyId,
           userId: user._id,
+          sessionToken,
           status: (statusFilter as any) || undefined,
         }
       : "skip"
@@ -64,6 +65,7 @@ export function RequestListPage() {
     try {
       await createManualLead({
         userId: user._id,
+        sessionToken,
         requesterName: newLead.requesterName,
         requesterEmail: newLead.requesterEmail,
         requesterPhone: newLead.requesterPhone || undefined,

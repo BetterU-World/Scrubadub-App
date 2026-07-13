@@ -1,6 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwner } from "../lib/helpers";
+import { requireOwnerSession } from "../lib/sessionAuth";
 import { checkRateLimit } from "../lib/rateLimit";
 
 /**
@@ -67,6 +67,7 @@ export const updateCleanerLeadStatus = mutation({
   args: {
     leadId: v.id("cleanerLeads"),
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     status: v.union(
       v.literal("reviewed"),
       v.literal("contacted"),
@@ -74,7 +75,7 @@ export const updateCleanerLeadStatus = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     const lead = await ctx.db.get(args.leadId);
     if (!lead) {

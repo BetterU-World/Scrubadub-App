@@ -1,6 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { assertCompanyAccess } from "../lib/auth";
+import { requireStaffCompany } from "../lib/sessionAuth";
 
 /**
  * List reservations for a property, most recent first.
@@ -11,9 +11,12 @@ export const listByProperty = query({
     userId: v.id("users"),
     companyId: v.id("companies"),
     propertyId: v.id("properties"),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    await assertCompanyAccess(ctx, args.userId, args.companyId);
+    await requireStaffCompany(ctx, args.sessionToken, args.companyId, args.userId);
+    const property = await ctx.db.get(args.propertyId);
+    if (!property || property.companyId !== args.companyId) throw new Error("Access denied");
 
     const reservations = await ctx.db
       .query("calendarReservations")

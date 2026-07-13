@@ -36,7 +36,7 @@ function StarRating({ rating }: { rating: number }) {
 }
 
 export function FeedbackInboxPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const timeAgo = useTimeAgo();
   const [statusFilter, setStatusFilter] = useState("");
@@ -49,9 +49,10 @@ export function FeedbackInboxPage() {
 
   const feedback = useQuery(
     api.queries.clientRequests.listClientFeedback,
-    user?._id
+    user?._id && sessionToken
       ? {
           userId: user._id,
+          sessionToken,
           status: (statusFilter as "new" | "reviewed") || undefined,
         }
       : "skip"
@@ -76,7 +77,7 @@ export function FeedbackInboxPage() {
   const handleToggleFeatured = async (feedbackId: Id<"clientFeedback">, currentlyFeatured: boolean) => {
     setTogglingFeatured(feedbackId);
     try {
-      await toggleFeatured({ userId: user._id, feedbackId, featured: !currentlyFeatured });
+      await toggleFeatured({ userId: user._id, sessionToken, feedbackId, featured: !currentlyFeatured });
       setToast({ message: currentlyFeatured ? t("feedback.removedFromSite") : t("feedback.featuredOnSite"), type: "success" });
       setTimeout(() => setToast(null), 3000);
     } catch (err: any) {
@@ -90,7 +91,7 @@ export function FeedbackInboxPage() {
   const handleMarkReviewed = async (feedbackId: Id<"clientFeedback">) => {
     setUpdating(feedbackId);
     try {
-      await markReviewed({ userId: user._id, feedbackId });
+      await markReviewed({ userId: user._id, sessionToken, feedbackId });
       setToast({ message: t("feedback.markedAsReviewed"), type: "success" });
       setTimeout(() => setToast(null), 3000);
     } catch (err: any) {

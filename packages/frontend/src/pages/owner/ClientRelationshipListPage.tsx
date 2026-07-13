@@ -221,7 +221,7 @@ export function ClientRelationshipListPage() {
         </div>
       )}
 
-      <RelationshipDiagnostics userId={user._id} />
+      <RelationshipDiagnostics userId={user._id} sessionToken={sessionToken} />
 
       {toast && (
         <div className={`fixed right-4 top-4 z-50 rounded-lg px-4 py-3 text-sm font-medium text-white shadow-lg ${toast.type === "success" ? "bg-green-600" : "bg-red-600"}`}>

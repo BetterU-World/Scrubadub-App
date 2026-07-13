@@ -40,7 +40,7 @@ import {
 
 export function JobDetailPage() {
   const params = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const job = useQuery(api.queries.jobs.get,
     user ? { jobId: params.id as Id<"jobs">, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
@@ -58,7 +58,7 @@ export function JobDetailPage() {
 
   const cleaners = useQuery(
     api.queries.employees.getCleaners,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId && sessionToken ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
   const cleanerAvailability = useQuery(
     api.queries.availability.listCleanersWithAvailability,

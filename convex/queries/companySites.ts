@@ -1,6 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwner } from "../lib/helpers";
+import { requireOwnerSession } from "../lib/sessionAuth";
 
 /**
  * Public query – load a mini-site by its slug.
@@ -46,9 +46,10 @@ export const getMySite = query({
   args: {
     companyId: v.id("companies"),
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await requireOwner(ctx, args.userId);
+    const user = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     if (user.companyId !== args.companyId) {
       throw new Error("Access denied");
     }
