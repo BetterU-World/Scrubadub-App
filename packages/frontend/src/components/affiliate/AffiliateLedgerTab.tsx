@@ -268,7 +268,7 @@ function downloadCsv(content: string, filename: string) {
 /* ── Wrapper (auth gate) ──────────────────────────────────────────── */
 
 export function AffiliateLedgerTab() {
-  const { userId, isLoading, user } = useAuth();
+  const { userId, sessionToken, isLoading, user } = useAuth();
 
   if (isLoading) {
     return (
@@ -279,7 +279,7 @@ export function AffiliateLedgerTab() {
     );
   }
 
-  if (!userId) {
+  if (!userId || !sessionToken) {
     return (
       <p className="text-sm text-gray-500 py-4">
         Please sign in to view ledger data.
@@ -290,6 +290,7 @@ export function AffiliateLedgerTab() {
   return (
     <AffiliateLedgerInner
       userId={userId}
+      sessionToken={sessionToken}
       isSuperAdmin={user?.isSuperadmin ?? false}
     />
   );
@@ -1369,9 +1370,11 @@ type ModalTarget = {
 
 function AffiliateLedgerInner({
   userId,
+  sessionToken,
   isSuperAdmin,
 }: {
   userId: Id<"users">;
+  sessionToken: string;
   isSuperAdmin: boolean;
 }) {
   const monthOptions = useMemo(() => buildMonthOptions(12), []);
@@ -1387,21 +1390,21 @@ function AffiliateLedgerInner({
   // Ledger query: own vs admin view-as
   const myLedger = useQuery(
     api.queries.affiliateLedger.getMyLedger,
-    isViewingOther
+    isViewingOther || !sessionToken
       ? "skip"
       : {
           userId,
-          sessionToken: getStaffSessionToken(),
+          sessionToken,
           status: (statusFilter || undefined) as any,
         }
   );
 
   const adminLedger = useQuery(
     api.queries.adminAffiliates.getLedgerForReferrer,
-    isViewingOther
+    isViewingOther && sessionToken
       ? {
           userId,
-          sessionToken: getStaffSessionToken(),
+          sessionToken,
           referrerUserId: viewAsReferrer!,
           status: (statusFilter || undefined) as any,
         }
@@ -1413,8 +1416,8 @@ function AffiliateLedgerInner({
   // Batches for view-as mode
   const referrerBatches = useQuery(
     api.queries.adminAffiliates.listPayoutBatchesForReferrer,
-    isViewingOther
-      ? { userId, sessionToken: getStaffSessionToken(), referrerUserId: viewAsReferrer!, limit: 10 }
+    isViewingOther && sessionToken
+      ? { userId, sessionToken, referrerUserId: viewAsReferrer!, limit: 10 }
       : "skip"
   );
 
@@ -1529,7 +1532,7 @@ function AffiliateLedgerInner({
   async function handleRefresh(periodStart: string, label: string) {
     setRefreshing(label);
     try {
-      await upsertForPeriod({ userId, sessionToken: getStaffSessionToken(), periodStart });
+      await upsertForPeriod({ userId, sessionToken, periodStart });
     } catch (err) {
       console.error("Failed to refresh ledger:", err);
     } finally {
@@ -1557,21 +1560,21 @@ function AffiliateLedgerInner({
       if (modalTarget.action === "lock") {
         await lockPeriod({
           userId,
-          sessionToken: getStaffSessionToken(),
+          sessionToken,
           ledgerId: modalTarget.id,
           notes: trimmedNotes,
         });
       } else if (modalTarget.action === "markPaid") {
         await markPaid({
           userId,
-          sessionToken: getStaffSessionToken(),
+          sessionToken,
           ledgerId: modalTarget.id,
           notes: trimmedNotes,
         });
       } else if (modalTarget.action === "undoPaid") {
         await undoPaid({
           userId,
-          sessionToken: getStaffSessionToken(),
+          sessionToken,
           ledgerId: modalTarget.id,
           notes: trimmedNotes,
         });
@@ -1620,7 +1623,7 @@ function AffiliateLedgerInner({
     try {
       await createBatch({
         userId,
-        sessionToken: getStaffSessionToken(),
+        sessionToken,
         ledgerIds: [...selectedIds],
         method,
         notes: notes.trim() || undefined,
@@ -1642,7 +1645,7 @@ function AffiliateLedgerInner({
     try {
       await voidBatch({
         userId,
-        sessionToken: getStaffSessionToken(),
+        sessionToken,
         batchId,
         notes: notes.trim() || undefined,
       });
@@ -1661,7 +1664,7 @@ function AffiliateLedgerInner({
     try {
       const result = await createPayoutRequest({
         userId,
-        sessionToken: getStaffSessionToken(),
+        sessionToken,
         ledgerIds: ledgerIds as Id<"affiliateLedger">[],
         notes: notes.trim() || undefined,
       });

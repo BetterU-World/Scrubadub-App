@@ -2,7 +2,7 @@ import { mutation, MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
 import { isSuperAdminEmail } from "../lib/auth";
-import { requireAffiliateSession, requireSuperadminSession } from "../lib/sessionAuth";
+import { requireSuperadminSession, requireVerifiedStaffSession } from "../lib/sessionAuth";
 
 const AFFILIATE_RATE = 0.10;
 
@@ -118,7 +118,7 @@ async function upsertLedgerForPeriod(
 
 /**
  * Upsert ledger for an arbitrary period (by periodStart string).
- * Any authenticated user can refresh their own ledger.
+ * Any verified staff user can refresh their own ledger.
  */
 export const upsertMyLedgerForPeriod = mutation({
   args: {
@@ -130,7 +130,7 @@ export const upsertMyLedgerForPeriod = mutation({
     periodStart: v.string(), // "YYYY-MM-DD"
   },
   handler: async (ctx, args) => {
-    const user = await requireAffiliateSession(ctx, args.sessionToken, args.userId);
+    const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
     const periodType = args.periodType ?? "monthly";
     const periodStartMs = parsePeriodStart(args.periodStart);
     return upsertLedgerForPeriod(ctx, user._id, periodType, periodStartMs);
@@ -150,7 +150,7 @@ export const upsertMyCurrentPeriodLedger = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const user = await requireAffiliateSession(ctx, args.sessionToken, args.userId);
+    const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
     const periodType = args.periodType ?? "monthly";
     return upsertLedgerForPeriod(ctx, user._id, periodType, Date.now());
   },
@@ -167,7 +167,7 @@ export const lockLedgerPeriod = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await requireAffiliateSession(ctx, args.sessionToken, args.userId);
+    const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
 
     const entry = await ctx.db.get(args.ledgerId);
     if (!entry) throw new Error("Ledger entry not found");

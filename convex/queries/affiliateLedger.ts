@@ -1,6 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireAffiliateSession } from "../lib/sessionAuth";
+import { requireVerifiedStaffSession } from "../lib/sessionAuth";
 
 export const getMyLedger = query({
   args: {
@@ -16,7 +16,10 @@ export const getMyLedger = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const user = await requireAffiliateSession(ctx, args.sessionToken, args.userId);
+    // The referral ledger is self-scoped and is available to any verified
+    // staff principal participating in the referral program. The claimed ID
+    // is a mismatch guard only; it never selects the caller.
+    const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
     const limit = args.limit ?? 50;
 
     let entries = await ctx.db
