@@ -1,20 +1,22 @@
 import { mutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
-import { requireOwner, logAudit, createNotification } from "../lib/helpers";
+import { logAudit, createNotification } from "../lib/helpers";
 import { requireActiveSubscription } from "../lib/subscriptionGating";
+import { requireOwnerSession } from "../lib/sessionAuth";
 
 // ── Partner Contacts ──────────────────────────────────────────────
 
 export const addContact = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     name: v.string(),
     email: v.string(),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     await requireActiveSubscription(ctx, owner.companyId);
 
     const id = await ctx.db.insert("partnerContacts", {
@@ -40,10 +42,11 @@ export const addContact = mutation({
 export const removeContact = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     contactId: v.id("partnerContacts"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const contact = await ctx.db.get(args.contactId);
     if (!contact) throw new Error("Contact not found");
     if (contact.companyId !== owner.companyId) throw new Error("Not your contact");
@@ -70,10 +73,11 @@ function connStatus(c: { status?: string }): string {
 export const connectByEmail = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     email: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     await requireActiveSubscription(ctx, owner.companyId);
 
     const normalizedEmail = args.email.toLowerCase().trim();
@@ -169,10 +173,11 @@ export const connectByEmail = mutation({
 export const acceptConnection = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     connectionId: v.id("ownerConnections"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const conn = await ctx.db.get(args.connectionId);
     if (!conn) throw new Error("Connection not found");
     if (connStatus(conn) !== "pending") throw new Error("Connection is not pending");
@@ -246,10 +251,11 @@ export const acceptConnection = mutation({
 export const declineConnection = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     connectionId: v.id("ownerConnections"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const conn = await ctx.db.get(args.connectionId);
     if (!conn) throw new Error("Connection not found");
     if (connStatus(conn) !== "pending") throw new Error("Connection is not pending");
@@ -273,10 +279,11 @@ export const declineConnection = mutation({
 export const disconnectConnection = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     connectionId: v.id("ownerConnections"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const conn = await ctx.db.get(args.connectionId);
     if (!conn) throw new Error("Connection not found");
     if (connStatus(conn) !== "active") throw new Error("Connection is not active");
@@ -305,10 +312,11 @@ export const disconnectConnection = mutation({
 export const acceptSharedJob = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     sharedJobId: v.id("sharedJobs"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const shared = await ctx.db.get(args.sharedJobId);
     if (!shared) throw new Error("Shared job not found");
     if (shared.toCompanyId !== owner.companyId) throw new Error("Not authorized");
@@ -350,10 +358,11 @@ export const acceptSharedJob = mutation({
 export const rejectSharedJob = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     sharedJobId: v.id("sharedJobs"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const shared = await ctx.db.get(args.sharedJobId);
     if (!shared) throw new Error("Shared job not found");
     if (shared.toCompanyId !== owner.companyId) throw new Error("Not authorized");
@@ -400,12 +409,13 @@ export const rejectSharedJob = mutation({
 export const shareJob = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     jobId: v.id("jobs"),
     toCompanyId: v.id("companies"),
     sharePackage: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     await requireActiveSubscription(ctx, owner.companyId);
 
     const job = await ctx.db.get(args.jobId);

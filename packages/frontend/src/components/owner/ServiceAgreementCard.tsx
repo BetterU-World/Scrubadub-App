@@ -290,7 +290,9 @@ export function ServiceAgreementCard({
     setActionLoading(action);
     try {
       if (action === "ready") await markReady({ userId: user._id, sessionToken, agreementId: agreement._id });
-      if (action === "sent") await sendAgreement({ userId: user._id, agreementId: agreement._id });
+      if (action === "sent") {
+        await sendAgreement({ userId: user._id, sessionToken, agreementId: agreement._id });
+      }
       if (action === "signed") await markSigned({ userId: user._id, sessionToken, agreementId: agreement._id });
       if (action === "cancelled") {
         await markCancelled({ userId: user._id, sessionToken, agreementId: agreement._id });

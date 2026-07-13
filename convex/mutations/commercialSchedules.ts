@@ -1,6 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { getSessionUser } from "../lib/auth";
+import { requireVerifiedStaffSession } from "../lib/sessionAuth";
 
 const frequencyValidator = v.union(
   v.literal("daily"),
@@ -26,8 +26,8 @@ const scheduleFields = {
   notes: v.optional(v.string()),
 };
 
-async function requireCompanyUser(ctx: any, userId: any) {
-  const user = await getSessionUser(ctx, userId);
+async function requireCompanyUser(ctx: any, sessionToken: string, userId: any) {
+  const user = await requireVerifiedStaffSession(ctx, sessionToken, userId);
   if (!user.companyId) throw new Error("Company access required");
   return user;
 }
@@ -115,8 +115,8 @@ async function buildSchedulePatch(ctx: any, companyId: any, args: any) {
   };
 }
 
-async function getOwnedSchedule(ctx: any, userId: any, scheduleId: any) {
-  const user = await requireCompanyUser(ctx, userId);
+async function getOwnedSchedule(ctx: any, sessionToken: string, userId: any, scheduleId: any) {
+  const user = await requireCompanyUser(ctx, sessionToken, userId);
   const schedule = (await ctx.db.get(scheduleId)) as any;
   if (!schedule) throw new Error("Commercial schedule not found");
   if (schedule.companyId !== user.companyId) throw new Error("Access denied");
@@ -229,11 +229,12 @@ function durationFromTimes(startTime: string | undefined, dueTime: string | unde
 export const create = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     commercialAccountId: v.id("commercialAccounts"),
     ...scheduleFields,
   },
   handler: async (ctx, args) => {
-    const user = await requireCompanyUser(ctx, args.userId);
+    const user = await requireCompanyUser(ctx, args.sessionToken, args.userId);
     const account = await ctx.db.get(args.commercialAccountId);
     if (!account) throw new Error("Commercial account not found");
     if (account.companyId !== user.companyId) throw new Error("Access denied");
@@ -253,11 +254,12 @@ export const create = mutation({
 export const update = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     scheduleId: v.id("commercialSchedules"),
     ...scheduleFields,
   },
   handler: async (ctx, args) => {
-    const { schedule } = await getOwnedSchedule(ctx, args.userId, args.scheduleId);
+    const { schedule } = await getOwnedSchedule(ctx, args.sessionToken, args.userId, args.scheduleId);
     await ctx.db.patch(args.scheduleId, {
       ...(await buildSchedulePatch(ctx, schedule.companyId, args)),
       updatedAt: Date.now(),
@@ -266,9 +268,9 @@ export const update = mutation({
 });
 
 export const pause = mutation({
-  args: { userId: v.id("users"), scheduleId: v.id("commercialSchedules") },
+  args: { userId: v.id("users"), sessionToken: v.string(), scheduleId: v.id("commercialSchedules") },
   handler: async (ctx, args) => {
-    await getOwnedSchedule(ctx, args.userId, args.scheduleId);
+    await getOwnedSchedule(ctx, args.sessionToken, args.userId, args.scheduleId);
     await ctx.db.patch(args.scheduleId, {
       status: "paused",
       updatedAt: Date.now(),
@@ -277,9 +279,9 @@ export const pause = mutation({
 });
 
 export const reactivate = mutation({
-  args: { userId: v.id("users"), scheduleId: v.id("commercialSchedules") },
+  args: { userId: v.id("users"), sessionToken: v.string(), scheduleId: v.id("commercialSchedules") },
   handler: async (ctx, args) => {
-    await getOwnedSchedule(ctx, args.userId, args.scheduleId);
+    await getOwnedSchedule(ctx, args.sessionToken, args.userId, args.scheduleId);
     await ctx.db.patch(args.scheduleId, {
       status: "active",
       updatedAt: Date.now(),
@@ -288,9 +290,9 @@ export const reactivate = mutation({
 });
 
 export const end = mutation({
-  args: { userId: v.id("users"), scheduleId: v.id("commercialSchedules") },
+  args: { userId: v.id("users"), sessionToken: v.string(), scheduleId: v.id("commercialSchedules") },
   handler: async (ctx, args) => {
-    await getOwnedSchedule(ctx, args.userId, args.scheduleId);
+    await getOwnedSchedule(ctx, args.sessionToken, args.userId, args.scheduleId);
     await ctx.db.patch(args.scheduleId, {
       status: "ended",
       updatedAt: Date.now(),
@@ -301,6 +303,7 @@ export const end = mutation({
 export const generateCommercialJobsFromSchedule = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     commercialScheduleId: v.id("commercialSchedules"),
     startDate: v.string(),
     endDate: v.string(),
@@ -308,6 +311,7 @@ export const generateCommercialJobsFromSchedule = mutation({
   handler: async (ctx, args) => {
     const { schedule } = await getOwnedSchedule(
       ctx,
+      args.sessionToken,
       args.userId,
       args.commercialScheduleId
     );

@@ -68,16 +68,18 @@ export function JobDetailPage() {
   );
   const connections = useQuery(
     api.queries.partners.listConnections,
-    user ? { userId: user._id } : "skip"
+    user && sessionToken ? { userId: user._id, sessionToken } : "skip"
   );
   const sharedStatus = useQuery(
     api.queries.partners.getSharedJobStatus,
-    user && job ? { jobId: params.id as Id<"jobs">, userId: user._id } : "skip"
+    user && sessionToken && job
+      ? { jobId: params.id as Id<"jobs">, userId: user._id, sessionToken }
+      : "skip"
   );
   const incomingShared = useQuery(
     api.queries.partners.getIncomingSharedStatus,
-    user && job && (job as any).sharedFromJobId
-      ? { copiedJobId: params.id as Id<"jobs">, userId: user._id }
+    user && sessionToken && job && (job as any).sharedFromJobId
+      ? { copiedJobId: params.id as Id<"jobs">, userId: user._id, sessionToken }
       : "skip"
   );
 
@@ -312,7 +314,7 @@ export function JobDetailPage() {
                     if (!uid) return;
                     setSharedJobAction(true);
                     try {
-                      await acceptSharedJobMut({ userId: uid, sharedJobId: incomingShared._id });
+                      await acceptSharedJobMut({ userId: uid, sessionToken, sharedJobId: incomingShared._id });
                       setToast({ message: t("jobs.sharedJobAccepted"), type: "success" });
                       setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
@@ -333,7 +335,7 @@ export function JobDetailPage() {
                     if (!uid) return;
                     setSharedJobAction(true);
                     try {
-                      await rejectSharedJobMut({ userId: uid, sharedJobId: incomingShared._id });
+                      await rejectSharedJobMut({ userId: uid, sessionToken, sharedJobId: incomingShared._id });
                       setToast({ message: t("jobs.sharedJobRejected"), type: "success" });
                       setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
@@ -1528,6 +1530,7 @@ export function JobDetailPage() {
                   try {
                     await shareJobMut({
                       userId: uid,
+                      sessionToken,
                       jobId: job._id,
                       toCompanyId: shareToCompany as Id<"companies">,
                       sharePackage,

@@ -1,6 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { assertOwnerRole } from "../lib/auth";
+import { requireOwnerSession } from "../lib/sessionAuth";
 import { standardCompanyOnboardingDocumentForKey } from "../lib/companyOnboardingDocuments";
 
 const roleVisibilityValidator = v.union(
@@ -37,6 +37,7 @@ async function getExisting(ctx: any, companyId: any, documentKey: string) {
 export const upsertMetadata = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     documentKey: v.string(),
     title: v.string(),
     description: v.optional(v.string()),
@@ -45,7 +46,7 @@ export const upsertMetadata = mutation({
     status: statusValidator,
   },
   handler: async (ctx, args) => {
-    const owner = await assertOwnerRole(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const db: any = ctx.db;
     const now = Date.now();
     const documentKey = cleanString(args.documentKey, 120);
@@ -79,6 +80,7 @@ export const upsertMetadata = mutation({
 export const attachPdf = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     documentKey: v.string(),
     storageId: v.id("_storage"),
     title: v.optional(v.string()),
@@ -88,7 +90,7 @@ export const attachPdf = mutation({
     status: v.optional(statusValidator),
   },
   handler: async (ctx, args) => {
-    const owner = await assertOwnerRole(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const db: any = ctx.db;
     const now = Date.now();
     const documentKey = cleanString(args.documentKey, 120);
@@ -122,10 +124,11 @@ export const attachPdf = mutation({
 export const removePdf = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     documentKey: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await assertOwnerRole(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const db: any = ctx.db;
     const existing = await getExisting({ ...ctx, db }, owner.companyId, cleanString(args.documentKey, 120));
     if (!existing) return null;

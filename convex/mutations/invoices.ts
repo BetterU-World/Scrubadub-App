@@ -1,16 +1,8 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { getSessionUser } from "../lib/auth";
+import { requireOwnerSession } from "../lib/sessionAuth";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-
-async function requireOwnerCompany(ctx: any, userId: any) {
-  const user = await getSessionUser(ctx, userId);
-  if (user.role !== "owner" || !user.companyId) {
-    throw new Error("Owner access required");
-  }
-  return user;
-}
 
 function cleanOptional(value: string | undefined, max = 4000) {
   const trimmed = value?.trim().slice(0, max);
@@ -50,16 +42,16 @@ function assertDateRange(startDate: string, endDate: string) {
   }
 }
 
-async function getOwnedAccount(ctx: any, userId: any, commercialAccountId: any) {
-  const owner = await requireOwnerCompany(ctx, userId);
+async function getOwnedAccount(ctx: any, sessionToken: string, userId: any, commercialAccountId: any) {
+  const owner = await requireOwnerSession(ctx, sessionToken, userId);
   const account = await ctx.db.get(commercialAccountId);
   if (!account) throw new Error("Commercial account not found");
   if (account.companyId !== owner.companyId) throw new Error("Access denied");
   return { owner, account };
 }
 
-async function getOwnedInvoice(ctx: any, userId: any, invoiceId: any) {
-  const owner = await requireOwnerCompany(ctx, userId);
+async function getOwnedInvoice(ctx: any, sessionToken: string, userId: any, invoiceId: any) {
+  const owner = await requireOwnerSession(ctx, sessionToken, userId);
   const invoice = await ctx.db.get(invoiceId);
   if (!invoice) throw new Error("Invoice not found");
   if (invoice.companyId !== owner.companyId) throw new Error("Access denied");
@@ -140,6 +132,7 @@ function invoiceTotals(account: any) {
 export const create = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     commercialAccountId: v.id("commercialAccounts"),
     title: v.string(),
     billingStartDate: v.string(),
@@ -150,7 +143,7 @@ export const create = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { account } = await getOwnedAccount(ctx, args.userId, args.commercialAccountId);
+    const { account } = await getOwnedAccount(ctx, args.sessionToken, args.userId, args.commercialAccountId);
     assertDateRange(args.billingStartDate, args.billingEndDate);
     const existingDraft = await findDraftForBillingPeriod(
       ctx,
@@ -205,13 +198,14 @@ export const create = mutation({
 export const generateFromJobs = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     commercialAccountId: v.id("commercialAccounts"),
     billingStartDate: v.string(),
     billingEndDate: v.string(),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { account } = await getOwnedAccount(ctx, args.userId, args.commercialAccountId);
+    const { account } = await getOwnedAccount(ctx, args.sessionToken, args.userId, args.commercialAccountId);
     assertDateRange(args.billingStartDate, args.billingEndDate);
     const existingDraft = await findDraftForBillingPeriod(
       ctx,
@@ -317,11 +311,12 @@ export const generateFromJobs = mutation({
 export const updateDraft = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     invoiceId: v.id("invoices"),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { invoice } = await getOwnedInvoice(ctx, args.userId, args.invoiceId);
+    const { invoice } = await getOwnedInvoice(ctx, args.sessionToken, args.userId, args.invoiceId);
     if (invoice.status !== "draft") throw new Error("Only draft invoices can be edited");
     await ctx.db.patch(args.invoiceId, {
       notes: cleanOptional(args.notes),
@@ -333,10 +328,11 @@ export const updateDraft = mutation({
 export const markIssued = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     invoiceId: v.id("invoices"),
   },
   handler: async (ctx, args) => {
-    const { invoice } = await getOwnedInvoice(ctx, args.userId, args.invoiceId);
+    const { invoice } = await getOwnedInvoice(ctx, args.sessionToken, args.userId, args.invoiceId);
     if (invoice.status !== "draft") throw new Error("Only draft invoices can be issued");
     const now = Date.now();
     await ctx.db.patch(args.invoiceId, {
@@ -350,10 +346,11 @@ export const markIssued = mutation({
 export const markPaid = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     invoiceId: v.id("invoices"),
   },
   handler: async (ctx, args) => {
-    const { invoice } = await getOwnedInvoice(ctx, args.userId, args.invoiceId);
+    const { invoice } = await getOwnedInvoice(ctx, args.sessionToken, args.userId, args.invoiceId);
     if (invoice.status !== "issued") throw new Error("Only issued invoices can be marked paid");
     const now = Date.now();
     await ctx.db.patch(args.invoiceId, {
@@ -367,10 +364,11 @@ export const markPaid = mutation({
 export const voidInvoice = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     invoiceId: v.id("invoices"),
   },
   handler: async (ctx, args) => {
-    const { invoice } = await getOwnedInvoice(ctx, args.userId, args.invoiceId);
+    const { invoice } = await getOwnedInvoice(ctx, args.sessionToken, args.userId, args.invoiceId);
     if (invoice.status === "void") return;
     if (invoice.status === "paid") throw new Error("Paid invoices cannot be voided");
     const now = Date.now();

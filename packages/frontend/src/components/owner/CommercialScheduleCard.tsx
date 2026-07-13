@@ -92,7 +92,7 @@ export function CommercialScheduleCard({
 
   const schedules = useQuery(
     (api as any).queries.commercialSchedules.getByCommercialAccount,
-    user ? { userId: user._id, commercialAccountId } : "skip"
+    user && sessionToken ? { userId: user._id, sessionToken, commercialAccountId } : "skip"
   );
   const managers = useQuery(
     api.queries.employees.getManagers,
@@ -218,6 +218,7 @@ export function CommercialScheduleCard({
       if (editingId) {
         await updateSchedule({
           userId: user._id,
+          sessionToken,
           scheduleId: editingId as Id<"commercialSchedules">,
           ...buildPayload(),
         });
@@ -225,6 +226,7 @@ export function CommercialScheduleCard({
       } else {
         await createSchedule({
           userId: user._id,
+          sessionToken,
           commercialAccountId,
           ...buildPayload(),
         });
@@ -245,11 +247,11 @@ export function CommercialScheduleCard({
   ) => {
     setActionLoading(`${action}:${scheduleId}`);
     try {
-      if (action === "pause") await pauseSchedule({ userId: user._id, scheduleId });
+      if (action === "pause") await pauseSchedule({ userId: user._id, sessionToken, scheduleId });
       if (action === "reactivate") {
-        await reactivateSchedule({ userId: user._id, scheduleId });
+        await reactivateSchedule({ userId: user._id, sessionToken, scheduleId });
       }
-      if (action === "end") await endSchedule({ userId: user._id, scheduleId });
+      if (action === "end") await endSchedule({ userId: user._id, sessionToken, scheduleId });
       showToast(t(`commercialSchedules.${action}Success`), "success");
     } catch (err: any) {
       showToast(err.message || t("commercialSchedules.actionFailed"), "error");
@@ -275,6 +277,7 @@ export function CommercialScheduleCard({
     try {
       const result = await generateJobs({
         userId: user._id,
+        sessionToken,
         commercialScheduleId: scheduleId,
         startDate: generateForm.startDate,
         endDate: generateForm.endDate,

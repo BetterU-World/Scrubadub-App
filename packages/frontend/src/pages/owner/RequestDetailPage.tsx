@@ -571,7 +571,7 @@ export function RequestDetailPage() {
     if (!proposal) return;
     setProposalActionLoading("email");
     try {
-      await sendProposalEmail({ userId: user!._id, proposalId: proposal._id });
+      await sendProposalEmail({ userId: user!._id, sessionToken, proposalId: proposal._id });
       setToast({
         message:
           proposal.status === "sent"

@@ -26,7 +26,7 @@ function formatDate(date: string | undefined) {
 }
 
 export function CommercialInvoiceCard({ commercialAccountId, onToast }: Props) {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const [, navigate] = useLocation();
   const [billingStartDate, setBillingStartDate] = useState("");
@@ -39,7 +39,7 @@ export function CommercialInvoiceCard({ commercialAccountId, onToast }: Props) {
 
   const invoices = useQuery(
     (api as any).queries.invoices.listByCommercialAccount,
-    user ? { userId: user._id, commercialAccountId } : "skip"
+    user && sessionToken ? { userId: user._id, sessionToken, commercialAccountId } : "skip"
   );
   const generateInvoice = useMutation((api as any).mutations.invoices.generateFromJobs);
 
@@ -57,6 +57,7 @@ export function CommercialInvoiceCard({ commercialAccountId, onToast }: Props) {
     try {
       const response = await generateInvoice({
         userId: user._id,
+        sessionToken,
         commercialAccountId,
         billingStartDate,
         billingEndDate,

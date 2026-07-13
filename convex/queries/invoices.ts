@@ -1,14 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { getSessionUser } from "../lib/auth";
-
-async function requireOwnerCompany(ctx: any, userId: any) {
-  const user = await getSessionUser(ctx, userId);
-  if (user.role !== "owner" || !user.companyId) {
-    throw new Error("Owner access required");
-  }
-  return user;
-}
+import { requireOwnerSession } from "../lib/sessionAuth";
 
 async function decorateInvoice(ctx: any, invoice: any) {
   const account = await ctx.db.get(invoice.commercialAccountId);
@@ -45,10 +37,11 @@ async function decorateInvoice(ctx: any, invoice: any) {
 export const getById = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     invoiceId: v.id("invoices"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerCompany(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const invoice = await ctx.db.get(args.invoiceId);
     if (!invoice) return null;
     if (invoice.companyId !== owner.companyId) throw new Error("Access denied");
@@ -59,10 +52,11 @@ export const getById = query({
 export const listByCommercialAccount = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     commercialAccountId: v.id("commercialAccounts"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerCompany(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const account = await ctx.db.get(args.commercialAccountId);
     if (!account) return [];
     if (account.companyId !== owner.companyId) throw new Error("Access denied");
@@ -83,6 +77,7 @@ export const listByCommercialAccount = query({
 export const listByCompany = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     status: v.optional(
       v.union(
         v.literal("draft"),
@@ -93,7 +88,7 @@ export const listByCompany = query({
     ),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerCompany(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const invoices = await ctx.db
       .query("invoices")
       .withIndex("by_company", (q: any) => q.eq("companyId", owner.companyId))

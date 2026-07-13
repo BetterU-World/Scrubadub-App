@@ -1,9 +1,9 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { getSessionUser } from "../lib/auth";
+import { requireVerifiedStaffSession } from "../lib/sessionAuth";
 
-async function requireCompanyUser(ctx: any, userId: any) {
-  const user = await getSessionUser(ctx, userId);
+async function requireCompanyUser(ctx: any, sessionToken: string, userId: any) {
+  const user = await requireVerifiedStaffSession(ctx, sessionToken, userId);
   if (!user.companyId) throw new Error("Company access required");
   return user;
 }
@@ -30,10 +30,11 @@ async function decorateSchedule(ctx: any, schedule: any) {
 export const getByCommercialAccount = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     commercialAccountId: v.id("commercialAccounts"),
   },
   handler: async (ctx, args) => {
-    const user = await requireCompanyUser(ctx, args.userId);
+    const user = await requireCompanyUser(ctx, args.sessionToken, args.userId);
     const account = await ctx.db.get(args.commercialAccountId);
     if (!account) return [];
     if (account.companyId !== user.companyId) throw new Error("Access denied");
@@ -53,10 +54,11 @@ export const getByCommercialAccount = query({
 export const getById = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     scheduleId: v.id("commercialSchedules"),
   },
   handler: async (ctx, args) => {
-    const user = await requireCompanyUser(ctx, args.userId);
+    const user = await requireCompanyUser(ctx, args.sessionToken, args.userId);
     const schedule = await ctx.db.get(args.scheduleId);
     if (!schedule) return null;
     if (schedule.companyId !== user.companyId) throw new Error("Access denied");
