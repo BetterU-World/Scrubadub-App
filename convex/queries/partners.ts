@@ -1,11 +1,11 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { assertOwnerRole } from "../lib/auth";
+import { requireOwnerSession } from "../lib/sessionAuth";
 
 export const listContacts = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const owner = await assertOwnerRole(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     return ctx.db
       .query("partnerContacts")
       .withIndex("by_companyId", (q) => q.eq("companyId", owner.companyId))
@@ -19,9 +19,9 @@ function connStatus(c: { status?: string }): string {
 }
 
 export const listConnections = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const owner = await assertOwnerRole(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     const asA = await ctx.db
       .query("ownerConnections")
@@ -58,9 +58,9 @@ export const listConnections = query({
 });
 
 export const listIncomingInvites = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const owner = await assertOwnerRole(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     const rows = await ctx.db
       .query("ownerConnections")
@@ -83,9 +83,9 @@ export const listIncomingInvites = query({
 });
 
 export const listOutgoingInvites = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const owner = await assertOwnerRole(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     const rows = await ctx.db
       .query("ownerConnections")
@@ -109,9 +109,9 @@ export const listOutgoingInvites = query({
 
 /** Pending shared jobs incoming to the current owner's company (Owner2 inbox) */
 export const listIncomingSharedJobs = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const owner = await assertOwnerRole(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     const rows = await ctx.db
       .query("sharedJobs")
@@ -138,9 +138,9 @@ export const listIncomingSharedJobs = query({
 
 /** Get sharedJob status for a copied job (Owner2 view on their job detail) */
 export const getIncomingSharedStatus = query({
-  args: { copiedJobId: v.id("jobs"), userId: v.id("users") },
+  args: { copiedJobId: v.id("jobs"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const owner = await assertOwnerRole(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     const shared = await ctx.db
       .query("sharedJobs")
@@ -160,9 +160,9 @@ export const getIncomingSharedStatus = query({
 });
 
 export const getSharedJobStatus = query({
-  args: { jobId: v.id("jobs"), userId: v.id("users") },
+  args: { jobId: v.id("jobs"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const owner = await assertOwnerRole(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     // Shared jobs originating from this job (Owner1 view)
     const outgoing = await ctx.db

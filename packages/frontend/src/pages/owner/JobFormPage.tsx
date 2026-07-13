@@ -65,7 +65,7 @@ export function JobFormPage() {
 
   const connections = useQuery(
     api.queries.partners.listConnections,
-    !isEditing && user ? { userId: user._id } : "skip"
+    !isEditing && user && sessionToken ? { userId: user._id, sessionToken } : "skip"
   );
 
   const createJob = useMutation(api.mutations.jobs.create);
@@ -213,6 +213,7 @@ export function JobFormPage() {
         if (isPartnerMode) {
           await shareJobMut({
             userId: uid,
+            sessionToken,
             jobId: id as Id<"jobs">,
             toCompanyId: partnerCompanyId as Id<"companies">,
             sharePackage: true,

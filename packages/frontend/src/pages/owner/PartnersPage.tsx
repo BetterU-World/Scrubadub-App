@@ -21,25 +21,25 @@ import {
 } from "lucide-react";
 
 export function PartnersPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const uid = requireUserId(user);
   const { t } = useTranslation();
 
   const contacts = useQuery(
     api.queries.partners.listContacts,
-    uid ? { userId: uid } : "skip"
+    uid && sessionToken ? { userId: uid, sessionToken } : "skip"
   );
   const connections = useQuery(
     api.queries.partners.listConnections,
-    uid ? { userId: uid } : "skip"
+    uid && sessionToken ? { userId: uid, sessionToken } : "skip"
   );
   const incoming = useQuery(
     api.queries.partners.listIncomingInvites,
-    uid ? { userId: uid } : "skip"
+    uid && sessionToken ? { userId: uid, sessionToken } : "skip"
   );
   const outgoing = useQuery(
     api.queries.partners.listOutgoingInvites,
-    uid ? { userId: uid } : "skip"
+    uid && sessionToken ? { userId: uid, sessionToken } : "skip"
   );
 
   const addContact = useMutation(api.mutations.partners.addContact);
@@ -80,7 +80,7 @@ export function PartnersPage() {
     if (!uid || !name.trim() || !email.trim()) return;
     setSaving(true);
     try {
-      await addContact({ userId: uid, name: name.trim(), email: email.trim(), notes: notes.trim() || undefined });
+      await addContact({ userId: uid, sessionToken, name: name.trim(), email: email.trim(), notes: notes.trim() || undefined });
       setName("");
       setEmail("");
       setNotes("");
@@ -98,7 +98,7 @@ export function PartnersPage() {
     setConnecting(true);
     setConnectResult(null);
     try {
-      const result = await connectByEmail({ userId: uid, email: connectEmail.trim() });
+      const result = await connectByEmail({ userId: uid, sessionToken, email: connectEmail.trim() });
       if (result.success) {
         setConnectResult(t("partners.inviteSentTo", { companyName: result.companyName }));
         setConnectEmail("");
@@ -122,7 +122,7 @@ export function PartnersPage() {
     if (!uid) return;
     setActionLoading(connectionId);
     try {
-      await acceptConnection({ userId: uid, connectionId });
+      await acceptConnection({ userId: uid, sessionToken, connectionId });
       showToast(t("partners.connectionAccepted"), "success");
     } catch (err: any) {
       showToast(err.message ?? t("partners.failedToAccept"), "error");
@@ -135,7 +135,7 @@ export function PartnersPage() {
     if (!uid) return;
     setActionLoading(connectionId);
     try {
-      await declineConnection({ userId: uid, connectionId });
+      await declineConnection({ userId: uid, sessionToken, connectionId });
       showToast(t("partners.connectionDeclined"), "success");
     } catch (err: any) {
       showToast(err.message ?? t("partners.failedToDecline"), "error");
@@ -149,7 +149,7 @@ export function PartnersPage() {
     if (!window.confirm(t("partners.disconnectConfirm"))) return;
     setActionLoading(connectionId);
     try {
-      await disconnectConnectionMut({ userId: uid, connectionId });
+      await disconnectConnectionMut({ userId: uid, sessionToken, connectionId });
       showToast(t("partners.partnerDisconnected"), "success");
     } catch (err: any) {
       showToast(err.message ?? t("partners.failedToDisconnect"), "error");
@@ -161,7 +161,7 @@ export function PartnersPage() {
   const handleRemove = async (contactId: typeof contacts[number]["_id"]) => {
     if (!uid) return;
     try {
-      await removeContact({ userId: uid, contactId });
+      await removeContact({ userId: uid, sessionToken, contactId });
     } catch (err: any) {
       showToast(err.message ?? t("partners.failedToRemove"), "error");
     }

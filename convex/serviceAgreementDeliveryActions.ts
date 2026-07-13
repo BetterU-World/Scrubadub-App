@@ -4,6 +4,7 @@ import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { sendServiceAgreementEmail } from "./lib/email";
+import { requireOwnerSession } from "./lib/sessions";
 
 function appUrl() {
   return (process.env.APP_URL || "http://localhost:5173").replace(/\/+$/, "");
@@ -12,12 +13,15 @@ function appUrl() {
 export const sendServiceAgreement = action({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     agreementId: v.id("serviceAgreements"),
   },
   handler: async (ctx, args): Promise<{ success: true; sentAt: number }> => {
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const ownerArgs = { userId: owner.userId, agreementId: args.agreementId };
     const payload = await ctx.runQuery(
       (internal as any).serviceAgreementDeliveryInternal.getAgreementForOwnerDelivery,
-      args
+      ownerArgs
     );
 
     const email = payload.recipientEmail?.trim().toLowerCase();
@@ -29,7 +33,7 @@ export const sendServiceAgreement = action({
     const viewUrl = `${appUrl()}/client/login?next=${encodeURIComponent(next)}`;
     const result = await ctx.runMutation(
       (internal as any).serviceAgreementDeliveryInternal.markAgreementSent,
-      args
+      ownerArgs
     );
 
     const sent = await sendServiceAgreementEmail({

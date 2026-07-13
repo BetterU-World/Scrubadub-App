@@ -133,8 +133,8 @@ export function CommercialAccountDetailPage() {
   );
   const commercialSchedules = useQuery(
     (api as any).queries.commercialSchedules.getByCommercialAccount,
-    params.id && user
-      ? { userId: user._id, commercialAccountId: params.id as Id<"commercialAccounts"> }
+    params.id && user && sessionToken
+      ? { userId: user._id, sessionToken, commercialAccountId: params.id as Id<"commercialAccounts"> }
       : "skip"
   );
   const updateCommercialAccount = useMutation(

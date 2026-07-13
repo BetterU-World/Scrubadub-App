@@ -28,13 +28,13 @@ function formatDate(date: string | undefined) {
 }
 
 export function CommercialInvoiceListPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const [status, setStatus] = useState<InvoiceStatus>("draft");
 
   const invoices = useQuery(
     (api as any).queries.invoices.listByCompany,
-    user ? { userId: user._id, status } : "skip"
+    user && sessionToken ? { userId: user._id, sessionToken, status } : "skip"
   );
 
   if (!user || invoices === undefined) return <PageLoader />;

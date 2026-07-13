@@ -5,6 +5,7 @@ import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { generateSecureToken, hashToken } from "./lib/tokens";
 import { sendProposalEmail } from "./lib/email";
+import { requireOwnerSession } from "./lib/sessions";
 
 function appUrl() {
   return (process.env.APP_URL || "http://localhost:5173").replace(/\/+$/, "");
@@ -19,12 +20,15 @@ function cleanToken(token: string) {
 export const sendProposal = action({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     proposalId: v.id("proposals"),
   },
   handler: async (ctx, args): Promise<{ success: true; sentAt: number }> => {
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const ownerArgs = { userId: owner.userId, proposalId: args.proposalId };
     const payload = await ctx.runQuery(
       (internal as any).proposalDeliveryInternal.getProposalForOwnerDelivery,
-      args
+      ownerArgs
     );
 
     const email = payload.recipientEmail?.trim().toLowerCase();
@@ -37,7 +41,7 @@ export const sendProposal = action({
     const result = await ctx.runMutation(
       (internal as any).proposalDeliveryInternal.setProposalDeliveryTokenAndSent,
       {
-        ...args,
+        ...ownerArgs,
         proposalTokenHash: hashToken(token),
       }
     );

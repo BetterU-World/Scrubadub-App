@@ -53,7 +53,7 @@ export function CompanyDocumentsPage() {
   ) as TemplateRecord[] | undefined;
   const workerDocuments = useQuery(
     (api as any).queries.companyOnboardingDocuments.listForOwner,
-    user?._id ? { userId: user._id } : "skip",
+    user?._id && sessionToken ? { userId: user._id, sessionToken } : "skip",
   ) as any[] | undefined;
   const createTemplate = useMutation(
     (api as any).mutations.documentTemplates.create,

@@ -28,7 +28,7 @@ function formatTimestamp(ts: number | undefined) {
 }
 
 export function CommercialInvoiceDetailPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const params = useParams<{ id: string }>();
   const [notes, setNotes] = useState("");
@@ -38,8 +38,8 @@ export function CommercialInvoiceDetailPage() {
 
   const invoice = useQuery(
     (api as any).queries.invoices.getById,
-    user && params.id
-      ? { userId: user._id, invoiceId: params.id as Id<"invoices"> }
+    user && sessionToken && params.id
+      ? { userId: user._id, sessionToken, invoiceId: params.id as Id<"invoices"> }
       : "skip"
   );
   const updateDraft = useMutation((api as any).mutations.invoices.updateDraft);
@@ -64,7 +64,7 @@ export function CommercialInvoiceDetailPage() {
   const handleSaveNotes = async () => {
     setSaving(true);
     try {
-      await updateDraft({ userId: user._id, invoiceId: invoice._id, notes });
+      await updateDraft({ userId: user._id, sessionToken, invoiceId: invoice._id, notes });
       showToast(t("invoices.saved"), "success");
     } catch (err: any) {
       showToast(err.message || t("invoices.saveFailed"), "error");
@@ -77,11 +77,11 @@ export function CommercialInvoiceDetailPage() {
     setActionLoading(action);
     try {
       if (action === "issued") {
-        await markIssued({ userId: user._id, invoiceId: invoice._id });
+        await markIssued({ userId: user._id, sessionToken, invoiceId: invoice._id });
       } else if (action === "paid") {
-        await markPaid({ userId: user._id, invoiceId: invoice._id });
+        await markPaid({ userId: user._id, sessionToken, invoiceId: invoice._id });
       } else {
-        await voidInvoice({ userId: user._id, invoiceId: invoice._id });
+        await voidInvoice({ userId: user._id, sessionToken, invoiceId: invoice._id });
       }
       showToast(t(`invoices.${action}Success`), "success");
     } catch (err: any) {

@@ -34,10 +34,10 @@ function deliverySummary(document: any) {
 }
 
 export function CompanyOnboardingDocumentsPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const documents = useQuery(
     (api as any).queries.companyOnboardingDocuments.listForOwner,
-    user?._id ? { userId: user._id } : "skip"
+    user?._id && sessionToken ? { userId: user._id, sessionToken } : "skip"
   );
   const generateUploadUrl = useMutation(api.mutations.storage.generateUploadUrl);
   const validateUpload = useMutation(api.mutations.storage.validateUpload);
@@ -57,6 +57,7 @@ export function CompanyOnboardingDocumentsPage() {
     try {
       await upsertMetadata({
         userId: user._id,
+        sessionToken: getStaffSessionToken(),
         documentKey: document.documentKey,
         title: document.title,
         description: document.description,
@@ -96,6 +97,7 @@ export function CompanyOnboardingDocumentsPage() {
       const { storageId } = await result.json();
       await attachPdf({
         userId: user._id,
+        sessionToken: getStaffSessionToken(),
         documentKey: document.documentKey,
         storageId,
         title: document.title,
@@ -117,7 +119,11 @@ export function CompanyOnboardingDocumentsPage() {
     setBusyKey(document.documentKey);
     setError(null);
     try {
-      await removePdf({ userId: user._id, documentKey: document.documentKey });
+      await removePdf({
+        userId: user._id,
+        sessionToken: getStaffSessionToken(),
+        documentKey: document.documentKey,
+      });
     } catch (err: any) {
       setError(err.message ?? "Could not remove PDF");
     } finally {
