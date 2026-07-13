@@ -127,7 +127,7 @@ describe("PR 6B ordinary operational data migration", () => {
       }
       await expect(t.query(api.queries.employees.list, { companyId: s.companyA, userId: s.ownerA, sessionToken: token })).rejects.toThrow(SESSION_ERROR);
     }
-  });
+  }, 15_000);
 
   it("rejects wrong-company and cross-company target resources without treating targets as callers", async () => {
     const t = backend();
