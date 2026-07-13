@@ -35,6 +35,7 @@ export function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
   const [cleanerFilter, setCleanerFilter] = useState<string>("all");
+  const canManageCalendar = user?.role === "owner" || user?.role === "manager";
 
   const viewModeLabels: Record<ViewMode, string> = {
     month: t("calendar.month"),
@@ -82,14 +83,32 @@ export function CalendarPage() {
   // Query properties for filter dropdown
   const properties = useQuery(
     api.queries.properties.list,
-    user?.companyId ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
+    user?.companyId && canManageCalendar
+      ? { companyId: user.companyId, userId: user._id, sessionToken }
+      : "skip"
   );
 
   // Query cleaners for filter dropdown
   const cleaners = useQuery(
     api.queries.employees.getCleaners,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId && user.role === "owner"
+      ? { companyId: user.companyId, userId: user._id }
+      : "skip"
   );
+
+  const propertyOptions = useMemo(() => {
+    if (properties) return properties;
+    const options = new Map<string, { _id: string; name: string }>();
+    for (const job of jobs ?? []) {
+      if (job.propertyId) {
+        options.set(String(job.propertyId), {
+          _id: String(job.propertyId),
+          name: job.propertyName,
+        });
+      }
+    }
+    return [...options.values()];
+  }, [properties, jobs]);
 
   // Apply client-side filters (role-based + user selections)
   const filteredJobs = useMemo(() => {
@@ -230,7 +249,7 @@ export function CalendarPage() {
             className="input-field py-1.5 text-sm min-w-[180px]"
           >
             <option value="all">{t("calendar.allProperties")}</option>
-            {properties?.map((p) => (
+            {propertyOptions.map((p) => (
               <option key={p._id} value={p._id}>
                 {p.name}
               </option>

@@ -370,7 +370,8 @@ export const getCalendarJobs = query({
   },
   handler: async (ctx, args) => {
     return await withPerfLog(ctx, "jobs:getCalendarJobs", async () => {
-      const user = await requireOwnerManagerCompany(ctx, args.sessionToken, args.companyId, args.userId);
+      const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
+      if (user.companyId !== args.companyId) throw new Error("Access denied");
 
       const jobs = await ctx.db
         .query("jobs")
@@ -386,8 +387,14 @@ export const getCalendarJobs = query({
           j.status !== "cancelled"
       );
 
-      // Manager visibility scoping
-      if (user.role === "manager" && !hasManagerPermission(user, "canSeeAllJobs")) {
+      if (user.role === "cleaner" || user.role === "maintenance") {
+        const workerTeamIds = await getActiveTeamIdsForUser(ctx, user._id, args.companyId);
+        filtered = filtered.filter(
+          (j) =>
+            j.cleanerIds.includes(user._id) ||
+            (j.assignedTeamId && workerTeamIds.has(j.assignedTeamId))
+        );
+      } else if (user.role === "manager" && !hasManagerPermission(user, "canSeeAllJobs")) {
         const managerTeamIds = await getActiveTeamIdsForUser(ctx, user._id, args.companyId);
         filtered = filtered.filter(
           (j) => j.assignedManagerId === user._id || (j.assignedTeamId && managerTeamIds.has(j.assignedTeamId))
