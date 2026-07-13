@@ -127,10 +127,10 @@ function GroupHeading({ title, description }: { title: string; description: stri
 
 export function ClientHomePage() {
   const { t } = useTranslation();
-  const { clientUserId, isLoading, signOut } = useClientAuth();
+  const { clientUserId, sessionToken, isLoading, signOut } = useClientAuth();
   const home = useQuery(
     api.queries.clientHome.getClientHome,
-    clientUserId ? { clientUserId } : "skip"
+    clientUserId && sessionToken ? { clientUserId, sessionToken } : "skip"
   );
 
   if (isLoading || home === undefined) return <PageLoader />;

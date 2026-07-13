@@ -1,24 +1,39 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAction, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
+import {
+  CLIENT_SESSION_KEY,
+  CLIENT_USER_KEY,
+  getClientSessionToken,
+  getStoredClientUserId,
+} from "@/lib/clientSession";
 
-const CLIENT_STORAGE_KEY = "scrubadub_clientUserId";
-export const CLIENT_SESSION_KEY = "scrubadub_clientSessionToken";
+const CLIENT_STORAGE_KEY = CLIENT_USER_KEY;
+export { CLIENT_SESSION_KEY, getClientSessionToken };
 
 function storedClientUserId(): Id<"clientUsers"> | null {
-  const stored = localStorage.getItem(CLIENT_STORAGE_KEY);
+  const stored = getStoredClientUserId();
   return stored ? (stored as Id<"clientUsers">) : null;
 }
 
 export function useClientAuth() {
   const [clientUserId, setClientUserId] = useState<Id<"clientUsers"> | null>(storedClientUserId);
+  const sessionToken = getClientSessionToken();
   const signInAction = useAction(api.clientAuthActions.signIn);
   const revokeSession = useAction((api as any).sessionActions.revokeCurrent);
   const clientUser = useQuery(
     api.queries.clientAuth.getCurrentClientUser,
-    { clientUserId: clientUserId ?? undefined }
+    clientUserId && sessionToken ? { clientUserId, sessionToken } : "skip"
   );
+  const authenticatedClientUser = sessionToken ? clientUser : null;
+
+  useEffect(() => {
+    if (!sessionToken && clientUserId) {
+      localStorage.removeItem(CLIENT_STORAGE_KEY);
+      setClientUserId(null);
+    }
+  }, [clientUserId, sessionToken]);
 
   const signIn = useCallback(
     async (args: { email: string; password: string }) => {
@@ -47,10 +62,11 @@ export function useClientAuth() {
   }, [revokeSession]);
 
   return {
-    clientUser,
-    clientUserId,
-    isLoading: clientUser === undefined,
-    isAuthenticated: Boolean(clientUser),
+    clientUser: authenticatedClientUser,
+    clientUserId: sessionToken ? clientUserId : null,
+    sessionToken,
+    isLoading: Boolean(clientUserId && sessionToken && clientUser === undefined),
+    isAuthenticated: Boolean(authenticatedClientUser),
     signIn,
     setSignedInClient,
     signOut,

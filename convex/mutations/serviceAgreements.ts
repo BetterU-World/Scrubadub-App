@@ -1,6 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwnerSession } from "../lib/sessionAuth";
+import { requireActiveClientRelationship, requireOwnerSession, requireVerifiedClientSession } from "../lib/sessionAuth";
 import { ensureClientRelationshipForLead } from "../lib/clientRelationships";
 import { createNotification } from "../lib/helpers";
 import {
@@ -150,20 +150,16 @@ async function getOwnedAgreement(ctx: any, sessionToken: string, userId: any, ag
   return { owner, agreement };
 }
 
-async function getClientOwnedAgreement(ctx: any, clientUserId: any, agreementId: any) {
-  const clientUser = await ctx.db.get(clientUserId);
-  if (!clientUser || clientUser.status !== "active") {
-    throw new Error("Client access required");
-  }
-
+async function getClientOwnedAgreement(ctx: any, clientUser: any, agreementId: any) {
   const agreement = await ctx.db.get(agreementId);
   if (!agreement?.clientRelationshipId) throw new Error("Agreement not found");
 
-  const relationship = await ctx.db.get(agreement.clientRelationshipId);
+  const relationship = await requireActiveClientRelationship(
+    ctx,
+    clientUser,
+    agreement.clientRelationshipId
+  );
   if (
-    !relationship ||
-    relationship.clientUserId !== clientUserId ||
-    relationship.status !== "active" ||
     relationship.companyId !== agreement.companyId
   ) {
     throw new Error("Access denied");
@@ -431,12 +427,14 @@ export const markCancelled = mutation({
 export const clientAccept = mutation({
   args: {
     clientUserId: v.id("clientUsers"),
+    sessionToken: v.string(),
     agreementId: v.id("serviceAgreements"),
   },
   handler: async (ctx, args) => {
-    const { clientUser, agreement } = await getClientOwnedAgreement(
+    const clientUser = await requireVerifiedClientSession(ctx, args.sessionToken, args.clientUserId);
+    const { agreement } = await getClientOwnedAgreement(
       ctx,
-      args.clientUserId,
+      clientUser,
       args.agreementId
     );
     if (agreement.status !== "sent") {
@@ -465,13 +463,15 @@ export const clientAccept = mutation({
 export const clientDecline = mutation({
   args: {
     clientUserId: v.id("clientUsers"),
+    sessionToken: v.string(),
     agreementId: v.id("serviceAgreements"),
     note: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { clientUser, agreement } = await getClientOwnedAgreement(
+    const clientUser = await requireVerifiedClientSession(ctx, args.sessionToken, args.clientUserId);
+    const { agreement } = await getClientOwnedAgreement(
       ctx,
-      args.clientUserId,
+      clientUser,
       args.agreementId
     );
     if (agreement.status !== "sent") {

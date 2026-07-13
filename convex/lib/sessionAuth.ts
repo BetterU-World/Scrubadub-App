@@ -11,6 +11,7 @@ declare const process: { env: Record<string, string | undefined> };
 
 type DbCtx = QueryCtx | MutationCtx;
 type ActiveStaff = Doc<"users"> & { status: "active" };
+export type ActiveClient = Doc<"clientUsers"> & { status: "active" };
 type ActiveOwner = ActiveStaff & { role: "owner"; companyId: Id<"companies"> };
 export type ActiveWorker = ActiveStaff & {
   role: "cleaner" | "maintenance" | "manager";
@@ -69,6 +70,58 @@ export async function requireVerifiedStaffSession(
     });
   }
   return user as ActiveStaff;
+}
+
+export async function requireVerifiedClientSession(
+  ctx: DbCtx,
+  sessionToken: string,
+  claimedClientUserId?: Id<"clientUsers">
+): Promise<ActiveClient> {
+  if (!sessionToken || sessionToken.length > 256) throw new Error(SESSION_REQUIRED_ERROR);
+  const now = Date.now();
+  const tokenHash = await hashSessionToken(sessionToken);
+  const verifiedSession = await ctx.db
+    .query("authSessions")
+    .withIndex("by_tokenHash", (q) => q.eq("tokenHash", tokenHash))
+    .unique();
+  if (
+    !verifiedSession ||
+    verifiedSession.principalType !== "client" ||
+    verifiedSession.revokedAt ||
+    verifiedSession.expiresAt <= now ||
+    verifiedSession.idleExpiresAt <= now
+  ) {
+    throw new Error(SESSION_REQUIRED_ERROR);
+  }
+  const clientUser = await ctx.db.get(verifiedSession.clientUserId);
+  if (!clientUser || clientUser.status !== "active") throw new Error(SESSION_REQUIRED_ERROR);
+  if (claimedClientUserId && claimedClientUserId !== clientUser._id) {
+    console.warn("[security] client session principal mismatch rejected");
+    throw new Error("Session principal does not match the requested client");
+  }
+  if ("patch" in ctx.db && now - verifiedSession.lastUsedAt >= SESSION_TOUCH_INTERVAL_MS) {
+    await ctx.db.patch(verifiedSession._id, {
+      lastUsedAt: now,
+      idleExpiresAt: Math.min(now + SESSION_IDLE_EXPIRY_MS, verifiedSession.expiresAt),
+    });
+  }
+  return clientUser as ActiveClient;
+}
+
+export async function requireActiveClientRelationship(
+  ctx: DbCtx,
+  clientUser: ActiveClient,
+  relationshipId: Id<"clientRelationships">
+) {
+  const relationship = await ctx.db.get(relationshipId);
+  if (
+    !relationship ||
+    relationship.clientUserId !== clientUser._id ||
+    relationship.status !== "active"
+  ) {
+    throw new Error("Client relationship access required");
+  }
+  return relationship;
 }
 
 export async function requireOwnerSession(

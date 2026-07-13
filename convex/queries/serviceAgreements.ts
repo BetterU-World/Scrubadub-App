@@ -1,5 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { requireVerifiedClientSession } from "../lib/sessionAuth";
 import { requireOwnerSession } from "../lib/sessionAuth";
 
 async function requireOwnerCompany(ctx: any, sessionToken: string, userId: any) {
@@ -100,9 +101,6 @@ export const getByCommercialAccount = query({
 });
 
 async function clientRelationshipIds(ctx: any, clientUserId: any) {
-  const clientUser = await ctx.db.get(clientUserId);
-  if (!clientUser || clientUser.status !== "active") return new Set<string>();
-
   const relationships = await ctx.db
     .query("clientRelationships")
     .withIndex("by_clientUserId", (q: any) => q.eq("clientUserId", clientUserId))
@@ -143,14 +141,16 @@ async function clientAgreementPayload(ctx: any, agreement: any) {
 export const listForClient = query({
   args: {
     clientUserId: v.id("clientUsers"),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const relationshipIds = await clientRelationshipIds(ctx, args.clientUserId);
+    const clientUser = await requireVerifiedClientSession(ctx, args.sessionToken, args.clientUserId);
+    const relationshipIds = await clientRelationshipIds(ctx, clientUser._id);
     if (relationshipIds.size === 0) return [];
 
     const relationships = await ctx.db
       .query("clientRelationships")
-      .withIndex("by_clientUserId", (q: any) => q.eq("clientUserId", args.clientUserId))
+      .withIndex("by_clientUserId", (q: any) => q.eq("clientUserId", clientUser._id))
       .collect();
     const companyIds = Array.from(new Set(relationships.map((item: any) => String(item.companyId))));
     const agreements: any[] = [];
@@ -178,10 +178,12 @@ export const listForClient = query({
 export const getForClient = query({
   args: {
     clientUserId: v.id("clientUsers"),
+    sessionToken: v.string(),
     agreementId: v.id("serviceAgreements"),
   },
   handler: async (ctx, args) => {
-    const relationshipIds = await clientRelationshipIds(ctx, args.clientUserId);
+    const clientUser = await requireVerifiedClientSession(ctx, args.sessionToken, args.clientUserId);
+    const relationshipIds = await clientRelationshipIds(ctx, clientUser._id);
     const agreement = await ctx.db.get(args.agreementId);
     if (!agreement || !agreement.clientRelationshipId) return null;
     if (!relationshipIds.has(String(agreement.clientRelationshipId))) return null;
