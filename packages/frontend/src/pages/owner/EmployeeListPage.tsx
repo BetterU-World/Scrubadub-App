@@ -528,6 +528,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                           employeeEmail: inviteEmail,
                         });
                         if (result.emailSent) {
+                          setInviteLink(`${window.location.origin}/invite/${result.token}`);
                           setInviteEmailSent(true);
                           setToast(t("employees.emailResentSuccess"));
                           setTimeout(() => setToast(null), 3000);

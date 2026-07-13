@@ -90,7 +90,7 @@ export const createUser = internalMutation({
       v.literal("inactive"),
       v.literal("pending")
     ),
-    inviteToken: v.optional(v.string()),
+    inviteTokenHash: v.optional(v.string()),
     inviteTokenExpiry: v.optional(v.float64()),
     // Manager permission flags
     canSeeAllJobs: v.optional(v.boolean()),
@@ -148,12 +148,34 @@ export const consumeResetToken = internalMutation({
 });
 
 export const getUserByinviteToken = internalQuery({
-  args: { tokenHash: v.string() },
+  args: { tokenHash: v.string(), legacyToken: v.string() },
   handler: async (ctx, args) => {
+    const hashedUser = await ctx.db
+      .query("users")
+      .withIndex("by_inviteTokenHash", (q) => q.eq("inviteTokenHash", args.tokenHash))
+      .first();
+    if (hashedUser) return hashedUser;
+
+    // Compatibility for unexpired invitations issued before token hashing.
     return await ctx.db
       .query("users")
-      .withIndex("by_inviteToken", (q) => q.eq("inviteToken", args.tokenHash))
+      .withIndex("by_inviteToken", (q) => q.eq("inviteToken", args.legacyToken))
       .first();
+  },
+});
+
+export const rotateInviteToken = internalMutation({
+  args: {
+    userId: v.id("users"),
+    inviteTokenHash: v.string(),
+    inviteTokenExpiry: v.float64(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.userId, {
+      inviteToken: undefined,
+      inviteTokenHash: args.inviteTokenHash,
+      inviteTokenExpiry: args.inviteTokenExpiry,
+    });
   },
 });
 
@@ -164,6 +186,8 @@ export const consumeInviteToken = internalMutation({
       passwordHash: args.passwordHash,
       status: "active",
       inviteToken: undefined,
+      inviteTokenHash: undefined,
+      inviteTokenExpiry: undefined,
     });
   },
 });

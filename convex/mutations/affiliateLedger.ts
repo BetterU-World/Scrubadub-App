@@ -1,7 +1,7 @@
 import { mutation, MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
-import { isSuperAdminEmail } from "../lib/auth";
+import { isFounderEmail } from "../lib/founderEmails";
 import { requireSuperadminSession, requireVerifiedStaffSession } from "../lib/sessionAuth";
 
 const AFFILIATE_RATE = 0.10;
@@ -173,7 +173,7 @@ export const lockLedgerPeriod = mutation({
     if (!entry) throw new Error("Ledger entry not found");
 
     // Only the referrer (or a super admin) can lock
-    if (entry.referrerUserId !== user._id && !isSuperAdminEmail(user.email)) {
+    if (entry.referrerUserId !== user._id && !isFounderEmail(user.email)) {
       throw new Error("Access denied");
     }
 

@@ -1,6 +1,6 @@
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
-import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import {
@@ -14,19 +14,21 @@ import {
 } from "lucide-react";
 
 export function SuperAdminPage() {
-  const { user } = useAuth();
+  const { user, sessionToken, isLoading } = useAuth();
+  const canAccess = user?.isSuperadmin === true && Boolean(sessionToken);
 
   const stats = useQuery(
     api.queries.admin.getPlatformStats,
-    user ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
+    canAccess ? { userId: user!._id, sessionToken } : "skip"
   );
 
   const companiesWithUsers = useQuery(
     api.queries.admin.getCompaniesWithUsers,
-    user ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
+    canAccess ? { userId: user!._id, sessionToken } : "skip"
   );
 
-  if (!user) return <PageLoader />;
+  if (isLoading) return <PageLoader />;
+  if (!canAccess) return null;
 
   if (stats === undefined) return <PageLoader />;
 

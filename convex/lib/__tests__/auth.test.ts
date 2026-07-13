@@ -53,7 +53,6 @@ describe("authorization utilities", () => {
     const auth = await import("../auth");
     expect(Object.keys(auth).sort()).toEqual([
       "hasManagerPermission",
-      "isSuperAdminEmail",
       "isWorkerRole",
     ]);
   });

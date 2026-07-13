@@ -10,7 +10,7 @@ export const createAffiliateUser = internalMutation({
   args: {
     email: v.string(),
     name: v.string(),
-    inviteToken: v.string(),
+    inviteTokenHash: v.string(),
     inviteTokenExpiry: v.float64(),
     affiliateInvitedBy: v.id("users"),
   },
@@ -21,7 +21,7 @@ export const createAffiliateUser = internalMutation({
       name: args.name,
       role: "affiliate",
       status: "pending",
-      inviteToken: args.inviteToken,
+      inviteTokenHash: args.inviteTokenHash,
       inviteTokenExpiry: args.inviteTokenExpiry,
       affiliateInvitedBy: args.affiliateInvitedBy,
     });
@@ -33,12 +33,13 @@ export const createAffiliateUser = internalMutation({
 export const updateAffiliateInviteToken = internalMutation({
   args: {
     userId: v.id("users"),
-    inviteToken: v.string(),
+    inviteTokenHash: v.string(),
     inviteTokenExpiry: v.float64(),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.userId, {
-      inviteToken: args.inviteToken,
+      inviteToken: undefined,
+      inviteTokenHash: args.inviteTokenHash,
       inviteTokenExpiry: args.inviteTokenExpiry,
     });
   },
@@ -106,6 +107,7 @@ export const revokeAffiliateInvite = mutation({
     await ctx.db.patch(args.targetUserId, {
       status: "inactive",
       inviteToken: undefined,
+      inviteTokenHash: undefined,
       inviteTokenExpiry: undefined,
     });
 

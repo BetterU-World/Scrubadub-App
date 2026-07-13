@@ -4,7 +4,7 @@ import type { ActionCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { generateSecureToken, hashToken } from "./tokens";
-import { isSuperAdminEmail } from "./auth";
+import { isFounderEmail } from "./founderEmails";
 import {
   SESSION_ABSOLUTE_EXPIRY_MS,
   SESSION_IDLE_EXPIRY_MS,
@@ -154,7 +154,7 @@ export async function requireSuperadminSession(
 ): Promise<StaffSessionPrincipal> {
   const principal = await requireStaffSession(ctx, token, claimedUserId);
   const user = await ctx.runQuery(sessionApi.getStaffPrincipal, { userId: principal.userId });
-  if (!user || !isSuperAdminEmail(user.email)) throw new Error("Super admin session required");
+  if (!user || !isFounderEmail(user.email)) throw new Error("Super admin session required");
   console.info("[security] verified founder allowlist access", { userId: String(principal.userId) });
   return principal;
 }

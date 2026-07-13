@@ -5,7 +5,7 @@ import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { hashPassword } from "./lib/password";
-import { generateSecureToken, INVITE_TOKEN_EXPIRY_MS } from "./lib/tokens";
+import { generateSecureToken, hashToken, INVITE_TOKEN_EXPIRY_MS } from "./lib/tokens";
 import { validatePassword, validateEmail, validateName } from "./lib/validation";
 import { validateRequiredEnv } from "./lib/validateEnv";
 import { issueSession } from "./lib/sessions";
@@ -87,7 +87,7 @@ export const inviteCleaner = action({
       companyId: args.companyId,
       role,
       status: "pending",
-      inviteToken: token,
+      inviteTokenHash: hashToken(token),
       inviteTokenExpiry: Date.now() + INVITE_TOKEN_EXPIRY_MS,
     };
     // Pass manager permission flags when creating a manager
@@ -140,7 +140,7 @@ export const resendInviteEmail = action({
     companyId: v.id("companies"),
     employeeEmail: v.string(),
   },
-  handler: async (ctx, args): Promise<{ emailSent: boolean }> => {
+  handler: async (ctx, args): Promise<{ emailSent: boolean; token: string }> => {
     const principal = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     if (principal.companyId !== args.companyId) throw new Error("Access denied");
     const isOwner: boolean = await ctx.runQuery(
@@ -154,13 +154,18 @@ export const resendInviteEmail = action({
     if (!user) throw new Error("Employee not found");
     if (user.status !== "pending") throw new Error("Employee already accepted invite");
     if (user.companyId !== args.companyId) throw new Error("Employee not in your company");
-    if (!user.inviteToken) throw new Error("No invite token found");
+    const token = generateSecureToken();
+    await ctx.runMutation(internal.authInternal.rotateInviteToken, {
+      userId: user._id,
+      inviteTokenHash: hashToken(token),
+      inviteTokenExpiry: Date.now() + INVITE_TOKEN_EXPIRY_MS,
+    });
 
     await ctx.runMutation(internal.mutations.scheduleEmail.scheduleInviteEmail, {
       email,
-      inviteToken: user.inviteToken,
+      inviteToken: token,
     });
-    return { emailSent: true };
+    return { emailSent: true, token };
   },
 });
 
@@ -190,7 +195,8 @@ export const acceptInvite = action({
     });
 
     const user = await ctx.runQuery(internal.authInternal.getUserByinviteToken, {
-      tokenHash: args.token,
+      tokenHash: hashToken(args.token),
+      legacyToken: args.token,
     });
 
     if (!user) throw new Error("Invalid or expired invite link");
