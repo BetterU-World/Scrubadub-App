@@ -111,7 +111,9 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
   // Cleaner usage for cap enforcement
   const cleanerUsage = useQuery(
     api.queries.billing.getCleanerUsageForUI,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId && sessionToken
+      ? { companyId: user.companyId, sessionToken }
+      : "skip"
   );
 
   // Default manager

@@ -1,6 +1,8 @@
 import { query, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { isFounderEmail } from "./lib/founderEmails";
+import { requireVerifiedStaffSession } from "./lib/sessionAuth";
+import { SESSION_REQUIRED_ERROR } from "./lib/sessionConstants";
 
 export const getUser = internalQuery({
   args: { userId: v.id("users") },
@@ -20,11 +22,16 @@ export const getUser = internalQuery({
 });
 
 export const getCurrentUser = query({
-  args: { userId: v.optional(v.id("users")) },
+  args: { sessionToken: v.string() },
   handler: async (ctx, args) => {
-    if (!args.userId) return null;
-    const user = await ctx.db.get(args.userId);
-    if (!user) return null;
+    let user;
+    try {
+      user = await requireVerifiedStaffSession(ctx, args.sessionToken);
+    } catch (error) {
+      // Hydration fails closed without crashing the authenticated app shell.
+      if (error instanceof Error && error.message === SESSION_REQUIRED_ERROR) return null;
+      throw error;
+    }
     const company = user.companyId ? await ctx.db.get(user.companyId) : null;
     return {
       _id: user._id,

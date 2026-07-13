@@ -72,10 +72,12 @@ function statusLabel(status: string): string {
 }
 
 export function BillingSection() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const subscription = useQuery(
     api.queries.billing.getCompanySubscription,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip",
+    user?.companyId && sessionToken
+      ? { companyId: user.companyId, sessionToken }
+      : "skip",
   );
   const createPortal = useAction(
     api.actions.billing.createBillingPortalSession,

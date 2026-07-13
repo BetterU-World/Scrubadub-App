@@ -53,7 +53,6 @@ export function PostCheckoutSetupPage() {
         password,
         companyName,
       });
-      localStorage.setItem("scrubadub_userId", String(result.userId));
       localStorage.setItem(STAFF_SESSION_KEY, result.sessionToken);
       window.location.assign("/");
     } catch (err: any) {

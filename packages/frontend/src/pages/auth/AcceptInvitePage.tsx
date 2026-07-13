@@ -47,7 +47,6 @@ export function AcceptInvitePage() {
     setLoading(true);
     try {
       const result = await acceptInvite({ token: params.token!, password });
-      localStorage.setItem("scrubadub_userId", String(result.userId));
       localStorage.setItem(STAFF_SESSION_KEY, result.sessionToken);
       window.location.assign("/");
     } catch (err: any) {

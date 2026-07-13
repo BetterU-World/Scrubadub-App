@@ -115,7 +115,8 @@ describe("owner and manager session migration", () => {
     const t = makeTest();
     const { companyA, workerA, affiliate } = await seed(t);
     await expect(t.query(api.queries.jobs.list, { companyId: companyA, userId: workerA, sessionToken: "" })).rejects.toThrow("verified session is required");
-    await expect(t.query(api.authQueries.getCurrentUser, { userId: affiliate })).resolves.toMatchObject({ _id: affiliate });
+    const affiliateAuth = await login(t, "affiliate@pr3.test");
+    await expect(t.query(api.authQueries.getCurrentUser, { sessionToken: affiliateAuth.sessionToken })).resolves.toMatchObject({ _id: affiliate });
     expect(typeof api.clientAuthActions.signIn).toBe("object");
   });
 });

@@ -259,10 +259,11 @@ describe("high-risk session enforcement", () => {
     })).rejects.toThrow("verified session is required");
   });
 
-  it("retains ordinary ID compatibility and client authentication", async () => {
+  it("retains verified staff hydration and client authentication", async () => {
     const t = makeTest();
     const { ownerA, clientUserId } = await seed(t);
-    await expect(t.query(api.authQueries.getCurrentUser, { userId: ownerA }))
+    const ownerAuth = await login(t, "owner-a@example.com");
+    await expect(t.query(api.authQueries.getCurrentUser, { sessionToken: ownerAuth.sessionToken }))
       .resolves.toMatchObject({ _id: ownerA });
     await expect(t.action(api.clientAuthActions.signIn, {
       email: "client@example.com",

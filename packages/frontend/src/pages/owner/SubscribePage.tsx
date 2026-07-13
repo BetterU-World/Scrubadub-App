@@ -17,10 +17,12 @@ const PLANS: Record<PlanKey, { name: string; price: string; cleaners: string }> 
 };
 
 export function SubscribePage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const subscription = useQuery(
     api.queries.billing.getCompanySubscription,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId && sessionToken
+      ? { companyId: user.companyId, sessionToken }
+      : "skip"
   );
   const createCheckout = useAction(api.actions.billing.createCheckoutSession);
   const createPortal = useAction(

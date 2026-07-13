@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { CLIENT_SESSION_KEY, CLIENT_USER_KEY, getClientSessionToken, getStoredClientUserId } from "../../../packages/frontend/src/lib/clientSession";
+import { clearClientSession, CLIENT_SESSION_KEY, getClientSessionToken } from "../../../packages/frontend/src/lib/clientSession";
+
+const LEGACY_CLIENT_USER_KEY = "scrubadub_clientUserId";
 
 function storage(initial: Record<string, string>) {
   const values = new Map(Object.entries(initial));
@@ -8,15 +10,21 @@ function storage(initial: Record<string, string>) {
 
 describe("client session hydration", () => {
   it("skips protected client queries and clears a legacy-only identity", () => {
-    const local = storage({ [CLIENT_USER_KEY]: "legacy-client" });
-    expect(getStoredClientUserId(local)).toBeNull();
+    const local = storage({ [LEGACY_CLIENT_USER_KEY]: "legacy-client" });
     expect(getClientSessionToken(local)).toBe("");
-    expect(local.has(CLIENT_USER_KEY)).toBe(false);
+    expect(local.has(LEGACY_CLIENT_USER_KEY)).toBe(false);
   });
 
-  it("hydrates the verified client identity and token together", () => {
-    const local = storage({ [CLIENT_USER_KEY]: "client", [CLIENT_SESSION_KEY]: "session" });
-    expect(getStoredClientUserId(local)).toBe("client");
+  it("retains only the verified client session token", () => {
+    const local = storage({ [LEGACY_CLIENT_USER_KEY]: "forged-client", [CLIENT_SESSION_KEY]: "session" });
     expect(getClientSessionToken(local)).toBe("session");
+    expect(local.has(LEGACY_CLIENT_USER_KEY)).toBe(false);
+  });
+
+  it("clears the client session and historical identity on logout", () => {
+    const local = storage({ [LEGACY_CLIENT_USER_KEY]: "historical-client", [CLIENT_SESSION_KEY]: "session" });
+    clearClientSession(local);
+    expect(local.has(CLIENT_SESSION_KEY)).toBe(false);
+    expect(local.has(LEGACY_CLIENT_USER_KEY)).toBe(false);
   });
 });

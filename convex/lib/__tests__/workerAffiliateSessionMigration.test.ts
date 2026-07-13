@@ -89,7 +89,7 @@ describe("worker and affiliate session migration", () => {
   it("retains owner sessions, client compatibility, and public action contracts", async () => {
     const t = makeTest(); const s = await seed(t); const auth = await login(t, "owner@pr4.test");
     await expect(t.query(api.queries.jobs.list, { companyId: s.companyA, userId: s.owner, sessionToken: auth.sessionToken })).resolves.toHaveLength(2);
-    await expect(t.query(api.authQueries.getCurrentUser, { userId: s.cleaner })).resolves.toMatchObject({ _id: s.cleaner });
+    await expect(t.query(api.authQueries.getCurrentUser, { sessionToken: auth.sessionToken })).resolves.toMatchObject({ _id: s.owner });
     expect(typeof api.clientAuthActions.signIn).toBe("object");
     expect(typeof (api as any).inviteActions).toBe("object");
   });
