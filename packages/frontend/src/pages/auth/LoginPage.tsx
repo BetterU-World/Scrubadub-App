@@ -43,7 +43,8 @@ export function LoginPage() {
         </div>
 
         <div className="card">
-          <h2 className="text-xl font-semibold mb-6">{t("auth.signIn")}</h2>
+          <h2 className="text-xl font-semibold mb-2">{t("auth.staffLoginTitle")}</h2>
+          <p className="mb-6 text-sm text-gray-500">{t("auth.staffLoginHelper")}</p>
 
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
@@ -101,6 +102,11 @@ export function LoginPage() {
             {t("auth.noAccount")}{" "}
             <Link href="/signup" className="text-primary-600 font-medium hover:text-primary-700">
               {t("auth.signUp")}
+            </Link>
+          </p>
+          <p className="mt-4 border-t border-gray-100 pt-4 text-center text-sm text-gray-500">
+            <Link href="/client/login" className="font-medium text-primary-600 hover:text-primary-700">
+              {t("auth.clientPortalLogin")}
             </Link>
           </p>
         </div>
