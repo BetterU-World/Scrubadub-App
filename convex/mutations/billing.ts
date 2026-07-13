@@ -58,6 +58,7 @@ export const syncSubscription = internalMutation({
     status: v.string(),
     currentPeriodEnd: v.number(),
     cancelAtPeriodEnd: v.boolean(),
+    eventCreated: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const company = await ctx.db
@@ -71,6 +72,14 @@ export const syncSubscription = internalMutation({
       console.error(
         `No company found for stripeCustomerId: ${args.stripeCustomerId}`
       );
+      return;
+    }
+
+    if (
+      args.eventCreated !== undefined &&
+      company.stripeSubscriptionEventCreatedAt !== undefined &&
+      args.eventCreated < company.stripeSubscriptionEventCreatedAt
+    ) {
       return;
     }
 
@@ -92,8 +101,82 @@ export const syncSubscription = internalMutation({
       currentPeriodEnd: args.currentPeriodEnd,
       cancelAtPeriodEnd: args.cancelAtPeriodEnd,
       subscriptionBecameInactiveAt,
+      ...(args.eventCreated !== undefined
+        ? { stripeSubscriptionEventCreatedAt: args.eventCreated }
+        : {}),
       ...(tier ? { tier } : {}),
     });
+  },
+});
+
+const WEBHOOK_PROCESSING_LEASE_MS = 5 * 60 * 1000;
+
+export const beginStripeWebhookEvent = internalMutation({
+  args: {
+    stripeEventId: v.string(),
+    eventType: v.string(),
+    now: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("stripeWebhookEvents")
+      .withIndex("by_stripeEventId", (q) => q.eq("stripeEventId", args.stripeEventId))
+      .first();
+    if (existing?.status === "completed") return "completed" as const;
+    if (
+      existing?.status === "processing" &&
+      args.now - existing.updatedAt < WEBHOOK_PROCESSING_LEASE_MS
+    ) {
+      return "processing" as const;
+    }
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        eventType: args.eventType,
+        status: "processing",
+        attempts: existing.attempts + 1,
+        updatedAt: args.now,
+        completedAt: undefined,
+      });
+    } else {
+      await ctx.db.insert("stripeWebhookEvents", {
+        stripeEventId: args.stripeEventId,
+        eventType: args.eventType,
+        status: "processing",
+        attempts: 1,
+        createdAt: args.now,
+        updatedAt: args.now,
+      });
+    }
+    return "started" as const;
+  },
+});
+
+export const completeStripeWebhookEvent = internalMutation({
+  args: { stripeEventId: v.string(), now: v.number() },
+  handler: async (ctx, args) => {
+    const event = await ctx.db
+      .query("stripeWebhookEvents")
+      .withIndex("by_stripeEventId", (q) => q.eq("stripeEventId", args.stripeEventId))
+      .first();
+    if (!event) throw new Error("Stripe webhook event claim not found");
+    await ctx.db.patch(event._id, {
+      status: "completed",
+      updatedAt: args.now,
+      completedAt: args.now,
+    });
+  },
+});
+
+export const failStripeWebhookEvent = internalMutation({
+  args: { stripeEventId: v.string(), now: v.number() },
+  handler: async (ctx, args) => {
+    const event = await ctx.db
+      .query("stripeWebhookEvents")
+      .withIndex("by_stripeEventId", (q) => q.eq("stripeEventId", args.stripeEventId))
+      .first();
+    if (event && event.status !== "completed") {
+      await ctx.db.patch(event._id, { status: "failed", updatedAt: args.now });
+    }
   },
 });
 
