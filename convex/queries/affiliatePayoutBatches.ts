@@ -1,6 +1,6 @@
 import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
-import { requireSuperAdmin } from "../lib/auth";
+import { requireSuperadminSession } from "../lib/sessionAuth";
 
 /**
  * List payout batches (newest first). Super-admin only.
@@ -8,6 +8,7 @@ import { requireSuperAdmin } from "../lib/auth";
 export const listPayoutBatches = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     status: v.optional(
       v.union(v.literal("recorded"), v.literal("voided"))
     ),
@@ -15,7 +16,7 @@ export const listPayoutBatches = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    await requireSuperAdmin(ctx, args.userId);
+    await requireSuperadminSession(ctx, args.sessionToken, args.userId);
     const limit = args.limit ?? 20;
 
     let batches = await ctx.db
@@ -46,10 +47,11 @@ export const listPayoutBatches = query({
 export const getPayoutBatch = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     batchId: v.id("affiliatePayoutBatches"),
   },
   handler: async (ctx, args) => {
-    await requireSuperAdmin(ctx, args.userId);
+    await requireSuperadminSession(ctx, args.sessionToken, args.userId);
 
     const batch = await ctx.db.get(args.batchId);
     if (!batch) throw new Error("Payout batch not found");
@@ -98,12 +100,9 @@ export const getPayoutBatch = query({
  */
 export const getBatchPayoutData = internalQuery({
   args: {
-    userId: v.id("users"),
     batchId: v.id("affiliatePayoutBatches"),
   },
   handler: async (ctx, args) => {
-    await requireSuperAdmin(ctx, args.userId);
-
     const batch = await ctx.db.get(args.batchId);
     if (!batch) throw new Error("Payout batch not found");
     if (batch.status === "voided") throw new Error("Batch is voided");

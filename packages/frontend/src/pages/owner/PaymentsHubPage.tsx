@@ -9,17 +9,21 @@ import { Handshake, Users, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 export function PaymentsHubPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
 
   const openSettlements = useQuery(
     api.queries.settlements.listMySettlements,
-    user?._id ? { userId: user._id, status: "open" as const } : "skip",
+    user?._id && sessionToken
+      ? { userId: user._id, sessionToken, status: "open" as const }
+      : "skip",
   );
 
   const openCleanerPayments = useQuery(
     api.queries.cleanerPayments.listCleanerPaymentsForCompany,
-    user?._id ? { userId: user._id, status: "OPEN" as const } : "skip",
+    user?._id && sessionToken
+      ? { userId: user._id, sessionToken, status: "OPEN" as const }
+      : "skip",
   );
 
   if (!user) return <PageLoader />;

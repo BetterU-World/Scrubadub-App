@@ -28,7 +28,7 @@ export const payPayoutBatchViaStripe = action({
     try {
       data = await ctx.runQuery(
         internal.queries.affiliatePayoutBatches.getBatchPayoutData,
-        { userId: principal.userId, batchId: args.batchId }
+        { batchId: args.batchId }
       );
     } catch (err: any) {
       return { ok: false as const, reason: err.message ?? "Validation failed" };

@@ -48,24 +48,14 @@ describe("legacy password verification", () => {
   });
 });
 
-describe("tenant isolation (auth helpers)", () => {
-  it("getSessionUser throws for missing userId without identity", async () => {
-    // This tests that the function signature requires either identity or userId
-    // In a unit test without Convex runtime, we verify the contract
-    const { getSessionUser } = await import("../auth");
-    // getSessionUser needs a QueryCtx which we can't mock easily
-    // but we verify the function exists and has the right shape
-    expect(typeof getSessionUser).toBe("function");
-  });
-
-  it("assertCompanyAccess verifies company membership", async () => {
-    const { assertCompanyAccess } = await import("../auth");
-    expect(typeof assertCompanyAccess).toBe("function");
-  });
-
-  it("assertOwnerRole verifies owner role", async () => {
-    const { assertOwnerRole } = await import("../auth");
-    expect(typeof assertOwnerRole).toBe("function");
+describe("authorization utilities", () => {
+  it("retains only pure role utilities in the legacy auth module", async () => {
+    const auth = await import("../auth");
+    expect(Object.keys(auth).sort()).toEqual([
+      "hasManagerPermission",
+      "isSuperAdminEmail",
+      "isWorkerRole",
+    ]);
   });
 });
 

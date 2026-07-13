@@ -1,6 +1,6 @@
 import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
-import { assertOwnerRole } from "../lib/auth";
+import { requireOwnerSession } from "../lib/sessionAuth";
 import { withPerfLog } from "../lib/perfLog";
 
 /**
@@ -10,6 +10,7 @@ import { withPerfLog } from "../lib/perfLog";
 export const listMySettlements = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     status: v.union(v.literal("open"), v.literal("paid")),
     role: v.optional(
       v.union(v.literal("owing"), v.literal("owed"), v.literal("all"))
@@ -17,7 +18,7 @@ export const listMySettlements = query({
   },
   handler: async (ctx, args) => {
     return await withPerfLog(ctx, "settlements:list", async () => {
-    const owner = await assertOwnerRole(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const companyId = owner.companyId;
     const role = args.role ?? "all";
 
@@ -133,10 +134,11 @@ export const listMySettlements = query({
 export const getSettlementForJob = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     originalJobId: v.id("jobs"),
   },
   handler: async (ctx, args) => {
-    const owner = await assertOwnerRole(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     const settlement = await ctx.db
       .query("companySettlements")

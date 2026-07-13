@@ -100,7 +100,9 @@ export function JobDetailPage() {
   // Cleaner payments
   const cleanerPaymentData = useQuery(
     api.queries.cleanerPayments.getCleanerPaymentForJob,
-    user && job ? { userId: user._id, jobId: params.id as Id<"jobs"> } : "skip"
+    user && sessionToken && job
+      ? { userId: user._id, sessionToken, jobId: params.id as Id<"jobs"> }
+      : "skip"
   );
   const createCleanerPayment = useMutation(api.mutations.cleanerPayments.createCleanerPayment);
   const markCleanerPaidOutside = useMutation(api.mutations.cleanerPayments.markCleanerPaidOutside);
@@ -111,7 +113,9 @@ export function JobDetailPage() {
   // Settlements
   const settlement = useQuery(
     api.queries.settlements.getSettlementForJob,
-    user && job && !job.sharedFromJobId ? { userId: user._id, originalJobId: params.id as Id<"jobs"> } : "skip"
+    user && sessionToken && job && !job.sharedFromJobId
+      ? { userId: user._id, sessionToken, originalJobId: params.id as Id<"jobs"> }
+      : "skip"
   );
   const upsertSettlement = useMutation(api.mutations.settlements.upsertSettlementForSharedJob);
   const markSettlementPaid = useMutation(api.mutations.settlements.markSettlementPaid);
@@ -794,6 +798,7 @@ export function JobDetailPage() {
                               });
                               const paymentId = await createCleanerPayment({
                                 userId: uid,
+                                sessionToken: getStaffSessionToken(),
                                 jobId: params.id as Id<"jobs">,
                                 amountCents,
                               });
@@ -843,6 +848,7 @@ export function JobDetailPage() {
                             });
                             await markCleanerPaidOutside({
                               userId: uid,
+                              sessionToken: getStaffSessionToken(),
                               jobId: params.id as Id<"jobs">,
                               amountCents,
                             });
@@ -1054,6 +1060,7 @@ export function JobDetailPage() {
                     try {
                       await upsertSettlement({
                         userId: uid,
+                        sessionToken: getStaffSessionToken(),
                         originalJobId: params.id as Id<"jobs">,
                         toCompanyId: partner.toCompanyId,
                         amountCents: Math.round(Number(settlementAmount) * 100),
@@ -1101,6 +1108,7 @@ export function JobDetailPage() {
                       try {
                         await upsertSettlement({
                           userId: uid,
+                          sessionToken: getStaffSessionToken(),
                           originalJobId: params.id as Id<"jobs">,
                           toCompanyId: settlement.toCompanyId,
                           amountCents: Math.round(Number(settlementAmount) * 100),
@@ -1211,6 +1219,7 @@ export function JobDetailPage() {
                     try {
                       await markSettlementPaid({
                         userId: uid,
+                        sessionToken: getStaffSessionToken(),
                         settlementId: settlement._id,
                         paidMethod: settlementPayMethod || undefined,
                       });
@@ -1409,6 +1418,7 @@ export function JobDetailPage() {
                       try {
                         await sendStripeConnectInviteMut({
                           userId: uid,
+                          sessionToken: getStaffSessionToken(),
                           cleanerUserId: cleanerPaymentData.cleanerUserId,
                         });
                         setShowConnectStripeModal(false);

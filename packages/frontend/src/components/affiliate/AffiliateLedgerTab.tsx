@@ -485,9 +485,10 @@ function BatchDetailModal({
   onVoid: (batchId: Id<"affiliatePayoutBatches">, notes: string) => void;
   voiding: boolean;
 }) {
+  const sessionToken = getStaffSessionToken();
   const batch = useQuery(
     api.queries.affiliatePayoutBatches.getPayoutBatch,
-    { userId, batchId }
+    sessionToken ? { userId, sessionToken, batchId } : "skip"
   );
   const payViaStripe = useAction(
     api.actions.stripePayouts.payPayoutBatchViaStripe
@@ -915,11 +916,14 @@ function BatchListPanel({
   batches?: { rows: BatchRow[] } | null;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const sessionToken = getStaffSessionToken();
 
   // Use global batches query when no pre-filtered batches are provided
   const globalBatches = useQuery(
     api.queries.affiliatePayoutBatches.listPayoutBatches,
-    batches !== undefined ? "skip" : { userId, limit: 10 }
+    batches !== undefined || !sessionToken
+      ? "skip"
+      : { userId, sessionToken, limit: 10 }
   );
 
   const batchRows = batches?.rows ?? globalBatches?.rows;
@@ -1560,12 +1564,14 @@ function AffiliateLedgerInner({
       } else if (modalTarget.action === "markPaid") {
         await markPaid({
           userId,
+          sessionToken: getStaffSessionToken(),
           ledgerId: modalTarget.id,
           notes: trimmedNotes,
         });
       } else if (modalTarget.action === "undoPaid") {
         await undoPaid({
           userId,
+          sessionToken: getStaffSessionToken(),
           ledgerId: modalTarget.id,
           notes: trimmedNotes,
         });

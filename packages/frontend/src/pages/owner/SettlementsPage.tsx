@@ -32,7 +32,7 @@ interface PartnerGroup {
 }
 
 export function SettlementsPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("open");
   const [markingId, setMarkingId] = useState<Id<"companySettlements"> | null>(null);
@@ -45,7 +45,9 @@ export function SettlementsPage() {
 
   const settlements = useQuery(
     api.queries.settlements.listMySettlements,
-    user?._id ? { userId: user._id, status: tab } : "skip",
+    user?._id && sessionToken
+      ? { userId: user._id, sessionToken, status: tab }
+      : "skip",
   );
   const markPaid = useMutation(api.mutations.settlements.markSettlementPaid);
   const createCheckout = useAction(api.actions.settlements.createSettlementPayCheckout);
@@ -61,6 +63,7 @@ export function SettlementsPage() {
     try {
       await markPaid({
         userId: user!._id,
+        sessionToken: getStaffSessionToken(),
         settlementId,
         paidMethod: paidMethod || undefined,
         note: paidNote || undefined,
@@ -129,7 +132,11 @@ export function SettlementsPage() {
     setError(null);
     try {
       const settlementIds = group.items.map((i) => i._id);
-      const batchId = await createBatch({ userId: user!._id, settlementIds });
+      const batchId = await createBatch({
+        userId: user!._id,
+        sessionToken: getStaffSessionToken(),
+        settlementIds,
+      });
       const result = await createBatchCheckout({ userId: user!._id, sessionToken: getStaffSessionToken(), batchId });
       if (result?.url) window.location.href = result.url;
     } catch (e: any) {
@@ -145,7 +152,12 @@ export function SettlementsPage() {
     setError(null);
     try {
       const settlementIds = group.items.map((i) => i._id);
-      await markBatchOutside({ userId: user!._id, settlementIds, paidMethod: "outside_app" });
+      await markBatchOutside({
+        userId: user!._id,
+        sessionToken: getStaffSessionToken(),
+        settlementIds,
+        paidMethod: "outside_app",
+      });
     } catch (e: any) {
       setError(e.message ?? "Failed to mark batch paid");
     } finally {

@@ -1,6 +1,6 @@
 import { mutation, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
-import { assertOwnerRole } from "../lib/auth";
+import { requireOwnerSession } from "../lib/sessionAuth";
 import { checkRateLimit } from "../lib/rateLimit";
 
 /**
@@ -9,13 +9,14 @@ import { checkRateLimit } from "../lib/rateLimit";
 export const upsertSettlementForSharedJob = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     originalJobId: v.id("jobs"),
     toCompanyId: v.id("companies"),
     amountCents: v.number(),
     currency: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const owner = await assertOwnerRole(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const fromCompanyId = owner.companyId;
 
     // Verify the job belongs to this owner's company
@@ -95,19 +96,19 @@ export const upsertSettlementForSharedJob = mutation({
 export const markSettlementPaid = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     settlementId: v.id("companySettlements"),
     paidMethod: v.optional(v.string()),
     note: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     // Rate limit: 10 mark-paid per 60s per user
     await checkRateLimit(ctx, {
-      key: `u:${args.userId}:markSettlementPaid`,
+      key: `u:${owner._id}:markSettlementPaid`,
       limit: 10,
       windowMs: 60_000,
     });
-
-    const owner = await assertOwnerRole(ctx, args.userId);
 
     const settlement = await ctx.db.get(args.settlementId);
     if (!settlement) throw new Error("Settlement not found");
@@ -186,17 +187,17 @@ export const markSettlementPaidViaStripe = internalMutation({
 export const createSettlementBatch = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     settlementIds: v.array(v.id("companySettlements")),
   },
   handler: async (ctx, args) => {
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     // Rate limit: 2 batch pay creations per 60s per user
     await checkRateLimit(ctx, {
-      key: `u:${args.userId}:createSettlementBatch`,
+      key: `u:${owner._id}:createSettlementBatch`,
       limit: 2,
       windowMs: 60_000,
     });
-
-    const owner = await assertOwnerRole(ctx, args.userId);
 
     if (args.settlementIds.length === 0) throw new Error("No settlements selected");
 
@@ -226,7 +227,7 @@ export const createSettlementBatch = mutation({
       currency,
       status: "OPEN",
       createdAt: now,
-      paidByUserId: args.userId,
+      paidByUserId: owner._id,
     });
 
     for (const sId of args.settlementIds) {
@@ -243,19 +244,19 @@ export const createSettlementBatch = mutation({
 export const markSettlementBatchPaidOutside = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     settlementIds: v.array(v.id("companySettlements")),
     paidMethod: v.optional(v.string()),
     note: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     // Rate limit: 10 mark-paid-outside per 60s per user
     await checkRateLimit(ctx, {
-      key: `u:${args.userId}:markSettlementBatchPaidOutside`,
+      key: `u:${owner._id}:markSettlementBatchPaidOutside`,
       limit: 10,
       windowMs: 60_000,
     });
-
-    const owner = await assertOwnerRole(ctx, args.userId);
 
     if (args.settlementIds.length === 0) throw new Error("No settlements selected");
 

@@ -71,7 +71,11 @@ function SeedManualsModal({
 
     setSeeding(true);
     try {
-      const res = await seedManuals({ userId: userId as any, manuals: parsed as any });
+      const res = await seedManuals({
+        userId: userId as any,
+        sessionToken: getStaffSessionToken(),
+        manuals: parsed as any,
+      });
       setResult(res);
     } catch (e: any) {
       setError(e.message ?? "Seed failed");
@@ -129,14 +133,16 @@ function SeedManualsModal({
 
 export function ManualsPage() {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const manuals = useQuery(
     api.queries.manuals.getVisibleManuals,
-    user ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
+    user && sessionToken ? { userId: user._id, sessionToken } : "skip"
   );
   const exportedManuals = useQuery(
     api.queries.manuals.exportManuals,
-    user?.isSuperadmin ? { userId: user._id } : "skip"
+    user?.isSuperadmin && sessionToken
+      ? { userId: user._id, sessionToken }
+      : "skip"
   );
   const getSignedUrl = useAction(api.actions.manuals.getManualSignedUrl);
   const [loadingId, setLoadingId] = useState<string | null>(null);

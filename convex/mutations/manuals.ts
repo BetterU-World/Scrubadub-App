@@ -1,10 +1,11 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { requireSuperAdmin } from "../lib/auth";
+import { requireSuperadminSession } from "../lib/sessionAuth";
 
 export const seedManuals = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     manuals: v.array(
       v.object({
         title: v.string(),
@@ -24,7 +25,7 @@ export const seedManuals = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    await requireSuperAdmin(ctx, args.userId);
+    await requireSuperadminSession(ctx, args.sessionToken, args.userId);
 
     let inserted = 0;
     let updated = 0;

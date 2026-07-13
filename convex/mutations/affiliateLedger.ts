@@ -1,11 +1,8 @@
 import { mutation, MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
-import {
-  isSuperAdminEmail,
-  requireSuperAdmin,
-} from "../lib/auth";
-import { requireAffiliateSession } from "../lib/sessionAuth";
+import { isSuperAdminEmail } from "../lib/auth";
+import { requireAffiliateSession, requireSuperadminSession } from "../lib/sessionAuth";
 
 const AFFILIATE_RATE = 0.10;
 
@@ -208,11 +205,12 @@ export const lockLedgerPeriod = mutation({
 export const markLedgerPaid = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     ledgerId: v.id("affiliateLedger"),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireSuperAdmin(ctx, args.userId);
+    await requireSuperadminSession(ctx, args.sessionToken, args.userId);
 
     const entry = await ctx.db.get(args.ledgerId);
     if (!entry) throw new Error("Ledger entry not found");
@@ -245,11 +243,12 @@ export const markLedgerPaid = mutation({
 export const unmarkLedgerPaid = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     ledgerId: v.id("affiliateLedger"),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireSuperAdmin(ctx, args.userId);
+    await requireSuperadminSession(ctx, args.sessionToken, args.userId);
 
     const entry = await ctx.db.get(args.ledgerId);
     if (!entry) throw new Error("Ledger entry not found");

@@ -1,7 +1,6 @@
 import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
-import { assertOwnerRole } from "../lib/auth";
-import { requireWorkerSession } from "../lib/sessionAuth";
+import { requireOwnerSession, requireWorkerSession } from "../lib/sessionAuth";
 import { withPerfLog } from "../lib/perfLog";
 
 /**
@@ -11,10 +10,11 @@ import { withPerfLog } from "../lib/perfLog";
 export const getCleanerPaymentForJob = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     jobId: v.id("jobs"),
   },
   handler: async (ctx, args) => {
-    const owner = await assertOwnerRole(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     const job = await ctx.db.get(args.jobId);
     if (!job || job.companyId !== owner.companyId) return null;
@@ -96,11 +96,12 @@ export const getCleanerPaymentForCheckout = internalQuery({
 export const listCleanerPaymentsForCompany = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     status: v.optional(v.union(v.literal("OPEN"), v.literal("PAID"))),
   },
   handler: async (ctx, args) => {
     return await withPerfLog(ctx, "cleanerPayments:listForCompany", async () => {
-      const owner = await assertOwnerRole(ctx, args.userId);
+      const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
       const payments = await ctx.db
         .query("cleanerPayments")
@@ -191,10 +192,10 @@ export const listMyCleanerPayments = query({
  * Sources from jobs table — shows items even before a cleanerPayments record exists.
  */
 export const listUnpaidJobsForCompany = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
     return await withPerfLog(ctx, "cleanerPayments:listUnpaid", async () => {
-      const owner = await assertOwnerRole(ctx, args.userId);
+      const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
       const jobs = await ctx.db
         .query("jobs")
@@ -266,7 +267,7 @@ export const listCleanerJobsWithPaymentStatus = query({
 
     const results = [];
     for (const job of jobs) {
-      if (!job.cleanerIds.includes(args.userId)) continue;
+      if (!job.cleanerIds.includes(user._id)) continue;
       if (job.status === "cancelled" || job.status === "denied") continue;
 
       // Look up payment record if exists
