@@ -8,6 +8,7 @@ import {
   requireClientSession,
   requireStaffSession,
 } from "./lib/sessions";
+import { recordSecurityEventFromAction } from "./lib/securityEventActions";
 
 const sessionApi: any = (internal as any).sessionInternal;
 
@@ -35,6 +36,13 @@ export const revokeCurrent = action({
       now: Date.now(),
       reason: "logout",
     });
+    await recordSecurityEventFromAction(ctx, {
+      eventType: "session_logout",
+      principalType: principal.kind === "staff" ? "staff" : "client",
+      staffUserId: principal.kind === "staff" ? principal.userId : undefined,
+      clientUserId: principal.kind === "client" ? principal.clientUserId : undefined,
+      outcome: "success",
+    });
     return { revoked: true };
   },
 });
@@ -43,11 +51,12 @@ export const revokeAllStaffSessions = action({
   args: { sessionToken: v.string() },
   handler: async (ctx, args): Promise<{ revoked: number }> => {
     const principal = await requireStaffSession(ctx, args.sessionToken);
-    const revoked: number = await ctx.runMutation(sessionApi.revokeAllForStaff, {
-      userId: principal.userId,
+    const revoked: number = await ctx.runMutation(sessionApi.revokeAllForPrincipal, {
+      principal: { principalType: "staff", userId: principal.userId },
       now: Date.now(),
       reason: "revoke_all",
     });
+    await recordSecurityEventFromAction(ctx, { eventType: "sessions_revoked", principalType: "staff", staffUserId: principal.userId, companyId: principal.companyId, outcome: "success", metadata: { reason: "revoke_all" } });
     return { revoked };
   },
 });
@@ -56,11 +65,12 @@ export const revokeAllClientSessions = action({
   args: { sessionToken: v.string() },
   handler: async (ctx, args): Promise<{ revoked: number }> => {
     const principal = await requireClientSession(ctx, args.sessionToken);
-    const revoked: number = await ctx.runMutation(sessionApi.revokeAllForClient, {
-      clientUserId: principal.clientUserId,
+    const revoked: number = await ctx.runMutation(sessionApi.revokeAllForPrincipal, {
+      principal: { principalType: "client", clientUserId: principal.clientUserId },
       now: Date.now(),
       reason: "revoke_all",
     });
+    await recordSecurityEventFromAction(ctx, { eventType: "sessions_revoked", principalType: "client", clientUserId: principal.clientUserId, outcome: "success", metadata: { reason: "revoke_all" } });
     return { revoked };
   },
 });

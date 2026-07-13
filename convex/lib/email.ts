@@ -331,6 +331,33 @@ export async function sendPasswordResetEmail(
   }
 }
 
+export async function sendClientPasswordResetEmail(email: string, token: string): Promise<boolean> {
+  const resend = getResendClient();
+  const resetLink = `${getAppUrl()}/client/reset-password/${token}`;
+  try {
+    const { error } = await resend.emails.send({
+      from: getFromEmail(),
+      to: email,
+      subject: "Reset your SCRUB Client Portal password",
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
+          <h2 style="text-align: center; color: #111;">Reset your Client Portal password</h2>
+          <p style="color: #374151; font-size: 15px; line-height: 1.6;">Use the secure link below to reset the password for your SCRUB Client Portal access.</p>
+          <p style="text-align: center; margin: 28px 0;"><a href="${resetLink}" style="background-color: #111; color: #fff; padding: 12px 18px; border-radius: 6px; text-decoration: none;">Reset Client Portal Password</a></p>
+          <p style="color: #9ca3af; font-size: 13px;">This link expires in 1 hour. If you did not request it, you can safely ignore this email.</p>
+        </div>`,
+    });
+    if (error) {
+      console.error("[email] Failed to send client password reset email");
+      return false;
+    }
+    return true;
+  } catch {
+    console.error("[email] Error sending client password reset email");
+    return false;
+  }
+}
+
 /**
  * Send an invite email for cleaner/maintenance onboarding.
  * Returns true if sent successfully, false otherwise.

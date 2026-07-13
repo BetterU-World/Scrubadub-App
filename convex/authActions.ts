@@ -14,6 +14,7 @@ import { generateSecureToken, hashToken, RESET_TOKEN_EXPIRY_MS } from "./lib/tok
 import { validatePassword, validateEmail, validateName } from "./lib/validation";
 import { validateRequiredEnv } from "./lib/validateEnv";
 import { issueSession } from "./lib/sessions";
+import { recordSecurityEventFromAction } from "./lib/securityEventActions";
 
 validateRequiredEnv();
 
@@ -116,8 +117,10 @@ export const signIn = action({
     const user = await ctx.runQuery(internal.authInternal.getUserByEmail, {
       email,
     });
-    if (!user) throw new Error(genericError);
-    if (user.status === "inactive") throw new Error(genericError);
+    if (!user || user.status === "inactive") {
+      await recordSecurityEventFromAction(ctx, { eventType: "login_failure", principalType: "staff", outcome: "failure", metadata: { category: "invalid_credentials" } });
+      throw new Error(genericError);
+    }
 
     let passwordValid = false;
 
@@ -134,9 +137,13 @@ export const signIn = action({
       passwordValid = await verifyBcryptPassword(args.password, user.passwordHash);
     }
 
-    if (!passwordValid) throw new Error(genericError);
+    if (!passwordValid) {
+      await recordSecurityEventFromAction(ctx, { eventType: "login_failure", principalType: "staff", outcome: "failure", metadata: { category: "invalid_credentials" } });
+      throw new Error(genericError);
+    }
 
     const session = await issueSession(ctx, { principalType: "staff", userId: user._id });
+    await recordSecurityEventFromAction(ctx, { eventType: "staff_login_success", principalType: "staff", staffUserId: user._id, companyId: user.companyId, outcome: "success" });
     return {
       userId: user._id,
       email: user.email,
@@ -163,6 +170,8 @@ export const requestPasswordReset = action({
     const user = await ctx.runQuery(internal.authInternal.getUserByEmail, {
       email,
     });
+
+    await recordSecurityEventFromAction(ctx, { eventType: "staff_password_reset_requested", principalType: "staff", outcome: "success", metadata: { category: "accepted" } });
 
     // Always return success to prevent user enumeration
     if (!user) return { success: true };
@@ -222,6 +231,13 @@ export const resetPassword = action({
       userId: user._id,
       passwordHash,
     });
+
+    await ctx.runMutation((internal as any).sessionInternal.revokeAllForPrincipal, {
+      principal: { principalType: "staff", userId: user._id },
+      now: Date.now(),
+      reason: "password_reset",
+    });
+    await recordSecurityEventFromAction(ctx, { eventType: "staff_password_reset_completed", principalType: "staff", staffUserId: user._id, companyId: user.companyId, outcome: "success" });
 
     return { success: true };
   },

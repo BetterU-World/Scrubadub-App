@@ -98,6 +98,8 @@ import { ContactPage } from "@/pages/public/ContactPage";
 import { GetStartedPage } from "@/pages/public/GetStartedPage";
 import { PostCheckoutSetupPage } from "@/pages/public/PostCheckoutSetupPage";
 import { ClientLoginPage } from "@/pages/client/ClientLoginPage";
+import { ClientForgotPasswordPage } from "@/pages/client/ClientForgotPasswordPage";
+import { ClientResetPasswordPage } from "@/pages/client/ClientResetPasswordPage";
 import { ClientAcceptInvitePage } from "@/pages/client/ClientAcceptInvitePage";
 import { ClientHomePage } from "@/pages/client/ClientHomePage";
 import { ClientServiceAgreementPage } from "@/pages/client/ClientServiceAgreementPage";
@@ -235,6 +237,8 @@ export default function App() {
         <ErrorBoundary>
           <Switch>
             <Route path="/client/login" component={ClientLoginPage} />
+            <Route path="/client/forgot-password" component={ClientForgotPasswordPage} />
+            <Route path="/client/reset-password/:token" component={ClientResetPasswordPage} />
             <Route path="/client/accept-invite/:token" component={ClientAcceptInvitePage} />
             <Route path="/client/service-agreements/:agreementId" component={ClientServiceAgreementPage} />
             <Route path="/client/home" component={ClientHomePage} />

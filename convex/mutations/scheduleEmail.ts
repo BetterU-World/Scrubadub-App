@@ -17,6 +17,13 @@ export const schedulePasswordResetEmail = internalMutation({
   },
 });
 
+export const scheduleClientPasswordResetEmail = internalMutation({
+  args: { email: v.string(), token: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendClientPasswordReset, args);
+  },
+});
+
 export const scheduleAffiliateInviteEmail = internalMutation({
   args: { email: v.string(), inviteToken: v.string(), name: v.optional(v.string()) },
   handler: async (ctx, args) => {
