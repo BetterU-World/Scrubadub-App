@@ -52,7 +52,8 @@ export function SignupPage() {
         </div>
 
         <div className="card">
-          <h2 className="text-xl font-semibold mb-6">{t("auth.createAccount")}</h2>
+          <h2 className="text-xl font-semibold mb-2">{t("auth.createBusinessAccount")}</h2>
+          <p className="mb-6 text-sm text-gray-500">{t("auth.signupHelper")}</p>
 
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
@@ -134,6 +135,7 @@ export function SignupPage() {
                 {t("auth.signIn")}
             </Link>
           </p>
+          <p className="mt-3 text-center text-xs text-gray-500">{t("auth.clientAccessNote")}</p>
         </div>
       </div>
     </div>

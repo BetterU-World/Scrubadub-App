@@ -41,7 +41,8 @@ export function ClientLoginPage() {
           <p className="mt-2 text-gray-500">{t("clientAuth.loginSubtitle")}</p>
         </div>
         <div className="card">
-          <h1 className="mb-6 text-xl font-semibold text-gray-900">{t("clientAuth.signIn")}</h1>
+          <h1 className="mb-2 text-xl font-semibold text-gray-900">{t("clientAuth.signIn")}</h1>
+          <p className="mb-6 text-sm text-gray-500">{t("clientAuth.loginHelper")}</p>
           {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
           <form onSubmit={handleSubmit} className="space-y-4">
             <label className="block">
@@ -57,7 +58,7 @@ export function ClientLoginPage() {
               {t("clientAuth.signIn")}
             </button>
           </form>
-          <p className="mt-4 text-center text-sm text-gray-500">
+          <p className="mt-4 border-t border-gray-100 pt-4 text-center text-sm text-gray-500">
             <Link href="/login" className="font-medium text-primary-600 hover:text-primary-700">
               {t("clientAuth.staffLogin")}
             </Link>
