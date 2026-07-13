@@ -1,6 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwner } from "../lib/helpers";
+import { requireOwnerSession } from "../lib/sessionAuth";
 import { validateSlug } from "../lib/slugs";
 
 /** Generate a cryptographically random hex token (Web Crypto API). */
@@ -19,6 +19,7 @@ function generateRandomToken(length = 40): string {
 export const upsertSite = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     companyId: v.id("companies"),
     slug: v.string(),
     templateId: v.union(v.literal("A"), v.literal("B")),
@@ -33,7 +34,7 @@ export const upsertSite = mutation({
     metaDescription: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await requireOwner(ctx, args.userId);
+    const user = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     if (user.companyId !== args.companyId) {
       throw new Error("Access denied");
     }
@@ -94,10 +95,11 @@ export const upsertSite = mutation({
 export const ensurePublicRequestToken = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     companyId: v.id("companies"),
   },
   handler: async (ctx, args) => {
-    const user = await requireOwner(ctx, args.userId);
+    const user = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     if (user.companyId !== args.companyId) {
       throw new Error("Access denied");
     }

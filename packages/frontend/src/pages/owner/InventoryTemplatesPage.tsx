@@ -42,12 +42,12 @@ const EMPTY_ITEM: TemplateItem = {
 };
 
 export function InventoryTemplatesPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
 
   const templates = useQuery(
     api.queries.inventoryTemplates.list,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId && sessionToken ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -82,6 +82,7 @@ export function InventoryTemplatesPage() {
           <TemplateEditor
             companyId={user.companyId!}
             userId={user._id}
+            sessionToken={sessionToken}
             onDone={() => setCreating(false)}
           />
         </div>
@@ -106,6 +107,7 @@ export function InventoryTemplatesPage() {
                 key={tmpl._id}
                 companyId={user.companyId!}
                 userId={user._id}
+                sessionToken={sessionToken}
                 template={tmpl}
                 onDone={() => { setEditingId(null); }}
               />
@@ -114,6 +116,7 @@ export function InventoryTemplatesPage() {
                 key={tmpl._id}
                 template={tmpl}
                 userId={user._id}
+                sessionToken={sessionToken}
                 onEdit={() => { setEditingId(tmpl._id); setCreating(false); }}
               />
             )
@@ -129,10 +132,12 @@ export function InventoryTemplatesPage() {
 function TemplateCard({
   template,
   userId,
+  sessionToken,
   onEdit,
 }: {
   template: any;
   userId: Id<"users">;
+  sessionToken: string;
   onEdit: () => void;
 }) {
   const { t } = useTranslation();
@@ -146,7 +151,7 @@ function TemplateCard({
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      await removeMutation({ userId, templateId: template._id });
+      await removeMutation({ userId, sessionToken, templateId: template._id });
       setDeleteOpen(false);
     } catch {
       // error handled by convex
@@ -160,6 +165,7 @@ function TemplateCard({
     try {
       await updateMutation({
         userId,
+        sessionToken,
         templateId: template._id,
         isDefault: !template.isDefault,
       });
@@ -270,11 +276,13 @@ function TemplateCard({
 function TemplateEditor({
   companyId,
   userId,
+  sessionToken,
   template,
   onDone,
 }: {
   companyId: Id<"companies">;
   userId: Id<"users">;
+  sessionToken: string;
   template?: any;
   onDone: () => void;
 }) {
@@ -331,6 +339,7 @@ function TemplateEditor({
       if (template) {
         await updateMutation({
           userId,
+          sessionToken,
           templateId: template._id,
           name: name.trim(),
           items: cleanItems,
@@ -339,6 +348,7 @@ function TemplateEditor({
       } else {
         await createMutation({
           userId,
+          sessionToken,
           companyId,
           name: name.trim(),
           items: cleanItems,

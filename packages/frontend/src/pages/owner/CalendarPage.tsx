@@ -91,8 +91,8 @@ export function CalendarPage() {
   // Query cleaners for filter dropdown
   const cleaners = useQuery(
     api.queries.employees.getCleaners,
-    user?.companyId && user.role === "owner"
-      ? { companyId: user.companyId, userId: user._id }
+    user?.companyId && user.role === "owner" && sessionToken
+      ? { companyId: user.companyId, userId: user._id, sessionToken }
       : "skip"
   );
 

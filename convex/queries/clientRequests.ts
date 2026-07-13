@@ -1,6 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireAuth } from "../lib/helpers";
+import { requireOwnerSession, requireStaffCompany, requireVerifiedStaffSession } from "../lib/sessionAuth";
 
 const REQUEST_LIST_CAP = 2_000;
 
@@ -33,6 +33,7 @@ export const getCompanyRequests = query({
   args: {
     companyId: v.id("companies"),
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     status: v.optional(
       v.union(
         v.literal("new"),
@@ -45,10 +46,7 @@ export const getCompanyRequests = query({
     ),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
-    if (user.companyId !== args.companyId) {
-      throw new Error("Access denied");
-    }
+    await requireStaffCompany(ctx, args.sessionToken, args.companyId, args.userId);
 
     if (args.status) {
       return await ctx.db
@@ -74,9 +72,10 @@ export const getRequestById = query({
   args: {
     id: v.id("clientRequests"),
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
+    const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
 
     const request = await ctx.db.get(args.id);
     if (!request) return null;
@@ -115,6 +114,7 @@ export const getRequestById = query({
 export const listRequestsForPipeline = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     leadStage: v.optional(
       v.union(
         v.literal("new"),
@@ -133,8 +133,7 @@ export const listRequestsForPipeline = query({
     ),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
-    if (user.role !== "owner" || !user.companyId) throw new Error("Owner access required");
+    const user = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const companyId = user.companyId;
 
     const requests = await ctx.db
@@ -164,12 +163,12 @@ export const listRequestsForPipeline = query({
 export const listFollowUps = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     dueOnly: v.optional(v.boolean()),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
-    if (user.role !== "owner" || !user.companyId) throw new Error("Owner access required");
+    const user = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const companyId = user.companyId;
 
     const requests = await ctx.db
@@ -255,12 +254,12 @@ export const getClientPortalByToken = query({
 export const listClientFeedback = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     status: v.optional(v.union(v.literal("new"), v.literal("reviewed"))),
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
-    if (user.role !== "owner" || !user.companyId) throw new Error("Owner access required");
+    const user = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const companyId = user.companyId;
 
     // Get all company requests
@@ -319,11 +318,11 @@ export const listClientFeedback = query({
 export const getLatestFeedbackForRequest = query({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     clientRequestId: v.id("clientRequests"),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
-    if (user.role !== "owner") throw new Error("Owner access required");
+    const user = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     const request = await ctx.db.get(args.clientRequestId);
     if (!request) return null;

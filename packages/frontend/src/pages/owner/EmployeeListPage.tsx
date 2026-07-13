@@ -35,7 +35,7 @@ export function EmployeeListPage() {
   const { t } = useTranslation();
   const employees = useQuery(
     api.queries.employees.list,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId && sessionToken ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
   const workerProfiles = useQuery(
     (api as any).queries.workers.listWorkersForCompany,
@@ -466,6 +466,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                           employeeId: emp._id,
                           status: emp.status === "active" ? "inactive" : "active",
                           userId: user._id,
+                          sessionToken,
                         })}
                         className="text-sm text-primary-600 hover:text-primary-700 font-medium"
                       >
@@ -677,6 +678,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                   await updateManagerPermissions({
                     employeeId: editPermsFor as any,
                     userId: user._id,
+                    sessionToken,
                     ...editPerms,
                   });
                   setEditPermsFor(null);

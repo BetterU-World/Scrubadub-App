@@ -16,6 +16,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { Link } from "wouter";
+import { getStaffSessionToken } from "@/hooks/useAuth";
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -65,21 +66,19 @@ export function CalendarSyncTab({
   userId,
   propertyName,
 }: CalendarSyncTabProps) {
-  const connections = useQuery(api.queries.calendarConnections.listByProperty, {
-    userId,
-    companyId,
-    propertyId,
-  });
-  const reservations = useQuery(api.queries.calendarReservations.listByProperty, {
-    userId,
-    companyId,
-    propertyId,
-  });
-  const rule = useQuery(api.queries.jobAutomationRules.getByProperty, {
-    userId,
-    companyId,
-    propertyId,
-  });
+  const sessionToken = getStaffSessionToken();
+  const connections = useQuery(
+    api.queries.calendarConnections.listByProperty,
+    sessionToken ? { userId, sessionToken, companyId, propertyId } : "skip"
+  );
+  const reservations = useQuery(
+    api.queries.calendarReservations.listByProperty,
+    sessionToken ? { userId, sessionToken, companyId, propertyId } : "skip"
+  );
+  const rule = useQuery(
+    api.queries.jobAutomationRules.getByProperty,
+    sessionToken ? { userId, sessionToken, companyId, propertyId } : "skip"
+  );
 
   // Pick the primary connection (first one, or none)
   const connection = connections?.[0] ?? null;
@@ -119,6 +118,7 @@ export function CalendarSyncTab({
         propertyId={propertyId}
         companyId={companyId}
         userId={userId}
+        sessionToken={sessionToken}
       />
 
       {/* Automation Rules Section */}
@@ -128,6 +128,7 @@ export function CalendarSyncTab({
           propertyId={propertyId}
           companyId={companyId}
           userId={userId}
+          sessionToken={sessionToken}
         />
       )}
 
@@ -157,11 +158,13 @@ function ConnectionSection({
   propertyId,
   companyId,
   userId,
+  sessionToken,
 }: {
   connection: any;
   propertyId: Id<"properties">;
   companyId: Id<"companies">;
   userId: Id<"users">;
+  sessionToken: string;
 }) {
   const [showForm, setShowForm] = useState(!connection);
   const [url, setUrl] = useState(connection?.icalUrl ?? "");
@@ -194,6 +197,7 @@ function ConnectionSection({
       if (connection) {
         await updateConnection({
           userId,
+          sessionToken,
           connectionId: connection._id,
           icalUrl: url.trim(),
           platform,
@@ -203,6 +207,7 @@ function ConnectionSection({
       } else {
         await createConnection({
           userId,
+          sessionToken,
           companyId,
           propertyId,
           icalUrl: url.trim(),
@@ -224,6 +229,7 @@ function ConnectionSection({
     try {
       await setEnabled({
         userId,
+        sessionToken,
         connectionId: connection._id,
         enabled: !connection.enabled,
       });
@@ -236,7 +242,7 @@ function ConnectionSection({
   const handleRemove = async () => {
     if (!connection) return;
     try {
-      await removeConnection({ userId, connectionId: connection._id });
+      await removeConnection({ userId, sessionToken, connectionId: connection._id });
       setUrl("");
       setLabel("");
       setPlatform("airbnb");
@@ -252,7 +258,7 @@ function ConnectionSection({
     setSyncing(true);
     setError("");
     try {
-      await triggerSync({ userId, connectionId: connection._id });
+      await triggerSync({ userId, sessionToken, connectionId: connection._id });
       showToast("Sync started — results will appear shortly");
     } catch (err: any) {
       setError(err.message || "Failed to trigger sync");
@@ -451,11 +457,13 @@ function AutomationRulesSection({
   propertyId,
   companyId,
   userId,
+  sessionToken,
 }: {
   rule: any;
   propertyId: Id<"properties">;
   companyId: Id<"companies">;
   userId: Id<"users">;
+  sessionToken: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [jobType, setJobType] = useState(rule?.jobType ?? "turnover");
@@ -485,6 +493,7 @@ function AutomationRulesSection({
 
       await upsertRule({
         userId,
+        sessionToken,
         companyId,
         propertyId,
         enabled: true,

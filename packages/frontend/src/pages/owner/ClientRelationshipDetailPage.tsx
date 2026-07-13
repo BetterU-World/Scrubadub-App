@@ -253,6 +253,7 @@ export function ClientRelationshipDetailPage() {
     try {
       const requestId = await createLead({
         userId: user._id,
+        sessionToken,
         clientRelationshipId: relationship._id,
         requesterName: leadForm.requesterName,
         requesterEmail: leadForm.requesterEmail,

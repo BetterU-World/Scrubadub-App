@@ -43,7 +43,7 @@ function getWeekRange(): [string, string] {
 }
 
 export function CleanerJobListPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const [dateRange, setDateRange] = useState<"all" | "today" | "week">("all");
   const [search, setSearch] = useState("");
@@ -53,7 +53,7 @@ export function CleanerJobListPage() {
   );
   const stats = useQuery(
     api.queries.performance.getCleanerStats,
-    user?.companyId ? { cleanerId: user._id, companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId && sessionToken ? { cleanerId: user._id, companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
 
   if (!user || jobs === undefined) return <PageLoader />;

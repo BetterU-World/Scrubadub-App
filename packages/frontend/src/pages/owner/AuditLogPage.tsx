@@ -9,10 +9,12 @@ import { ScrollText } from "lucide-react";
 
 export function AuditLogPage() {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const logs = useQuery(
     api.queries.auditLog.list,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId && sessionToken
+      ? { companyId: user.companyId, userId: user._id, sessionToken }
+      : "skip"
   );
 
   if (!user || logs === undefined) return <PageLoader />;

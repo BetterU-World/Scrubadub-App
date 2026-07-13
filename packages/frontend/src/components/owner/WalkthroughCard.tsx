@@ -276,7 +276,7 @@ export function WalkthroughCard({
   const updatePropertyFacts = useMutation((api as any).mutations.properties.updateWalkthroughFacts);
   const managers = useQuery(
     api.queries.employees.getManagers,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId && sessionToken ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
 
   const walkthroughs = commercialAccountId

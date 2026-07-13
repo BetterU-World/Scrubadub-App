@@ -1,11 +1,11 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { assertCompanyAccess } from "../lib/auth";
+import { requireStaffCompany, requireVerifiedStaffSession } from "../lib/sessionAuth";
 
 export const list = query({
-  args: { companyId: v.id("companies"), userId: v.id("users") },
+  args: { companyId: v.id("companies"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    await assertCompanyAccess(ctx, args.userId, args.companyId);
+    await requireStaffCompany(ctx, args.sessionToken, args.companyId, args.userId);
 
     return await ctx.db
       .query("inventoryTemplates")
@@ -15,12 +15,13 @@ export const list = query({
 });
 
 export const get = query({
-  args: { templateId: v.id("inventoryTemplates"), userId: v.id("users") },
+  args: { templateId: v.id("inventoryTemplates"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
     const template = await ctx.db.get(args.templateId);
     if (!template) return null;
 
-    await assertCompanyAccess(ctx, args.userId, template.companyId);
+    const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
+    if (user.companyId !== template.companyId) throw new Error("Access denied");
     return template;
   },
 });

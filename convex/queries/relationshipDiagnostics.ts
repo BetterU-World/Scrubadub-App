@@ -1,6 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwner } from "../lib/helpers";
+import { requireOwnerSession } from "../lib/sessionAuth";
 import {
   DIAGNOSTIC_SAMPLE_LIMIT,
   diagnoseRelationshipRecords,
@@ -17,9 +17,9 @@ const classifications: DiagnosticClassification[] = [
 ];
 
 export const getSummary = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const result = await diagnoseRelationshipRecords(ctx, owner.companyId);
     const entities = Object.fromEntries(entityTypes.map((entityType) => {
       const entityFindings = result.findings.filter((finding) => finding.entityType === entityType);

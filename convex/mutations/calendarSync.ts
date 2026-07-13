@@ -3,7 +3,8 @@ import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { Doc, Id } from "../_generated/dataModel";
 import { MutationCtx } from "../_generated/server";
-import { requireOwner, logAudit } from "../lib/helpers";
+import { logAudit } from "../lib/helpers";
+import { requireOwnerSession } from "../lib/sessionAuth";
 
 /** Sync interval: connections are eligible for sync after this many ms. */
 const SYNC_INTERVAL_MS = 60 * 60 * 1000; // 60 minutes
@@ -478,13 +479,14 @@ export const recordSyncError = internalMutation({
 export const triggerSync = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     connectionId: v.id("calendarConnections"),
   },
   handler: async (ctx, args) => {
     const connection = await ctx.db.get(args.connectionId);
     if (!connection) throw new Error("Connection not found");
 
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     if (owner.companyId !== connection.companyId) throw new Error("Not your company");
 
     if (!connection.enabled) throw new Error("Connection is disabled");

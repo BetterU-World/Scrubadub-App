@@ -11,11 +11,11 @@ import { ShareKit } from "@/components/owner/ShareKit";
 
 export function SiteSetupPage() {
   const { t } = useTranslation();
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
 
   const site = useQuery(
     api.queries.companySites.getMySite,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId && sessionToken ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
 
   const upsert = useMutation(api.mutations.companySites.upsertSite);
@@ -30,7 +30,7 @@ export function SiteSetupPage() {
     if (!user?.companyId || !site || site.publicRequestToken || tokenEnsured.current)
       return;
     tokenEnsured.current = true;
-    ensureToken({ userId: user._id, companyId: user.companyId }).catch(
+    ensureToken({ userId: user._id, sessionToken, companyId: user.companyId }).catch(
       (err: any) => {
         tokenEnsured.current = false; // allow retry
         setTokenError(err.message || t("siteBuilder.failedToGenerateLink"));
@@ -83,6 +83,7 @@ export function SiteSetupPage() {
     try {
       await upsert({
         userId: user._id,
+        sessionToken,
         companyId: user.companyId,
         slug: slug.trim().toLowerCase(),
         templateId,
@@ -166,6 +167,7 @@ export function SiteSetupPage() {
               if (!user.companyId) return;
               ensureToken({
                 userId: user._id,
+                sessionToken,
                 companyId: user.companyId,
               }).catch((err: any) => {
                 tokenEnsured.current = false;

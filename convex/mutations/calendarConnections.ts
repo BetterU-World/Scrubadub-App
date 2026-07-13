@@ -1,11 +1,13 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwner, logAudit } from "../lib/helpers";
+import { logAudit } from "../lib/helpers";
+import { requireOwnerSession } from "../lib/sessionAuth";
 import { requireActiveSubscription } from "../lib/subscriptionGating";
 
 export const create = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     companyId: v.id("companies"),
     propertyId: v.id("properties"),
     platform: v.union(
@@ -17,7 +19,7 @@ export const create = mutation({
     label: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     if (owner.companyId !== args.companyId) throw new Error("Not your company");
     await requireActiveSubscription(ctx, args.companyId);
 
@@ -61,6 +63,7 @@ export const create = mutation({
 export const update = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     connectionId: v.id("calendarConnections"),
     icalUrl: v.optional(v.string()),
     label: v.optional(v.string()),
@@ -76,7 +79,7 @@ export const update = mutation({
     const connection = await ctx.db.get(args.connectionId);
     if (!connection) throw new Error("Connection not found");
 
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     if (owner.companyId !== connection.companyId) throw new Error("Not your company");
 
     const updates: Record<string, unknown> = {};
@@ -99,6 +102,7 @@ export const update = mutation({
 export const setEnabled = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     connectionId: v.id("calendarConnections"),
     enabled: v.boolean(),
   },
@@ -106,7 +110,7 @@ export const setEnabled = mutation({
     const connection = await ctx.db.get(args.connectionId);
     if (!connection) throw new Error("Connection not found");
 
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     if (owner.companyId !== connection.companyId) throw new Error("Not your company");
 
     await ctx.db.patch(args.connectionId, { enabled: args.enabled });
@@ -124,13 +128,14 @@ export const setEnabled = mutation({
 export const remove = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     connectionId: v.id("calendarConnections"),
   },
   handler: async (ctx, args) => {
     const connection = await ctx.db.get(args.connectionId);
     if (!connection) throw new Error("Connection not found");
 
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     if (owner.companyId !== connection.companyId) throw new Error("Not your company");
 
     await ctx.db.delete(args.connectionId);

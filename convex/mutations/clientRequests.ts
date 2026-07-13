@@ -1,6 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwner, requireAuth } from "../lib/helpers";
+import { requireOwnerSession } from "../lib/sessionAuth";
 import { checkRateLimit } from "../lib/rateLimit";
 
 /**
@@ -110,6 +110,7 @@ export const updateRequestStatus = mutation({
   args: {
     requestId: v.id("clientRequests"),
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     status: v.union(
       v.literal("declined"),
       v.literal("converted"),
@@ -117,7 +118,7 @@ export const updateRequestStatus = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     const request = await ctx.db.get(args.requestId);
     if (!request) {
@@ -144,9 +145,10 @@ export const archiveClientRequest = mutation({
   args: {
     requestId: v.id("clientRequests"),
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     const request = await ctx.db.get(args.requestId);
     if (!request) throw new Error("Request not found");
@@ -168,9 +170,10 @@ export const createPropertyFromRequest = mutation({
   args: {
     requestId: v.id("clientRequests"),
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     const request = await ctx.db.get(args.requestId);
     if (!request) throw new Error("Request not found");
@@ -268,6 +271,7 @@ function patchForStage(leadStage: string, request: any) {
 export const createManualClientRequest = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     requesterName: v.string(),
     requesterEmail: v.string(),
     requesterPhone: v.optional(v.string()),
@@ -286,7 +290,7 @@ export const createManualClientRequest = mutation({
     clientRelationshipId: v.optional(v.id("clientRelationships")),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const now = Date.now();
     const relationship = args.clientRelationshipId
       ? await ctx.db.get(args.clientRelationshipId)
@@ -334,6 +338,7 @@ export const createManualClientRequest = mutation({
 export const updateLeadDetails = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     requestId: v.id("clientRequests"),
     leadType: v.optional(leadTypeValidator),
     businessName: v.optional(v.string()),
@@ -344,7 +349,7 @@ export const updateLeadDetails = mutation({
     estimatedFrequencyNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     const request = await ctx.db.get(args.requestId);
     if (!request) throw new Error("Request not found");
@@ -369,11 +374,12 @@ export const updateLeadDetails = mutation({
 export const updateLeadStage = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     requestId: v.id("clientRequests"),
     leadStage: leadStageValidator,
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     const request = await ctx.db.get(args.requestId);
     if (!request) throw new Error("Request not found");
@@ -390,11 +396,12 @@ export const updateLeadStage = mutation({
 export const updateLeadNotes = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     requestId: v.id("clientRequests"),
     leadNotes: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     const request = await ctx.db.get(args.requestId);
     if (!request) throw new Error("Request not found");
@@ -413,11 +420,12 @@ export const updateLeadNotes = mutation({
 export const updateNextFollowUp = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     requestId: v.id("clientRequests"),
     nextFollowUpAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     const request = await ctx.db.get(args.requestId);
     if (!request) throw new Error("Request not found");
@@ -444,10 +452,11 @@ function generateToken(): string {
 export const generateClientPortalLink = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     clientRequestId: v.id("clientRequests"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     const request = await ctx.db.get(args.clientRequestId);
     if (!request) throw new Error("Request not found");
@@ -564,11 +573,11 @@ export const submitClientFeedbackByToken = mutation({
 export const markFeedbackReviewed = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     feedbackId: v.id("clientFeedback"),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
-    if (user.role !== "owner") throw new Error("Owner access required");
+    const user = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     const feedback = await ctx.db.get(args.feedbackId);
     if (!feedback) throw new Error("Feedback not found");
@@ -591,12 +600,12 @@ export const markFeedbackReviewed = mutation({
 export const toggleFeedbackFeaturedOnSite = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     feedbackId: v.id("clientFeedback"),
     featured: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const user = await requireAuth(ctx, args.userId);
-    if (user.role !== "owner") throw new Error("Owner access required");
+    const user = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     const feedback = await ctx.db.get(args.feedbackId);
     if (!feedback) throw new Error("Feedback not found");

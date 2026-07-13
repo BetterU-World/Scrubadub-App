@@ -1,11 +1,11 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { assertCompanyAccess } from "../lib/auth";
+import { requireStaffCompany } from "../lib/sessionAuth";
 
 export const list = query({
-  args: { companyId: v.id("companies"), userId: v.id("users") },
+  args: { companyId: v.id("companies"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    await assertCompanyAccess(ctx, args.userId, args.companyId);
+    await requireStaffCompany(ctx, args.sessionToken, args.companyId, args.userId);
 
     return await ctx.db
       .query("users")
@@ -36,9 +36,9 @@ export const getByInviteToken = query({
 });
 
 export const getCleaners = query({
-  args: { companyId: v.id("companies"), userId: v.id("users") },
+  args: { companyId: v.id("companies"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    await assertCompanyAccess(ctx, args.userId, args.companyId);
+    await requireStaffCompany(ctx, args.sessionToken, args.companyId, args.userId);
 
     const users = await ctx.db
       .query("users")
@@ -49,9 +49,9 @@ export const getCleaners = query({
 });
 
 export const getManagers = query({
-  args: { companyId: v.id("companies"), userId: v.id("users") },
+  args: { companyId: v.id("companies"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    await assertCompanyAccess(ctx, args.userId, args.companyId);
+    await requireStaffCompany(ctx, args.sessionToken, args.companyId, args.userId);
 
     const users = await ctx.db
       .query("users")
@@ -62,9 +62,9 @@ export const getManagers = query({
 });
 
 export const getMaintenanceWorkers = query({
-  args: { companyId: v.id("companies"), userId: v.id("users") },
+  args: { companyId: v.id("companies"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    await assertCompanyAccess(ctx, args.userId, args.companyId);
+    await requireStaffCompany(ctx, args.sessionToken, args.companyId, args.userId);
 
     const users = await ctx.db
       .query("users")

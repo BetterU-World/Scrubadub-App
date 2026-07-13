@@ -1,6 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwner } from "../lib/helpers";
+import { requireOwnerSession } from "../lib/sessionAuth";
 
 /**
  * List cleaner leads for the caller's company, newest first.
@@ -9,6 +9,7 @@ import { requireOwner } from "../lib/helpers";
 export const getCompanyCleanerLeads = query({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     status: v.optional(
       v.union(
         v.literal("new"),
@@ -19,7 +20,7 @@ export const getCompanyCleanerLeads = query({
     ),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     if (args.status) {
       return await ctx.db
@@ -49,9 +50,10 @@ export const getCleanerLeadById = query({
   args: {
     id: v.id("cleanerLeads"),
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     const lead = await ctx.db.get(args.id);
     if (!lead) return null;

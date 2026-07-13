@@ -1,11 +1,13 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwner, logAudit } from "../lib/helpers";
+import { logAudit } from "../lib/helpers";
+import { requireOwnerSession } from "../lib/sessionAuth";
 import { requireActiveSubscription } from "../lib/subscriptionGating";
 
 export const upsert = mutation({
   args: {
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     companyId: v.id("companies"),
     propertyId: v.id("properties"),
     enabled: v.optional(v.boolean()),
@@ -17,7 +19,7 @@ export const upsert = mutation({
     defaultStartTime: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     if (owner.companyId !== args.companyId) throw new Error("Not your company");
     await requireActiveSubscription(ctx, args.companyId);
 

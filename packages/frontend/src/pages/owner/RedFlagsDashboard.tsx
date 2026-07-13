@@ -30,7 +30,7 @@ export function RedFlagsDashboard() {
   );
   const maintenanceWorkers = useQuery(
     api.queries.employees.getMaintenanceWorkers,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId && sessionToken ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
   const updateStatus = useMutation(api.mutations.redFlags.updateStatus);
   const createMaintenanceJob = useMutation(api.mutations.redFlags.createMaintenanceJob);

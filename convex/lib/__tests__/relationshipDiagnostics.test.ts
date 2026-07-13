@@ -1,19 +1,22 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { convexTest } from "convex-test";
 import schema from "../../schema";
 import { api } from "../../_generated/api";
+import { hashPassword } from "../password";
 
 const modules = import.meta.glob("../../**/*.ts");
+const PASSWORD = "test-password-123";
 
 function backend() {
   return convexTest(schema, modules);
 }
 
 async function seedCompany(t: ReturnType<typeof backend>, suffix: string, role = "owner") {
+  const passwordHash = await hashPassword(PASSWORD);
   return await t.run(async (ctx) => {
     const companyId = await ctx.db.insert("companies", { name: `Company ${suffix}`, timezone: "America/New_York" });
     const userId = await ctx.db.insert("users", {
-      email: `${role}-${suffix}@example.com`, passwordHash: "test", name: suffix,
+      email: `${role}-${suffix}@example.com`, passwordHash, name: suffix,
       companyId, role: role as any, status: "active",
     });
     return { companyId, userId };
@@ -42,7 +45,12 @@ async function seedProperty(t: ReturnType<typeof backend>, companyId: any, suffi
 }
 
 async function diagnostic(t: ReturnType<typeof backend>, userId: any) {
-  return await t.query(api.queries.relationshipDiagnostics.getSummary, { userId });
+  const email = await t.run(async (ctx) => (await ctx.db.get(userId))!.email);
+  const auth = await t.action(api.authActions.signIn, { email, password: PASSWORD });
+  return await t.query(api.queries.relationshipDiagnostics.getSummary, {
+    userId,
+    sessionToken: auth.sessionToken,
+  });
 }
 
 function sample(result: any, entity: string, recordId: any) {
@@ -50,6 +58,15 @@ function sample(result: any, entity: string, recordId: any) {
 }
 
 describe("historical relationship diagnostics", () => {
+  beforeEach(() => {
+    process.env.TOKEN_PEPPER = "test-token-pepper";
+    process.env.STRIPE_SECRET_KEY = "test-stripe-key";
+    process.env.STRIPE_WEBHOOK_ACCOUNT_SECRET = "test-webhook-secret";
+    process.env.RESEND_API_KEY = "test-resend-key";
+    process.env.RESEND_FROM_EMAIL = "test@example.com";
+    process.env.APP_URL = "http://localhost:5173";
+  });
+
   it("classifies a valid directly linked record as Healthy", async () => {
     const t = backend();
     const { companyId, userId } = await seedCompany(t, "healthy");
@@ -211,7 +228,7 @@ describe("historical relationship diagnostics", () => {
     const clientId = await seedClient(t, owner.companyId, "private");
     await seedProperty(t, owner.companyId, "private", clientId);
 
-    await expect(diagnostic(t, worker.userId)).rejects.toThrow("Owner access required");
+    await expect(diagnostic(t, worker.userId)).rejects.toThrow("Owner session required");
     const otherOwner = await seedCompany(t, "other-owner");
     const result = await diagnostic(t, otherOwner.userId);
     expect(result.entities.properties.counts.healthy).toBe(0);

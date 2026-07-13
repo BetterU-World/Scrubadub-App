@@ -67,11 +67,11 @@ function FollowUpBadge({ nextFollowUpAt }: { nextFollowUpAt: number }) {
   );
 }
 
-function FollowUpsWidget({ userId }: { userId: any }) {
+function FollowUpsWidget({ userId, sessionToken }: { userId: any; sessionToken: string }) {
   const { t } = useTranslation();
   const followUps = useQuery(
     api.queries.clientRequests.listFollowUps,
-    { userId, limit: 5 }
+    sessionToken ? { userId, sessionToken, limit: 5 } : "skip"
   );
 
   if (!followUps || followUps.length === 0) return null;
@@ -111,13 +111,13 @@ function FollowUpsWidget({ userId }: { userId: any }) {
 }
 
 export function PipelinePage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const timeAgo = useTimeAgo();
 
   const allRequests = useQuery(
     api.queries.clientRequests.listRequestsForPipeline,
-    user ? { userId: user._id } : "skip"
+    user && sessionToken ? { userId: user._id, sessionToken } : "skip"
   );
 
   if (!user || allRequests === undefined) return <PageLoader />;
@@ -138,7 +138,7 @@ export function PipelinePage() {
     <div>
       <LeadsHeader />
 
-      <FollowUpsWidget userId={user._id} />
+      <FollowUpsWidget userId={user._id} sessionToken={sessionToken} />
 
       {allRequests.length === 0 ? (
         <EmptyState

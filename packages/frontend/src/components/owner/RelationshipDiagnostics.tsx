@@ -19,11 +19,11 @@ function recordHref(entityType: string, recordId: string) {
   return null;
 }
 
-export function RelationshipDiagnostics({ userId }: { userId: string }) {
+export function RelationshipDiagnostics({ userId, sessionToken }: { userId: string; sessionToken: string }) {
   const { t } = useTranslation();
   const diagnostic = useQuery(
     (api as any).queries.relationshipDiagnostics.getSummary,
-    { userId }
+    sessionToken ? { userId, sessionToken } : "skip"
   ) as any;
 
   if (diagnostic === undefined) {

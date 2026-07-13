@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwner, logAudit } from "../lib/helpers";
+import { logAudit } from "../lib/helpers";
+import { requireOwnerSession } from "../lib/sessionAuth";
 
 // inviteCleaner and acceptInvite have been moved to convex/employeeActions.ts
 // for secure token generation (crypto.randomBytes).
@@ -10,9 +11,10 @@ export const updateEmployeeStatus = mutation({
     employeeId: v.id("users"),
     status: v.union(v.literal("active"), v.literal("inactive")),
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const target = await ctx.db.get(args.employeeId);
     if (!target) throw new Error("User not found");
     if (target.companyId !== owner.companyId) throw new Error("Access denied");
@@ -34,6 +36,7 @@ export const updateManagerPermissions = mutation({
   args: {
     employeeId: v.id("users"),
     userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
     canSeeAllJobs: v.boolean(),
     canCreateJobs: v.boolean(),
     canAssignCleaners: v.boolean(),
@@ -43,7 +46,7 @@ export const updateManagerPermissions = mutation({
     canResolveRedFlags: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const target = await ctx.db.get(args.employeeId);
     if (!target) throw new Error("User not found");
     if (target.companyId !== owner.companyId) throw new Error("Access denied");

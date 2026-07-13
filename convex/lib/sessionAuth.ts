@@ -11,6 +11,7 @@ declare const process: { env: Record<string, string | undefined> };
 
 type DbCtx = QueryCtx | MutationCtx;
 type ActiveStaff = Doc<"users"> & { status: "active" };
+type ActiveCompanyStaff = ActiveStaff & { companyId: Id<"companies"> };
 export type ActiveClient = Doc<"clientUsers"> & { status: "active" };
 type ActiveOwner = ActiveStaff & { role: "owner"; companyId: Id<"companies"> };
 export type ActiveWorker = ActiveStaff & {
@@ -70,6 +71,18 @@ export async function requireVerifiedStaffSession(
     });
   }
   return user as ActiveStaff;
+}
+
+/** Resolve any active staff caller and enforce same-company access. */
+export async function requireStaffCompany(
+  ctx: DbCtx,
+  sessionToken: string,
+  companyId: Id<"companies">,
+  claimedUserId?: Id<"users">
+): Promise<ActiveCompanyStaff> {
+  const user = await requireVerifiedStaffSession(ctx, sessionToken, claimedUserId);
+  if (!user.companyId || user.companyId !== companyId) throw new Error("Access denied");
+  return user as ActiveCompanyStaff;
 }
 
 export async function requireVerifiedClientSession(
