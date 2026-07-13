@@ -2,6 +2,7 @@ import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { isFounderEmail } from "../lib/founderEmails";
 import { tierToScrubPlan, planDisplayName, planPrice, cleanerLimit } from "../lib/plans";
+import { requireVerifiedStaffSession } from "../lib/sessionAuth";
 
 /** Safe fallback when subscription data cannot be determined yet. */
 const EMPTY_SUB = {
@@ -18,15 +19,10 @@ const EMPTY_SUB = {
 };
 
 export const getCompanySubscription = query({
-  args: { companyId: v.id("companies"), userId: v.optional(v.id("users")) },
+  args: { companyId: v.id("companies"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    // No userId → can't verify access
-    if (!args.userId) return EMPTY_SUB;
-
-    // Caller must exist and belong to this company
-    const caller = await ctx.db.get(args.userId);
-    if (!caller || caller.status === "inactive") return EMPTY_SUB;
-    if (caller.companyId !== args.companyId) return EMPTY_SUB;
+    const caller = await requireVerifiedStaffSession(ctx, args.sessionToken);
+    if (caller.companyId !== args.companyId) throw new Error("Access denied");
 
     const company = await ctx.db.get(args.companyId);
     if (!company) return EMPTY_SUB;
@@ -114,10 +110,10 @@ export const getCleanerUsage = internalQuery({
  * Returns active cleaner count and plan limits.
  */
 export const getCleanerUsageForUI = query({
-  args: { companyId: v.id("companies"), userId: v.id("users") },
+  args: { companyId: v.id("companies"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const caller = await ctx.db.get(args.userId);
-    if (!caller || caller.companyId !== args.companyId) return null;
+    const caller = await requireVerifiedStaffSession(ctx, args.sessionToken);
+    if (caller.companyId !== args.companyId) throw new Error("Access denied");
 
     const company = await ctx.db.get(args.companyId);
     if (!company) return null;

@@ -185,7 +185,7 @@ describe("Security V2 session foundation", () => {
       .rejects.toThrow("Staff session required");
   });
 
-  it("derives identity only from the session and preserves legacy ID-only behavior", async () => {
+  it("derives root hydration identity only from the verified session", async () => {
     const t = makeTest();
     const { userId } = await seedPrincipals(t);
     const login = await staffLogin(t);
@@ -193,7 +193,9 @@ describe("Security V2 session foundation", () => {
     expect(principal).toMatchObject({ kind: "staff", userId });
     expect(Object.keys(principal)).not.toContain("claimedUserId");
 
-    const legacy = await t.query(api.authQueries.getCurrentUser, { userId });
-    expect(legacy?._id).toBe(userId);
+    await expect(t.query(api.authQueries.getCurrentUser, { sessionToken: login.sessionToken }))
+      .resolves.toMatchObject({ _id: userId });
+    await expect(t.query(api.authQueries.getCurrentUser, { sessionToken: "" }))
+      .resolves.toBeNull();
   });
 });

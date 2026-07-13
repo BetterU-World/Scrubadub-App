@@ -131,9 +131,8 @@ function SubscriptionInactive() {
 }
 
 export default function App() {
-  const { user, userId, isLoading, isAuthenticated } = useAuth();
+  const { user, sessionToken, isLoading, isAuthenticated } = useAuth();
   const [pathname] = useLocation();
-  const storedUserId = localStorage.getItem("scrubadub_userId");
 
   // Capture ?ref= param on first load
   useEffect(() => {
@@ -150,11 +149,12 @@ export default function App() {
 
   const subscription = useQuery(
     api.queries.billing.getCompanySubscription,
-    user?.companyId ? { companyId: user.companyId, userId: user._id } : "skip"
+    user?.companyId && sessionToken
+      ? { companyId: user.companyId, sessionToken }
+      : "skip"
   );
 
   // --- Derived state ---
-  const isAuthed = Boolean(userId || storedUserId);
   // DEV bypass to prevent local onboarding/subscription deadlock
   const devBypass = import.meta.env.DEV && !!user;
   // != null catches both undefined (loading) and null (company not found)
@@ -179,10 +179,8 @@ export default function App() {
   let redirectBranch = "app";
   if (isLoading) {
     redirectBranch = "auth-loading";
-  } else if (!isAuthed && !isAuthenticated) {
+  } else if (!isAuthenticated) {
     redirectBranch = "no-auth->/login";
-  } else if (isAuthed && !isAuthenticated) {
-    redirectBranch = "query-settling";
   } else if (!subSettled) {
     redirectBranch = "sub-loading";
   } else if (isOwner && !accessOk) {
@@ -192,7 +190,7 @@ export default function App() {
   // --- DEV banner (enable: localStorage.setItem("DEBUG_AUTH_BANNER","1"); location.reload();) ---
   const devBanner = import.meta.env.DEV && localStorage.getItem("DEBUG_AUTH_BANNER") === "1" ? (
     <div style={{position:"fixed",bottom:0,left:0,right:0,padding:"4px 8px",background:"rgba(0,0,0,0.9)",color:"#0f0",fontSize:10,fontFamily:"monospace",zIndex:99999,whiteSpace:"nowrap",overflow:"auto"}}>
-      {`path=${pathname} | stored=${storedUserId ? "yes" : "no"} | userId=${userId ? "yes" : "no"} | authLoading=${isLoading} | isAuthed=${isAuthed} | email=${user?.email ?? "-"} | devBypass=${devBypass} | companyBypassed=${companyBypassed} | subActive=${isSubActive} | accessOk=${accessOk} | branch=${redirectBranch}`}
+      {`path=${pathname} | session=${sessionToken ? "yes" : "no"} | authLoading=${isLoading} | verified=${isAuthenticated} | email=${user?.email ?? "-"} | devBypass=${devBypass} | companyBypassed=${companyBypassed} | subActive=${isSubActive} | accessOk=${accessOk} | branch=${redirectBranch}`}
     </div>
   ) : null;
 
@@ -286,13 +284,8 @@ export default function App() {
     return <><Analytics />{devBanner}<PageLoader /></>;
   }
 
-  // --- GUARD 2: storedUserId exists but query hasn't resolved yet - wait ---
-  if (isAuthed && !isAuthenticated) {
-    return <><Analytics />{devBanner}<PageLoader /></>;
-  }
-
-  // --- GUARD 3: Definitely not authenticated - show login routes ---
-  if (!isAuthed && !isAuthenticated) {
+  // --- GUARD 2: Definitely not authenticated - show login routes ---
+  if (!isAuthenticated) {
     return (
       <>
         <Analytics />
@@ -329,12 +322,12 @@ export default function App() {
     );
   }
 
-  // --- GUARD 4: Authenticated but subscription data still loading ---
+  // --- GUARD 3: Authenticated but subscription data still loading ---
   if (!subSettled) {
     return <><Analytics />{devBanner}<PageLoader /></>;
   }
 
-  // --- GUARD 5: Fully resolved - render app with access control ---
+  // --- GUARD 4: Fully resolved - render app with access control ---
   return (
     <ErrorBoundary>
       <OfflineIndicator />

@@ -3,13 +3,11 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import {
+  clearStaffSession,
   getStaffSessionToken,
-  getStoredStaffUserId,
   STAFF_SESSION_KEY,
-  STAFF_USER_KEY,
 } from "@/lib/staffSession";
 
-const STORAGE_KEY = STAFF_USER_KEY;
 const REF_KEY = "scrubadub_ref";
 // Temporary Security V2 migration credential. This remains in localStorage only
 // until the app adopts provider-backed transport or a same-origin cookie layer.
@@ -37,14 +35,8 @@ interface AuthUser {
   canResolveRedFlags?: boolean;
 }
 
-function getStoredUserId(): Id<"users"> | null {
-  const stored = getStoredStaffUserId();
-  return stored ? (stored as Id<"users">) : null;
-}
-
 export function useAuth() {
-  const [userId, setUserId] = useState<Id<"users"> | null>(getStoredUserId);
-  const [isLoading, setIsLoading] = useState(true);
+  const [sessionToken, setSessionToken] = useState(getStaffSessionToken);
 
   // ✅ Convex Actions
   const signUpAction = useAction(api.authActions.signUp);
@@ -53,28 +45,20 @@ export function useAuth() {
   const setReferredByCode = useMutation(api.mutations.affiliate.setReferredByCode);
 
   // ✅ Query current user
-  const user = useQuery(api.authQueries.getCurrentUser, {
-    userId: userId ?? undefined,
-  });
-  const sessionToken = getStaffSessionToken();
+  const user = useQuery(
+    api.authQueries.getCurrentUser,
+    sessionToken ? { sessionToken } : "skip"
+  );
   const authenticatedUser = sessionToken ? user : null;
+  const userId = authenticatedUser?._id ?? null;
+  const isLoading = Boolean(sessionToken && user === undefined);
 
   useEffect(() => {
-    if (!sessionToken && userId) {
-      localStorage.removeItem(STORAGE_KEY);
-      setUserId(null);
-      setIsLoading(false);
-      return;
+    if (sessionToken && user === null) {
+      clearStaffSession();
+      setSessionToken("");
     }
-    if (user !== undefined) {
-      setIsLoading(false);
-
-      if (user === null && userId) {
-        localStorage.removeItem(STORAGE_KEY);
-        setUserId(null);
-      }
-    }
-  }, [user, userId, sessionToken]);
+  }, [user, sessionToken]);
 
   // ✅ Referral capture: if localStorage has a ref code, attribute it once
   const refApplied = useRef(false);
@@ -103,9 +87,8 @@ export function useAuth() {
       companyName: string;
     }) => {
       const result = await signUpAction(args);
-      localStorage.setItem(STORAGE_KEY, String(result.userId));
       localStorage.setItem(STAFF_SESSION_KEY, result.sessionToken);
-      setUserId(result.userId);
+      setSessionToken(result.sessionToken);
       return result;
     },
     [signUpAction]
@@ -114,23 +97,20 @@ export function useAuth() {
   const signIn = useCallback(
     async (args: { email: string; password: string }) => {
       const result = await signInAction(args);
-      const uid = String(result.userId);
-      localStorage.setItem(STORAGE_KEY, uid);
       localStorage.setItem(STAFF_SESSION_KEY, result.sessionToken);
-      setUserId(uid as Id<"users">);
+      setSessionToken(result.sessionToken);
       return result;
     },
     [signInAction]
   );
 
   const signOut = useCallback(() => {
-    const sessionToken = localStorage.getItem(STAFF_SESSION_KEY);
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(STAFF_SESSION_KEY);
-    setUserId(null);
-    if (sessionToken) void revokeSession({ sessionToken }).catch(() => {});
+    const tokenToRevoke = sessionToken;
+    clearStaffSession();
+    setSessionToken("");
+    if (tokenToRevoke) void revokeSession({ sessionToken: tokenToRevoke }).catch(() => {});
     window.location.assign("/login");
-  }, [revokeSession]);
+  }, [revokeSession, sessionToken]);
 
   return {
     user: authenticatedUser as AuthUser | null | undefined,

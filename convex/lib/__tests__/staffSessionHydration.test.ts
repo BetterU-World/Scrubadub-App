@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  clearStaffSession,
   getStaffSessionToken,
-  getStoredStaffUserId,
   STAFF_SESSION_KEY,
-  STAFF_USER_KEY,
 } from "../../../packages/frontend/src/lib/staffSession";
+
+const LEGACY_STAFF_USER_KEY = "scrubadub_userId";
 
 function storage(initial: Record<string, string>) {
   const values = new Map(Object.entries(initial));
@@ -17,20 +18,29 @@ function storage(initial: Record<string, string>) {
 
 describe("staff session hydration", () => {
   it("does not hydrate protected query callers from a legacy ID without a session", () => {
-    const local = storage({ [STAFF_USER_KEY]: "legacy-worker-id" });
+    const local = storage({ [LEGACY_STAFF_USER_KEY]: "legacy-worker-id" });
 
-    expect(getStoredStaffUserId(local)).toBeNull();
     expect(getStaffSessionToken(local)).toBe("");
-    expect(local.has(STAFF_USER_KEY)).toBe(false);
+    expect(local.has(LEGACY_STAFF_USER_KEY)).toBe(false);
   });
 
-  it("hydrates the same owner, manager, worker, and affiliate caller shape when a session exists", () => {
+  it("retains only the verified session and removes a historical identity key", () => {
     const local = storage({
-      [STAFF_USER_KEY]: "verified-user-id",
+      [LEGACY_STAFF_USER_KEY]: "forged-user-id",
       [STAFF_SESSION_KEY]: "verified-session-token",
     });
 
-    expect(getStoredStaffUserId(local)).toBe("verified-user-id");
     expect(getStaffSessionToken(local)).toBe("verified-session-token");
+    expect(local.has(LEGACY_STAFF_USER_KEY)).toBe(false);
+  });
+
+  it("clears the session and historical identity on logout", () => {
+    const local = storage({
+      [LEGACY_STAFF_USER_KEY]: "historical-user-id",
+      [STAFF_SESSION_KEY]: "verified-session-token",
+    });
+    clearStaffSession(local);
+    expect(local.has(STAFF_SESSION_KEY)).toBe(false);
+    expect(local.has(LEGACY_STAFF_USER_KEY)).toBe(false);
   });
 });
