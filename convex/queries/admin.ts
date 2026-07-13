@@ -1,6 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { isSuperAdminEmail } from "../lib/auth";
+import { isFounderEmail } from "../lib/founderEmails";
 import { requireSuperadminSession, requireVerifiedStaffSession } from "../lib/sessionAuth";
 
 export const getPlatformStats = query({
@@ -120,6 +120,6 @@ export const isSuperAdmin = query({
     // users must fail closed without crashing unrelated navigation.
     if (!args.sessionToken) return false;
     const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
-    return isSuperAdminEmail(user.email);
+    return isFounderEmail(user.email);
   },
 });

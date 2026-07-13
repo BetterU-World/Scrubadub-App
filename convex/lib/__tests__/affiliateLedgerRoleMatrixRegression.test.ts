@@ -183,7 +183,7 @@ describe("Affiliate Ledger verified-session role matrix regression", () => {
     const source = readFileSync(fileURLToPath(new URL(
       "../../../packages/frontend/src/components/affiliate/AffiliateLedgerTab.tsx",
       import.meta.url,
-    )), "utf8");
+    )), "utf8").replace(/\r\n/g, "\n");
     expect(source).toContain("const { userId, sessionToken, isLoading, user } = useAuth()");
     expect(source).toContain("isViewingOther || !sessionToken\n      ? \"skip\"");
     expect(source).toContain("isViewingOther && sessionToken\n      ? {");

@@ -450,8 +450,12 @@ export default function App() {
           <Route path="/notifications" component={NotificationsPage} />
           <Route path="/manuals/:slug" component={ManualViewerPage} />
           <Route path="/manuals" component={ManualsPage} />
-          <Route path="/admin/affiliates" component={AffiliateInvitesPage} />
-          <Route path="/admin" component={SuperAdminPage} />
+          {user?.isSuperadmin === true && (
+            <>
+              <Route path="/admin/affiliates" component={AffiliateInvitesPage} />
+              <Route path="/admin" component={SuperAdminPage} />
+            </>
+          )}
           <Route path="/invite/:token" component={AcceptInvitePage} />
           <Route path="/terms" component={TermsPage} />
           <Route path="/privacy" component={PrivacyPage} />

@@ -1,11 +1,3 @@
-const SUPER_ADMIN_EMAILS = [
-  "dzbfyse@gmail.com",
-];
-
-export function isSuperAdminEmail(email: string): boolean {
-  return SUPER_ADMIN_EMAILS.includes(email.toLowerCase());
-}
-
 /** Check if a user has a specific manager permission flag. */
 export function hasManagerPermission(
   user: { role: string; canSeeAllJobs?: boolean; canCreateJobs?: boolean; canAssignCleaners?: boolean; canRequestRework?: boolean; canApproveForms?: boolean; canManageSchedule?: boolean; canResolveRedFlags?: boolean },

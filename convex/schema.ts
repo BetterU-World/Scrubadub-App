@@ -114,6 +114,7 @@ export default defineSchema({
     .index("by_email", ["email"])
     .index("by_companyId", ["companyId"])
     .index("by_inviteToken", ["inviteToken"])
+    .index("by_inviteTokenHash", ["inviteTokenHash"])
     .index("by_resetToken", ["resetToken"])
     .index("by_referralCode", ["referralCode"])
     .index("by_referredByCode", ["referredByCode"]),

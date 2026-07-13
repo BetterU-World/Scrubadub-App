@@ -50,15 +50,17 @@ const statusConfig: Record<
 };
 
 export function AffiliateInvitesPage() {
-  const { user } = useAuth();
+  const { user, sessionToken, isLoading } = useAuth();
+  const canAccess = user?.isSuperadmin === true && Boolean(sessionToken);
   const [showModal, setShowModal] = useState(false);
 
   const affiliates = useQuery(
     api.queries.affiliateInvites.listAffiliateInvites,
-    user ? { callerUserId: user._id, sessionToken: getStaffSessionToken() } : "skip"
+    canAccess ? { callerUserId: user!._id, sessionToken } : "skip"
   );
 
-  if (!user) return <PageLoader />;
+  if (isLoading) return <PageLoader />;
+  if (!canAccess) return null;
   if (affiliates === undefined) return <PageLoader />;
 
   return (

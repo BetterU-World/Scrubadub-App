@@ -1,6 +1,6 @@
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
-import { isSuperAdminEmail } from "./auth";
+import { isFounderEmail } from "./founderEmails";
 import {
   SESSION_IDLE_EXPIRY_MS,
   SESSION_REQUIRED_ERROR,
@@ -233,7 +233,7 @@ export async function requireSuperadminSession(
   claimedUserId?: Id<"users">
 ) {
   const user = await requireVerifiedStaffSession(ctx, sessionToken, claimedUserId);
-  if (!isSuperAdminEmail(user.email)) throw new Error("Super admin session required");
+  if (!isFounderEmail(user.email)) throw new Error("Super admin session required");
   console.info("[security] verified founder allowlist access", { userId: String(user._id) });
   return user;
 }

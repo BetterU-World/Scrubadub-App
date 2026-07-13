@@ -4,7 +4,7 @@ import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import { generateSecureToken } from "./lib/tokens";
+import { generateSecureToken, hashToken } from "./lib/tokens";
 import { validateEmail, validateName } from "./lib/validation";
 import { validateRequiredEnv } from "./lib/validateEnv";
 import { requireSuperadminSession } from "./lib/sessions";
@@ -64,7 +64,7 @@ export const inviteAffiliate = action({
       {
         email,
         name: args.name,
-        inviteToken: token,
+        inviteTokenHash: hashToken(token),
         inviteTokenExpiry: Date.now() + AFFILIATE_INVITE_EXPIRY_MS,
         affiliateInvitedBy: principal.userId,
       }
@@ -127,7 +127,7 @@ export const resendAffiliateInvite = action({
       internal.mutations.affiliateInvites.updateAffiliateInviteToken,
       {
         userId: args.targetUserId,
-        inviteToken: token,
+        inviteTokenHash: hashToken(token),
         inviteTokenExpiry: Date.now() + AFFILIATE_INVITE_EXPIRY_MS,
       }
     );
