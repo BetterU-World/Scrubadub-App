@@ -35,11 +35,11 @@ function Detail({ label, value }: { label: string; value?: string | null }) {
 export function ClientServiceAgreementPage() {
   const { t } = useTranslation();
   const params = useParams<{ agreementId: string }>();
-  const { clientUserId, isLoading, signOut } = useClientAuth();
+  const { clientUserId, sessionToken, isLoading, signOut } = useClientAuth();
   const agreementId = params.agreementId as Id<"serviceAgreements"> | undefined;
   const agreement = useQuery(
     (api as any).queries.serviceAgreements.getForClient,
-    clientUserId && agreementId ? { clientUserId, agreementId } : "skip"
+    clientUserId && sessionToken && agreementId ? { clientUserId, sessionToken, agreementId } : "skip"
   );
   const acceptAgreement = useMutation((api as any).mutations.serviceAgreements.clientAccept);
   const declineAgreement = useMutation((api as any).mutations.serviceAgreements.clientDecline);
@@ -83,7 +83,7 @@ export function ClientServiceAgreementPage() {
     setLoadingAction("accept");
     setError("");
     try {
-      await acceptAgreement({ clientUserId, agreementId: agreement._id });
+      await acceptAgreement({ clientUserId, sessionToken, agreementId: agreement._id });
     } catch (err: any) {
       setError(err.message || t("clientAgreements.actionFailed"));
     } finally {
@@ -96,6 +96,7 @@ export function ClientServiceAgreementPage() {
     try {
       await declineAgreement({
         clientUserId,
+        sessionToken,
         agreementId: agreement._id,
         note: note.trim() || undefined,
       });

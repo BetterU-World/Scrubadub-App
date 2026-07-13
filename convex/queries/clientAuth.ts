@@ -1,12 +1,11 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { requireVerifiedClientSession } from "../lib/sessionAuth";
 
 export const getCurrentClientUser = query({
-  args: { clientUserId: v.optional(v.id("clientUsers")) },
+  args: { clientUserId: v.optional(v.id("clientUsers")), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    if (!args.clientUserId) return null;
-    const clientUser = await ctx.db.get(args.clientUserId);
-    if (!clientUser || clientUser.status !== "active") return null;
+    const clientUser = await requireVerifiedClientSession(ctx, args.sessionToken, args.clientUserId);
     return {
       _id: clientUser._id,
       email: clientUser.email,

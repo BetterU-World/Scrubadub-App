@@ -1,5 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { requireVerifiedClientSession } from "../lib/sessionAuth";
 
 const CAP = 500;
 
@@ -18,15 +19,14 @@ async function relatedByRelationshipIds(
 }
 
 export const getClientHome = query({
-  args: { clientUserId: v.id("clientUsers") },
+  args: { clientUserId: v.id("clientUsers"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const clientUser = await ctx.db.get(args.clientUserId);
-    if (!clientUser || clientUser.status !== "active") return null;
+    const clientUser = await requireVerifiedClientSession(ctx, args.sessionToken, args.clientUserId);
 
     const relationships = (
       await ctx.db
         .query("clientRelationships")
-        .withIndex("by_clientUserId", (q) => q.eq("clientUserId", args.clientUserId))
+        .withIndex("by_clientUserId", (q) => q.eq("clientUserId", clientUser._id))
         .take(CAP)
     ).filter((relationship) => relationship.status === "active");
 
