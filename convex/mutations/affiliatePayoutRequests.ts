@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireVerifiedStaffSession, requireSuperadminSession } from "../lib/sessionAuth";
+import { writeSecurityEvent } from "../lib/securityEvents";
 
 /**
  * Create a payout request for locked ledger rows. Affiliate-initiated.
@@ -139,7 +140,7 @@ export const approvePayoutRequest = mutation({
     adminNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireSuperadminSession(ctx, args.sessionToken, args.userId);
+    const admin = await requireSuperadminSession(ctx, args.sessionToken, args.userId);
 
     const request = await ctx.db.get(args.requestId);
     if (!request) throw new Error("Payout request not found");
@@ -158,6 +159,7 @@ export const approvePayoutRequest = mutation({
         ? { adminNotes: args.adminNotes.trim().slice(0, 280) }
         : {}),
     });
+    await writeSecurityEvent(ctx, { eventType: "superadmin_financial_state_changed", principalType: "staff", staffUserId: admin._id, outcome: "success", metadata: { operation: "payout_request_approved", entityType: "affiliatePayoutRequest", entityId: String(request._id) } });
 
     return { requestId: request._id };
   },
@@ -175,7 +177,7 @@ export const denyPayoutRequest = mutation({
     adminNotes: v.string(),
   },
   handler: async (ctx, args) => {
-    await requireSuperadminSession(ctx, args.sessionToken, args.userId);
+    const admin = await requireSuperadminSession(ctx, args.sessionToken, args.userId);
 
     if (!args.adminNotes.trim()) {
       throw new Error("Denial reason is required");
@@ -208,6 +210,7 @@ export const denyPayoutRequest = mutation({
         await ctx.db.patch(entry._id, { payoutRequestId: undefined });
       }
     }
+    await writeSecurityEvent(ctx, { eventType: "superadmin_financial_state_changed", principalType: "staff", staffUserId: admin._id, outcome: "success", metadata: { operation: "payout_request_denied", entityType: "affiliatePayoutRequest", entityId: String(request._id) } });
 
     return { requestId: request._id };
   },
@@ -289,6 +292,7 @@ export const completePayoutRequestAsBatch = mutation({
       updatedAt: now,
       payoutBatchId: batchId,
     });
+    await writeSecurityEvent(ctx, { eventType: "superadmin_financial_state_changed", principalType: "staff", staffUserId: admin._id, outcome: "success", metadata: { operation: "payout_request_completed", entityType: "affiliatePayoutRequest", entityId: String(request._id) } });
 
     return { requestId: request._id, batchId };
   },

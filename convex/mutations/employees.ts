@@ -2,6 +2,8 @@ import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { logAudit } from "../lib/helpers";
 import { requireOwnerSession } from "../lib/sessionAuth";
+import { revokeAllSessionsForPrincipal } from "../lib/sessionRevocation";
+import { writeSecurityEvent } from "../lib/securityEvents";
 
 // inviteCleaner and acceptInvite have been moved to convex/employeeActions.ts
 // for secure token generation (crypto.randomBytes).
@@ -20,6 +22,14 @@ export const updateEmployeeStatus = mutation({
     if (target.companyId !== owner.companyId) throw new Error("Access denied");
 
     await ctx.db.patch(args.employeeId, { status: args.status });
+    if (args.status === "inactive" && target.status !== "inactive") {
+      await revokeAllSessionsForPrincipal(ctx, { principalType: "staff", userId: target._id }, Date.now(), "account_disabled");
+    }
+    if (target.status !== args.status) await writeSecurityEvent(ctx, {
+      eventType: args.status === "active" ? "account_reactivated" : "account_disabled",
+      principalType: "staff", staffUserId: target._id, companyId: owner.companyId, outcome: "success",
+      metadata: { previousStatus: target.status, newStatus: args.status, source: "employee_status" },
+    });
 
     await logAudit(ctx, {
       companyId: owner.companyId,

@@ -5,10 +5,11 @@ import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { hashPassword, verifyBcryptPassword } from "./lib/password";
-import { generateSecureToken, hashToken, INVITE_TOKEN_EXPIRY_MS } from "./lib/tokens";
+import { generateSecureToken, hashToken, INVITE_TOKEN_EXPIRY_MS, RESET_TOKEN_EXPIRY_MS } from "./lib/tokens";
 import { validateEmail, validatePassword } from "./lib/validation";
 import { validateRequiredEnv } from "./lib/validateEnv";
 import { issueSession, requireOwnerSession } from "./lib/sessions";
+import { recordSecurityEventFromAction } from "./lib/securityEventActions";
 
 validateRequiredEnv();
 
@@ -17,8 +18,9 @@ function appUrl() {
 }
 
 function cleanEmail(email: string) {
-  validateEmail(email);
-  return email.trim().toLowerCase();
+  const normalized = email.trim().toLowerCase();
+  validateEmail(normalized);
+  return normalized;
 }
 
 function displayNameForRelationship(relationship: any) {
@@ -163,6 +165,14 @@ export const acceptInvite = action({
       passwordHash: shouldSetPassword ? await hashPassword(args.password) : undefined,
     });
 
+    await recordSecurityEventFromAction(ctx, {
+      eventType: "client_invitation_accepted",
+      principalType: "client",
+      clientUserId,
+      companyId: relationship.companyId,
+      outcome: "success",
+    });
+
     const session = await issueSession(ctx, { principalType: "client", clientUserId });
     return { clientUserId, ...session };
   },
@@ -191,16 +201,79 @@ export const signIn = action({
       email,
     });
     if (!clientUser || clientUser.status !== "active" || !clientUser.passwordHash) {
+      await recordSecurityEventFromAction(ctx, { eventType: "login_failure", principalType: "client", outcome: "failure", metadata: { category: "invalid_credentials" } });
       throw new Error(genericError);
     }
 
     const ok = await verifyBcryptPassword(args.password, clientUser.passwordHash);
-    if (!ok) throw new Error(genericError);
+    if (!ok) {
+      await recordSecurityEventFromAction(ctx, { eventType: "login_failure", principalType: "client", outcome: "failure", metadata: { category: "invalid_credentials" } });
+      throw new Error(genericError);
+    }
 
     const session = await issueSession(ctx, {
       principalType: "client",
       clientUserId: clientUser._id,
     });
+    await recordSecurityEventFromAction(ctx, { eventType: "client_login_success", principalType: "client", clientUserId: clientUser._id, outcome: "success" });
     return { clientUserId: clientUser._id, ...session };
+  },
+});
+
+export const requestPasswordReset = action({
+  args: { email: v.string() },
+  handler: async (ctx, args): Promise<{ success: boolean }> => {
+    const email = cleanEmail(args.email);
+    await ctx.runMutation(internal.rateLimitInternal.enforce, {
+      key: `ce:${email}:clientPasswordReset`,
+      limit: 3,
+      windowMs: 60_000,
+    });
+
+    const clientUser = await ctx.runQuery(internal.clientAuthInternal.getClientUserByEmail, { email });
+    await recordSecurityEventFromAction(ctx, { eventType: "client_password_reset_requested", principalType: "client", outcome: "success", metadata: { category: "accepted" } });
+    if (!clientUser) return { success: true };
+
+    const token = generateSecureToken();
+    await ctx.runMutation(internal.clientAuthInternal.setClientResetToken, {
+      clientUserId: clientUser._id,
+      resetToken: hashToken(token),
+      resetTokenExpiry: Date.now() + RESET_TOKEN_EXPIRY_MS,
+    });
+    try {
+      await ctx.runMutation(internal.mutations.scheduleEmail.scheduleClientPasswordResetEmail, { email, token });
+    } catch {
+      console.error("[client-recovery] unable to schedule reset email");
+    }
+    return { success: true };
+  },
+});
+
+export const resetPassword = action({
+  args: { token: v.string(), newPassword: v.string() },
+  handler: async (ctx, args): Promise<{ success: boolean }> => {
+    validatePassword(args.newPassword);
+    if (!/^[a-f0-9]{64}$/i.test(args.token)) throw new Error("Invalid or expired reset token");
+    await ctx.runMutation(internal.rateLimitInternal.enforce, {
+      key: `ctp:${args.token.slice(0, 8)}:clientResetPassword`,
+      limit: 5,
+      windowMs: 60_000,
+    });
+    const clientUser = await ctx.runQuery(internal.clientAuthInternal.getClientUserByResetToken, { tokenHash: hashToken(args.token) });
+    if (!clientUser || !clientUser.resetTokenExpiry || clientUser.resetTokenExpiry < Date.now()) {
+      throw new Error("Invalid or expired reset token");
+    }
+
+    await ctx.runMutation(internal.clientAuthInternal.consumeClientResetToken, {
+      clientUserId: clientUser._id,
+      passwordHash: await hashPassword(args.newPassword),
+    });
+    await ctx.runMutation((internal as any).sessionInternal.revokeAllForPrincipal, {
+      principal: { principalType: "client", clientUserId: clientUser._id },
+      now: Date.now(),
+      reason: "password_reset",
+    });
+    await recordSecurityEventFromAction(ctx, { eventType: "client_password_reset_completed", principalType: "client", clientUserId: clientUser._id, outcome: "success" });
+    return { success: true };
   },
 });

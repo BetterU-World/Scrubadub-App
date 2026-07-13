@@ -2,6 +2,8 @@ import { internalMutation, mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { logAudit } from "../lib/helpers";
 import { requireActiveWorkerProfile, requireOwnerSession } from "../lib/sessionAuth";
+import { revokeAllSessionsForPrincipal } from "../lib/sessionRevocation";
+import { writeSecurityEvent } from "../lib/securityEvents";
 
 const workerTypeValidator = v.union(
   v.literal("w2_employee"),
@@ -265,6 +267,15 @@ export const upsertWorkerProfile = mutation({
         createdAt: now,
         updatedAt: now,
       });
+      const workerStatus = args.workerStatus ?? target.status;
+      if (workerStatus !== "active") {
+        await revokeAllSessionsForPrincipal(ctx, { principalType: "staff", userId: target._id }, now, "worker_profile_disabled");
+        await writeSecurityEvent(ctx, {
+          eventType: "account_disabled", principalType: "staff", staffUserId: target._id,
+          companyId: owner.companyId, outcome: "success",
+          metadata: { previousStatus: "missing", newStatus: workerStatus, source: "worker_profile" },
+        });
+      }
       return profileId;
     }
 
@@ -281,6 +292,16 @@ export const upsertWorkerProfile = mutation({
     }
 
     await db.patch(existing._id, patch);
+    if (args.workerStatus !== undefined && args.workerStatus !== existing.workerStatus) {
+      if (args.workerStatus !== "active") {
+        await revokeAllSessionsForPrincipal(ctx, { principalType: "staff", userId: target._id }, now, "worker_profile_disabled");
+      }
+      await writeSecurityEvent(ctx, {
+        eventType: args.workerStatus === "active" ? "account_reactivated" : "account_disabled",
+        principalType: "staff", staffUserId: target._id, companyId: owner.companyId, outcome: "success",
+        metadata: { previousStatus: existing.workerStatus, newStatus: args.workerStatus, source: "worker_profile" },
+      });
+    }
     return existing._id;
   },
 });
@@ -300,7 +321,7 @@ export const updateWorkerProfile = mutation({
   handler: async (ctx, args) => {
     const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const db: any = ctx.db;
-    await requireOwnedProfile({ ...ctx, db }, owner, args.workerProfileId);
+    const profile = await requireOwnedProfile({ ...ctx, db }, owner, args.workerProfileId);
 
     const patch: Record<string, unknown> = { updatedAt: Date.now() };
     if (args.workerType !== undefined) patch.workerType = args.workerType;
@@ -326,11 +347,21 @@ export const setWorkerStatus = mutation({
   handler: async (ctx, args) => {
     const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const db: any = ctx.db;
-    await requireOwnedProfile({ ...ctx, db }, owner, args.workerProfileId);
+    const profile = await requireOwnedProfile({ ...ctx, db }, owner, args.workerProfileId);
     await db.patch(args.workerProfileId, {
       workerStatus: args.workerStatus,
       updatedAt: Date.now(),
     });
+    if (args.workerStatus !== profile.workerStatus) {
+      if (args.workerStatus !== "active") {
+        await revokeAllSessionsForPrincipal(ctx, { principalType: "staff", userId: profile.userId }, Date.now(), "worker_profile_disabled");
+      }
+      await writeSecurityEvent(ctx, {
+        eventType: args.workerStatus === "active" ? "account_reactivated" : "account_disabled",
+        principalType: "staff", staffUserId: profile.userId, companyId: owner.companyId, outcome: "success",
+        metadata: { previousStatus: profile.workerStatus, newStatus: args.workerStatus, source: "worker_profile" },
+      });
+    }
   },
 });
 

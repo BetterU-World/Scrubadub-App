@@ -1555,7 +1555,19 @@
     "hello": "Hello {{name}}. Set your password to get started.",
     "invalidInvite": "This invite link is invalid or expired.",
     "goToLogin": "Go to Client Login",
-    "acceptFailed": "Failed to accept invite"
+    "acceptFailed": "Failed to accept invite",
+    "forgotPassword": "Forgot password?",
+    "forgotPasswordTitle": "Reset your Client Portal password",
+    "forgotInstructions": "Enter the email used for your Client Portal access. If an account exists, we’ll send a secure reset link.",
+    "resetContext": "SCRUB Client Portal password recovery",
+    "sendResetLink": "Send reset link",
+    "resetEmailSent": "If a Client Portal account exists for this email, a reset link has been sent.",
+    "backToSignIn": "Back to Client Portal sign in",
+    "resetPasswordTitle": "Set a new Client Portal password",
+    "resetSuccess": "Your password has been reset. Sign in again with your new password.",
+    "signInWithNewPassword": "Sign in with your new password",
+    "resetRequestFailed": "Unable to request a reset link",
+    "resetFailed": "Unable to reset your password"
   },
   "clientPortal": {
     "title": "Client Portal",

@@ -1,6 +1,8 @@
 import { internalMutation, mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireSuperadminSession } from "../lib/sessionAuth";
+import { revokeAllSessionsForPrincipal } from "../lib/sessionRevocation";
+import { writeSecurityEvent } from "../lib/securityEvents";
 
 // ── Internal mutation: create an affiliate user record ─────────────
 // Separate from authInternal.createUser because that mutation's validators
@@ -110,6 +112,9 @@ export const revokeAffiliateInvite = mutation({
       inviteTokenHash: undefined,
       inviteTokenExpiry: undefined,
     });
+    await revokeAllSessionsForPrincipal(ctx, { principalType: "staff", userId: target._id }, Date.now(), "account_disabled");
+    await writeSecurityEvent(ctx, { eventType: "affiliate_invitation_revoked", principalType: "staff", staffUserId: target._id, outcome: "success", metadata: { source: "affiliate_admin" } });
+    await writeSecurityEvent(ctx, { eventType: "account_disabled", principalType: "staff", staffUserId: target._id, outcome: "success", metadata: { previousStatus: target.status, newStatus: "inactive", source: "affiliate_admin" } });
 
     return { success: true };
   },

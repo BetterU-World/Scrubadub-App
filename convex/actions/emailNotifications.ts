@@ -8,6 +8,7 @@ import {
   sendJobApprovedEmail,
   sendStripeConnectInviteEmail,
   sendPasswordResetEmail,
+  sendClientPasswordResetEmail,
   sendInviteEmail,
   sendAffiliateInviteEmail,
   sendPartnerInviteEmail,
@@ -110,6 +111,14 @@ export const sendPasswordReset = internalAction({
     if (!sent) {
       console.error("[emailNotifications] Password reset email failed for", args.email);
     }
+  },
+});
+
+export const sendClientPasswordReset = internalAction({
+  args: { email: v.string(), token: v.string() },
+  handler: async (_ctx, args) => {
+    const sent = await sendClientPasswordResetEmail(args.email, args.token);
+    if (!sent) console.error("[emailNotifications] Client password reset email failed");
   },
 });
 

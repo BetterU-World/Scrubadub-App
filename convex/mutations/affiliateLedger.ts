@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
 import { isFounderEmail } from "../lib/founderEmails";
 import { requireSuperadminSession, requireVerifiedStaffSession } from "../lib/sessionAuth";
+import { writeSecurityEvent } from "../lib/securityEvents";
 
 const AFFILIATE_RATE = 0.10;
 
@@ -210,7 +211,7 @@ export const markLedgerPaid = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireSuperadminSession(ctx, args.sessionToken, args.userId);
+    const admin = await requireSuperadminSession(ctx, args.sessionToken, args.userId);
 
     const entry = await ctx.db.get(args.ledgerId);
     if (!entry) throw new Error("Ledger entry not found");
@@ -231,6 +232,7 @@ export const markLedgerPaid = mutation({
     }
 
     await ctx.db.patch(entry._id, patch);
+    await writeSecurityEvent(ctx, { eventType: "superadmin_financial_state_changed", principalType: "staff", staffUserId: admin._id, outcome: "success", metadata: { operation: "ledger_marked_paid", entityType: "affiliateLedger", entityId: String(entry._id) } });
 
     return { ...entry, ...patch };
   },
@@ -248,7 +250,7 @@ export const unmarkLedgerPaid = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireSuperadminSession(ctx, args.sessionToken, args.userId);
+    const admin = await requireSuperadminSession(ctx, args.sessionToken, args.userId);
 
     const entry = await ctx.db.get(args.ledgerId);
     if (!entry) throw new Error("Ledger entry not found");
@@ -268,6 +270,7 @@ export const unmarkLedgerPaid = mutation({
     }
 
     await ctx.db.patch(entry._id, patch);
+    await writeSecurityEvent(ctx, { eventType: "superadmin_financial_state_changed", principalType: "staff", staffUserId: admin._id, outcome: "success", metadata: { operation: "ledger_payment_undone", entityType: "affiliateLedger", entityId: String(entry._id) } });
 
     return { ...entry, ...patch };
   },

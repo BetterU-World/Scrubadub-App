@@ -53,6 +53,7 @@ export function ClientLoginPage() {
               <span className="mb-1 block text-sm font-medium text-gray-700">{t("auth.password")}</span>
               <PasswordInput className="input-field" value={password} onChange={(event) => setPassword(event.target.value)} required autoComplete="current-password" />
             </label>
+            <div className="text-right"><Link href="/client/forgot-password" className="text-sm font-medium text-primary-600 hover:text-primary-700">{t("clientAuth.forgotPassword")}</Link></div>
             <button type="submit" disabled={loading} className="btn-primary flex w-full items-center justify-center gap-2">
               {loading && <LoadingSpinner size="sm" />}
               {t("clientAuth.signIn")}

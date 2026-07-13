@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { bedroomsValidator } from "./lib/propertyBedrooms";
+import { securityEventTypeValidator, securityMetadataValidator, securityOutcomeValidator, securityPrincipalTypeValidator } from "./lib/securityEvents";
 
 export default defineSchema({
   companies: defineTable({
@@ -154,6 +155,21 @@ export default defineSchema({
     .index("by_tokenHash", ["tokenHash"])
     .index("by_userId", ["userId"])
     .index("by_clientUserId", ["clientUserId"])
+    .index("by_expiresAt", ["expiresAt"]),
+
+  securityEvents: defineTable({
+    eventType: securityEventTypeValidator,
+    principalType: v.optional(securityPrincipalTypeValidator),
+    staffUserId: v.optional(v.id("users")),
+    clientUserId: v.optional(v.id("clientUsers")),
+    companyId: v.optional(v.id("companies")),
+    outcome: securityOutcomeValidator,
+    metadata: v.optional(securityMetadataValidator),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    retentionClass: v.union(v.literal("security_90d"), v.literal("financial_365d")),
+  })
+    .index("by_eventType_createdAt", ["eventType", "createdAt"])
     .index("by_expiresAt", ["expiresAt"]),
 
   workerProfiles: defineTable({
@@ -326,6 +342,7 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_email", ["email"])
+    .index("by_resetToken", ["resetToken"])
     .index("by_status", ["status"]),
 
   clientRelationships: defineTable({

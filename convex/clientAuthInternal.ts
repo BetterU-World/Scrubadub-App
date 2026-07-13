@@ -18,6 +18,37 @@ export const getClientUserById = internalQuery({
   },
 });
 
+export const getClientUserByResetToken = internalQuery({
+  args: { tokenHash: v.string() },
+  handler: async (ctx, args) => await ctx.db
+    .query("clientUsers")
+    .withIndex("by_resetToken", (q) => q.eq("resetToken", args.tokenHash))
+    .first(),
+});
+
+export const setClientResetToken = internalMutation({
+  args: {
+    clientUserId: v.id("clientUsers"),
+    resetToken: v.string(),
+    resetTokenExpiry: v.number(),
+  },
+  handler: async (ctx, args) => ctx.db.patch(args.clientUserId, {
+    resetToken: args.resetToken,
+    resetTokenExpiry: args.resetTokenExpiry,
+    updatedAt: Date.now(),
+  }),
+});
+
+export const consumeClientResetToken = internalMutation({
+  args: { clientUserId: v.id("clientUsers"), passwordHash: v.string() },
+  handler: async (ctx, args) => ctx.db.patch(args.clientUserId, {
+    passwordHash: args.passwordHash,
+    resetToken: undefined,
+    resetTokenExpiry: undefined,
+    updatedAt: Date.now(),
+  }),
+});
+
 export const getRelationshipForOwner = internalQuery({
   args: {
     userId: v.id("users"),

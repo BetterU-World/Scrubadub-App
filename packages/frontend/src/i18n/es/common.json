@@ -1555,7 +1555,19 @@
     "hello": "Hola {{name}}. Configura tu contrasena para comenzar.",
     "invalidInvite": "Este enlace de invitacion no es valido o expiro.",
     "goToLogin": "Ir al inicio de sesion del cliente",
-    "acceptFailed": "No se pudo aceptar la invitacion"
+    "acceptFailed": "No se pudo aceptar la invitacion",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "forgotPasswordTitle": "Restablece tu contraseña del Portal del Cliente",
+    "forgotInstructions": "Ingresa el correo usado para acceder al Portal del Cliente. Si existe una cuenta, enviaremos un enlace seguro.",
+    "resetContext": "Recuperación de contraseña del Portal del Cliente de SCRUB",
+    "sendResetLink": "Enviar enlace",
+    "resetEmailSent": "Si existe una cuenta del Portal del Cliente con este correo, se ha enviado un enlace.",
+    "backToSignIn": "Volver al inicio de sesión del Portal del Cliente",
+    "resetPasswordTitle": "Establece una nueva contraseña del Portal del Cliente",
+    "resetSuccess": "Tu contraseña se restableció. Inicia sesión de nuevo con tu nueva contraseña.",
+    "signInWithNewPassword": "Iniciar sesión con la nueva contraseña",
+    "resetRequestFailed": "No se pudo solicitar el enlace",
+    "resetFailed": "No se pudo restablecer la contraseña"
   },
   "clientPortal": {
     "title": "Portal del cliente",

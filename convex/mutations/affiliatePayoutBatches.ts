@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireSuperadminSession } from "../lib/sessionAuth";
+import { writeSecurityEvent } from "../lib/securityEvents";
 
 /**
  * Create a payout batch from selected locked ledger rows and mark them paid.
@@ -64,6 +65,7 @@ export const createPayoutBatchAndMarkPaid = mutation({
         payoutBatchId: batchId,
       });
     }
+    await writeSecurityEvent(ctx, { eventType: "superadmin_financial_state_changed", principalType: "staff", staffUserId: user._id, outcome: "success", metadata: { operation: "payout_batch_recorded", entityType: "affiliatePayoutBatch", entityId: String(batchId) } });
 
     return { batchId };
   },
@@ -81,7 +83,7 @@ export const voidPayoutBatchAndRevertPaid = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireSuperadminSession(ctx, args.sessionToken, args.userId);
+    const admin = await requireSuperadminSession(ctx, args.sessionToken, args.userId);
 
     const batch = await ctx.db.get(args.batchId);
     if (!batch) throw new Error("Payout batch not found");
@@ -123,6 +125,7 @@ export const voidPayoutBatchAndRevertPaid = mutation({
       patch.notes = args.notes.trim().slice(0, 280);
     }
     await ctx.db.patch(batch._id, patch);
+    await writeSecurityEvent(ctx, { eventType: "superadmin_financial_state_changed", principalType: "staff", staffUserId: admin._id, outcome: "success", metadata: { operation: "payout_batch_voided", entityType: "affiliatePayoutBatch", entityId: String(batch._id) } });
 
     return { ...batch, ...patch };
   },

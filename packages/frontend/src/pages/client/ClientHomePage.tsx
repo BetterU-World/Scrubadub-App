@@ -132,9 +132,10 @@ export function ClientHomePage() {
     api.queries.clientHome.getClientHome,
     clientUserId && sessionToken ? { clientUserId, sessionToken } : "skip"
   );
+  const homeQueryActive = Boolean(clientUserId && sessionToken);
 
-  if (isLoading || home === undefined) return <PageLoader />;
-  if (!clientUserId || home === null) {
+  if (isLoading || (homeQueryActive && home === undefined)) return <PageLoader />;
+  if (!homeQueryActive || home === null || home === undefined) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
         <div className="card w-full max-w-md text-center">

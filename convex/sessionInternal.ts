@@ -1,5 +1,6 @@
 import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
+import { revokeAllSessionsForPrincipal } from "./lib/sessionRevocation";
 
 const sessionPrincipal = v.union(
   v.object({ principalType: v.literal("staff"), userId: v.id("users") }),
@@ -91,38 +92,11 @@ export const revoke = internalMutation({
   },
 });
 
-export const revokeAllForStaff = internalMutation({
-  args: { userId: v.id("users"), now: v.number(), reason: v.optional(v.string()) },
-  handler: async (ctx, args) => {
-    const sessions = await ctx.db
-      .query("authSessions")
-      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
-      .collect();
-    let revoked = 0;
-    for (const session of sessions) {
-      if (!session.revokedAt) {
-        await ctx.db.patch(session._id, { revokedAt: args.now, revokedReason: args.reason });
-        revoked++;
-      }
-    }
-    return revoked;
+export const revokeAllForPrincipal = internalMutation({
+  args: {
+    principal: sessionPrincipal,
+    now: v.number(),
+    reason: v.optional(v.string()),
   },
-});
-
-export const revokeAllForClient = internalMutation({
-  args: { clientUserId: v.id("clientUsers"), now: v.number(), reason: v.optional(v.string()) },
-  handler: async (ctx, args) => {
-    const sessions = await ctx.db
-      .query("authSessions")
-      .withIndex("by_clientUserId", (q) => q.eq("clientUserId", args.clientUserId))
-      .collect();
-    let revoked = 0;
-    for (const session of sessions) {
-      if (!session.revokedAt) {
-        await ctx.db.patch(session._id, { revokedAt: args.now, revokedReason: args.reason });
-        revoked++;
-      }
-    }
-    return revoked;
-  },
+  handler: async (ctx, args) => revokeAllSessionsForPrincipal(ctx, args.principal, args.now, args.reason),
 });

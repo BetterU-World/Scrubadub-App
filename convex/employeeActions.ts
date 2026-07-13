@@ -10,6 +10,7 @@ import { validatePassword, validateEmail, validateName } from "./lib/validation"
 import { validateRequiredEnv } from "./lib/validateEnv";
 import { issueSession } from "./lib/sessions";
 import { requireOwnerSession } from "./lib/sessions";
+import { recordSecurityEventFromAction } from "./lib/securityEventActions";
 
 validateRequiredEnv();
 
@@ -210,6 +211,11 @@ export const acceptInvite = action({
     await ctx.runMutation(internal.authInternal.consumeInviteToken, {
       userId: user._id,
       passwordHash,
+    });
+
+    await recordSecurityEventFromAction(ctx, {
+      eventType: user.role === "affiliate" ? "affiliate_invitation_accepted" : "staff_invitation_accepted",
+      principalType: "staff", staffUserId: user._id, companyId: user.companyId, outcome: "success",
     });
 
     // Skip company-scoped audit log for affiliate users (no companyId)
