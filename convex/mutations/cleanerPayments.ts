@@ -1,7 +1,7 @@
 import { mutation, internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
-import { assertOwnerRole } from "../lib/auth";
+import { requireOwnerSession } from "../lib/sessionAuth";
 import { checkRateLimit } from "../lib/rateLimit";
 
 /**
@@ -11,11 +11,12 @@ import { checkRateLimit } from "../lib/rateLimit";
 export const createCleanerPayment = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     jobId: v.id("jobs"),
     amountCents: v.number(),
   },
   handler: async (ctx, args) => {
-    const owner = await assertOwnerRole(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     if (args.amountCents < 100) {
       throw new Error("Minimum payment is $1.00");
@@ -45,7 +46,7 @@ export const createCleanerPayment = mutation({
         await ctx.db.patch(existing._id, {
           amountCents: args.amountCents,
           method: "in_app",
-          paidByUserId: args.userId,
+          paidByUserId: owner._id,
         });
         return existing._id;
       }
@@ -85,7 +86,7 @@ export const createCleanerPayment = mutation({
       method: "in_app",
       status: "OPEN",
       createdAt: now,
-      paidByUserId: args.userId,
+      paidByUserId: owner._id,
     });
 
     // Link to job
@@ -102,18 +103,18 @@ export const createCleanerPayment = mutation({
 export const markCleanerPaidOutside = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     jobId: v.id("jobs"),
     amountCents: v.number(),
   },
   handler: async (ctx, args) => {
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     // Rate limit: 10 mark-paid-outside per 60s per user
     await checkRateLimit(ctx, {
-      key: `u:${args.userId}:markCleanerPaidOutside`,
+      key: `u:${owner._id}:markCleanerPaidOutside`,
       limit: 10,
       windowMs: 60_000,
     });
-
-    const owner = await assertOwnerRole(ctx, args.userId);
 
     if (args.amountCents < 100) {
       throw new Error("Minimum payment is $1.00");
@@ -143,7 +144,7 @@ export const markCleanerPaidOutside = mutation({
           method: "outside_app",
           status: "PAID",
           paidAt: now,
-          paidByUserId: args.userId,
+          paidByUserId: owner._id,
         });
         return existing._id;
       }
@@ -184,7 +185,7 @@ export const markCleanerPaidOutside = mutation({
       status: "PAID",
       createdAt: now,
       paidAt: now,
-      paidByUserId: args.userId,
+      paidByUserId: owner._id,
     });
 
     // Link to job
@@ -258,18 +259,18 @@ export const markCleanerPaidViaStripe = internalMutation({
 export const createCleanerPaymentBatch = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     jobIds: v.array(v.id("jobs")),
     totalAmountCents: v.number(),
   },
   handler: async (ctx, args) => {
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     // Rate limit: 2 batch pay creations per 60s per user
     await checkRateLimit(ctx, {
-      key: `u:${args.userId}:createCleanerPaymentBatch`,
+      key: `u:${owner._id}:createCleanerPaymentBatch`,
       limit: 2,
       windowMs: 60_000,
     });
-
-    const owner = await assertOwnerRole(ctx, args.userId);
 
     if (args.jobIds.length === 0) throw new Error("No jobs selected");
     if (args.totalAmountCents < 100) throw new Error("Minimum payment is $1.00");
@@ -339,7 +340,7 @@ export const createCleanerPaymentBatch = mutation({
       method: "in_app",
       status: "OPEN",
       createdAt: now,
-      paidByUserId: args.userId,
+      paidByUserId: owner._id,
     });
 
     // Create join entries with per-job amounts + link each job
@@ -362,18 +363,18 @@ export const createCleanerPaymentBatch = mutation({
 export const markCleanerBatchPaidOutside = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     jobIds: v.array(v.id("jobs")),
     totalAmountCents: v.number(),
   },
   handler: async (ctx, args) => {
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     // Rate limit: 10 mark-paid-outside per 60s per user
     await checkRateLimit(ctx, {
-      key: `u:${args.userId}:markCleanerBatchPaidOutside`,
+      key: `u:${owner._id}:markCleanerBatchPaidOutside`,
       limit: 10,
       windowMs: 60_000,
     });
-
-    const owner = await assertOwnerRole(ctx, args.userId);
 
     if (args.jobIds.length === 0) throw new Error("No jobs selected");
     if (args.totalAmountCents < 100) throw new Error("Minimum payment is $1.00");
@@ -441,7 +442,7 @@ export const markCleanerBatchPaidOutside = mutation({
       status: "PAID",
       createdAt: now,
       paidAt: now,
-      paidByUserId: args.userId,
+      paidByUserId: owner._id,
     });
 
     // Create join entries with per-job amounts + link each job
@@ -465,11 +466,12 @@ export const markCleanerBatchPaidOutside = mutation({
 export const updateCleanerPaymentAmount = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     cleanerPaymentId: v.id("cleanerPayments"),
     amountCents: v.number(),
   },
   handler: async (ctx, args) => {
-    const owner = await assertOwnerRole(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     if (args.amountCents < 100) {
       throw new Error("Minimum payment is $1.00");
@@ -490,10 +492,11 @@ export const updateCleanerPaymentAmount = mutation({
 export const sendStripeConnectInvite = mutation({
   args: {
     userId: v.id("users"),
+    sessionToken: v.string(),
     cleanerUserId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const owner = await assertOwnerRole(ctx, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const cleaner = await ctx.db.get(args.cleanerUserId);
     if (!cleaner || cleaner.companyId !== owner.companyId) {
       throw new Error("Cleaner not found or not in your company");
@@ -505,7 +508,7 @@ export const sendStripeConnectInvite = mutation({
       throw new Error("Cleaner is already connected to Stripe");
     }
 
-    const ownerUser = await ctx.db.get(args.userId);
+    const ownerUser = await ctx.db.get(owner._id);
 
     await ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendStripeConnectInvite, {
       email: cleaner.email,

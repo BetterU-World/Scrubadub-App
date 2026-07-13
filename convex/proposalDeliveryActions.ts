@@ -25,7 +25,7 @@ export const sendProposal = action({
   },
   handler: async (ctx, args): Promise<{ success: true; sentAt: number }> => {
     const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
-    const ownerArgs = { userId: owner.userId, proposalId: args.proposalId };
+    const ownerArgs = { companyId: owner.companyId, proposalId: args.proposalId };
     const payload = await ctx.runQuery(
       (internal as any).proposalDeliveryInternal.getProposalForOwnerDelivery,
       ownerArgs
@@ -68,7 +68,7 @@ export const sendProposal = action({
 
 export const getProposalByToken = action({
   args: { token: v.string() },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<any> => {
     const token = cleanToken(args.token);
     return await ctx.runQuery(
       (internal as any).proposalDeliveryInternal.getClientProposalByTokenHash,
@@ -83,7 +83,7 @@ export const respondToProposal = action({
     decision: v.union(v.literal("accepted"), v.literal("declined")),
     note: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<any> => {
     const token = cleanToken(args.token);
     await ctx.runMutation((internal as any).rateLimitInternal.enforce, {
       key: `proposal:${token.slice(0, 12)}:respond`,

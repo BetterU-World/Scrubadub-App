@@ -1,7 +1,6 @@
 import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
-import { requireSuperAdmin } from "../lib/auth";
-import { requireVerifiedStaffSession } from "../lib/sessionAuth";
+import { requireSuperadminSession, requireVerifiedStaffSession } from "../lib/sessionAuth";
 
 export const getVisibleManuals = query({
   args: { userId: v.id("users"), sessionToken: v.string() },
@@ -25,9 +24,9 @@ export const getVisibleManuals = query({
 
 /** Superadmin-only: export all manuals in seed-ready shape (includes blobKey). */
 export const exportManuals = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    await requireSuperAdmin(ctx, args.userId);
+    await requireSuperadminSession(ctx, args.sessionToken, args.userId);
     const all = await ctx.db.query("manuals").collect();
     return all
       .sort((a, b) => a.createdAt - b.createdAt)

@@ -40,7 +40,7 @@ interface CleanerGroup {
 }
 
 export function CleanerPaymentsPage() {
-  const { user } = useAuth();
+  const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>("OPEN");
   const [batchLoading, setBatchLoading] = useState<string | null>(null);
@@ -53,13 +53,17 @@ export function CleanerPaymentsPage() {
   // OPEN tab: source from jobs (shows items even before cleanerPayment exists)
   const unpaidJobs = useQuery(
     api.queries.cleanerPayments.listUnpaidJobsForCompany,
-    user?._id && tab === "OPEN" ? { userId: user._id } : "skip",
+    user?._id && sessionToken && tab === "OPEN"
+      ? { userId: user._id, sessionToken }
+      : "skip",
   );
 
   // PAID tab: source from cleanerPayments records
   const paidPayments = useQuery(
     api.queries.cleanerPayments.listCleanerPaymentsForCompany,
-    user?._id && tab === "PAID" ? { userId: user._id, status: "PAID" as const } : "skip",
+    user?._id && sessionToken && tab === "PAID"
+      ? { userId: user._id, sessionToken, status: "PAID" as const }
+      : "skip",
   );
 
   const createBatch = useMutation(api.mutations.cleanerPayments.createCleanerPaymentBatch);
@@ -142,6 +146,7 @@ export function CleanerPaymentsPage() {
       const jobIds = group.items.map((i) => i.jobId as Id<"jobs">);
       const paymentId = await createBatch({
         userId: user!._id,
+        sessionToken: getStaffSessionToken(),
         jobIds,
         totalAmountCents: group.totalCents,
       });
@@ -166,6 +171,7 @@ export function CleanerPaymentsPage() {
       const jobIds = group.items.map((i) => i.jobId as Id<"jobs">);
       await markBatchOutside({
         userId: user!._id,
+        sessionToken: getStaffSessionToken(),
         jobIds,
         totalAmountCents: group.totalCents,
       });

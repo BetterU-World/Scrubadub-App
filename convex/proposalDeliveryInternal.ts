@@ -1,6 +1,5 @@
 import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
-import { requireOwner } from "./lib/helpers";
 
 function formatFrequency(value: string | undefined) {
   const labels: Record<string, string> = {
@@ -129,14 +128,13 @@ function clientProposalPayload(payload: any) {
 
 export const getProposalForOwnerDelivery = internalQuery({
   args: {
-    userId: v.id("users"),
+    companyId: v.id("companies"),
     proposalId: v.id("proposals"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
     const proposal = await ctx.db.get(args.proposalId);
     if (!proposal) throw new Error("Proposal not found");
-    if (proposal.companyId !== owner.companyId) throw new Error("Access denied");
+    if (proposal.companyId !== args.companyId) throw new Error("Access denied");
     if (proposal.status === "accepted" || proposal.status === "declined") {
       throw new Error("Accepted or declined proposals cannot be sent");
     }
@@ -147,15 +145,14 @@ export const getProposalForOwnerDelivery = internalQuery({
 
 export const setProposalDeliveryTokenAndSent = internalMutation({
   args: {
-    userId: v.id("users"),
+    companyId: v.id("companies"),
     proposalId: v.id("proposals"),
     proposalTokenHash: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
     const proposal = await ctx.db.get(args.proposalId);
     if (!proposal) throw new Error("Proposal not found");
-    if (proposal.companyId !== owner.companyId) throw new Error("Access denied");
+    if (proposal.companyId !== args.companyId) throw new Error("Access denied");
     if (proposal.status === "accepted" || proposal.status === "declined") {
       throw new Error("Accepted or declined proposals cannot be sent");
     }

@@ -217,30 +217,6 @@ export async function requireOwnerManagerCompany(
   return user;
 }
 
-/**
- * Migration bridge for endpoints shared with roles scheduled for later PRs.
- * Owners and managers always require a verified session. Only the explicitly
- * listed compatibility roles may continue using a legacy claimed ID.
- */
-export async function requireOwnerManagerOrCompatibleRole(
-  ctx: DbCtx,
-  sessionToken: string | undefined,
-  claimedUserId: Id<"users"> | undefined,
-  compatibleRoles: readonly string[]
-): Promise<ActiveStaff> {
-  if (sessionToken) {
-    return await requireOwnerManagerSession(ctx, sessionToken, claimedUserId);
-  }
-  if (claimedUserId) {
-    const user = await ctx.db.get(claimedUserId);
-    if (user && user.status === "active" && compatibleRoles.includes(user.role)) {
-      return user as ActiveStaff;
-    }
-  }
-  console.warn("[security] rejected legacy-only owner/manager request");
-  throw new Error(SESSION_REQUIRED_ERROR);
-}
-
 export async function requireAffiliateSession(
   ctx: DbCtx,
   sessionToken: string,

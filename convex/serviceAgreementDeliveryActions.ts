@@ -18,7 +18,7 @@ export const sendServiceAgreement = action({
   },
   handler: async (ctx, args): Promise<{ success: true; sentAt: number }> => {
     const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
-    const ownerArgs = { userId: owner.userId, agreementId: args.agreementId };
+    const ownerArgs = { companyId: owner.companyId, agreementId: args.agreementId };
     const payload = await ctx.runQuery(
       (internal as any).serviceAgreementDeliveryInternal.getAgreementForOwnerDelivery,
       ownerArgs

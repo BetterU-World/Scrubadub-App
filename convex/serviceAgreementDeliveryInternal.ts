@@ -1,6 +1,5 @@
 import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
-import { requireOwner } from "./lib/helpers";
 
 function formatFrequency(value: string | undefined) {
   const labels: Record<string, string> = {
@@ -37,14 +36,13 @@ async function companyBranding(ctx: any, companyId: any) {
 
 export const getAgreementForOwnerDelivery = internalQuery({
   args: {
-    userId: v.id("users"),
+    companyId: v.id("companies"),
     agreementId: v.id("serviceAgreements"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
     const agreement = await ctx.db.get(args.agreementId);
     if (!agreement) throw new Error("Service agreement not found");
-    if (agreement.companyId !== owner.companyId) throw new Error("Access denied");
+    if (agreement.companyId !== args.companyId) throw new Error("Access denied");
     if (agreement.status === "signed" || agreement.status === "cancelled") {
       throw new Error("Signed or cancelled agreements cannot be sent");
     }
@@ -86,14 +84,13 @@ export const getAgreementForOwnerDelivery = internalQuery({
 
 export const markAgreementSent = internalMutation({
   args: {
-    userId: v.id("users"),
+    companyId: v.id("companies"),
     agreementId: v.id("serviceAgreements"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwner(ctx, args.userId);
     const agreement = await ctx.db.get(args.agreementId);
     if (!agreement) throw new Error("Service agreement not found");
-    if (agreement.companyId !== owner.companyId) throw new Error("Access denied");
+    if (agreement.companyId !== args.companyId) throw new Error("Access denied");
     if (agreement.status === "signed" || agreement.status === "cancelled") {
       throw new Error("Signed or cancelled agreements cannot be sent");
     }
