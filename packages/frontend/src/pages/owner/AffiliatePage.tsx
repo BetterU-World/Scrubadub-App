@@ -3,7 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
-import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { HowItWorks } from "@/components/ui/HowItWorks";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
@@ -25,10 +25,10 @@ type Tab = "referrals" | "revenue" | "ledger" | "payouts" | "requests";
 
 export function AffiliatePage() {
   const { t } = useTranslation();
-  const { user, userId, isLoading } = useAuth();
+  const { user, userId, sessionToken, isLoading } = useAuth();
 
   if (isLoading) return <PageLoader />;
-  if (!userId || !user) {
+  if (!userId || !user || !sessionToken) {
     return (
       <div className="py-8 text-center">
         <p className="text-sm text-gray-500">{t("affiliate.signInRequired")}</p>
@@ -36,21 +36,23 @@ export function AffiliatePage() {
     );
   }
 
-  return <AffiliatePageInner userId={userId} user={user} />;
+  return <AffiliatePageInner userId={userId} user={user} sessionToken={sessionToken} />;
 }
 
 function AffiliatePageInner({
   userId,
   user,
+  sessionToken,
 }: {
   userId: Id<"users">;
   user: { referralCode?: string; isSuperadmin?: boolean };
+  sessionToken: string;
 }) {
   const { t } = useTranslation();
   const ensureReferralCode = useMutation(api.mutations.affiliate.ensureReferralCode);
   const referrals = useQuery(
     api.queries.affiliate.getMyReferrals,
-    { userId, sessionToken: getStaffSessionToken() },
+    sessionToken ? { userId, sessionToken } : "skip",
   );
 
   const [referralCode, setReferralCode] = useState<string | null>(
@@ -65,7 +67,7 @@ function AffiliatePageInner({
   function attemptEnsureCode() {
     setGenerating(true);
     setGenError(false);
-    ensureReferralCode({ userId, sessionToken: getStaffSessionToken() })
+    ensureReferralCode({ userId, sessionToken })
       .then((code) => setReferralCode(code))
       .catch((err) => {
         console.error("Failed to generate referral code:", err);

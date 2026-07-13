@@ -83,7 +83,8 @@ describe("worker and affiliate session migration", () => {
     await expect(t.query(api.queries.affiliateLedger.getMyLedger, { userId: s.affiliate, sessionToken: auth.sessionToken })).resolves.toMatchObject({ rows: [{ commissionCents: 100 }] });
     await expect(t.query(api.queries.affiliateLedger.getMyLedger, { userId: s.otherAffiliate, sessionToken: auth.sessionToken })).rejects.toThrow("does not match");
     const owner = await login(t, "owner@pr4.test");
-    await expect(t.query(api.queries.affiliate.getMyReferrals, { userId: s.owner, sessionToken: owner.sessionToken })).rejects.toThrow("Affiliate session required");
+    await expect(t.query(api.queries.affiliate.getMyReferrals, { userId: s.owner, sessionToken: owner.sessionToken })).resolves.toEqual([]);
+    await expect(t.query(api.queries.affiliate.getMyReferrals, { userId: s.affiliate, sessionToken: owner.sessionToken })).rejects.toThrow("does not match");
   });
 
   it("retains owner sessions, client compatibility, and public action contracts", async () => {
