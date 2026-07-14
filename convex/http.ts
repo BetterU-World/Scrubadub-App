@@ -55,6 +55,18 @@ const stripeWebhook = httpAction(async (ctx, request) => {
   // event is guaranteed assigned when matchedSecret is truthy
   const verifiedEvent = event!;
 
+  const claim = await ctx.runMutation(
+    internal.mutations.billing.beginStripeWebhookEvent,
+    {
+      stripeEventId: verifiedEvent.id,
+      eventType: verifiedEvent.type,
+      now: Date.now(),
+    }
+  );
+  if (claim === "completed" || claim === "processing") {
+    return new Response(null, { status: 200 });
+  }
+
   try {
     switch (verifiedEvent.type) {
       case "customer.subscription.created":
@@ -74,6 +86,7 @@ const stripeWebhook = httpAction(async (ctx, request) => {
           status: subscription.status,
           currentPeriodEnd: (subscription as any).current_period_end ?? 0,
           cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
+          eventCreated: verifiedEvent.created,
         });
 
         // Record affiliate attribution on new subscription
@@ -220,14 +233,23 @@ const stripeWebhook = httpAction(async (ctx, request) => {
           eventType: verifiedEvent.type,
         });
     }
+    await ctx.runMutation(
+      internal.mutations.billing.completeStripeWebhookEvent,
+      { stripeEventId: verifiedEvent.id, now: Date.now() }
+    );
   } catch (err: any) {
-    // Log the error but always return 200 to prevent Stripe retry storms.
-    // Signature was already verified, so the event is legitimate.
-    console.error(`[STRIPE-WEBHOOK] error processing event — returning 200 to prevent retries`, {
+    await ctx.runMutation(
+      internal.mutations.billing.failStripeWebhookEvent,
+      { stripeEventId: verifiedEvent.id, now: Date.now() }
+    );
+    // A verified event that failed processing must return non-2xx so Stripe
+    // retries it. The failed claim remains safely replayable.
+    console.error(`[STRIPE-WEBHOOK] error processing event — requesting retry`, {
       eventId: verifiedEvent.id,
       eventType: verifiedEvent.type,
       error: err?.message ?? String(err),
     });
+    return new Response("Webhook processing failed", { status: 500 });
   }
 
   return new Response(null, { status: 200 });

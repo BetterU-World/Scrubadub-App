@@ -24,6 +24,9 @@ export default defineSchema({
     currentPeriodEnd: v.optional(v.number()),
     cancelAtPeriodEnd: v.optional(v.boolean()),
     subscriptionBecameInactiveAt: v.optional(v.number()),
+    // Stripe event ordering guard. Older webhook deliveries must not overwrite
+    // state from a newer subscription lifecycle event.
+    stripeSubscriptionEventCreatedAt: v.optional(v.number()),
     // Stripe Connect (company-level Express account)
     stripeConnectAccountId: v.optional(v.string()),
     stripeConnectOnboardedAt: v.optional(v.number()),
@@ -1481,6 +1484,35 @@ export default defineSchema({
     windowStartMs: v.number(),
     count: v.number(),
   }).index("by_key", ["key"]),
+
+  // One durable record per public Checkout Session. Provisioning and this
+  // completion marker are committed in the same mutation.
+  checkoutProvisioning: defineTable({
+    stripeCheckoutSessionId: v.string(),
+    stripeCustomerId: v.string(),
+    stripeSubscriptionId: v.optional(v.string()),
+    companyId: v.id("companies"),
+    ownerUserId: v.id("users"),
+    completedAt: v.number(),
+  })
+    .index("by_stripeCheckoutSessionId", ["stripeCheckoutSessionId"])
+    .index("by_stripeCustomerId", ["stripeCustomerId"]),
+
+  // Stripe may deliver the same signed event repeatedly. This ledger makes
+  // completed events a no-op while allowing failed/stale attempts to retry.
+  stripeWebhookEvents: defineTable({
+    stripeEventId: v.string(),
+    eventType: v.string(),
+    status: v.union(
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("failed")
+    ),
+    attempts: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    completedAt: v.optional(v.number()),
+  }).index("by_stripeEventId", ["stripeEventId"]),
 
   // Calendar Sync (iCal feed integration)
 

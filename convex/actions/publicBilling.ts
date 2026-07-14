@@ -3,11 +3,12 @@
 declare const process: { env: Record<string, string | undefined> };
 
 import Stripe from "stripe";
+import { randomUUID } from "node:crypto";
 import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
-import { hashPassword } from "../lib/password";
+import { hashPassword, verifyBcryptPassword } from "../lib/password";
 import {
   validatePassword,
   validateEmail,
@@ -40,8 +41,13 @@ export const createPublicCheckoutSession = action({
   args: {
     email: v.string(),
     plan: v.optional(v.union(v.literal("solo"), v.literal("team"), v.literal("pro"))),
+    checkoutAttemptId: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<string | null> => {
+    const checkoutAttemptId = args.checkoutAttemptId ?? randomUUID();
+    if (!/^[a-zA-Z0-9_-]{16,100}$/.test(checkoutAttemptId)) {
+      throw new Error("Invalid checkout attempt");
+    }
     const email = args.email.toLowerCase().trim();
     validateEmail(email);
 
@@ -64,7 +70,7 @@ export const createPublicCheckoutSession = action({
     const customer = await stripe.customers.create({
       email,
       metadata: { source: "public_checkout" },
-    });
+    }, { idempotencyKey: `public-checkout:${checkoutAttemptId}:customer` });
 
     const APP_URL =
       process.env.APP_URL ?? "https://scrubadub-app-frontend.vercel.app";
@@ -86,7 +92,7 @@ export const createPublicCheckoutSession = action({
         customerEmail: email,
         tier: internalTier,
       },
-    });
+    }, { idempotencyKey: `public-checkout:${checkoutAttemptId}:session` });
 
     return session.url ?? null;
   },
@@ -132,6 +138,9 @@ export const completePublicSetup = action({
         "Checkout session is not complete. Please try again."
       );
     }
+    if (session.metadata?.source !== "public_checkout") {
+      throw new Error("This checkout session cannot be used for account setup.");
+    }
 
     const customerId =
       typeof session.customer === "string"
@@ -152,23 +161,12 @@ export const completePublicSetup = action({
       throw new Error("Unable to retrieve customer information.");
     }
 
-    const email = (customer as Stripe.Customer).email?.toLowerCase();
+    const email = (customer as Stripe.Customer).email?.toLowerCase().trim();
     if (!email) {
       throw new Error("No email associated with this checkout session.");
     }
 
     validateEmail(email);
-
-    // Idempotent check — if account already exists, they should sign in
-    const existingUser = await ctx.runQuery(
-      internal.authInternal.getUserByEmail,
-      { email }
-    );
-    if (existingUser) {
-      throw new Error(
-        "An account with this email already exists. Please sign in instead."
-      );
-    }
 
     // Get subscription details for syncing
     const subscription =
@@ -176,49 +174,44 @@ export const completePublicSetup = action({
         ? await stripe.subscriptions.retrieve(session.subscription)
         : session.subscription;
 
-    // Create company
-    const companyId: Id<"companies"> = await ctx.runMutation(
-      internal.authInternal.createCompany,
-      {
-        name: args.companyName,
-        timezone: args.timezone ?? "America/New_York",
-      }
-    );
-
-    // Link Stripe customer to company
-    await ctx.runMutation(internal.mutations.billing.setStripeCustomerId, {
-      companyId,
-      stripeCustomerId: customerId,
-    });
-
-    // Sync subscription status directly (the webhook may have already
-    // fired and missed because the company didn't exist yet)
-    if (subscription) {
-      const priceId = subscription.items?.data?.[0]?.price?.id ?? "";
-      await ctx.runMutation(internal.mutations.billing.syncSubscription, {
-        stripeCustomerId: customerId,
-        stripeSubscriptionId: subscription.id,
-        stripePriceId: priceId,
-        status: subscription.status,
-        currentPeriodEnd:
-          (subscription as any).current_period_end ?? 0,
-        cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
-      });
-    }
-
-    // Hash password and create owner user
+    // Hash outside the transaction; all SCRUB records are then reconciled and
+    // committed atomically using the Checkout Session ID.
     const passwordHash = await hashPassword(args.password);
-    const userId: Id<"users"> = await ctx.runMutation(
-      internal.authInternal.createUser,
+    const rawTier = session.metadata?.tier;
+    const tier = rawTier === "scrub_solo" || rawTier === "scrub_team" || rawTier === "scrub_pro"
+      ? rawTier
+      : undefined;
+    const provisioned = await ctx.runMutation(
+      internal.authInternal.provisionPublicCheckout,
       {
+        stripeCheckoutSessionId: session.id,
+        stripeCustomerId: customerId,
+        stripeSubscriptionId: subscription?.id,
+        stripePriceId: subscription?.items?.data?.[0]?.price?.id,
+        subscriptionStatus: subscription?.status,
+        currentPeriodEnd: subscription
+          ? (subscription as any).current_period_end ?? 0
+          : undefined,
+        cancelAtPeriodEnd: subscription?.cancel_at_period_end,
+        tier,
         email,
         passwordHash,
         name: args.name,
-        companyId,
-        role: "owner",
-        status: "active",
+        companyName: args.companyName,
+        timezone: args.timezone ?? "America/New_York",
       }
     );
+    const { userId, companyId } = provisioned;
+
+    if (provisioned.alreadyCompleted) {
+      const passwordMatches = await verifyBcryptPassword(
+        args.password,
+        provisioned.passwordHash
+      );
+      if (!passwordMatches) {
+        throw new Error("Setup is already complete. Please sign in instead.");
+      }
+    }
 
     // Update Stripe metadata with internal IDs for future webhook correlation
     await stripe.customers.update(customerId, {

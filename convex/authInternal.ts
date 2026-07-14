@@ -105,6 +105,170 @@ export const createUser = internalMutation({
   },
 });
 
+const companyTierValidator = v.union(
+  v.literal("cleaning_owner"),
+  v.literal("str_owner"),
+  v.literal("scrub_solo"),
+  v.literal("scrub_team"),
+  v.literal("scrub_pro")
+);
+
+/**
+ * Atomically reconcile and complete public-checkout provisioning.
+ *
+ * The Checkout Session ID is the authoritative idempotency key. Company,
+ * default site, owner, subscription linkage, and the completion record are
+ * committed together, so retries can never observe a half-created account.
+ * Existing pre-hardening accounts are adopted only when both email and Stripe
+ * customer linkage prove that they came from this checkout.
+ */
+export const provisionPublicCheckout = internalMutation({
+  args: {
+    stripeCheckoutSessionId: v.string(),
+    stripeCustomerId: v.string(),
+    stripeSubscriptionId: v.optional(v.string()),
+    stripePriceId: v.optional(v.string()),
+    subscriptionStatus: v.optional(v.string()),
+    currentPeriodEnd: v.optional(v.number()),
+    cancelAtPeriodEnd: v.optional(v.boolean()),
+    tier: v.optional(companyTierValidator),
+    email: v.string(),
+    passwordHash: v.string(),
+    name: v.string(),
+    companyName: v.string(),
+    timezone: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const completed = await ctx.db
+      .query("checkoutProvisioning")
+      .withIndex("by_stripeCheckoutSessionId", (q) =>
+        q.eq("stripeCheckoutSessionId", args.stripeCheckoutSessionId)
+      )
+      .first();
+    if (completed) {
+      if (completed.stripeCustomerId !== args.stripeCustomerId) {
+        throw new Error("Checkout session/customer mismatch");
+      }
+      const owner = await ctx.db.get(completed.ownerUserId);
+      if (!owner || owner.email !== args.email || owner.role !== "owner") {
+        throw new Error("Checkout provisioning record is invalid");
+      }
+      return {
+        userId: completed.ownerUserId,
+        companyId: completed.companyId,
+        passwordHash: owner.passwordHash,
+        alreadyCompleted: true,
+      };
+    }
+
+    const customerProvisioning = await ctx.db
+      .query("checkoutProvisioning")
+      .withIndex("by_stripeCustomerId", (q) =>
+        q.eq("stripeCustomerId", args.stripeCustomerId)
+      )
+      .first();
+    if (customerProvisioning) {
+      throw new Error("Stripe customer is already linked to another checkout");
+    }
+
+    const existingUser = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
+    let company = await ctx.db
+      .query("companies")
+      .withIndex("by_stripeCustomerId", (q) =>
+        q.eq("stripeCustomerId", args.stripeCustomerId)
+      )
+      .first();
+
+    if (existingUser) {
+      if (!existingUser.companyId || existingUser.role !== "owner") {
+        throw new Error("An account with this email already exists. Please sign in instead.");
+      }
+      const existingCompany = await ctx.db.get(existingUser.companyId);
+      if (!existingCompany || existingCompany.stripeCustomerId !== args.stripeCustomerId) {
+        throw new Error("An account with this email already exists. Please sign in instead.");
+      }
+      company = existingCompany;
+    }
+
+    let companyId;
+    if (company) {
+      companyId = company._id;
+    } else {
+      companyId = await ctx.db.insert("companies", {
+        name: args.companyName,
+        timezone: args.timezone,
+        stripeCustomerId: args.stripeCustomerId,
+      });
+    }
+
+    const existingOwner = await ctx.db
+      .query("users")
+      .withIndex("by_companyId", (q) => q.eq("companyId", companyId))
+      .filter((q) => q.eq(q.field("role"), "owner"))
+      .first();
+    if (existingOwner && existingOwner._id !== existingUser?._id) {
+      throw new Error("Stripe customer is already linked to another account");
+    }
+
+    const existingSite = await ctx.db
+      .query("companySites")
+      .withIndex("by_companyId", (q) => q.eq("companyId", companyId))
+      .first();
+    if (!existingSite) {
+      const slug = await generateUniqueSlug(ctx, args.companyName);
+      await ctx.db.insert("companySites", {
+        companyId,
+        slug,
+        templateId: "A",
+        brandName: args.companyName,
+        bio: "",
+        serviceArea: "",
+      });
+    }
+
+    const ownerUserId = existingUser?._id ?? await ctx.db.insert("users", {
+      email: args.email,
+      passwordHash: args.passwordHash,
+      name: args.name,
+      companyId,
+      role: "owner",
+      status: "active",
+    });
+
+    await ctx.db.patch(companyId, {
+      stripeCustomerId: args.stripeCustomerId,
+      stripeSubscriptionId: args.stripeSubscriptionId,
+      stripePriceId: args.stripePriceId,
+      subscriptionStatus: args.subscriptionStatus,
+      currentPeriodEnd: args.currentPeriodEnd,
+      cancelAtPeriodEnd: args.cancelAtPeriodEnd,
+      ...(args.tier ? { tier: args.tier } : {}),
+      ...(args.subscriptionStatus === "active" || args.subscriptionStatus === "trialing"
+        ? { subscriptionBecameInactiveAt: undefined }
+        : {}),
+    });
+
+    await ctx.db.insert("checkoutProvisioning", {
+      stripeCheckoutSessionId: args.stripeCheckoutSessionId,
+      stripeCustomerId: args.stripeCustomerId,
+      stripeSubscriptionId: args.stripeSubscriptionId,
+      companyId,
+      ownerUserId,
+      completedAt: Date.now(),
+    });
+
+    return {
+      userId: ownerUserId,
+      companyId,
+      passwordHash: existingUser?.passwordHash ?? args.passwordHash,
+      alreadyCompleted: Boolean(existingUser),
+    };
+  },
+});
+
 export const updatePasswordHash = internalMutation({
   args: { userId: v.id("users"), passwordHash: v.string() },
   handler: async (ctx, args) => {

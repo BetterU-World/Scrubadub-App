@@ -1,4 +1,4 @@
-import { useState, FormEvent } from "react";
+import { useRef, useState, FormEvent } from "react";
 import { Link } from "wouter";
 import { useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -59,6 +59,7 @@ export function GetStartedPage() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const checkoutAttempt = useRef<{ fingerprint: string; id: string } | null>(null);
   const createPublicCheckout = useAction(
     api.actions.publicBilling.createPublicCheckoutSession
   );
@@ -73,7 +74,15 @@ export function GetStartedPage() {
     setError("");
     setLoading(true);
     try {
-      const url = await createPublicCheckout({ email, plan: selectedPlan });
+      const fingerprint = `${email.trim().toLowerCase()}|${selectedPlan}`;
+      if (!checkoutAttempt.current || checkoutAttempt.current.fingerprint !== fingerprint) {
+        checkoutAttempt.current = { fingerprint, id: crypto.randomUUID() };
+      }
+      const url = await createPublicCheckout({
+        email,
+        plan: selectedPlan,
+        checkoutAttemptId: checkoutAttempt.current.id,
+      });
       if (url) window.location.href = url;
       else throw new Error("Failed to create checkout session");
     } catch (err: any) {
