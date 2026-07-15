@@ -6,6 +6,7 @@ import { logAudit, createNotification } from "../lib/helpers";
 import { requireOwnerSession, requireWorkerSession } from "../lib/sessionAuth";
 import { getFormTemplate } from "../lib/constants";
 import { getJobRecipientUserIds, isUserAssignedToJob } from "../lib/teams";
+import { resolveOperationalEmailIdentity } from "../lib/operationalEmailIdentity";
 
 export const createFromTemplate = mutation({
   args: {
@@ -191,6 +192,7 @@ export const approve = mutation({
 
     const approveProperty = job.propertyId ? await ctx.db.get(job.propertyId) : null;
     const approvePropertyName = approveProperty?.name ?? job.propertySnapshot?.name ?? "a property";
+    const emailIdentity = await resolveOperationalEmailIdentity(ctx, form.companyId);
 
     for (const cid of await getJobRecipientUserIds(ctx, job)) {
       await createNotification(ctx, {
@@ -208,6 +210,7 @@ export const approve = mutation({
         await ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendJobApproved, {
           email: cleaner.email,
           propertyName: approvePropertyName,
+          ...emailIdentity,
         });
       }
     }
