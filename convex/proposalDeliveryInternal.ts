@@ -1,5 +1,6 @@
 import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
+import { resolveOperationalEmailIdentity } from "./lib/operationalEmailIdentity";
 
 const PROPOSAL_TOKEN_EXPIRY_MS = 60 * 24 * 60 * 60 * 1000;
 const PROPOSAL_LINK_UNAVAILABLE_ERROR = "Proposal link unavailable or expired";
@@ -37,12 +38,13 @@ function cleanNote(value: string | undefined, max = 1000) {
 }
 
 async function companyBranding(ctx: any, companyId: any) {
-  const [company, site] = await Promise.all([
+  const [company, site, emailIdentity] = await Promise.all([
     ctx.db.get(companyId),
     ctx.db
       .query("companySites")
       .withIndex("by_companyId", (q: any) => q.eq("companyId", companyId))
       .first(),
+    resolveOperationalEmailIdentity(ctx, companyId),
   ]);
 
   return {
@@ -54,6 +56,7 @@ async function companyBranding(ctx: any, companyId: any) {
     companyLogoUrl: site?.logoUrl ?? null,
     companyEmail: site?.publicEmail ?? company?.contactEmail ?? null,
     companyPhone: site?.publicPhone ?? company?.contactPhone ?? null,
+    replyTo: emailIdentity.replyTo ?? null,
   };
 }
 

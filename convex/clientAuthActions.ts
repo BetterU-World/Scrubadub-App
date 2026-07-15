@@ -91,6 +91,7 @@ export const inviteClient = action({
       email,
       token,
       name: displayNameForRelationship(relationship),
+      companyId: relationship.companyId,
     });
 
     return { inviteUrl, emailSent: true, status: "pending" };

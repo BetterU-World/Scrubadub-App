@@ -20,6 +20,34 @@ function getFromEmail(): string {
   return RESEND_FROM_EMAIL;
 }
 
+export type OperationalEmailIdentity = {
+  companyName: string;
+  replyTo?: string;
+};
+
+function cleanHeaderValue(value: string): string {
+  return value.replace(/[\r\n]+/g, " ").replace(/[<>\"]/g, "").trim();
+}
+
+function configuredMailbox(): string {
+  const configured = getFromEmail().trim();
+  const bracketed = configured.match(/<([^<>]+)>\s*$/)?.[1]?.trim();
+  return bracketed || configured;
+}
+
+export function getPlatformEmailHeaders() {
+  return { from: `SCRUB <${configuredMailbox()}>` };
+}
+
+export function getOperationalEmailHeaders(identity: OperationalEmailIdentity) {
+  const companyName = cleanHeaderValue(identity.companyName) || "Your Cleaning Company";
+  const replyTo = identity.replyTo?.trim();
+  return {
+    from: `SCRUB on behalf of ${companyName} <${configuredMailbox()}>`,
+    ...(replyTo && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(replyTo) ? { replyTo } : {}),
+  };
+}
+
 function getAppUrl(): string {
   if (!APP_URL) {
     throw new Error("APP_URL environment variable is required");
@@ -57,6 +85,7 @@ type ProposalEmailArgs = {
   companyName: string;
   companyLogoUrl?: string;
   companyEmail?: string;
+  replyTo?: string;
   companyPhone?: string;
   clientName: string;
   proposal: {
@@ -100,7 +129,7 @@ export async function sendProposalEmail(args: ProposalEmailArgs): Promise<boolea
 
   try {
     const { error } = await resend.emails.send({
-      from: getFromEmail(),
+      ...getOperationalEmailHeaders({ companyName: args.companyName, replyTo: args.replyTo }),
       to: args.email,
       subject: `${args.companyName} sent your cleaning proposal`,
       html: `
@@ -197,6 +226,7 @@ export type ServiceAgreementEmailArgs = {
   companyName: string;
   companyLogoUrl?: string;
   companyEmail?: string;
+  replyTo?: string;
   companyPhone?: string;
   clientName: string;
   language?: "en" | "es";
@@ -262,7 +292,7 @@ export async function sendServiceAgreementEmail(
   try {
     const rendered = renderServiceAgreementEmail(args);
     const { error } = await resend.emails.send({
-      from: getFromEmail(),
+      ...getOperationalEmailHeaders({ companyName: args.companyName, replyTo: args.replyTo }),
       to: args.email,
       ...rendered,
     });
@@ -291,7 +321,7 @@ export async function sendPasswordResetEmail(
 
   try {
     const { error } = await resend.emails.send({
-      from: getFromEmail(),
+      ...getPlatformEmailHeaders(),
       to: email,
       subject: "Reset your SCRUB password",
       html: `
@@ -327,7 +357,7 @@ export async function sendClientPasswordResetEmail(email: string, token: string)
   const resetLink = `${getAppUrl()}/client/reset-password/${token}`;
   try {
     const { error } = await resend.emails.send({
-      from: getFromEmail(),
+      ...getPlatformEmailHeaders(),
       to: email,
       subject: "Reset your SCRUB Client Portal password",
       html: `
@@ -360,7 +390,8 @@ export async function sendJobAssignedEmail(
   email: string,
   propertyName: string,
   scheduledDate: string,
-  startTime?: string
+  startTime?: string,
+  identity: OperationalEmailIdentity = { companyName: "Your Cleaning Company" }
 ): Promise<boolean> {
   const resend = getResendClient();
   const appUrl = getAppUrl();
@@ -368,7 +399,7 @@ export async function sendJobAssignedEmail(
 
   try {
     const { error } = await resend.emails.send({
-      from: getFromEmail(),
+      ...getOperationalEmailHeaders(identity),
       to: email,
       subject: "New Cleaning Job Assigned",
       html: `
@@ -410,7 +441,8 @@ export async function sendJobCompletedEmail(
   email: string,
   propertyName: string,
   cleanerName: string,
-  completedAt: number
+  completedAt: number,
+  identity: OperationalEmailIdentity = { companyName: "Your Cleaning Company" }
 ): Promise<boolean> {
   const resend = getResendClient();
   const appUrl = getAppUrl();
@@ -421,7 +453,7 @@ export async function sendJobCompletedEmail(
 
   try {
     const { error } = await resend.emails.send({
-      from: getFromEmail(),
+      ...getOperationalEmailHeaders(identity),
       to: email,
       subject: "Cleaning Job Completed",
       html: `
@@ -462,14 +494,15 @@ export async function sendJobCompletedEmail(
  */
 export async function sendJobApprovedEmail(
   email: string,
-  propertyName: string
+  propertyName: string,
+  identity: OperationalEmailIdentity = { companyName: "Your Cleaning Company" }
 ): Promise<boolean> {
   const resend = getResendClient();
   const appUrl = getAppUrl();
 
   try {
     const { error } = await resend.emails.send({
-      from: getFromEmail(),
+      ...getOperationalEmailHeaders(identity),
       to: email,
       subject: "Cleaning Job Approved",
       html: `
@@ -513,7 +546,7 @@ export async function sendStripeConnectInviteEmail(
 
   try {
     const { error } = await resend.emails.send({
-      from: getFromEmail(),
+      ...getPlatformEmailHeaders(),
       to: email,
       subject: "Connect Stripe to receive payments via SCRUB",
       html: `
@@ -561,7 +594,7 @@ export async function sendSupportEmail(
 
   try {
     const { error } = await resend.emails.send({
-      from: getFromEmail(),
+      ...getPlatformEmailHeaders(),
       to: SUPPORT_DESTINATION_EMAIL,
       replyTo: email,
       subject: `[Contact Form] ${subject}`,
@@ -609,7 +642,7 @@ export async function sendAffiliateInviteEmail(
 
   try {
     const { error } = await resend.emails.send({
-      from: getFromEmail(),
+      ...getPlatformEmailHeaders(),
       to: email,
       subject: "You've been invited to the SCRUB Affiliate Program",
       html: `
@@ -647,14 +680,15 @@ export async function sendAffiliateInviteEmail(
  */
 export async function sendPartnerInviteEmail(
   email: string,
-  fromCompanyName: string
+  fromCompanyName: string,
+  replyTo?: string
 ): Promise<boolean> {
   const resend = getResendClient();
   const appUrl = getAppUrl();
 
   try {
     const { error } = await resend.emails.send({
-      from: getFromEmail(),
+      ...getOperationalEmailHeaders({ companyName: fromCompanyName, replyTo }),
       to: email,
       subject: `${fromCompanyName} wants to connect on SCRUB`,
       html: `
@@ -698,6 +732,7 @@ export type PartnerSharedJobEmailArgs = {
   copiedJobId: string;
   timezone: string;
   language?: "en" | "es";
+  replyTo?: string;
 };
 
 function formatSharedJobTime(startTime: string | undefined, durationMinutes: number): string | undefined {
@@ -760,7 +795,11 @@ export async function sendPartnerSharedJobEmail(args: PartnerSharedJobEmailArgs)
   try {
     const resend = getResendClient();
     const rendered = renderPartnerSharedJobEmail(args);
-    const { error } = await resend.emails.send({ from: getFromEmail(), to: args.email, ...rendered });
+    const { error } = await resend.emails.send({
+      ...getOperationalEmailHeaders({ companyName: args.fromCompanyName, replyTo: args.replyTo }),
+      to: args.email,
+      ...rendered,
+    });
     if (error) {
       console.error("[email] Failed to send partner shared-job email");
       return false;
@@ -784,7 +823,7 @@ export async function sendInviteEmail(
 
   try {
     const { error } = await resend.emails.send({
-      from: getFromEmail(),
+      ...getPlatformEmailHeaders(),
       to: email,
       subject: "You've been invited to SCRUB",
       html: `
@@ -818,7 +857,8 @@ export async function sendInviteEmail(
 export async function sendClientInviteEmail(
   email: string,
   inviteToken: string,
-  name?: string
+  name?: string,
+  identity: OperationalEmailIdentity = { companyName: "Your Cleaning Company" }
 ): Promise<boolean> {
   const resend = getResendClient();
   const inviteLink = `${getAppUrl()}/client/accept-invite/${inviteToken}`;
@@ -826,7 +866,7 @@ export async function sendClientInviteEmail(
 
   try {
     const { error } = await resend.emails.send({
-      from: getFromEmail(),
+      ...getOperationalEmailHeaders(identity),
       to: email,
       subject: "Your SCRUB client access",
       html: `

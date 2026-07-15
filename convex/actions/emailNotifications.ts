@@ -26,13 +26,16 @@ export const sendJobAssigned = internalAction({
     propertyName: v.string(),
     scheduledDate: v.string(),
     startTime: v.optional(v.string()),
+    companyName: v.string(),
+    replyTo: v.optional(v.string()),
   },
   handler: async (_ctx, args) => {
     const sent = await sendJobAssignedEmail(
       args.email,
       args.propertyName,
       args.scheduledDate,
-      args.startTime
+      args.startTime,
+      { companyName: args.companyName, replyTo: args.replyTo }
     );
     if (!sent) {
       console.error("[emailNotifications] Job assigned email failed for", args.email);
@@ -50,13 +53,16 @@ export const sendJobCompleted = internalAction({
     propertyName: v.string(),
     cleanerName: v.string(),
     completedAt: v.number(),
+    companyName: v.string(),
+    replyTo: v.optional(v.string()),
   },
   handler: async (_ctx, args) => {
     const sent = await sendJobCompletedEmail(
       args.email,
       args.propertyName,
       args.cleanerName,
-      args.completedAt
+      args.completedAt,
+      { companyName: args.companyName, replyTo: args.replyTo }
     );
     if (!sent) {
       console.error("[emailNotifications] Job completed email failed for", args.email);
@@ -72,9 +78,14 @@ export const sendJobApproved = internalAction({
   args: {
     email: v.string(),
     propertyName: v.string(),
+    companyName: v.string(),
+    replyTo: v.optional(v.string()),
   },
   handler: async (_ctx, args) => {
-    const sent = await sendJobApprovedEmail(args.email, args.propertyName);
+    const sent = await sendJobApprovedEmail(args.email, args.propertyName, {
+      companyName: args.companyName,
+      replyTo: args.replyTo,
+    });
     if (!sent) {
       console.error("[emailNotifications] Job approved email failed for", args.email);
     }
@@ -149,9 +160,10 @@ export const sendPartnerInvite = internalAction({
   args: {
     email: v.string(),
     fromCompanyName: v.string(),
+    replyTo: v.optional(v.string()),
   },
   handler: async (_ctx, args) => {
-    const sent = await sendPartnerInviteEmail(args.email, args.fromCompanyName);
+    const sent = await sendPartnerInviteEmail(args.email, args.fromCompanyName, args.replyTo);
     if (!sent) {
       console.error("[emailNotifications] Partner invite email failed for", args.email);
     }
@@ -172,6 +184,7 @@ export const sendPartnerSharedJob = internalAction({
     copiedJobId: v.id("jobs"),
     timezone: v.string(),
     language: v.optional(v.union(v.literal("en"), v.literal("es"))),
+    replyTo: v.optional(v.string()),
   },
   handler: async (_ctx, args) => {
     const sent = await sendPartnerSharedJobEmail(args);
@@ -199,9 +212,14 @@ export const sendClientInvite = internalAction({
     email: v.string(),
     token: v.string(),
     name: v.optional(v.string()),
+    companyName: v.string(),
+    replyTo: v.optional(v.string()),
   },
   handler: async (_ctx, args) => {
-    const sent = await sendClientInviteEmail(args.email, args.token, args.name);
+    const sent = await sendClientInviteEmail(args.email, args.token, args.name, {
+      companyName: args.companyName,
+      replyTo: args.replyTo,
+    });
     if (!sent) {
       console.error("[emailNotifications] Client invite email failed for", args.email);
     }

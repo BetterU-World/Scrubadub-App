@@ -1,5 +1,6 @@
 import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
+import { resolveOperationalEmailIdentity } from "./lib/operationalEmailIdentity";
 
 function formatFrequency(value: string | undefined) {
   const labels: Record<string, string> = {
@@ -14,12 +15,13 @@ function formatFrequency(value: string | undefined) {
 }
 
 async function companyBranding(ctx: any, companyId: any) {
-  const [company, site] = await Promise.all([
+  const [company, site, emailIdentity] = await Promise.all([
     ctx.db.get(companyId),
     ctx.db
       .query("companySites")
       .withIndex("by_companyId", (q: any) => q.eq("companyId", companyId))
       .first(),
+    resolveOperationalEmailIdentity(ctx, companyId),
   ]);
 
   return {
@@ -31,6 +33,7 @@ async function companyBranding(ctx: any, companyId: any) {
     companyLogoUrl: site?.logoUrl ?? null,
     companyEmail: site?.publicEmail ?? company?.contactEmail ?? null,
     companyPhone: site?.publicPhone ?? company?.contactPhone ?? null,
+    replyTo: emailIdentity.replyTo ?? null,
   };
 }
 

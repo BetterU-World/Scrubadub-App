@@ -5,6 +5,7 @@ import { logAudit, createNotification } from "../lib/helpers";
 import { requireOwnerSession, requireWorkerSession } from "../lib/sessionAuth";
 import { requireActiveSubscription } from "../lib/subscriptionGating";
 import { assertTeamInCompany, canSubmitFinalJob, getJobRecipientUserIds, isUserAssignedToJob } from "../lib/teams";
+import { resolveOperationalEmailIdentity } from "../lib/operationalEmailIdentity";
 
 export const create = mutation({
   args: {
@@ -45,6 +46,7 @@ export const create = mutation({
     if (!property || property.companyId !== args.companyId) {
       throw new Error("Property not found");
     }
+    const emailIdentity = await resolveOperationalEmailIdentity(ctx, args.companyId);
 
     const { userId: _uid, sessionToken: _sessionToken, ...jobData } = args;
     const jobId = await ctx.db.insert("jobs", {
@@ -78,6 +80,7 @@ export const create = mutation({
           propertyName: property?.name ?? "a property",
           scheduledDate: args.scheduledDate,
           startTime: args.startTime,
+          ...emailIdentity,
         });
       }
     }
@@ -364,6 +367,7 @@ export const reassignJob = mutation({
     // Notify the new cleaner
     const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
     const propertyName = property?.name ?? job.propertySnapshot?.name ?? "a property";
+    const emailIdentity = await resolveOperationalEmailIdentity(ctx, job.companyId);
     await createNotification(ctx, {
       companyId: job.companyId,
       userId: args.newCleanerId,
@@ -380,6 +384,7 @@ export const reassignJob = mutation({
         propertyName,
         scheduledDate: job.scheduledDate,
         startTime: job.startTime,
+        ...emailIdentity,
       });
     }
 
@@ -507,6 +512,7 @@ export const completeJob = mutation({
 
     const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
     const propName = property?.name ?? job.propertySnapshot?.name ?? "a property";
+    const emailIdentity = await resolveOperationalEmailIdentity(ctx, job.companyId);
     const owners = await ctx.db
       .query("users")
       .withIndex("by_companyId", (q) => q.eq("companyId", job.companyId))
@@ -529,6 +535,7 @@ export const completeJob = mutation({
           propertyName: propName,
           cleanerName: user.name,
           completedAt: now,
+          ...emailIdentity,
         });
       }
     }

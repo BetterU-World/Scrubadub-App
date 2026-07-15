@@ -42,6 +42,7 @@ export const sendServiceAgreement = action({
       companyName: payload.company.companyName,
       companyLogoUrl: payload.company.companyLogoUrl ?? undefined,
       companyEmail: payload.company.companyEmail ?? undefined,
+      replyTo: payload.company.replyTo ?? undefined,
       companyPhone: payload.company.companyPhone ?? undefined,
       clientName: payload.clientName,
       language: payload.language,

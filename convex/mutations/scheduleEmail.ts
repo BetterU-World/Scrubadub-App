@@ -1,6 +1,7 @@
 import { internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
+import { resolveOperationalEmailIdentity } from "../lib/operationalEmailIdentity";
 
 /**
  * Thin internal mutations that schedule email actions via ctx.scheduler.
@@ -46,12 +47,14 @@ export const scheduleInviteEmail = internalMutation({
 });
 
 export const scheduleClientInviteEmail = internalMutation({
-  args: { email: v.string(), token: v.string(), name: v.optional(v.string()) },
+  args: { email: v.string(), token: v.string(), name: v.optional(v.string()), companyId: v.id("companies") },
   handler: async (ctx, args) => {
+    const identity = await resolveOperationalEmailIdentity(ctx, args.companyId);
     await ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendClientInvite, {
       email: args.email,
       token: args.token,
       name: args.name,
+      ...identity,
     });
   },
 });

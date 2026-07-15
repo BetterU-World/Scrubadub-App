@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import { logAudit, createNotification } from "../lib/helpers";
 import { requireActiveSubscription } from "../lib/subscriptionGating";
 import { requireOwnerSession } from "../lib/sessionAuth";
+import { resolveOperationalEmailIdentity } from "../lib/operationalEmailIdentity";
 
 // ── Partner Contacts ──────────────────────────────────────────────
 
@@ -132,12 +133,12 @@ export const connectByEmail = mutation({
 
     // Notify recipient company's owners
     const targetCompany = await ctx.db.get(targetCompanyId);
-    const ownerCompany = await ctx.db.get(owner.companyId);
     const recipientOwners = await ctx.db
       .query("users")
       .withIndex("by_companyId", (q) => q.eq("companyId", targetCompanyId))
       .collect();
-    const fromCompanyName = ownerCompany?.name ?? "A company";
+    const emailIdentity = await resolveOperationalEmailIdentity(ctx, owner.companyId);
+    const fromCompanyName = emailIdentity.companyName;
     for (const ro of recipientOwners.filter((u) => u.role === "owner")) {
       await createNotification(ctx, {
         companyId: targetCompanyId,
@@ -150,7 +151,7 @@ export const connectByEmail = mutation({
       await ctx.scheduler.runAfter(
         0,
         internal.actions.emailNotifications.sendPartnerInvite,
-        { email: ro.email, fromCompanyName }
+        { email: ro.email, fromCompanyName, replyTo: emailIdentity.replyTo }
       );
     }
 
@@ -523,9 +524,10 @@ export const shareJob = mutation({
     const emailRecipient = activeOwners.find((u) => validEmail(u.email))?.email.trim()
       ?? (validEmail(toCompany?.contactEmail) ? toCompany!.contactEmail!.trim() : undefined);
     if (emailRecipient) {
+      const emailIdentity = await resolveOperationalEmailIdentity(ctx, owner.companyId);
       await ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendPartnerSharedJob, {
         email: emailRecipient,
-        fromCompanyName: fromCompany?.name ?? "A partner",
+        fromCompanyName: emailIdentity.companyName,
         toCompanyName: toCompany?.name ?? "Your company",
         propertyName: propertySnapshot.name,
         serviceType: job.type,
@@ -535,6 +537,7 @@ export const shareJob = mutation({
         notes: job.notes,
         copiedJobId,
         timezone: toCompany?.timezone ?? "UTC",
+        replyTo: emailIdentity.replyTo,
       });
     } else {
       console.warn("[partners.shareJob] No active owner or company contact email for recipient company");
