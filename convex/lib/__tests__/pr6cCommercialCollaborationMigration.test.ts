@@ -43,7 +43,7 @@ async function seed(t: ReturnType<typeof backend>) {
     });
     const proposalA = await ctx.db.insert("proposals", {
       companyId: companyA, clientRelationshipId: relationshipA, clientRequestId: requestA, createdByUserId: ownerA, title: "Proposal A", clientName: "Client A", status: "sent",
-      proposalTokenHash: hashToken("public-proposal-token"), proposalTokenCreatedAt: 1, createdAt: 1, updatedAt: 1,
+      proposalTokenHash: hashToken("public-proposal-token"), proposalTokenCreatedAt: Date.now(), createdAt: 1, updatedAt: 1,
     });
     const agreementA = await ctx.db.insert("serviceAgreements", {
       companyId: companyA, clientRelationshipId: relationshipA, proposalId: proposalA, clientRequestId: requestA, title: "Agreement A", status: "draft", agreementType: "commercial_cleaning", createdAt: 1, updatedAt: 1,
@@ -173,6 +173,24 @@ describe("PR 6C commercial and collaboration session migration", () => {
     await seed(publicT);
     await expect(publicT.action(api.proposalDeliveryActions.getProposalByToken, { token: "public-proposal-token" })).resolves.toMatchObject({ proposal: { title: "Proposal A", status: "sent" } });
     await expect(publicT.action(api.proposalDeliveryActions.respondToProposal, { token: "public-proposal-token", decision: "accepted" })).resolves.toMatchObject({ proposal: { status: "accepted" } });
+  });
+
+  it("rejects proposal links 60 days after token creation for viewing and responses", async () => {
+    const t = backend();
+    const s = await seed(t);
+    await t.run((ctx) => ctx.db.patch(s.proposalA, {
+      proposalTokenCreatedAt: Date.now() - 60 * 24 * 60 * 60 * 1000,
+    }));
+
+    await expect(
+      t.action(api.proposalDeliveryActions.getProposalByToken, { token: "public-proposal-token" })
+    ).resolves.toBeNull();
+    await expect(
+      t.action(api.proposalDeliveryActions.respondToProposal, {
+        token: "public-proposal-token",
+        decision: "accepted",
+      })
+    ).rejects.toThrow("Proposal link unavailable or expired");
   });
 
   it("keeps all 39 scoped entry points session-verified and preserves exact frontend skip branches", () => {

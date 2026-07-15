@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useParams } from "wouter";
 import { useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
+import { useTranslation } from "react-i18next";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import {
   Building2,
@@ -72,13 +73,13 @@ function Detail({
 }
 
 export function ProposalViewPage() {
+  const { t } = useTranslation();
   const params = useParams<{ token: string }>();
   const token = params.token ?? "";
   const getProposal = useAction((api as any).proposalDeliveryActions.getProposalByToken);
   const respondToProposal = useAction((api as any).proposalDeliveryActions.respondToProposal);
 
   const [proposal, setProposal] = useState<ProposalPayload | null | undefined>(undefined);
-  const [loadingError, setLoadingError] = useState("");
   const [note, setNote] = useState("");
   const [responding, setResponding] = useState<"accepted" | "declined" | null>(null);
   const [responseError, setResponseError] = useState("");
@@ -86,7 +87,6 @@ export function ProposalViewPage() {
   useEffect(() => {
     let cancelled = false;
     setProposal(undefined);
-    setLoadingError("");
 
     if (!token) {
       setProposal(null);
@@ -97,9 +97,8 @@ export function ProposalViewPage() {
       .then((result: ProposalPayload | null) => {
         if (!cancelled) setProposal(result);
       })
-      .catch((err: any) => {
+      .catch(() => {
         if (!cancelled) {
-          setLoadingError(err.message || "Unable to load proposal");
           setProposal(null);
         }
       });
@@ -140,9 +139,12 @@ export function ProposalViewPage() {
     return (
       <Shell>
         <div className="card py-12 text-center">
-          <h1 className="text-xl font-semibold text-gray-900">Proposal link unavailable</h1>
+          <h1 className="text-xl font-semibold text-gray-900">{t("proposals.linkUnavailable")}</h1>
           <p className="mt-2 text-sm text-gray-500">
-            {loadingError || "Ask your cleaning provider to send a new proposal link."}
+            {t("proposals.linkExpired")}
+          </p>
+          <p className="mt-1 text-sm text-gray-500">
+            {t("proposals.linkUnavailableHelp")}
           </p>
         </div>
       </Shell>
