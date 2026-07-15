@@ -8,6 +8,7 @@ import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
 import { Link, useParams } from "wouter";
+import { useTranslation } from "react-i18next";
 import {
   Banknote,
   BarChart3,
@@ -166,6 +167,7 @@ function getComplianceSummary({
 
 export function WorkerDetailPage() {
   const { user, sessionToken } = useAuth();
+  const { t } = useTranslation();
   const params = useParams<{ id: string }>();
   const [savingOnboarding, setSavingOnboarding] = useState(false);
   const [onboardingError, setOnboardingError] = useState<string | null>(null);
@@ -228,10 +230,12 @@ export function WorkerDetailPage() {
   if (!workerUser) {
     return (
       <div>
-        <PageHeader title="Worker not found" />
+        <PageHeader
+          title="Worker not found"
+          back={{ href: "/employees", label: t("navigation.backToWorkers") }}
+        />
         <div className="card">
           <EmptyNote>This worker is not available in your company roster.</EmptyNote>
-          <Link href="/employees" className="btn-secondary inline-block mt-4">Back to Workers</Link>
         </div>
       </div>
     );
@@ -492,7 +496,7 @@ export function WorkerDetailPage() {
       <PageHeader
         title={workerUser?.name ?? "Worker"}
         description={workerUser?.email ?? "Worker profile"}
-        action={<Link href="/employees" className="btn-secondary">Back to Workers</Link>}
+        back={{ href: "/employees", label: t("navigation.backToWorkers") }}
       />
 
       <CollapsibleSection title="Identity" defaultExpanded className="mb-6">

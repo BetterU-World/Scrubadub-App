@@ -8,14 +8,13 @@ import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { JobTimeline } from "@/components/JobTimeline";
 import { useTranslation } from "react-i18next";
-import { useParams, Link } from "wouter";
+import { useParams } from "wouter";
 import {
   Calendar,
   Clock,
   MapPin,
   Key,
   Users,
-  ArrowLeft,
   FileText,
   Image,
   ClipboardCheck,
@@ -152,14 +151,10 @@ export function ManagerJobDetailPage() {
         </div>
       )}
 
-      <Link
-        href="/jobs"
-        className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4"
-      >
-        <ArrowLeft className="w-4 h-4" /> {t("common.back")}
-      </Link>
-
-      <PageHeader title={property?.name ?? t("jobs.jobDetails")} />
+      <PageHeader
+        title={property?.name ?? t("jobs.jobDetails")}
+        back={{ href: "/jobs", label: t("navigation.backToJobs") }}
+      />
 
       <div className="space-y-4">
         {/* Status & Type + Inspection Summary Badge */}

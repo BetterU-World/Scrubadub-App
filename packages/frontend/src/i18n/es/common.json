@@ -76,6 +76,23 @@
     "hub": "Centro",
     "company": "Empresa"
   },
+  "navigation": {
+    "backToRequests": "Volver a Solicitudes",
+    "backToClients": "Volver a Clientes",
+    "backToCommercialAccounts": "Volver a Cuentas comerciales",
+    "backToCommercialInvoices": "Volver a Facturas comerciales",
+    "backToProperties": "Volver a Propiedades",
+    "backToProperty": "Volver a la Propiedad",
+    "backToJobs": "Volver a Trabajos",
+    "backToJob": "Volver al Trabajo",
+    "backToWorkers": "Volver a Trabajadores",
+    "backToSettings": "Volver a Configuración",
+    "backToPayments": "Volver a Pagos",
+    "backToManuals": "Volver a Manuales",
+    "backToAffiliatePortal": "Volver al Portal de Afiliados",
+    "backToClientHome": "Volver al Inicio del Cliente",
+    "backToClient": "Volver al Cliente"
+  },
   "common": {
     "save": "Guardar",
     "cancel": "Cancelar",

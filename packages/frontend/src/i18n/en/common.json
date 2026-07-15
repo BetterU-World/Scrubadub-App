@@ -76,6 +76,23 @@
     "hub": "Hub",
     "company": "Company"
   },
+  "navigation": {
+    "backToRequests": "Back to Requests",
+    "backToClients": "Back to Clients",
+    "backToCommercialAccounts": "Back to Commercial Accounts",
+    "backToCommercialInvoices": "Back to Commercial Invoices",
+    "backToProperties": "Back to Properties",
+    "backToProperty": "Back to Property",
+    "backToJobs": "Back to Jobs",
+    "backToJob": "Back to Job",
+    "backToWorkers": "Back to Workers",
+    "backToSettings": "Back to Settings",
+    "backToPayments": "Back to Payments",
+    "backToManuals": "Back to Manuals",
+    "backToAffiliatePortal": "Back to Affiliate Portal",
+    "backToClientHome": "Back to Client Home",
+    "backToClient": "Back to Client"
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",

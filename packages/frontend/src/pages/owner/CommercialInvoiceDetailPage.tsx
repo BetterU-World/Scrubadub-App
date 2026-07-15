@@ -96,6 +96,7 @@ export function CommercialInvoiceDetailPage() {
       <PageHeader
         title={`${t("invoices.invoice")} ${invoice.invoiceNumber}`}
         description={invoice.title}
+        back={{ href: "/commercial-invoices", label: t("navigation.backToCommercialInvoices") }}
         action={
           <span className="badge bg-gray-100 text-gray-700">
             {t(`invoices.statuses.${invoice.status}`)}

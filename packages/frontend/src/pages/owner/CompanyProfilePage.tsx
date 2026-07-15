@@ -5,6 +5,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
+import { useTranslation } from "react-i18next";
 
 type SettingsForm = {
   logoUrl: string;
@@ -63,6 +64,7 @@ function Field({
 
 export function CompanyProfilePage() {
   const { user, sessionToken } = useAuth();
+  const { t } = useTranslation();
   const settings = useQuery(
     (api as any).queries.companies.getCompanySettings,
     user?._id ? { userId: user._id, sessionToken } : "skip"
@@ -128,6 +130,7 @@ export function CompanyProfilePage() {
       <PageHeader
         title="Identity / Branding"
         description="Set the company identity SCRUB uses for document templates."
+        back={{ href: "/owner/settings", label: t("navigation.backToSettings") }}
       />
 
       <div className="max-w-4xl space-y-5">

@@ -174,6 +174,7 @@ export function SettlementsPage() {
   return (
     <div>
       <PageHeader
+        back={{ href: "/owner/payments", label: t("navigation.backToPayments") }}
         title={t("settlements.title")}
         description={t("settlements.description")}
       />

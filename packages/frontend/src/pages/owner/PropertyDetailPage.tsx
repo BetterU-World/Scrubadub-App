@@ -117,6 +117,7 @@ export function PropertyDetailPage() {
       <PageHeader
         title={property.name}
         description={t("properties.detailDescription")}
+        back={{ href: "/properties", label: t("navigation.backToProperties") }}
         action={
           <div className="flex gap-2">
             <button

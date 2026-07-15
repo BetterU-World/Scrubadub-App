@@ -1,21 +1,29 @@
 import { ReactNode } from "react";
+import { PageBack } from "./PageBack";
 
 interface PageHeaderProps {
   title: string;
   description?: string;
   action?: ReactNode;
+  back?: {
+    href: string;
+    label: string;
+  };
 }
 
-export function PageHeader({ title, description, action }: PageHeaderProps) {
+export function PageHeader({ title, description, action, back }: PageHeaderProps) {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-        {description && (
-          <p className="mt-1 text-sm text-gray-500">{description}</p>
-        )}
+    <div className="mb-6">
+      {back && <PageBack href={back.href} label={back.label} className="mb-2" />}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+          {description && (
+            <p className="mt-1 text-sm text-gray-500">{description}</p>
+          )}
+        </div>
+        {action && <div className="flex-shrink-0">{action}</div>}
       </div>
-      {action && <div className="flex-shrink-0">{action}</div>}
     </div>
   );
 }

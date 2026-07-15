@@ -193,6 +193,7 @@ export function JobDetailPage() {
     <div className="max-w-3xl mx-auto">
       <PageHeader
         title={job.property?.name ?? (job as any).propertySnapshot?.name ?? t("jobs.jobDetails")}
+        back={{ href: "/jobs", label: t("navigation.backToJobs") }}
         action={
           <div className="flex gap-2">
             {!job.sharedFromJobId && canCancel && (

@@ -41,6 +41,7 @@ export function ArchivedPropertiesPage() {
       <PageHeader
         title={t("properties.archivedProperties")}
         description={t("properties.archivedPropertiesDesc")}
+        back={{ href: "/owner/settings", label: t("navigation.backToSettings") }}
       />
 
       <ConfirmDialog

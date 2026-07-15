@@ -5,9 +5,11 @@ import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { Link2, CreditCard, CheckCircle, AlertCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function StripeConnectPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const connectStatus = useQuery(
     api.queries.companyStripeConnect.getCompanyConnectStatus,
     user?._id ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
@@ -68,6 +70,7 @@ export function StripeConnectPage() {
       <PageHeader
         title="Stripe Connect"
         description="Connect your Stripe account to receive payments"
+        back={{ href: "/owner/settings", label: t("navigation.backToSettings") }}
       />
 
       {/* Feedback banners */}

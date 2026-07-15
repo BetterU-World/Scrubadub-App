@@ -14,6 +14,7 @@ import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { TemplateEditor } from "@/components/documents/TemplateEditor";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useAuth } from "@/hooks/useAuth";
+import { useTranslation } from "react-i18next";
 
 const SCRUB_SERVICE_AGREEMENT_TEMPLATE = `# Service Agreement
 
@@ -47,6 +48,7 @@ type TemplateRecord = {
 
 export function CompanyDocumentsPage() {
   const { user, sessionToken } = useAuth();
+  const { t } = useTranslation();
   const templates = useQuery(
     (api as any).queries.documentTemplates.listByType,
     user?._id ? { userId: user._id, sessionToken, type: "service_agreement" } : "skip",
@@ -206,6 +208,7 @@ export function CompanyDocumentsPage() {
       <PageHeader
         title="Documents"
         description="Manage the templates sent to clients and the company documents used by workers."
+        back={{ href: "/owner/settings", label: t("navigation.backToSettings") }}
       />
 
       <div className="max-w-6xl space-y-6">

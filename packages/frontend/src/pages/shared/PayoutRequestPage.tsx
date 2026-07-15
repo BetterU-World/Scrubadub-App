@@ -6,6 +6,7 @@ import { Id } from "../../../../../convex/_generated/dataModel";
 import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
+import { useTranslation } from "react-i18next";
 import {
   Send,
   X,
@@ -13,7 +14,6 @@ import {
   CheckCircle,
   Clock,
   XCircle,
-  ArrowLeft,
 } from "lucide-react";
 
 function formatCents(cents: number): string {
@@ -100,6 +100,7 @@ function PayoutRequestInner({
   userId: Id<"users">;
   requestId: Id<"affiliatePayoutRequests">;
 }) {
+  const { t } = useTranslation();
   const request = useQuery(
     api.queries.affiliatePayoutRequests.getMyPayoutRequest,
     { userId, sessionToken: getStaffSessionToken(), requestId }
@@ -142,15 +143,10 @@ function PayoutRequestInner({
 
   return (
     <div>
-      <PageHeader title="Payout Request" />
-
-      <a
-        href="/affiliate"
-        className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Affiliate Portal
-      </a>
+      <PageHeader
+        title="Payout Request"
+        back={{ href: "/affiliate", label: t("navigation.backToAffiliatePortal") }}
+      />
 
       {/* Status card */}
       <div className="bg-white rounded-lg shadow p-6 max-w-2xl mb-6">

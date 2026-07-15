@@ -220,6 +220,7 @@ export function CommercialAccountDetailPage() {
       <PageHeader
         title={account.clientName}
         description={t("commercialAccounts.detailDescription")}
+        back={{ href: "/commercial-accounts", label: t("navigation.backToCommercialAccounts") }}
         action={
           <div className="flex gap-2">
             {editing ? (
