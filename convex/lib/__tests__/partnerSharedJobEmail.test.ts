@@ -3,7 +3,7 @@ import { convexTest } from "convex-test";
 import schema from "../../schema";
 import { api } from "../../_generated/api";
 import { hashPassword } from "../password";
-import { getJobPrimaryStatus } from "../../../packages/frontend/src/lib/partnerJobStatus";
+import { getJobPrimaryStatus, getPartnerResponseStatus } from "../../../packages/frontend/src/lib/partnerJobStatus";
 
 const modules = import.meta.glob("../../**/*.ts");
 
@@ -22,6 +22,8 @@ describe("partner shared-job email", () => {
     expect(getJobPrimaryStatus({ status: "scheduled", sharedFromJobId: "original", partnerResponseStatus: "pending" })).toBe("pending");
     expect(getJobPrimaryStatus({ status: "cancelled", sharedFromJobId: "original", partnerResponseStatus: "rejected" })).toBe("rejected");
     expect(getJobPrimaryStatus({ status: "scheduled", sharedFromJobId: "original", partnerResponseStatus: "accepted" })).toBe("accepted");
+    expect(getJobPrimaryStatus({ status: "confirmed", partnerResponseStatus: "rejected" })).toBe("rejected");
+    expect(getPartnerResponseStatus(["accepted", "rejected"])).toBe("rejected");
     expect(getJobPrimaryStatus({ status: "scheduled" })).toBe("scheduled");
   });
 
@@ -99,21 +101,26 @@ describe("partner shared-job email", () => {
 
   it("renders the authorized copied-job details and direct Company B link", async () => {
     const message = await render();
-    expect(message.subject).toBe("New shared job from Company A");
+    expect(message.subject).toBe("New shared job from Company A — Beach House");
     expect(message.html).toContain("Company B received a shared deep clean job");
     expect(message.html).toContain("Beach House");
     expect(message.html).toContain("09:30–11:00 (America/New_York)");
     expect(message.html).toContain("Use side door");
     expect(message.html).toContain('href="https://app.scrub.test/jobs/job-b-copy"');
     expect(message.html).toContain("Response required");
+    expect(message.html).toContain("If the button does not work, open this link:");
+    expect(message.text).toContain("Review Shared Job: https://app.scrub.test/jobs/job-b-copy");
+    expect(message).not.toHaveProperty("headers");
   });
 
   it("renders Spanish action copy when a supported language is available", async () => {
     const message = await render({ language: "es" });
-    expect(message.subject).toBe("Nuevo trabajo compartido de Company A");
+    expect(message.subject).toBe("Nuevo trabajo compartido de Company A — Beach House");
     expect(message.html).toContain("compartió un trabajo con tu empresa");
     expect(message.html).toContain("Respuesta requerida");
     expect(message.html).toContain("Revisar trabajo compartido");
+    expect(message.html).toContain("Si el botón no funciona, abre este enlace:");
+    expect(message.text).toContain("https://app.scrub.test/jobs/job-b-copy");
   });
 
   it("escapes untrusted display fields and strips subject newlines", async () => {
@@ -126,5 +133,12 @@ describe("partner shared-job email", () => {
     expect(message.html).not.toContain("<script>");
     expect(message.html).not.toContain("<img src=x");
     expect(message.html).toContain("&lt;script&gt;bad()&lt;/script&gt;<br />Safe line");
+  });
+
+  it("keeps the CTA and direct URL when optional time and notes are absent", async () => {
+    const message = await render({ startTime: undefined, notes: undefined });
+    expect(message.html).toContain("Review Shared Job");
+    expect(message.html).toContain("https://app.scrub.test/jobs/job-b-copy");
+    expect(message.text).toContain("https://app.scrub.test/jobs/job-b-copy");
   });
 });
