@@ -221,15 +221,15 @@ function propertyFormFromWalkthrough(walkthrough: any) {
   };
 }
 
-function SchedulingFields({ form, setForm, managers, showStatus = false }: any) {
+function SchedulingFields({ form, setForm, managers, currentUserId, t, showStatus = false }: any) {
   return (
     <div className="grid grid-cols-1 gap-3 rounded-lg border border-primary-100 bg-primary-50/40 p-3 sm:grid-cols-2">
-      <label><span className="text-xs font-medium text-gray-600">Date</span><input required type="date" className="input-field mt-1 text-sm" value={form.scheduledDate} onChange={(e) => setForm({ ...form, scheduledDate: e.target.value })} /></label>
-      <label><span className="text-xs font-medium text-gray-600">Start time</span><input required type="time" className="input-field mt-1 text-sm" value={form.scheduledStartTime} onChange={(e) => setForm({ ...form, scheduledStartTime: e.target.value })} /></label>
-      <label><span className="text-xs font-medium text-gray-600">End time (optional)</span><input type="time" className="input-field mt-1 text-sm" value={form.scheduledEndTime} onChange={(e) => setForm({ ...form, scheduledEndTime: e.target.value })} /></label>
-      <label><span className="text-xs font-medium text-gray-600">Assigned manager</span><select className="input-field mt-1 text-sm" value={form.assignedManagerId} onChange={(e) => setForm({ ...form, assignedManagerId: e.target.value })}><option value="">Unassigned</option>{managers.map((manager: any) => <option key={manager._id} value={manager._id}>{manager.name || manager.email}</option>)}</select></label>
-      {showStatus && <label><span className="text-xs font-medium text-gray-600">Appointment status</span><select className="input-field mt-1 text-sm" value={form.appointmentStatus} onChange={(e) => setForm({ ...form, appointmentStatus: e.target.value })}><option value="draft">Draft</option><option value="scheduled">Scheduled</option><option value="cancelled">Cancelled</option>{form.appointmentStatus === "completed" && <option value="completed">Completed</option>}</select></label>}
-      <label className="sm:col-span-2"><span className="text-xs font-medium text-gray-600">Scheduling notes</span><textarea rows={2} className="input-field mt-1 text-sm" value={form.schedulingNotes} onChange={(e) => setForm({ ...form, schedulingNotes: e.target.value })} /></label>
+      <label><span className="text-xs font-medium text-gray-600">{t("walkthroughs.scheduling.date")}</span><input required type="date" className="input-field mt-1 text-sm" value={form.scheduledDate} onChange={(e) => setForm({ ...form, scheduledDate: e.target.value })} /></label>
+      <label><span className="text-xs font-medium text-gray-600">{t("walkthroughs.scheduling.startTime")}</span><input required type="time" className="input-field mt-1 text-sm" value={form.scheduledStartTime} onChange={(e) => setForm({ ...form, scheduledStartTime: e.target.value })} /></label>
+      <label><span className="text-xs font-medium text-gray-600">{t("walkthroughs.scheduling.endTime")}</span><input type="time" className="input-field mt-1 text-sm" value={form.scheduledEndTime} onChange={(e) => setForm({ ...form, scheduledEndTime: e.target.value })} /></label>
+      <label><span className="text-xs font-medium text-gray-600">{t("walkthroughs.scheduling.assignee")}</span><select className="input-field mt-1 text-sm" value={form.assignedManagerId} onChange={(e) => setForm({ ...form, assignedManagerId: e.target.value })}><option value="">{t("walkthroughs.scheduling.unassigned")}</option>{managers.map((manager: any) => <option key={manager._id} value={manager._id}>{manager._id === currentUserId ? t("walkthroughs.scheduling.myself", { name: manager.name || manager.email }) : manager.name || manager.email}</option>)}</select></label>
+      {showStatus && <label><span className="text-xs font-medium text-gray-600">{t("walkthroughs.scheduling.status")}</span><select className="input-field mt-1 text-sm" value={form.appointmentStatus} onChange={(e) => setForm({ ...form, appointmentStatus: e.target.value })}><option value="draft">{t("walkthroughs.appointmentStatuses.draft")}</option><option value="scheduled">{t("walkthroughs.appointmentStatuses.scheduled")}</option><option value="cancelled">{t("walkthroughs.appointmentStatuses.cancelled")}</option>{form.appointmentStatus === "completed" && <option value="completed">{t("walkthroughs.appointmentStatuses.completed")}</option>}</select></label>}
+      <label className="sm:col-span-2"><span className="text-xs font-medium text-gray-600">{t("walkthroughs.scheduling.notes")}</span><textarea rows={2} className="input-field mt-1 text-sm" value={form.schedulingNotes} onChange={(e) => setForm({ ...form, schedulingNotes: e.target.value })} /></label>
     </div>
   );
 }
@@ -273,9 +273,8 @@ export function WalkthroughCard({
   const updateWalkthrough = useMutation((api as any).mutations.walkthroughs.update);
   const completeWalkthrough = useMutation((api as any).mutations.walkthroughs.complete);
   const archiveWalkthrough = useMutation((api as any).mutations.walkthroughs.archive);
-  const updatePropertyFacts = useMutation((api as any).mutations.properties.updateWalkthroughFacts);
-  const managers = useQuery(
-    api.queries.employees.getManagers,
+  const walkthroughAssignees = useQuery(
+    (api as any).queries.employees.getWalkthroughAssignees,
     user?.companyId && sessionToken ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
 
@@ -551,14 +550,47 @@ export function WalkthroughCard({
       caption: photo.caption || undefined,
       uploadedAt: Date.now(),
     })),
+    linkedPropertyFacts: linkedProperty ? {
+      address: propertyForm.address,
+      squareFootage: optionalNumber(propertyForm.squareFootage, t("walkthroughs.invalidNumber")),
+      beds: optionalNumber(propertyForm.beds, t("walkthroughs.invalidNumber")),
+      baths: optionalNumber(propertyForm.baths, t("walkthroughs.invalidNumber")),
+      amenities: propertyForm.amenities,
+      accessInstructions: propertyForm.accessInstructions || undefined,
+      pillowCount: optionalNumber(propertyForm.pillowCount, t("walkthroughs.invalidNumber")),
+      sheetSets: optionalNumber(propertyForm.sheetSets, t("walkthroughs.invalidNumber")),
+      towelCount: optionalNumber(propertyForm.towelCount, t("walkthroughs.invalidNumber")),
+      restroomCount: optionalNumber(propertyForm.restroomCount, t("walkthroughs.invalidNumber")),
+      trashCanCount: optionalNumber(propertyForm.trashCanCount, t("walkthroughs.invalidNumber")),
+    } : undefined,
   });
+
+  const validateForm = () => {
+    if (form.appointmentStatus === "scheduled" && (!form.scheduledDate || !form.scheduledStartTime)) {
+      throw new Error(t("walkthroughs.scheduleRequired"));
+    }
+    if (linkedProperty && !propertyForm.address.trim()) {
+      throw new Error(t("walkthroughs.propertyAddressRequired"));
+    }
+    return payloadFromForm(walkthrough);
+  };
+
+  const friendlySaveError = (error: any) => {
+    const message = String(error?.message ?? "");
+    if ([t("walkthroughs.scheduleRequired"), t("walkthroughs.propertyAddressRequired")].includes(message)) return message;
+    if (message.includes("Assigned manager is invalid")) return t("walkthroughs.invalidAssignee");
+    if (message.includes("date and start time")) return t("walkthroughs.scheduleRequired");
+    if (message.includes("Property address")) return t("walkthroughs.propertyAddressRequired");
+    if (message.includes("Session required")) return t("walkthroughs.sessionExpired");
+    return t("walkthroughs.saveFailedHelp");
+  };
 
   const handleCreate = async () => {
     if (!clientRequestId || !user) return;
     setSaving(true);
     try {
       if (!form.scheduledDate || !form.scheduledStartTime) {
-        showToast("Select a walkthrough date and start time", "error");
+        showToast(t("walkthroughs.scheduleRequired"), "error");
         return;
       }
       await createFromLead({
@@ -573,7 +605,7 @@ export function WalkthroughCard({
       });
       showToast(t("walkthroughs.created"), "success");
     } catch (err: any) {
-      showToast(err.message || t("walkthroughs.createFailed"), "error");
+      showToast(friendlySaveError(err), "error");
     } finally {
       setSaving(false);
     }
@@ -583,29 +615,12 @@ export function WalkthroughCard({
     if (!walkthrough) return;
     setSaving(true);
     try {
-      if (linkedProperty) {
-        await updatePropertyFacts({
-          userId: user!._id,
-          sessionToken,
-          propertyId: linkedProperty._id,
-          address: propertyForm.address,
-          squareFootage: optionalNumber(propertyForm.squareFootage, t("walkthroughs.invalidNumber")),
-          beds: optionalNumber(propertyForm.beds, t("walkthroughs.invalidNumber")),
-          baths: optionalNumber(propertyForm.baths, t("walkthroughs.invalidNumber")),
-          amenities: propertyForm.amenities,
-          accessInstructions: propertyForm.accessInstructions || undefined,
-          pillowCount: optionalNumber(propertyForm.pillowCount, t("walkthroughs.invalidNumber")),
-          sheetSets: optionalNumber(propertyForm.sheetSets, t("walkthroughs.invalidNumber")),
-          towelCount: optionalNumber(propertyForm.towelCount, t("walkthroughs.invalidNumber")),
-          restroomCount: optionalNumber(propertyForm.restroomCount, t("walkthroughs.invalidNumber")),
-          trashCanCount: optionalNumber(propertyForm.trashCanCount, t("walkthroughs.invalidNumber")),
-        });
-      }
-      await updateWalkthrough(payloadFromForm(walkthrough));
+      const payload = validateForm();
+      await updateWalkthrough(payload);
       setEditing(false);
       showToast(t("walkthroughs.saved"), "success");
     } catch (err: any) {
-      showToast(err.message || t("walkthroughs.saveFailed"), "error");
+      showToast(friendlySaveError(err), "error");
     } finally {
       setSaving(false);
     }
@@ -666,15 +681,15 @@ export function WalkthroughCard({
         allowCreate ? (
           editing ? (
             <div className="space-y-3">
-              <SchedulingFields form={form} setForm={setForm} managers={managers ?? []} />
+              <SchedulingFields form={form} setForm={setForm} managers={walkthroughAssignees ?? []} currentUserId={user?._id} t={t} />
               <div className="flex gap-2">
-                <button type="button" onClick={handleCreate} disabled={saving} className="btn-primary text-sm">{saving ? t("common.saving") : "Schedule Walkthrough"}</button>
+                <button type="button" onClick={handleCreate} disabled={saving} className="btn-primary text-sm">{saving ? t("common.saving") : t("walkthroughs.schedule")}</button>
                 <button type="button" onClick={() => setEditing(false)} className="btn-secondary text-sm">{t("common.cancel")}</button>
               </div>
             </div>
           ) : (
             <button type="button" onClick={() => setEditing(true)} className="btn-primary flex w-full items-center justify-center gap-2 text-sm sm:w-auto">
-              <Plus className="h-4 w-4" /> Schedule Walkthrough
+              <Plus className="h-4 w-4" /> {t("walkthroughs.schedule")}
             </button>
           )
         ) : (
@@ -682,7 +697,7 @@ export function WalkthroughCard({
         )
       ) : editing ? (
         <div className="space-y-4">
-          <SchedulingFields form={form} setForm={setForm} managers={managers ?? []} showStatus />
+          <SchedulingFields form={form} setForm={setForm} managers={walkthroughAssignees ?? []} currentUserId={user?._id} t={t} showStatus />
           {linkedProperty && (
             <div className="space-y-3 rounded-md border border-primary-200 bg-primary-50/30 p-3">
               <div>
@@ -716,10 +731,6 @@ export function WalkthroughCard({
                   <option key={type} value={type}>{t(`walkthroughs.types.${type}`)}</option>
                 ))}
               </select>
-            </label>
-            <label>
-              <span className="text-xs font-medium text-gray-600">{t("walkthroughs.fields.scheduledDate")}</span>
-              <input type="date" className="input-field mt-1 text-sm" value={form.scheduledDate} onChange={(e) => setForm({ ...form, scheduledDate: e.target.value })} />
             </label>
             <label>
               <span className="text-xs font-medium text-gray-600">{t("walkthroughs.fields.contactName")}</span>
@@ -968,9 +979,9 @@ export function WalkthroughCard({
               <p className="text-xs font-medium text-gray-500">{t("walkthroughs.fields.scheduledDate")}</p>
               <p className="mt-1 text-gray-900">{dateLabel(walkthrough.scheduledDate, t("common.unassigned"))}</p>
             </div>
-            <div><p className="text-xs font-medium text-gray-500">Scheduled time</p><p className="mt-1 text-gray-900">{walkthrough.scheduledStartTime ? `${walkthrough.scheduledStartTime}${walkthrough.scheduledEndTime ? `–${walkthrough.scheduledEndTime}` : ""}` : t("common.unassigned")}</p></div>
-            <div><p className="text-xs font-medium text-gray-500">Assigned manager</p><p className="mt-1 text-gray-900">{walkthrough.assignedManager?.name || t("common.unassigned")}</p></div>
-            <div><p className="text-xs font-medium text-gray-500">Appointment status</p><p className="mt-1 capitalize text-gray-900">{walkthrough.appointmentStatus ?? (walkthrough.status === "completed" ? "completed" : "draft")}</p></div>
+            <div><p className="text-xs font-medium text-gray-500">{t("walkthroughs.scheduling.time")}</p><p className="mt-1 text-gray-900">{walkthrough.scheduledStartTime ? `${walkthrough.scheduledStartTime}${walkthrough.scheduledEndTime ? `–${walkthrough.scheduledEndTime}` : ""}` : t("common.unassigned")}</p></div>
+            <div><p className="text-xs font-medium text-gray-500">{t("walkthroughs.scheduling.assignee")}</p><p className="mt-1 text-gray-900">{walkthrough.assignedManager?.name || t("common.unassigned")}</p></div>
+            <div><p className="text-xs font-medium text-gray-500">{t("walkthroughs.scheduling.status")}</p><p className="mt-1 capitalize text-gray-900">{t(`walkthroughs.appointmentStatuses.${walkthrough.appointmentStatus ?? (walkthrough.status === "completed" ? "completed" : "draft")}`)}</p></div>
           </div>
           {visibleIntelligenceResponses.length > 0 && (
             <div className="space-y-3 rounded-md border border-gray-200 p-3">

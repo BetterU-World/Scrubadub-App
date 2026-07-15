@@ -160,7 +160,7 @@ describe("PR 6B ordinary operational data migration", () => {
     ];
     const source = backendFiles.map((path) => readFileSync(fileURLToPath(new URL(`../../${path}`, import.meta.url)), "utf8")).join("\n");
     expect(source).not.toMatch(/\b(requireAuth|assertCompanyAccess|requireOwner)\s*\(/);
-    expect((source.match(/sessionToken:\s*v\.string\(\)/g) ?? [])).toHaveLength(49);
+    expect((source.match(/sessionToken:\s*v\.string\(\)/g) ?? [])).toHaveLength(50);
 
     const cleanerLeads = readFileSync(fileURLToPath(new URL("../../mutations/cleanerLeads.ts", import.meta.url)), "utf8");
     const companySites = readFileSync(fileURLToPath(new URL("../../queries/companySites.ts", import.meta.url)), "utf8");

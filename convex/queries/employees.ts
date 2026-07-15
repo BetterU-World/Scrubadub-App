@@ -95,6 +95,23 @@ export const getManagers = query({
   },
 });
 
+export const getWalkthroughAssignees = query({
+  args: { companyId: v.id("companies"), userId: v.id("users"), sessionToken: v.string() },
+  handler: async (ctx, args) => {
+    await requireStaffCompany(ctx, args.sessionToken, args.companyId, args.userId);
+
+    const users = await ctx.db
+      .query("users")
+      .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
+      .collect();
+    return users
+      .filter((u) =>
+        u.status === "active" && (u.role === "owner" || u.role === "manager")
+      )
+      .map(toEmployeeDirectoryEntry);
+  },
+});
+
 export const getMaintenanceWorkers = query({
   args: { companyId: v.id("companies"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {

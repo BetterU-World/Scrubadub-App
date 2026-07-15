@@ -9,6 +9,8 @@ type CollapsibleSectionProps = {
   actions?: ReactNode;
   icon?: ReactNode;
   defaultExpanded?: boolean;
+  expanded?: boolean;
+  onExpandedChange?: (expanded: boolean) => void;
   children: ReactNode;
   className?: string;
   contentClassName?: string;
@@ -21,11 +23,19 @@ export function CollapsibleSection({
   actions,
   icon,
   defaultExpanded = false,
+  expanded: controlledExpanded,
+  onExpandedChange,
   children,
   className,
   contentClassName,
 }: CollapsibleSectionProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
+  const isExpanded = controlledExpanded ?? expanded;
+  const toggleExpanded = () => {
+    const next = !isExpanded;
+    if (controlledExpanded === undefined) setExpanded(next);
+    onExpandedChange?.(next);
+  };
   const contentId = useId();
 
   return (
@@ -33,9 +43,9 @@ export function CollapsibleSection({
       <div className="flex items-start gap-2">
         <button
           type="button"
-          aria-expanded={expanded}
+          aria-expanded={isExpanded}
           aria-controls={contentId}
-          onClick={() => setExpanded((value) => !value)}
+          onClick={toggleExpanded}
           className="flex min-w-0 flex-1 items-start gap-3 rounded-md text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
         >
           {icon && <span className="mt-0.5 shrink-0 text-gray-500">{icon}</span>}
@@ -45,11 +55,11 @@ export function CollapsibleSection({
             </span>
             {subtitle && <span className="mt-0.5 block text-xs font-normal text-gray-500">{subtitle}</span>}
           </span>
-          <ChevronDown className={clsx("mt-0.5 h-5 w-5 shrink-0 text-gray-400 transition-transform duration-200", expanded && "rotate-180")} />
+          <ChevronDown className={clsx("mt-0.5 h-5 w-5 shrink-0 text-gray-400 transition-transform duration-200", isExpanded && "rotate-180")} />
         </button>
         {actions && <div className="shrink-0" onClick={(event) => event.stopPropagation()}>{actions}</div>}
       </div>
-      <div className={clsx("grid transition-[grid-template-rows,opacity] duration-200", expanded ? "mt-4 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
+      <div className={clsx("grid transition-[grid-template-rows,opacity] duration-200", isExpanded ? "mt-4 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
         <div id={contentId} className={clsx("min-h-0 overflow-hidden", contentClassName)}>{children}</div>
       </div>
     </section>
