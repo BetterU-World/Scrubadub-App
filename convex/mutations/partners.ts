@@ -504,7 +504,10 @@ export const shareJob = mutation({
       .query("users")
       .withIndex("by_companyId", (q) => q.eq("companyId", args.toCompanyId))
       .collect();
-    for (const targetOwner of targetOwners.filter((u) => u.role === "owner")) {
+    const activeOwners = targetOwners
+      .filter((u) => u.role === "owner" && u.status === "active")
+      .sort((a, b) => a._creationTime - b._creationTime);
+    for (const targetOwner of activeOwners) {
       await createNotification(ctx, {
         companyId: args.toCompanyId,
         userId: targetOwner._id,
@@ -513,6 +516,28 @@ export const shareJob = mutation({
         message: `${fromCompany?.name ?? "A partner"} shared a ${job.type.replace(/_/g, " ")} job for ${job.scheduledDate}`,
         relatedJobId: copiedJobId,
       });
+    }
+
+    const validEmail = (email: string | undefined) =>
+      typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+    const emailRecipient = activeOwners.find((u) => validEmail(u.email))?.email.trim()
+      ?? (validEmail(toCompany?.contactEmail) ? toCompany!.contactEmail!.trim() : undefined);
+    if (emailRecipient) {
+      await ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendPartnerSharedJob, {
+        email: emailRecipient,
+        fromCompanyName: fromCompany?.name ?? "A partner",
+        toCompanyName: toCompany?.name ?? "Your company",
+        propertyName: propertySnapshot.name,
+        serviceType: job.type,
+        scheduledDate: job.scheduledDate,
+        startTime: job.startTime,
+        durationMinutes: job.durationMinutes,
+        notes: job.notes,
+        copiedJobId,
+        timezone: toCompany?.timezone ?? "UTC",
+      });
+    } else {
+      console.warn("[partners.shareJob] No active owner or company contact email for recipient company");
     }
 
     await logAudit(ctx, {

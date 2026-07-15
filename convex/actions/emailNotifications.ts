@@ -12,6 +12,7 @@ import {
   sendInviteEmail,
   sendAffiliateInviteEmail,
   sendPartnerInviteEmail,
+  sendPartnerSharedJobEmail,
   sendClientInviteEmail,
 } from "../lib/email";
 
@@ -153,6 +154,29 @@ export const sendPartnerInvite = internalAction({
     const sent = await sendPartnerInviteEmail(args.email, args.fromCompanyName);
     if (!sent) {
       console.error("[emailNotifications] Partner invite email failed for", args.email);
+    }
+  },
+});
+
+export const sendPartnerSharedJob = internalAction({
+  args: {
+    email: v.string(),
+    fromCompanyName: v.string(),
+    toCompanyName: v.string(),
+    propertyName: v.string(),
+    serviceType: v.string(),
+    scheduledDate: v.string(),
+    startTime: v.optional(v.string()),
+    durationMinutes: v.number(),
+    notes: v.optional(v.string()),
+    copiedJobId: v.id("jobs"),
+    timezone: v.string(),
+    language: v.optional(v.union(v.literal("en"), v.literal("es"))),
+  },
+  handler: async (_ctx, args) => {
+    const sent = await sendPartnerSharedJobEmail(args);
+    if (!sent) {
+      console.error("[emailNotifications] Partner shared-job email failed for recipient");
     }
   },
 });
