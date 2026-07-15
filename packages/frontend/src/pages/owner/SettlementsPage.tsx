@@ -7,6 +7,7 @@ import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { toFriendlyMessage } from "@/lib/friendlyError";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
+import { DialogShell } from "@/components/ui/DialogShell";
 import { Link } from "wouter";
 import {
   DollarSign,
@@ -374,10 +375,21 @@ export function SettlementsPage() {
       )}
 
       {/* Mark Paid dialog (single settlement) */}
-      {showPayDialog && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm">
-            <h3 className="text-lg font-semibold mb-4">{t("settlements.markSettlementPaid")}</h3>
+      <DialogShell
+        open={showPayDialog !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowPayDialog(null);
+            setPaidMethod("");
+            setPaidNote("");
+          }
+        }}
+        title={t("settlements.markSettlementPaid")}
+        pending={markingId !== null}
+        className="max-w-sm"
+      >
+        {showPayDialog && (
+          <>
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -404,7 +416,7 @@ export function SettlementsPage() {
                 />
               </div>
             </div>
-            <div className="flex justify-end gap-3 mt-4">
+            <div className="mt-4 flex justify-end gap-3">
               <button
                 onClick={() => { setShowPayDialog(null); setPaidMethod(""); setPaidNote(""); }}
                 className="btn-secondary"
@@ -419,9 +431,9 @@ export function SettlementsPage() {
                 {markingId ? t("common.saving") : t("settlements.confirmPaid")}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </DialogShell>
     </div>
   );
 }

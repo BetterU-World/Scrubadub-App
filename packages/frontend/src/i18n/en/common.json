@@ -74,7 +74,9 @@
     "inventoryTemplates": "Inventory Templates",
     "dashboard": "Dashboard",
     "hub": "Hub",
-    "company": "Company"
+    "company": "Company",
+    "openNavigation": "Open navigation",
+    "closeNavigation": "Close navigation"
   },
   "navigation": {
     "backToRequests": "Back to Requests",
@@ -106,6 +108,8 @@
     "next": "Next",
     "submit": "Submit",
     "close": "Close",
+    "closeDialog": "Close dialog",
+    "processing": "Processing...",
     "search": "Search",
     "noResults": "No results found",
     "language": "Language",
@@ -1173,6 +1177,9 @@
     "createSite": "Create site"
   },
   "affiliate": {
+    "searchAffiliates": "Search affiliates",
+    "searchAffiliatesPlaceholder": "Search affiliates by name or email...",
+    "noAffiliatesFound": "No affiliates found matching \"{{search}}\"",
     "title": "Affiliate Portal",
     "description": "Share your referral link and earn rewards.",
     "signInRequired": "Please sign in to access the Affiliate Portal.",

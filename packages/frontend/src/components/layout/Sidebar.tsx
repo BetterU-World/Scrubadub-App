@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
+import { RefObject, useState, useEffect, useCallback } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
 import { useLocation, Link } from "wouter";
 import {
   LogOut,
   ChevronDown,
+  X,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { clsx } from "clsx";
@@ -50,11 +52,14 @@ function CollapsibleSection({
   return (
     <div>
       <button
+        type="button"
         onClick={onToggle}
+        aria-expanded={isOpen}
         className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider hover:text-gray-600 transition-colors"
       >
         {title}
         <ChevronDown
+          aria-hidden="true"
           className={clsx(
             "w-3.5 h-3.5 transition-transform",
             isOpen && "rotate-180"
@@ -69,9 +74,10 @@ function CollapsibleSection({
 interface SidebarProps {
   mobileOpen?: boolean;
   onMobileClose?: () => void;
+  triggerRef?: RefObject<HTMLButtonElement>;
 }
 
-export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
+export function Sidebar({ mobileOpen = false, onMobileClose, triggerRef }: SidebarProps) {
   const [location] = useLocation();
   const { user, signOut } = useAuth();
   const { t } = useTranslation();
@@ -136,7 +142,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
                       : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                   )}
                 >
-                  <item.icon className="w-5 h-5" />
+                  <item.icon aria-hidden="true" className="w-5 h-5" />
                   {t(item.labelKey)}
                 </Link>
               );
@@ -166,7 +172,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
                       : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                   )}
                 >
-                  <item.icon className="w-5 h-5" />
+                  <item.icon aria-hidden="true" className="w-5 h-5" />
                   {t(item.labelKey)}
                 </Link>
               );
@@ -187,11 +193,13 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
             <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
           </div>
           <button
+            type="button"
             onClick={signOut}
+            aria-label={t("auth.signOut")}
             className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
             title={t("auth.signOut")}
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut aria-hidden="true" className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -205,18 +213,31 @@ export function Sidebar({ mobileOpen = false, onMobileClose }: SidebarProps) {
         {sidebarContent}
       </aside>
 
-      {/* Mobile sidebar overlay */}
-      {mobileOpen && (
-        <>
-          <div
-            className="fixed inset-0 bg-black/50 z-40 md:hidden"
-            onClick={onMobileClose}
-          />
-          <aside className="fixed inset-y-0 left-0 w-64 bg-white border-r border-gray-200 z-50 flex flex-col md:hidden">
+      <Dialog.Root open={mobileOpen} onOpenChange={(open) => !open && onMobileClose?.()}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 z-40 bg-black/50 md:hidden" />
+          <Dialog.Content
+            id="mobile-navigation"
+            className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-gray-200 bg-white shadow-xl focus:outline-none md:hidden"
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              triggerRef?.current?.focus();
+            }}
+          >
+            <Dialog.Title className="sr-only">{t("nav.openNavigation")}</Dialog.Title>
+            <Dialog.Close asChild>
+              <button
+                type="button"
+                aria-label={t("nav.closeNavigation")}
+                className="absolute right-3 top-3 z-10 rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+              >
+                <X aria-hidden="true" className="h-5 w-5" />
+              </button>
+            </Dialog.Close>
             {sidebarContent}
-          </aside>
-        </>
-      )}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
     </>
   );
 }

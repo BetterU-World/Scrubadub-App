@@ -1,6 +1,6 @@
-import * as Dialog from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { DialogShell } from "./DialogShell";
+import { useState } from "react";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -9,7 +9,7 @@ interface ConfirmDialogProps {
   description: string;
   confirmLabel?: string;
   confirmVariant?: "primary" | "danger";
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   loading?: boolean;
 }
 
@@ -24,36 +24,46 @@ export function ConfirmDialog({
   loading,
 }: ConfirmDialogProps) {
   const { t } = useTranslation();
+  const [confirmStarted, setConfirmStarted] = useState(false);
+  const pending = Boolean(loading || confirmStarted);
+
+  const handleConfirm = async () => {
+    if (pending) return;
+    setConfirmStarted(true);
+    try {
+      await onConfirm();
+    } finally {
+      setConfirmStarted(false);
+    }
+  };
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/40 z-50" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-lg p-6 w-full max-w-md z-50">
-          <div className="flex items-center justify-between mb-4">
-            <Dialog.Title className="text-lg font-semibold">
-              {title}
-            </Dialog.Title>
-            <Dialog.Close className="p-1 text-gray-400 hover:text-gray-600 rounded">
-              <X className="w-5 h-5" />
-            </Dialog.Close>
-          </div>
-          <Dialog.Description className="text-sm text-gray-600 mb-6">
-            {description}
-          </Dialog.Description>
-          <div className="flex justify-end gap-3">
-            <Dialog.Close className="btn-secondary">{t("common.cancel")}</Dialog.Close>
+    <DialogShell
+      open={open}
+      onOpenChange={onOpenChange}
+      title={title}
+      description={description}
+      pending={pending}
+    >
+          <div className="flex justify-end gap-3 pt-2">
             <button
-              onClick={onConfirm}
-              disabled={loading}
+              type="button"
+              className="btn-secondary"
+              onClick={() => onOpenChange(false)}
+              disabled={pending}
+            >
+              {t("common.cancel")}
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              disabled={pending}
               className={
                 confirmVariant === "danger" ? "btn-danger" : "btn-primary"
               }
             >
-              {loading ? "..." : confirmLabel}
+              {pending ? t("common.processing") : confirmLabel}
             </button>
           </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    </DialogShell>
   );
 }
