@@ -74,7 +74,9 @@
     "inventoryTemplates": "Plantillas de inventario",
     "dashboard": "Panel",
     "hub": "Centro",
-    "company": "Empresa"
+    "company": "Empresa",
+    "openNavigation": "Abrir navegación",
+    "closeNavigation": "Cerrar navegación"
   },
   "navigation": {
     "backToRequests": "Volver a Solicitudes",
@@ -106,6 +108,8 @@
     "next": "Siguiente",
     "submit": "Enviar",
     "close": "Cerrar",
+    "closeDialog": "Cerrar diálogo",
+    "processing": "Procesando...",
     "search": "Buscar",
     "noResults": "No se encontraron resultados",
     "language": "Idioma",
@@ -1173,6 +1177,9 @@
     "createSite": "Crear sitio"
   },
   "affiliate": {
+    "searchAffiliates": "Buscar afiliados",
+    "searchAffiliatesPlaceholder": "Buscar afiliados por nombre o correo electrónico...",
+    "noAffiliatesFound": "No se encontraron afiliados que coincidan con \"{{search}}\"",
     "title": "Portal de afiliados",
     "description": "Comparte tu enlace de referidos y gana recompensas.",
     "signInRequired": "Inicia sesión para acceder al Portal de afiliados.",

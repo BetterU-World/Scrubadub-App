@@ -4,11 +4,11 @@ import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
+import { DialogShell } from "@/components/ui/DialogShell";
 import {
   CheckCircle,
   XCircle,
   Package,
-  X,
   AlertTriangle,
   Send,
 } from "lucide-react";
@@ -166,19 +166,13 @@ function RequestDetailModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 p-6 max-h-[85vh] overflow-y-auto">
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
-        >
-          <X className="h-5 w-5" />
-        </button>
-
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          {t("affiliate.payoutRequestDetails")}
-        </h3>
+    <DialogShell
+      open
+      onOpenChange={(open) => !open && onClose()}
+      title={t("affiliate.payoutRequestDetails")}
+      pending={busy}
+      className="max-w-2xl"
+    >
 
         {request === undefined ? (
           <p className="text-sm text-gray-400">{t("common.loading")}</p>
@@ -440,8 +434,7 @@ function RequestDetailModal({
             )}
           </>
         )}
-      </div>
-    </div>
+    </DialogShell>
   );
 }
 

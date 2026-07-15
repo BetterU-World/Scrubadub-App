@@ -6,6 +6,7 @@ import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { DialogShell } from "@/components/ui/DialogShell";
 import { useParams, Link, useLocation } from "wouter";
 import { JobTimeline } from "@/components/JobTimeline";
 import { JobWorkspaceProgress } from "@/components/JobWorkspaceProgress";
@@ -337,10 +338,12 @@ export function CleanerJobDetailPage() {
       </StickyWorkspaceCTA>
 
       {/* Deny dialog */}
-      {showDeny && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">{t("jobs.denyJob")}</h3>
+      <DialogShell
+        open={showDeny}
+        onOpenChange={setShowDeny}
+        title={t("jobs.denyJob")}
+        pending={denying}
+      >
             <textarea
               className="input-field mb-4"
               rows={3}
@@ -372,9 +375,7 @@ export function CleanerJobDetailPage() {
                 {denying ? t("jobs.denying") : t("jobs.denyJob")}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </DialogShell>
 
       {/* Cleaner cancel dialog */}
       {showCleanerCancel && (

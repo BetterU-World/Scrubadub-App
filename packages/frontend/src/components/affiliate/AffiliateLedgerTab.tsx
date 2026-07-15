@@ -1,4 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
+import * as Popover from "@radix-ui/react-popover";
+import { useTranslation } from "react-i18next";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
@@ -1032,6 +1034,8 @@ function ViewAsSelector({
 }) {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
+  const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   const candidates = useQuery(
     api.queries.adminAffiliates.listAffiliateCandidates,
@@ -1050,6 +1054,7 @@ function ViewAsSelector({
             onClick={() => {
               onSelect(null);
               setSearch("");
+              setSelectedLabel(null);
             }}
             className="ml-auto text-xs text-indigo-600 hover:text-indigo-800 underline"
           >
@@ -1059,34 +1064,75 @@ function ViewAsSelector({
       </div>
 
       {!selectedReferrer && (
-        <div className="relative">
+        <Popover.Root open={open} onOpenChange={setOpen}>
           <div className="flex items-center gap-2">
+            <Popover.Anchor asChild>
             <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
+              <Search aria-hidden="true" className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-gray-400" />
               <input
                 type="text"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-controls="affiliate-search-results"
+                aria-expanded={open}
+                aria-label={t("affiliate.searchAffiliates")}
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
                   setOpen(true);
                 }}
                 onFocus={() => setOpen(true)}
-                placeholder="Search affiliates by name or email..."
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowDown") {
+                    event.preventDefault();
+                    document
+                      .querySelector<HTMLButtonElement>("#affiliate-search-results [role='option']")
+                      ?.focus();
+                  }
+                }}
+                placeholder={t("affiliate.searchAffiliatesPlaceholder")}
                 className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
+            </Popover.Anchor>
           </div>
 
-          {open && candidates && candidates.length > 0 && (
-            <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
-              {candidates.map((c) => (
+          <Popover.Portal>
+            <Popover.Content
+              id="affiliate-search-results"
+              role="listbox"
+              align="start"
+              sideOffset={4}
+              onOpenAutoFocus={(event) => event.preventDefault()}
+              className="z-50 max-h-60 w-[var(--radix-popover-trigger-width)] overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg"
+            >
+              {candidates === undefined && (
+                <p className="px-3 py-3 text-sm text-gray-500">{t("common.loading")}</p>
+              )}
+              {candidates?.map((c) => (
                 <button
                   key={c._id}
+                  type="button"
+                  role="option"
+                  aria-selected="false"
                   onClick={() => {
                     onSelect(c._id as Id<"users">);
+                    setSelectedLabel(c.name || c.email);
                     setOpen(false);
                   }}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-indigo-50 flex items-center justify-between"
+                  onKeyDown={(event) => {
+                    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+                    event.preventDefault();
+                    const options = Array.from(
+                      event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>("[role='option']") ?? []
+                    );
+                    const currentIndex = options.indexOf(event.currentTarget);
+                    const nextIndex = event.key === "ArrowDown"
+                      ? Math.min(currentIndex + 1, options.length - 1)
+                      : Math.max(currentIndex - 1, 0);
+                    options[nextIndex]?.focus();
+                  }}
+                  className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-none"
                 >
                   <div>
                     <span className="font-medium text-gray-900">
@@ -1099,22 +1145,21 @@ function ViewAsSelector({
                   </span>
                 </button>
               ))}
-            </div>
-          )}
-
-          {open && candidates && candidates.length === 0 && search && (
-            <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg px-3 py-3 text-sm text-gray-500">
-              No affiliates found matching "{search}"
-            </div>
-          )}
-        </div>
+              {candidates?.length === 0 && search && (
+                <p className="px-3 py-3 text-sm text-gray-500">
+                  {t("affiliate.noAffiliatesFound", { search })}
+                </p>
+              )}
+            </Popover.Content>
+          </Popover.Portal>
+        </Popover.Root>
       )}
 
-      {selectedReferrer && candidates && (
+      {selectedReferrer && (
         <p className="text-sm text-indigo-700">
           Viewing ledger for:{" "}
           <span className="font-medium">
-            {candidates.find((c) => c._id === selectedReferrer)?.name ?? selectedReferrer}
+            {selectedLabel ?? candidates?.find((c) => c._id === selectedReferrer)?.name ?? selectedReferrer}
           </span>
         </p>
       )}
