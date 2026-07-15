@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Link } from "wouter";
 import { ClipboardCheck, Plus, Calendar, Users, Search, ArrowUpDown, Eye } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { getJobPrimaryStatus } from "@/lib/partnerJobStatus";
 
 const SORT_OPTIONS = [
   { value: "soonest", labelKey: "jobs.soonestScheduled" },
@@ -253,7 +254,7 @@ export function JobListPage() {
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold text-gray-900">{job.propertyName}</h3>
-                      <StatusBadge status={job.status} />
+                      <StatusBadge status={getJobPrimaryStatus(job as any)} />
                       {(job as any).acceptanceStatus && (job as any).acceptanceStatus !== "accepted" && (
                         <StatusBadge status={(job as any).acceptanceStatus} className="text-[10px]" />
                       )}
@@ -263,6 +264,11 @@ export function JobListPage() {
                       {(job as any).sharedFromCompanyName && (
                         <span className="badge bg-blue-100 text-blue-700 text-[10px]">
                           {t("jobs.sharedFrom", { name: (job as any).sharedFromCompanyName })}
+                        </span>
+                      )}
+                      {(job as any).sharedFromCompanyName && (job as any).partnerResponseStatus === "pending" && (
+                        <span className="badge bg-amber-100 text-amber-800 text-[10px]">
+                          {t("jobs.responseRequired")}
                         </span>
                       )}
                       {(job as any).hasRejectedShare && (

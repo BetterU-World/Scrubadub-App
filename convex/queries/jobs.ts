@@ -126,11 +126,19 @@ export const list = query({
           const outgoing = sharedRecords.filter(
             (s) => s.fromCompanyId === args.companyId
           );
-          const hasRejectedShare =
-            (job.acceptanceStatus === "denied" || job.status === "denied") &&
-            outgoing.some((s) => s.status === "rejected");
+          const hasRejectedShare = outgoing.some((s) => s.status === "rejected");
           // True when the job has been shared to at least one partner (any status)
           const hasActiveShare = outgoing.length > 0;
+          const incomingSharedRecord = job.sharedFromJobId
+            ? await ctx.db
+                .query("sharedJobs")
+                .withIndex("by_copiedJobId", (q) => q.eq("copiedJobId", job._id))
+                .first()
+            : null;
+          const partnerResponseStatus =
+            incomingSharedRecord?.toCompanyId === args.companyId
+              ? incomingSharedRecord.status
+              : null;
           // Derive inspection status for badges
           const inspections = await ctx.db
             .query("managerInspections")
@@ -152,6 +160,7 @@ export const list = query({
             cleaners,
             hasRejectedShare,
             hasActiveShare,
+            partnerResponseStatus,
             inspectionStatus,
             assignedManagerName: assignedManager?.name ?? null,
             assignedTeamName: job.assignedTeamId ? teamMap.get(job.assignedTeamId)?.name ?? null : null,
