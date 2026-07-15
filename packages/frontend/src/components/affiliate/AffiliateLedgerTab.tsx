@@ -6,6 +6,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { AsyncButton } from "@/components/ui/AsyncButton";
 import {
   RefreshCw,
   Lock,
@@ -1180,6 +1181,7 @@ function RequestPayoutModal({
   onConfirm: (ledgerIds: string[], notes: string) => void;
   busy: boolean;
 }) {
+  const { t } = useTranslation();
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(rows.map((r) => r._id))
   );
@@ -1313,14 +1315,16 @@ function RequestPayoutModal({
           >
             Cancel
           </button>
-          <button
+          <AsyncButton
             onClick={() => onConfirm([...selected], notes)}
-            disabled={busy || selected.size === 0}
+            pending={busy}
+            pendingLabel={t("common.requesting")}
+            disabled={selected.size === 0}
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 transition-colors disabled:opacity-50"
           >
-            <Send className="h-4 w-4" />
-            {busy ? "Submitting..." : "Submit Request"}
-          </button>
+            <Send aria-hidden="true" className="h-4 w-4" />
+            Submit Request
+          </AsyncButton>
         </div>
       </div>
     </div>

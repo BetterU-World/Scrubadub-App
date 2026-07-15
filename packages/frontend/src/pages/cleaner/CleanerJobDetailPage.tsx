@@ -4,9 +4,10 @@ import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DialogShell } from "@/components/ui/DialogShell";
+import { AsyncButton } from "@/components/ui/AsyncButton";
 import { useParams, Link, useLocation } from "wouter";
 import { JobTimeline } from "@/components/JobTimeline";
 import { JobWorkspaceProgress } from "@/components/JobWorkspaceProgress";
@@ -55,6 +56,8 @@ export function CleanerJobDetailPage() {
   const [completing, setCompleting] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [denying, setDenying] = useState(false);
+  const [arriving, setArriving] = useState(false);
+  const [starting, setStarting] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   if (job === undefined) return <PageLoader />;
@@ -89,13 +92,18 @@ export function CleanerJobDetailPage() {
 
   const handleStartJob = async () => {
     if (!user) return;
-    await startJob({ jobId: job._id, userId: user._id, sessionToken: getStaffSessionToken() });
-    await createForm({
-      jobId: job._id,
-      companyId: job.companyId,
-      cleanerId: user._id,
-      sessionToken: getStaffSessionToken(),
-    });
+    setStarting(true);
+    try {
+      await startJob({ jobId: job._id, userId: user._id, sessionToken: getStaffSessionToken() });
+      await createForm({
+        jobId: job._id,
+        companyId: job.companyId,
+        cleanerId: user._id,
+        sessionToken: getStaffSessionToken(),
+      });
+    } finally {
+      setStarting(false);
+    }
     // Stay on job detail page — inventory checklist is shown inline
   };
 
@@ -201,8 +209,9 @@ export function CleanerJobDetailPage() {
           <div className="card space-y-3">
             {canAccept && (
               <div className="flex gap-3">
-                <button
-                  disabled={accepting}
+                <AsyncButton
+                  pending={accepting}
+                  pendingLabel={t("jobs.accepting")}
                   onClick={async () => {
                     if (!user) return;
                     setAccepting(true);
@@ -219,8 +228,8 @@ export function CleanerJobDetailPage() {
                   }}
                   className="btn-primary flex-1 flex items-center justify-center gap-2"
                 >
-                  <CheckCircle className="w-4 h-4" /> {accepting ? t("jobs.accepting") : t("jobs.acceptJob")}
-                </button>
+                  <CheckCircle aria-hidden="true" className="w-4 h-4" /> {t("jobs.acceptJob")}
+                </AsyncButton>
                 <button
                   onClick={() => setShowDeny(true)}
                   className="btn-danger flex items-center justify-center gap-2"
@@ -231,12 +240,21 @@ export function CleanerJobDetailPage() {
             )}
 
             {canArrive && !canAccept && (
-              <button
-                onClick={async () => { await arriveJob({ jobId: job._id, userId: user!._id, sessionToken: getStaffSessionToken() }); }}
+              <AsyncButton
+                pending={arriving}
+                pendingLabel={t("common.arriving")}
+                onClick={async () => {
+                  setArriving(true);
+                  try {
+                    await arriveJob({ jobId: job._id, userId: user!._id, sessionToken: getStaffSessionToken() });
+                  } finally {
+                    setArriving(false);
+                  }
+                }}
                 className="btn-secondary w-full flex items-center justify-center gap-2 py-3"
               >
-                <MapPinCheck className="w-5 h-5" /> {t("jobs.iveArrived")}
-              </button>
+                <MapPinCheck aria-hidden="true" className="w-5 h-5" /> {t("jobs.iveArrived")}
+              </AsyncButton>
             )}
 
             {canCleanerCancel && (
@@ -297,12 +315,14 @@ export function CleanerJobDetailPage() {
       <StickyWorkspaceCTA visible={showStickyCTA}>
         <div className="space-y-2">
           {canStart && (
-            <button
+            <AsyncButton
+              pending={starting}
+              pendingLabel={t("common.processing")}
               onClick={handleStartJob}
               className="btn-primary w-full flex items-center justify-center gap-2 py-3 text-lg"
             >
-              <Play className="w-5 h-5" /> {t("jobs.startCleaning")}
-            </button>
+              <Play aria-hidden="true" className="w-5 h-5" /> {t("jobs.startCleaning")}
+            </AsyncButton>
           )}
 
           {isInProgress && hasForm && !formCompleted && (
@@ -353,8 +373,9 @@ export function CleanerJobDetailPage() {
             />
             <div className="flex justify-end gap-3">
               <button onClick={() => setShowDeny(false)} className="btn-secondary">{t("common.cancel")}</button>
-              <button
-                disabled={denying}
+              <AsyncButton
+                pending={denying}
+                pendingLabel={t("jobs.denying")}
                 onClick={async () => {
                   if (!user) return;
                   setDenying(true);
@@ -372,8 +393,8 @@ export function CleanerJobDetailPage() {
                 }}
                 className="btn-danger"
               >
-                {denying ? t("jobs.denying") : t("jobs.denyJob")}
-              </button>
+                {t("jobs.denyJob")}
+              </AsyncButton>
             </div>
       </DialogShell>
 
@@ -433,14 +454,14 @@ export function CleanerJobDetailPage() {
             />
             <div className="flex justify-end gap-3">
               <button onClick={() => setShowComplete(false)} className="btn-secondary">{t("common.cancel")}</button>
-              <button
+              <AsyncButton
                 onClick={handleCompleteJob}
-                disabled={completing}
+                pending={completing}
+                pendingLabel={t("common.completing")}
                 className="btn-primary flex items-center gap-2"
               >
-                {completing && <LoadingSpinner size="sm" />}
-                <Send className="w-4 h-4" /> {t("common.submit")}
-              </button>
+                <Send aria-hidden="true" className="w-4 h-4" /> {t("common.submit")}
+              </AsyncButton>
             </div>
           </div>
         </div>

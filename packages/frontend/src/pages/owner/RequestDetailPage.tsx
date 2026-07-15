@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { AsyncButton } from "@/components/ui/AsyncButton";
 import { ServiceAgreementCard } from "@/components/owner/ServiceAgreementCard";
 import { WalkthroughCard } from "@/components/owner/WalkthroughCard";
 import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
@@ -1595,14 +1596,16 @@ export function RequestDetailPage() {
               )}
               {proposal.status === "draft" && (
                 <>
-                  <button
+                  <AsyncButton
                     onClick={handleSendProposalEmail}
-                    disabled={proposalActionLoading === "email"}
+                    pending={proposalActionLoading === "email"}
+                    pendingLabel={t("common.sending")}
+                    disabled={proposalActionLoading !== null && proposalActionLoading !== "email"}
                     className="btn-primary flex items-center gap-2 text-sm"
                   >
-                    <Send className="w-4 h-4" />
-                    {proposalActionLoading === "email" ? t("common.saving") : t("proposals.sendProposal")}
-                  </button>
+                    <Send aria-hidden="true" className="w-4 h-4" />
+                    {t("proposals.sendProposal")}
+                  </AsyncButton>
                   <button
                     onClick={() => handleProposalAction("sent")}
                     disabled={proposalActionLoading === "sent"}
@@ -1615,14 +1618,16 @@ export function RequestDetailPage() {
               )}
               {proposal.status === "sent" && (
                 <>
-                  <button
+                  <AsyncButton
                     onClick={handleSendProposalEmail}
-                    disabled={proposalActionLoading === "email"}
+                    pending={proposalActionLoading === "email"}
+                    pendingLabel={t("common.sending")}
+                    disabled={proposalActionLoading !== null && proposalActionLoading !== "email"}
                     className="btn-secondary flex items-center gap-2 text-sm"
                   >
-                    <Send className="w-4 h-4" />
-                    {proposalActionLoading === "email" ? t("common.saving") : t("proposals.resendProposal")}
-                  </button>
+                    <Send aria-hidden="true" className="w-4 h-4" />
+                    {t("proposals.resendProposal")}
+                  </AsyncButton>
                   <button
                     onClick={() => handleProposalAction("accepted")}
                     disabled={proposalActionLoading === "accepted"}

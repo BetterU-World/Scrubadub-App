@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { AsyncButton } from "@/components/ui/AsyncButton";
 import { Users, UserPlus, Copy, Check, AlertTriangle, Plus, Archive, RotateCcw, Trash2 } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
@@ -615,14 +616,15 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                     </Link>
                   </div>
                 ) : (
-                  <button
+                  <AsyncButton
                     onClick={handleInvite}
-                    disabled={!inviteName || !inviteEmail || inviteLoading}
+                    pending={inviteLoading}
+                    pendingLabel={t("common.inviting")}
+                    disabled={!inviteName || !inviteEmail}
                     className="btn-primary w-full flex items-center justify-center gap-2"
                   >
-                    {inviteLoading && <LoadingSpinner size="sm" />}
                     {t("employees.createAndSendInvite")}
-                  </button>
+                  </AsyncButton>
                 )}
               </div>
             )}

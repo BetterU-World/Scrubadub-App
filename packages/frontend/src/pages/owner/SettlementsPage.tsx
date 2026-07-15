@@ -8,6 +8,7 @@ import { toFriendlyMessage } from "@/lib/friendlyError";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { DialogShell } from "@/components/ui/DialogShell";
+import { AsyncButton } from "@/components/ui/AsyncButton";
 import { Link } from "wouter";
 import {
   DollarSign,
@@ -423,13 +424,14 @@ export function SettlementsPage() {
               >
                 {t("common.cancel")}
               </button>
-              <button
-                disabled={markingId !== null}
+              <AsyncButton
+                pending={markingId !== null}
+                pendingLabel={t("common.markingPaid")}
                 onClick={() => handleMarkPaid(showPayDialog)}
                 className="btn-primary"
               >
-                {markingId ? t("common.saving") : t("settlements.confirmPaid")}
-              </button>
+                {t("settlements.confirmPaid")}
+              </AsyncButton>
             </div>
           </>
         )}
