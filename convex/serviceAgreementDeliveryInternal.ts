@@ -64,11 +64,13 @@ export const getAgreementForOwnerDelivery = internalQuery({
     }
 
     const recipientEmail = relationship.email ?? request?.requesterEmail ?? null;
+    const clientUser = await ctx.db.get(relationship.clientUserId);
     if (!recipientEmail) throw new Error("Add a client email before sending");
 
     return {
       recipientEmail,
       clientName: agreement.clientName ?? relationship.displayName,
+      language: clientUser?.language === "es" ? "es" : "en",
       company: branding,
       agreement: {
         title: agreement.title,

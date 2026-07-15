@@ -317,6 +317,9 @@ export function ServiceAgreementCard({
           <div>
             <h3 className="text-sm font-semibold text-gray-900">{t("serviceAgreements.title")}</h3>
             <p className="text-xs text-gray-500">{t("serviceAgreements.manualSigningNote")}</p>
+            {agreement?.sentAt && (
+              <p className="mt-2 max-w-2xl text-xs text-amber-700">{t("serviceAgreements.afterSendGuidance")}</p>
+            )}
             {agreement?.clientRelationship && (
               <p className="mt-2 inline-flex rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
                 Client relationship: {agreement.clientRelationship.displayName}
@@ -636,7 +639,7 @@ export function ServiceAgreementCard({
               {actionLoading === "sent" ? t("common.saving") : t("serviceAgreements.send")}
             </button>
           )}
-          {agreement.status === "sent" && (
+          {(agreement.status === "sent" || (agreement.status === "signed" && !agreement.signedAt)) && (
             <button
               type="button"
               onClick={() => handleAction("signed")}

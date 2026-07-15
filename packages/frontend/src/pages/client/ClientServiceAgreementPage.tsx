@@ -123,6 +123,16 @@ export function ClientServiceAgreementPage() {
             <ServiceAgreementStatusBadge agreement={agreement} audience="client" />
           </div>
 
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            <p className="font-semibold">{t("clientAgreements.offlineSigningTitle")}</p>
+            <p className="mt-1">{t("clientAgreements.offlineSigningMessage")}</p>
+            {agreement.companyEmail && (
+              <p className="mt-2">
+                {t("clientAgreements.returnByEmail", { email: agreement.companyEmail })}
+              </p>
+            )}
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-2">
             <Detail label={t("serviceAgreements.clientName")} value={agreement.clientName} />
             <Detail label={t("serviceAgreements.propertyAddress")} value={agreement.propertyAddress} />
@@ -159,8 +169,8 @@ export function ClientServiceAgreementPage() {
           {agreement.status === "signed" && (
             <Result
               icon={<CheckCircle className="h-6 w-6 text-green-600" />}
-              title={t("clientAgreements.accepted")}
-              message={t("clientAgreements.acceptedMessage")}
+              title={agreement.signedAt ? t("clientAgreements.signedReceived") : t("clientAgreements.acknowledged")}
+              message={agreement.signedAt ? t("clientAgreements.signedReceivedMessage") : t("clientAgreements.acknowledgedMessage")}
             />
           )}
           {agreement.status === "cancelled" && agreement.declinedAt && (
@@ -188,7 +198,7 @@ export function ClientServiceAgreementPage() {
                   className="btn-primary flex flex-1 items-center justify-center gap-2"
                 >
                   <CheckCircle className="h-4 w-4" />
-                  {loadingAction === "accept" ? t("common.saving") : t("clientAgreements.accept")}
+                  {loadingAction === "accept" ? t("common.saving") : t("clientAgreements.acknowledge")}
                 </button>
                 <button
                   type="button"

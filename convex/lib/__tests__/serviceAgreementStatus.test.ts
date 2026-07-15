@@ -7,7 +7,9 @@ describe("service agreement presentation status", () => {
     expect(getServiceAgreementPresentationStatus({ status: "draft" })).toBe("draft");
     expect(getServiceAgreementPresentationStatus({ status: "ready" })).toBe("ready");
     expect(getServiceAgreementPresentationStatus({ status: "sent" })).toBe("sent");
-    expect(getServiceAgreementPresentationStatus({ status: "signed" })).toBe("accepted");
+    expect(getServiceAgreementPresentationStatus({ status: "signed" })).toBe("acknowledged");
+    expect(getServiceAgreementPresentationStatus({ status: "signed", clientRespondedAt: 1 })).toBe("acknowledged");
+    expect(getServiceAgreementPresentationStatus({ status: "signed", signedAt: 1 })).toBe("signed_received");
     expect(getServiceAgreementPresentationStatus({ status: "cancelled" })).toBe("cancelled");
   });
 
@@ -18,13 +20,13 @@ describe("service agreement presentation status", () => {
   it("uses lifecycle timestamps as safe fallbacks", () => {
     expect(getServiceAgreementPresentationStatus({ status: "draft", readyAt: 1 })).toBe("ready");
     expect(getServiceAgreementPresentationStatus({ status: "draft", sentAt: 1 })).toBe("sent");
-    expect(getServiceAgreementPresentationStatus({ status: "draft", signedAt: 1 })).toBe("accepted");
+    expect(getServiceAgreementPresentationStatus({ status: "draft", signedAt: 1 })).toBe("signed_received");
     expect(getServiceAgreementPresentationStatus({ status: "draft", cancelledAt: 1 })).toBe("cancelled");
   });
 
   it("gives specific and terminal evidence precedence", () => {
     expect(getServiceAgreementPresentationStatus({ status: "signed", declinedAt: 1 })).toBe("declined");
-    expect(getServiceAgreementPresentationStatus({ status: "sent", signedAt: 1 })).toBe("accepted");
+    expect(getServiceAgreementPresentationStatus({ status: "sent", signedAt: 1 })).toBe("signed_received");
     expect(getServiceAgreementPresentationStatus({ status: "sent", cancelledAt: 1 })).toBe("cancelled");
   });
 });
