@@ -197,7 +197,7 @@ export function CleanerPaymentsPage() {
       <PageHeader
         back={{ href: "/owner/payments", label: t("navigation.backToPayments") }}
         title={t("payments.cleanerPayments")}
-        description={t("payments.cleanerPaymentsDesc")}
+        description={t("guidance.owner.cleanerPayments")}
       />
 
       <div className="border-b border-gray-200 mb-6">

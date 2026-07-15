@@ -2136,5 +2136,42 @@
       "5": "Vie",
       "6": "Sab"
     }
+  },
+  "guidance": {
+    "owner": {
+      "requests": "Las solicitudes reúnen nuevas consultas de servicio durante su revisión y calificación. Las solicitudes calificadas pueden avanzar a recorridos, propuestas y configuración del servicio.",
+      "requestDetail": "Este registro reúne la solicitud, el recorrido, la propuesta y la configuración del servicio. Cada etapa conserva la información necesaria para la siguiente decisión operativa.",
+      "walkthrough": "Los recorridos documentan las necesidades operativas de la propiedad antes de proponer el servicio. Un recorrido completado puede servir de base para el alcance y el precio.",
+      "proposal": "Las propuestas organizan el alcance, la frecuencia y el precio propuestos para la revisión del cliente. Una propuesta aceptada puede avanzar al acuerdo de servicio y la configuración de la cuenta.",
+      "serviceAgreement": "Los acuerdos de servicio registran los términos propuestos para la revisión del cliente. Su estado refleja la respuesta del cliente antes de iniciar operaciones recurrentes.",
+      "commercialAccounts": "Las cuentas comerciales representan relaciones de servicio activas o planificadas después del proceso de ventas. Conectan los detalles del servicio, la responsabilidad de programación y el estado de la cuenta.",
+      "clients": "Los clientes conectan a las personas u organizaciones asociadas con prospectos, propiedades, propuestas y cuentas de servicio. Sus registros mantienen unido el historial de la relación mientras avanza el trabajo.",
+      "clientDetail": "Este registro reúne los contactos del cliente y sus registros operativos relacionados. Los nuevos prospectos y las relaciones de servicio permanecen conectados al mismo historial.",
+      "propertyDetail": "Este registro reúne los detalles del servicio, inventario, historial de trabajos y conexiones de calendario de la propiedad. Las actualizaciones respaldan la programación y el trabajo de campo futuros.",
+      "inventoryTemplates": "Las plantillas de inventario definen estándares de suministros reutilizables que pueden aplicarse a las propiedades. Así, el inventario se mantiene desde una base uniforme.",
+      "jobs": "Los trabajos representan el trabajo de campo programado y su progreso desde la asignación hasta la finalización. Esta vista permite supervisar las operaciones entre propiedades y trabajadores.",
+      "jobDetail": "Este trabajo reúne asignaciones, progreso, fotos, notas y aprobaciones desde la programación hasta la finalización.",
+      "calendar": "El calendario reúne los trabajos programados en una vista cronológica de las operaciones. Ayuda a identificar cobertura, horarios y posibles conflictos de programación.",
+      "workers": "La lista de trabajadores reúne acceso, función operativa, incorporación e información de elegibilidad. Sus registros respaldan la preparación para asignaciones y la revisión continua del cumplimiento.",
+      "workerDetail": "Este registro reúne el acceso, la incorporación, la función y la preparación operativa del trabajador. Los cambios pueden afectar futuras asignaciones y el acceso disponible en la plataforma.",
+      "documents": "Documentos reúne las plantillas para clientes y los registros de la empresa para trabajadores en un área administrativa. Cada tipo permanece disponible dentro de su flujo correspondiente.",
+      "workerDocuments": "Los documentos de trabajadores respaldan la incorporación y el cumplimiento en toda la empresa. El acceso y el estado de revisión muestran qué registros están disponibles y dónde puede requerirse seguimiento.",
+      "companyProfile": "Los datos del perfil de la empresa proporcionan la identidad comercial utilizada en SCRUB. Las actualizaciones pueden aparecer en documentos generados y otros registros para clientes.",
+      "payments": "Pagos reúne los registros de pagos operativos y las liquidaciones con socios. Cada área representa una relación de pago distinta y puede revisarse por separado.",
+      "cleanerPayments": "Los pagos a trabajadores registran el trabajo completado y su estado de pago por persona. Estos registros respaldan la revisión y conciliación de pagos.",
+      "settlements": "Las liquidaciones registran importes asociados con trabajos compartidos entre empresas socias. Sus estados documentan la revisión y conciliación entre las empresas participantes.",
+      "performance": "Rendimiento resume el trabajo completado y las señales de calidad disponibles del equipo. Sirve de apoyo para la revisión operativa continua.",
+      "partners": "Empresas Socias permite compartir trabajo entre empresas. Las conexiones establecidas aquí pueden afectar la visibilidad, responsabilidad y liquidación de los trabajos.",
+      "siteSetup": "Tu sitio público presenta los servicios de la empresa y recibe nuevas solicitudes de clientes. La información publicada define lo que ven los posibles clientes antes de entrar al flujo de solicitudes."
+    },
+    "worker": {
+      "availability": "La disponibilidad registra cuándo puedes trabajar por lo general. El equipo de programación puede consultarla al revisar futuras asignaciones, mientras los trabajos confirmados permanecen visibles en Trabajos.",
+      "settings": "Configuración del Trabajador reúne el perfil, las preferencias laborales, los registros de incorporación, los documentos, los pagos y las conexiones de la cuenta.",
+      "manuals": "Los manuales proporcionan estándares de la empresa y material de referencia para el trabajo de campo. Los manuales disponibles permanecen accesibles aquí para su consulta continua.",
+      "payments": "El historial de pagos muestra los registros asociados con trabajos completados. Cada entrada presenta el estado y los detalles registrados en SCRUB."
+    },
+    "client": {
+      "agreementReview": "Este acuerdo registra los términos del servicio proporcionados para tu revisión. Su estado se actualiza después de enviar una respuesta disponible."
+    }
   }
 }

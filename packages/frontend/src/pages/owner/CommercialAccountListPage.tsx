@@ -44,7 +44,7 @@ export function CommercialAccountListPage() {
     <div>
       <PageHeader
         title={t("commercialAccounts.title")}
-        description={t("commercialAccounts.description")}
+        description={t("guidance.owner.commercialAccounts")}
       />
 
       <div className="mb-4 flex flex-wrap gap-2">

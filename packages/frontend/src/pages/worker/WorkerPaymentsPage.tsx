@@ -21,7 +21,7 @@ export function WorkerPaymentsPage() {
     <div>
       <PageHeader
         title={t("payments.myPayments")}
-        description={t("payments.myPaymentsDesc")}
+        description={t("guidance.worker.payments")}
       />
 
       {jobs === undefined ? (

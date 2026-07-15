@@ -5,7 +5,6 @@ import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { HowItWorks } from "@/components/ui/HowItWorks";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { AffiliateRevenueTab } from "@/components/affiliate/AffiliateRevenueTab";
 import { AffiliateLedgerTab } from "@/components/affiliate/AffiliateLedgerTab";
@@ -139,14 +138,6 @@ function AffiliatePageInner({
         title={t("affiliate.title")}
         description={t("affiliate.description")}
       />
-      <HowItWorks
-        steps={[
-          "This is your referral hub for earning rewards by growing the SCRUB community.",
-          "Every owner who signs up through your unique link is tracked here, along with your earnings and payout history.",
-          "Share your link, monitor your referrals, and request payouts when you're ready.",
-        ]}
-      />
-
       {/* Tab nav */}
       <div className="border-b border-gray-200 mb-6">
         <nav className="-mb-px flex gap-6">

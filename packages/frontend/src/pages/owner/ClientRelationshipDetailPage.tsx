@@ -325,7 +325,7 @@ export function ClientRelationshipDetailPage() {
     <div className="space-y-6">
       <PageHeader
         title={relationship.displayName}
-        description={t("clientRelationships.detailDescription")}
+        description={t("guidance.owner.clientDetail")}
         back={{ href: "/clients", label: t("navigation.backToClients") }}
         action={
           <div className="flex flex-wrap gap-2">

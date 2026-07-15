@@ -4,7 +4,6 @@ import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { HowItWorks } from "@/components/ui/HowItWorks";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -116,7 +115,7 @@ export function PropertyDetailPage() {
 
       <PageHeader
         title={property.name}
-        description={t("properties.detailDescription")}
+        description={t("guidance.owner.propertyDetail")}
         back={{ href: "/properties", label: t("navigation.backToProperties") }}
         action={
           <div className="flex gap-2">
@@ -137,14 +136,6 @@ export function PropertyDetailPage() {
           </div>
         }
       />
-      <HowItWorks
-        steps={[
-          "This is the operational hub for a single property.",
-          "Details, inventory, job history, and calendar sync are organized into tabs so everything lives in one place.",
-          "Use this page to keep property info current, manage supplies, and connect external calendars.",
-        ]}
-      />
-
       {/* Tabs */}
       <div className="flex border-b border-gray-200 mb-6">
         <button

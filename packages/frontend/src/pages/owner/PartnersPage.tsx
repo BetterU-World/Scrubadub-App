@@ -171,7 +171,7 @@ export function PartnersPage() {
     <div className="max-w-3xl mx-auto">
       <PageHeader
         title={t("partners.title")}
-        description={t("partners.description")}
+        description={t("guidance.owner.partners")}
         action={
           <button onClick={() => setShowAdd(true)} className="btn-primary flex items-center gap-2">
             <Plus className="w-4 h-4" /> {t("partners.addContact")}

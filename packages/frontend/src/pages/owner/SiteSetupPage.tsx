@@ -4,7 +4,6 @@ import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { HowItWorks } from "@/components/ui/HowItWorks";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { Plus, X } from "lucide-react";
 import { ShareKit } from "@/components/owner/ShareKit";
@@ -128,14 +127,7 @@ export function SiteSetupPage() {
     <div>
       <PageHeader
         title={t("siteBuilder.title")}
-        description={t("siteBuilder.description")}
-      />
-      <HowItWorks
-        steps={[
-          "This is where you build and manage your public-facing booking website.",
-          "Your brand, services, and contact info power a hosted page where clients can request quotes directly.",
-          "Fill in your details, choose a template, and publish. Share the link to start receiving client requests.",
-        ]}
+        description={t("guidance.owner.siteSetup")}
       />
 
       {site && !site.bio && !site.serviceArea && (
