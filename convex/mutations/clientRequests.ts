@@ -2,6 +2,7 @@ import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwnerSession } from "../lib/sessionAuth";
 import { checkRateLimit } from "../lib/rateLimit";
+import { propertyTypeFromRequestLeadType } from "../lib/commercialEligibility";
 
 /**
  * Public mutation – called by external visitors via a company's public
@@ -184,12 +185,16 @@ export const createPropertyFromRequest = mutation({
 
     const snap = request.propertySnapshot ?? {};
     const address = snap.address || "Address pending";
+    const propertyType = propertyTypeFromRequestLeadType(request.leadType);
+    if (!propertyType) {
+      throw new Error("Classify this request before creating a property");
+    }
 
     const propertyId = await ctx.db.insert("properties", {
       companyId: request.companyId,
       clientRelationshipId: request.clientRelationshipId,
       name: snap.name || address,
-      type: "residential" as const,
+      type: propertyType,
       address,
       amenities: [],
       active: true,

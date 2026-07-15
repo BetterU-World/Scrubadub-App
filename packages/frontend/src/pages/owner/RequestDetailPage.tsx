@@ -147,6 +147,16 @@ export function RequestDetailPage() {
         }
       : "skip"
   );
+  const commercialEligibility = useQuery(
+    (api as any).queries.commercialAccounts.getEligibilityForRequest,
+    params.id && user && sessionToken
+      ? {
+          userId: user._id,
+          sessionToken,
+          clientRequestId: params.id as Id<"clientRequests">,
+        }
+      : "skip"
+  );
   const managers = useQuery(
     api.queries.employees.getManagers,
     proposal?.status === "accepted" && user?.companyId && sessionToken
@@ -361,6 +371,7 @@ export function RequestDetailPage() {
   if (
     request === undefined ||
     proposal === undefined ||
+    commercialEligibility === undefined ||
     (proposal && commercialAccount === undefined)
   ) return <PageLoader />;
   if (request === null) {
@@ -437,7 +448,12 @@ export function RequestDetailPage() {
       setToast({ message: t("requests.propertyCreated"), type: "success" });
       setTimeout(() => setToast(null), 3000);
     } catch (err: any) {
-      setToast({ message: err.message || "Failed to create property", type: "error" });
+      setToast({
+        message: err.message?.includes("Classify this request")
+          ? t("commercialConversion.propertyClassificationRequiredError")
+          : err.message || "Failed to create property",
+        type: "error",
+      });
       setTimeout(() => setToast(null), 3000);
     } finally {
       setCreatingProperty(false);
@@ -664,7 +680,12 @@ export function RequestDetailPage() {
       });
       setTimeout(() => setToast(null), 2000);
     } catch (err: any) {
-      setToast({ message: err.message || t("commercialAccounts.saveFailed"), type: "error" });
+      const message = err.message?.includes("Classify the request or linked property")
+        ? t("commercialConversion.classificationRequiredError")
+        : err.message?.includes("classified as commercial")
+          ? t("commercialConversion.notCommercialError")
+          : err.message || t("commercialAccounts.saveFailed");
+      setToast({ message, type: "error" });
       setTimeout(() => setToast(null), 3000);
     } finally {
       setSavingAccount(false);
@@ -1210,7 +1231,7 @@ export function RequestDetailPage() {
                       {t("commercialAccounts.edit")}
                     </button>
                   </div>
-                ) : showAccountForm ? (
+                ) : (commercialAccount || commercialEligibility.eligible) && showAccountForm ? (
                   <div className="rounded-md border border-gray-200 bg-gray-50 p-4 space-y-4">
                     <div className="flex items-center gap-2">
                       <ClipboardCheck className="w-4 h-4 text-gray-500" />
@@ -1415,11 +1436,14 @@ export function RequestDetailPage() {
                       </button>
                     </div>
                   </div>
-                ) : (
+                ) : commercialEligibility.eligible ? (
                   <div className="rounded-md border border-gray-200 bg-gray-50 p-4">
                     <p className="text-xs font-medium uppercase text-gray-500">{t("proposals.nextStep")}</p>
                     <p className="mt-1 text-sm font-semibold text-gray-900">
-                      {t("commercialAccounts.create")}
+                      {t("commercialConversion.commercialNextStep")}
+                    </p>
+                    <p className="mt-1 text-sm text-gray-600">
+                      {t("commercialConversion.commercialNextStepDescription")}
                     </p>
                     <button
                       onClick={() => setShowAccountForm(true)}
@@ -1428,6 +1452,60 @@ export function RequestDetailPage() {
                       <ClipboardCheck className="w-4 h-4" />
                       {t("commercialAccounts.create")}
                     </button>
+                  </div>
+                ) : commercialEligibility.reason === "classification_required" ? (
+                  <div className="rounded-md border border-amber-200 bg-amber-50 p-4">
+                    <p className="text-xs font-medium uppercase text-amber-700">{t("proposals.nextStep")}</p>
+                    <p className="mt-1 text-sm font-semibold text-amber-900">
+                      {t("commercialConversion.classificationRequired")}
+                    </p>
+                    <p className="mt-1 text-sm text-amber-800">
+                      {commercialEligibility.source === "property"
+                        ? t("commercialConversion.classifyPropertyDescription")
+                        : t("commercialConversion.classifyRequestDescription")}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (commercialEligibility.propertyId) {
+                          setLocation(`/properties/${commercialEligibility.propertyId}`);
+                        } else {
+                          document.getElementById("request-lead-classification")?.scrollIntoView({ behavior: "smooth" });
+                        }
+                      }}
+                      className="btn-secondary mt-3 text-sm"
+                    >
+                      {commercialEligibility.propertyId
+                        ? t("commercialConversion.reviewProperty")
+                        : t("commercialConversion.classifyRequest")}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-blue-200 bg-blue-50 p-4">
+                    <p className="text-xs font-medium uppercase text-blue-700">{t("proposals.nextStep")}</p>
+                    <p className="mt-1 text-sm font-semibold text-blue-900">
+                      {t("commercialConversion.residentialNextStep")}
+                    </p>
+                    <p className="mt-1 text-sm text-blue-800">
+                      {t("commercialConversion.residentialNextStepDescription")}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {!request.propertyId &&
+                        request.propertySnapshot?.address &&
+                        commercialEligibility.mappedPropertyType && (
+                        <button
+                          type="button"
+                          onClick={handleCreateProperty}
+                          disabled={creatingProperty}
+                          className="btn-secondary text-sm"
+                        >
+                          {creatingProperty ? t("requests.creating") : t("requests.createProperty")}
+                        </button>
+                      )}
+                      <button type="button" onClick={handleConvert} className="btn-primary text-sm">
+                        {t("commercialConversion.scheduleService")}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1620,7 +1698,7 @@ export function RequestDetailPage() {
 
 
         {/* Lead Details */}
-        <div className="border-t pt-4 space-y-3">
+        <div id="request-lead-classification" className="border-t pt-4 space-y-3 scroll-mt-24">
           <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
             {t("requests.leadDetails")}
           </h4>

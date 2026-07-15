@@ -1658,6 +1658,21 @@
       "unavailable": "Status unavailable"
     }
   },
+  "commercialConversion": {
+    "commercialNextStep": "Create the commercial account",
+    "commercialNextStepDescription": "Set up recurring work, assignments, and invoicing for this commercial client.",
+    "residentialNextStep": "Continue client and property setup",
+    "residentialNextStepDescription": "Confirm the service property, then schedule the client's service. A commercial account is not needed.",
+    "classificationRequired": "Classification required",
+    "classifyPropertyDescription": "The linked property's type controls this conversion. Review the property and classify it before continuing.",
+    "classifyRequestDescription": "Classify this request before choosing the correct conversion workflow.",
+    "reviewProperty": "Review Property",
+    "classifyRequest": "Classify Request",
+    "scheduleService": "Schedule Service",
+    "propertyClassificationRequiredError": "Classify this request before creating a property.",
+    "classificationRequiredError": "Classify the request or linked property before creating a commercial account.",
+    "notCommercialError": "Commercial accounts can only be created for requests classified as commercial."
+  },
   "commercialAccounts": {
     "title": "Commercial Accounts",
     "description": "Commercial contracts, recurring service arrangements, billing, and scheduling.",

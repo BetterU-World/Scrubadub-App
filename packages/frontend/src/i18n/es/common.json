@@ -1658,6 +1658,21 @@
       "unavailable": "Estado no disponible"
     }
   },
+  "commercialConversion": {
+    "commercialNextStep": "Crear la cuenta comercial",
+    "commercialNextStepDescription": "Configura el trabajo recurrente, las asignaciones y la facturación para este cliente comercial.",
+    "residentialNextStep": "Continuar la configuración del cliente y la propiedad",
+    "residentialNextStepDescription": "Confirma la propiedad de servicio y luego programa el servicio del cliente. No se necesita una cuenta comercial.",
+    "classificationRequired": "Clasificación requerida",
+    "classifyPropertyDescription": "El tipo de la propiedad vinculada controla esta conversión. Revisa y clasifica la propiedad antes de continuar.",
+    "classifyRequestDescription": "Clasifica esta solicitud antes de elegir el flujo de conversión correcto.",
+    "reviewProperty": "Revisar propiedad",
+    "classifyRequest": "Clasificar solicitud",
+    "scheduleService": "Programar servicio",
+    "propertyClassificationRequiredError": "Clasifica esta solicitud antes de crear una propiedad.",
+    "classificationRequiredError": "Clasifica la solicitud o la propiedad vinculada antes de crear una cuenta comercial.",
+    "notCommercialError": "Las cuentas comerciales solo se pueden crear para solicitudes clasificadas como comerciales."
+  },
   "commercialAccounts": {
     "title": "Cuentas comerciales",
     "description": "Contratos comerciales, servicios recurrentes, facturacion y programacion.",

@@ -2,6 +2,10 @@ import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwnerSession } from "../lib/sessionAuth";
 import { ensureClientRelationshipForLead } from "../lib/clientRelationships";
+import {
+  commercialEligibilityError,
+  resolveCommercialEligibility,
+} from "../lib/commercialEligibility";
 
 const frequencyValidator = v.union(
   v.literal("one_time"),
@@ -137,22 +141,14 @@ export const create = mutation({
     const owner = await requireOwnerCompany(ctx, args.sessionToken, args.userId);
     const companyId = owner.companyId!;
 
-    const proposal = args.sourceProposalId
-      ? await ctx.db.get(args.sourceProposalId)
-      : null;
-    if (args.sourceProposalId) {
-      if (!proposal) throw new Error("Proposal not found");
-      if (proposal.companyId !== companyId) throw new Error("Access denied");
-      if (proposal.status !== "accepted") {
-        throw new Error("Commercial accounts can only be created from accepted proposals");
-      }
-      const existing = await ctx.db
-        .query("commercialAccounts")
-        .withIndex("by_sourceProposalId", (q) =>
-          q.eq("sourceProposalId", args.sourceProposalId)
-        )
-        .first();
-      if (existing) return existing._id;
+    if (!args.sourceProposalId) {
+      throw new Error("An accepted proposal is required to create a commercial account");
+    }
+    const proposal = await ctx.db.get(args.sourceProposalId);
+    if (!proposal) throw new Error("Proposal not found");
+    if (proposal.companyId !== companyId) throw new Error("Access denied");
+    if (proposal.status !== "accepted") {
+      throw new Error("Commercial accounts can only be created from accepted proposals");
     }
 
     const sourceProposalId = args.sourceProposalId;
@@ -175,12 +171,26 @@ export const create = mutation({
 
     const clientRequestId = args.clientRequestId ?? proposal?.clientRequestId;
     const request = clientRequestId ? await ctx.db.get(clientRequestId) : null;
-    if (clientRequestId) {
-      if (!request) throw new Error("Lead not found");
-      if (request.companyId !== companyId) throw new Error("Access denied");
+    if (!request) throw new Error("Source request required");
+    if (request.companyId !== companyId) throw new Error("Access denied");
+    if (proposal.clientRequestId !== request._id) {
+      throw new Error("Source request must match the accepted proposal");
     }
+    const eligibility = await resolveCommercialEligibility(ctx, request, companyId);
+    if (!eligibility.eligible) throw new Error(commercialEligibilityError(eligibility));
+
+    const existing = await ctx.db
+      .query("commercialAccounts")
+      .withIndex("by_sourceProposalId", (q) =>
+        q.eq("sourceProposalId", args.sourceProposalId)
+      )
+      .first();
+    if (existing) return existing._id;
 
     if (args.sourceLeadId) {
+      if (args.sourceLeadId !== request._id) {
+        throw new Error("Source lead must match the accepted proposal request");
+      }
       const lead = await ctx.db.get(args.sourceLeadId);
       if (!lead) throw new Error("Lead not found");
       if (lead.companyId !== companyId) throw new Error("Access denied");

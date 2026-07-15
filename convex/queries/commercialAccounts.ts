@@ -1,6 +1,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwnerSession } from "../lib/sessionAuth";
+import { resolveCommercialEligibility } from "../lib/commercialEligibility";
 
 async function requireOwnerCompany(ctx: any, sessionToken: string, userId: any) {
   const user = await requireOwnerSession(ctx, sessionToken, userId);
@@ -160,5 +161,19 @@ export const getByClientRequest = query({
     if (!account) return null;
     if (account.companyId !== owner.companyId) throw new Error("Access denied");
     return await decorateAccount(ctx, account);
+  },
+});
+
+export const getEligibilityForRequest = query({
+  args: {
+    userId: v.id("users"),
+    sessionToken: v.string(),
+    clientRequestId: v.id("clientRequests"),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwnerCompany(ctx, args.sessionToken, args.userId);
+    const request = await ctx.db.get(args.clientRequestId);
+    if (!request) throw new Error("Request not found");
+    return await resolveCommercialEligibility(ctx, request, owner.companyId);
   },
 });
