@@ -1,6 +1,16 @@
 import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 
+const PROPOSAL_TOKEN_EXPIRY_MS = 60 * 24 * 60 * 60 * 1000;
+const PROPOSAL_LINK_UNAVAILABLE_ERROR = "Proposal link unavailable or expired";
+
+function proposalTokenIsExpired(proposal: any, now = Date.now()) {
+  return (
+    typeof proposal.proposalTokenCreatedAt !== "number" ||
+    now - proposal.proposalTokenCreatedAt >= PROPOSAL_TOKEN_EXPIRY_MS
+  );
+}
+
 function formatFrequency(value: string | undefined) {
   const labels: Record<string, string> = {
     one_time: "One-time",
@@ -184,7 +194,7 @@ export const getClientProposalByTokenHash = internalQuery({
       )
       .first();
 
-    if (!proposal) return null;
+    if (!proposal || proposalTokenIsExpired(proposal)) return null;
     return clientProposalPayload(await safeProposalPayload(ctx, proposal));
   },
 });
@@ -203,7 +213,9 @@ export const respondToProposalByTokenHash = internalMutation({
       )
       .first();
 
-    if (!proposal) throw new Error("Invalid or expired proposal link");
+    if (!proposal || proposalTokenIsExpired(proposal)) {
+      throw new Error(PROPOSAL_LINK_UNAVAILABLE_ERROR);
+    }
     if (proposal.status === "accepted" || proposal.status === "declined") {
       return clientProposalPayload(await safeProposalPayload(ctx, proposal));
     }

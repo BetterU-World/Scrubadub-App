@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -235,6 +235,7 @@ export function RequestDetailPage() {
   const [proposalActionLoading, setProposalActionLoading] = useState<string | null>(null);
   const [editingProposal, setEditingProposal] = useState(false);
   const [proposalLoadedId, setProposalLoadedId] = useState<string | null>(null);
+  const previousProposalStatus = useRef<string | null>(null);
   const [accountLoadedKey, setAccountLoadedKey] = useState<string | null>(null);
   const [proposalForm, setProposalForm] = useState({
     title: "",
@@ -318,6 +319,21 @@ export function RequestDetailPage() {
       setProposalLoadedId(proposal._id);
     }
   }, [proposal, proposalLoadedId]);
+
+  useEffect(() => {
+    const currentStatus = proposal?.status ?? null;
+    const respondedWhileEditing =
+      previousProposalStatus.current === "sent" &&
+      (currentStatus === "accepted" || currentStatus === "declined") &&
+      editingProposal;
+
+    if (respondedWhileEditing) {
+      setEditingProposal(false);
+      setToast({ message: t("proposals.respondedWhileEditing"), type: "success" });
+      setTimeout(() => setToast(null), 4000);
+    }
+    previousProposalStatus.current = currentStatus;
+  }, [proposal?.status, editingProposal, t]);
 
   useEffect(() => {
     if (!request || !proposal || proposal.status !== "accepted") return;
@@ -1092,8 +1108,27 @@ export function RequestDetailPage() {
                     <p className="text-gray-900">{formatTimestamp(proposal.sentAt)}</p>
                   </div>
                 )}
+                {proposal.acceptedAt && (
+                  <div>
+                    <p className="text-xs font-medium text-gray-500">{t("proposals.acceptedOn")}</p>
+                    <p className="text-gray-900">{formatTimestamp(proposal.acceptedAt)}</p>
+                  </div>
+                )}
               </div>
             </div>
+            {proposal.status === "accepted" && proposal.proposalResponseNote && (
+              <div className="rounded-md border border-green-200 bg-green-50 p-3">
+                <p className="text-xs font-semibold uppercase text-green-800">
+                  {t("proposals.clientResponse")}
+                </p>
+                <p className="mt-1 text-xs text-green-700">
+                  {t("proposals.clientResponseHelper")}
+                </p>
+                <p className="mt-2 whitespace-pre-wrap text-sm text-green-900">
+                  {proposal.proposalResponseNote}
+                </p>
+              </div>
+            )}
             {proposal.status === "accepted" && (
               <div className="space-y-3">
                 <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm font-medium text-green-800 flex items-center gap-2">
