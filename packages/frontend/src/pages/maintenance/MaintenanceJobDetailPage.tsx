@@ -7,10 +7,12 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useParams, Link, useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { JobTimeline } from "@/components/JobTimeline";
 import { Calendar, Clock, MapPin, Key, CheckCircle, XCircle, Play, Wrench, MapPinCheck, Send } from "lucide-react";
 
 export function MaintenanceJobDetailPage() {
+  const { t } = useTranslation();
   const params = useParams<{ id: string }>();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
@@ -71,7 +73,10 @@ export function MaintenanceJobDetailPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <PageHeader title={job.property?.name ?? (job as any).propertySnapshot?.name ?? "Job Details"} />
+      <PageHeader
+        title={job.property?.name ?? (job as any).propertySnapshot?.name ?? "Job Details"}
+        back={{ href: "/jobs", label: t("navigation.backToJobs") }}
+      />
 
       <div className="space-y-4">
         <div className="card space-y-4">

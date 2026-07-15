@@ -113,7 +113,10 @@ export function CleanerJobDetailPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <PageHeader title={job.property?.name ?? (job as any).propertySnapshot?.name ?? t("jobs.jobDetails")} />
+      <PageHeader
+        title={job.property?.name ?? (job as any).propertySnapshot?.name ?? t("jobs.jobDetails")}
+        back={{ href: "/jobs", label: t("navigation.backToJobs") }}
+      />
 
       <div className="space-y-4">
         <div className="card space-y-4">

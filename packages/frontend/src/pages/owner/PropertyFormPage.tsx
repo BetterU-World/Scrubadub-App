@@ -198,10 +198,21 @@ export function PropertyFormPage() {
 
   // Custom amenities that aren't in the preset list
   const customAmenities = amenities.filter((a) => !AMENITY_PRESETS.includes(a));
+  const hasValidClientOrigin = !!requestedClientRelationshipId && !!clientRelationships?.some(
+    (relationship: any) => relationship._id === requestedClientRelationshipId
+  );
+  const backDestination = isEditing
+    ? { href: `/properties/${params.id}`, label: t("navigation.backToProperty") }
+    : hasValidClientOrigin
+      ? { href: `/clients/${requestedClientRelationshipId}`, label: t("navigation.backToClient") }
+      : { href: "/properties", label: t("navigation.backToProperties") };
 
   return (
     <div className="max-w-2xl mx-auto">
-      <PageHeader title={isEditing ? t("properties.editProperty") : t("properties.newProperty")} />
+      <PageHeader
+        title={isEditing ? t("properties.editProperty") : t("properties.newProperty")}
+        back={backDestination}
+      />
 
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
@@ -475,7 +486,7 @@ export function PropertyFormPage() {
         </div>
 
         <div className="flex justify-end gap-3 pt-4">
-          <button type="button" onClick={() => setLocation(isEditing ? `/properties/${params.id}` : "/properties")} className="btn-secondary">{t("common.cancel")}</button>
+          <button type="button" onClick={() => setLocation(backDestination.href)} className="btn-secondary">{t("common.cancel")}</button>
           <button type="submit" disabled={loading} className="btn-primary flex items-center gap-2">
             {loading && <LoadingSpinner size="sm" />}
             {isEditing ? t("properties.saveChanges") : t("properties.createProperty")}

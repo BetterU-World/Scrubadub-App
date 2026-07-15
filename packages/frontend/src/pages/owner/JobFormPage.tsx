@@ -25,6 +25,17 @@ export function JobFormPage() {
   const [, setLocation] = useLocation();
   const params = useParams<{ id?: string }>();
   const isEditing = !!params.id;
+  const requestOriginParam = isEditing
+    ? null
+    : new URLSearchParams(window.location.search).get("requestId");
+  const requestOriginId = requestOriginParam && /^[A-Za-z0-9_-]+$/.test(requestOriginParam)
+    ? requestOriginParam
+    : null;
+  const backDestination = isEditing
+    ? { href: `/jobs/${params.id}`, label: t("navigation.backToJob") }
+    : requestOriginId
+      ? { href: `/requests/${requestOriginId}`, label: t("navigation.backToRequests") }
+      : { href: "/jobs", label: t("navigation.backToJobs") };
 
   const existing = useQuery(
     api.queries.jobs.get,
@@ -244,7 +255,10 @@ export function JobFormPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <PageHeader title={isEditing ? t("jobs.editJob") : t("jobs.scheduleJob")} />
+      <PageHeader
+        title={isEditing ? t("jobs.editJob") : t("jobs.scheduleJob")}
+        back={backDestination}
+      />
 
       {!isEditing && activeProperties.length === 0 && (
         <div className="card mb-6 border-amber-200 bg-amber-50">
@@ -487,7 +501,7 @@ export function JobFormPage() {
         </div>
 
         <div className="flex justify-end gap-3 pt-4">
-          <button type="button" onClick={() => setLocation(isEditing ? `/jobs/${params.id}` : "/jobs")} className="btn-secondary">{t("common.cancel")}</button>
+          <button type="button" onClick={() => setLocation(backDestination.href)} className="btn-secondary">{t("common.cancel")}</button>
           <button type="submit" disabled={loading || (!isSharedJob && !propertyId) || (isPartnerMode && !partnerCompanyId) || (!isPartnerMode && assignmentType === "team" && !selectedTeamId)} className="btn-primary flex items-center gap-2">
             {loading && <LoadingSpinner size="sm" />}
             {isEditing ? t("jobs.saveChanges") : isPartnerMode ? t("jobs.shareToPartnerBtn") : t("jobs.scheduleJob")}

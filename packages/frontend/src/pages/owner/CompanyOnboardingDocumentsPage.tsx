@@ -1,12 +1,11 @@
 import { useRef, useState } from "react";
-import { Link } from "wouter";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { useTranslation } from "react-i18next";
 import {
-  ArrowLeft,
   ExternalLink,
   FileText,
   ToggleLeft,
@@ -35,6 +34,7 @@ function deliverySummary(document: any) {
 
 export function CompanyOnboardingDocumentsPage() {
   const { user, sessionToken } = useAuth();
+  const { t } = useTranslation();
   const documents = useQuery(
     (api as any).queries.companyOnboardingDocuments.listForOwner,
     user?._id && sessionToken ? { userId: user._id, sessionToken } : "skip"
@@ -136,12 +136,7 @@ export function CompanyOnboardingDocumentsPage() {
       <PageHeader
         title="Worker Documents"
         description="Upload and manage the PDFs workers use during onboarding and compliance. Each card shows who can access the document and whether owner action is needed."
-        action={
-          <Link href="/owner/settings" className="btn-secondary flex items-center gap-2">
-            <ArrowLeft className="w-4 h-4" />
-            Settings
-          </Link>
-        }
+        back={{ href: "/owner/settings", label: t("navigation.backToSettings") }}
       />
 
       {error && (

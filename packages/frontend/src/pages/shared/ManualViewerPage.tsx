@@ -1,7 +1,7 @@
 import Markdown from "react-markdown";
-import { Link, useParams } from "wouter";
+import { useParams } from "wouter";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft } from "lucide-react";
+import { PageBack } from "@/components/ui/PageBack";
 import ownerMd from "@/manuals/owner.md?raw";
 import cleanerMd from "@/manuals/cleaner.md?raw";
 import ownerMdEs from "@/manuals/owner.es.md?raw";
@@ -23,21 +23,14 @@ export function ManualViewerPage() {
         <h1 className="text-2xl font-bold text-gray-900 mb-2">
           {t("manuals.notFound")}
         </h1>
-        <Link href="/manuals" className="text-primary-600 hover:text-primary-700">
-          {t("manuals.backToManuals")}
-        </Link>
+        <PageBack href="/manuals" label={t("navigation.backToManuals")} className="mt-4" />
       </div>
     );
   }
 
   return (
     <div>
-      <Link
-        href="/manuals"
-        className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4"
-      >
-        <ArrowLeft className="w-4 h-4" /> {t("manuals.backToManuals")}
-      </Link>
+      <PageBack href="/manuals" label={t("navigation.backToManuals")} className="mb-4" />
       <div className="mb-4 text-xs text-gray-400">
         {t("manuals.lastUpdated", { date: manual.lastUpdated })}
       </div>

@@ -454,7 +454,7 @@ export function RequestDetailPage() {
       prefill.propertyId = request.propertyId;
     }
     sessionStorage.setItem("clientRequestPrefill", JSON.stringify(prefill));
-    setLocation("/jobs/new");
+    setLocation(`/jobs/new?requestId=${encodeURIComponent(request._id)}`);
   };
 
   const handleCreateProperty = async () => {
@@ -732,6 +732,7 @@ export function RequestDetailPage() {
     <div>
       <PageHeader
         title={request.requesterName}
+        back={{ href: "/requests", label: t("navigation.backToRequests") }}
         action={
           <div className="flex gap-2 flex-wrap">
             {canMarkContacted && (
@@ -2092,14 +2093,6 @@ export function RequestDetailPage() {
           )}
         </div>
       )}
-
-      {/* Back link */}
-      <button
-        onClick={() => setLocation("/requests")}
-        className="mt-4 text-sm text-primary-600 hover:underline"
-      >
-        &larr; {t("requests.backToRequests")}
-      </button>
 
       {/* Decline dialog */}
       <ConfirmDialog

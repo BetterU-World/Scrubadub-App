@@ -7,7 +7,7 @@ import type { Id } from "../../../../../convex/_generated/dataModel";
 import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
-import { ArrowLeft, Clock, Home, Mail, Plus, Phone, Save, User, Wrench } from "lucide-react";
+import { Clock, Home, Mail, Plus, Phone, Save, User, Wrench } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
 import { ServiceAgreementStatusBadge } from "@/components/ui/ServiceAgreementStatusBadge";
@@ -326,6 +326,7 @@ export function ClientRelationshipDetailPage() {
       <PageHeader
         title={relationship.displayName}
         description={t("clientRelationships.detailDescription")}
+        back={{ href: "/clients", label: t("navigation.backToClients") }}
         action={
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => setShowLeadForm((current) => !current)} className="btn-primary flex items-center gap-2">
@@ -335,10 +336,6 @@ export function ClientRelationshipDetailPage() {
             <button type="button" onClick={handleInviteClient} disabled={inviting || !relationship.email} className="btn-secondary text-sm">
               {inviting ? t("common.saving") : t("clientRelationships.inviteClient")}
             </button>
-            <Link href="/clients" className="btn-secondary flex items-center gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              {t("clientRelationships.backToClients")}
-            </Link>
           </div>
         }
       />

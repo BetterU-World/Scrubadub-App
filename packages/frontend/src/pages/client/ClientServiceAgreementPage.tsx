@@ -11,6 +11,7 @@ import { CheckCircle, XCircle } from "lucide-react";
 import { ClientPortalShell } from "@/components/client/ClientPortalShell";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ServiceAgreementStatusBadge } from "@/components/ui/ServiceAgreementStatusBadge";
+import { PageBack } from "@/components/ui/PageBack";
 
 function formatCents(cents: number | undefined, fallback: string) {
   if (cents == null) return fallback;
@@ -68,11 +69,9 @@ export function ClientServiceAgreementPage() {
   if (!agreement) {
     return (
       <ClientPortalShell onSignOut={signOut} contentClassName="max-w-3xl">
+        <PageBack href="/client/home" label={t("navigation.backToClientHome")} className="mb-4" />
         <div className="card py-12 text-center">
           <h1 className="text-xl font-semibold text-gray-900">{t("clientAgreements.notFound")}</h1>
-          <Link href="/client/home" className="mt-4 inline-block text-sm text-primary-600 hover:underline">
-            {t("clientAgreements.backToHome")}
-          </Link>
         </div>
       </ClientPortalShell>
     );
@@ -112,6 +111,7 @@ export function ClientServiceAgreementPage() {
   return (
     <ClientPortalShell clientName={agreement.clientName} onSignOut={signOut} contentClassName="max-w-3xl">
       <main className="mx-auto max-w-3xl space-y-4 px-4 py-6">
+        <PageBack href="/client/home" label={t("navigation.backToClientHome")} />
         <section className="card space-y-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
