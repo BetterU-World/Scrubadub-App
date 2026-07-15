@@ -13,7 +13,9 @@ function appUrl() {
 
 function cleanToken(token: string) {
   const trimmed = token.trim();
-  if (!trimmed || trimmed.length > 256) throw new Error("Invalid proposal link");
+  if (!trimmed || trimmed.length > 256) {
+    throw new Error("Proposal link unavailable or expired");
+  }
   return trimmed;
 }
 
