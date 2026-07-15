@@ -7,6 +7,7 @@ import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
 import { ServiceAgreementStatusBadge } from "@/components/ui/ServiceAgreementStatusBadge";
+import { AsyncButton } from "@/components/ui/AsyncButton";
 
 const FREQUENCIES = ["one_time", "weekly", "biweekly", "monthly", "quarterly", "custom"] as const;
 
@@ -629,15 +630,17 @@ export function ServiceAgreementCard({
             </button>
           )}
           {(agreement.status === "draft" || agreement.status === "ready") && (
-            <button
+            <AsyncButton
               type="button"
               onClick={() => handleAction("sent")}
-              disabled={actionLoading === "sent"}
+              pending={actionLoading === "sent"}
+              pendingLabel={t("common.sending")}
+              disabled={actionLoading !== null && actionLoading !== "sent"}
               className="btn-primary flex items-center gap-2 text-sm"
             >
-              <Send className="h-4 w-4" />
-              {actionLoading === "sent" ? t("common.saving") : t("serviceAgreements.send")}
-            </button>
+              <Send aria-hidden="true" className="h-4 w-4" />
+              {t("serviceAgreements.send")}
+            </AsyncButton>
           )}
           {(agreement.status === "sent" || (agreement.status === "signed" && !agreement.signedAt)) && (
             <button

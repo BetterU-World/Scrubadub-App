@@ -12,6 +12,7 @@ import { ClientPortalShell } from "@/components/client/ClientPortalShell";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ServiceAgreementStatusBadge } from "@/components/ui/ServiceAgreementStatusBadge";
 import { PageBack } from "@/components/ui/PageBack";
+import { AsyncButton } from "@/components/ui/AsyncButton";
 
 function formatCents(cents: number | undefined, fallback: string) {
   if (cents == null) return fallback;
@@ -192,15 +193,17 @@ export function ClientServiceAgreementPage() {
             <>
               {error && <p className="text-sm text-red-600">{error}</p>}
               <div className="flex flex-col gap-2 sm:flex-row">
-                <button
+                <AsyncButton
                   type="button"
-                  disabled={loadingAction !== null}
+                  pending={loadingAction === "accept"}
+                  pendingLabel={t("common.acknowledging")}
+                  disabled={loadingAction !== null && loadingAction !== "accept"}
                   onClick={handleAccept}
                   className="btn-primary flex flex-1 items-center justify-center gap-2"
                 >
-                  <CheckCircle className="h-4 w-4" />
-                  {loadingAction === "accept" ? t("common.saving") : t("clientAgreements.acknowledge")}
-                </button>
+                  <CheckCircle aria-hidden="true" className="h-4 w-4" />
+                  {t("clientAgreements.acknowledge")}
+                </AsyncButton>
                 <button
                   type="button"
                   disabled={loadingAction !== null}
