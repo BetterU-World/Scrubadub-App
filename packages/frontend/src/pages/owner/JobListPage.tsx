@@ -255,10 +255,10 @@ export function JobListPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold text-gray-900">{job.propertyName}</h3>
                       <StatusBadge status={getJobPrimaryStatus(job as any)} />
-                      {(job as any).acceptanceStatus && (job as any).acceptanceStatus !== "accepted" && (
+                      {!(job as any).partnerResponseStatus && (job as any).acceptanceStatus && (job as any).acceptanceStatus !== "accepted" && (
                         <StatusBadge status={(job as any).acceptanceStatus} className="text-[10px]" />
                       )}
-                      {(job as any).acceptanceStatus === "accepted" && (
+                      {!(job as any).partnerResponseStatus && (job as any).acceptanceStatus === "accepted" && (
                         <span className="badge bg-green-100 text-green-800 text-[10px]">accepted</span>
                       )}
                       {(job as any).sharedFromCompanyName && (
@@ -271,7 +271,7 @@ export function JobListPage() {
                           {t("jobs.responseRequired")}
                         </span>
                       )}
-                      {(job as any).hasRejectedShare && (
+                      {(job as any).hasRejectedShare && (job as any).partnerResponseStatus !== "rejected" && (
                         <span className="badge bg-red-100 text-red-700 text-[10px]">
                           {t("jobs.partnerRejected")}
                         </span>

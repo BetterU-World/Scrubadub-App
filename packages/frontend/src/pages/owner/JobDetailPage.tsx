@@ -33,6 +33,7 @@ import {
   Play,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { getPartnerResponseStatus } from "@/lib/partnerJobStatus";
 import {
   INVENTORY_CATEGORIES,
   INVENTORY_CATEGORY_LABELS,
@@ -185,6 +186,8 @@ export function JobDetailPage() {
 
   const canReview = job.status === "submitted";
   const canCancel = ["scheduled", "confirmed"].includes(job.status);
+  const detailPartnerStatus = incomingShared?.status
+    ?? getPartnerResponseStatus((sharedStatus ?? []).map((status) => status.status));
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -230,8 +233,8 @@ export function JobDetailPage() {
         {/* Job info card */}
         <div className="card space-y-4">
           <div className="flex items-center gap-2 flex-wrap">
-            <StatusBadge status={job.status} />
-            {(job as any).acceptanceStatus && (
+            <StatusBadge status={detailPartnerStatus ?? job.status} />
+            {!detailPartnerStatus && (job as any).acceptanceStatus && (
               <StatusBadge status={(job as any).acceptanceStatus} />
             )}
             <span className="text-sm text-gray-500 capitalize">{t(`jobTypes.${job.type}`, job.type.replace(/_/g, " "))}</span>

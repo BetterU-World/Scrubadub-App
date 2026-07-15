@@ -732,9 +732,18 @@ export function renderPartnerSharedJobEmail(args: PartnerSharedJobEmailArgs) {
   const jobUrl = `${appUrl}/jobs/${encodeURIComponent(args.copiedJobId)}`;
   const spanish = args.language === "es";
   const safeSubjectCompany = args.fromCompanyName.replace(/[\r\n]+/g, " ").trim();
+  const safeSubjectProperty = args.propertyName.replace(/[\r\n]+/g, " ").trim();
+  const fallbackLabel = spanish
+    ? "Si el botón no funciona, abre este enlace:"
+    : "If the button does not work, open this link:";
+  const text = spanish
+    ? `${safeSubjectCompany} compartió un trabajo con ${args.toCompanyName}.\n\nUbicación: ${args.propertyName}\nServicio: ${args.serviceType.replace(/_/g, " ")}\nFecha: ${args.scheduledDate}${time ? `\nHora: ${time} (${args.timezone})` : ""}${args.notes?.trim() ? `\nNotas del trabajo: ${args.notes.trim()}` : ""}\n\nRespuesta requerida\nRevisar trabajo compartido: ${jobUrl}\n\n${fallbackLabel}\n${jobUrl}`
+    : `${safeSubjectCompany} shared a job with ${args.toCompanyName}.\n\nLocation: ${args.propertyName}\nService: ${args.serviceType.replace(/_/g, " ")}\nDate: ${args.scheduledDate}${time ? `\nTime: ${time} (${args.timezone})` : ""}${args.notes?.trim() ? `\nJob notes: ${args.notes.trim()}` : ""}\n\nResponse required\nReview Shared Job: ${jobUrl}\n\n${fallbackLabel}\n${jobUrl}`;
 
   return {
-    subject: spanish ? `Nuevo trabajo compartido de ${safeSubjectCompany}` : `New shared job from ${safeSubjectCompany}`,
+    subject: spanish
+      ? `Nuevo trabajo compartido de ${safeSubjectCompany} — ${safeSubjectProperty}`
+      : `New shared job from ${safeSubjectCompany} — ${safeSubjectProperty}`,
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px 12px; color: #111827;">
         <div style="text-align: center; margin-bottom: 24px;"><img src="${appUrl}/logo-icon.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" /></div>
@@ -749,8 +758,10 @@ export function renderPartnerSharedJobEmail(args: PartnerSharedJobEmailArgs) {
         </div>
         <p style="font-size: 14px; font-weight: 600; color: #991b1b;">${spanish ? "Respuesta requerida" : "Response required"}</p>
         <p style="text-align: center; margin: 28px 0;"><a href="${jobUrl}" style="background-color: #111; color: #fff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 600;">${spanish ? "Revisar trabajo compartido" : "Review Shared Job"}</a></p>
+        <p style="color: #6b7280; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere;">${fallbackLabel}<br /><a href="${jobUrl}" style="color: #374151;">${jobUrl}</a></p>
         <p style="text-align: center; color: #9ca3af; font-size: 12px;">Powered by SCRUB</p>
       </div>`,
+    text,
   };
 }
 

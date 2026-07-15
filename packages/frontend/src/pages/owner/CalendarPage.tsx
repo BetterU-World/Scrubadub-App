@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { HowItWorks } from "@/components/ui/HowItWorks";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { getJobPrimaryStatus } from "@/lib/partnerJobStatus";
 import { Link } from "wouter";
 import { ChevronLeft, ChevronRight, ClipboardCheck, Clock, MapPin, Users } from "lucide-react";
 import {
@@ -219,6 +220,9 @@ export function CalendarPage() {
   // Color helper based on job status first, then acceptanceStatus
   const getJobColor = (job: any) => {
     if (job.eventType === "walkthrough") return "bg-purple-100 text-purple-800 hover:bg-purple-200";
+    if (job.partnerResponseStatus === "rejected") return "bg-red-50 text-red-700 hover:bg-red-100";
+    if (job.partnerResponseStatus === "accepted") return "bg-green-100 text-green-800 hover:bg-green-200";
+    if (job.partnerResponseStatus === "pending") return "bg-yellow-50 text-yellow-800 hover:bg-yellow-100";
     if (job.status === "cancelled") return "bg-gray-100 text-gray-400 hover:bg-gray-200";
     if (job.status === "approved" || job.status === "submitted") return "bg-gray-200 text-gray-500 hover:bg-gray-300";
     const acceptance = job.acceptanceStatus ?? "pending";
@@ -552,7 +556,7 @@ function WeekView({ days, today, jobsByDate, getJobColor, isJobStrikethrough, t 
                       {job.eventType === "walkthrough" ? (
                         <span className="badge bg-purple-100 px-1.5 py-0 text-[10px] text-purple-800">{t("calendar.walkthrough")}</span>
                       ) : (
-                        <><StatusBadge status={job.status} className="text-[10px] px-1.5 py-0" />{!isCancelled && <StatusBadge status={acceptance} className="text-[10px] px-1.5 py-0" />}</>
+                        <StatusBadge status={getJobPrimaryStatus(job)} className="text-[10px] px-1.5 py-0" />
                       )}
                     </div>
                 </Link>
@@ -643,7 +647,7 @@ function DayView({ date, today, jobs, formatJobType, isJobStrikethrough, t }: Da
                       {job.eventType === "walkthrough" ? (
                         <span className="badge bg-purple-100 text-purple-800">{t("calendar.walkthrough")}</span>
                       ) : (
-                        <><StatusBadge status={job.status} />{!isCancelled && <StatusBadge status={job.acceptanceStatus ?? "pending"} />}<span className="badge bg-gray-100 text-gray-700 capitalize">{formatJobType(job.type)}</span></>
+                        <><StatusBadge status={getJobPrimaryStatus(job)} /><span className="badge bg-gray-100 text-gray-700 capitalize">{formatJobType(job.type)}</span></>
                       )}
                     </div>
                   </div>

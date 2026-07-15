@@ -138,7 +138,8 @@ export const list = query({
           const partnerResponseStatus =
             incomingSharedRecord?.toCompanyId === args.companyId
               ? incomingSharedRecord.status
-              : null;
+              : (["rejected", "pending", "accepted", "in_progress", "completed"] as const)
+                  .find((status) => outgoing.some((record) => record.status === status)) ?? null;
           // Derive inspection status for badges
           const inspections = await ctx.db
             .query("managerInspections")
@@ -420,12 +421,30 @@ export const getCalendarJobs = query({
             })
           );
           const team = job.assignedTeamId ? await ctx.db.get(job.assignedTeamId) : null;
+          const incomingSharedRecord = job.sharedFromJobId
+            ? await ctx.db
+                .query("sharedJobs")
+                .withIndex("by_copiedJobId", (q) => q.eq("copiedJobId", job._id))
+                .first()
+            : null;
+          const outgoingSharedRecords = await ctx.db
+            .query("sharedJobs")
+            .withIndex("by_originalJobId", (q) => q.eq("originalJobId", job._id))
+            .collect();
+          const partnerResponseStatus =
+            incomingSharedRecord?.toCompanyId === args.companyId
+              ? incomingSharedRecord.status
+              : (["rejected", "pending", "accepted", "in_progress", "completed"] as const)
+                  .find((status) => outgoingSharedRecords.some(
+                    (record) => record.fromCompanyId === args.companyId && record.status === status,
+                  )) ?? null;
           return {
             ...job,
             propertyName: property?.name ?? job.propertySnapshot?.name ?? "Unknown",
             cleaners: cleaners.filter(Boolean),
             assignedTeamName: team?.name ?? null,
             assignmentType: job.assignedTeamId ? "team" : "individual",
+            partnerResponseStatus,
           };
         })
       );
