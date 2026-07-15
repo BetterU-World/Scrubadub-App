@@ -444,8 +444,6 @@ export const clientAccept = mutation({
     const now = Date.now();
     await ctx.db.patch(args.agreementId, {
       status: "signed",
-      signedAt: agreement.signedAt ?? now,
-      signerName: clientUser.displayName,
       clientRespondedAt: now,
       updatedAt: now,
     });
@@ -454,8 +452,8 @@ export const clientAccept = mutation({
       ctx,
       agreement,
       "service_agreement_accepted",
-      "Service agreement accepted",
-      `${clientUser.displayName} accepted ${agreement.title}.`
+      "Service agreement acknowledged",
+      `${clientUser.displayName} acknowledged ${agreement.title}. This is not an electronic signature.`
     );
   },
 });

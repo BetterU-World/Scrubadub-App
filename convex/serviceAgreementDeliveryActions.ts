@@ -44,6 +44,7 @@ export const sendServiceAgreement = action({
       companyEmail: payload.company.companyEmail ?? undefined,
       companyPhone: payload.company.companyPhone ?? undefined,
       clientName: payload.clientName,
+      language: payload.language,
       agreement: payload.agreement,
     });
 

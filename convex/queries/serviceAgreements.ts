@@ -115,9 +115,14 @@ async function clientRelationshipIds(ctx: any, clientUserId: any) {
 
 async function clientAgreementPayload(ctx: any, agreement: any) {
   const company = await ctx.db.get(agreement.companyId);
+  const site = await ctx.db
+    .query("companySites")
+    .withIndex("by_companyId", (q: any) => q.eq("companyId", agreement.companyId))
+    .first();
   return {
     _id: agreement._id,
     companyName: company?.companyDisplayName ?? company?.name ?? "Your Cleaning Company",
+    companyEmail: site?.publicEmail ?? company?.contactEmail ?? null,
     title: agreement.title,
     status: agreement.status,
     clientName: agreement.clientName,
@@ -133,6 +138,7 @@ async function clientAgreementPayload(ctx: any, agreement: any) {
     body: agreement.body,
     sentAt: agreement.sentAt,
     signedAt: agreement.signedAt,
+    clientRespondedAt: agreement.clientRespondedAt,
     declinedAt: agreement.declinedAt,
     clientResponseNote: agreement.clientResponseNote,
   };

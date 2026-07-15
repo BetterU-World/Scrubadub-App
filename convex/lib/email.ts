@@ -191,7 +191,7 @@ export async function sendProposalEmail(args: ProposalEmailArgs): Promise<boolea
   }
 }
 
-type ServiceAgreementEmailArgs = {
+export type ServiceAgreementEmailArgs = {
   email: string;
   viewUrl: string;
   companyName: string;
@@ -199,6 +199,7 @@ type ServiceAgreementEmailArgs = {
   companyEmail?: string;
   companyPhone?: string;
   clientName: string;
+  language?: "en" | "es";
   agreement: {
     title: string;
     propertyAddress?: string | null;
@@ -209,71 +210,61 @@ type ServiceAgreementEmailArgs = {
   };
 };
 
+export function renderServiceAgreementEmail(args: ServiceAgreementEmailArgs) {
+  const spanish = args.language === "es";
+  const logoUrl = args.companyLogoUrl || `${getAppUrl()}/logo-icon.png`;
+  const contact = args.companyEmail
+    ? (spanish ? `Devuelve la copia firmada por correo electrónico a ${args.companyEmail} o entrégala en persona.` : `Return the signed copy by email to ${args.companyEmail} or deliver it in person.`)
+    : (spanish ? "Devuelve la copia firmada directamente a la empresa de limpieza por correo electrónico o en persona." : "Return the signed copy directly to the cleaning company by email or in person.");
+  const intro = spanish
+    ? `${args.companyName} te envió un acuerdo de servicio para revisar. SCRUB entrega el acuerdo y registra tu confirmación, pero no ofrece firma electrónica.`
+    : `${args.companyName} sent you a service agreement to review. SCRUB delivers the agreement and records your acknowledgment, but does not provide electronic signing.`;
+  const instructions = spanish
+    ? `Revisa el acuerdo, imprímelo, fírmalo y devuelve la copia firmada. ${contact}`
+    : `Review the agreement, print it, sign it, and return the signed copy. ${contact}`;
+  const fallback = spanish ? "Si el botón no funciona, abre este enlace:" : "If the button does not work, open this link:";
+  const cta = spanish ? "Revisar acuerdo" : "Review Agreement";
+  return {
+    subject: spanish ? `Acuerdo de servicio de ${args.companyName}` : `Service agreement from ${args.companyName}`,
+    html: `
+      <div style="margin:0; padding:0; background:#f3f4f6;">
+        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; max-width:640px; margin:0 auto; padding:32px 16px;">
+          <div style="background:#fff; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden;">
+            <div style="padding:28px;">
+              <img src="${escapeHtml(logoUrl)}" alt="" width="44" height="44" style="border-radius:10px; object-fit:cover; margin-bottom:16px;" />
+              <h1 style="margin:0 0 8px; color:#111827; font-size:22px;">${escapeHtml(args.agreement.title)}</h1>
+              <p style="margin:0 0 16px; color:#6b7280; font-size:14px;">${escapeHtml(args.companyName)}</p>
+              <p style="color:#374151; font-size:15px; line-height:1.7;">${escapeHtml(intro)}</p>
+              <p style="color:#374151; font-size:15px; line-height:1.7;"><strong>${spanish ? "Firma fuera de SCRUB:" : "Sign outside SCRUB:"}</strong> ${escapeHtml(instructions)}</p>
+              <div style="border:1px solid #e5e7eb; border-radius:10px; padding:18px; background:#fafafa; margin:22px 0;">
+                <table style="width:100%; border-collapse:collapse;">
+                  ${detailRow(spanish ? "Dirección" : "Address", args.agreement.propertyAddress)}
+                  ${detailRow(spanish ? "Frecuencia" : "Service frequency", args.agreement.serviceFrequencyLabel)}
+                  ${detailRow(spanish ? "Precio" : "Price", args.agreement.priceSummary)}
+                  ${detailRow(spanish ? "Facturación" : "Billing schedule", args.agreement.billingSchedule)}
+                  ${detailRow(spanish ? "Fecha de inicio" : "Start date", args.agreement.effectiveStartDate)}
+                </table>
+              </div>
+              <p style="text-align:center; margin:28px 0;"><a href="${escapeHtml(args.viewUrl)}" style="background:#111827; color:#fff; padding:13px 22px; border-radius:7px; text-decoration:none; display:inline-block; font-size:15px; font-weight:700;">${cta}</a></p>
+              <p style="color:#6b7280; font-size:12px; line-height:1.6; overflow-wrap:anywhere;">${fallback}<br /><a href="${escapeHtml(args.viewUrl)}">${escapeHtml(args.viewUrl)}</a></p>
+            </div>
+          </div>
+        </div>
+      </div>`,
+    text: `${intro}\n\n${instructions}\n\n${cta}: ${args.viewUrl}\n\n${fallback}\n${args.viewUrl}`,
+  };
+}
+
 export async function sendServiceAgreementEmail(
   args: ServiceAgreementEmailArgs
 ): Promise<boolean> {
   const resend = getResendClient();
-  const appUrl = getAppUrl();
-  const logoUrl = args.companyLogoUrl || `${appUrl}/logo-icon.png`;
-
   try {
+    const rendered = renderServiceAgreementEmail(args);
     const { error } = await resend.emails.send({
       from: getFromEmail(),
       to: args.email,
-      subject: "Your service agreement is ready",
-      html: `
-        <div style="margin:0; padding:0; background:#f3f4f6;">
-          <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; max-width:640px; margin:0 auto; padding:32px 16px;">
-            <div style="background:#ffffff; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden;">
-              <div style="padding:28px 28px 20px; border-bottom:1px solid #eef2f7;">
-                <div style="display:flex; align-items:center; gap:12px;">
-                  <img src="${escapeHtml(logoUrl)}" alt="" width="44" height="44" style="border-radius:10px; object-fit:cover;" />
-                  <div>
-                    <p style="margin:0; color:#6b7280; font-size:13px;">Service agreement from</p>
-                    <h1 style="margin:2px 0 0; color:#111827; font-size:22px; line-height:1.25;">${escapeHtml(args.companyName)}</h1>
-                  </div>
-                </div>
-              </div>
-
-              <div style="padding:28px;">
-                <p style="margin:0 0 16px; color:#111827; font-size:17px; line-height:1.5;">Hi ${escapeHtml(args.clientName)},</p>
-                <p style="margin:0 0 22px; color:#374151; font-size:15px; line-height:1.7;">
-                  ${escapeHtml(args.companyName)} prepared your service agreement for review. Sign in to your SCRUB client portal to accept or decline it.
-                </p>
-
-                <div style="border:1px solid #e5e7eb; border-radius:10px; padding:18px; background:#fafafa; margin:0 0 22px;">
-                  <p style="margin:0 0 4px; color:#6b7280; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;">Agreement</p>
-                  <h2 style="margin:0 0 14px; color:#111827; font-size:20px; line-height:1.3;">${escapeHtml(args.agreement.title)}</h2>
-                  <table style="width:100%; border-collapse:collapse;">
-                    ${detailRow("Address", args.agreement.propertyAddress)}
-                    ${detailRow("Service frequency", args.agreement.serviceFrequencyLabel)}
-                    ${detailRow("Price", args.agreement.priceSummary)}
-                    ${detailRow("Billing schedule", args.agreement.billingSchedule)}
-                    ${detailRow("Start date", args.agreement.effectiveStartDate)}
-                  </table>
-                </div>
-
-                <p style="text-align:center; margin:30px 0 16px;">
-                  <a href="${escapeHtml(args.viewUrl)}" style="background-color:#111827; color:#ffffff; padding:13px 22px; border-radius:7px; text-decoration:none; display:inline-block; font-size:15px; font-weight:700;">
-                    View Agreement
-                  </a>
-                </p>
-                <p style="margin:0; color:#6b7280; font-size:13px; line-height:1.6; text-align:center;">
-                  This link opens your authenticated SCRUB client portal.
-                </p>
-              </div>
-
-              <div style="padding:18px 28px; background:#f9fafb; border-top:1px solid #eef2f7;">
-                <p style="margin:0; color:#6b7280; font-size:12px; line-height:1.6;">
-                  Sent by ${escapeHtml(args.companyName)} through SCRUB.
-                  ${args.companyEmail ? ` Contact: ${escapeHtml(args.companyEmail)}.` : ""}
-                  ${args.companyPhone ? ` ${escapeHtml(args.companyPhone)}.` : ""}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      `,
+      ...rendered,
     });
 
     if (error) {
