@@ -694,6 +694,82 @@ export async function sendPartnerInviteEmail(
   }
 }
 
+export type PartnerSharedJobEmailArgs = {
+  email: string;
+  fromCompanyName: string;
+  toCompanyName: string;
+  propertyName: string;
+  serviceType: string;
+  scheduledDate: string;
+  startTime?: string;
+  durationMinutes: number;
+  notes?: string;
+  copiedJobId: string;
+  timezone: string;
+  language?: "en" | "es";
+};
+
+function formatSharedJobTime(startTime: string | undefined, durationMinutes: number): string | undefined {
+  if (!startTime || !/^\d{2}:\d{2}$/.test(startTime)) return undefined;
+  const [hours, minutes] = startTime.split(":").map(Number);
+  if (hours > 23 || minutes > 59) return undefined;
+  const end = hours * 60 + minutes + durationMinutes;
+  const endHours = Math.floor(end / 60) % 24;
+  const endMinutes = end % 60;
+  return `${startTime}–${String(endHours).padStart(2, "0")}:${String(endMinutes).padStart(2, "0")}`;
+}
+
+export function renderPartnerSharedJobEmail(args: PartnerSharedJobEmailArgs) {
+  const appUrl = getAppUrl();
+  const fromCompanyName = escapeHtml(args.fromCompanyName);
+  const toCompanyName = escapeHtml(args.toCompanyName);
+  const propertyName = escapeHtml(args.propertyName);
+  const serviceType = escapeHtml(args.serviceType.replace(/_/g, " "));
+  const scheduledDate = escapeHtml(args.scheduledDate);
+  const timezone = escapeHtml(args.timezone);
+  const time = formatSharedJobTime(args.startTime, args.durationMinutes);
+  const notes = args.notes?.trim() ? escapeHtml(args.notes.trim()) : undefined;
+  const jobUrl = `${appUrl}/jobs/${encodeURIComponent(args.copiedJobId)}`;
+  const spanish = args.language === "es";
+  const safeSubjectCompany = args.fromCompanyName.replace(/[\r\n]+/g, " ").trim();
+
+  return {
+    subject: spanish ? `Nuevo trabajo compartido de ${safeSubjectCompany}` : `New shared job from ${safeSubjectCompany}`,
+    html: `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px 12px; color: #111827;">
+        <div style="text-align: center; margin-bottom: 24px;"><img src="${appUrl}/logo-icon.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" /></div>
+        <h2 style="font-size: 22px; line-height: 1.3; margin: 0 0 16px; text-align: center;">${spanish ? `${fromCompanyName} compartió un trabajo con tu empresa` : `${fromCompanyName} shared a job with your company`}</h2>
+        <p style="font-size: 15px; line-height: 1.6; color: #374151;">${spanish ? `${toCompanyName} recibió un trabajo compartido de ${serviceType} en <strong>${propertyName}</strong>. Revisa los detalles y acepta o rechaza el trabajo en SCRUB.` : `${toCompanyName} received a shared ${serviceType} job at <strong>${propertyName}</strong>. Review the details and accept or decline the job in SCRUB.`}</p>
+        <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 20px 0; font-size: 14px; line-height: 1.7;">
+          <div><strong>Location:</strong> ${propertyName}</div>
+          <div><strong>Service:</strong> ${serviceType}</div>
+          <div><strong>Date:</strong> ${scheduledDate}</div>
+          ${time ? `<div><strong>Time:</strong> ${escapeHtml(time)} (${timezone})</div>` : ""}
+          ${notes ? `<div style="margin-top: 8px;"><strong>Job notes:</strong><br />${notes.replace(/\r?\n/g, "<br />")}</div>` : ""}
+        </div>
+        <p style="font-size: 14px; font-weight: 600; color: #991b1b;">${spanish ? "Respuesta requerida" : "Response required"}</p>
+        <p style="text-align: center; margin: 28px 0;"><a href="${jobUrl}" style="background-color: #111; color: #fff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 600;">${spanish ? "Revisar trabajo compartido" : "Review Shared Job"}</a></p>
+        <p style="text-align: center; color: #9ca3af; font-size: 12px;">Powered by SCRUB</p>
+      </div>`,
+  };
+}
+
+export async function sendPartnerSharedJobEmail(args: PartnerSharedJobEmailArgs): Promise<boolean> {
+  try {
+    const resend = getResendClient();
+    const rendered = renderPartnerSharedJobEmail(args);
+    const { error } = await resend.emails.send({ from: getFromEmail(), to: args.email, ...rendered });
+    if (error) {
+      console.error("[email] Failed to send partner shared-job email");
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("[email] Error sending partner shared-job email", error instanceof Error ? error.message : "Unknown error");
+    return false;
+  }
+}
+
 export async function sendInviteEmail(
   email: string,
   inviteToken: string,
