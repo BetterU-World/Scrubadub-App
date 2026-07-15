@@ -2,6 +2,7 @@ import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwnerSession } from "../lib/sessionAuth";
 import { ensureClientRelationshipForLead } from "../lib/clientRelationships";
+import { logAudit } from "../lib/helpers";
 
 const walkthroughTypeValidator = v.union(
   v.literal("commercial"),
@@ -77,6 +78,20 @@ const walkthroughFields = {
   fieldSetVersion: v.optional(v.string()),
   structuredResponses: v.optional(v.array(structuredResponseValidator)),
 };
+
+const linkedPropertyFactsValidator = v.object({
+  address: v.string(),
+  squareFootage: v.optional(v.number()),
+  beds: v.optional(v.number()),
+  baths: v.optional(v.number()),
+  amenities: v.array(v.string()),
+  accessInstructions: v.optional(v.string()),
+  pillowCount: v.optional(v.number()),
+  sheetSets: v.optional(v.number()),
+  towelCount: v.optional(v.number()),
+  restroomCount: v.optional(v.number()),
+  trashCanCount: v.optional(v.number()),
+});
 
 type StructuredResponseValueType =
   | "text"
@@ -195,10 +210,60 @@ async function assertLinkedRecords(ctx: any, companyId: any, args: any) {
   }
   if (args.assignedManagerId) {
     const manager = await ctx.db.get(args.assignedManagerId);
-    if (!manager || manager.companyId !== companyId || manager.role !== "manager") {
+    if (
+      !manager ||
+      manager.status !== "active" ||
+      manager.companyId !== companyId ||
+      (manager.role !== "owner" && manager.role !== "manager")
+    ) {
       throw new Error("Assigned manager is invalid");
     }
   }
+}
+
+function assertScheduledFields(args: any) {
+  if (
+    args.appointmentStatus === "scheduled" &&
+    (!args.scheduledDate?.trim() || !args.scheduledStartTime?.trim())
+  ) {
+    throw new Error("A date and start time are required for a scheduled walkthrough");
+  }
+}
+
+async function updateLinkedPropertyFacts(
+  ctx: any,
+  owner: any,
+  propertyId: any,
+  facts: any
+) {
+  const property = await ctx.db.get(propertyId);
+  if (!property) throw new Error("Property not found");
+  if (property.companyId !== owner.companyId) throw new Error("Access denied");
+
+  const address = facts.address.trim();
+  if (!address) throw new Error("Property address is required");
+  const numericFacts = [
+    facts.squareFootage, facts.beds, facts.baths, facts.pillowCount, facts.sheetSets,
+    facts.towelCount, facts.restroomCount, facts.trashCanCount,
+  ];
+  if (numericFacts.some((value) => value !== undefined && (!Number.isFinite(value) || value < 0))) {
+    throw new Error("Property counts must be non-negative numbers");
+  }
+
+  await ctx.db.patch(propertyId, {
+    ...facts,
+    address,
+    accessInstructions: facts.accessInstructions?.trim() || undefined,
+    amenities: Array.from(new Set<string>(facts.amenities.map((value: string) => value.trim()).filter(Boolean))),
+  });
+  await logAudit(ctx, {
+    companyId: owner.companyId,
+    userId: owner._id,
+    action: "update_property",
+    entityType: "property",
+    entityId: propertyId,
+    details: "Updated from linked walkthrough",
+  });
 }
 
 function buildWalkthroughPatch(args: any) {
@@ -274,6 +339,7 @@ export const create = mutation({
     const owner = await requireOwnerCompany(ctx, args.sessionToken, args.userId);
     const companyId = owner.companyId!;
     await assertLinkedRecords(ctx, companyId, args);
+    assertScheduledFields(args);
     const now = Date.now();
     const request = args.clientRequestId ? await ctx.db.get(args.clientRequestId) : null;
 
@@ -308,6 +374,11 @@ export const createFromClientRequest = mutation({
     if (!request) throw new Error("Lead not found");
     if (request.companyId !== owner.companyId) throw new Error("Access denied");
     await assertLinkedRecords(ctx, owner.companyId, args);
+    assertScheduledFields({
+      appointmentStatus: "scheduled",
+      scheduledDate: args.scheduledDate,
+      scheduledStartTime: args.scheduledStartTime,
+    });
 
     const existing = await ctx.db
       .query("walkthroughs")
@@ -379,11 +450,19 @@ export const update = mutation({
     sessionToken: v.string(),
     walkthroughId: v.id("walkthroughs"),
     clientRequestId: v.optional(v.id("clientRequests")),
+    linkedPropertyFacts: v.optional(linkedPropertyFactsValidator),
     ...walkthroughFields,
   },
   handler: async (ctx, args) => {
     const { owner, walkthrough } = await getOwnedWalkthrough(ctx, args.sessionToken, args.userId, args.walkthroughId);
     await assertLinkedRecords(ctx, owner.companyId, args);
+    assertScheduledFields(args);
+    if (args.linkedPropertyFacts) {
+      if (!walkthrough.propertyId || args.propertyId !== walkthrough.propertyId) {
+        throw new Error("Linked property does not match this walkthrough");
+      }
+      await updateLinkedPropertyFacts(ctx, owner, walkthrough.propertyId, args.linkedPropertyFacts);
+    }
 
     const wasScheduled = walkthrough.appointmentStatus === "scheduled";
     const scheduleChanged = walkthrough.scheduledDate !== args.scheduledDate || walkthrough.scheduledStartTime !== args.scheduledStartTime;

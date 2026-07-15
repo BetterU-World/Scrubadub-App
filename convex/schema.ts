@@ -1015,6 +1015,7 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_company", ["companyId"])
+    .index("by_companyId_scheduledDate", ["companyId", "scheduledDate"])
     .index("by_companyId_clientRelationshipId_updatedAt", ["companyId", "clientRelationshipId", "updatedAt"])
     .index("by_clientRequest", ["clientRequestId"])
     .index("by_property", ["propertyId"])

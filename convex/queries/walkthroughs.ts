@@ -179,3 +179,65 @@ export const listByProposal = query({
     return await Promise.all(scoped.map((walkthrough: any) => decorateWalkthrough(ctx, walkthrough)));
   },
 });
+
+export const listCalendarWalkthroughs = query({
+  args: {
+    userId: v.id("users"),
+    sessionToken: v.string(),
+    companyId: v.id("companies"),
+    startDate: v.string(),
+    endDate: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwnerCompany(ctx, args.sessionToken, args.userId);
+    if (owner.companyId !== args.companyId) throw new Error("Access denied");
+
+    const walkthroughs = await ctx.db
+      .query("walkthroughs")
+      .withIndex("by_companyId_scheduledDate", (q: any) =>
+        q
+          .eq("companyId", args.companyId)
+          .gte("scheduledDate", args.startDate)
+          .lte("scheduledDate", args.endDate)
+      )
+      .collect();
+
+    return await Promise.all(
+      walkthroughs
+        .filter((walkthrough: any) =>
+          walkthrough.status !== "archived" &&
+          walkthrough.appointmentStatus !== "cancelled" &&
+          Boolean(walkthrough.scheduledDate && walkthrough.scheduledStartTime)
+        )
+        .map(async (walkthrough: any) => {
+          const property: any = walkthrough.propertyId ? await ctx.db.get(walkthrough.propertyId) : null;
+          const request: any = walkthrough.clientRequestId ? await ctx.db.get(walkthrough.clientRequestId) : null;
+          const assignedManager: any = walkthrough.assignedManagerId
+            ? await ctx.db.get(walkthrough.assignedManagerId)
+            : null;
+          return {
+            _id: walkthrough._id,
+            title: walkthrough.title,
+            scheduledDate: walkthrough.scheduledDate!,
+            scheduledStartTime: walkthrough.scheduledStartTime!,
+            scheduledEndTime: walkthrough.scheduledEndTime,
+            appointmentStatus: walkthrough.appointmentStatus,
+            clientRequestId:
+              request?.companyId === owner.companyId ? walkthrough.clientRequestId : undefined,
+            propertyId:
+              property?.companyId === owner.companyId ? walkthrough.propertyId : undefined,
+            propertyName:
+              property?.companyId === owner.companyId
+                ? property.name
+                : request?.companyId === owner.companyId
+                  ? request.propertySnapshot?.name || request.businessName || request.requesterName
+                  : undefined,
+            assignedManager:
+              assignedManager?.companyId === owner.companyId
+                ? { _id: assignedManager._id, name: assignedManager.name }
+                : null,
+          };
+        })
+    );
+  },
+});

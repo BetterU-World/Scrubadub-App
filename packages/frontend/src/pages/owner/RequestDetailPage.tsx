@@ -39,6 +39,20 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
+function leadPipelineStorageKey(userId: string) {
+  return `scrubadub.request-details.lead-pipeline.${userId}`;
+}
+
+function loadLeadPipelineExpanded(userId?: string) {
+  if (!userId) return true;
+  try {
+    const saved = localStorage.getItem(leadPipelineStorageKey(userId));
+    return saved === null ? true : saved === "true";
+  } catch {
+    return true;
+  }
+}
+
 export function RequestDetailPage() {
   const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
@@ -173,6 +187,19 @@ export function RequestDetailPage() {
     message: string;
     type: "success" | "error";
   } | null>(null);
+  const [leadPipelineExpanded, setLeadPipelineExpanded] = useState(() =>
+    loadLeadPipelineExpanded(user?._id)
+  );
+
+  const handleLeadPipelineExpandedChange = (expanded: boolean) => {
+    setLeadPipelineExpanded(expanded);
+    if (!user) return;
+    try {
+      localStorage.setItem(leadPipelineStorageKey(user._id), String(expanded));
+    } catch {
+      // Browser storage may be unavailable or full; keep the in-memory preference.
+    }
+  };
 
   // Lead pipeline state
   const [leadNotesVal, setLeadNotesVal] = useState("");
@@ -1528,7 +1555,8 @@ export function RequestDetailPage() {
       <CollapsibleSection
         title={t("requests.leadPipeline")}
         subtitle={t("requests.leadPipelineHelper")}
-        defaultExpanded
+        expanded={leadPipelineExpanded}
+        onExpandedChange={handleLeadPipelineExpandedChange}
         className="mt-4"
       >
 

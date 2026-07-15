@@ -7,7 +7,7 @@ import { HowItWorks } from "@/components/ui/HowItWorks";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Link } from "wouter";
-import { ChevronLeft, ChevronRight, Clock, MapPin, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, ClipboardCheck, Clock, MapPin, Users } from "lucide-react";
 import {
   format,
   startOfMonth,
@@ -79,6 +79,33 @@ export function CalendarPage() {
         }
       : "skip"
   );
+  const walkthroughs = useQuery(
+    (api as any).queries.walkthroughs.listCalendarWalkthroughs,
+    user?.role === "owner" && user.companyId
+      ? {
+          companyId: user.companyId,
+          userId: user._id,
+          sessionToken,
+          startDate: format(rangeStart, "yyyy-MM-dd"),
+          endDate: format(rangeEnd, "yyyy-MM-dd"),
+        }
+      : "skip"
+  );
+
+  const calendarItems = useMemo(() => [
+    ...(jobs ?? []).map((job) => ({ ...job, eventType: "job", href: `/jobs/${job._id}` })),
+    ...(walkthroughs ?? []).map((walkthrough: any) => ({
+      ...walkthrough,
+      eventType: "walkthrough",
+      href: walkthrough.clientRequestId ? `/requests/${walkthrough.clientRequestId}` : "/requests",
+      startTime: walkthrough.scheduledStartTime,
+      endTime: walkthrough.scheduledEndTime,
+      status: walkthrough.appointmentStatus ?? "scheduled",
+      cleanerIds: [],
+      cleaners: [],
+      propertyName: walkthrough.propertyName || walkthrough.title,
+    })),
+  ], [jobs, walkthroughs]);
 
   // Query properties for filter dropdown
   const properties = useQuery(
@@ -99,21 +126,20 @@ export function CalendarPage() {
   const propertyOptions = useMemo(() => {
     if (properties) return properties;
     const options = new Map<string, { _id: string; name: string }>();
-    for (const job of jobs ?? []) {
-      if (job.propertyId) {
-        options.set(String(job.propertyId), {
-          _id: String(job.propertyId),
-          name: job.propertyName,
+    for (const item of calendarItems) {
+      if (item.propertyId) {
+        options.set(String(item.propertyId), {
+          _id: String(item.propertyId),
+          name: item.propertyName,
         });
       }
     }
     return [...options.values()];
-  }, [properties, jobs]);
+  }, [properties, calendarItems]);
 
   // Apply client-side filters (role-based + user selections)
   const filteredJobs = useMemo(() => {
-    if (!jobs) return [];
-    let result = [...jobs];
+    let result = [...calendarItems];
 
     // Cleaners only see their own jobs
     if (user?.role === "cleaner" || user?.role === "maintenance") {
@@ -127,13 +153,13 @@ export function CalendarPage() {
 
     // Cleaner filter
     if (cleanerFilter !== "all") {
-      result = result.filter((job) =>
-        job.cleanerIds.includes(cleanerFilter as any)
+      result = result.filter((item) =>
+        item.eventType === "job" && item.cleanerIds.includes(cleanerFilter as any)
       );
     }
 
     return result;
-  }, [jobs, user, propertyFilter, cleanerFilter]);
+  }, [calendarItems, user, propertyFilter, cleanerFilter]);
 
   // Group jobs by date string
   const jobsByDate = useMemo(() => {
@@ -192,6 +218,7 @@ export function CalendarPage() {
 
   // Color helper based on job status first, then acceptanceStatus
   const getJobColor = (job: any) => {
+    if (job.eventType === "walkthrough") return "bg-purple-100 text-purple-800 hover:bg-purple-200";
     if (job.status === "cancelled") return "bg-gray-100 text-gray-400 hover:bg-gray-200";
     if (job.status === "approved" || job.status === "submitted") return "bg-gray-200 text-gray-500 hover:bg-gray-300";
     const acceptance = job.acceptanceStatus ?? "pending";
@@ -347,6 +374,10 @@ export function CalendarPage() {
       {/* Legend */}
       <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-gray-500">
         <div className="flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded bg-purple-100 border border-purple-200" />
+          {t("calendar.walkthrough")}
+        </div>
+        <div className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-3 rounded bg-green-100 border border-green-200" />
           {t("status.accepted")}
         </div>
@@ -422,8 +453,8 @@ function MonthView({ days, currentDate, today, jobsByDate, getJobColor, isJobStr
             </div>
             <div className="space-y-1">
               {dayJobs.slice(0, 3).map((job) => (
-                <Link key={job._id} href={`/jobs/${job._id}`} className={`block text-xs p-1 rounded truncate ${getJobColor(job)} ${isJobStrikethrough(job) ? "line-through" : ""}`}>
-                    {job.propertyName}{(job as any).assignedTeamName ? ` · ${(job as any).assignedTeamName}` : ""}
+                <Link key={`${job.eventType}-${job._id}`} href={job.href} className={`block text-xs p-1 rounded truncate ${getJobColor(job)} ${isJobStrikethrough(job) ? "line-through" : ""}`}>
+                    {job.eventType === "walkthrough" && <ClipboardCheck className="mr-1 inline h-3 w-3" aria-hidden="true" />}{job.propertyName}{(job as any).assignedTeamName ? ` · ${(job as any).assignedTeamName}` : ""}
                 </Link>
               ))}
               {dayJobs.length > 3 && (
@@ -502,7 +533,7 @@ function WeekView({ days, today, jobsByDate, getJobColor, isJobStrikethrough, t 
                 const borderColor = isCancelled ? "border-gray-200" : isCompleted ? "border-gray-300" : acceptance === "accepted" ? "border-green-300" : acceptance === "denied" ? "border-red-300" : "border-gray-200";
                 const bgColor = isCancelled ? "bg-gray-50" : isCompleted ? "bg-gray-50" : "bg-white";
                 return (
-                <Link key={job._id} href={`/jobs/${job._id}`} className={`block p-2 rounded-lg border ${borderColor} hover:shadow-sm transition-all ${bgColor}`}>
+                <Link key={`${job.eventType}-${job._id}`} href={job.href} className={`block p-2 rounded-lg border ${job.eventType === "walkthrough" ? "border-purple-200" : borderColor} hover:shadow-sm transition-all ${job.eventType === "walkthrough" ? "bg-purple-50" : bgColor}`}>
                     {job.startTime && (
                       <div className={`flex items-center gap-1 text-xs mb-1 ${isCancelled || isCompleted ? "text-gray-400" : "text-gray-500"}`}>
                         <Clock className="w-3 h-3" />
@@ -510,7 +541,7 @@ function WeekView({ days, today, jobsByDate, getJobColor, isJobStrikethrough, t 
                       </div>
                     )}
                     <div className={`text-xs font-medium truncate ${isCancelled ? "text-gray-400 line-through" : isCompleted ? "text-gray-500" : "text-gray-900"}`}>
-                      {job.propertyName}
+                      {job.eventType === "walkthrough" && <ClipboardCheck className="mr-1 inline h-3 w-3 text-purple-600" aria-hidden="true" />}{job.propertyName}
                     </div>
                     {((job as any).assignedTeamName || (job.cleaners && job.cleaners.length > 0)) && (
                       <div className={`text-xs truncate mt-0.5 ${isCancelled || isCompleted ? "text-gray-400" : "text-gray-500"}`}>
@@ -518,15 +549,18 @@ function WeekView({ days, today, jobsByDate, getJobColor, isJobStrikethrough, t 
                       </div>
                     )}
                     <div className="mt-1 flex gap-1">
-                      <StatusBadge status={job.status} className="text-[10px] px-1.5 py-0" />
-                      {!isCancelled && <StatusBadge status={acceptance} className="text-[10px] px-1.5 py-0" />}
+                      {job.eventType === "walkthrough" ? (
+                        <span className="badge bg-purple-100 px-1.5 py-0 text-[10px] text-purple-800">{t("calendar.walkthrough")}</span>
+                      ) : (
+                        <><StatusBadge status={job.status} className="text-[10px] px-1.5 py-0" />{!isCancelled && <StatusBadge status={acceptance} className="text-[10px] px-1.5 py-0" />}</>
+                      )}
                     </div>
                 </Link>
                 );
               })}
               {dayJobs.length === 0 && (
                 <div className="text-xs text-gray-300 text-center pt-4">
-                  {t("calendar.noJobs")}
+                  {t("calendar.noEvents")}
                 </div>
               )}
             </div>
@@ -561,7 +595,7 @@ function DayView({ date, today, jobs, formatJobType, isJobStrikethrough, t }: Da
       )}
       {jobs.length === 0 ? (
         <div className="text-center py-12 text-gray-400">
-          <p className="text-lg">{t("calendar.noJobsScheduled")}</p>
+          <p className="text-lg">{t("calendar.noEventsScheduled")}</p>
           <p className="text-sm mt-1">
             {format(date, "EEEE, MMMM d, yyyy")}
           </p>
@@ -573,7 +607,7 @@ function DayView({ date, today, jobs, formatJobType, isJobStrikethrough, t }: Da
             const isCompleted = job.status === "approved" || job.status === "submitted";
             const cardBg = isCancelled ? "bg-gray-50 border-gray-200" : isCompleted ? "bg-gray-50 border-gray-200" : "bg-white border-gray-200 hover:border-primary-300 hover:shadow-md";
             return (
-            <Link key={job._id} href={`/jobs/${job._id}`} className={`block p-4 rounded-lg border transition-all ${cardBg}`}>
+            <Link key={`${job.eventType}-${job._id}`} href={job.href} className={`block p-4 rounded-lg border transition-all ${job.eventType === "walkthrough" ? "bg-purple-50 border-purple-200 hover:border-purple-300 hover:shadow-md" : cardBg}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     {/* Time */}
@@ -592,7 +626,7 @@ function DayView({ date, today, jobs, formatJobType, isJobStrikethrough, t }: Da
                     <div className="flex items-center gap-1.5 mb-1">
                       <MapPin className={`w-4 h-4 flex-shrink-0 ${isCancelled || isCompleted ? "text-gray-300" : "text-gray-400"}`} />
                       <span className={`text-base font-semibold ${isCancelled ? "text-gray-400 line-through" : isCompleted ? "text-gray-500" : "text-gray-900"}`}>
-                        {job.propertyName}
+                        {job.eventType === "walkthrough" && <ClipboardCheck className="mr-1 inline h-4 w-4 text-purple-600" aria-hidden="true" />}{job.propertyName}
                       </span>
                     </div>
                     {/* Cleaners */}
@@ -606,11 +640,11 @@ function DayView({ date, today, jobs, formatJobType, isJobStrikethrough, t }: Da
                     )}
                     {/* Job type */}
                     <div className="flex items-center gap-2 flex-wrap">
-                      <StatusBadge status={job.status} />
-                      {!isCancelled && <StatusBadge status={job.acceptanceStatus ?? "pending"} />}
-                      <span className="badge bg-gray-100 text-gray-700 capitalize">
-                        {formatJobType(job.type)}
-                      </span>
+                      {job.eventType === "walkthrough" ? (
+                        <span className="badge bg-purple-100 text-purple-800">{t("calendar.walkthrough")}</span>
+                      ) : (
+                        <><StatusBadge status={job.status} />{!isCancelled && <StatusBadge status={job.acceptanceStatus ?? "pending"} />}<span className="badge bg-gray-100 text-gray-700 capitalize">{formatJobType(job.type)}</span></>
+                      )}
                     </div>
                   </div>
                 </div>
