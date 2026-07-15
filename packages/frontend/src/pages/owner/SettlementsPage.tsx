@@ -176,7 +176,7 @@ export function SettlementsPage() {
       <PageHeader
         back={{ href: "/owner/payments", label: t("navigation.backToPayments") }}
         title={t("settlements.title")}
-        description={t("settlements.description")}
+        description={t("guidance.owner.settlements")}
       />
 
       <div className="border-b border-gray-200 mb-6">

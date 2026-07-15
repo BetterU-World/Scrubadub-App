@@ -6,6 +6,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { useTranslation } from "react-i18next";
 import {
   AlertCircle,
   Banknote,
@@ -871,6 +872,7 @@ function AccountSection({ email, onSignOut }: { email: string; onSignOut: () => 
 }
 
 export function CleanerSettingsPage() {
+  const { t } = useTranslation();
   const { user, signOut } = useAuth();
   const connectStatus = useQuery(
     api.queries.cleanerStripeConnect.getCleanerConnectStatus,
@@ -983,8 +985,8 @@ export function CleanerSettingsPage() {
   return (
     <div>
       <PageHeader
-        title="Worker Settings"
-        description="Your profile, work preferences, onboarding, documents, payments, and account links."
+        title={t("settings.title")}
+        description={t("guidance.worker.settings")}
       />
 
       {stripeParam === "return" && (

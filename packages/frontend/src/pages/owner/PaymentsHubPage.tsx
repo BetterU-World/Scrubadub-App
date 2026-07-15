@@ -2,7 +2,6 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { HowItWorks } from "@/components/ui/HowItWorks";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { Link } from "wouter";
 import { Handshake, Users, ChevronRight } from "lucide-react";
@@ -35,14 +34,7 @@ export function PaymentsHubPage() {
     <div>
       <PageHeader
         title={t("payments.title")}
-        description={t("payments.description")}
-      />
-      <HowItWorks
-        steps={[
-          "This is where you manage outgoing payments tied to your operations.",
-          "Settlements and cleaner payments are tracked here as work gets completed.",
-          "Use this page to review balances, record payments, and keep everything up to date.",
-        ]}
+        description={t("guidance.owner.payments")}
       />
 
       <div className="max-w-lg space-y-2">

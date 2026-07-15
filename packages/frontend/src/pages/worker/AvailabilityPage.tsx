@@ -4,6 +4,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { useTranslation } from "react-i18next";
 
 const DAY_NAMES = [
   "Sunday",
@@ -43,6 +44,7 @@ function dateOffsetString(offsetDays: number): string {
 const MIN_OVERRIDE_DAYS = 14;
 
 export function AvailabilityPage() {
+  const { t } = useTranslation();
   const { user } = useAuth();
 
   const weekly = useQuery(
@@ -174,7 +176,7 @@ export function AvailabilityPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <PageHeader title="My Availability" />
+      <PageHeader title={t("navigation.availability")} description={t("guidance.worker.availability")} />
 
       {toast && (
         <div className="fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium bg-green-600 text-white">

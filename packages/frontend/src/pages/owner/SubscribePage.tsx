@@ -4,7 +4,6 @@ import { api } from "../../../../../convex/_generated/api";
 import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { toFriendlyMessage } from "@/lib/friendlyError";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { HowItWorks } from "@/components/ui/HowItWorks";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { CreditCard, CheckCircle } from "lucide-react";
 
@@ -74,13 +73,6 @@ export function SubscribePage() {
           title="Subscription"
           description="Manage your billing and subscription"
         />
-        <HowItWorks
-          steps={[
-            "This is where you manage your SCRUB subscription and billing.",
-            "Your current plan and payment status are shown below. All billing is handled securely through Stripe.",
-            "Use Manage Billing to update your card, switch plans, or review invoices.",
-          ]}
-        />
         <div className="card max-w-md">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 rounded-lg bg-green-100 text-green-600">
@@ -112,13 +104,6 @@ export function SubscribePage() {
       <PageHeader
         title="Subscribe"
         description="Start your 14-day free trial today"
-      />
-      <HowItWorks
-        steps={[
-          "This is where you choose a SCRUB plan that fits your team.",
-          "Every plan includes a 14-day free trial. Pick the tier that matches your team size and start immediately.",
-          "You won't be charged until the trial ends. Cancel or switch plans anytime.",
-        ]}
       />
       <div className="max-w-md">
         {/* Plan selector */}

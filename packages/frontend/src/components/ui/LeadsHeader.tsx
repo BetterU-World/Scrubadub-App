@@ -17,7 +17,7 @@ export function LeadsHeader() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">{t("requests.leads")}</h1>
         <p className="mt-1 text-sm text-gray-500">
-          {t("requests.leadsDescription")}
+          {t("guidance.owner.requests")}
         </p>
       </div>
       <div className="flex rounded-lg border border-gray-200 overflow-hidden flex-shrink-0">

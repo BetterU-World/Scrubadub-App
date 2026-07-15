@@ -3,7 +3,6 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { HowItWorks } from "@/components/ui/HowItWorks";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -189,21 +188,13 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
     <div>
       <PageHeader
         title={t("employees.title")}
-        description={t("employees.description")}
+        description={t("guidance.owner.workers")}
         action={
           <button onClick={() => setShowInvite(true)} className="btn-primary flex items-center gap-2">
             <UserPlus className="w-4 h-4" /> {t("employees.inviteEmployee")}
           </button>
         }
       />
-      <HowItWorks
-        steps={[
-          "This is your worker roster — every cleaner, manager, and maintenance worker in your company.",
-          "Operational roles stay separate from worker type, onboarding, compliance, and eligibility metadata.",
-          "Use this page to invite workers, review profiles, and manage access.",
-        ]}
-      />
-
       {/* Cleaner usage indicator */}
       {cleanerUsage && cleanerUsage.limit !== null && (
         <div className={`mb-4 p-3 rounded-lg border flex items-center justify-between flex-wrap gap-2 ${

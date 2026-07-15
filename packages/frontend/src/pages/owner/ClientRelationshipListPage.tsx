@@ -8,6 +8,7 @@ import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { RelationshipDiagnostics } from "@/components/owner/RelationshipDiagnostics";
 import { Users, Plus, Save } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 type ClientType = "residential" | "commercial" | "str" | "property_manager" | "marketplace";
 type RelationshipStatus = "active" | "inactive" | "archived";
@@ -37,6 +38,7 @@ function label(value: string) {
 }
 
 export function ClientRelationshipListPage() {
+  const { t } = useTranslation();
   const { user, sessionToken } = useAuth();
   const relationships = useQuery(
     (api as any).queries.clientRelationships.list,
@@ -84,8 +86,8 @@ export function ClientRelationshipListPage() {
   return (
     <div>
       <PageHeader
-        title="Clients"
-        description="Company-scoped client relationships for leads, properties, and service accounts."
+        title={t("clientRelationships.title")}
+        description={t("guidance.owner.clients")}
         action={
           <button
             type="button"

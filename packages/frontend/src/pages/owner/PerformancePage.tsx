@@ -102,7 +102,7 @@ export function PerformancePage() {
     <div>
       <PageHeader
         title={t("performance.title")}
-        description={t("performance.description")}
+        description={t("guidance.owner.performance")}
       />
 
       {sortedData.length === 0 ? (

@@ -129,7 +129,7 @@ export function CompanyProfilePage() {
     <div>
       <PageHeader
         title="Identity / Branding"
-        description="Set the company identity SCRUB uses for document templates."
+        description={t("guidance.owner.companyProfile")}
         back={{ href: "/owner/settings", label: t("navigation.backToSettings") }}
       />
 

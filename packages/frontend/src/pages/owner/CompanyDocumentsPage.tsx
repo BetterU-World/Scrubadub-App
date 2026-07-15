@@ -206,8 +206,8 @@ export function CompanyDocumentsPage() {
   return (
     <div>
       <PageHeader
-        title="Documents"
-        description="Manage the templates sent to clients and the company documents used by workers."
+        title={t("settings.documentsHub")}
+        description={t("guidance.owner.documents")}
         back={{ href: "/owner/settings", label: t("navigation.backToSettings") }}
       />
 

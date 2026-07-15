@@ -495,7 +495,7 @@ export function WorkerDetailPage() {
     <div>
       <PageHeader
         title={workerUser?.name ?? "Worker"}
-        description={workerUser?.email ?? "Worker profile"}
+        description={t("guidance.owner.workerDetail")}
         back={{ href: "/employees", label: t("navigation.backToWorkers") }}
       />
 

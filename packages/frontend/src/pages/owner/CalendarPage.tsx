@@ -3,7 +3,6 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { HowItWorks } from "@/components/ui/HowItWorks";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { getJobPrimaryStatus } from "@/lib/partnerJobStatus";
@@ -241,14 +240,7 @@ export function CalendarPage() {
 
   return (
     <div>
-      <PageHeader title={t("calendar.title")} />
-      <HowItWorks
-        steps={[
-          "This is your calendar view of every scheduled clean across all properties.",
-          "Jobs appear automatically as they're scheduled. Filter by property or cleaner, and switch between month, week, or day views.",
-          "Use this page to spot gaps, catch conflicts, and keep your schedule running smoothly.",
-        ]}
-      />
+      <PageHeader title={t("calendar.title")} description={t("guidance.owner.calendar")} />
 
       {/* View Mode Tabs */}
       <div className="flex items-center gap-1 mb-4 bg-gray-100 rounded-lg p-1 w-fit">

@@ -2136,5 +2136,42 @@
       "5": "Fri",
       "6": "Sat"
     }
+  },
+  "guidance": {
+    "owner": {
+      "requests": "Requests collect new service inquiries as they move through review and qualification. Qualified requests can progress through walkthroughs, proposals, and service setup.",
+      "requestDetail": "This record keeps the request, walkthrough, proposal, and service setup together. Each stage preserves the information needed for the next operational decision.",
+      "walkthrough": "Walkthroughs capture the property's operational needs before service is proposed. A completed walkthrough can provide the basis for scope and pricing.",
+      "proposal": "Proposals organize the proposed scope, frequency, and pricing for client review. An accepted proposal can progress to service agreement and account setup.",
+      "serviceAgreement": "Service agreements record the proposed service terms for client review. Their status reflects the client's response before recurring operations begin.",
+      "commercialAccounts": "Commercial accounts represent active or planned service relationships after the sales workflow. They connect service details, scheduling responsibility, and account status.",
+      "clients": "Clients connect the people or organizations associated with leads, properties, proposals, and service accounts. Their records keep relationship history together as work progresses.",
+      "clientDetail": "This record brings the client's contacts and related operational records together. New leads and service relationships remain connected to the same client history.",
+      "propertyDetail": "This property record keeps service details, inventory, job history, and calendar connections together. Updates here support future scheduling and field work.",
+      "inventoryTemplates": "Inventory templates define reusable supply standards that can be applied to properties. Property inventory can then be maintained from a consistent baseline.",
+      "jobs": "Jobs represent scheduled field work and its progress from assignment through completion. This view provides operational oversight across properties and workers.",
+      "jobDetail": "This job brings together assignments, progress, photos, notes, and approvals from scheduling through completion.",
+      "calendar": "The calendar brings scheduled jobs into a time-based operational view. It helps teams identify coverage, timing, and potential scheduling conflicts.",
+      "workers": "The worker roster brings access, operational role, onboarding, and eligibility information together. Worker records support assignment readiness and ongoing compliance review.",
+      "workerDetail": "This record brings together the worker's access, onboarding, role, and operational readiness. Changes here may affect future assignments and available platform access.",
+      "documents": "Documents brings client-facing templates and worker-facing company records into one administrative area. Each document type remains available within its relevant workflow.",
+      "workerDocuments": "Worker documents support onboarding and compliance across the company. Access and review status show which records are available and where owner follow-up may remain.",
+      "companyProfile": "Company profile details supply the business identity used across SCRUB. Updates may appear in generated documents and other client-facing records.",
+      "payments": "Payments brings operational payment records and partner settlements into one place. Each area tracks a different payment relationship and can be reviewed separately.",
+      "cleanerPayments": "Cleaner payments track completed work and its payment status by worker. Records here support payment review and reconciliation.",
+      "settlements": "Settlements track amounts associated with work shared between partner companies. Statuses document review and reconciliation between the participating companies.",
+      "performance": "Performance summarizes completed work and available quality signals across the team. It supports ongoing operational review.",
+      "partners": "Partner Companies supports cross-company work sharing. Connections established here can affect job visibility, responsibility, and settlement records.",
+      "siteSetup": "Your public site presents the company's services and collects new client requests. Published details shape what prospective clients see before entering the request workflow."
+    },
+    "worker": {
+      "availability": "Availability records when you are generally able to work. Scheduling teams can use it when reviewing future assignments, while confirmed jobs remain visible in Jobs.",
+      "settings": "Worker Settings brings profile, work preferences, onboarding records, documents, payments, and account connections together.",
+      "manuals": "Manuals provide company standards and reference material used during field work. Available manuals remain accessible here for ongoing review.",
+      "payments": "Payment history shows payment records associated with completed work. Individual entries provide the status and details recorded in SCRUB."
+    },
+    "client": {
+      "agreementReview": "This agreement records the service terms provided for your review. Its status updates after an available response is submitted."
+    }
   }
 }

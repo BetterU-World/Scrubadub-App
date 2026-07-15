@@ -3,7 +3,6 @@ import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { HowItWorks } from "@/components/ui/HowItWorks";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -134,21 +133,13 @@ export function JobListPage() {
     <div>
       <PageHeader
         title={t("jobs.title")}
-        description={t("jobs.description")}
+        description={t("guidance.owner.jobs")}
         action={
           <Link href="/jobs/new" className="btn-primary flex items-center gap-2">
             <Plus className="w-4 h-4" /> {t("jobs.scheduleJob")}
           </Link>
         }
       />
-      <HowItWorks
-        steps={[
-          "This is where you manage all cleaning jobs across your properties.",
-          "Jobs move from scheduled to completed as your team works through them. Filter by date, property, or status to find what you need.",
-          "Use this page to assign cleaners, track progress, and stay on top of every clean.",
-        ]}
-      />
-
       {/* Date range + search controls */}
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">

@@ -4,7 +4,6 @@ import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { HowItWorks } from "@/components/ui/HowItWorks";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -59,7 +58,7 @@ export function InventoryTemplatesPage() {
     <div className="max-w-3xl mx-auto">
       <PageHeader
         title={t("inventoryTemplates.title")}
-        description={t("inventoryTemplates.description")}
+        description={t("guidance.owner.inventoryTemplates")}
         action={
           <button
             onClick={() => { setCreating(true); setEditingId(null); }}
@@ -69,14 +68,6 @@ export function InventoryTemplatesPage() {
           </button>
         }
       />
-      <HowItWorks
-        steps={[
-          "This is where you define reusable supply checklists for your properties.",
-          "Templates group inventory items by category. Assign a template to a property and your cleaners will know exactly what to restock.",
-          "Create, edit, or remove templates here to keep your inventory standards consistent across every property.",
-        ]}
-      />
-
       {creating && (
         <div className="mb-6">
           <TemplateEditor

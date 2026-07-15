@@ -732,6 +732,7 @@ export function RequestDetailPage() {
     <div>
       <PageHeader
         title={request.requesterName}
+        description={t("guidance.owner.requestDetail")}
         back={{ href: "/requests", label: t("navigation.backToRequests") }}
         action={
           <div className="flex gap-2 flex-wrap">
@@ -870,7 +871,13 @@ export function RequestDetailPage() {
         </div>
       </div>
 
-      <CollapsibleSection title={t("walkthroughs.title")} defaultExpanded className="mt-4" contentClassName="-m-4 mt-0">
+      <CollapsibleSection
+        title={t("walkthroughs.title")}
+        subtitle={t("guidance.owner.walkthrough")}
+        defaultExpanded
+        className="mt-4"
+        contentClassName="-m-4 mt-0"
+      >
         <WalkthroughCard
           clientRequestId={request._id}
           allowCreate
@@ -884,7 +891,7 @@ export function RequestDetailPage() {
       {/* Proposal */}
       <CollapsibleSection
         title={t("proposals.title")}
-        subtitle={proposal ? t("proposals.description") : t("proposals.emptyDesc")}
+        subtitle={t("guidance.owner.proposal")}
         icon={<FileText className="h-4 w-4" />}
         badge={proposal ? <>
           <span className="badge bg-primary-50 text-primary-700 capitalize">{t(`proposals.statuses.${proposal.status}`)}</span>
@@ -1136,6 +1143,9 @@ export function RequestDetailPage() {
                   <Check className="w-4 h-4" />
                   {t("proposals.acceptedBanner")}
                 </div>
+                <p className="text-sm text-gray-500">
+                  {t("guidance.owner.serviceAgreement")}
+                </p>
                 <ServiceAgreementCard
                   proposalId={proposal._id}
                   canCreate

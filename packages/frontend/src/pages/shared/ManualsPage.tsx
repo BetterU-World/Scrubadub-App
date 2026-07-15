@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { HowItWorks } from "@/components/ui/HowItWorks";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BookOpen, ExternalLink, Users, Sparkles, AppWindow, BookMarked, Upload, Download, X, Check } from "lucide-react";
@@ -181,7 +180,7 @@ export function ManualsPage() {
     <div>
       <PageHeader
         title={t("manuals.title")}
-        description={t("manuals.description")}
+        description={t("guidance.worker.manuals")}
         action={
           user.isSuperadmin && (
             <div className="flex items-center gap-2">
@@ -203,14 +202,6 @@ export function ManualsPage() {
           )
         }
       />
-      <HowItWorks
-        steps={[
-          "This is where you manage your team's cleaning standards and reference docs.",
-          "Manuals define how work should be done across your company, organized by category for easy access.",
-          "Share these with your cleaners so every clean meets your standard.",
-        ]}
-      />
-
       <div className="space-y-8 max-w-2xl">
         <p className="text-xs text-gray-400">{t("manuals.lastUpdated", { date: "March 1, 2026" })}</p>
 

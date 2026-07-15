@@ -134,8 +134,8 @@ export function CompanyOnboardingDocumentsPage() {
   return (
     <div>
       <PageHeader
-        title="Worker Documents"
-        description="Upload and manage the PDFs workers use during onboarding and compliance. Each card shows who can access the document and whether owner action is needed."
+        title={t("settings.workerDocuments")}
+        description={t("guidance.owner.workerDocuments")}
         back={{ href: "/owner/settings", label: t("navigation.backToSettings") }}
       />
 
