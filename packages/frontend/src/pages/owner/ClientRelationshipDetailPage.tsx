@@ -381,7 +381,7 @@ export function ClientRelationshipDetailPage() {
             <h2 className="text-sm font-semibold text-gray-900">{t("clientRelationships.clientAccess")}</h2>
             <p className="text-sm text-gray-500">
               {t(`clientRelationships.inviteStatuses.${relationship.inviteStatus}`)}
-              {relationship.inviteSentAt ? ` Ã‚Â· ${formatDate(relationship.inviteSentAt, "")}` : ""}
+              {relationship.inviteSentAt ? ` · ${formatDate(relationship.inviteSentAt, "")}` : ""}
             </p>
           </div>
           {!relationship.email && (

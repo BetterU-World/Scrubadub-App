@@ -221,7 +221,7 @@ export function MaintenanceJobDetailPage() {
 
           {job.status === "rework_requested" && (
             <div className="text-center text-sm text-red-600 font-medium py-2">
-              Owner has requested rework Ã¢â‚¬â€ tap Start Work to redo.
+              Owner has requested rework — tap Start Work to redo.
             </div>
           )}
 

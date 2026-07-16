@@ -502,7 +502,7 @@ export function JobDetailPage() {
                             {item.itemName}
                           </span>
                           {item.isRedFlag && <Flag className="w-3 h-3 text-red-500" />}
-                          {item.note && <span className="text-xs text-gray-400">Ã¢â‚¬â€ {item.note}</span>}
+                          {item.note && <span className="text-xs text-gray-400">— {item.note}</span>}
                         </div>
                       ))}
                     </div>
@@ -607,7 +607,7 @@ export function JobDetailPage() {
           </div>
         )}
 
-        {/* Cleaner Payment panel Ã¢â‚¬â€ Owner view */}
+        {/* Cleaner Payment panel — Owner view */}
         {user?.role === "owner" && cleanerPaymentData && cleanerPaymentData.cleanerUserId && (() => {
           const { payment, cleanerName, cleanerStripeAccountId } = cleanerPaymentData;
           const isPaid = payment?.status === "PAID";
@@ -622,7 +622,7 @@ export function JobDetailPage() {
               </h3>
 
               {isRejectedOrCancelled && !isPaid ? (
-                /* Rejected or cancelled Ã¢â‚¬â€ no payment actions */
+                /* Rejected or cancelled — no payment actions */
                 <div className="flex items-center gap-2 py-2">
                   <AlertTriangle className="w-4 h-4 text-gray-400" />
                   <p className="text-sm text-gray-500">
@@ -651,7 +651,7 @@ export function JobDetailPage() {
                           <CreditCard className="w-3 h-3" /> {t("payments.viaScrub")}
                         </span>
                       ) : (
-                        <span> Ã¢â‚¬â€ {t("payments.paidOutsideApp")}</span>
+                        <span> — {t("payments.paidOutsideApp")}</span>
                       )}
                     </p>
                   )}
@@ -852,7 +852,7 @@ export function JobDetailPage() {
           );
         })()}
 
-        {/* Cleaner Payment panel Ã¢â‚¬â€ Cleaner view (read-only planned pay) */}
+        {/* Cleaner Payment panel — Cleaner view (read-only planned pay) */}
         {user?.role !== "owner" && job.cleanerIds?.includes(user?._id as any) && (
           <div className="card border-emerald-200">
             <h3 className="font-semibold text-emerald-700 flex items-center gap-2 mb-3">
@@ -1007,7 +1007,7 @@ export function JobDetailPage() {
                 <span>{t("common.loading")}</span>
               </div>
             ) : settlement === null ? (
-              /* No settlement yet Ã¢â‚¬â€ create */
+              /* No settlement yet — create */
               <div className="space-y-3">
                 <p className="text-sm text-gray-600">
                   {t("jobs.createSettlementDesc")}
@@ -1052,7 +1052,7 @@ export function JobDetailPage() {
                 </button>
               </div>
             ) : settlement.status === "open" ? (
-              /* Open settlement Ã¢â‚¬â€ show amount, update, mark paid */
+              /* Open settlement — show amount, update, mark paid */
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1211,7 +1211,7 @@ export function JobDetailPage() {
         )}
       </div>
 
-      {/* Owner self-execution controls Ã¢â‚¬â€ only when owner is explicitly self-assigned */}
+      {/* Owner self-execution controls — only when owner is explicitly self-assigned */}
       {user?.role === "owner" && (job as any).assignedManagerId === user._id && (
         <div className="card border-primary-200 mt-6">
           <h3 className="font-semibold text-gray-900 flex items-center gap-2 mb-3">
@@ -1538,7 +1538,7 @@ export function JobDetailPage() {
                   const isOff = cleanerAvailability?.find((a: any) => a._id === c._id)?.isUnavailable;
                   return (
                     <option key={c._id} value={c._id} disabled={!!isOff}>
-                      {c.name} ({c.email}){isOff ? " Ã¢â‚¬â€ Unavailable" : ""}
+                      {c.name} ({c.email}){isOff ? " — Unavailable" : ""}
                     </option>
                   );
                 })}
@@ -1582,7 +1582,7 @@ export function JobDetailPage() {
   );
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Inventory Checklist Review (read-only for owner) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── Inventory Checklist Review (read-only for owner) ──────────────────
 
 const CHECKLIST_STATUS_STYLES: Record<string, string> = {
   ok: "bg-green-100 text-green-700",
@@ -1643,7 +1643,7 @@ function OwnerInventoryChecklistReview({ checklist }: { checklist: any[] }) {
                         <span className="text-[10px] font-semibold text-red-600">*</span>
                       )}
                       {item.note && (
-                        <span className="text-xs text-gray-400 truncate">Ã¢â‚¬â€ {item.note}</span>
+                        <span className="text-xs text-gray-400 truncate">— {item.note}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">

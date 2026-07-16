@@ -19,7 +19,7 @@ import {
 import { Link } from "wouter";
 import { getStaffSessionToken } from "@/hooks/useAuth";
 
-// â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Types ───────────────────────────────────────────────────────────────
 
 interface CalendarSyncTabProps {
   propertyId: Id<"properties">;
@@ -41,7 +41,7 @@ const JOB_TYPE_OPTIONS = [
   { value: "deep_clean", label: "Deep Clean" },
 ] as const;
 
-// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Helpers ─────────────────────────────────────────────────────────────
 
 function timeAgo(ms: number): string {
   const seconds = Math.floor((Date.now() - ms) / 1000);
@@ -59,7 +59,7 @@ function formatDate(iso: string): string {
   return `${m}/${d}/${y}`;
 }
 
-// â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Main Component ──────────────────────────────────────────────────────
 
 export function CalendarSyncTab({
   propertyId,
@@ -152,7 +152,7 @@ export function CalendarSyncTab({
   );
 }
 
-// â”€â”€ Connection Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Connection Section ──────────────────────────────────────────────────
 
 function ConnectionSection({
   connection,
@@ -259,7 +259,7 @@ function ConnectionSection({
     setError("");
     try {
       await triggerSync({ userId, sessionToken, connectionId: connection._id });
-      showToast("Sync started â€” results will appear shortly");
+      showToast("Sync started — results will appear shortly");
     } catch (err: any) {
       setError(err.message || "Failed to trigger sync");
     } finally {
@@ -283,7 +283,7 @@ function ConnectionSection({
               className="btn-secondary text-sm flex items-center gap-1.5"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} />
-              {syncing ? "Syncingâ€¦" : "Sync Now"}
+              {syncing ? "Syncing…" : "Sync Now"}
             </button>
             <button
               onClick={() => {
@@ -358,7 +358,7 @@ function ConnectionSection({
             <div className="flex items-center gap-1.5">
               <Link2 className="w-3.5 h-3.5" />
               <span className="capitalize font-medium">{connection.platform}</span>
-              {connection.label && <span className="text-gray-400">Â· {connection.label}</span>}
+              {connection.label && <span className="text-gray-400">· {connection.label}</span>}
             </div>
             <div className="text-xs text-gray-400 truncate">{connection.icalUrl}</div>
           </div>
@@ -424,7 +424,7 @@ function ConnectionSection({
               disabled={saving}
               className="btn-primary text-sm"
             >
-              {saving ? "Savingâ€¦" : connection ? "Update Feed" : "Connect Feed"}
+              {saving ? "Saving…" : connection ? "Update Feed" : "Connect Feed"}
             </button>
             {connection && (
               <button onClick={() => setShowForm(false)} className="btn-secondary text-sm">
@@ -445,7 +445,7 @@ function SyncStatusIcon({ status, enabled }: { status: string; enabled: boolean 
   return <Clock className="w-4 h-4 text-amber-500" />;
 }
 
-// â”€â”€ Automation Rules Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Automation Rules Section ────────────────────────────────────────────
 
 function AutomationRulesSection({
   rule,
@@ -637,7 +637,7 @@ function AutomationRulesSection({
 
           <div className="flex gap-2 pt-1">
             <button onClick={handleSave} disabled={saving} className="btn-primary text-sm">
-              {saving ? "Savingâ€¦" : "Save Rules"}
+              {saving ? "Saving…" : "Save Rules"}
             </button>
             <button onClick={() => setEditing(false)} className="btn-secondary text-sm">
               Cancel
@@ -649,7 +649,7 @@ function AutomationRulesSection({
   );
 }
 
-// â”€â”€ Reservations Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Reservations Section ────────────────────────────────────────────────
 
 function ReservationsSection({ reservations }: { reservations: any[] }) {
   const [expanded, setExpanded] = useState(false);
@@ -696,7 +696,7 @@ function ReservationRow({ reservation }: { reservation: any }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 text-sm">
           <span className="text-gray-900 font-medium">
-            {formatDate(reservation.checkIn)} â†’ {formatDate(reservation.checkOut)}
+            {formatDate(reservation.checkIn)} → {formatDate(reservation.checkOut)}
           </span>
           {isCancelled && (
             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">
@@ -715,7 +715,7 @@ function ReservationRow({ reservation }: { reservation: any }) {
           )}
         </div>
         <div className="text-xs text-gray-400 mt-0.5">
-          {reservation.summary && <span>{reservation.summary} Â· </span>}
+          {reservation.summary && <span>{reservation.summary} · </span>}
           {wasSkipped && reservation.skipReason && (
             <span className="text-amber-600">
               Skipped: {reservation.skipReason.replace(/_/g, " ")}
@@ -736,7 +736,7 @@ function ReservationRow({ reservation }: { reservation: any }) {
             View job <ExternalLink className="w-3 h-3" />
           </Link>
         ) : isCancelled ? (
-          <span className="text-xs text-gray-300">â€”</span>
+          <span className="text-xs text-gray-300">—</span>
         ) : null}
       </div>
     </div>

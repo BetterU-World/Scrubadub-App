@@ -134,7 +134,7 @@ export function AffiliateInvitesPage() {
   );
 }
 
-// â”€â”€ Row component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Row component ───────────────────────────────────────────────────
 
 function AffiliateRow({
   affiliate,
@@ -228,7 +228,7 @@ function AffiliateRow({
         )}
       </td>
       <td className="py-3 px-3 text-gray-600 font-mono text-xs">
-        {affiliate.referralCode ?? "â€”"}
+        {affiliate.referralCode ?? "—"}
       </td>
       <td className="py-3 px-3 text-gray-500 text-xs">{createdDate}</td>
       <td className="py-3 px-3">
@@ -265,7 +265,7 @@ function AffiliateRow({
   );
 }
 
-// â”€â”€ Invite modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Invite modal ────────────────────────────────────────────────────
 
 function InviteModal({
   callerUserId,

@@ -2067,7 +2067,7 @@ export function RequestDetailPage() {
             <p className="text-xs text-gray-400">
               {[latestFeedback.contactName, latestFeedback.contactEmail]
                 .filter(Boolean)
-                .join(" â€” ")}
+                .join(" — ")}
             </p>
           )}
         </div>

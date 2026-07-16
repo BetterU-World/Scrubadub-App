@@ -222,7 +222,7 @@ export function FeedbackInboxPage() {
                   </span>{" "}
                   {[fb.contactName, fb.contactEmail]
                     .filter(Boolean)
-                    .join(" â€” ")}
+                    .join(" — ")}
                 </div>
               )}
             </div>

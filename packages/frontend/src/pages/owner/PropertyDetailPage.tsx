@@ -389,7 +389,7 @@ function DetailsTab({ property }: { property: any }) {
   );
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Inventory Tab Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── Inventory Tab ──────────────────────────────────────────────────────
 
 interface InventoryItem {
   name: string;
@@ -658,7 +658,7 @@ function InventoryItemRow({
       <div className="flex items-center gap-4 flex-shrink-0">
         <div className="text-right">
           <div className="text-sm font-semibold text-gray-800">
-            {item.currentQty != null ? item.currentQty : "Ã¢â‚¬â€"} / {item.parLevel}
+            {item.currentQty != null ? item.currentQty : "—"} / {item.parLevel}
           </div>
           <div className="text-[10px] text-gray-400">{t("properties.inventory.currentQty")} / {t("properties.inventory.parLevel")}</div>
         </div>
@@ -751,13 +751,13 @@ function InventoryItemForm({
             value={currentQty ?? ""}
             onChange={(e) => setCurrentQty(e.target.value === "" ? undefined : Math.max(0, Number(e.target.value)))}
             min={0}
-            placeholder="Ã¢â‚¬â€"
+            placeholder="—"
           />
         </div>
         <div>
           <label className="text-xs font-medium text-gray-600">{t("properties.inventory.restockResponsibility")}</label>
           <select className="input-field mt-1" value={restockResponsibility} onChange={(e) => setRestockResponsibility(e.target.value)}>
-            <option value="">Ã¢â‚¬â€</option>
+            <option value="">—</option>
             {RESTOCK_OPTIONS.map((opt) => (
               <option key={opt} value={opt}>
                 {t(`properties.inventory.responsibility.${opt}`, opt)}
