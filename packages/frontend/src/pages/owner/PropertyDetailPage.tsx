@@ -1,3 +1,4 @@
+import { useSimpleFeedbackState } from "@/components/ui/FeedbackProvider";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -59,19 +60,9 @@ export function PropertyDetailPage() {
   const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<Tab>("details");
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useSimpleFeedbackState();
   const [toggling, setToggling] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
-
-  // Read flash toast from sessionStorage (set by PropertyFormPage)
-  useEffect(() => {
-    const msg = sessionStorage.getItem("scrubadub_toast");
-    if (msg) {
-      sessionStorage.removeItem("scrubadub_toast");
-      setToast(msg);
-      setTimeout(() => setToast(null), 3000);
-    }
-  }, []);
 
   const property = useQuery(api.queries.properties.get,
     user ? { propertyId: params.id as Id<"properties">, userId: user._id, sessionToken } : "skip"
@@ -89,11 +80,6 @@ export function PropertyDetailPage() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      {toast && (
-        <div className="fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium bg-green-600 text-white">
-          {toast}
-        </div>
-      )}
       <ConfirmDialog
         open={showArchiveConfirm}
         onOpenChange={setShowArchiveConfirm}
@@ -403,7 +389,7 @@ function DetailsTab({ property }: { property: any }) {
   );
 }
 
-// ── Inventory Tab ──────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬ Inventory Tab Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 interface InventoryItem {
   name: string;
@@ -451,12 +437,11 @@ function InventoryTab({
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [removeTarget, setRemoveTarget] = useState<string | null>(null);
   const [templateConfirm, setTemplateConfirm] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useSimpleFeedbackState();
   const [saving, setSaving] = useState(false);
 
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(null), 3000);
   };
 
   const handleAdd = async (item: InventoryItem) => {
@@ -535,11 +520,6 @@ function InventoryTab({
 
   return (
     <div className="space-y-4">
-      {toast && (
-        <div className="fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium bg-green-600 text-white">
-          {toast}
-        </div>
-      )}
 
       {/* Action bar */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -678,7 +658,7 @@ function InventoryItemRow({
       <div className="flex items-center gap-4 flex-shrink-0">
         <div className="text-right">
           <div className="text-sm font-semibold text-gray-800">
-            {item.currentQty != null ? item.currentQty : "—"} / {item.parLevel}
+            {item.currentQty != null ? item.currentQty : "Ã¢â‚¬â€"} / {item.parLevel}
           </div>
           <div className="text-[10px] text-gray-400">{t("properties.inventory.currentQty")} / {t("properties.inventory.parLevel")}</div>
         </div>
@@ -771,13 +751,13 @@ function InventoryItemForm({
             value={currentQty ?? ""}
             onChange={(e) => setCurrentQty(e.target.value === "" ? undefined : Math.max(0, Number(e.target.value)))}
             min={0}
-            placeholder="—"
+            placeholder="Ã¢â‚¬â€"
           />
         </div>
         <div>
           <label className="text-xs font-medium text-gray-600">{t("properties.inventory.restockResponsibility")}</label>
           <select className="input-field mt-1" value={restockResponsibility} onChange={(e) => setRestockResponsibility(e.target.value)}>
-            <option value="">—</option>
+            <option value="">Ã¢â‚¬â€</option>
             {RESTOCK_OPTIONS.map((opt) => (
               <option key={opt} value={opt}>
                 {t(`properties.inventory.responsibility.${opt}`, opt)}

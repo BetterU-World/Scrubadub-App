@@ -1,3 +1,4 @@
+import { useFeedbackState } from "@/components/ui/FeedbackProvider";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -136,7 +137,7 @@ export function JobDetailPage() {
   const [showReassign, setShowReassign] = useState(false);
   const [reassignCleanerId, setReassignCleanerId] = useState("");
   const [reassigning, setReassigning] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [toast, setToast] = useFeedbackState<{ message: string; type: "success" | "error" }>();
   const [showShare, setShowShare] = useState(false);
   const [shareToCompany, setShareToCompany] = useState("");
   const [sharePackage, setSharePackage] = useState(false);
@@ -162,16 +163,6 @@ export function JobDetailPage() {
   const [ownerInspNotes, setOwnerInspNotes] = useState("");
   const [ownerInspSubmitting, setOwnerInspSubmitting] = useState(false);
   const [ownerInspectionSubmitted, setOwnerInspectionSubmitted] = useState(false);
-
-  // Read flash toast from sessionStorage (set by JobFormPage)
-  useEffect(() => {
-    const msg = sessionStorage.getItem("scrubadub_toast");
-    if (msg) {
-      sessionStorage.removeItem("scrubadub_toast");
-      setToast({ message: msg, type: "success" });
-      setTimeout(() => setToast(null), 3000);
-    }
-  }, []);
 
   // Pre-fill cleaner pay amount from planned pay
   useEffect(() => {
@@ -221,15 +212,6 @@ export function JobDetailPage() {
         }
       />
 
-      {toast && (
-        <div
-          className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all ${
-            toast.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"
-          }`}
-        >
-          {toast.message}
-        </div>
-      )}
 
       <div className="space-y-6">
         {/* Job info card */}
@@ -325,10 +307,8 @@ export function JobDetailPage() {
                     try {
                       await acceptSharedJobMut({ userId: uid, sessionToken, sharedJobId: incomingShared._id });
                       setToast({ message: t("jobs.sharedJobAccepted"), type: "success" });
-                      setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
                       setToast({ message: err.message ?? t("common.failed"), type: "error" });
-                      setTimeout(() => setToast(null), 3000);
                     } finally {
                       setSharedJobAction(false);
                     }
@@ -346,10 +326,8 @@ export function JobDetailPage() {
                     try {
                       await rejectSharedJobMut({ userId: uid, sessionToken, sharedJobId: incomingShared._id });
                       setToast({ message: t("jobs.sharedJobRejected"), type: "success" });
-                      setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
                       setToast({ message: err.message ?? t("common.failed"), type: "error" });
-                      setTimeout(() => setToast(null), 3000);
                     } finally {
                       setSharedJobAction(false);
                     }
@@ -435,10 +413,8 @@ export function JobDetailPage() {
                     try {
                       await reopenInspection({ jobId: params.id as Id<"jobs">, userId: user!._id, sessionToken: getStaffSessionToken() });
                       setToast({ message: t("jobs.reinspectionRequested"), type: "success" });
-                      setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
                       setToast({ message: err.message ?? t("common.failed"), type: "error" });
-                      setTimeout(() => setToast(null), 3000);
                     }
                   }}
                   className="text-sm bg-blue-600 text-white px-4 py-1.5 rounded-lg hover:bg-blue-700 flex items-center gap-1.5 whitespace-nowrap"
@@ -526,7 +502,7 @@ export function JobDetailPage() {
                             {item.itemName}
                           </span>
                           {item.isRedFlag && <Flag className="w-3 h-3 text-red-500" />}
-                          {item.note && <span className="text-xs text-gray-400">— {item.note}</span>}
+                          {item.note && <span className="text-xs text-gray-400">Ã¢â‚¬â€ {item.note}</span>}
                         </div>
                       ))}
                     </div>
@@ -608,10 +584,8 @@ export function JobDetailPage() {
                     try {
                       await approveForm({ formId: job.form._id, notes: approveNotes || undefined, userId: uid, sessionToken: getStaffSessionToken() });
                       setToast({ message: t("jobs.jobApproved"), type: "success" });
-                      setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
                       setToast({ message: err.message ?? t("common.failedToApprove"), type: "error" });
-                      setTimeout(() => setToast(null), 3000);
                     } finally {
                       setApproving(false);
                     }
@@ -633,7 +607,7 @@ export function JobDetailPage() {
           </div>
         )}
 
-        {/* Cleaner Payment panel — Owner view */}
+        {/* Cleaner Payment panel Ã¢â‚¬â€ Owner view */}
         {user?.role === "owner" && cleanerPaymentData && cleanerPaymentData.cleanerUserId && (() => {
           const { payment, cleanerName, cleanerStripeAccountId } = cleanerPaymentData;
           const isPaid = payment?.status === "PAID";
@@ -648,7 +622,7 @@ export function JobDetailPage() {
               </h3>
 
               {isRejectedOrCancelled && !isPaid ? (
-                /* Rejected or cancelled — no payment actions */
+                /* Rejected or cancelled Ã¢â‚¬â€ no payment actions */
                 <div className="flex items-center gap-2 py-2">
                   <AlertTriangle className="w-4 h-4 text-gray-400" />
                   <p className="text-sm text-gray-500">
@@ -677,7 +651,7 @@ export function JobDetailPage() {
                           <CreditCard className="w-3 h-3" /> {t("payments.viaScrub")}
                         </span>
                       ) : (
-                        <span> — {t("payments.paidOutsideApp")}</span>
+                        <span> Ã¢â‚¬â€ {t("payments.paidOutsideApp")}</span>
                       )}
                     </p>
                   )}
@@ -766,10 +740,8 @@ export function JobDetailPage() {
                                 });
                                 setEditingPlannedPay(false);
                                 setToast({ message: t("jobs.saved"), type: "success" });
-                                setTimeout(() => setToast(null), 3000);
                               } catch (err: any) {
                                 setToast({ message: err.message ?? t("common.failedToSave"), type: "error" });
-                                setTimeout(() => setToast(null), 4000);
                               } finally {
                                 setPlannedPaySaving(false);
                               }
@@ -816,7 +788,6 @@ export function JobDetailPage() {
                             } catch (err: any) {
                               console.error("Checkout error:", err);
                               setToast({ message: toFriendlyMessage(err, t("common.paymentDidNotGoThrough")), type: "error" });
-                              setTimeout(() => setToast(null), 5000);
                             } finally {
                               setCleanerStripeLoading(false);
                             }
@@ -858,10 +829,8 @@ export function JobDetailPage() {
                               amountCents,
                             });
                             setToast({ message: t("jobs.cleanerMarkedPaid"), type: "success" });
-                            setTimeout(() => setToast(null), 3000);
                           } catch (err: any) {
                             setToast({ message: toFriendlyMessage(err, t("common.failedToRecordPayment")), type: "error" });
-                            setTimeout(() => setToast(null), 4000);
                           } finally {
                             setCleanerPaySaving(false);
                           }
@@ -883,7 +852,7 @@ export function JobDetailPage() {
           );
         })()}
 
-        {/* Cleaner Payment panel — Cleaner view (read-only planned pay) */}
+        {/* Cleaner Payment panel Ã¢â‚¬â€ Cleaner view (read-only planned pay) */}
         {user?.role !== "owner" && job.cleanerIds?.includes(user?._id as any) && (
           <div className="card border-emerald-200">
             <h3 className="font-semibold text-emerald-700 flex items-center gap-2 mb-3">
@@ -1038,7 +1007,7 @@ export function JobDetailPage() {
                 <span>{t("common.loading")}</span>
               </div>
             ) : settlement === null ? (
-              /* No settlement yet — create */
+              /* No settlement yet Ã¢â‚¬â€ create */
               <div className="space-y-3">
                 <p className="text-sm text-gray-600">
                   {t("jobs.createSettlementDesc")}
@@ -1071,10 +1040,8 @@ export function JobDetailPage() {
                         amountCents: Math.round(Number(settlementAmount) * 100),
                       });
                       setToast({ message: t("jobs.settlementCreated"), type: "success" });
-                      setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
                       setToast({ message: err.message ?? t("common.failed"), type: "error" });
-                      setTimeout(() => setToast(null), 3000);
                     } finally {
                       setSettlementSaving(false);
                     }
@@ -1085,7 +1052,7 @@ export function JobDetailPage() {
                 </button>
               </div>
             ) : settlement.status === "open" ? (
-              /* Open settlement — show amount, update, mark paid */
+              /* Open settlement Ã¢â‚¬â€ show amount, update, mark paid */
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1120,10 +1087,8 @@ export function JobDetailPage() {
                         });
                         setSettlementAmount("");
                         setToast({ message: t("jobs.amountUpdated"), type: "success" });
-                        setTimeout(() => setToast(null), 3000);
                       } catch (err: any) {
                         setToast({ message: err.message ?? t("common.failed"), type: "error" });
-                        setTimeout(() => setToast(null), 3000);
                       } finally {
                         setSettlementSaving(false);
                       }
@@ -1148,7 +1113,6 @@ export function JobDetailPage() {
                       } catch (err: any) {
                         console.error("Checkout error:", err);
                         setToast({ message: toFriendlyMessage(err, t("common.paymentDidNotGoThrough")), type: "error" });
-                        setTimeout(() => setToast(null), 5000);
                       } finally {
                         setStripePayLoading(false);
                       }
@@ -1231,10 +1195,8 @@ export function JobDetailPage() {
                       setShowSettlementPay(false);
                       setSettlementPayMethod("");
                       setToast({ message: t("jobs.settlementPaid"), type: "success" });
-                      setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
                       setToast({ message: err.message ?? t("common.failed"), type: "error" });
-                      setTimeout(() => setToast(null), 3000);
                     } finally {
                       setSettlementSaving(false);
                     }
@@ -1249,7 +1211,7 @@ export function JobDetailPage() {
         )}
       </div>
 
-      {/* Owner self-execution controls — only when owner is explicitly self-assigned */}
+      {/* Owner self-execution controls Ã¢â‚¬â€ only when owner is explicitly self-assigned */}
       {user?.role === "owner" && (job as any).assignedManagerId === user._id && (
         <div className="card border-primary-200 mt-6">
           <h3 className="font-semibold text-gray-900 flex items-center gap-2 mb-3">
@@ -1269,10 +1231,8 @@ export function JobDetailPage() {
                     try {
                       await ownerStartJobMut({ jobId: job._id, userId: uid, sessionToken: getStaffSessionToken() });
                       setToast({ message: t("jobs.cleanStarted"), type: "success" });
-                      setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
                       setToast({ message: err.message ?? t("common.failed"), type: "error" });
-                      setTimeout(() => setToast(null), 3000);
                     }
                   }}
                   className="btn-primary text-sm flex items-center gap-2"
@@ -1288,10 +1248,8 @@ export function JobDetailPage() {
                     try {
                       await ownerCompleteJobMut({ jobId: job._id, userId: uid, sessionToken: getStaffSessionToken() });
                       setToast({ message: t("jobs.cleanCompleted"), type: "success" });
-                      setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
                       setToast({ message: err.message ?? t("common.failed"), type: "error" });
-                      setTimeout(() => setToast(null), 3000);
                     }
                   }}
                   className="btn-primary text-sm flex items-center gap-2"
@@ -1359,10 +1317,8 @@ export function JobDetailPage() {
                       });
                       setOwnerInspectionSubmitted(true);
                       setToast({ message: t("jobs.inspectionSubmittedSuccess"), type: "success" });
-                      setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
                       setToast({ message: err.message ?? t("common.failed"), type: "error" });
-                      setTimeout(() => setToast(null), 3000);
                     } finally {
                       setOwnerInspSubmitting(false);
                     }
@@ -1428,10 +1384,8 @@ export function JobDetailPage() {
                         });
                         setShowConnectStripeModal(false);
                         setToast({ message: t("jobs.stripeInviteSent"), type: "success" });
-                        setTimeout(() => setToast(null), 3000);
                       } catch (err: any) {
                         setToast({ message: toFriendlyMessage(err, t("jobs.stripeInviteFailed")), type: "error" });
-                        setTimeout(() => setToast(null), 4000);
                       } finally {
                         setConnectStripeLoading(false);
                       }
@@ -1484,10 +1438,8 @@ export function JobDetailPage() {
                     setShowRework(false);
                     setReworkNotes("");
                     setToast({ message: t("jobs.reworkRequested"), type: "success" });
-                    setTimeout(() => setToast(null), 3000);
                   } catch (err: any) {
                     setToast({ message: err.message ?? t("common.failedToRequestRework"), type: "error" });
-                    setTimeout(() => setToast(null), 3000);
                   }
                 }}
                 disabled={!reworkNotes.trim()}
@@ -1554,10 +1506,8 @@ export function JobDetailPage() {
                     setShareToCompany("");
                     setSharePackage(false);
                     setToast({ message: t("jobs.jobShared"), type: "success" });
-                    setTimeout(() => setToast(null), 3000);
                   } catch (err: any) {
                     setToast({ message: err.message ?? t("common.failedToShareJob"), type: "error" });
-                    setTimeout(() => setToast(null), 3000);
                   } finally {
                     setSharing(false);
                   }
@@ -1588,7 +1538,7 @@ export function JobDetailPage() {
                   const isOff = cleanerAvailability?.find((a: any) => a._id === c._id)?.isUnavailable;
                   return (
                     <option key={c._id} value={c._id} disabled={!!isOff}>
-                      {c.name} ({c.email}){isOff ? " — Unavailable" : ""}
+                      {c.name} ({c.email}){isOff ? " Ã¢â‚¬â€ Unavailable" : ""}
                     </option>
                   );
                 })}
@@ -1614,10 +1564,8 @@ export function JobDetailPage() {
                     setShowReassign(false);
                     setReassignCleanerId("");
                     setToast({ message: t("jobs.jobReassigned"), type: "success" });
-                    setTimeout(() => setToast(null), 3000);
                   } catch (err: any) {
                     setToast({ message: err.message ?? t("common.failedToReassign"), type: "error" });
-                    setTimeout(() => setToast(null), 3000);
                   } finally {
                     setReassigning(false);
                   }
@@ -1634,7 +1582,7 @@ export function JobDetailPage() {
   );
 }
 
-// ── Inventory Checklist Review (read-only for owner) ──────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬ Inventory Checklist Review (read-only for owner) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 const CHECKLIST_STATUS_STYLES: Record<string, string> = {
   ok: "bg-green-100 text-green-700",
@@ -1695,7 +1643,7 @@ function OwnerInventoryChecklistReview({ checklist }: { checklist: any[] }) {
                         <span className="text-[10px] font-semibold text-red-600">*</span>
                       )}
                       {item.note && (
-                        <span className="text-xs text-gray-400 truncate">— {item.note}</span>
+                        <span className="text-xs text-gray-400 truncate">Ã¢â‚¬â€ {item.note}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">

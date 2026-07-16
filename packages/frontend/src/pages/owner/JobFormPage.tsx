@@ -9,6 +9,7 @@ import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useLocation, useParams, Link } from "wouter";
 import { Building2, Users, Handshake, AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useFeedback } from "@/components/ui/FeedbackProvider";
 
 const JOB_TYPES = [
   { value: "standard", labelKey: "jobTypes.standard" },
@@ -22,6 +23,7 @@ const JOB_TYPES = [
 export function JobFormPage() {
   const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
+  const feedback = useFeedback();
   const [, setLocation] = useLocation();
   const params = useParams<{ id?: string }>();
   const isEditing = !!params.id;
@@ -209,7 +211,7 @@ export function JobFormPage() {
           ...(!managerId && (existing as any)?.assignedManagerId ? { clearAssignedManager: true } : {}),
           ...(assignmentType === "individual" && (existing as any)?.assignedTeamId ? { clearAssignedTeam: true } : {}),
         });
-        sessionStorage.setItem("scrubadub_toast", t("jobs.jobUpdated"));
+        feedback.success(t("jobs.jobUpdated"));
         setLocation(`/jobs/${params.id}`);
       } else {
         const id = await createJob({
@@ -243,7 +245,7 @@ export function JobFormPage() {
           });
         }
 
-        sessionStorage.setItem("scrubadub_toast", t("jobs.jobScheduled"));
+        feedback.success(t("jobs.jobScheduled"));
         setLocation(`/jobs/${id}`);
       }
     } catch (err: any) {

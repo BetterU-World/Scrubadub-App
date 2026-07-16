@@ -1,3 +1,4 @@
+import { useSimpleFeedbackState } from "@/components/ui/FeedbackProvider";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -78,7 +79,7 @@ export function EmployeeListPage() {
   const [inviteEmailSent, setInviteEmailSent] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useSimpleFeedbackState();
   const [teamName, setTeamName] = useState("");
   const [teamDescription, setTeamDescription] = useState("");
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
@@ -155,7 +156,6 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
       setInviteLink(`${window.location.origin}/invite/${result.token}`);
       setInviteEmailSent(result.emailSent);
       setToast(result.emailSent ? t("employees.inviteCreatedAndEmailed") : t("employees.inviteCreatedCopyLink"));
-      setTimeout(() => setToast(null), 3000);
     } catch (err: any) {
       setError(err.message || "Failed to invite");
     } finally {
@@ -255,7 +255,6 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                 setTeamName("");
                 setTeamDescription("");
                 setEditingTeamId(null);
-                setTimeout(() => setToast(null), 3000);
               } catch (err: any) {
                 setError(err.message || "Failed to save team");
               }
@@ -327,7 +326,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                         value={teamMemberUserId[team._id] ?? ""}
                         onChange={(e) => setTeamMemberUserId((p) => ({ ...p, [team._id]: e.target.value }))}
                       >
-                        <option value="">Add employee…</option>
+                        <option value="">Add employeeÃ¢â‚¬Â¦</option>
                         {candidates.map((emp) => <option key={emp._id} value={emp._id}>{emp.name} ({emp.role})</option>)}
                       </select>
                       <select
@@ -523,14 +522,11 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                           setInviteLink(`${window.location.origin}/invite/${result.token}`);
                           setInviteEmailSent(true);
                           setToast(t("employees.emailResentSuccess"));
-                          setTimeout(() => setToast(null), 3000);
                         } else {
                           setToast(t("employees.emailNotSent"));
-                          setTimeout(() => setToast(null), 3000);
                         }
                       } catch (err: any) {
                         setToast(err.message ?? t("common.failed"));
-                        setTimeout(() => setToast(null), 3000);
                       }
                     }}
                     className="btn-secondary w-full mt-2 text-sm"
@@ -677,7 +673,6 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                   });
                   setEditPermsFor(null);
                   setToast("Permissions updated");
-                  setTimeout(() => setToast(null), 3000);
                 } catch (err: any) {
                   setError(err.message || "Failed to update permissions");
                 } finally {
@@ -694,11 +689,6 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
         </Dialog.Portal>
       </Dialog.Root>
 
-      {toast && (
-        <div className="fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium bg-green-600 text-white">
-          {toast}
-        </div>
-      )}
     </div>
   );
 }

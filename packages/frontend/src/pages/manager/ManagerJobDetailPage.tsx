@@ -1,3 +1,4 @@
+import { useFeedbackState } from "@/components/ui/FeedbackProvider";
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -63,7 +64,7 @@ export function ManagerJobDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [resolvingFlag, setResolvingFlag] = useState<string | null>(null);
   const [resolveNote, setResolveNote] = useState("");
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [toast, setToast] = useFeedbackState<{ message: string; type: "success" | "error" }>();
 
 
   if (job === undefined) return <PageLoader />;
@@ -91,7 +92,6 @@ export function ManagerJobDetailPage() {
       }
     } catch {
       setToast({ message: "Failed to upload photo", type: "error" });
-      setTimeout(() => setToast(null), 3000);
     } finally {
       setUploading(false);
     }
@@ -122,10 +122,8 @@ export function ManagerJobDetailPage() {
       setIssues("");
       setPhotoIds([]);
       setToast({ message: t("inspection.submitted"), type: "success" });
-      setTimeout(() => setToast(null), 3000);
     } catch (err: any) {
       setToast({ message: err.message ?? t("common.failed"), type: "error" });
-      setTimeout(() => setToast(null), 3000);
     } finally {
       setSubmitting(false);
     }
@@ -145,11 +143,6 @@ export function ManagerJobDetailPage() {
   return (
     <div className="max-w-2xl mx-auto">
       {/* Toast */}
-      {toast && (
-        <div className={`fixed top-4 right-4 z-50 px-4 py-2 rounded-lg shadow-lg text-sm text-white ${toast.type === "success" ? "bg-green-600" : "bg-red-600"}`}>
-          {toast.message}
-        </div>
-      )}
 
       <PageHeader
         title={property?.name ?? t("jobs.jobDetails")}
@@ -306,7 +299,7 @@ export function ManagerJobDetailPage() {
           </div>
         )}
 
-        {/* ── Inspection Action ──────────────────────────────────── */}
+        {/* Ã¢â€â‚¬Ã¢â€â‚¬ Inspection Action Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
         {inspectionSummary && inspectionSummary.count > 0 && !inspectionSummary.inspectionCycleOpen && (
           <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 text-center">
             <p className="text-sm text-gray-600 flex items-center justify-center gap-2">
@@ -324,7 +317,7 @@ export function ManagerJobDetailPage() {
           </button>
         )}
 
-        {/* ── Inspection Form ──────────────────────────────────── */}
+        {/* Ã¢â€â‚¬Ã¢â€â‚¬ Inspection Form Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
         {showForm && (
           <div className="card border-blue-200">
             <h3 className="font-semibold text-blue-700 flex items-center gap-2 mb-4">
@@ -453,7 +446,7 @@ export function ManagerJobDetailPage() {
           </div>
         )}
 
-        {/* ── Cleaner Red Flags ──────────────────────────────── */}
+        {/* Ã¢â€â‚¬Ã¢â€â‚¬ Cleaner Red Flags Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
         {job.redFlags && job.redFlags.length > 0 && (
           <div className="card border-red-200">
             <h3 className="text-sm font-semibold text-red-700 mb-3 flex items-center gap-2">
@@ -491,10 +484,8 @@ export function ManagerJobDetailPage() {
                                 setResolvingFlag(null);
                                 setResolveNote("");
                                 setToast({ message: t("inspection.flagResolved"), type: "success" });
-                                setTimeout(() => setToast(null), 3000);
                               } catch (err: any) {
                                 setToast({ message: err.message ?? t("common.failed"), type: "error" });
-                                setTimeout(() => setToast(null), 3000);
                               }
                             }}
                           >
@@ -513,10 +504,8 @@ export function ManagerJobDetailPage() {
                                 try {
                                   await updateLifecycle({ flagId: flag._id, userId: user._id, sessionToken: getStaffSessionToken(), status: "in_progress" });
                                   setToast({ message: t("redFlags.markedInProgress"), type: "success" });
-                                  setTimeout(() => setToast(null), 3000);
                                 } catch (err: any) {
                                   setToast({ message: err.message ?? t("common.failed"), type: "error" });
-                                  setTimeout(() => setToast(null), 3000);
                                 }
                               }}
                             >
@@ -535,10 +524,8 @@ export function ManagerJobDetailPage() {
                               try {
                                 await updateLifecycle({ flagId: flag._id, userId: user._id, sessionToken: getStaffSessionToken(), status: "wont_fix" });
                                 setToast({ message: t("redFlags.markedWontFix"), type: "success" });
-                                setTimeout(() => setToast(null), 3000);
                               } catch (err: any) {
                                 setToast({ message: err.message ?? t("common.failed"), type: "error" });
-                                setTimeout(() => setToast(null), 3000);
                               }
                             }}
                           >
@@ -554,7 +541,7 @@ export function ManagerJobDetailPage() {
           </div>
         )}
 
-        {/* ── Inspection History ──────────────────────────────── */}
+        {/* Ã¢â€â‚¬Ã¢â€â‚¬ Inspection History Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
         {inspections && inspections.length > 0 && (
           <div className="card">
             <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">

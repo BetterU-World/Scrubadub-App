@@ -7,6 +7,7 @@ import { Upload, X, AlertCircle, CheckCircle2, XCircle, MinusCircle } from "luci
 import { useTranslation } from "react-i18next";
 import { getStaffSessionToken } from "@/hooks/useAuth";
 import Papa from "papaparse";
+import { useFeedback } from "@/components/ui/FeedbackProvider";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -349,6 +350,7 @@ export function ImportPropertiesDialog({
   userId,
 }: ImportPropertiesDialogProps) {
   const { t } = useTranslation();
+  const feedback = useFeedback();
   const bulkCreate = useMutation(api.mutations.properties.bulkCreate);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -539,12 +541,9 @@ export function ImportPropertiesDialog({
     setIsImporting(false);
 
     if (totalCreated > 0) {
-      sessionStorage.setItem(
-        "scrubadub_toast",
-        `${totalCreated} properties imported`
-      );
+      feedback.success(`${totalCreated} properties imported`);
     }
-  }, [importableRows, bulkCreate, userId, companyId]);
+  }, [importableRows, bulkCreate, userId, companyId, feedback]);
 
   // ── Render Helpers ─────────────────────────────────────────────────────
 

@@ -33,11 +33,14 @@ export function friendlyError(
  */
 export function toFriendlyMessage(
   err: unknown,
-  fallback = "Something went wrong",
+  fallback = "Something went wrong. Please try again.",
 ): string {
   const raw =
     err instanceof Error ? err.message : typeof err === "string" ? err : "";
   const mapped = friendlyError(raw);
   if (mapped) return `${mapped.title} — ${mapped.body}`;
-  return raw || fallback;
+  const looksInternal =
+    raw.length > 180 ||
+    /convex|server error|uncaught|exception|stack|\bat\s+\w+|_generated|\[request id|unauthorized|forbidden/i.test(raw);
+  return raw && !looksInternal ? raw : fallback;
 }
