@@ -39,7 +39,11 @@ export function toFriendlyMessage(
     err instanceof Error ? err.message : typeof err === "string" ? err : "";
   const mapped = friendlyError(raw);
   if (mapped) return `${mapped.title} — ${mapped.body}`;
+  const looksLikeIdentifier =
+    /^[a-z][a-z0-9_-]*(?:\.[a-z0-9_-]+)+$/i.test(raw.trim()) ||
+    /^[A-Z][A-Z0-9_]*(?:_[A-Z0-9_]+)+$/.test(raw.trim());
   const looksInternal =
+    looksLikeIdentifier ||
     raw.length > 180 ||
     /convex|server error|uncaught|exception|stack|\bat\s+\w+|_generated|\[request id|unauthorized|forbidden/i.test(raw);
   return raw && !looksInternal ? raw : fallback;

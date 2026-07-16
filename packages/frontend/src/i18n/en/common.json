@@ -95,14 +95,6 @@
     "backToClientHome": "Back to Client Home",
     "backToClient": "Back to Client"
   },
-  "feedback": {
-    "closeNotification": "Close notification",
-    "success": "Success",
-    "error": "Error",
-    "warning": "Warning",
-    "info": "Information",
-    "unexpectedError": "Something went wrong. Please try again."
-  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",
@@ -333,6 +325,15 @@
     "service": "Service"
   },
   "feedback": {
+    "closeNotification": "Close notification",
+    "success": "Success",
+    "error": "Error",
+    "warning": "Warning",
+    "info": "Information",
+    "defaultSuccess": "The request was completed successfully.",
+    "defaultWarning": "This request needs your attention.",
+    "defaultInfo": "The request was updated.",
+    "unexpectedError": "Something went wrong. Please try again.",
     "title": "Feedback",
     "description": "Client feedback from post-service links",
     "noFeedbackYet": "No feedback yet",
