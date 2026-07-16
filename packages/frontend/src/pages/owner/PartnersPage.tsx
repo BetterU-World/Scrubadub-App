@@ -5,6 +5,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { requireUserId } from "@/lib/requireUserId";
+import { toFriendlyMessage } from "@/lib/friendlyError";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -75,7 +76,13 @@ export function PartnersPage() {
     return <PageLoader />;
   }
 
-  const showToast = (message: string, type: "success" | "error") => feedback[type](message);
+  const showToast = (message: string, type: "success" | "error") => {
+    if (type === "error") {
+      feedback.error(toFriendlyMessage(message));
+      return;
+    }
+    feedback.success(message);
+  };
 
   const handleAdd = async () => {
     if (!uid || !name.trim() || !email.trim()) return;

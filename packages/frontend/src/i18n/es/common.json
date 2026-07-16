@@ -95,14 +95,6 @@
     "backToClientHome": "Volver al Inicio del Cliente",
     "backToClient": "Volver al Cliente"
   },
-  "feedback": {
-    "closeNotification": "Cerrar notificación",
-    "success": "Éxito",
-    "error": "Error",
-    "warning": "Advertencia",
-    "info": "Información",
-    "unexpectedError": "Algo salió mal. Inténtalo de nuevo."
-  },
   "common": {
     "save": "Guardar",
     "cancel": "Cancelar",
@@ -333,6 +325,15 @@
     "service": "Servicio"
   },
   "feedback": {
+    "closeNotification": "Cerrar notificación",
+    "success": "Éxito",
+    "error": "Error",
+    "warning": "Advertencia",
+    "info": "Información",
+    "defaultSuccess": "La solicitud se completó correctamente.",
+    "defaultWarning": "Esta solicitud requiere tu atención.",
+    "defaultInfo": "La solicitud se actualizó.",
+    "unexpectedError": "Algo salió mal. Inténtalo de nuevo.",
     "title": "Comentarios",
     "description": "Comentarios de clientes desde enlaces post-servicio",
     "noFeedbackYet": "Aún no hay comentarios",

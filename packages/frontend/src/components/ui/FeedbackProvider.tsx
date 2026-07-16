@@ -13,6 +13,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { toFriendlyMessage } from "@/lib/friendlyError";
+import { normalizeFeedbackMessage } from "@/lib/feedbackMessage";
 
 export type FeedbackTone = "success" | "error" | "warning" | "info";
 
@@ -72,12 +73,16 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
 
   const api = useMemo<FeedbackApi>(
     () => ({
-      success: (message) => notify("success", message),
-      error: (message) => notify("error", message),
-      warning: (message) => notify("warning", message),
-      info: (message) => notify("info", message),
+      success: (message) =>
+        notify("success", normalizeFeedbackMessage(message, t("feedback.defaultSuccess"))),
+      error: (message) =>
+        notify("error", normalizeFeedbackMessage(message, t("feedback.unexpectedError"))),
+      warning: (message) =>
+        notify("warning", normalizeFeedbackMessage(message, t("feedback.defaultWarning"))),
+      info: (message) =>
+        notify("info", normalizeFeedbackMessage(message, t("feedback.defaultInfo"))),
     }),
-    [notify]
+    [notify, t]
   );
 
   return (
