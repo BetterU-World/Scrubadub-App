@@ -5,6 +5,8 @@ import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useTranslation } from "react-i18next";
+import { useFeedback } from "@/components/ui/FeedbackProvider";
+import { toFriendlyMessage } from "@/lib/friendlyError";
 
 const DAY_NAMES = [
   "Sunday",
@@ -45,6 +47,7 @@ const MIN_OVERRIDE_DAYS = 14;
 
 export function AvailabilityPage() {
   const { t } = useTranslation();
+  const feedback = useFeedback();
   const { user } = useAuth();
 
   const weekly = useQuery(
@@ -75,7 +78,6 @@ export function AvailabilityPage() {
   const [weeklyLoaded, setWeeklyLoaded] = useState(false);
   const [savingWeekly, setSavingWeekly] = useState(false);
   const [savingOverride, setSavingOverride] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
 
   // Date picker state
   const [selectedDate, setSelectedDate] = useState("");
@@ -105,18 +107,13 @@ export function AvailabilityPage() {
   if (!user || weekly === undefined || overrides === undefined)
     return <PageLoader />;
 
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
-  };
-
   const handleSaveWeekly = async () => {
     setSavingWeekly(true);
     try {
       await setWeekly({ userId: user._id, sessionToken: getStaffSessionToken(), availability: days });
-      showToast("Availability saved");
+      feedback.success("Availability saved");
     } catch (err: any) {
-      showToast(err.message || "Failed to save");
+      feedback.error(toFriendlyMessage(err, "Failed to save availability"));
     } finally {
       setSavingWeekly(false);
     }
@@ -131,9 +128,9 @@ export function AvailabilityPage() {
         date,
         unavailable,
       });
-      showToast(unavailable ? "Marked unavailable" : "Marked available");
+      feedback.success(unavailable ? "Marked unavailable" : "Marked available");
     } catch (err: any) {
-      showToast(err.message || "Failed to update");
+      feedback.error(toFriendlyMessage(err, "Failed to update availability"));
     } finally {
       setSavingOverride(null);
     }
@@ -177,12 +174,6 @@ export function AvailabilityPage() {
   return (
     <div className="max-w-2xl mx-auto">
       <PageHeader title={t("navigation.availability")} description={t("guidance.worker.availability")} />
-
-      {toast && (
-        <div className="fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium bg-green-600 text-white">
-          {toast}
-        </div>
-      )}
 
       {/* Weekly schedule */}
       <div className="card space-y-4 mb-6">

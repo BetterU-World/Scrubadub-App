@@ -1,3 +1,4 @@
+import { useFeedbackState } from "@/components/ui/FeedbackProvider";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "wouter";
 import { useMutation, useQuery } from "convex/react";
@@ -34,7 +35,7 @@ export function CommercialInvoiceDetailPage() {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [toast, setToast] = useFeedbackState<{ message: string; type: "success" | "error" }>();
 
   const invoice = useQuery(
     (api as any).queries.invoices.getById,
@@ -58,7 +59,6 @@ export function CommercialInvoiceDetailPage() {
 
   const showToast = (message: string, type: "success" | "error") => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), type === "success" ? 2000 : 3000);
   };
 
   const handleSaveNotes = async () => {
@@ -261,11 +261,6 @@ export function CommercialInvoiceDetailPage() {
         </aside>
       </div>
 
-      {toast && (
-        <div className={`fixed right-4 top-4 z-50 rounded-lg px-4 py-3 text-sm font-medium text-white shadow-lg ${toast.type === "success" ? "bg-green-600" : "bg-red-600"}`}>
-          {toast.message}
-        </div>
-      )}
     </div>
   );
 }

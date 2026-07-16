@@ -9,6 +9,7 @@ import { useLocation, useParams } from "wouter";
 import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { BedroomsEditor, PropertyBedroom } from "@/components/owner/PropertyBedrooms";
+import { useFeedback } from "@/components/ui/FeedbackProvider";
 
 const PROPERTY_TYPES = [
   { value: "residential", labelKey: "properties.propertyTypes.residential" },
@@ -46,6 +47,7 @@ const AMENITY_KEYS: Record<string, string> = {
 export function PropertyFormPage() {
   const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
+  const feedback = useFeedback();
   const [, setLocation] = useLocation();
   const params = useParams<{ id?: string }>();
   const isEditing = !!params.id;
@@ -164,11 +166,11 @@ export function PropertyFormPage() {
       };
       if (isEditing) {
         await updateProperty({ propertyId: params.id as Id<"properties">, userId: user._id, sessionToken, ...data });
-        sessionStorage.setItem("scrubadub_toast", t("properties.propertyUpdated"));
+        feedback.success(t("properties.propertyUpdated"));
         setLocation(`/properties/${params.id}`);
       } else {
         const id = await createProperty({ companyId: user.companyId, userId: user._id, sessionToken, ...data });
-        sessionStorage.setItem("scrubadub_toast", t("properties.propertyCreated"));
+        feedback.success(t("properties.propertyCreated"));
         setLocation(`/properties/${id}`);
       }
     } catch (err: any) {

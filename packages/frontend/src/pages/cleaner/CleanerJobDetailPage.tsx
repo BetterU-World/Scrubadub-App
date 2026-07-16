@@ -1,3 +1,4 @@
+import { useFeedbackState } from "@/components/ui/FeedbackProvider";
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -58,7 +59,7 @@ export function CleanerJobDetailPage() {
   const [denying, setDenying] = useState(false);
   const [arriving, setArriving] = useState(false);
   const [starting, setStarting] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [toast, setToast] = useFeedbackState<{ message: string; type: "success" | "error" }>();
 
   if (job === undefined) return <PageLoader />;
   if (job === null) return <div className="text-center py-12 text-gray-500">{t("jobs.jobNotFound")}</div>;
@@ -104,7 +105,7 @@ export function CleanerJobDetailPage() {
     } finally {
       setStarting(false);
     }
-    // Stay on job detail page — inventory checklist is shown inline
+    // Stay on job detail page Ã¢â‚¬â€ inventory checklist is shown inline
   };
 
   const handleCompleteJob = async () => {
@@ -185,15 +186,6 @@ export function CleanerJobDetailPage() {
         )}
 
         {/* Toast notification */}
-        {toast && (
-          <div
-            className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all ${
-              toast.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"
-            }`}
-          >
-            {toast.message}
-          </div>
-        )}
 
         {/* Acceptance status */}
         {acceptance !== "pending" && (
@@ -204,7 +196,7 @@ export function CleanerJobDetailPage() {
           </div>
         )}
 
-        {/* Action buttons — non-workspace states (accept/arrive/cancel) */}
+        {/* Action buttons Ã¢â‚¬â€ non-workspace states (accept/arrive/cancel) */}
         {(canAccept || (canArrive && !canAccept) || canCleanerCancel) && (
           <div className="card space-y-3">
             {canAccept && (
@@ -218,10 +210,8 @@ export function CleanerJobDetailPage() {
                     try {
                       await acceptJob({ jobId: job._id, userId: user._id, sessionToken: getStaffSessionToken() });
                       setToast({ message: t("jobs.jobAccepted"), type: "success" });
-                      setTimeout(() => setToast(null), 3000);
                     } catch (err: any) {
                       setToast({ message: err.message ?? t("common.failedToAccept"), type: "error" });
-                      setTimeout(() => setToast(null), 3000);
                     } finally {
                       setAccepting(false);
                     }
@@ -287,7 +277,7 @@ export function CleanerJobDetailPage() {
           </div>
         )}
 
-        {/* Submission blockers — shown above inventory when in progress */}
+        {/* Submission blockers Ã¢â‚¬â€ shown above inventory when in progress */}
         {isInProgress && (
           <JobSubmissionBlockers
             remainingCleaningCount={remainingCleaning}
@@ -307,11 +297,11 @@ export function CleanerJobDetailPage() {
           />
         )}
 
-        {/* Bottom spacer when sticky CTA is visible — must clear multi-button CTA + safe-area */}
+        {/* Bottom spacer when sticky CTA is visible Ã¢â‚¬â€ must clear multi-button CTA + safe-area */}
         {showStickyCTA && <div className="h-44" />}
       </div>
 
-      {/* Sticky workspace CTA — primary actions for active job states */}
+      {/* Sticky workspace CTA Ã¢â‚¬â€ primary actions for active job states */}
       <StickyWorkspaceCTA visible={showStickyCTA}>
         <div className="space-y-2">
           {canStart && (
@@ -333,7 +323,7 @@ export function CleanerJobDetailPage() {
 
           {isInProgress && hasForm && formCompleted && (
             <Link href={`/jobs/${job._id}/form`} className="btn-secondary w-full flex items-center justify-center gap-2 py-2 text-sm text-gray-600">
-              <ClipboardCheck className="w-4 h-4" /> {t("jobs.continueChecklist")} — ✓ Done
+              <ClipboardCheck className="w-4 h-4" /> {t("jobs.continueChecklist")} Ã¢â‚¬â€ Ã¢Å“â€œ Done
             </Link>
           )}
 
@@ -383,10 +373,8 @@ export function CleanerJobDetailPage() {
                     await denyJob({ jobId: job._id, reason: denyReason || undefined, userId: user._id, sessionToken: getStaffSessionToken() });
                     setShowDeny(false);
                     setToast({ message: t("jobs.jobDenied"), type: "success" });
-                    setTimeout(() => setToast(null), 3000);
                   } catch (err: any) {
                     setToast({ message: err.message ?? t("common.failedToDeny"), type: "error" });
-                    setTimeout(() => setToast(null), 3000);
                   } finally {
                     setDenying(false);
                   }
@@ -422,10 +410,8 @@ export function CleanerJobDetailPage() {
                     await cleanerCancelJob({ jobId: job._id, reason: cleanerCancelReason || undefined, userId: user._id, sessionToken: getStaffSessionToken() });
                     setShowCleanerCancel(false);
                     setToast({ message: t("jobs.jobCancelled"), type: "success" });
-                    setTimeout(() => setToast(null), 3000);
                   } catch (err: any) {
                     setToast({ message: err.message ?? t("common.failedToCancel"), type: "error" });
-                    setTimeout(() => setToast(null), 3000);
                   } finally {
                     setCleanerCancelling(false);
                   }
@@ -470,7 +456,7 @@ export function CleanerJobDetailPage() {
   );
 }
 
-// ── Inventory Checklist Section ────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬ Inventory Checklist Section Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 const STATUS_OPTIONS = ["ok", "low", "out", "restocked"] as const;
 
@@ -643,7 +629,7 @@ function InventoryChecklistItem({
               value={qty}
               onChange={(e) => setQty(e.target.value)}
               min={0}
-              placeholder="—"
+              placeholder="Ã¢â‚¬â€"
             />
           </div>
           <input

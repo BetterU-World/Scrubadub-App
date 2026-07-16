@@ -1,3 +1,4 @@
+import { useSimpleFeedbackState } from "@/components/ui/FeedbackProvider";
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -18,7 +19,7 @@ import {
 import { Link } from "wouter";
 import { getStaffSessionToken } from "@/hooks/useAuth";
 
-// ── Types ───────────────────────────────────────────────────────────────
+// â”€â”€ Types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 interface CalendarSyncTabProps {
   propertyId: Id<"properties">;
@@ -40,7 +41,7 @@ const JOB_TYPE_OPTIONS = [
   { value: "deep_clean", label: "Deep Clean" },
 ] as const;
 
-// ── Helpers ─────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function timeAgo(ms: number): string {
   const seconds = Math.floor((Date.now() - ms) / 1000);
@@ -58,7 +59,7 @@ function formatDate(iso: string): string {
   return `${m}/${d}/${y}`;
 }
 
-// ── Main Component ──────────────────────────────────────────────────────
+// â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function CalendarSyncTab({
   propertyId,
@@ -151,7 +152,7 @@ export function CalendarSyncTab({
   );
 }
 
-// ── Connection Section ──────────────────────────────────────────────────
+// â”€â”€ Connection Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ConnectionSection({
   connection,
@@ -173,7 +174,7 @@ function ConnectionSection({
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState("");
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useSimpleFeedbackState();
 
   const createConnection = useMutation(api.mutations.calendarConnections.create);
   const updateConnection = useMutation(api.mutations.calendarConnections.update);
@@ -183,7 +184,6 @@ function ConnectionSection({
 
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(null), 3000);
   };
 
   const handleSave = async () => {
@@ -259,7 +259,7 @@ function ConnectionSection({
     setError("");
     try {
       await triggerSync({ userId, sessionToken, connectionId: connection._id });
-      showToast("Sync started — results will appear shortly");
+      showToast("Sync started â€” results will appear shortly");
     } catch (err: any) {
       setError(err.message || "Failed to trigger sync");
     } finally {
@@ -269,11 +269,6 @@ function ConnectionSection({
 
   return (
     <div className="card">
-      {toast && (
-        <div className="fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium bg-green-600 text-white">
-          {toast}
-        </div>
-      )}
 
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
@@ -288,7 +283,7 @@ function ConnectionSection({
               className="btn-secondary text-sm flex items-center gap-1.5"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${syncing ? "animate-spin" : ""}`} />
-              {syncing ? "Syncing…" : "Sync Now"}
+              {syncing ? "Syncingâ€¦" : "Sync Now"}
             </button>
             <button
               onClick={() => {
@@ -363,7 +358,7 @@ function ConnectionSection({
             <div className="flex items-center gap-1.5">
               <Link2 className="w-3.5 h-3.5" />
               <span className="capitalize font-medium">{connection.platform}</span>
-              {connection.label && <span className="text-gray-400">· {connection.label}</span>}
+              {connection.label && <span className="text-gray-400">Â· {connection.label}</span>}
             </div>
             <div className="text-xs text-gray-400 truncate">{connection.icalUrl}</div>
           </div>
@@ -429,7 +424,7 @@ function ConnectionSection({
               disabled={saving}
               className="btn-primary text-sm"
             >
-              {saving ? "Saving…" : connection ? "Update Feed" : "Connect Feed"}
+              {saving ? "Savingâ€¦" : connection ? "Update Feed" : "Connect Feed"}
             </button>
             {connection && (
               <button onClick={() => setShowForm(false)} className="btn-secondary text-sm">
@@ -450,7 +445,7 @@ function SyncStatusIcon({ status, enabled }: { status: string; enabled: boolean 
   return <Clock className="w-4 h-4 text-amber-500" />;
 }
 
-// ── Automation Rules Section ────────────────────────────────────────────
+// â”€â”€ Automation Rules Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function AutomationRulesSection({
   rule,
@@ -642,7 +637,7 @@ function AutomationRulesSection({
 
           <div className="flex gap-2 pt-1">
             <button onClick={handleSave} disabled={saving} className="btn-primary text-sm">
-              {saving ? "Saving…" : "Save Rules"}
+              {saving ? "Savingâ€¦" : "Save Rules"}
             </button>
             <button onClick={() => setEditing(false)} className="btn-secondary text-sm">
               Cancel
@@ -654,7 +649,7 @@ function AutomationRulesSection({
   );
 }
 
-// ── Reservations Section ────────────────────────────────────────────────
+// â”€â”€ Reservations Section â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function ReservationsSection({ reservations }: { reservations: any[] }) {
   const [expanded, setExpanded] = useState(false);
@@ -701,7 +696,7 @@ function ReservationRow({ reservation }: { reservation: any }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 text-sm">
           <span className="text-gray-900 font-medium">
-            {formatDate(reservation.checkIn)} → {formatDate(reservation.checkOut)}
+            {formatDate(reservation.checkIn)} â†’ {formatDate(reservation.checkOut)}
           </span>
           {isCancelled && (
             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">
@@ -720,7 +715,7 @@ function ReservationRow({ reservation }: { reservation: any }) {
           )}
         </div>
         <div className="text-xs text-gray-400 mt-0.5">
-          {reservation.summary && <span>{reservation.summary} · </span>}
+          {reservation.summary && <span>{reservation.summary} Â· </span>}
           {wasSkipped && reservation.skipReason && (
             <span className="text-amber-600">
               Skipped: {reservation.skipReason.replace(/_/g, " ")}
@@ -741,7 +736,7 @@ function ReservationRow({ reservation }: { reservation: any }) {
             View job <ExternalLink className="w-3 h-3" />
           </Link>
         ) : isCancelled ? (
-          <span className="text-xs text-gray-300">—</span>
+          <span className="text-xs text-gray-300">â€”</span>
         ) : null}
       </div>
     </div>

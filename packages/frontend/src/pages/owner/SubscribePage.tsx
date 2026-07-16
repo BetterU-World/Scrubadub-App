@@ -6,6 +6,7 @@ import { toFriendlyMessage } from "@/lib/friendlyError";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { CreditCard, CheckCircle } from "lucide-react";
+import { useFeedback } from "@/components/ui/FeedbackProvider";
 
 type PlanKey = "solo" | "team" | "pro";
 
@@ -17,6 +18,7 @@ const PLANS: Record<PlanKey, { name: string; price: string; cleaners: string }> 
 
 export function SubscribePage() {
   const { user, sessionToken } = useAuth();
+  const feedback = useFeedback();
   const subscription = useQuery(
     api.queries.billing.getCompanySubscription,
     user?.companyId && sessionToken
@@ -48,7 +50,7 @@ export function SubscribePage() {
       if (url) window.location.href = url;
     } catch (e: any) {
       console.error("Checkout error:", e);
-      alert(toFriendlyMessage(e, "Payment didn\u2019t go through. You weren\u2019t charged."));
+      feedback.error(toFriendlyMessage(e, "Payment didn\u2019t go through. You weren\u2019t charged."));
     } finally {
       setLoading(null);
     }
@@ -60,7 +62,7 @@ export function SubscribePage() {
       const url = await createPortal({ userId: user._id, sessionToken: getStaffSessionToken() });
       if (url) window.location.href = url;
     } catch (e: any) {
-      alert(e.message ?? "Something went wrong");
+      feedback.error(toFriendlyMessage(e, "Unable to open billing. Please try again."));
     } finally {
       setLoading(null);
     }

@@ -1,3 +1,4 @@
+import { useFeedbackState } from "@/components/ui/FeedbackProvider";
 import { useState, useEffect, useRef } from "react";
 import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useAction } from "convex/react";
@@ -194,10 +195,7 @@ export function RequestDetailPage() {
   const [portalUrl, setPortalUrl] = useState<string | null>(null);
   const [generatingPortal, setGeneratingPortal] = useState(false);
   const [copiedPortal, setCopiedPortal] = useState(false);
-  const [toast, setToast] = useState<{
-    message: string;
-    type: "success" | "error";
-  } | null>(null);
+  const [toast, setToast] = useFeedbackState<{ message: string; type: "success" | "error" }>();
   const [leadPipelineExpanded, setLeadPipelineExpanded] = useState(() =>
     loadLeadPipelineExpanded(user?._id)
   );
@@ -331,7 +329,6 @@ export function RequestDetailPage() {
     if (respondedWhileEditing) {
       setEditingProposal(false);
       setToast({ message: t("proposals.respondedWhileEditing"), type: "success" });
-      setTimeout(() => setToast(null), 4000);
     }
     previousProposalStatus.current = currentStatus;
   }, [proposal?.status, editingProposal, t]);
@@ -410,10 +407,8 @@ export function RequestDetailPage() {
         status: "contacted",
       });
       setToast({ message: t("requests.markedAsContacted"), type: "success" });
-      setTimeout(() => setToast(null), 3000);
     } catch (err: any) {
       setToast({ message: err.message || "Failed to update", type: "error" });
-      setTimeout(() => setToast(null), 3000);
     } finally {
       setContactingLoading(false);
     }
@@ -428,10 +423,8 @@ export function RequestDetailPage() {
         sessionToken,
       });
       setToast({ message: t("requests.requestArchived"), type: "success" });
-      setTimeout(() => setToast(null), 3000);
     } catch (err: any) {
       setToast({ message: err.message || "Failed to archive", type: "error" });
-      setTimeout(() => setToast(null), 3000);
     } finally {
       setArchiving(false);
     }
@@ -463,7 +456,6 @@ export function RequestDetailPage() {
     try {
       await createProperty({ requestId: request._id, userId: user!._id, sessionToken });
       setToast({ message: t("requests.propertyCreated"), type: "success" });
-      setTimeout(() => setToast(null), 3000);
     } catch (err: any) {
       setToast({
         message: err.message?.includes("Classify this request")
@@ -471,7 +463,6 @@ export function RequestDetailPage() {
           : err.message || "Failed to create property",
         type: "error",
       });
-      setTimeout(() => setToast(null), 3000);
     } finally {
       setCreatingProperty(false);
     }
@@ -496,7 +487,6 @@ export function RequestDetailPage() {
         message: err.message || "Failed to generate portal link",
         type: "error",
       });
-      setTimeout(() => setToast(null), 3000);
     } finally {
       setGeneratingPortal(false);
     }
@@ -549,10 +539,8 @@ export function RequestDetailPage() {
     try {
       await createProposal({ userId: user!._id, sessionToken, clientRequestId: request._id });
       setToast({ message: t("proposals.created"), type: "success" });
-      setTimeout(() => setToast(null), 2000);
     } catch (err: any) {
       setToast({ message: err.message || t("proposals.createFailed"), type: "error" });
-      setTimeout(() => setToast(null), 3000);
     } finally {
       setCreatingProposal(false);
     }
@@ -567,10 +555,8 @@ export function RequestDetailPage() {
         clientRequestId: request._id,
       });
       setToast({ message: "Client relationship created", type: "success" });
-      setTimeout(() => setToast(null), 2000);
     } catch (err: any) {
       setToast({ message: err.message || "Failed to create client relationship", type: "error" });
-      setTimeout(() => setToast(null), 3000);
     } finally {
       setCreatingClientRelationship(false);
     }
@@ -597,10 +583,8 @@ export function RequestDetailPage() {
       });
       setEditingProposal(false);
       setToast({ message: t("proposals.saved"), type: "success" });
-      setTimeout(() => setToast(null), 2000);
     } catch (err: any) {
       setToast({ message: err.message || t("proposals.saveFailed"), type: "error" });
-      setTimeout(() => setToast(null), 3000);
     } finally {
       setSavingProposal(false);
     }
@@ -618,10 +602,8 @@ export function RequestDetailPage() {
         await markProposalDeclined({ userId: user!._id, sessionToken, proposalId: proposal._id });
       }
       setToast({ message: t(`proposals.${action}Success`), type: "success" });
-      setTimeout(() => setToast(null), 2000);
     } catch (err: any) {
       setToast({ message: err.message || t("proposals.actionFailed"), type: "error" });
-      setTimeout(() => setToast(null), 3000);
     } finally {
       setProposalActionLoading(null);
     }
@@ -639,13 +621,11 @@ export function RequestDetailPage() {
             : t("proposals.sendSuccess"),
         type: "success",
       });
-      setTimeout(() => setToast(null), 2500);
     } catch (err: any) {
       setToast({
         message: err.message || t("proposals.sendFailed"),
         type: "error",
       });
-      setTimeout(() => setToast(null), 3500);
     } finally {
       setProposalActionLoading(null);
     }
@@ -695,7 +675,6 @@ export function RequestDetailPage() {
           : t("commercialAccounts.created"),
         type: "success",
       });
-      setTimeout(() => setToast(null), 2000);
     } catch (err: any) {
       const message = err.message?.includes("Classify the request or linked property")
         ? t("commercialConversion.classificationRequiredError")
@@ -703,7 +682,6 @@ export function RequestDetailPage() {
           ? t("commercialConversion.notCommercialError")
           : err.message || t("commercialAccounts.saveFailed");
       setToast({ message, type: "error" });
-      setTimeout(() => setToast(null), 3000);
     } finally {
       setSavingAccount(false);
     }
@@ -720,10 +698,8 @@ export function RequestDetailPage() {
       });
       setShowDecline(false);
       setToast({ message: t("requests.requestDeclined"), type: "success" });
-      setTimeout(() => setToast(null), 3000);
     } catch (err: any) {
       setToast({ message: err.message || "Failed to decline", type: "error" });
-      setTimeout(() => setToast(null), 3000);
     } finally {
       setDeclining(false);
     }
@@ -884,7 +860,6 @@ export function RequestDetailPage() {
           allowCreate
           onToast={(message, type) => {
             setToast({ message, type });
-            setTimeout(() => setToast(null), type === "success" ? 2000 : 3000);
           }}
         />
       </CollapsibleSection>
@@ -1182,7 +1157,6 @@ export function RequestDetailPage() {
                   }}
                   onToast={(message, type) => {
                     setToast({ message, type });
-                    setTimeout(() => setToast(null), type === "success" ? 2000 : 3000);
                   }}
                 />
                 {commercialAccount && !showAccountForm ? (
@@ -1726,10 +1700,8 @@ export function RequestDetailPage() {
                           leadStage: stage,
                         });
                         setToast({ message: t("requests.stageUpdated", { stage: stageLabel }), type: "success" });
-                        setTimeout(() => setToast(null), 2000);
                       } catch (err: any) {
                         setToast({ message: err.message || "Failed", type: "error" });
-                        setTimeout(() => setToast(null), 3000);
                       }
                     }}
                     aria-pressed={isActive}
@@ -1877,10 +1849,8 @@ export function RequestDetailPage() {
                   estimatedFrequencyNotes: estimatedFrequencyNotesVal,
                 });
                 setToast({ message: t("requests.leadDetailsSaved"), type: "success" });
-                setTimeout(() => setToast(null), 2000);
               } catch (err: any) {
                 setToast({ message: err.message || "Failed", type: "error" });
-                setTimeout(() => setToast(null), 3000);
               } finally {
                 setSavingLeadDetails(false);
               }
@@ -1918,10 +1888,8 @@ export function RequestDetailPage() {
                     leadNotes: leadNotesVal,
                   });
                   setToast({ message: t("requests.notesSaved"), type: "success" });
-                  setTimeout(() => setToast(null), 2000);
                 } catch (err: any) {
                   setToast({ message: err.message || "Failed", type: "error" });
-                  setTimeout(() => setToast(null), 3000);
                 } finally {
                   setSavingNotes(false);
                 }
@@ -1967,10 +1935,8 @@ export function RequestDetailPage() {
                     message: ts ? t("requests.followUpSet") : t("requests.followUpCleared"),
                     type: "success",
                   });
-                  setTimeout(() => setToast(null), 2000);
                 } catch (err: any) {
                   setToast({ message: err.message || "Failed", type: "error" });
-                  setTimeout(() => setToast(null), 3000);
                 } finally {
                   setSavingFollowUp(false);
                 }
@@ -1993,10 +1959,8 @@ export function RequestDetailPage() {
                       nextFollowUpAt: undefined,
                     });
                     setToast({ message: t("requests.followUpCleared"), type: "success" });
-                    setTimeout(() => setToast(null), 2000);
                   } catch (err: any) {
                     setToast({ message: err.message || "Failed", type: "error" });
-                    setTimeout(() => setToast(null), 3000);
                   } finally {
                     setSavingFollowUp(false);
                   }
@@ -2103,7 +2067,7 @@ export function RequestDetailPage() {
             <p className="text-xs text-gray-400">
               {[latestFeedback.contactName, latestFeedback.contactEmail]
                 .filter(Boolean)
-                .join(" — ")}
+                .join(" â€” ")}
             </p>
           )}
         </div>
@@ -2122,17 +2086,6 @@ export function RequestDetailPage() {
       />
 
       {/* Toast */}
-      {toast && (
-        <div
-          className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${
-            toast.type === "success"
-              ? "bg-green-600 text-white"
-              : "bg-red-600 text-white"
-          }`}
-        >
-          {toast.message}
-        </div>
-      )}
     </div>
   );
 }

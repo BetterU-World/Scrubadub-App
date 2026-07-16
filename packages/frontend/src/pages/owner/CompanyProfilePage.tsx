@@ -6,6 +6,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { useTranslation } from "react-i18next";
+import { useFeedback } from "@/components/ui/FeedbackProvider";
+import { toFriendlyMessage } from "@/lib/friendlyError";
 
 type SettingsForm = {
   logoUrl: string;
@@ -65,6 +67,7 @@ function Field({
 export function CompanyProfilePage() {
   const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
+  const feedback = useFeedback();
   const settings = useQuery(
     (api as any).queries.companies.getCompanySettings,
     user?._id ? { userId: user._id, sessionToken } : "skip"
@@ -74,7 +77,6 @@ export function CompanyProfilePage() {
   const [form, setForm] = useState<SettingsForm>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
     if (!settings) return;
@@ -116,10 +118,11 @@ export function CompanyProfilePage() {
           Object.entries(form).map(([key, value]) => [key, value.trim() || undefined])
         ),
       });
-      setToast("Company identity saved");
-      setTimeout(() => setToast(null), 3000);
+      feedback.success("Company identity saved");
     } catch (err: any) {
-      setError(err.message || "Failed to save company identity");
+      const message = toFriendlyMessage(err, "Failed to save company identity");
+      setError(message);
+      feedback.error(message);
     } finally {
       setSaving(false);
     }
@@ -290,11 +293,6 @@ export function CompanyProfilePage() {
         </button>
       </div>
 
-      {toast && (
-        <div className="fixed right-4 top-4 z-50 rounded-lg bg-green-600 px-4 py-3 text-sm font-medium text-white shadow-lg">
-          {toast}
-        </div>
-      )}
     </div>
   );
 }

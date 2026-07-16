@@ -95,6 +95,14 @@
     "backToClientHome": "Back to Client Home",
     "backToClient": "Back to Client"
   },
+  "feedback": {
+    "closeNotification": "Close notification",
+    "success": "Success",
+    "error": "Error",
+    "warning": "Warning",
+    "info": "Information",
+    "unexpectedError": "Something went wrong. Please try again."
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",

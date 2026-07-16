@@ -1,3 +1,4 @@
+import { useFeedbackState } from "@/components/ui/FeedbackProvider";
 import { useState } from "react";
 import { useQuery, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -84,14 +85,10 @@ export function BillingSection() {
   );
 
   const [loading, setLoading] = useState<string | null>(null);
-  const [toast, setToast] = useState<{
-    message: string;
-    type: "success" | "error";
-  } | null>(null);
+  const [toast, setToast] = useFeedbackState<{ message: string; type: "success" | "error" }>();
 
   const showToast = (message: string, type: "error" | "success") => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
   };
 
   if (!user) return null;
@@ -130,11 +127,10 @@ export function BillingSection() {
     }
   };
 
-  // ── No subscription at all ──────────────────────────────────
+  // â”€â”€ No subscription at all â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (!subscription || !status) {
     return (
       <>
-        {toast && <Toast message={toast.message} type={toast.type} />}
         <div className="card">
           <div className="flex items-center gap-3 mb-3">
             <div className="p-2 rounded-lg bg-gray-100 text-gray-500">
@@ -160,10 +156,9 @@ export function BillingSection() {
     );
   }
 
-  // ── Has subscription — show details ─────────────────────────
+  // â”€â”€ Has subscription â€” show details â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
     <>
-      {toast && <Toast message={toast.message} type={toast.type} />}
       <div className="card">
         <div className="flex items-center gap-3 mb-4">
           <div
@@ -230,28 +225,10 @@ export function BillingSection() {
             className="btn-secondary text-sm flex items-center gap-1.5"
           >
             <ExternalLink className="w-3.5 h-3.5" />
-            {loading === "portal" ? "Opening…" : "Manage Subscription"}
+            {loading === "portal" ? "Openingâ€¦" : "Manage Subscription"}
           </button>
         </div>
       </div>
     </>
-  );
-}
-
-function Toast({
-  message,
-  type,
-}: {
-  message: string;
-  type: "success" | "error";
-}) {
-  return (
-    <div
-      className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium text-white ${
-        type === "error" ? "bg-red-600" : "bg-green-600"
-      }`}
-    >
-      {message}
-    </div>
   );
 }

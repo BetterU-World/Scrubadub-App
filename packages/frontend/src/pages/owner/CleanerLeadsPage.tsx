@@ -1,3 +1,4 @@
+import { useFeedbackState } from "@/components/ui/FeedbackProvider";
 import { useState } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -64,10 +65,7 @@ export function CleanerLeadsPage() {
   const inviteCleaner = useAction(api.employeeActions.inviteCleaner);
 
   const [updating, setUpdating] = useState(false);
-  const [toast, setToast] = useState<{
-    message: string;
-    type: "success" | "error";
-  } | null>(null);
+  const [toast, setToast] = useFeedbackState<{ message: string; type: "success" | "error" }>();
 
   // Invite modal state
   const [showInvite, setShowInvite] = useState(false);
@@ -125,7 +123,6 @@ export function CleanerLeadsPage() {
       });
       setInviteLink(`${window.location.origin}/invite/${result.token}`);
       setToast({ message: t("cleanerLeads.inviteLinkGenerated"), type: "success" });
-      setTimeout(() => setToast(null), 3000);
     } catch (err: any) {
       setInviteError(err.message || t("cleanerLeads.failedToGenerate"));
     } finally {
@@ -147,13 +144,11 @@ export function CleanerLeadsPage() {
     try {
       await updateStatus({ leadId, userId: user._id, sessionToken, status });
       setToast({ message: t("cleanerLeads.markedAs", { status }), type: "success" });
-      setTimeout(() => setToast(null), 3000);
     } catch (err: any) {
       setToast({
         message: err.message || t("cleanerLeads.failedToUpdate"),
         type: "error",
       });
-      setTimeout(() => setToast(null), 3000);
     } finally {
       setUpdating(false);
     }
@@ -457,17 +452,6 @@ export function CleanerLeadsPage() {
       </Dialog.Root>
 
       {/* Toast */}
-      {toast && (
-        <div
-          className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${
-            toast.type === "success"
-              ? "bg-green-600 text-white"
-              : "bg-red-600 text-white"
-          }`}
-        >
-          {toast.message}
-        </div>
-      )}
     </div>
   );
 }

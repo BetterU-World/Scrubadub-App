@@ -1,3 +1,4 @@
+import { useSimpleFeedbackState } from "@/components/ui/FeedbackProvider";
 import { useState } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -133,7 +134,7 @@ export function AffiliateInvitesPage() {
   );
 }
 
-// ── Row component ───────────────────────────────────────────────────
+// â”€â”€ Row component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function AffiliateRow({
   affiliate,
@@ -158,7 +159,7 @@ function AffiliateRow({
     api.mutations.affiliateInvites.revokeAffiliateInvite
   );
   const [busy, setBusy] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useSimpleFeedbackState();
 
   const displayStatus = deriveStatus(
     affiliate.status,
@@ -201,7 +202,6 @@ function AffiliateRow({
 
   function showToast(msg: string) {
     setToast(msg);
-    setTimeout(() => setToast(null), 3000);
   }
 
   const createdDate = new Date(affiliate._creationTime).toLocaleDateString(
@@ -228,14 +228,11 @@ function AffiliateRow({
         )}
       </td>
       <td className="py-3 px-3 text-gray-600 font-mono text-xs">
-        {affiliate.referralCode ?? "—"}
+        {affiliate.referralCode ?? "â€”"}
       </td>
       <td className="py-3 px-3 text-gray-500 text-xs">{createdDate}</td>
       <td className="py-3 px-3">
         <div className="flex items-center justify-end gap-1.5">
-          {toast && (
-            <span className="text-xs text-green-600 mr-1">{toast}</span>
-          )}
 
           {/* Resend: available for pending or expired */}
           {(displayStatus === "pending" || displayStatus === "expired") && (
@@ -268,7 +265,7 @@ function AffiliateRow({
   );
 }
 
-// ── Invite modal ────────────────────────────────────────────────────
+// â”€â”€ Invite modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function InviteModal({
   callerUserId,

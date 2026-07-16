@@ -1,3 +1,4 @@
+import { useFeedbackState } from "@/components/ui/FeedbackProvider";
 import { FormEvent, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useLocation, useParams } from "wouter";
@@ -175,7 +176,7 @@ export function ClientRelationshipDetailPage() {
   const [inviteLink, setInviteLink] = useState("");
   const [form, setForm] = useState(EMPTY_FORM);
   const [leadForm, setLeadForm] = useState(EMPTY_LEAD_FORM);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [toast, setToast] = useFeedbackState<{ message: string; type: "success" | "error" }>();
 
   const detail = useQuery(
     (api as any).queries.clientRelationships.getClientRelationshipDetail,
@@ -218,7 +219,6 @@ export function ClientRelationshipDetailPage() {
 
   const showToast = (message: string, type: "success" | "error") => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), type === "success" ? 2000 : 3000);
   };
 
   const handleSave = async (event: FormEvent) => {
@@ -381,7 +381,7 @@ export function ClientRelationshipDetailPage() {
             <h2 className="text-sm font-semibold text-gray-900">{t("clientRelationships.clientAccess")}</h2>
             <p className="text-sm text-gray-500">
               {t(`clientRelationships.inviteStatuses.${relationship.inviteStatus}`)}
-              {relationship.inviteSentAt ? ` · ${formatDate(relationship.inviteSentAt, "")}` : ""}
+              {relationship.inviteSentAt ? ` Ã‚Â· ${formatDate(relationship.inviteSentAt, "")}` : ""}
             </p>
           </div>
           {!relationship.email && (
@@ -632,11 +632,6 @@ export function ClientRelationshipDetailPage() {
         </RelatedSection>
       </div>
 
-      {toast && (
-        <div className={`fixed right-4 top-4 z-50 rounded-lg px-4 py-3 text-sm font-medium text-white shadow-lg ${toast.type === "success" ? "bg-green-600" : "bg-red-600"}`}>
-          {toast.message}
-        </div>
-      )}
     </div>
   );
 }

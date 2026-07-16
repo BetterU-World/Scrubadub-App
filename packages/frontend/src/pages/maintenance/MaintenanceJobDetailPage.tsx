@@ -1,3 +1,4 @@
+import { useFeedbackState } from "@/components/ui/FeedbackProvider";
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -36,7 +37,7 @@ export function MaintenanceJobDetailPage() {
   const [denying, setDenying] = useState(false);
   const [arriving, setArriving] = useState(false);
   const [starting, setStarting] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [toast, setToast] = useFeedbackState<{ message: string; type: "success" | "error" }>();
 
   if (job === undefined) return <PageLoader />;
   if (job === null) return <div className="text-center py-12 text-gray-500">Job not found</div>;
@@ -134,15 +135,6 @@ export function MaintenanceJobDetailPage() {
           </div>
         )}
 
-        {toast && (
-          <div
-            className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all ${
-              toast.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"
-            }`}
-          >
-            {toast.message}
-          </div>
-        )}
 
         {acceptance !== "pending" && (
           <div className={`card text-center text-sm font-medium py-3 ${
@@ -164,10 +156,8 @@ export function MaintenanceJobDetailPage() {
                   try {
                     await acceptJob({ jobId: job._id, userId: user._id, sessionToken: getStaffSessionToken() });
                     setToast({ message: "Job accepted", type: "success" });
-                    setTimeout(() => setToast(null), 3000);
                   } catch (err: any) {
                     setToast({ message: err.message ?? "Failed to accept", type: "error" });
-                    setTimeout(() => setToast(null), 3000);
                   } finally {
                     setAccepting(false);
                   }
@@ -231,7 +221,7 @@ export function MaintenanceJobDetailPage() {
 
           {job.status === "rework_requested" && (
             <div className="text-center text-sm text-red-600 font-medium py-2">
-              Owner has requested rework — tap Start Work to redo.
+              Owner has requested rework Ã¢â‚¬â€ tap Start Work to redo.
             </div>
           )}
 
@@ -272,10 +262,8 @@ export function MaintenanceJobDetailPage() {
                     await denyJob({ jobId: job._id, reason: denyReason || undefined, userId: user._id, sessionToken: getStaffSessionToken() });
                     setShowDeny(false);
                     setToast({ message: "Job denied", type: "success" });
-                    setTimeout(() => setToast(null), 3000);
                   } catch (err: any) {
                     setToast({ message: err.message ?? "Failed to deny", type: "error" });
-                    setTimeout(() => setToast(null), 3000);
                   } finally {
                     setDenying(false);
                   }

@@ -1,3 +1,4 @@
+import { useSimpleFeedbackState } from "@/components/ui/FeedbackProvider";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { Link } from "wouter";
@@ -85,7 +86,7 @@ export function CompanyDocumentsPage() {
   const [name, setName] = useState("SCRUB Service Agreement");
   const [body, setBody] = useState(SCRUB_SERVICE_AGREEMENT_TEMPLATE);
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useSimpleFeedbackState();
   const [error, setError] = useState("");
   const [pendingAction, setPendingAction] = useState<
     { type: "select"; templateId: string } | { type: "restore" } | null
@@ -115,7 +116,6 @@ export function CompanyDocumentsPage() {
 
   const showToast = (message: string) => {
     setToast(message);
-    setTimeout(() => setToast(null), 3000);
   };
 
   const save = async () => {
@@ -421,15 +421,6 @@ export function CompanyDocumentsPage() {
         </section>
       </div>
 
-      {toast && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed right-4 top-4 z-50 rounded-lg bg-green-600 px-4 py-3 text-sm font-medium text-white shadow-lg"
-        >
-          {toast}
-        </div>
-      )}
 
       <ConfirmDialog
         open={pendingAction !== null}

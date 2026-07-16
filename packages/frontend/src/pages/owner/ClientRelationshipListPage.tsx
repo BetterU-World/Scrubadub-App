@@ -1,3 +1,4 @@
+import { useFeedbackState } from "@/components/ui/FeedbackProvider";
 import { FormEvent, useState } from "react";
 import { Link } from "wouter";
 import { useMutation, useQuery } from "convex/react";
@@ -49,13 +50,12 @@ export function ClientRelationshipListPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [toast, setToast] = useFeedbackState<{ message: string; type: "success" | "error" }>();
 
   if (!user || relationships === undefined) return <PageLoader />;
 
   const showToast = (message: string, type: "success" | "error") => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), type === "success" ? 2000 : 3000);
   };
 
   const handleCreate = async (event: FormEvent) => {
@@ -225,11 +225,6 @@ export function ClientRelationshipListPage() {
 
       <RelationshipDiagnostics userId={user._id} sessionToken={sessionToken} />
 
-      {toast && (
-        <div className={`fixed right-4 top-4 z-50 rounded-lg px-4 py-3 text-sm font-medium text-white shadow-lg ${toast.type === "success" ? "bg-green-600" : "bg-red-600"}`}>
-          {toast.message}
-        </div>
-      )}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import * as Sentry from "@sentry/react";
 import App from "./App";
 import "./index.css";
 import "./i18n";
+import { FeedbackProvider } from "./components/ui/FeedbackProvider";
 
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
 if (sentryDsn) {
@@ -30,7 +31,9 @@ if (!convexUrl) {
   ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
       <ConvexProvider client={convex}>
-        <App />
+        <FeedbackProvider>
+          <App />
+        </FeedbackProvider>
       </ConvexProvider>
     </React.StrictMode>
   );

@@ -7,6 +7,8 @@ import { requireUserId } from "@/lib/requireUserId";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useFeedback } from "@/components/ui/FeedbackProvider";
 import {
   Handshake,
   Plus,
@@ -24,6 +26,7 @@ export function PartnersPage() {
   const { user, sessionToken } = useAuth();
   const uid = requireUserId(user);
   const { t } = useTranslation();
+  const feedback = useFeedback();
 
   const contacts = useQuery(
     api.queries.partners.listContacts,
@@ -58,7 +61,7 @@ export function PartnersPage() {
   const [connectEmail, setConnectEmail] = useState("");
   const [connecting, setConnecting] = useState(false);
   const [connectResult, setConnectResult] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [disconnectTarget, setDisconnectTarget] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   if (
@@ -71,10 +74,7 @@ export function PartnersPage() {
     return <PageLoader />;
   }
 
-  const showToast = (message: string, type: "success" | "error") => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
+  const showToast = (message: string, type: "success" | "error") => feedback[type](message);
 
   const handleAdd = async () => {
     if (!uid || !name.trim() || !email.trim()) return;
@@ -144,13 +144,13 @@ export function PartnersPage() {
     }
   };
 
-  const handleDisconnect = async (connectionId: typeof connections[number]["_id"]) => {
+  const handleDisconnect = async (connectionId: string) => {
     if (!uid) return;
-    if (!window.confirm(t("partners.disconnectConfirm"))) return;
     setActionLoading(connectionId);
     try {
-      await disconnectConnectionMut({ userId: uid, sessionToken, connectionId });
+      await disconnectConnectionMut({ userId: uid, sessionToken, connectionId: connectionId as any });
       showToast(t("partners.partnerDisconnected"), "success");
+      setDisconnectTarget(null);
     } catch (err: any) {
       showToast(err.message ?? t("partners.failedToDisconnect"), "error");
     } finally {
@@ -178,16 +178,6 @@ export function PartnersPage() {
           </button>
         }
       />
-
-      {toast && (
-        <div
-          className={`fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-sm font-medium ${
-            toast.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"
-          }`}
-        >
-          {toast.message}
-        </div>
-      )}
 
       {/* Connect by email */}
       <div className="card mb-6">
@@ -296,7 +286,7 @@ export function PartnersPage() {
                 <div className="flex items-center gap-2">
                   <span className="badge bg-green-100 text-green-700">{t("partners.connected")}</span>
                   <button
-                    onClick={() => handleDisconnect(conn._id)}
+                    onClick={() => setDisconnectTarget(conn._id)}
                     disabled={actionLoading === conn._id}
                     className="text-xs text-gray-400 hover:text-red-500 underline"
                   >
@@ -341,6 +331,19 @@ export function PartnersPage() {
       </div>
 
       {/* Add contact modal */}
+      <ConfirmDialog
+        open={disconnectTarget !== null}
+        onOpenChange={(open) => !open && setDisconnectTarget(null)}
+        title={t("partners.disconnectConfirm")}
+        description={t("partners.disconnectConfirm")}
+        confirmLabel={t("common.confirm")}
+        confirmVariant="danger"
+        loading={actionLoading === disconnectTarget}
+        onConfirm={() => {
+          if (disconnectTarget) return handleDisconnect(disconnectTarget);
+        }}
+      />
+
       {showAdd && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
