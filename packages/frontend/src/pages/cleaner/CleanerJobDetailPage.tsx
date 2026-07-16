@@ -105,7 +105,7 @@ export function CleanerJobDetailPage() {
     } finally {
       setStarting(false);
     }
-    // Stay on job detail page Ã¢â‚¬â€ inventory checklist is shown inline
+    // Stay on job detail page — inventory checklist is shown inline
   };
 
   const handleCompleteJob = async () => {
@@ -196,7 +196,7 @@ export function CleanerJobDetailPage() {
           </div>
         )}
 
-        {/* Action buttons Ã¢â‚¬â€ non-workspace states (accept/arrive/cancel) */}
+        {/* Action buttons — non-workspace states (accept/arrive/cancel) */}
         {(canAccept || (canArrive && !canAccept) || canCleanerCancel) && (
           <div className="card space-y-3">
             {canAccept && (
@@ -277,7 +277,7 @@ export function CleanerJobDetailPage() {
           </div>
         )}
 
-        {/* Submission blockers Ã¢â‚¬â€ shown above inventory when in progress */}
+        {/* Submission blockers — shown above inventory when in progress */}
         {isInProgress && (
           <JobSubmissionBlockers
             remainingCleaningCount={remainingCleaning}
@@ -297,11 +297,11 @@ export function CleanerJobDetailPage() {
           />
         )}
 
-        {/* Bottom spacer when sticky CTA is visible Ã¢â‚¬â€ must clear multi-button CTA + safe-area */}
+        {/* Bottom spacer when sticky CTA is visible — must clear multi-button CTA + safe-area */}
         {showStickyCTA && <div className="h-44" />}
       </div>
 
-      {/* Sticky workspace CTA Ã¢â‚¬â€ primary actions for active job states */}
+      {/* Sticky workspace CTA — primary actions for active job states */}
       <StickyWorkspaceCTA visible={showStickyCTA}>
         <div className="space-y-2">
           {canStart && (
@@ -323,7 +323,7 @@ export function CleanerJobDetailPage() {
 
           {isInProgress && hasForm && formCompleted && (
             <Link href={`/jobs/${job._id}/form`} className="btn-secondary w-full flex items-center justify-center gap-2 py-2 text-sm text-gray-600">
-              <ClipboardCheck className="w-4 h-4" /> {t("jobs.continueChecklist")} Ã¢â‚¬â€ Ã¢Å“â€œ Done
+              <ClipboardCheck className="w-4 h-4" /> {t("jobs.continueChecklist")} — ✓ Done
             </Link>
           )}
 
@@ -456,7 +456,7 @@ export function CleanerJobDetailPage() {
   );
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Inventory Checklist Section Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ── Inventory Checklist Section ────────────────────────────────────────
 
 const STATUS_OPTIONS = ["ok", "low", "out", "restocked"] as const;
 
@@ -629,7 +629,7 @@ function InventoryChecklistItem({
               value={qty}
               onChange={(e) => setQty(e.target.value)}
               min={0}
-              placeholder="Ã¢â‚¬â€"
+              placeholder="—"
             />
           </div>
           <input

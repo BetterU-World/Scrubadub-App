@@ -127,7 +127,7 @@ export function BillingSection() {
     }
   };
 
-  // â”€â”€ No subscription at all â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── No subscription at all ──────────────────────────────────
   if (!subscription || !status) {
     return (
       <>
@@ -156,7 +156,7 @@ export function BillingSection() {
     );
   }
 
-  // â”€â”€ Has subscription â€” show details â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Has subscription — show details ─────────────────────────
   return (
     <>
       <div className="card">
@@ -225,7 +225,7 @@ export function BillingSection() {
             className="btn-secondary text-sm flex items-center gap-1.5"
           >
             <ExternalLink className="w-3.5 h-3.5" />
-            {loading === "portal" ? "Openingâ€¦" : "Manage Subscription"}
+            {loading === "portal" ? "Opening…" : "Manage Subscription"}
           </button>
         </div>
       </div>

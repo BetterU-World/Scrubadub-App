@@ -1,7 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { logAudit } from "../lib/helpers";
-import { requireOwnerSession } from "../lib/sessionAuth";
+import { requireOwnerManagerSession, requireOwnerSession } from "../lib/sessionAuth";
 import { requireActiveSubscription } from "../lib/subscriptionGating";
 import { bedroomsValidator, deriveBedroomAggregates, normalizeBedrooms } from "../lib/propertyBedrooms";
 
@@ -49,7 +49,7 @@ export const create = mutation({
       }
     }
 
-    const { userId: _uid, ...propData } = args;
+    const { userId: _uid, sessionToken: _sessionToken, ...propData } = args;
     const bedrooms = normalizeBedrooms(args.bedrooms);
     const propertyId = await ctx.db.insert("properties", {
       ...propData,
@@ -176,7 +176,7 @@ export const update = mutation({
     restroomCount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
     if (property.companyId !== owner.companyId) throw new Error("Not your company");
@@ -187,7 +187,7 @@ export const update = mutation({
       }
     }
 
-    const { propertyId, userId: _uid, ...updates } = args;
+    const { propertyId, userId: _uid, sessionToken: _sessionToken, ...updates } = args;
     const bedrooms = normalizeBedrooms(args.bedrooms);
     await ctx.db.patch(propertyId, {
       ...updates,
@@ -224,7 +224,7 @@ export const updateWalkthroughFacts = mutation({
     trashCanCount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
     if (property.companyId !== owner.companyId) throw new Error("Not your company");
@@ -239,7 +239,7 @@ export const updateWalkthroughFacts = mutation({
       throw new Error("Property counts must be non-negative numbers");
     }
 
-    const { propertyId, userId: _uid, ...updates } = args;
+    const { propertyId, userId: _uid, sessionToken: _sessionToken, ...updates } = args;
     await ctx.db.patch(propertyId, {
       ...updates,
       address,

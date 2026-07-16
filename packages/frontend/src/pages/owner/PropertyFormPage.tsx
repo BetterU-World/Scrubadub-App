@@ -10,6 +10,8 @@ import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { BedroomsEditor, PropertyBedroom } from "@/components/owner/PropertyBedrooms";
 import { useFeedback } from "@/components/ui/FeedbackProvider";
+import { toFriendlyMessage } from "@/lib/friendlyError";
+import { runPropertySave } from "@/lib/propertySaveFeedback";
 
 const PROPERTY_TYPES = [
   { value: "residential", labelKey: "properties.propertyTypes.residential" },
@@ -139,6 +141,8 @@ export function PropertyFormPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!user?.companyId) return;
+    const companyId = user.companyId;
+    const userId = user._id;
     setError("");
     setLoading(true);
     try {
@@ -165,16 +169,24 @@ export function PropertyFormPage() {
         ownerNotes: ownerNotes || undefined,
       };
       if (isEditing) {
-        await updateProperty({ propertyId: params.id as Id<"properties">, userId: user._id, sessionToken, ...data });
-        feedback.success(t("properties.propertyUpdated"));
+        await runPropertySave(
+          () => updateProperty({ propertyId: params.id as Id<"properties">, userId, sessionToken, ...data }),
+          feedback,
+          t("properties.propertyUpdated"),
+          t("properties.failedToSave"),
+        );
         setLocation(`/properties/${params.id}`);
       } else {
-        const id = await createProperty({ companyId: user.companyId, userId: user._id, sessionToken, ...data });
-        feedback.success(t("properties.propertyCreated"));
+        const id = await runPropertySave(
+          () => createProperty({ companyId, userId, sessionToken, ...data }),
+          feedback,
+          t("properties.propertyCreated"),
+          t("properties.failedToSave"),
+        );
         setLocation(`/properties/${id}`);
       }
     } catch (err: any) {
-      setError(err.message || t("properties.failedToSave"));
+      setError(toFriendlyMessage(err, t("properties.failedToSave")));
     } finally {
       setLoading(false);
     }

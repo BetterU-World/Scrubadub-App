@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
+import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { requireUserId } from "@/lib/requireUserId";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -61,7 +62,7 @@ export function PartnersPage() {
   const [connectEmail, setConnectEmail] = useState("");
   const [connecting, setConnecting] = useState(false);
   const [connectResult, setConnectResult] = useState<string | null>(null);
-  const [disconnectTarget, setDisconnectTarget] = useState<string | null>(null);
+  const [disconnectTarget, setDisconnectTarget] = useState<Id<"ownerConnections"> | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   if (
@@ -144,11 +145,11 @@ export function PartnersPage() {
     }
   };
 
-  const handleDisconnect = async (connectionId: string) => {
+  const handleDisconnect = async (connectionId: Id<"ownerConnections">) => {
     if (!uid) return;
     setActionLoading(connectionId);
     try {
-      await disconnectConnectionMut({ userId: uid, sessionToken, connectionId: connectionId as any });
+      await disconnectConnectionMut({ userId: uid, sessionToken, connectionId });
       showToast(t("partners.partnerDisconnected"), "success");
       setDisconnectTarget(null);
     } catch (err: any) {

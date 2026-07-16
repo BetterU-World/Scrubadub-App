@@ -326,7 +326,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                         value={teamMemberUserId[team._id] ?? ""}
                         onChange={(e) => setTeamMemberUserId((p) => ({ ...p, [team._id]: e.target.value }))}
                       >
-                        <option value="">Add employeeÃ¢â‚¬Â¦</option>
+                        <option value="">Add employee…</option>
                         {candidates.map((emp) => <option key={emp._id} value={emp._id}>{emp.name} ({emp.role})</option>)}
                       </select>
                       <select
