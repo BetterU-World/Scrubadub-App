@@ -94,6 +94,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
     canApproveForms: false,
     canManageSchedule: false,
     canResolveRedFlags: false,
+    canManageBusinessConfiguration: false,
   });
   // Manager permissions dialog
   const [editPermsFor, setEditPermsFor] = useState<string | null>(null);
@@ -105,6 +106,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
     canApproveForms: false,
     canManageSchedule: false,
     canResolveRedFlags: false,
+    canManageBusinessConfiguration: false,
   });
   const [editPermsLoading, setEditPermsLoading] = useState(false);
   const updateManagerPermissions = useMutation(api.mutations.employees.updateManagerPermissions);
@@ -182,6 +184,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
       canSeeAllJobs: false, canCreateJobs: false, canAssignCleaners: false,
       canRequestRework: false, canApproveForms: false, canManageSchedule: false,
       canResolveRedFlags: false,
+      canManageBusinessConfiguration: false,
     });
   };
 
@@ -444,6 +447,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                             canApproveForms: !!(emp as any).canApproveForms,
                             canManageSchedule: !!(emp as any).canManageSchedule,
                             canResolveRedFlags: !!(emp as any).canResolveRedFlags,
+                            canManageBusinessConfiguration: !!(emp as any).canManageBusinessConfiguration,
                           });
                         }}
                         className="text-sm text-blue-600 hover:text-blue-700 font-medium"
@@ -588,6 +592,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                       ["canApproveForms", "Can approve forms"],
                       ["canManageSchedule", "Can manage schedule"],
                       ["canResolveRedFlags", "Can resolve red flags"],
+                      ["canManageBusinessConfiguration", "Can manage business configuration"],
                     ] as const).map(([key, label]) => (
                       <label key={key} className="flex items-center gap-2 text-sm text-gray-700">
                         <input
@@ -648,6 +653,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                 ["canApproveForms", "Can approve forms"],
                 ["canManageSchedule", "Can manage schedule"],
                 ["canResolveRedFlags", "Can resolve red flags"],
+                ["canManageBusinessConfiguration", "Can manage business configuration"],
               ] as const).map(([key, label]) => (
                 <label key={key} className="flex items-center gap-2 text-sm text-gray-700">
                   <input

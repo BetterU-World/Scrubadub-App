@@ -33,6 +33,7 @@ interface AuthUser {
   canApproveForms?: boolean;
   canManageSchedule?: boolean;
   canResolveRedFlags?: boolean;
+  canManageBusinessConfiguration?: boolean;
 }
 
 export function useAuth() {

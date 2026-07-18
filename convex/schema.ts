@@ -81,6 +81,7 @@ export default defineSchema({
     canApproveForms: v.optional(v.boolean()),
     canManageSchedule: v.optional(v.boolean()),
     canResolveRedFlags: v.optional(v.boolean()),
+    canManageBusinessConfiguration: v.optional(v.boolean()),
     status: v.union(
       v.literal("active"),
       v.literal("inactive"),
@@ -697,6 +698,34 @@ export default defineSchema({
     details: v.optional(v.string()),
     timestamp: v.number(),
   }).index("by_companyId_timestamp", ["companyId", "timestamp"]),
+
+  companyAddOns: defineTable({
+    companyId: v.id("companies"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    pricingMethod: v.union(
+      v.literal("flat"),
+      v.literal("starting_at"),
+      v.literal("per_unit")
+    ),
+    priceCents: v.number(),
+    unitLabel: v.optional(v.string()),
+    isActive: v.boolean(),
+    isPublic: v.boolean(),
+    displayOrder: v.number(),
+    estimatedDurationMinutes: v.optional(v.number()),
+    internalNotes: v.optional(v.string()),
+    presetKey: v.optional(v.string()),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    archivedAt: v.optional(v.number()),
+    archivedByUserId: v.optional(v.id("users")),
+  })
+    .index("by_companyId", ["companyId"])
+    .index("by_companyId_displayOrder", ["companyId", "displayOrder"])
+    .index("by_companyId_active_displayOrder", ["companyId", "isActive", "displayOrder"])
+    .index("by_companyId_presetKey", ["companyId", "presetKey"]),
 
   // Owner-to-Owner job sharing (Phase 1)
 

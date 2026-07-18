@@ -9,7 +9,7 @@ export function MobileNav() {
   const { user } = useAuth();
   const { t } = useTranslation();
 
-  const nav = getMobileNavItemsForRole(user?.role);
+  const nav = getMobileNavItemsForRole(user?.role, user?.canManageBusinessConfiguration === true);
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">

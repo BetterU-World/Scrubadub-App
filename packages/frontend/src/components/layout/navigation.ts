@@ -23,6 +23,7 @@ import {
   Banknote,
   Package,
   Receipt,
+  Tags,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -76,6 +77,7 @@ export const ownerSections: NavSection[] = [
       { href: "/site", labelKey: "nav.mySite", icon: Globe },
       { href: "/manuals", labelKey: "nav.manuals", icon: BookOpen },
       { href: "/audit-log", labelKey: "nav.auditLog", icon: ScrollText },
+      { href: "/owner/settings/add-ons", labelKey: "nav.addOns", icon: Tags },
       { href: "/owner/settings", labelKey: "nav.settings", icon: Settings },
     ],
   },
@@ -102,6 +104,7 @@ export const managerSections: NavSection[] = [
     titleKey: "nav.company",
     items: [
       { href: "/manuals", labelKey: "nav.manuals", icon: BookOpen },
+      { href: "/owner/settings/add-ons", labelKey: "nav.addOns", icon: Tags },
     ],
   },
 ];
@@ -149,21 +152,27 @@ export const adminSection: NavSection = {
   ],
 };
 
-export function getNavSectionsForRole(role?: string): NavSection[] {
+export function getNavSectionsForRole(role?: string, canManageConfiguration = false): NavSection[] {
+  let sections: NavSection[];
   switch (role as NavigationRole | undefined) {
     case "owner":
-      return ownerSections;
+      sections = ownerSections;
+      break;
     case "manager":
-      return managerSections;
+      sections = managerSections;
+      break;
     case "affiliate":
-      return affiliateSections;
+      sections = affiliateSections;
+      break;
     default:
-      return workerSections;
+      sections = workerSections;
   }
+  if (role !== "manager" || canManageConfiguration) return sections;
+  return sections.map((section) => ({ ...section, items: section.items.filter((item) => item.href !== "/owner/settings/add-ons") }));
 }
 
-export function getMobileNavItemsForRole(role?: string): NavItem[] {
-  return getNavSectionsForRole(role).flatMap((section) =>
+export function getMobileNavItemsForRole(role?: string, canManageConfiguration = false): NavItem[] {
+  return getNavSectionsForRole(role, canManageConfiguration).flatMap((section) =>
     section.items.filter((item) => item.mobile)
   );
 }

@@ -94,7 +94,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose, triggerRef }: Sideb
 
   const isSuperAdmin = user?.isSuperadmin === true;
 
-  const sections = getNavSectionsForRole(user?.role);
+  const sections = getNavSectionsForRole(user?.role, user?.canManageBusinessConfiguration === true);
 
   const toggleSection = (titleKey: string) => {
     setOpenSections((prev) => ({ ...prev, [titleKey]: !prev[titleKey] }));
