@@ -59,6 +59,7 @@ import { PaymentsHubPage } from "@/pages/owner/PaymentsHubPage";
 import { CleanerPaymentsPage } from "@/pages/owner/CleanerPaymentsPage";
 import { InventoryTemplatesPage } from "@/pages/owner/InventoryTemplatesPage";
 import { ArchivedPropertiesPage } from "@/pages/owner/ArchivedPropertiesPage";
+import { CompanyAddOnsPage } from "@/pages/owner/CompanyAddOnsPage";
 
 // Worker pages (cleaner + maintenance unified)
 import { WorkerHomePage } from "@/pages/worker/WorkerHomePage";
@@ -262,6 +263,7 @@ export default function App() {
     "/admin", "/site", "/affiliate", "/availability", "/owner", "/settings", "/payments",
     "/terms", "/privacy", "/contact", "/get-started", "/setup",
     "/inventory-templates",
+    "/owner/settings/add-ons",
     "/cleaning-business-software", "/airbnb-cleaning-software", "/cleaning-company-management-software",
     "/cleaning-checklist-app", "/janitorial-software", "/maid-service-software",
     "/commercial-cleaning-software", "/house-cleaning-business-software",
@@ -385,6 +387,7 @@ export default function App() {
                 <Route path="/owner/settings/onboarding" component={CompanyOnboardingDocumentsPage} />
                 <Route path="/owner/settings/documents" component={CompanyDocumentsPage} />
                 <Route path="/owner/settings/company" component={CompanyProfilePage} />
+                <Route path="/owner/settings/add-ons" component={CompanyAddOnsPage} />
                 <Route path="/owner/settings" component={OwnerSettingsPage} />
               </>
             ) : (
@@ -405,6 +408,7 @@ export default function App() {
                 <Route path="/jobs" component={ManagerJobListPage} />
                 <Route path="/red-flags" component={ManagerRedFlagsPage} />
                 <Route path="/calendar" component={CalendarPage} />
+                {user?.canManageBusinessConfiguration && <Route path="/owner/settings/add-ons" component={CompanyAddOnsPage} />}
               </>
             ) : (
               <Route>

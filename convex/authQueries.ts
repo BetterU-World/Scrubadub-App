@@ -53,6 +53,7 @@ export const getCurrentUser = query({
       canApproveForms: user.canApproveForms,
       canManageSchedule: user.canManageSchedule,
       canResolveRedFlags: user.canResolveRedFlags,
+      canManageBusinessConfiguration: user.canManageBusinessConfiguration,
     };
   },
 });

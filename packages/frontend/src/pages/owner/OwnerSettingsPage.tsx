@@ -18,6 +18,7 @@ import {
   FileText,
   Globe,
   Link2,
+  Tags,
   Users,
 } from "lucide-react";
 import { BillingSection } from "@/components/settings/BillingSection";
@@ -93,6 +94,11 @@ export function OwnerSettingsPage() {
             title={t("settings.companyProfile")}
             description={t("settings.companyProfileDesc")}
           />
+        </section>
+
+        <section aria-labelledby="settings-services-heading">
+          <SectionHeading id="settings-services-heading">{t("settings.groups.servicesPricing")}</SectionHeading>
+          <SettingsLink href="/owner/settings/add-ons" icon={Tags} title={t("settings.addOns")} description={t("settings.addOnsDesc")} />
         </section>
 
         <section aria-labelledby="settings-team-heading">

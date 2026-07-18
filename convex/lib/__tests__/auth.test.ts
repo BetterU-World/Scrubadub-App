@@ -52,6 +52,7 @@ describe("authorization utilities", () => {
   it("retains only pure role utilities in the legacy auth module", async () => {
     const auth = await import("../auth");
     expect(Object.keys(auth).sort()).toEqual([
+      "canManageBusinessConfiguration",
       "hasManagerPermission",
       "isWorkerRole",
     ]);
