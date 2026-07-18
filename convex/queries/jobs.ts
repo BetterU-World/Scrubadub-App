@@ -70,6 +70,8 @@ export const list = query({
             Math.max(
               j._creationTime,
               j.completedAt ?? 0,
+              j.approvedAt ?? 0,
+              j.currentPauseStartedAt ?? 0,
               j.startedAt ?? 0,
               j.arrivedAt ?? 0,
               j.acceptedAt ?? 0,

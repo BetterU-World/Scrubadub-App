@@ -14,6 +14,7 @@ import { JobTimeline } from "@/components/JobTimeline";
 import { JobWorkspaceProgress } from "@/components/JobWorkspaceProgress";
 import { JobSubmissionBlockers } from "@/components/JobSubmissionBlockers";
 import { StickyWorkspaceCTA } from "@/components/StickyWorkspaceCTA";
+import { JobTimingPanel } from "@/components/JobTimingPanel";
 import { Calendar, Clock, MapPin, Key, CheckCircle, XCircle, Play, ClipboardCheck, MapPinCheck, Send, Package, ChevronDown, ChevronUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
@@ -174,6 +175,8 @@ export function CleanerJobDetailPage() {
           />
         )}
 
+        <JobTimingPanel job={job as any} userId={user?._id} controls />
+
         <JobTimeline job={job as any} />
 
         {job.form?.ownerNotes && (
@@ -330,14 +333,15 @@ export function CleanerJobDetailPage() {
           {isInProgress && (
             <button
               onClick={() => setShowComplete(true)}
-              disabled={!canSubmitJob}
+              disabled={!canSubmitJob || job.currentPauseStartedAt !== undefined}
               className={`w-full flex items-center justify-center gap-2 py-3 text-lg ${
-                canSubmitJob ? "btn-primary" : "btn-secondary opacity-60 cursor-not-allowed"
+                canSubmitJob && job.currentPauseStartedAt === undefined ? "btn-primary" : "btn-secondary opacity-60 cursor-not-allowed"
               }`}
             >
               <Send className="w-5 h-5" /> {t("jobs.completeCleaning")}
             </button>
           )}
+          {isInProgress && job.currentPauseStartedAt !== undefined && <p className="text-center text-xs text-amber-700">{t("jobTimer.resumeBeforeComplete")}</p>}
 
           {job.status === "rework_requested" && canStart && (
             <div className="text-center text-xs text-red-600 font-medium">

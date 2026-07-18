@@ -11,6 +11,7 @@ import { AsyncButton } from "@/components/ui/AsyncButton";
 import { useParams, Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { JobTimeline } from "@/components/JobTimeline";
+import { JobTimingPanel } from "@/components/JobTimingPanel";
 import { Calendar, Clock, MapPin, Key, CheckCircle, XCircle, Play, Wrench, MapPinCheck, Send } from "lucide-react";
 
 export function MaintenanceJobDetailPage() {
@@ -125,6 +126,7 @@ export function MaintenanceJobDetailPage() {
         </div>
 
         <JobTimeline job={job as any} />
+        <JobTimingPanel job={job as any} userId={user?._id} controls />
 
         {job.form?.ownerNotes && (
           <div className="card">
@@ -213,11 +215,13 @@ export function MaintenanceJobDetailPage() {
           {isInProgress && (
             <button
               onClick={() => setShowComplete(true)}
-              className="btn-primary w-full flex items-center justify-center gap-2 py-3 text-lg"
+              disabled={job.currentPauseStartedAt !== undefined}
+              className={`w-full flex items-center justify-center gap-2 py-3 text-lg ${job.currentPauseStartedAt === undefined ? "btn-primary" : "btn-secondary opacity-60 cursor-not-allowed"}`}
             >
               <CheckCircle className="w-5 h-5" /> Complete Work
             </button>
           )}
+          {isInProgress && job.currentPauseStartedAt !== undefined && <p className="text-center text-xs text-amber-700">{t("jobTimer.resumeBeforeComplete")}</p>}
 
           {job.status === "rework_requested" && (
             <div className="text-center text-sm text-red-600 font-medium py-2">
