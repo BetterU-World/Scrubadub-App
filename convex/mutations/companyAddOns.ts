@@ -66,7 +66,7 @@ export const update = mutation({
 });
 
 export const enablePreset = mutation({
-  args: { presetKey: v.string(), locale: v.union(v.literal("en"), v.literal("es")), userId: v.optional(v.id("users")), sessionToken: v.string() },
+  args: { presetKey: v.string(), locale: v.union(v.literal("en"), v.literal("es")), pricingMethod, priceCents: v.number(), unitLabel: v.optional(v.string()), estimatedDurationMinutes: v.optional(v.number()), userId: v.optional(v.id("users")), sessionToken: v.string() },
   handler: async (ctx, args) => {
     const user = await requireCatalogManager(ctx, args.sessionToken, args.userId);
     const preset = getCompanyAddOnPreset(args.presetKey);
@@ -79,7 +79,7 @@ export const enablePreset = mutation({
       return { addOnId: existing._id, status: "restored" as const };
     }
     const localized = preset[args.locale];
-    const values = validateCompanyAddOnInput({ name: localized.name, description: localized.description, pricingMethod: preset.pricingMethod, priceCents: preset.suggestedPriceCents ?? 1, unitLabel: preset.unitLabel?.[args.locale], estimatedDurationMinutes: preset.estimatedDurationMinutes, isActive: true, isPublic: false });
+    const values = validateCompanyAddOnInput({ name: localized.name, description: localized.description, pricingMethod: args.pricingMethod, priceCents: args.priceCents, unitLabel: args.unitLabel, estimatedDurationMinutes: args.estimatedDurationMinutes, isActive: true, isPublic: false });
     const now = Date.now();
     const id = await ctx.db.insert("companyAddOns", { companyId: user.companyId, ...values, presetKey: preset.presetKey, displayOrder: await nextDisplayOrder(ctx, user.companyId), createdByUserId: user._id, createdAt: now, updatedAt: now });
     await audit(ctx, user, id, "enable_company_add_on_preset", { presetKey: preset.presetKey, locale: args.locale });

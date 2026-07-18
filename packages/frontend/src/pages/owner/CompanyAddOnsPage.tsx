@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { ChevronDown, ChevronUp, Plus, RotateCcw, Search, Tags, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -29,6 +29,14 @@ export function CompanyAddOnsPage() {
   const [editing, setEditing] = useState<AddOn | null>(null);
   const [form, setForm] = useState(blank);
   const [presetOpen, setPresetOpen] = useState(false);
+  const [presetSetup, setPresetSetup] = useState<any | null>(null);
+  const [presetPrice, setPresetPrice] = useState("");
+  const [presetMethod, setPresetMethod] = useState<Method>("flat");
+  const [presetUnitLabel, setPresetUnitLabel] = useState("");
+  const [presetDuration, setPresetDuration] = useState("");
+  const [presetError, setPresetError] = useState("");
+  const presetScrollRef = useRef<HTMLDivElement>(null);
+  const presetSearchRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState("");
   const [showArchived, setShowArchived] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -36,6 +44,15 @@ export function CompanyAddOnsPage() {
   const activeRecords = useMemo(() => (records ?? []).filter((item) => !item.archivedAt), [records]);
   const archivedRecords = useMemo(() => (records ?? []).filter((item) => item.archivedAt), [records]);
   const locale = i18n.resolvedLanguage?.startsWith("es") ? "es" : "en";
+
+  useLayoutEffect(() => {
+    if (!presetOpen) return;
+    const frame = requestAnimationFrame(() => {
+      if (presetScrollRef.current) presetScrollRef.current.scrollTop = 0;
+      presetSearchRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [presetOpen]);
 
   useEffect(() => {
     if (!editing) return setForm(blank);
@@ -59,6 +76,28 @@ export function CompanyAddOnsPage() {
     if (target < 0 || target >= next.length) return;
     [next[index], next[target]] = [next[target], next[index]];
     await reorder({ ...auth, orderedIds: next.map((item) => item._id) });
+  }
+
+  function beginPresetSetup(preset: any) {
+    setPresetSetup(preset);
+    setPresetMethod(preset.pricingMethod);
+    setPresetPrice("");
+    setPresetUnitLabel(preset.unitLabel?.[locale] ?? "");
+    setPresetDuration(preset.estimatedDurationMinutes ? String(preset.estimatedDurationMinutes) : "");
+    setPresetError("");
+    setPresetOpen(false);
+  }
+
+  async function confirmPreset() {
+    if (!presetSetup) return;
+    const numericPrice = Number(presetPrice);
+    const priceCents = numericPrice * 100;
+    if (!Number.isFinite(numericPrice) || !Number.isSafeInteger(priceCents) || priceCents <= 0) return setPresetError(t("addOns.validation.presetPrice"));
+    setBusy(true); setPresetError("");
+    try {
+      await enablePreset({ ...auth, presetKey: presetSetup.presetKey, locale, pricingMethod: presetMethod, priceCents, unitLabel: presetMethod === "per_unit" ? presetUnitLabel : undefined, estimatedDurationMinutes: presetDuration ? Number(presetDuration) : undefined });
+      setPresetSetup(null);
+    } catch (err: any) { setPresetError(err.message || t("addOns.validation.saveFailed")); } finally { setBusy(false); }
   }
 
   if (!user || records === undefined) return <LoadingSpinner size="lg" />;
@@ -87,7 +126,8 @@ export function CompanyAddOnsPage() {
     <button className="mt-6 text-sm font-medium text-gray-600" onClick={() => setShowArchived(!showArchived)}>{showArchived ? t("addOns.hideArchived") : t("addOns.showArchived", { count: archivedRecords.length })}</button>
     {showArchived && <div className="mt-3 space-y-2">{archivedRecords.length === 0 ? <p className="text-sm text-gray-500">{t("addOns.noArchived")}</p> : archivedRecords.map((item) => <div key={item._id} className="card flex items-center justify-between gap-3"><div><p className="font-medium">{item.name}</p><p className="text-sm text-gray-500">{currency(item.priceCents)}</p></div><button className="btn-secondary flex items-center gap-2" onClick={() => restore({ ...auth, addOnId: item._id })}><RotateCcw className="h-4 w-4" />{t("addOns.restore")}</button></div>)}</div>}
     {editing && !editing._id && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl bg-white shadow-xl"><div className="flex items-center justify-between border-b p-4"><h2 className="font-semibold">{t("addOns.create")}</h2><button onClick={() => setEditing(null)}><X /></button></div><Editor form={form} setForm={setForm} save={save} busy={busy} t={t} onCancel={() => setEditing(null)} /></div></div>}
-    {presetOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-5 shadow-xl"><div className="flex items-center justify-between"><h2 className="text-lg font-semibold">{t("addOns.presetTitle")}</h2><button onClick={() => setPresetOpen(false)}><X /></button></div><label className="mt-4 flex items-center gap-2 rounded-lg border px-3"><Search className="h-4 w-4 text-gray-400" /><input className="w-full py-2 outline-none" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("addOns.searchPresets")} /></label><div className="mt-4 grid gap-3 sm:grid-cols-2">{(presets ?? []).filter((preset) => `${preset[locale].name} ${preset[locale].description}`.toLowerCase().includes(search.toLowerCase())).map((preset) => <div key={preset.presetKey} className="rounded-lg border p-4"><h3 className="font-semibold">{preset[locale].name}</h3><p className="mt-1 text-sm text-gray-600">{preset[locale].description}</p><p className="mt-2 text-sm font-medium">{preset.suggestedPriceCents ? currency(preset.suggestedPriceCents) : ""} · {t(`addOns.methods.${preset.pricingMethod}`)}</p><button className="btn-primary mt-3 w-full" onClick={async () => { await enablePreset({ ...auth, presetKey: preset.presetKey, locale }); }}>{t("addOns.enablePreset")}</button></div>)}</div></div></div>}
+    {presetOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="presentation"><div ref={presetScrollRef} role="dialog" aria-modal="true" aria-labelledby="preset-browser-title" className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-5 shadow-xl"><div className="flex items-center justify-between"><h2 id="preset-browser-title" className="text-lg font-semibold">{t("addOns.presetTitle")}</h2><button aria-label={t("common.close")} onClick={() => setPresetOpen(false)}><X /></button></div><p className="mt-1 text-sm text-gray-600">{t("addOns.presetPricingControl")}</p><label className="mt-4 flex items-center gap-2 rounded-lg border px-3"><Search className="h-4 w-4 text-gray-400" /><input ref={presetSearchRef} className="w-full py-2 outline-none" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("addOns.searchPresets")} /></label><div className="mt-4 grid gap-3 sm:grid-cols-2">{(presets ?? []).filter((preset) => `${preset[locale].name} ${preset[locale].description}`.toLowerCase().includes(search.toLowerCase())).map((preset) => <div key={preset.presetKey} className="rounded-lg border p-4"><h3 className="font-semibold">{preset[locale].name}</h3><p className="mt-1 text-sm text-gray-600">{preset[locale].description}</p><p className="mt-2 text-sm font-medium">{t(`addOns.methods.${preset.pricingMethod}`)}</p><button className="btn-primary mt-3 w-full" onClick={() => beginPresetSetup(preset)}>{t("addOns.enablePreset")}</button></div>)}</div></div></div>}
+    {presetSetup && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="presentation"><div role="dialog" aria-modal="true" aria-labelledby="preset-setup-title" className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl"><div className="flex items-center justify-between"><h2 id="preset-setup-title" className="text-lg font-semibold">{t("addOns.setPresetPrice", { name: presetSetup[locale].name })}</h2><button aria-label={t("common.close")} onClick={() => setPresetSetup(null)}><X /></button></div><p className="mt-2 text-sm text-gray-600">{t("addOns.presetSetupHelp")}</p>{presetError && <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{presetError}</div>}<div className="mt-4 space-y-4"><label className="block text-sm font-medium">{t("addOns.chooseChargeMethod")}<select className="input-field mt-1" value={presetMethod} onChange={(e) => { const method = e.target.value as Method; setPresetMethod(method); if (method !== "per_unit") setPresetUnitLabel(""); else if (!presetUnitLabel) setPresetUnitLabel(presetSetup.unitLabel?.[locale] ?? ""); }}><option value="flat">{t("addOns.methods.flat")}</option><option value="starting_at">{t("addOns.methods.starting_at")}</option><option value="per_unit">{t("addOns.methods.per_unit")}</option></select></label><label className="block text-sm font-medium">{t("addOns.setYourPrice")}<input className="input-field mt-1" type="number" min="0.01" step="0.01" value={presetPrice} onChange={(e) => setPresetPrice(e.target.value)} autoFocus /></label>{presetMethod === "per_unit" && <label className="block text-sm font-medium">{t("addOns.fields.unitLabel")}<input className="input-field mt-1" maxLength={40} value={presetUnitLabel} onChange={(e) => setPresetUnitLabel(e.target.value)} /></label>}<label className="block text-sm font-medium">{t("addOns.fields.duration")}<input className="input-field mt-1" type="number" min="1" max="1440" value={presetDuration} onChange={(e) => setPresetDuration(e.target.value)} /></label></div><div className="mt-5 flex justify-end gap-2"><button className="btn-secondary" onClick={() => { setPresetSetup(null); setPresetOpen(true); }}>{t("common.back")}</button><button className="btn-primary" disabled={busy || !presetPrice} onClick={confirmPreset}>{busy ? t("common.saving") : t("addOns.enableWithPrice")}</button></div></div></div>}
   </div>;
 }
 

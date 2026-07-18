@@ -105,6 +105,7 @@
     "error": "Error",
     "success": "Success",
     "confirm": "Confirm",
+    "close": "Close",
     "back": "Back",
     "next": "Next",
     "submit": "Submit",
@@ -998,6 +999,12 @@
     "presetTitle": "SCRUB add-on presets",
     "searchPresets": "Search presets",
     "enablePreset": "Enable preset",
+    "presetPricingControl": "SCRUB provides the service template. Your company controls how you charge and what price you set.",
+    "setPresetPrice": "Set your price for {{name}}",
+    "presetSetupHelp": "Choose how you charge and set your own price. You can edit this later.",
+    "chooseChargeMethod": "Choose how you charge",
+    "setYourPrice": "Set your price",
+    "enableWithPrice": "Enable with this price",
     "emptyTitle": "No add-ons yet",
     "emptyDescription": "Create a custom add-on or enable a SCRUB preset to get started.",
     "active": "Active",
@@ -1014,7 +1021,7 @@
     "noPermission": "You do not have permission to manage business configuration.",
     "methods": { "flat": "Flat price", "starting_at": "Starting at", "per_unit": "Per unit" },
     "fields": { "name": "Name", "description": "Description", "method": "Pricing method", "price": "Price", "unitLabel": "Unit label", "duration": "Estimated duration (minutes)", "notes": "Internal notes" },
-    "validation": { "wholeCents": "Enter a price with no more than two decimal places.", "saveFailed": "Unable to save the add-on." }
+    "validation": { "wholeCents": "Enter a price with no more than two decimal places.", "presetPrice": "Enter a positive price with no more than two decimal places.", "saveFailed": "Unable to save the add-on." }
   },
   "companyProfile": {
     "title": "Company Profile",

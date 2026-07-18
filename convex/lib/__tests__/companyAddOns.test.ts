@@ -31,6 +31,7 @@ async function seed(t: ReturnType<typeof backend>) {
 
 async function login(t: ReturnType<typeof backend>, email: string) { return await t.action(api.authActions.signIn, { email, password: PASSWORD }); }
 function custom(auth: any, overrides: Record<string, unknown> = {}) { return { ...auth, name: "Custom add-on", description: "Description", pricingMethod: "flat", priceCents: 2500, isActive: true, isPublic: false, ...overrides }; }
+function preset(auth: any, presetKey: string, locale: "en" | "es", overrides: Record<string, unknown> = {}) { return { ...auth, presetKey, locale, pricingMethod: "flat", priceCents: 7300, ...overrides }; }
 
 describe("company add-on catalog", () => {
   beforeEach(() => {
@@ -78,19 +79,23 @@ describe("company add-on catalog", () => {
     const t = backend(); const s = await seed(t);
     const a = await login(t, "owner-a@catalog.test"); const b = await login(t, "owner-b@catalog.test");
     const authA = { userId: s.ownerA, sessionToken: a.sessionToken }; const authB = { userId: s.ownerB, sessionToken: b.sessionToken };
-    const created = await t.mutation(catalogApi.mutations.companyAddOns.enablePreset, { ...authA, presetKey: "interior_oven", locale: "en" });
-    const other = await t.mutation(catalogApi.mutations.companyAddOns.enablePreset, { ...authB, presetKey: "interior_oven", locale: "es" });
+    const created = await t.mutation(catalogApi.mutations.companyAddOns.enablePreset, preset(authA, "interior_oven", "en", { pricingMethod: "starting_at", priceCents: 7300 }));
+    const other = await t.mutation(catalogApi.mutations.companyAddOns.enablePreset, preset(authB, "interior_oven", "es", { priceCents: 9100 }));
     expect(created.status).toBe("created"); expect(other.status).toBe("created");
-    expect((await t.mutation(catalogApi.mutations.companyAddOns.enablePreset, { ...authA, presetKey: "interior_oven", locale: "es" })).status).toBe("already_enabled");
+    expect((await t.query(catalogApi.queries.companyAddOns.list, authA))[0]).toMatchObject({ priceCents: 7300, pricingMethod: "starting_at" });
+    expect((await t.mutation(catalogApi.mutations.companyAddOns.enablePreset, preset(authA, "interior_oven", "es", { priceCents: 9999 }))).status).toBe("already_enabled");
     await t.mutation(catalogApi.mutations.companyAddOns.update, custom(authA, { addOnId: created.addOnId, name: "My edited oven" }));
     await t.mutation(catalogApi.mutations.companyAddOns.archive, { ...authA, addOnId: created.addOnId });
-    const restored = await t.mutation(catalogApi.mutations.companyAddOns.enablePreset, { ...authA, presetKey: "interior_oven", locale: "es" });
+    const restored = await t.mutation(catalogApi.mutations.companyAddOns.enablePreset, preset(authA, "interior_oven", "es", { priceCents: 9999 }));
     expect(restored).toMatchObject({ addOnId: created.addOnId, status: "restored" });
     const rowsA = await t.query(catalogApi.queries.companyAddOns.list, { ...authA, includeArchived: true });
     const rowsB = await t.query(catalogApi.queries.companyAddOns.list, { ...authB, includeArchived: true });
-    expect(rowsA[0].name).toBe("My edited oven"); expect(rowsB[0].name).toBe("Limpieza interior del horno");
+    expect(rowsA[0]).toMatchObject({ name: "My edited oven", priceCents: 2500, pricingMethod: "flat" }); expect(rowsB[0]).toMatchObject({ name: "Limpieza interior del horno", priceCents: 9100 });
     expect(COMPANY_ADD_ON_PRESETS.find((p) => p.presetKey === "interior_oven")?.en.name).toBe("Interior oven cleaning");
-    await expect(t.mutation(catalogApi.mutations.companyAddOns.enablePreset, { ...authA, presetKey: "retired", locale: "en" })).rejects.toThrow("Unknown or retired");
+    expect(COMPANY_ADD_ON_PRESETS.every((definition) => !("suggestedPriceCents" in definition))).toBe(true);
+    await expect(t.mutation(catalogApi.mutations.companyAddOns.enablePreset, preset(authA, "retired", "en"))).rejects.toThrow("Unknown or retired");
+    await expect(t.mutation(catalogApi.mutations.companyAddOns.enablePreset, preset(authA, "laundry", "en", { pricingMethod: "per_unit", unitLabel: undefined }))).rejects.toThrow("Unit label is required");
+    await expect(t.mutation(catalogApi.mutations.companyAddOns.enablePreset, preset(authA, "laundry", "en", { priceCents: 0 }))).rejects.toThrow("positive whole number");
   });
 
   it("handles lifecycle, deterministic ordering, public projection, audit, and legacy site isolation", async () => {
