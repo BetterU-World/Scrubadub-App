@@ -105,6 +105,7 @@
     "error": "Error",
     "success": "Éxito",
     "confirm": "Confirmar",
+    "close": "Cerrar",
     "back": "Volver",
     "next": "Siguiente",
     "submit": "Enviar",
@@ -998,6 +999,12 @@
     "presetTitle": "Opciones predefinidas de SCRUB",
     "searchPresets": "Buscar opciones",
     "enablePreset": "Activar opción",
+    "presetPricingControl": "SCRUB proporciona la plantilla del servicio. Tu empresa controla cómo cobra y qué precio establece.",
+    "setPresetPrice": "Establece tu precio para {{name}}",
+    "presetSetupHelp": "Elige cómo cobras y establece tu propio precio. Puedes editarlo más adelante.",
+    "chooseChargeMethod": "Elige cómo cobras",
+    "setYourPrice": "Establece tu precio",
+    "enableWithPrice": "Activar con este precio",
     "emptyTitle": "Aún no hay servicios adicionales",
     "emptyDescription": "Crea uno personalizado o activa una opción de SCRUB para comenzar.",
     "active": "Activo",
@@ -1014,7 +1021,7 @@
     "noPermission": "No tienes permiso para gestionar la configuración comercial.",
     "methods": { "flat": "Precio fijo", "starting_at": "Desde", "per_unit": "Por unidad" },
     "fields": { "name": "Nombre", "description": "Descripción", "method": "Método de precio", "price": "Precio", "unitLabel": "Nombre de la unidad", "duration": "Duración estimada (minutos)", "notes": "Notas internas" },
-    "validation": { "wholeCents": "Ingresa un precio con no más de dos decimales.", "saveFailed": "No se pudo guardar el servicio adicional." }
+    "validation": { "wholeCents": "Ingresa un precio con no más de dos decimales.", "presetPrice": "Ingresa un precio positivo con no más de dos decimales.", "saveFailed": "No se pudo guardar el servicio adicional." }
   },
   "companyProfile": {
     "title": "Perfil de empresa",
