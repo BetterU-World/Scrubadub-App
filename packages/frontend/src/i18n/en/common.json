@@ -2160,6 +2160,33 @@
       "6": "Sat"
     }
   },
+  "jobTimer": {
+    "title": "Tracked time",
+    "active": "Active",
+    "pausedTime": "Paused",
+    "elapsed": "Elapsed",
+    "paused": "Paused",
+    "pausedFor": "Paused for {{duration}}",
+    "pause": "Pause Cleaning",
+    "resume": "Resume Cleaning",
+    "pauseTitle": "Pause cleaning",
+    "reason": "Reason",
+    "otherNote": "Short note",
+    "pausing": "Pausing...",
+    "resuming": "Resuming...",
+    "history": "Pause history",
+    "inProgress": "In progress",
+    "resumeBeforeComplete": "Resume cleaning before completing this job.",
+    "reasons": {
+      "break": "Break",
+      "waiting_for_access": "Waiting for Access",
+      "supplies": "Supplies",
+      "client_interruption": "Client Interruption",
+      "travel_between_service_areas": "Travel Between Service Areas",
+      "equipment_issue": "Equipment Issue",
+      "other": "Other"
+    }
+  },
   "guidance": {
     "owner": {
       "requests": "Requests collect new service inquiries as they move through review and qualification. Qualified requests can progress through walkthroughs, proposals, and service setup.",

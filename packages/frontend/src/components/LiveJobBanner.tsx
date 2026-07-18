@@ -83,7 +83,9 @@ export function LiveJobBanner() {
   const propertyName = job.propertyName ?? "Unknown Property";
 
   let bannerText: string;
-  if (job.status === "in_progress") {
+  if (job.status === "in_progress" && job.currentPauseStartedAt) {
+    bannerText = `⏸ ${cleanerName} paused work at ${propertyName}`;
+  } else if (job.status === "in_progress") {
     bannerText = `${icon} ${cleanerName} is cleaning ${propertyName}`;
   } else if (job.status === "submitted") {
     bannerText = `${icon} Cleaning completed at ${propertyName} \u2014 awaiting approval`;

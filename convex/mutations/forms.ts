@@ -188,7 +188,7 @@ export const approve = mutation({
       status: "approved",
       ownerNotes: args.notes,
     });
-    await ctx.db.patch(form.jobId, { status: "approved", completedAt: Date.now() });
+    await ctx.db.patch(form.jobId, { status: "approved", approvedAt: Date.now() });
 
     const approveProperty = job.propertyId ? await ctx.db.get(job.propertyId) : null;
     const approvePropertyName = approveProperty?.name ?? job.propertySnapshot?.name ?? "a property";

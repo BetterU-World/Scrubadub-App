@@ -6,6 +6,24 @@ import { requireOwnerSession, requireWorkerSession } from "../lib/sessionAuth";
 import { requireActiveSubscription } from "../lib/subscriptionGating";
 import { assertTeamInCompany, canSubmitFinalJob, getJobRecipientUserIds, isUserAssignedToJob } from "../lib/teams";
 import { resolveOperationalEmailIdentity } from "../lib/operationalEmailIdentity";
+import { MAX_JOB_PAUSE_CYCLES, normalizePauseNote } from "../lib/jobTiming";
+
+const pauseReasonValidator = v.union(
+  v.literal("break"),
+  v.literal("waiting_for_access"),
+  v.literal("supplies"),
+  v.literal("client_interruption"),
+  v.literal("travel_between_service_areas"),
+  v.literal("equipment_issue"),
+  v.literal("other")
+);
+
+function findOpenPauseIndex(history: Array<{ resumedAt?: number }>) {
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    if (history[index].resumedAt === undefined) return index;
+  }
+  return -1;
+}
 
 export const create = mutation({
   args: {
@@ -469,6 +487,52 @@ export const startJob = mutation({
   },
 });
 
+export const pauseJob = mutation({
+  args: {
+    jobId: v.id("jobs"),
+    reason: pauseReasonValidator,
+    note: v.optional(v.string()),
+    userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.companyId !== user.companyId) throw new Error("Job not found");
+    if (!(await isUserAssignedToJob(ctx, job, user._id))) throw new Error("Not assigned to this job");
+    if (job.status !== "in_progress") throw new Error("Only an in-progress job can be paused");
+    if (job.currentPauseStartedAt !== undefined) throw new Error("Job is already paused");
+    const history = job.pauseHistory ?? [];
+    if (history.length >= MAX_JOB_PAUSE_CYCLES) throw new Error("This job has reached the pause limit");
+    const now = Date.now();
+    const note = normalizePauseNote(args.reason, args.note);
+    await ctx.db.patch(args.jobId, {
+      currentPauseStartedAt: now,
+      pauseHistory: [...history, { pausedAt: now, reason: args.reason, note, pausedByUserId: user._id }],
+    });
+    await logAudit(ctx, { companyId: job.companyId, userId: user._id, action: "pause_job", entityType: "job", entityId: args.jobId, details: args.reason });
+  },
+});
+
+export const resumeJob = mutation({
+  args: { jobId: v.id("jobs"), userId: v.optional(v.id("users")), sessionToken: v.string() },
+  handler: async (ctx, args) => {
+    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.companyId !== user.companyId) throw new Error("Job not found");
+    if (!(await isUserAssignedToJob(ctx, job, user._id))) throw new Error("Not assigned to this job");
+    if (job.status !== "in_progress") throw new Error("Only an in-progress job can be resumed");
+    if (job.currentPauseStartedAt === undefined) throw new Error("Job is not paused");
+    const history = [...(job.pauseHistory ?? [])];
+    const openIndex = findOpenPauseIndex(history);
+    if (openIndex < 0) throw new Error("Pause history is inconsistent");
+    const now = Date.now();
+    history[openIndex] = { ...history[openIndex], resumedAt: now, durationMs: Math.max(0, now - history[openIndex].pausedAt), resumedByUserId: user._id };
+    await ctx.db.patch(args.jobId, { currentPauseStartedAt: undefined, pauseHistory: history });
+    await logAudit(ctx, { companyId: job.companyId, userId: user._id, action: "resume_job", entityType: "job", entityId: args.jobId });
+  },
+});
+
 export const completeJob = mutation({
   args: {
     jobId: v.id("jobs"),
@@ -482,6 +546,7 @@ export const completeJob = mutation({
     if (!job) throw new Error("Job not found");
     if (!(await canSubmitFinalJob(ctx, job, user))) throw new Error("Only a team lead, assigned manager, or owner can submit this job");
     if (job.status !== "in_progress") throw new Error("Job not in progress");
+    if (job.currentPauseStartedAt !== undefined) throw new Error("Resume the job before completing it");
 
     // Gate: all required inventory items must have a status reported
     if (job.inventoryChecklist && job.inventoryChecklist.length > 0) {
@@ -615,6 +680,43 @@ export const ownerStartJob = mutation({
   },
 });
 
+export const ownerPauseJob = mutation({
+  args: { jobId: v.id("jobs"), reason: pauseReasonValidator, note: v.optional(v.string()), userId: v.id("users"), sessionToken: v.string() },
+  handler: async (ctx, args) => {
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.companyId !== owner.companyId) throw new Error("Job not found");
+    if (job.assignedManagerId !== owner._id) throw new Error("You are not self-assigned to this job");
+    if (job.status !== "in_progress") throw new Error("Only an in-progress job can be paused");
+    if (job.currentPauseStartedAt !== undefined) throw new Error("Job is already paused");
+    const history = job.pauseHistory ?? [];
+    if (history.length >= MAX_JOB_PAUSE_CYCLES) throw new Error("This job has reached the pause limit");
+    const now = Date.now();
+    const note = normalizePauseNote(args.reason, args.note);
+    await ctx.db.patch(args.jobId, { currentPauseStartedAt: now, pauseHistory: [...history, { pausedAt: now, reason: args.reason, note, pausedByUserId: owner._id }] });
+    await logAudit(ctx, { companyId: job.companyId, userId: owner._id, action: "pause_job", entityType: "job", entityId: args.jobId, details: args.reason });
+  },
+});
+
+export const ownerResumeJob = mutation({
+  args: { jobId: v.id("jobs"), userId: v.id("users"), sessionToken: v.string() },
+  handler: async (ctx, args) => {
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.companyId !== owner.companyId) throw new Error("Job not found");
+    if (job.assignedManagerId !== owner._id) throw new Error("You are not self-assigned to this job");
+    if (job.status !== "in_progress") throw new Error("Only an in-progress job can be resumed");
+    if (job.currentPauseStartedAt === undefined) throw new Error("Job is not paused");
+    const history = [...(job.pauseHistory ?? [])];
+    const openIndex = findOpenPauseIndex(history);
+    if (openIndex < 0) throw new Error("Pause history is inconsistent");
+    const now = Date.now();
+    history[openIndex] = { ...history[openIndex], resumedAt: now, durationMs: Math.max(0, now - history[openIndex].pausedAt), resumedByUserId: owner._id };
+    await ctx.db.patch(args.jobId, { currentPauseStartedAt: undefined, pauseHistory: history });
+    await logAudit(ctx, { companyId: job.companyId, userId: owner._id, action: "resume_job", entityType: "job", entityId: args.jobId });
+  },
+});
+
 /**
  * Owner self-execution: complete a job the owner is self-assigned to.
  * Skips the submit→approve cycle — directly marks as approved.
@@ -633,10 +735,12 @@ export const ownerCompleteJob = mutation({
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
     if (job.assignedManagerId !== owner._id) throw new Error("You are not self-assigned to this job");
     if (job.status !== "in_progress") throw new Error("Job not in progress");
+    if (job.currentPauseStartedAt !== undefined) throw new Error("Resume the job before completing it");
 
     await ctx.db.patch(args.jobId, {
       status: "approved",
       completedAt: Date.now(),
+      approvedAt: Date.now(),
       notes: args.notes ? `${job.notes ? job.notes + "\n" : ""}Owner completion: ${args.notes}` : job.notes,
     });
 

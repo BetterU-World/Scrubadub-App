@@ -2160,6 +2160,33 @@
       "6": "Sab"
     }
   },
+  "jobTimer": {
+    "title": "Tiempo registrado",
+    "active": "Activo",
+    "pausedTime": "En pausa",
+    "elapsed": "Transcurrido",
+    "paused": "En pausa",
+    "pausedFor": "En pausa durante {{duration}}",
+    "pause": "Pausar limpieza",
+    "resume": "Reanudar limpieza",
+    "pauseTitle": "Pausar limpieza",
+    "reason": "Motivo",
+    "otherNote": "Nota breve",
+    "pausing": "Pausando...",
+    "resuming": "Reanudando...",
+    "history": "Historial de pausas",
+    "inProgress": "En curso",
+    "resumeBeforeComplete": "Reanuda la limpieza antes de completar este trabajo.",
+    "reasons": {
+      "break": "Descanso",
+      "waiting_for_access": "Esperando acceso",
+      "supplies": "Suministros",
+      "client_interruption": "Interrupción del cliente",
+      "travel_between_service_areas": "Traslado entre áreas de servicio",
+      "equipment_issue": "Problema con el equipo",
+      "other": "Otro"
+    }
+  },
   "guidance": {
     "owner": {
       "requests": "Las solicitudes reúnen nuevas consultas de servicio durante su revisión y calificación. Las solicitudes calificadas pueden avanzar a recorridos, propuestas y configuración del servicio.",

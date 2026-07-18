@@ -500,6 +500,25 @@ export default defineSchema({
     arrivedAt: v.optional(v.number()),
     startedAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
+    approvedAt: v.optional(v.number()),
+    currentPauseStartedAt: v.optional(v.number()),
+    pauseHistory: v.optional(v.array(v.object({
+      pausedAt: v.number(),
+      resumedAt: v.optional(v.number()),
+      durationMs: v.optional(v.number()),
+      reason: v.union(
+        v.literal("break"),
+        v.literal("waiting_for_access"),
+        v.literal("supplies"),
+        v.literal("client_interruption"),
+        v.literal("travel_between_service_areas"),
+        v.literal("equipment_issue"),
+        v.literal("other")
+      ),
+      note: v.optional(v.string()),
+      pausedByUserId: v.id("users"),
+      resumedByUserId: v.optional(v.id("users")),
+    }))),
     sourceRedFlagId: v.optional(v.id("redFlags")),
     // Shared-job fields (set on the copy created in the partner's company)
     sharedFromJobId: v.optional(v.id("jobs")),

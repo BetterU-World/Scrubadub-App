@@ -17,6 +17,7 @@ interface Job {
   arrivedAt?: number;
   startedAt?: number;
   completedAt?: number;
+  approvedAt?: number;
   reworkCount: number;
 }
 
@@ -103,10 +104,10 @@ export function JobTimeline({ job }: { job: Job }) {
     });
   }
 
-  if (job.status === "approved" && job.completedAt) {
+  if (job.status === "approved" && (job.approvedAt || job.completedAt)) {
     events.push({
       label: "Approved",
-      time: job.completedAt,
+      time: job.approvedAt ?? job.completedAt!,
       icon: <ThumbsUp className="w-4 h-4" />,
       color: "text-green-600 bg-green-100",
     });

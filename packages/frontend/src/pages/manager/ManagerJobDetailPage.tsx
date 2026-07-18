@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { JobTimeline } from "@/components/JobTimeline";
+import { JobTimingPanel } from "@/components/JobTimingPanel";
 import { useTranslation } from "react-i18next";
 import { useParams } from "wouter";
 import {
@@ -228,6 +229,7 @@ export function ManagerJobDetailPage() {
 
         {/* Timeline */}
         <JobTimeline job={job as any} />
+        <JobTimingPanel job={job as any} />
 
         {/* Form Submission Info */}
         {job.form && (

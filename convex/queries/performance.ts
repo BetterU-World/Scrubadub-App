@@ -1,4 +1,5 @@
 import { query } from "../_generated/server";
+import { getJobTiming } from "../lib/jobTiming";
 import { v } from "convex/values";
 import { requireStaffCompany } from "../lib/sessionAuth";
 import { withPerfLog } from "../lib/perfLog";
@@ -172,7 +173,7 @@ export const getLeaderboard = query({
             ? Math.round(
                 timedJobs.reduce(
                   (sum, j) =>
-                    sum + ((j.completedAt! - j.startedAt!) / (1000 * 60)),
+                    sum + (getJobTiming(j, j.completedAt!).activeMs / (1000 * 60)),
                   0
                 ) / timedJobs.length
               )

@@ -12,6 +12,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useParams, Link } from "wouter";
 import { JobTimeline } from "@/components/JobTimeline";
+import { JobTimingPanel } from "@/components/JobTimingPanel";
 import {
   Calendar,
   Clock,
@@ -284,6 +285,7 @@ export function JobDetailPage() {
         </div>
 
         <JobTimeline job={job as any} />
+        <JobTimingPanel job={job as any} userId={user?._id as any} controls={job.status === "in_progress" && job.assignedManagerId === user?._id} ownerMode />
 
         {/* Owner2: shared job accept/reject banner */}
         {incomingShared && incomingShared.status === "pending" && (
@@ -1242,6 +1244,7 @@ export function JobDetailPage() {
               )}
               {job.status === "in_progress" && (
                 <button
+                  disabled={job.currentPauseStartedAt !== undefined}
                   onClick={async () => {
                     const uid = requireUserId(user);
                     if (!uid) return;
@@ -1252,7 +1255,7 @@ export function JobDetailPage() {
                       setToast({ message: err.message ?? t("common.failed"), type: "error" });
                     }
                   }}
-                  className="btn-primary text-sm flex items-center gap-2"
+                  className={`text-sm flex items-center gap-2 ${job.currentPauseStartedAt === undefined ? "btn-primary" : "btn-secondary opacity-60 cursor-not-allowed"}`}
                 >
                   <CheckCircle className="w-4 h-4" /> {t("jobs.completeClean")}
                 </button>
