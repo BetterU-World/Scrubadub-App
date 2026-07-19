@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { convexTest } from "convex-test";
 import schema from "../../schema";
 import { api } from "../../_generated/api";
@@ -41,6 +43,14 @@ describe("company add-on catalog", () => {
     process.env.RESEND_API_KEY = "test-resend-key";
     process.env.RESEND_FROM_EMAIL = "test@example.com";
     process.env.APP_URL = "http://localhost:5173";
+  });
+
+  it("keeps the preset browser viewport-contained with only the card body scrollable", () => {
+    const source = readFileSync(fileURLToPath(new URL("../../../packages/frontend/src/pages/owner/CompanyAddOnsPage.tsx", import.meta.url)), "utf8");
+    expect(source).toContain('<Dialog.Root open={presetOpen} onOpenChange={setPresetOpen}>');
+    expect(source).toContain('className="fixed inset-x-4 bottom-4 top-4 z-50 mx-auto flex max-h-[calc(100dvh-2rem)] w-auto max-w-2xl flex-col overflow-hidden');
+    expect(source).toContain('ref={presetScrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5"');
+    expect(source).toContain("<Dialog.Close asChild>");
   });
 
   it("enforces owner and explicitly permitted manager authorization", async () => {
