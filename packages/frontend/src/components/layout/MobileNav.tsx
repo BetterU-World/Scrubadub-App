@@ -12,8 +12,8 @@ export function MobileNav() {
   const nav = getMobileNavItemsForRole(user?.role, user?.canManageBusinessConfiguration === true);
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
-      <div className="flex justify-around gap-1 overflow-x-auto px-2 py-2">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white pb-[var(--safe-area-bottom)] md:hidden">
+      <div className="flex h-[var(--mobile-nav-height)] justify-around gap-1 overflow-x-auto px-2 py-2">
         {nav.map((item) => {
           const isActive =
             item.href === "/"

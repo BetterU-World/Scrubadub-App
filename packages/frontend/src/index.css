@@ -3,6 +3,15 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --mobile-nav-height: 4rem;
+    --safe-area-top: env(safe-area-inset-top, 0px);
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    --mobile-bottom-occlusion: calc(
+      var(--mobile-nav-height) + var(--safe-area-bottom)
+    );
+  }
+
   body {
     @apply bg-gray-50 text-gray-900 antialiased;
   }
@@ -10,28 +19,31 @@
 
 @layer components {
   .btn-primary {
-    @apply bg-primary-600 text-white px-4 py-2 rounded-lg font-medium
+    @apply min-h-11 bg-primary-600 text-white px-4 py-2 rounded-lg font-medium
       hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
       disabled:opacity-50 disabled:cursor-not-allowed transition active:scale-[0.98] disabled:active:scale-100;
   }
   .btn-secondary {
-    @apply bg-white text-gray-700 px-4 py-2 rounded-lg font-medium border border-gray-300
+    @apply min-h-11 bg-white text-gray-700 px-4 py-2 rounded-lg font-medium border border-gray-300
       hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
       disabled:opacity-50 disabled:cursor-not-allowed transition active:scale-[0.98] disabled:active:scale-100;
   }
   .btn-danger {
-    @apply bg-red-600 text-white px-4 py-2 rounded-lg font-medium
+    @apply min-h-11 bg-red-600 text-white px-4 py-2 rounded-lg font-medium
       hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2
       disabled:opacity-50 disabled:cursor-not-allowed transition active:scale-[0.98] disabled:active:scale-100;
   }
   .input-field {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm
+    @apply min-h-11 w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm
       focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500
       placeholder-gray-400;
   }
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-200 p-6
+    @apply bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6
       transition duration-200 hover:shadow-md hover:-translate-y-[1px];
+  }
+  .touch-target {
+    @apply inline-flex min-h-11 min-w-11 items-center justify-center;
   }
   .badge {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;

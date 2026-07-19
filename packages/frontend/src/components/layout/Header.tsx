@@ -26,7 +26,7 @@ export function Header({ onMenuToggle, menuButtonRef, menuOpen = false }: Header
           aria-label={menuOpen ? t("nav.closeNavigation") : t("nav.openNavigation")}
           aria-expanded={menuOpen}
           aria-controls="mobile-navigation"
-          className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 md:hidden"
+          className="touch-target rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 md:hidden"
         >
           <Menu aria-hidden="true" className="w-5 h-5" />
         </button>
@@ -43,7 +43,7 @@ export function Header({ onMenuToggle, menuButtonRef, menuOpen = false }: Header
           type="button"
           onClick={signOut}
           aria-label={t("auth.signOut")}
-          className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 md:hidden"
+          className="touch-target rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 md:hidden"
           title={t("auth.signOut")}
         >
           <LogOut aria-hidden="true" className="w-4 h-4" />

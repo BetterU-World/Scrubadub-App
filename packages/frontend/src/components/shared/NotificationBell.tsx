@@ -17,7 +17,7 @@ export function NotificationBell() {
     <Link
       href="/notifications"
       aria-label={t("nav.notifications")}
-      className="relative rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+      className="touch-target relative rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
     >
         <Bell aria-hidden="true" className="w-5 h-5" />
         {count !== undefined && count > 0 && (

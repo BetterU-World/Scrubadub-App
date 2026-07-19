@@ -19,16 +19,16 @@ export function AppLayout({ children }: AppLayoutProps) {
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen min-h-[100dvh] pt-[var(--safe-area-top)]">
       <Sidebar mobileOpen={sidebarOpen} onMobileClose={closeSidebar} triggerRef={menuButtonRef} />
-      <div className="flex-1 flex flex-col min-h-screen">
+      <div className="flex min-h-0 flex-1 flex-col pb-[var(--mobile-bottom-occlusion)] md:pb-0">
         <LiveJobBanner />
         <Header
           onMenuToggle={toggleSidebar}
           menuButtonRef={menuButtonRef}
           menuOpen={sidebarOpen}
         />
-        <main className="flex-1 p-4 md:p-6 pb-20 md:pb-6">
+        <main className="flex-1 p-4 md:p-6">
           <AddToHomeScreenTip />
           <PageTransition>{children}</PageTransition>
         </main>
