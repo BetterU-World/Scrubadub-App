@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireVerifiedStaffSession } from "../lib/sessionAuth";
+import { copyScheduleAddOnSnapshots } from "../lib/acceptedProposalAddOnSnapshots";
 
 const frequencyValidator = v.union(
   v.literal("daily"),
@@ -25,6 +26,11 @@ const scheduleFields = {
   assignedTeamId: v.optional(v.id("teams")),
   notes: v.optional(v.string()),
 };
+
+const addOnSelectionsValidator = v.optional(v.array(v.object({
+  sourceProposalLineItemId: v.string(),
+  executionApplicability: v.union(v.literal("every_job"), v.literal("first_job")),
+})));
 
 async function requireCompanyUser(ctx: any, sessionToken: string, userId: any) {
   const user = await requireVerifiedStaffSession(ctx, sessionToken, userId);
@@ -209,6 +215,27 @@ function generateServiceDates(schedule: any, start: Date, end: Date) {
   return dates;
 }
 
+function firstEligibleServiceDate(schedule: any) {
+  if (!schedule.startDate) throw new Error("A schedule start date is required before assigning proposal add-ons");
+  const start = parseDate(schedule.startDate, "Schedule start date");
+  const dates = generateServiceDates(schedule, start, addDays(start, 370));
+  if (!dates.length) throw new Error("Schedule does not contain an eligible first service date");
+  return dates[0];
+}
+
+async function buildScheduleAddOns(ctx: any, account: any, companyId: any, selections: any[] | undefined, schedule: any) {
+  if (!selections?.length) return {};
+  if (!account.sourceProposalId) throw new Error("This commercial account has no accepted proposal");
+  const copied = await copyScheduleAddOnSnapshots(ctx, account.sourceProposalId, companyId, selections);
+  return {
+    sourceProposalId: copied.proposal._id,
+    acceptedProposalAddOnSnapshots: copied.snapshots,
+    firstJobAddOnTargetDate: copied.snapshots.some((item) => item.executionApplicability === "first_job")
+      ? firstEligibleServiceDate(schedule)
+      : undefined,
+  };
+}
+
 function durationFromTimes(startTime: string | undefined, dueTime: string | undefined) {
   if (!startTime || !dueTime) return 60;
   const [startHour, startMinute] = startTime.split(":").map(Number);
@@ -231,6 +258,7 @@ export const create = mutation({
     userId: v.id("users"),
     sessionToken: v.string(),
     commercialAccountId: v.id("commercialAccounts"),
+    addOnSelections: addOnSelectionsValidator,
     ...scheduleFields,
   },
   handler: async (ctx, args) => {
@@ -240,11 +268,13 @@ export const create = mutation({
     if (account.companyId !== user.companyId) throw new Error("Access denied");
 
     const now = Date.now();
+    const schedulePatch = await buildSchedulePatch(ctx, account.companyId, args);
     return await ctx.db.insert("commercialSchedules", {
       companyId: account.companyId,
       commercialAccountId: account._id,
       status: "active",
-      ...(await buildSchedulePatch(ctx, account.companyId, args)),
+      ...schedulePatch,
+      ...(await buildScheduleAddOns(ctx, account, account.companyId, args.addOnSelections, schedulePatch)),
       createdAt: now,
       updatedAt: now,
     });
@@ -256,12 +286,20 @@ export const update = mutation({
     userId: v.id("users"),
     sessionToken: v.string(),
     scheduleId: v.id("commercialSchedules"),
+    addOnSelections: addOnSelectionsValidator,
     ...scheduleFields,
   },
   handler: async (ctx, args) => {
     const { schedule } = await getOwnedSchedule(ctx, args.sessionToken, args.userId, args.scheduleId);
+    const schedulePatch = await buildSchedulePatch(ctx, schedule.companyId, args);
+    if (args.addOnSelections?.length && schedule.acceptedProposalAddOnSnapshots !== undefined) {
+      throw new Error("Schedule add-on snapshots are immutable once assigned");
+    }
+    const account = await ctx.db.get(schedule.commercialAccountId) as any;
+    if (!account || account.companyId !== schedule.companyId) throw new Error("Commercial account must belong to your company");
     await ctx.db.patch(args.scheduleId, {
-      ...(await buildSchedulePatch(ctx, schedule.companyId, args)),
+      ...schedulePatch,
+      ...(await buildScheduleAddOns(ctx, account, schedule.companyId, args.addOnSelections, schedulePatch)),
       updatedAt: Date.now(),
     });
   },
@@ -361,7 +399,12 @@ export const generateCommercialJobsFromSchedule = mutation({
         continue;
       }
 
-      await ctx.db.insert("jobs", {
+      const firstJobItems = !schedule.firstJobAddOnsAppliedAt && scheduledDate === schedule.firstJobAddOnTargetDate
+        ? (schedule.acceptedProposalAddOnSnapshots ?? []).filter((item: any) => item.executionApplicability === "first_job")
+        : [];
+      const recurringItems = (schedule.acceptedProposalAddOnSnapshots ?? []).filter((item: any) => item.executionApplicability === "every_job");
+      const jobAddOns = [...recurringItems, ...firstJobItems].map((item: any) => ({ ...item, snapshotId: crypto.randomUUID() }));
+      const jobId = await ctx.db.insert("jobs", {
         companyId: schedule.companyId,
         clientRelationshipId: account.clientRelationshipId,
         propertyId: schedule.propertyId,
@@ -377,9 +420,19 @@ export const generateCommercialJobsFromSchedule = mutation({
         commercialAccountId: account._id,
         commercialScheduleId: schedule._id,
         generatedFromCommercialSchedule: true,
+        sourceProposalId: jobAddOns.length ? schedule.sourceProposalId : undefined,
+        acceptedProposalAddOnSnapshots: jobAddOns.length ? jobAddOns : undefined,
         reworkCount: 0,
         acceptanceStatus: "pending",
       });
+      if (firstJobItems.length) {
+        await ctx.db.patch(schedule._id, {
+          firstJobAddOnsAppliedAt: Date.now(),
+          firstJobAddOnsAppliedToJobId: jobId,
+          updatedAt: Date.now(),
+        });
+        schedule.firstJobAddOnsAppliedAt = Date.now();
+      }
       existingDates.add(scheduledDate);
       createdCount += 1;
     }

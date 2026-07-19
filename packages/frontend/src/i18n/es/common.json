@@ -1454,7 +1454,9 @@
     "quantity": "{{quantity}} {{unit}}",
     "units": "unidades",
     "monthly": "Mensual",
-    "oneTime": "Una vez"
+    "oneTime": "Una vez",
+    "every_job": "Requerido para cada trabajo",
+    "first_job": "Requerido solo para el primer trabajo"
   },
   "proposals": {
     "addOns": {
@@ -2217,6 +2219,9 @@
     "generateSuccess": "Creados {{created}} trabajos. Omitidos {{skipped}} duplicados.",
     "generateFailed": "No se pudieron generar los trabajos",
     "scheduleTitle": "Titulo del programa",
+    "addOnsTitle": "Complementos recurrentes requeridos",
+    "addOnsHelper": "Selecciona deliberadamente los complementos de la propuesta e indica cuando se requiere cada uno. La frecuencia de cobro no determina la ejecucion.",
+    "executionApplicability": "Requisito de ejecucion para {{name}}",
     "property": "Propiedad",
     "serviceLocation": "Ubicacion de servicio",
     "frequency": "Frecuencia",

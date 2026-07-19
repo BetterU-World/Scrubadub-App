@@ -8,6 +8,7 @@ type AddOnSnapshot = {
   unitLabel?: string | null;
   lineTotalCents?: number;
   billingCadence?: "one_time" | "monthly";
+  executionRequirement?: "every_job" | "first_job";
 };
 
 export function AddOnSnapshotList({ items, audience, showPricing = false }: { items?: AddOnSnapshot[]; audience: "worker" | "owner" | "client"; showPricing?: boolean }) {
@@ -26,6 +27,7 @@ export function AddOnSnapshotList({ items, audience, showPricing = false }: { it
         <div>
           <p className="font-medium text-gray-900">{item.name}</p>
           {item.quantity != null && <p className="text-sm text-gray-600">{t("addOnPropagation.quantity", { quantity: item.quantity, unit: item.unitLabel ?? t("addOnPropagation.units") })}</p>}
+          {item.executionRequirement && <p className="text-xs text-gray-500">{t(`addOnPropagation.${item.executionRequirement}`)}</p>}
         </div>
         {showPricing && item.lineTotalCents != null && <p className="text-sm font-semibold text-gray-900">{money(item.lineTotalCents)} · {item.billingCadence === "monthly" ? t("addOnPropagation.monthly") : t("addOnPropagation.oneTime")}</p>}
       </li>)}

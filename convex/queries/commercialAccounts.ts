@@ -55,6 +55,7 @@ async function decorateAccount(ctx: any, account: any) {
           _id: sourceProposal._id,
           title: sourceProposal.title,
           status: sourceProposal.status,
+          addOnLineItems: sourceProposal.addOnLineItems ?? [],
         }
       : null,
     linkedProperty: linkedProperty

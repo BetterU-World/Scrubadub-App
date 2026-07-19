@@ -1454,7 +1454,9 @@
     "quantity": "{{quantity}} {{unit}}",
     "units": "units",
     "monthly": "Monthly",
-    "oneTime": "One-time"
+    "oneTime": "One-time",
+    "every_job": "Required for every job",
+    "first_job": "Required for the first job only"
   },
   "proposals": {
     "addOns": {
@@ -2217,6 +2219,9 @@
     "generateSuccess": "Created {{created}} jobs. Skipped {{skipped}} duplicates.",
     "generateFailed": "Failed to generate jobs",
     "scheduleTitle": "Schedule Title",
+    "addOnsTitle": "Recurring Required Add-Ons",
+    "addOnsHelper": "Select proposal add-ons deliberately and specify when each is required. Billing cadence does not determine execution.",
+    "executionApplicability": "Execution requirement for {{name}}",
     "property": "Property",
     "serviceLocation": "Service Location",
     "frequency": "Frequency",

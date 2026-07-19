@@ -526,6 +526,7 @@ export function CommercialAccountDetailPage() {
               defaultCleanerId={account.assignedCleanerId}
               defaultManagerId={account.assignedManagerId}
               defaultTeamId={account.assignedTeamId}
+              proposalAddOnLines={account.sourceProposal?.addOnLineItems}
               onToast={showToast}
             />
             </CollapsibleSection>
