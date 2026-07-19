@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { canManageBusinessConfiguration } from "../lib/auth";
 import { COMPANY_ADD_ON_PRESETS } from "../lib/companyAddOnPresets";
 import { requireOwnerManagerSession } from "../lib/sessionAuth";
+import { companyAddOnSelectionVersion } from "../lib/companyAddOnSelection";
 
 async function requireCatalogManager(ctx: any, sessionToken: string, claimedUserId?: any) {
   const user = await requireOwnerManagerSession(ctx, sessionToken, claimedUserId);
@@ -57,6 +58,7 @@ export const listPublic = query({
         unitLabel: record.unitLabel ?? null,
         estimatedDurationMinutes: record.estimatedDurationMinutes ?? null,
         displayOrder: record.displayOrder,
+        selectionVersion: companyAddOnSelectionVersion(record),
       }));
   },
 });

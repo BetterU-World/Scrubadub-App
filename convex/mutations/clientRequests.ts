@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { requireOwnerSession } from "../lib/sessionAuth";
 import { checkRateLimit } from "../lib/rateLimit";
 import { propertyTypeFromRequestLeadType } from "../lib/commercialEligibility";
+import { createRequestedAddOnSnapshots } from "../lib/companyAddOnSelection";
 
 /**
  * Public mutation – called by external visitors via a company's public
@@ -29,6 +30,11 @@ export const createClientRequestByToken = mutation({
     timeWindow: v.optional(v.string()),
     notes: v.optional(v.string()),
     requestedService: v.optional(v.string()),
+    requestedAddOns: v.optional(v.array(v.object({
+      companyAddOnId: v.id("companyAddOns"),
+      selectionVersion: v.string(),
+      quantity: v.optional(v.number()),
+    }))),
     clientNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -56,6 +62,12 @@ export const createClientRequestByToken = mutation({
       throw new Error("Invalid request link");
     }
 
+    const requestedAddOnSnapshots = await createRequestedAddOnSnapshots(
+      ctx,
+      company._id,
+      args.requestedAddOns ?? []
+    );
+
     const requestId = await ctx.db.insert("clientRequests", {
       companyId: company._id,
       createdAt: Date.now(),
@@ -70,6 +82,7 @@ export const createClientRequestByToken = mutation({
       timeWindow: args.timeWindow,
       notes: args.notes,
       requestedService: args.requestedService || undefined,
+      requestedAddOnSnapshots: requestedAddOnSnapshots.length ? requestedAddOnSnapshots : undefined,
       leadType: "booking_request",
       clientNotes: args.clientNotes
         ? args.clientNotes.trim().slice(0, 2000)

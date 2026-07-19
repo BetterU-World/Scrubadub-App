@@ -4,6 +4,14 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { toFriendlyMessage } from "@/lib/friendlyError";
+import { useTranslation } from "react-i18next";
+import { formatPublicAddOnPrice, parsePublicAddOnSelections } from "@/lib/publicAddOnPresentation";
+
+type RequestAddOn = {
+  addOnId: string; name: string; description: string | null;
+  pricingMethod: "flat" | "starting_at" | "per_unit";
+  priceCents: number; unitLabel: string | null; selectionVersion: string;
+};
 
 const TIME_WINDOWS = [
   { value: "", label: "No preference" },
@@ -23,6 +31,7 @@ const SERVICE_OPTIONS = [
 ];
 
 export function PublicRequestPage() {
+  const { t, i18n } = useTranslation();
   const params = useParams<{ token: string }>();
   const token = params.token ?? "";
 
@@ -30,6 +39,10 @@ export function PublicRequestPage() {
     api.queries.clientRequests.getCompanyByRequestToken,
     token ? { token } : "skip"
   );
+  const availableAddOns = useQuery(
+    (api as any).queries.companyAddOns.listPublic,
+    token ? { publicRequestToken: token } : "skip"
+  ) as RequestAddOn[] | undefined;
 
   const createRequest = useMutation(
     api.mutations.clientRequests.createClientRequestByToken
@@ -70,10 +83,22 @@ export function PublicRequestPage() {
     return "";
   });
   const [specialInstructions, setSpecialInstructions] = useState("");
+  const [selectedAddOns, setSelectedAddOns] = useState<Record<string, { selectionVersion: string; quantity?: number }>>(() =>
+    Object.fromEntries(parsePublicAddOnSelections(window.location.search).slice(0, 20).map((selection) => [selection.companyAddOnId, { selectionVersion: selection.selectionVersion, quantity: selection.quantity }]))
+  );
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const addOnById = new Map((availableAddOns ?? []).map((addOn) => [addOn.addOnId, addOn]));
+  const staleSelectionIds = Object.keys(selectedAddOns).filter((id) => {
+    const current = addOnById.get(id);
+    return !current || current.selectionVersion !== selectedAddOns[id].selectionVersion;
+  });
+  const priceLabel = (addOn: RequestAddOn) => formatPublicAddOnPrice(addOn, i18n.resolvedLanguage ?? i18n.language, {
+    startingAt: (price) => t("publicSite.addOns.startingAt", { price }),
+    perUnit: (price, unit) => t("publicSite.addOns.perUnit", { price, unit }),
+  });
 
   // Loading state
   if (company === undefined) {
@@ -138,6 +163,7 @@ export function PublicRequestPage() {
     setError("");
     setLoading(true);
     try {
+      if (staleSelectionIds.length) throw new Error(t("publicSite.addOns.reviewChanged"));
       // Resolve the final service value
       const finalService =
         selectedService === "Other"
@@ -157,6 +183,7 @@ export function PublicRequestPage() {
         timeWindow: timeWindow || undefined,
         notes: notes.trim() || undefined,
         requestedService: finalService,
+        requestedAddOns: Object.entries(selectedAddOns).map(([companyAddOnId, selection]) => ({ companyAddOnId, ...selection })) as any,
         clientNotes: specialInstructions.trim() || undefined,
       });
       setSubmitted(true);
@@ -226,33 +253,68 @@ export function PublicRequestPage() {
 
         {/* Service selection */}
         <fieldset className="space-y-4">
-          <legend className="text-sm font-semibold text-gray-900">
-            Service type
-          </legend>
-
+          <legend className="text-sm font-semibold text-gray-900">Service type</legend>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              What do you need?
-            </label>
-            <select
-              className="input-field"
-              value={selectedService}
-              onChange={(e) => setSelectedService(e.target.value)}
-            >
-              {SERVICE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
+            <label className="block text-sm font-medium text-gray-700 mb-1">What do you need?</label>
+            <select className="input-field" value={selectedService} onChange={(e) => setSelectedService(e.target.value)}>
+              {SERVICE_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
             </select>
           </div>
-
           {serviceFromParam && selectedService === "Other" && (
-            <div className="p-3 bg-primary-50 border border-primary-200 rounded-lg text-sm text-primary-800">
-              Requested: <strong>{serviceFromParam}</strong>
-            </div>
+            <div className="p-3 bg-primary-50 border border-primary-200 rounded-lg text-sm text-primary-800">Requested: <strong>{serviceFromParam}</strong></div>
           )}
         </fieldset>
+
+        {(availableAddOns?.length ?? 0) > 0 && (
+          <fieldset className="space-y-4">
+            <legend className="text-sm font-semibold text-gray-900">{t("publicSite.addOns.title")}</legend>
+            <p className="text-sm text-gray-500">{t("publicSite.addOns.requestHelp")}</p>
+            <div className="space-y-3">
+              {availableAddOns!.map((addOn) => {
+                const selection = selectedAddOns[addOn.addOnId];
+                const changed = selection && selection.selectionVersion !== addOn.selectionVersion;
+                return (
+                  <div key={addOn.addOnId} className={`rounded-lg border p-4 ${selection ? "border-primary-300 bg-primary-50/40" : "border-gray-200"}`}>
+                    <label className="flex cursor-pointer items-start gap-3">
+                      <input
+                        type="checkbox"
+                        className="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        checked={Boolean(selection)}
+                        onChange={(event) => setSelectedAddOns((current) => {
+                          if (!event.target.checked) { const next = { ...current }; delete next[addOn.addOnId]; return next; }
+                          if (Object.keys(current).length >= 20) return current;
+                          return { ...current, [addOn.addOnId]: { selectionVersion: addOn.selectionVersion, quantity: addOn.pricingMethod === "per_unit" ? 1 : undefined } };
+                        })}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-medium text-gray-900">{addOn.name}</span>
+                        <span className="block text-sm font-medium text-primary-600">{priceLabel(addOn)}</span>
+                      </span>
+                    </label>
+                    {selection && addOn.pricingMethod === "per_unit" && (
+                      <label className="mt-3 block text-sm text-gray-700">
+                        {t("publicSite.addOns.quantity")}
+                        <input type="number" min={1} max={999} step={1} className="input-field mt-1" value={selection.quantity ?? 1}
+                          onChange={(event) => setSelectedAddOns((current) => ({ ...current, [addOn.addOnId]: { ...current[addOn.addOnId], quantity: Number(event.target.value) } }))} />
+                      </label>
+                    )}
+                    {changed && (
+                      <button type="button" className="mt-3 text-sm font-medium text-amber-700 underline" onClick={() => setSelectedAddOns((current) => ({ ...current, [addOn.addOnId]: { selectionVersion: addOn.selectionVersion, quantity: addOn.pricingMethod === "per_unit" ? Math.min(999, Math.max(1, current[addOn.addOnId]?.quantity ?? 1)) : undefined } }))}>
+                        {t("publicSite.addOns.reviewUpdatedPrice")}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {staleSelectionIds.some((id) => !addOnById.has(id)) && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                {t("publicSite.addOns.unavailableSelection")}
+                <button type="button" className="ml-2 font-medium underline" onClick={() => setSelectedAddOns((current) => Object.fromEntries(Object.entries(current).filter(([id]) => addOnById.has(id))))}>{t("publicSite.addOns.removeUnavailable")}</button>
+              </div>
+            )}
+          </fieldset>
+        )}
 
         {/* Property info */}
         <fieldset className="space-y-4">

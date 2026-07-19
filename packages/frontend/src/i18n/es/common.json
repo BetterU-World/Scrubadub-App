@@ -1203,7 +1203,17 @@
       "description": "Mejora tu servicio de limpieza con estos extras opcionales.",
       "startingAt": "Desde {{price}}",
       "perUnit": "{{price}} por {{unit}}",
-      "pricingBasisNote": "Los totales con precio inicial o por unidad dependen del alcance o la cantidad."
+      "pricingBasisNote": "Los totales con precio inicial o por unidad dependen del alcance o la cantidad.",
+      "select": "Seleccionar {{name}}",
+      "quantity": "Cantidad",
+      "continue_one": "Continuar con {{count}} complemento",
+      "continue_other": "Continuar con {{count}} complementos",
+      "requestHelp": "Elige mejoras opcionales. Puedes revisarlas antes de enviar la solicitud.",
+      "reviewChanged": "Uno o más complementos cambiaron. Revisa los precios actuales antes de enviar.",
+      "reviewUpdatedPrice": "Revisar y aceptar el precio actualizado",
+      "unavailableSelection": "Un complemento seleccionado ya no está disponible.",
+      "removeUnavailable": "Eliminar complemento no disponible",
+      "requestedTitle": "Complementos solicitados"
     }
   },
   "siteBuilder": {

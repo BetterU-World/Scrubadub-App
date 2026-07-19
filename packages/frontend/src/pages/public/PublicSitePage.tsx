@@ -1,10 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "wouter";
 import { useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import { formatPublicAddOnPrice } from "@/lib/publicAddOnPresentation";
+import { encodePublicAddOnSelection, formatPublicAddOnPrice } from "@/lib/publicAddOnPresentation";
 import {
   MapPin,
   Mail,
@@ -105,6 +105,7 @@ interface PublicAddOnData {
   pricingMethod: "flat" | "starting_at" | "per_unit";
   priceCents: number;
   unitLabel: string | null;
+  selectionVersion: string;
 }
 
 // ── Page component ───────────────────────────────────────────────────
@@ -247,6 +248,7 @@ export function PublicSitePage() {
         isDark={isDark}
         locale={i18n.resolvedLanguage ?? i18n.language}
         t={t}
+        requestHref={requestHref}
       />
 
       {/* ── How it works ───────────────────────────────────────── */}
@@ -578,18 +580,25 @@ function AddOnsSection({
   isDark,
   locale,
   t,
+  requestHref,
 }: {
   addOns: PublicAddOnData[];
   isDark: boolean;
   locale: string;
   t: (key: string, options?: Record<string, unknown>) => string;
+  requestHref: string | null;
 }) {
+  const [selected, setSelected] = useState<Record<string, { selectionVersion: string; quantity?: number }>>({});
   if (addOns.length === 0) return null;
 
   const priceLabel = (addOn: PublicAddOnData) => formatPublicAddOnPrice(addOn, locale, {
     startingAt: (price) => t("publicSite.addOns.startingAt", { price }),
     perUnit: (price, unit) => t("publicSite.addOns.perUnit", { price, unit }),
   });
+  const selectedEntries = Object.entries(selected);
+  const continueHref = requestHref && selectedEntries.length
+    ? `${requestHref}?${selectedEntries.map(([companyAddOnId, value]) => `addOn=${encodeURIComponent(encodePublicAddOnSelection({ companyAddOnId, ...value }))}`).join("&")}`
+    : requestHref;
 
   return (
     <section className={`py-16 sm:py-20 ${isDark ? "bg-gray-900" : "bg-gray-50"}`}>
@@ -608,18 +617,49 @@ function AddOnsSection({
             <article
               key={addOn.addOnId}
               className={`rounded-xl border p-6 ${
-                isDark ? "border-gray-700 bg-gray-950" : "border-gray-200 bg-white"
+                selected[addOn.addOnId]
+                  ? "border-primary-500 ring-2 ring-primary-500/20"
+                  : isDark ? "border-gray-700" : "border-gray-200"
+              } ${
+                isDark ? "bg-gray-950" : "bg-white"
               }`}
             >
-              <h3 className={`font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>
-                {addOn.name}
-              </h3>
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  checked={Boolean(selected[addOn.addOnId])}
+                  disabled={!selected[addOn.addOnId] && selectedEntries.length >= 20}
+                  onChange={(event) => setSelected((current) => {
+                    if (!event.target.checked) {
+                      const next = { ...current }; delete next[addOn.addOnId]; return next;
+                    }
+                    return { ...current, [addOn.addOnId]: { selectionVersion: addOn.selectionVersion, quantity: addOn.pricingMethod === "per_unit" ? 1 : undefined } };
+                  })}
+                  aria-label={t("publicSite.addOns.select", { name: addOn.name })}
+                />
+                <span className={`font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>{addOn.name}</span>
+              </label>
               {addOn.description && (
                 <p className={`mt-2 text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>
                   {addOn.description}
                 </p>
               )}
               <p className="mt-4 font-semibold text-primary-500">{priceLabel(addOn)}</p>
+              {addOn.pricingMethod === "per_unit" && selected[addOn.addOnId] && (
+                <label className={`mt-4 block text-sm ${isDark ? "text-gray-300" : "text-gray-700"}`}>
+                  {t("publicSite.addOns.quantity")}
+                  <input
+                    type="number"
+                    min={1}
+                    max={999}
+                    step={1}
+                    className="input-field mt-1"
+                    value={selected[addOn.addOnId].quantity ?? 1}
+                    onChange={(event) => setSelected((current) => ({ ...current, [addOn.addOnId]: { ...current[addOn.addOnId], quantity: Number(event.target.value) } }))}
+                  />
+                </label>
+              )}
             </article>
           ))}
         </div>
@@ -627,6 +667,13 @@ function AddOnsSection({
           <p className={`mt-6 text-center text-xs ${isDark ? "text-gray-500" : "text-gray-400"}`}>
             {t("publicSite.addOns.pricingBasisNote")}
           </p>
+        )}
+        {continueHref && selectedEntries.length > 0 && (
+          <div className="mt-8 text-center">
+            <a className="btn-primary inline-flex" href={continueHref}>
+              {t("publicSite.addOns.continue", { count: selectedEntries.length })}
+            </a>
+          </div>
         )}
       </div>
     </section>
