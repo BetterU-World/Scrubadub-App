@@ -1197,6 +1197,15 @@
     "exportManuals": "Export JSON",
     "exportCopied": "Copied!"
   },
+  "publicSite": {
+    "addOns": {
+      "title": "Optional Add-Ons",
+      "description": "Enhance your cleaning service with these optional extras.",
+      "startingAt": "Starting at {{price}}",
+      "perUnit": "{{price}} per {{unit}}",
+      "pricingBasisNote": "Starting-at and per-unit totals depend on scope or quantity."
+    }
+  },
   "siteBuilder": {
     "title": "My Site",
     "description": "Set up your public mini-site so clients can find you",

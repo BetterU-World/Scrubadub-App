@@ -8,6 +8,7 @@ import { hashPassword } from "../password";
 import { COMPANY_ADD_ON_PRESETS } from "../companyAddOnPresets";
 import { MAX_ADD_ON_PRICE_CENTS, validateCompanyAddOnInput } from "../companyAddOnValidation";
 import { hashToken } from "../tokens";
+import { formatPublicAddOnPrice } from "../../../packages/frontend/src/lib/publicAddOnPresentation";
 
 const modules = import.meta.glob("../../**/*.ts");
 const PASSWORD = "test-password-123";
@@ -51,6 +52,28 @@ describe("company add-on catalog", () => {
     expect(source).toContain('className="fixed inset-x-4 bottom-4 top-4 z-50 mx-auto flex max-h-[calc(100dvh-2rem)] w-auto max-w-2xl flex-col overflow-hidden');
     expect(source).toContain('ref={presetScrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5"');
     expect(source).toContain("<Dialog.Close asChild>");
+  });
+
+  it("keeps public add-ons informational and separate from linked core services", () => {
+    const source = readFileSync(fileURLToPath(new URL("../../../packages/frontend/src/pages/public/PublicSitePage.tsx", import.meta.url)), "utf8");
+    const addOnSection = source.slice(source.indexOf("function AddOnsSection"), source.indexOf("function HowItWorksSection"));
+    expect(source).toContain("(api as any).queries.companyAddOns.listPublic");
+    expect(source.indexOf("<AddOnsSection")).toBeGreaterThan(source.indexOf("<ServicesSection"));
+    expect(source).toContain("?service=${encodeURIComponent(card.name)}");
+    expect(addOnSection).toContain("grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3");
+    expect(addOnSection).not.toMatch(/<a(?:\s|>)/);
+    expect(addOnSection).not.toContain("<button");
+    expect(addOnSection).not.toContain("<input");
+  });
+
+  it("formats flat, starting-at, and per-unit public prices", () => {
+    const labels = {
+      startingAt: (price: string) => `Starting at ${price}`,
+      perUnit: (price: string, unit: string) => `${price} per ${unit}`,
+    };
+    expect(formatPublicAddOnPrice({ pricingMethod: "flat", priceCents: 5000, unitLabel: null }, "en-US", labels)).toBe("$50.00");
+    expect(formatPublicAddOnPrice({ pricingMethod: "starting_at", priceCents: 5000, unitLabel: null }, "en-US", labels)).toBe("Starting at $50.00");
+    expect(formatPublicAddOnPrice({ pricingMethod: "per_unit", priceCents: 800, unitLabel: "window" }, "en-US", labels)).toBe("$8.00 per window");
   });
 
   it("enforces owner and explicitly permitted manager authorization", async () => {
@@ -132,5 +155,31 @@ describe("company add-on catalog", () => {
     expect(audits.map((entry) => entry.action)).toEqual(expect.arrayContaining(["create_company_add_on", "reorder_company_add_ons", "archive_company_add_on", "restore_company_add_on"]));
     const site = await t.run((ctx) => ctx.db.query("companySites").withIndex("by_slug", (q) => q.eq("slug", "catalog-a")).first());
     expect(site?.services).toEqual(["Legacy service"]);
+  });
+
+  it("projects only eligible public add-ons in deterministic order for every pricing method", async () => {
+    const t = backend(); const s = await seed(t);
+    const ids = await t.run(async (ctx) => {
+      const base = { companyId: s.companyA, description: undefined, priceCents: 5000, unitLabel: undefined, isActive: true, isPublic: true, createdByUserId: s.ownerA, updatedAt: 100 };
+      const starting = await ctx.db.insert("companyAddOns", { ...base, name: "Starting", pricingMethod: "starting_at", displayOrder: 0, createdAt: 20 });
+      const flat = await ctx.db.insert("companyAddOns", { ...base, name: "Flat", description: "Flat description", pricingMethod: "flat", displayOrder: 0, createdAt: 10 });
+      const perUnit = await ctx.db.insert("companyAddOns", { ...base, name: "Windows", pricingMethod: "per_unit", priceCents: 800, unitLabel: "window", displayOrder: 1, createdAt: 30 });
+      await ctx.db.insert("companyAddOns", { ...base, name: "Private", pricingMethod: "flat", isPublic: false, displayOrder: 2, createdAt: 40 });
+      await ctx.db.insert("companyAddOns", { ...base, name: "Inactive", pricingMethod: "flat", isActive: false, displayOrder: 3, createdAt: 50 });
+      await ctx.db.insert("companyAddOns", { ...base, name: "Archived", pricingMethod: "flat", archivedAt: 60, displayOrder: 4, createdAt: 60 });
+      await ctx.db.insert("companyAddOns", { ...base, companyId: s.companyB, name: "Foreign", pricingMethod: "flat", createdByUserId: s.ownerB, displayOrder: 0, createdAt: 5 });
+      return { flat, starting, perUnit };
+    });
+
+    const projection = await t.query(catalogApi.queries.companyAddOns.listPublic, { slug: "catalog-a" });
+    expect(projection).toEqual([
+      { addOnId: ids.flat, name: "Flat", description: "Flat description", pricingMethod: "flat", priceCents: 5000, unitLabel: null, estimatedDurationMinutes: null, displayOrder: 0 },
+      { addOnId: ids.starting, name: "Starting", description: null, pricingMethod: "starting_at", priceCents: 5000, unitLabel: null, estimatedDurationMinutes: null, displayOrder: 0 },
+      { addOnId: ids.perUnit, name: "Windows", description: null, pricingMethod: "per_unit", priceCents: 800, unitLabel: "window", estimatedDurationMinutes: null, displayOrder: 1 },
+    ]);
+    for (const item of projection) {
+      expect(Object.keys(item)).not.toEqual(expect.arrayContaining(["companyId", "internalNotes", "presetKey", "createdByUserId", "archivedByUserId", "createdAt", "updatedAt", "archivedAt"]));
+    }
+    await expect(t.query(catalogApi.queries.companyAddOns.listPublic, { slug: "missing-site" })).resolves.toEqual([]);
   });
 });
