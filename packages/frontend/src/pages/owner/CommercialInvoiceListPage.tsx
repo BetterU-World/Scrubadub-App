@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
+import { TableScrollRegion } from "@/components/ui/TableScrollRegion";
 import { FileText } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { clsx } from "clsx";
@@ -72,23 +73,23 @@ export function CommercialInvoiceListPage() {
         />
       ) : (
         <div className="card overflow-hidden">
-          <div className="overflow-x-auto">
+          <TableScrollRegion label={t("invoices.companyTitle")}>
             <table className="w-full min-w-[860px]">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                  <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                     {t("invoices.invoiceNumber")}
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                  <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                     {t("invoices.commercialAccount")}
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                  <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                     {t("invoices.billingPeriod")}
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                  <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                     {t("commercialAccounts.status")}
                   </th>
-                  <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
+                  <th scope="col" className="px-4 py-3 text-right text-sm font-medium text-gray-500">
                     {t("invoices.total")}
                   </th>
                 </tr>
@@ -96,7 +97,7 @@ export function CommercialInvoiceListPage() {
               <tbody>
                 {invoices.map((invoice: any) => (
                   <tr key={invoice._id} className="border-b border-gray-100 last:border-0">
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <Link
                         href={`/commercial-invoices/${invoice._id}`}
                         className="font-medium text-gray-900 hover:text-primary-700"
@@ -107,22 +108,22 @@ export function CommercialInvoiceListPage() {
                     <td className="px-4 py-3 text-sm text-gray-700">
                       {invoice.commercialAccountName ?? t("commercialAccounts.summary")}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
+                    <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
                       {formatDate(invoice.billingStartDate)} - {formatDate(invoice.billingEndDate)}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <span className="badge bg-gray-100 text-gray-700">
                         {t(`invoices.statuses.${invoice.status}`)}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900">
+                    <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900 whitespace-nowrap">
                       {formatCents(invoice.totalCents)}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScrollRegion>
         </div>
       )}
     </div>
