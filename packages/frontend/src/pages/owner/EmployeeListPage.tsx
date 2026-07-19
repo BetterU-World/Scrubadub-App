@@ -8,6 +8,7 @@ import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AsyncButton } from "@/components/ui/AsyncButton";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Users, UserPlus, Copy, Check, AlertTriangle, Plus, Archive, RotateCcw, Trash2 } from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
@@ -110,6 +111,11 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
     canManageBusinessConfiguration: false,
   });
   const [editPermsLoading, setEditPermsLoading] = useState(false);
+  const [confirmEmployeeAction, setConfirmEmployeeAction] = useState<{
+    type: "deactivate" | "revoke";
+    employeeId: any;
+    employeeName: string;
+  } | null>(null);
   const updateManagerPermissions = useMutation(api.mutations.employees.updateManagerPermissions);
 
   // Cleaner usage for cap enforcement
@@ -164,6 +170,33 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
     } finally {
       setInviteLoading(false);
     }
+  };
+
+  const handleConfirmedEmployeeAction = async () => {
+    if (!confirmEmployeeAction) return;
+
+    if (confirmEmployeeAction.type === "deactivate") {
+      await updateStatus({
+        employeeId: confirmEmployeeAction.employeeId,
+        status: "inactive",
+        userId: user._id,
+        sessionToken,
+      });
+    } else {
+      try {
+        await revokeInvite({
+          userId: user._id,
+          sessionToken: getStaffSessionToken(),
+          companyId: user.companyId!,
+          employeeId: confirmEmployeeAction.employeeId,
+        });
+        setToast(t("employees.invitationRevoked"));
+      } catch {
+        setToast(t("employees.inviteActionFailed"));
+      }
+    }
+
+    setConfirmEmployeeAction(null);
   };
 
   const copyLink = () => {
@@ -396,26 +429,30 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
           }
         />
       ) : (
-        <div className="card overflow-x-auto">
-          <table className="w-full">
-            <thead>
+        <div className="card overflow-hidden">
+          <table className="block w-full sm:table">
+            <thead className="hidden sm:table-header-group">
               <tr className="border-b border-gray-200">
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t("employees.name")}</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t("employees.email")}</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t("employees.role")}</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Worker Type</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Onboarding</th>
-                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Eligibility</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t("employees.workerType")}</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t("employees.onboarding")}</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t("employees.eligibility")}</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t("employees.status")}</th>
                 <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">{t("employees.actions")}</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="block space-y-3 sm:table-row-group sm:space-y-0">
               {employees.map((emp) => {
                 const workerProfile = workerProfileByUserId.get(emp._id) as any;
                 return (
-                <tr key={emp._id} className="border-b border-gray-100 last:border-0">
-                  <td className="py-3 px-4 text-sm font-medium text-gray-900">
+                <tr
+                  key={emp._id}
+                  aria-label={`${emp.name}, ${emp.email}`}
+                  className="block rounded-lg border border-gray-200 p-4 sm:table-row sm:rounded-none sm:border-0 sm:border-b sm:border-gray-100 sm:p-0 sm:last:border-0"
+                >
+                  <td className="block min-w-0 p-0 text-sm font-medium text-gray-900 sm:table-cell sm:px-4 sm:py-3">
                     {emp.role === "owner" ? (
                       emp.name
                     ) : (
@@ -424,12 +461,28 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                       </Link>
                     )}
                   </td>
-                  <td className="py-3 px-4 text-sm text-gray-500">{emp.email}</td>
-                  <td className="py-3 px-4 text-sm text-gray-500">{formatLabel(workerProfile?.primaryRole ?? emp.role)}</td>
-                  <td className="py-3 px-4 text-sm text-gray-500">{formatLabel(workerProfile?.workerType)}</td>
-                  <td className="py-3 px-4 text-sm text-gray-500">{formatLabel(workerProfile?.onboardingStatus)}</td>
-                  <td className="py-3 px-4 text-sm text-gray-500">{formatLabel(workerProfile?.jobEligibilityStatus)}</td>
-                  <td className="py-3 px-4">
+                  <td className="block min-w-0 break-all p-0 pt-1 text-sm text-gray-500 sm:table-cell sm:break-normal sm:px-4 sm:py-3">
+                    <span className="mr-1 text-xs font-medium text-gray-400 sm:hidden">{t("employees.email")}:</span>
+                    {emp.email}
+                  </td>
+                  <td className="block p-0 pt-3 text-sm text-gray-500 sm:table-cell sm:px-4 sm:py-3">
+                    <span className="mr-1 text-xs font-medium text-gray-400 sm:hidden">{t("employees.role")}:</span>
+                    {formatLabel(workerProfile?.primaryRole ?? emp.role)}
+                  </td>
+                  <td className="block p-0 pt-2 text-sm text-gray-500 sm:table-cell sm:px-4 sm:py-3">
+                    <span className="mr-1 text-xs font-medium text-gray-400 sm:hidden">{t("employees.workerType")}:</span>
+                    {formatLabel(workerProfile?.workerType)}
+                  </td>
+                  <td className="block p-0 pt-2 text-sm text-gray-500 sm:table-cell sm:px-4 sm:py-3">
+                    <span className="mr-1 text-xs font-medium text-gray-400 sm:hidden">{t("employees.onboarding")}:</span>
+                    {formatLabel(workerProfile?.onboardingStatus)}
+                  </td>
+                  <td className="block p-0 pt-2 text-sm text-gray-500 sm:table-cell sm:px-4 sm:py-3">
+                    <span className="mr-1 text-xs font-medium text-gray-400 sm:hidden">{t("employees.eligibility")}:</span>
+                    {formatLabel(workerProfile?.jobEligibilityStatus)}
+                  </td>
+                  <td className="block p-0 pt-3 sm:table-cell sm:px-4 sm:py-3">
+                    <span className="mr-1 text-xs font-medium text-gray-400 sm:hidden">{t("employees.status")}:</span>
                     {(emp as any).invitationStatus ? (
                       <span className={`badge ${
                         (emp as any).invitationStatus === "accepted" ? "bg-green-100 text-green-700" :
@@ -439,10 +492,11 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                       }`}>{formatLabel((emp as any).invitationStatus)}</span>
                     ) : <StatusBadge status={workerProfile?.workerStatus ?? emp.status} />}
                   </td>
-                  <td className="py-3 px-4 text-right space-x-2">
+                  <td className="mt-3 block border-t border-gray-100 p-0 pt-3 text-left sm:table-cell sm:border-0 sm:px-4 sm:py-3 sm:text-right sm:mt-0">
+                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                     {emp.role !== "owner" && (
-                      <Link href={`/employees/${emp._id}`} className="text-sm text-gray-600 hover:text-gray-800 font-medium">
-                        View
+                      <Link href={`/employees/${emp._id}`} className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-800 sm:min-h-0 sm:p-0">
+                        {t("employees.view")}
                       </Link>
                     )}
                     {emp.role === "manager" && emp.status === "active" && (
@@ -460,20 +514,30 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                             canManageBusinessConfiguration: !!(emp as any).canManageBusinessConfiguration,
                           });
                         }}
-                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                        className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-blue-600 hover:bg-blue-50 hover:text-blue-700 sm:min-h-0 sm:p-0"
                       >
-                        Permissions
+                        {t("employees.permissions")}
                       </button>
                     )}
                     {emp.role !== "owner" && emp.status !== "pending" && (
                       <button
-                        onClick={() => updateStatus({
-                          employeeId: emp._id,
-                          status: emp.status === "active" ? "inactive" : "active",
-                          userId: user._id,
-                          sessionToken,
-                        })}
-                        className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                        onClick={() => {
+                          if (emp.status === "active") {
+                            setConfirmEmployeeAction({
+                              type: "deactivate",
+                              employeeId: emp._id,
+                              employeeName: emp.name,
+                            });
+                          } else {
+                            updateStatus({
+                              employeeId: emp._id,
+                              status: "active",
+                              userId: user._id,
+                              sessionToken,
+                            });
+                          }
+                        }}
+                        className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-primary-600 hover:bg-primary-50 hover:text-primary-700 sm:min-h-0 sm:p-0"
                       >
                         {emp.status === "active" ? t("employees.deactivate") : t("employees.activate")}
                       </button>
@@ -481,7 +545,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                     {emp.status === "pending" && (
                       <>
                         <button
-                          className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                          className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-primary-600 hover:bg-primary-50 hover:text-primary-700 sm:min-h-0 sm:p-0"
                           onClick={async () => {
                             try {
                               await resendInviteEmail({
@@ -497,23 +561,16 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                           }}
                         >{t("employees.resendInvitation")}</button>
                         <button
-                          className="text-sm text-red-600 hover:text-red-700 font-medium"
-                          onClick={async () => {
-                            try {
-                              await revokeInvite({
-                                userId: user._id,
-                                sessionToken: getStaffSessionToken(),
-                                companyId: user.companyId!,
-                                employeeId: emp._id,
-                              });
-                              setToast(t("employees.invitationRevoked"));
-                            } catch {
-                              setToast(t("employees.inviteActionFailed"));
-                            }
-                          }}
+                          className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-red-600 hover:bg-red-50 hover:text-red-700 sm:min-h-0 sm:p-0"
+                          onClick={() => setConfirmEmployeeAction({
+                            type: "revoke",
+                            employeeId: emp._id,
+                            employeeName: emp.name,
+                          })}
                         >{t("employees.revokeInvitation")}</button>
                       </>
                     )}
+                    </div>
                   </td>
                 </tr>
                 );
@@ -522,6 +579,24 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
           </table>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmEmployeeAction !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmEmployeeAction(null);
+        }}
+        title={confirmEmployeeAction?.type === "deactivate"
+          ? t("employees.deactivateConfirmTitle", { name: confirmEmployeeAction.employeeName })
+          : t("employees.revokeConfirmTitle", { name: confirmEmployeeAction?.employeeName ?? "" })}
+        description={confirmEmployeeAction?.type === "deactivate"
+          ? t("employees.deactivateConfirmDescription")
+          : t("employees.revokeConfirmDescription")}
+        confirmLabel={confirmEmployeeAction?.type === "deactivate"
+          ? t("employees.deactivate")
+          : t("employees.revokeInvitation")}
+        confirmVariant="danger"
+        onConfirm={handleConfirmedEmployeeAction}
+      />
 
       <Dialog.Root open={showInvite} onOpenChange={(open) => { if (!open) resetInviteDialog(); else setShowInvite(true); }}>
         <Dialog.Portal>
