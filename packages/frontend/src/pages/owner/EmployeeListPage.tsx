@@ -44,6 +44,7 @@ export function EmployeeListPage() {
   );
   const inviteCleaner = useAction(api.employeeActions.inviteCleaner);
   const resendInviteEmail = useAction(api.employeeActions.resendInviteEmail);
+  const revokeInvite = useAction(api.employeeActions.revokeInvite);
   const updateStatus = useMutation(api.mutations.employees.updateEmployeeStatus);
   const teams = useQuery(
     (api as any).queries.teams.list,
@@ -395,7 +396,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
           }
         />
       ) : (
-        <div className="card overflow-hidden">
+        <div className="card overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200">
@@ -428,7 +429,16 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                   <td className="py-3 px-4 text-sm text-gray-500">{formatLabel(workerProfile?.workerType)}</td>
                   <td className="py-3 px-4 text-sm text-gray-500">{formatLabel(workerProfile?.onboardingStatus)}</td>
                   <td className="py-3 px-4 text-sm text-gray-500">{formatLabel(workerProfile?.jobEligibilityStatus)}</td>
-                  <td className="py-3 px-4"><StatusBadge status={workerProfile?.workerStatus ?? emp.status} /></td>
+                  <td className="py-3 px-4">
+                    {(emp as any).invitationStatus ? (
+                      <span className={`badge ${
+                        (emp as any).invitationStatus === "accepted" ? "bg-green-100 text-green-700" :
+                        (emp as any).invitationStatus === "expired" ? "bg-amber-100 text-amber-700" :
+                        (emp as any).invitationStatus === "revoked" ? "bg-gray-200 text-gray-700" :
+                        "bg-blue-100 text-blue-700"
+                      }`}>{formatLabel((emp as any).invitationStatus)}</span>
+                    ) : <StatusBadge status={workerProfile?.workerStatus ?? emp.status} />}
+                  </td>
                   <td className="py-3 px-4 text-right space-x-2">
                     {emp.role !== "owner" && (
                       <Link href={`/employees/${emp._id}`} className="text-sm text-gray-600 hover:text-gray-800 font-medium">
@@ -469,7 +479,40 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                       </button>
                     )}
                     {emp.status === "pending" && (
-                      <span className="text-sm text-gray-400">{t("employees.invitePending")}</span>
+                      <>
+                        <button
+                          className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                          onClick={async () => {
+                            try {
+                              await resendInviteEmail({
+                                userId: user._id,
+                                sessionToken: getStaffSessionToken(),
+                                companyId: user.companyId!,
+                                employeeId: emp._id,
+                              });
+                              setToast(t("employees.emailResentSuccess"));
+                            } catch {
+                              setToast(t("employees.inviteActionFailed"));
+                            }
+                          }}
+                        >{t("employees.resendInvitation")}</button>
+                        <button
+                          className="text-sm text-red-600 hover:text-red-700 font-medium"
+                          onClick={async () => {
+                            try {
+                              await revokeInvite({
+                                userId: user._id,
+                                sessionToken: getStaffSessionToken(),
+                                companyId: user.companyId!,
+                                employeeId: emp._id,
+                              });
+                              setToast(t("employees.invitationRevoked"));
+                            } catch {
+                              setToast(t("employees.inviteActionFailed"));
+                            }
+                          }}
+                        >{t("employees.revokeInvitation")}</button>
+                      </>
                     )}
                   </td>
                 </tr>

@@ -91,6 +91,8 @@ export const inviteCleaner = action({
       status: "pending",
       inviteTokenHash: hashToken(token),
       inviteTokenExpiry: Date.now() + INVITE_TOKEN_EXPIRY_MS,
+      invitationStatus: "pending",
+      invitationSentAt: Date.now(),
     };
     // Pass manager permission flags when creating a manager
     if (role === "manager") {
@@ -141,7 +143,8 @@ export const resendInviteEmail = action({
     userId: v.id("users"),
     sessionToken: v.string(),
     companyId: v.id("companies"),
-    employeeEmail: v.string(),
+    employeeId: v.optional(v.id("users")),
+    employeeEmail: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<{ emailSent: boolean; token: string }> => {
     const principal = await requireOwnerSession(ctx, args.sessionToken, args.userId);
@@ -152,11 +155,17 @@ export const resendInviteEmail = action({
     );
     if (!isOwner) throw new Error("Owner access required");
 
-    const email = args.employeeEmail.toLowerCase();
-    const user = await ctx.runQuery(internal.authInternal.getUserByEmail, { email });
+    const requested = args.employeeId
+      ? await ctx.runQuery(internal.authInternal.getUserById, { userId: args.employeeId })
+      : args.employeeEmail
+        ? await ctx.runQuery(internal.authInternal.getUserByEmail, { email: args.employeeEmail.toLowerCase() })
+        : null;
+    const user = requested;
     if (!user) throw new Error("Employee not found");
-    if (user.status !== "pending") throw new Error("Employee already accepted invite");
     if (user.companyId !== args.companyId) throw new Error("Employee not in your company");
+    if (user.invitationStatus === "revoked") throw new Error("Revoked invitations cannot be resent");
+    if (user.status !== "pending") throw new Error("Employee already accepted invite");
+    const email = user.email;
     const token = generateSecureToken();
     await ctx.runMutation(internal.authInternal.rotateInviteToken, {
       userId: user._id,
@@ -168,7 +177,40 @@ export const resendInviteEmail = action({
       email,
       inviteToken: token,
     });
+    await ctx.runMutation(internal.authInternal.logAuditEntry, {
+      companyId: args.companyId,
+      userId: principal.userId,
+      action: "resend_worker_invite",
+      entityType: "user",
+      entityId: user._id,
+      details: "Rotated worker invitation token and sent a new invitation",
+    });
     return { emailSent: true, token };
+  },
+});
+
+export const revokeInvite = action({
+  args: {
+    userId: v.id("users"),
+    sessionToken: v.string(),
+    companyId: v.id("companies"),
+    employeeId: v.id("users"),
+  },
+  handler: async (ctx, args): Promise<{ revoked: true }> => {
+    const principal = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    if (principal.companyId !== args.companyId) throw new Error("Access denied");
+    const target = await ctx.runQuery(internal.authInternal.getUserById, { userId: args.employeeId });
+    if (!target || target.companyId !== args.companyId) throw new Error("Employee not found");
+    if (target.status !== "pending") throw new Error("Only pending invitations can be revoked");
+    await ctx.runMutation(internal.authInternal.revokeInviteToken, { userId: target._id });
+    await ctx.runMutation(internal.authInternal.logAuditEntry, {
+      companyId: args.companyId,
+      userId: principal.userId,
+      action: "revoke_worker_invite",
+      entityType: "user",
+      entityId: target._id,
+    });
+    return { revoked: true };
   },
 });
 
@@ -202,11 +244,12 @@ export const acceptInvite = action({
       legacyToken: args.token,
     });
 
-    if (!user) throw new Error("Invalid or expired invite link");
-    if (user.status !== "pending") throw new Error("Invite already used");
-    if (user.inviteTokenExpiry && user.inviteTokenExpiry < Date.now()) {
-      throw new Error("Invalid or expired invite link");
-    }
+    if (!user) throw new Error("INVITE_INVALID");
+    if (user.invitationStatus === "revoked") throw new Error("INVITE_REVOKED");
+    if (user.invitationStatus === "accepted" || user.status === "active") throw new Error("INVITE_ACCEPTED");
+    if (!user.inviteTokenExpiry) throw new Error("INVITE_INVALID");
+    if (user.inviteTokenExpiry < Date.now()) throw new Error("INVITE_EXPIRED");
+    if (user.status !== "pending") throw new Error("INVITE_INVALID");
 
     const passwordHash = await hashPassword(args.password);
 

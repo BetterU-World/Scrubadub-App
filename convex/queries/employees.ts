@@ -5,6 +5,15 @@ import { requireStaffCompany } from "../lib/sessionAuth";
 import { hashTokenForLookup } from "../lib/tokenHash";
 
 function toEmployeeDirectoryEntry(user: Doc<"users">) {
+  const invitationStatus = user.invitationStatus === "revoked"
+    ? "revoked"
+    : user.invitationStatus === "accepted" || user.status === "active"
+      ? "accepted"
+      : user.status === "pending" && user.inviteTokenExpiry && user.inviteTokenExpiry < Date.now()
+        ? "expired"
+        : user.status === "pending"
+          ? "pending"
+          : undefined;
   return {
     _id: user._id,
     _creationTime: user._creationTime,
@@ -13,6 +22,7 @@ function toEmployeeDirectoryEntry(user: Doc<"users">) {
     companyId: user.companyId,
     role: user.role,
     status: user.status,
+    invitationStatus,
     phone: user.phone,
     canSeeAllJobs: user.canSeeAllJobs,
     canCreateJobs: user.canCreateJobs,
@@ -52,9 +62,17 @@ export const getByInviteToken = query({
       .query("users")
       .withIndex("by_inviteToken", (q) => q.eq("inviteToken", args.token))
       .first();
-    if (!user) return null;
+    if (!user) return { state: "invalid" as const };
+    if (user.invitationStatus === "revoked") return { state: "revoked" as const };
+    if (user.invitationStatus === "accepted" || user.status === "active") {
+      return { state: "accepted" as const };
+    }
+    if (!user.inviteTokenExpiry) return { state: "invalid" as const };
+    if (user.inviteTokenExpiry < Date.now()) return { state: "expired" as const };
+    if (user.status !== "pending") return { state: "invalid" as const };
     const company = user.companyId ? await ctx.db.get(user.companyId) : null;
     return {
+      state: "valid" as const,
       _id: user._id,
       email: user.email,
       name: user.name,

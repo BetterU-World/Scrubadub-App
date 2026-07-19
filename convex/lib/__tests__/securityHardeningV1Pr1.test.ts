@@ -123,7 +123,7 @@ describe("Security Hardening V1 PR 1", () => {
       expect(stored?.inviteTokenExpiry).toBe(beforeInvite + INVITE_TOKEN_EXPIRY_MS);
       await expect(t.query(api.queries.employees.getByInviteToken, {
         token: invitation.token,
-      })).resolves.toMatchObject({ email: "worker@hardening.test" });
+      })).resolves.toMatchObject({ state: "valid", email: "worker@hardening.test" });
 
       const resent = await t.action(api.employeeActions.resendInviteEmail, {
         userId: founderId,
@@ -134,7 +134,7 @@ describe("Security Hardening V1 PR 1", () => {
       expect(resent.token).not.toBe(invitation.token);
       await expect(t.query(api.queries.employees.getByInviteToken, {
         token: invitation.token,
-      })).resolves.toBeNull();
+      })).resolves.toEqual({ state: "invalid" });
 
       await expect(t.action(api.employeeActions.acceptInvite, {
         token: resent.token,
@@ -143,8 +143,9 @@ describe("Security Hardening V1 PR 1", () => {
       const accepted = await t.run((ctx) => ctx.db.get(invitation.userId));
       expect(accepted?.status).toBe("active");
       expect(accepted?.inviteToken).toBeUndefined();
-      expect(accepted?.inviteTokenHash).toBeUndefined();
+      expect(accepted?.inviteTokenHash).toBe(hashToken(resent.token));
       expect(accepted?.inviteTokenExpiry).toBeUndefined();
+      expect(accepted?.invitationStatus).toBe("accepted");
     } finally {
       vi.clearAllTimers();
       vi.useRealTimers();

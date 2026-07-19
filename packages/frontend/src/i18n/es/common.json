@@ -882,6 +882,10 @@
     "deactivate": "Desactivar",
     "activate": "Activar",
     "invitePending": "Invitación pendiente",
+    "resendInvitation": "Reenviar invitación",
+    "revokeInvitation": "Revocar",
+    "invitationRevoked": "Invitación revocada",
+    "inviteActionFailed": "No se pudo actualizar esta invitación. Inténtalo de nuevo.",
     "inviteSent": "Invitación enviada exitosamente",
     "generateInviteLink": "Generar enlace de invitación",
     "createAndSendInvite": "Crear invitación y enviar correo",
@@ -1687,6 +1691,16 @@
       "serviceAgreements": "Aun no hay acuerdos de servicio.",
       "invoices": "Aun no hay facturas.",
       "jobs": "Aun no hay trabajos."
+    }
+  },
+  "invite": {
+    "signIn": "Iniciar sesión",
+    "acceptFailedSafe": "No pudimos aceptar esta invitación. Actualiza la página e inténtalo de nuevo.",
+    "states": {
+      "expired": { "title": "Invitación vencida", "body": "Este enlace de invitación ha vencido por tu seguridad. Pide al propietario de tu empresa que envíe una nueva invitación." },
+      "accepted": { "title": "Invitación ya utilizada", "body": "Esta invitación ya fue aceptada. Inicia sesión con tu correo electrónico y contraseña." },
+      "revoked": { "title": "Invitación ya no disponible", "body": "Tu empresa ha revocado esta invitación." },
+      "invalid": { "title": "Invitación no encontrada", "body": "Este enlace de invitación no es válido o ya no existe." }
     }
   },
   "clientAuth": {
