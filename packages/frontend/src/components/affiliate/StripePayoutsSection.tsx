@@ -53,14 +53,14 @@ function StripePayoutsInner({ userId }: { userId: Id<"users"> }) {
 
   if (isConnected) {
     return (
-      <div className="bg-white rounded-lg shadow p-6 max-w-xl">
+      <div className="bg-white rounded-lg shadow p-4 sm:p-6 max-w-xl">
         <h2 className="text-lg font-semibold text-gray-900 mb-3">
           {t("affiliate.stripePayouts")}
         </h2>
         <div className="bg-green-50 border border-green-200 rounded-md px-4 py-3 mb-4">
           <div className="flex items-center gap-2">
             <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
-            <div>
+            <div className="min-w-0">
               <p className="text-sm text-green-800 font-medium">
                 {t("affiliate.stripeConnected")}
               </p>
@@ -74,7 +74,7 @@ function StripePayoutsInner({ userId }: { userId: Id<"users"> }) {
         <button
           onClick={handleConnect}
           disabled={loading}
-          className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 text-gray-700 text-sm rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
+          className="touch-target inline-flex w-full items-center justify-center gap-2 px-3 bg-gray-100 text-gray-700 text-sm rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50 sm:w-auto"
         >
           <Settings className="h-4 w-4" />
           {loading ? t("affiliate.redirecting") : t("affiliate.updateStripeDetails")}
@@ -88,7 +88,7 @@ function StripePayoutsInner({ userId }: { userId: Id<"users"> }) {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6 max-w-xl">
+    <div className="bg-white rounded-lg shadow p-4 sm:p-6 max-w-xl">
       <h2 className="text-lg font-semibold text-gray-900 mb-3">
         {t("affiliate.stripePayouts")}
       </h2>
@@ -99,7 +99,7 @@ function StripePayoutsInner({ userId }: { userId: Id<"users"> }) {
       <button
         onClick={handleConnect}
         disabled={loading}
-        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+        className="touch-target inline-flex w-full items-center justify-center gap-2 px-4 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 sm:w-auto"
       >
         <ExternalLink className="h-4 w-4" />
         {loading ? t("affiliate.redirecting") : t("affiliate.connectStripeBtn")}
