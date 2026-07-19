@@ -7,6 +7,7 @@ import { Id } from "../../../../../convex/_generated/dataModel";
 import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { AsyncButton } from "@/components/ui/AsyncButton";
+import { TableScrollRegion } from "@/components/ui/TableScrollRegion";
 import {
   RefreshCw,
   Lock,
@@ -682,7 +683,8 @@ function BatchDetailModal({
                 Export CSV
               </button>
             </div>
-            <table className="min-w-full divide-y divide-gray-200 text-sm mb-4">
+            <TableScrollRegion label="Payout batch ledger entries" className="mb-4">
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
@@ -710,6 +712,7 @@ function BatchDetailModal({
                 ))}
               </tbody>
             </table>
+            </TableScrollRegion>
 
             {/* Action buttons */}
             <div className="flex flex-wrap gap-2">
@@ -858,8 +861,8 @@ function SummaryCards({
     }, [rows]);
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <div className="bg-white rounded-lg shadow p-4">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+      <div className="bg-white rounded-lg shadow p-4 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <Clock className="h-5 w-5 text-yellow-600" />
           <span className="text-xs font-medium text-gray-500">
@@ -873,7 +876,7 @@ function SummaryCards({
           Commission: {formatCents(openCommission)}
         </p>
       </div>
-      <div className="bg-white rounded-lg shadow p-4">
+      <div className="bg-white rounded-lg shadow p-4 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <Lock className="h-5 w-5 text-blue-600" />
           <span className="text-xs font-medium text-gray-500">
@@ -884,7 +887,7 @@ function SummaryCards({
           {formatCents(lockedCommission)}
         </p>
       </div>
-      <div className="bg-white rounded-lg shadow p-4">
+      <div className="bg-white rounded-lg shadow p-4 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <CheckCircle className="h-5 w-5 text-green-600" />
           <span className="text-xs font-medium text-gray-500">Total Paid</span>
@@ -893,7 +896,7 @@ function SummaryCards({
           {formatCents(paidCommission)}
         </p>
       </div>
-      <div className="bg-white rounded-lg shadow p-4">
+      <div className="bg-white rounded-lg shadow p-4 min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <DollarSign className="h-5 w-5 text-emerald-600" />
           <span className="text-xs font-medium text-gray-500">
@@ -966,6 +969,7 @@ function BatchListPanel({
               Export Batches CSV
             </button>
           </div>
+          <TableScrollRegion label="Recent payout batches">
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>
@@ -1016,6 +1020,7 @@ function BatchListPanel({
               ))}
             </tbody>
           </table>
+          </TableScrollRegion>
         </div>
       )}
     </div>
@@ -1236,6 +1241,8 @@ function RequestPayoutModal({
         </p>
 
         <div className="border border-gray-200 rounded-md overflow-hidden mb-4">
+          <TableScrollRegion label="Payout request period selection">
+          <TableScrollRegion label="My payout requests">
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>
@@ -1272,6 +1279,8 @@ function RequestPayoutModal({
               ))}
             </tbody>
           </table>
+          </TableScrollRegion>
+          </TableScrollRegion>
         </div>
 
         <div className="bg-gray-50 rounded-md px-3 py-2 mb-4 text-sm">
@@ -2018,7 +2027,7 @@ function AffiliateLedgerInner({
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="overflow-x-auto">
+          <TableScrollRegion label="Affiliate ledger entries">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -2177,7 +2186,7 @@ function AffiliateLedgerInner({
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScrollRegion>
         </div>
       )}
 

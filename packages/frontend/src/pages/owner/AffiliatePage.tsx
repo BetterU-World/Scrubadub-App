@@ -140,12 +140,12 @@ function AffiliatePageInner({
       />
       {/* Tab nav */}
       <div className="border-b border-gray-200 mb-6">
-        <nav className="-mb-px flex gap-6">
+        <nav className="-mb-px flex max-w-full gap-2 overflow-x-auto overscroll-x-contain" aria-label={t("affiliate.title")}>
           {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
+              className={`touch-target flex-none border-b-2 px-2 text-sm font-medium transition-colors ${
                 activeTab === tab.key
                   ? "border-blue-600 text-blue-600"
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -159,7 +159,7 @@ function AffiliatePageInner({
 
       {activeTab === "referrals" && (
         <>
-          <div className="bg-white rounded-lg shadow p-6 max-w-xl">
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6 max-w-xl">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               {t("affiliate.yourReferralLink")}
             </label>
@@ -167,10 +167,10 @@ function AffiliatePageInner({
               {fullUrl}
             </div>
 
-            <div className="flex flex-wrap gap-3">
+            <div className="grid gap-2 sm:flex sm:flex-wrap sm:gap-3">
               <button
                 onClick={() => copyToClipboard(fullUrl, "link")}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+                className="touch-target inline-flex items-center justify-center gap-2 px-4 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
               >
                 <Copy className="h-4 w-4" />
                 {copied === "link" ? t("affiliate.copied") : t("affiliate.copyLink")}
@@ -178,7 +178,7 @@ function AffiliatePageInner({
 
               <button
                 onClick={() => window.open(fullUrl, "_blank", "noopener,noreferrer")}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors"
+                className="touch-target inline-flex items-center justify-center gap-2 px-4 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors"
               >
                 <ExternalLink className="h-4 w-4" />
                 {t("affiliate.openLink")}
@@ -186,7 +186,7 @@ function AffiliatePageInner({
 
               <button
                 onClick={() => copyToClipboard(socialCaption, "social")}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors"
+                className="touch-target inline-flex items-center justify-center gap-2 px-4 bg-gray-100 text-gray-700 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors"
               >
                 <Share2 className="h-4 w-4" />
                 {copied === "social" ? t("affiliate.copied") : t("affiliate.copySocialCaption")}
@@ -195,7 +195,7 @@ function AffiliatePageInner({
           </div>
 
           {/* ── Your Referrals ── */}
-          <div className="bg-white rounded-lg shadow p-6 max-w-xl mt-6">
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6 max-w-xl mt-6">
             <div className="flex items-center gap-2 mb-4">
               <Users className="h-5 w-5 text-gray-500" />
               <h2 className="text-lg font-semibold text-gray-900">
@@ -218,9 +218,9 @@ function AffiliatePageInner({
               <ul className="divide-y divide-gray-100">
                 {referrals.map((r) => (
                   <li key={r.userId} className="py-3 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{r.name}</p>
-                      <p className="text-sm text-gray-500">{r.email}</p>
+                    <div className="min-w-0">
+                      <p className="break-words text-sm font-medium text-gray-900">{r.name}</p>
+                      <p className="break-all text-sm text-gray-500">{r.email}</p>
                     </div>
                   </li>
                 ))}

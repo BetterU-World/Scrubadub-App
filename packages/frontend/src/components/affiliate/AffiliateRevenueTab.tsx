@@ -4,6 +4,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { DollarSign, Building2, FileText, TrendingUp, Percent } from "lucide-react";
+import { TableScrollRegion } from "@/components/ui/TableScrollRegion";
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
@@ -64,7 +65,7 @@ function AffiliateRevenueInner({ userId }: { userId: Id<"users"> }) {
   return (
     <div className="space-y-6">
       {/* Revenue stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
         <StatCard
           icon={<DollarSign className="h-5 w-5 text-green-600" />}
           label={t("affiliate.lifetimeRevenue")}
@@ -88,7 +89,7 @@ function AffiliateRevenueInner({ userId }: { userId: Id<"users"> }) {
       </div>
 
       {/* Commission stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
         <StatCard
           icon={<Percent className="h-5 w-5 text-emerald-600" />}
           label={t("affiliate.lifetimeCommission")}
@@ -115,7 +116,7 @@ function AffiliateRevenueInner({ userId }: { userId: Id<"users"> }) {
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="overflow-x-auto">
+          <TableScrollRegion label={t("affiliate.revenue")}>
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -133,7 +134,7 @@ function AffiliateRevenueInner({ userId }: { userId: Id<"users"> }) {
                     <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
                       {formatDate(row.createdAt)}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
+                    <td className="px-4 py-3 text-sm text-gray-900 min-w-48 break-words">
                       {row.purchaserCompanyName ?? "—"}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
@@ -160,7 +161,7 @@ function AffiliateRevenueInner({ userId }: { userId: Id<"users"> }) {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScrollRegion>
         </div>
       )}
     </div>
@@ -177,10 +178,10 @@ function StatCard({
   value: string;
 }) {
   return (
-    <div className="bg-white rounded-lg shadow p-4">
+    <div className="bg-white rounded-lg shadow p-4 min-w-0">
       <div className="flex items-center gap-2 mb-1">
         {icon}
-        <span className="text-xs font-medium text-gray-500">{label}</span>
+        <span className="break-words text-xs font-medium text-gray-500">{label}</span>
       </div>
       <p className="text-xl font-bold text-gray-900">{value}</p>
     </div>

@@ -5,6 +5,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { DialogShell } from "@/components/ui/DialogShell";
+import { TableScrollRegion } from "@/components/ui/TableScrollRegion";
 import {
   CheckCircle,
   XCircle,
@@ -179,8 +180,8 @@ function RequestDetailModal({
         ) : (
           <>
             {/* Info grid */}
-            <div className="grid grid-cols-2 gap-3 text-sm mb-4">
-              <div>
+            <div className="grid grid-cols-1 gap-3 text-sm mb-4 sm:grid-cols-2">
+              <div className="min-w-0 break-words">
                 <span className="text-gray-500">{t("affiliate.affiliateLabel")}</span>{" "}
                 <span className="font-medium">{request.referrerName}</span>
                 <span className="text-gray-400 ml-1 text-xs">
@@ -226,13 +227,13 @@ function RequestDetailModal({
                 </div>
               )}
               {request.notes && (
-                <div className="col-span-2">
+                <div className="break-words sm:col-span-2">
                   <span className="text-gray-500">{t("affiliate.affiliateNotes")}</span>{" "}
                   {request.notes}
                 </div>
               )}
               {request.adminNotes && (
-                <div className="col-span-2">
+                <div className="break-words sm:col-span-2">
                   <span className="text-gray-500">{t("affiliate.adminNotes")}</span>{" "}
                   {request.adminNotes}
                 </div>
@@ -258,7 +259,8 @@ function RequestDetailModal({
             <h4 className="text-sm font-medium text-gray-700 mb-2">
               {t("affiliate.ledgerEntries")} ({request.ledgerRows.length})
             </h4>
-            <table className="min-w-full divide-y divide-gray-200 text-sm mb-4">
+            <TableScrollRegion label={t("affiliate.ledgerEntries")} className="mb-4">
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-3 py-2 text-left text-xs font-medium text-gray-500">
@@ -307,14 +309,15 @@ function RequestDetailModal({
                 })}
               </tbody>
             </table>
+            </TableScrollRegion>
 
             {/* Action buttons */}
             {(canApprove || canDeny || canComplete) && action === null && (
-              <div className="flex flex-wrap gap-2">
+              <div className="grid gap-2 sm:flex sm:flex-wrap">
                 {canApprove && (
                   <button
                     onClick={() => setAction("approve")}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-teal-700 bg-teal-50 rounded-md hover:bg-teal-100 transition-colors"
+                    className="touch-target inline-flex items-center justify-center gap-1 px-3 text-xs font-medium text-teal-700 bg-teal-50 rounded-md hover:bg-teal-100 transition-colors"
                   >
                     <CheckCircle className="h-3.5 w-3.5" />
                     {t("affiliate.approve")}
@@ -323,7 +326,7 @@ function RequestDetailModal({
                 {canDeny && (
                   <button
                     onClick={() => setAction("deny")}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 rounded-md hover:bg-red-100 transition-colors"
+                    className="touch-target inline-flex items-center justify-center gap-1 px-3 text-xs font-medium text-red-700 bg-red-50 rounded-md hover:bg-red-100 transition-colors"
                   >
                     <XCircle className="h-3.5 w-3.5" />
                     {t("affiliate.deny")}
@@ -332,7 +335,7 @@ function RequestDetailModal({
                 {canComplete && (
                   <button
                     onClick={() => setAction("complete")}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 rounded-md hover:bg-green-100 transition-colors"
+                    className="touch-target inline-flex items-center justify-center gap-1 px-3 text-xs font-medium text-green-700 bg-green-50 rounded-md hover:bg-green-100 transition-colors"
                   >
                     <Package className="h-3.5 w-3.5" />
                     {t("affiliate.convertToBatch")}
@@ -397,14 +400,14 @@ function RequestDetailModal({
                   }
                   className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm mb-2"
                 />
-                <div className="flex gap-2">
+                <div className="flex flex-col-reverse gap-2 sm:flex-row">
                   <button
                     onClick={() => {
                       setAction(null);
                       setAdminNotes("");
                     }}
                     disabled={busy}
-                    className="px-3 py-1 text-sm text-gray-700 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50"
+                    className="touch-target px-3 text-sm text-gray-700 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50"
                   >
                     {t("common.cancel")}
                   </button>
@@ -413,7 +416,7 @@ function RequestDetailModal({
                     disabled={
                       busy || (action === "deny" && !adminNotes.trim())
                     }
-                    className={`px-3 py-1 text-sm text-white rounded disabled:opacity-50 ${
+                    className={`touch-target px-3 text-sm text-white rounded disabled:opacity-50 ${
                       action === "deny"
                         ? "bg-red-600 hover:bg-red-700"
                         : action === "approve"
@@ -478,7 +481,7 @@ function PayoutRequestsInner({
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:gap-3">
           <label className="text-xs text-gray-500">{t("affiliate.statusLabel")}</label>
           <select
             value={statusFilter}
@@ -516,7 +519,7 @@ function PayoutRequestsInner({
         </div>
       ) : (
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="overflow-x-auto">
+          <TableScrollRegion label={t("affiliate.payoutRequests")}>
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -549,11 +552,11 @@ function PayoutRequestsInner({
                     <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
                       {formatDate(r.createdAt)}
                     </td>
-                    <td className="px-4 py-3 text-sm">
-                      <div className="font-medium text-gray-900">
+                    <td className="px-4 py-3 text-sm min-w-52">
+                      <div className="break-words font-medium text-gray-900">
                         {r.referrerName}
                       </div>
-                      <div className="text-xs text-gray-400">
+                      <div className="break-all text-xs text-gray-400">
                         {r.referrerEmail}
                       </div>
                     </td>
@@ -573,7 +576,7 @@ function PayoutRequestsInner({
                             r._id as Id<"affiliatePayoutRequests">
                           )
                         }
-                        className="text-xs text-blue-600 hover:text-blue-800"
+                        className="touch-target inline-flex items-center px-3 text-xs text-blue-600 hover:text-blue-800"
                       >
                         {t("affiliate.view")}
                       </button>
@@ -582,7 +585,7 @@ function PayoutRequestsInner({
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScrollRegion>
         </div>
       )}
     </div>
