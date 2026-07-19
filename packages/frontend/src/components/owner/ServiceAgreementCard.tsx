@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
 import { ServiceAgreementStatusBadge } from "@/components/ui/ServiceAgreementStatusBadge";
 import { AsyncButton } from "@/components/ui/AsyncButton";
+import { AddOnSnapshotList } from "@/components/AddOnSnapshotList";
 
 const FREQUENCIES = ["one_time", "weekly", "biweekly", "monthly", "quarterly", "custom"] as const;
 
@@ -556,6 +557,7 @@ export function ServiceAgreementCard({
               value={<p className="whitespace-pre-wrap">{agreement.servicesIncluded}</p>}
             />
           )}
+          <AddOnSnapshotList items={agreement.acceptedProposalAddOnSnapshots} audience="owner" showPricing />
           {agreement.priceSummary && (
             <Detail label={t("serviceAgreements.priceSummary")} value={agreement.priceSummary} />
           )}

@@ -35,6 +35,7 @@ export const SERVICE_AGREEMENT_MERGE_FIELDS: MergeFieldDefinition[] = [
   { key: "billing_schedule", label: "Billing schedule", category: "Agreement" },
   { key: "start_date", label: "Start date", category: "Agreement" },
   { key: "services_included", label: "Services included", category: "Agreement" },
+  { key: "add_on_line_items", label: "Committed add-ons", category: "Agreement" },
   { key: "special_instructions", label: "Special instructions", category: "Agreement" },
   { key: "exceptions", label: "Exceptions", category: "Agreement" },
 ];
@@ -45,6 +46,9 @@ This Service Agreement is between {{company_name}} and {{client_name}} for clean
 
 ## Services Included
 {{services_included}}
+
+## Committed Add-Ons
+{{add_on_line_items}}
 
 ## Schedule and Pricing
 Service frequency: {{service_frequency}}
@@ -102,6 +106,7 @@ export async function buildServiceAgreementMergeValues(
     servicesIncluded?: string;
     specialInstructions?: string;
     exceptions?: string;
+    addOnLineItems?: string;
   }
 ) {
   const identity = await getCompanyIdentity(ctx, companyId);
@@ -120,6 +125,7 @@ export async function buildServiceAgreementMergeValues(
     agreement_start_date: startDate,
     start_date: startDate,
     services_included: value(values.servicesIncluded, "To be confirmed"),
+    add_on_line_items: value(values.addOnLineItems, "None"),
     special_instructions: value(values.specialInstructions, "None specified"),
     exceptions: value(values.exceptions, "None specified"),
   };

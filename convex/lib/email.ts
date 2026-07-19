@@ -251,6 +251,7 @@ export type ServiceAgreementEmailArgs = {
     priceSummary?: string | null;
     billingSchedule?: string | null;
     effectiveStartDate?: string | null;
+    committedAddOns?: Array<{ name: string; quantity?: number | null; unitLabel?: string | null; lineTotalCents: number; billingCadence: string }>;
   };
 };
 
@@ -289,6 +290,17 @@ export function renderServiceAgreementEmail(args: ServiceAgreementEmailArgs) {
                   ${detailRow(spanish ? "Fecha de inicio" : "Start date", args.agreement.effectiveStartDate)}
                 </table>
               </div>
+              ${args.agreement.committedAddOns?.length ? `
+                <div style="margin:0 0 22px;">
+                  <p style="margin:0 0 8px; color:#111827; font-size:14px; font-weight:700;">${spanish ? "Servicios adicionales incluidos" : "Committed add-ons"}</p>
+                  <table style="width:100%; border-collapse:collapse;">
+                    ${args.agreement.committedAddOns.map((line) => detailRow(
+                      line.name,
+                      `${line.quantity ? `${line.quantity} ${line.unitLabel ?? "units"} · ` : ""}${new Intl.NumberFormat(spanish ? "es-US" : "en-US", { style: "currency", currency: "USD" }).format(line.lineTotalCents / 100)} · ${line.billingCadence === "monthly" ? (spanish ? "Mensual" : "Monthly") : (spanish ? "Una vez" : "One-time")}`
+                    )).join("")}
+                  </table>
+                </div>
+              ` : ""}
               <p style="text-align:center; margin:28px 0;"><a href="${escapeHtml(args.viewUrl)}" style="background:#111827; color:#fff; padding:13px 22px; border-radius:7px; text-decoration:none; display:inline-block; font-size:15px; font-weight:700;">${cta}</a></p>
               <p style="color:#6b7280; font-size:12px; line-height:1.6; overflow-wrap:anywhere;">${fallback}<br /><a href="${escapeHtml(args.viewUrl)}">${escapeHtml(args.viewUrl)}</a></p>
             </div>

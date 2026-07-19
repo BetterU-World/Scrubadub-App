@@ -7,6 +7,7 @@ import { requireActiveSubscription } from "../lib/subscriptionGating";
 import { assertTeamInCompany, canSubmitFinalJob, getJobRecipientUserIds, isUserAssignedToJob } from "../lib/teams";
 import { resolveOperationalEmailIdentity } from "../lib/operationalEmailIdentity";
 import { MAX_JOB_PAUSE_CYCLES, normalizePauseNote } from "../lib/jobTiming";
+import { copyAcceptedProposalAddOnSnapshots } from "../lib/acceptedProposalAddOnSnapshots";
 
 const pauseReasonValidator = v.union(
   v.literal("break"),
@@ -47,6 +48,8 @@ export const create = mutation({
     notes: v.optional(v.string()),
     requireConfirmation: v.optional(v.boolean()),
     assignedManagerId: v.optional(v.id("users")),
+    proposalId: v.optional(v.id("proposals")),
+    clientRequestId: v.optional(v.id("clientRequests")),
   },
   handler: async (ctx, args) => {
     const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
@@ -66,9 +69,30 @@ export const create = mutation({
     }
     const emailIdentity = await resolveOperationalEmailIdentity(ctx, args.companyId);
 
-    const { userId: _uid, sessionToken: _sessionToken, ...jobData } = args;
+    let sourceProposalId: typeof args.proposalId | undefined;
+    let acceptedProposalAddOnSnapshots: any[] | undefined;
+    if (args.proposalId) {
+      const copied = await copyAcceptedProposalAddOnSnapshots(ctx, args.proposalId, args.companyId);
+      if (!args.clientRequestId || copied.proposal.clientRequestId !== args.clientRequestId) {
+        throw new Error("Accepted proposal must match the source request");
+      }
+      const request = await ctx.db.get(args.clientRequestId);
+      if (!request || request.companyId !== args.companyId) throw new Error("Source request not found");
+      if (request.propertyId && request.propertyId !== args.propertyId) {
+        throw new Error("Job property must match the accepted proposal request");
+      }
+      if (copied.proposal.clientRelationshipId && copied.proposal.clientRelationshipId !== property.clientRelationshipId) {
+        throw new Error("Job client must match the accepted proposal");
+      }
+      sourceProposalId = copied.proposal._id;
+      acceptedProposalAddOnSnapshots = copied.snapshots;
+    }
+
+    const { userId: _uid, sessionToken: _sessionToken, proposalId: _proposalId, clientRequestId: _requestId, ...jobData } = args;
     const jobId = await ctx.db.insert("jobs", {
       ...jobData,
+      sourceProposalId,
+      acceptedProposalAddOnSnapshots,
       clientRelationshipId: property.clientRelationshipId,
       status: initialStatus,
       acceptanceStatus: initialAcceptance,

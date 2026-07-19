@@ -13,6 +13,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useParams, Link } from "wouter";
 import { JobTimeline } from "@/components/JobTimeline";
 import { JobTimingPanel } from "@/components/JobTimingPanel";
+import { AddOnSnapshotList } from "@/components/AddOnSnapshotList";
 import {
   Calendar,
   Clock,
@@ -222,7 +223,7 @@ export function JobDetailPage() {
             {!detailPartnerStatus && (job as any).acceptanceStatus && (
               <StatusBadge status={(job as any).acceptanceStatus} />
             )}
-            <span className="text-sm text-gray-500 capitalize">{t(`jobTypes.${job.type}`, job.type.replace(/_/g, " "))}</span>
+            <span className="text-sm text-gray-500 capitalize">{t(`jobTypes.${job.type}`, { defaultValue: job.type.replace(/_/g, " ") })}</span>
             {/* Inspection state badge */}
             {inspectionSummary && inspectionSummary.count > 0 && (
               <span className={`badge text-[10px] ${
@@ -283,6 +284,8 @@ export function JobDetailPage() {
 
           {job.notes && <p className="text-sm text-gray-600 border-t pt-3">{job.notes}</p>}
         </div>
+
+        <AddOnSnapshotList items={(job as any).acceptedProposalAddOnSnapshots} audience="owner" showPricing />
 
         <JobTimeline job={job as any} />
         <JobTimingPanel job={job as any} userId={user?._id as any} controls={job.status === "in_progress" && job.assignedManagerId === user?._id} ownerMode />
@@ -366,7 +369,7 @@ export function JobDetailPage() {
               <Flag className="w-5 h-5" /> {t("jobs.redFlags")} ({job.redFlags.length})
             </h3>
             <div className="space-y-3">
-              {job.redFlags.map((flag) => (
+              {job.redFlags.map((flag: any) => (
                 <div key={flag._id} className="p-3 rounded-lg bg-red-50 border border-red-100">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="badge bg-red-200 text-red-800 capitalize">{flag.severity}</span>
