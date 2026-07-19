@@ -77,7 +77,8 @@
     "hub": "Centro",
     "company": "Empresa",
     "openNavigation": "Abrir navegación",
-    "closeNavigation": "Cerrar navegación"
+    "closeNavigation": "Cerrar navegación",
+    "more": "Más"
   },
   "navigation": {
     "backToRequests": "Volver a Solicitudes",

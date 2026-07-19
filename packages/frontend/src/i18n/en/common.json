@@ -77,7 +77,8 @@
     "hub": "Hub",
     "company": "Company",
     "openNavigation": "Open navigation",
-    "closeNavigation": "Close navigation"
+    "closeNavigation": "Close navigation",
+    "more": "More"
   },
   "navigation": {
     "backToRequests": "Back to Requests",

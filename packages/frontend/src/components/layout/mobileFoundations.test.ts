@@ -26,7 +26,7 @@ describe("mobile foundation contracts", () => {
     const layout = read("packages/frontend/src/components/layout/AppLayout.tsx");
 
     expect(layout).toContain("min-h-screen min-h-[100dvh]");
-    expect(layout).toContain("pb-[var(--mobile-bottom-occlusion)] md:pb-0");
+    expect(layout).toContain('hasMobileNavigation && "pb-[var(--mobile-bottom-occlusion)]"');
     expect(layout).not.toContain("pb-20");
   });
 
