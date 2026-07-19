@@ -1,8 +1,10 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwnerSession } from "../lib/sessionAuth";
+import { calculateInvoiceTotals } from "../lib/invoiceAddOnLineItems";
 
 async function decorateInvoice(ctx: any, invoice: any) {
+  const computedTotals = calculateInvoiceTotals(invoice.baseSubtotalCents ?? invoice.subtotalCents, invoice.addOnLineItems ?? [], invoice.taxCents);
   const account = await ctx.db.get(invoice.commercialAccountId);
   const relationship = invoice.clientRelationshipId
     ? await ctx.db.get(invoice.clientRelationshipId)
@@ -10,6 +12,7 @@ async function decorateInvoice(ctx: any, invoice: any) {
   const jobs = await Promise.all(invoice.jobIds.map((jobId: any) => ctx.db.get(jobId)));
   return {
     ...invoice,
+    computedTotals,
     commercialAccountName:
       account?.companyId === invoice.companyId ? account.clientName : null,
     clientRelationship:

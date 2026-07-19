@@ -1,14 +1,15 @@
 import { useFeedbackState } from "@/components/ui/FeedbackProvider";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "wouter";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
-import { Check, FileText, Receipt, Save, XCircle } from "lucide-react";
+import { Check, FileText, Receipt, Save, Send, XCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { AddOnSnapshotList } from "@/components/AddOnSnapshotList";
 
 function formatCents(cents: number | undefined) {
   if (cents == null) return "$0.00";
@@ -47,6 +48,7 @@ export function CommercialInvoiceDetailPage() {
   const markIssued = useMutation((api as any).mutations.invoices.markIssued);
   const markPaid = useMutation((api as any).mutations.invoices.markPaid);
   const voidInvoice = useMutation((api as any).mutations.invoices.voidInvoice);
+  const sendInvoice = useAction((api as any).invoiceActions.sendInvoice);
 
   useEffect(() => {
     if (invoice) setNotes(invoice.notes ?? "");
@@ -89,6 +91,13 @@ export function CommercialInvoiceDetailPage() {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const handleSend = async () => {
+    setActionLoading("send");
+    try { await sendInvoice({ userId: user._id, sessionToken, invoiceId: invoice._id }); showToast(t("invoices.sentSuccess"), "success"); }
+    catch (err: any) { showToast(err.message || t("invoices.sendFailed"), "error"); }
+    finally { setActionLoading(null); }
   };
 
   return (
@@ -198,12 +207,21 @@ export function CommercialInvoiceDetailPage() {
               </p>
             )}
           </section>
+          <AddOnSnapshotList items={invoice.addOnLineItems} audience="owner" showPricing />
         </div>
 
         <aside className="space-y-6">
           <section className="card">
             <h2 className="mb-4 text-lg font-semibold text-gray-900">{t("invoices.total")}</h2>
             <div className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500">{t("invoices.baseSubtotal")}</span>
+                <span className="font-medium text-gray-900">{formatCents(invoice.baseSubtotalCents ?? invoice.subtotalCents)}</span>
+              </div>
+              {(invoice.addOnSubtotalCents ?? 0) > 0 && <div className="flex justify-between">
+                <span className="text-gray-500">{t("invoices.addOnSubtotal")}</span>
+                <span className="font-medium text-gray-900">{formatCents(invoice.addOnSubtotalCents)}</span>
+              </div>}
               <div className="flex justify-between">
                 <span className="text-gray-500">{t("invoices.subtotal")}</span>
                 <span className="font-medium text-gray-900">{formatCents(invoice.subtotalCents)}</span>
@@ -231,6 +249,9 @@ export function CommercialInvoiceDetailPage() {
                 <FileText className="h-4 w-4" />
                 {t("invoices.markIssued")}
               </button>
+            )}
+            {invoice.status === "issued" && (
+              <button type="button" onClick={handleSend} disabled={actionLoading === "send"} className="btn-secondary flex w-full items-center justify-center gap-2 text-sm"><Send className="h-4 w-4" />{t("invoices.send")}</button>
             )}
             {invoice.status === "issued" && (
               <button

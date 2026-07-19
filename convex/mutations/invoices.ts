@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwnerSession } from "../lib/sessionAuth";
+import { buildInvoiceAddOnSnapshot, calculateInvoiceTotals } from "../lib/invoiceAddOnLineItems";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -119,16 +120,6 @@ async function findDraftForBillingPeriod(
   );
 }
 
-function invoiceTotals(account: any) {
-  const subtotalCents = account.contractAmountCents ?? 0;
-  const taxCents = 0;
-  return {
-    subtotalCents,
-    taxCents,
-    totalCents: subtotalCents + taxCents,
-  };
-}
-
 export const create = mutation({
   args: {
     userId: v.id("users"),
@@ -173,7 +164,8 @@ export const create = mutation({
       throw new Error("All jobs must fall within the billing period");
     }
     const now = Date.now();
-    const totals = invoiceTotals(account);
+    const addOns = await buildInvoiceAddOnSnapshot(ctx, account);
+    const totals = calculateInvoiceTotals(account.contractAmountCents ?? 0, addOns.items);
 
     return await ctx.db.insert("invoices", {
       companyId: account.companyId,
@@ -187,6 +179,8 @@ export const create = mutation({
       issueDate: args.issueDate,
       dueDate: args.dueDate,
       ...totals,
+      sourceProposalId: addOns.sourceProposalId,
+      addOnLineItems: addOns.items.length ? addOns.items : undefined,
       jobIds: jobs.map((job: any) => job._id),
       notes: cleanOptional(args.notes),
       createdAt: now,
@@ -273,7 +267,8 @@ export const generateFromJobs = mutation({
     const now = Date.now();
     const issueDate = formatDate(new Date(now));
     const dueDate = formatDate(addDays(new Date(now), 30));
-    const totals = invoiceTotals(account);
+    const addOns = await buildInvoiceAddOnSnapshot(ctx, account);
+    const totals = calculateInvoiceTotals(account.contractAmountCents ?? 0, addOns.items);
     const invoiceId = await ctx.db.insert("invoices", {
       companyId: account.companyId,
       clientRelationshipId: account.clientRelationshipId,
@@ -286,6 +281,8 @@ export const generateFromJobs = mutation({
       issueDate,
       dueDate,
       ...totals,
+      sourceProposalId: addOns.sourceProposalId,
+      addOnLineItems: addOns.items.length ? addOns.items : undefined,
       jobIds: invoiceJobs.map((job: any) => job._id),
       notes: cleanOptional(args.notes),
       createdAt: now,

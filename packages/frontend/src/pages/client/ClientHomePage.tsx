@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import type { ReactNode } from "react";
-import { useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { ClientPortalShell } from "@/components/client/ClientPortalShell";
@@ -8,6 +8,7 @@ import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { ServiceAgreementStatusBadge } from "@/components/ui/ServiceAgreementStatusBadge";
 import { useClientAuth } from "@/hooks/useClientAuth";
 import { getClientStatusTranslationKey } from "@/lib/clientPresentation";
+import { AddOnSnapshotList } from "@/components/AddOnSnapshotList";
 
 const DUE_SOON_DAYS = 7;
 const ATTENTION_LIMIT = 5;
@@ -133,6 +134,12 @@ export function ClientHomePage() {
     clientUserId && sessionToken ? { clientUserId, sessionToken } : "skip"
   );
   const homeQueryActive = Boolean(clientUserId && sessionToken);
+  const createInvoiceCheckout = useAction((api as any).invoiceActions.createInvoiceCheckout);
+  const payInvoice = async (invoiceId: any) => {
+    if (!clientUserId || !sessionToken) return;
+    const result = await createInvoiceCheckout({ clientUserId, sessionToken, invoiceId });
+    if (result.url) window.location.assign(result.url);
+  };
 
   if (isLoading || (homeQueryActive && home === undefined)) return <PageLoader />;
   if (!homeQueryActive || home === null || home === undefined) {
@@ -361,6 +368,15 @@ export function ClientHomePage() {
                     {companyFor(invoice) && <p className="text-gray-500">{companyFor(invoice)}</p>}
                   </div>
                   <p className="font-semibold text-gray-900 sm:text-right">{formatCents(invoice.totalCents)}</p>
+                  {invoice.status === "issued" && <button type="button" onClick={() => payInvoice(invoice._id)} className="btn-primary justify-self-start text-sm sm:justify-self-end">{t("invoices.payOnline")}</button>}
+                  {invoice.addOnLineItems?.length > 0 && <div className="sm:col-span-2">
+                    <AddOnSnapshotList items={invoice.addOnLineItems} audience="client" showPricing />
+                    <dl className="mt-2 grid gap-1 text-sm sm:ml-auto sm:max-w-xs">
+                      <div className="flex justify-between"><dt>{t("invoices.baseSubtotal")}</dt><dd>{formatCents(invoice.baseSubtotalCents)}</dd></div>
+                      <div className="flex justify-between"><dt>{t("invoices.addOnSubtotal")}</dt><dd>{formatCents(invoice.addOnSubtotalCents)}</dd></div>
+                      <div className="flex justify-between font-semibold"><dt>{t("invoices.total")}</dt><dd>{formatCents(invoice.totalCents)}</dd></div>
+                    </dl>
+                  </div>}
                 </div>
               ))}
             </div>
