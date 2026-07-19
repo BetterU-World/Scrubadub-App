@@ -8,7 +8,7 @@ import { sendInvoiceEmail } from "./lib/email";
 
 export const sendInvoice = action({
   args: { userId: v.id("users"), sessionToken: v.string(), invoiceId: v.id("invoices") },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ sentAt: number }> => {
     const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const payload: any = await ctx.runQuery((internal as any).invoiceDeliveryInternal.getForOwnerDelivery, { companyId: owner.companyId, invoiceId: args.invoiceId });
     const viewUrl = `${(process.env.APP_URL ?? "http://localhost:5173").replace(/\/+$/, "")}/client/home#billing`;
