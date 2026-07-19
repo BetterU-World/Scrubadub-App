@@ -8,7 +8,8 @@ import { hashPassword } from "../password";
 import { COMPANY_ADD_ON_PRESETS } from "../companyAddOnPresets";
 import { MAX_ADD_ON_PRICE_CENTS, validateCompanyAddOnInput } from "../companyAddOnValidation";
 import { hashToken } from "../tokens";
-import { formatPublicAddOnPrice } from "../../../packages/frontend/src/lib/publicAddOnPresentation";
+import { encodePublicAddOnSelection, formatPublicAddOnPrice, parsePublicAddOnSelections } from "../../../packages/frontend/src/lib/publicAddOnPresentation";
+import { companyAddOnSelectionVersion, createRequestedAddOnSnapshots } from "../companyAddOnSelection";
 
 const modules = import.meta.glob("../../**/*.ts");
 const PASSWORD = "test-password-123";
@@ -54,16 +55,26 @@ describe("company add-on catalog", () => {
     expect(source).toContain("<Dialog.Close asChild>");
   });
 
-  it("keeps public add-ons informational and separate from linked core services", () => {
+  it("keeps selected add-ons separate from linked core services with accessible responsive controls", () => {
     const source = readFileSync(fileURLToPath(new URL("../../../packages/frontend/src/pages/public/PublicSitePage.tsx", import.meta.url)), "utf8");
+    const requestSource = readFileSync(fileURLToPath(new URL("../../../packages/frontend/src/pages/public/PublicRequestPage.tsx", import.meta.url)), "utf8");
+    const ownerSource = readFileSync(fileURLToPath(new URL("../../../packages/frontend/src/pages/owner/RequestDetailPage.tsx", import.meta.url)), "utf8");
     const addOnSection = source.slice(source.indexOf("function AddOnsSection"), source.indexOf("function HowItWorksSection"));
     expect(source).toContain("(api as any).queries.companyAddOns.listPublic");
     expect(source.indexOf("<AddOnsSection")).toBeGreaterThan(source.indexOf("<ServicesSection"));
     expect(source).toContain("?service=${encodeURIComponent(card.name)}");
     expect(addOnSection).toContain("grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3");
-    expect(addOnSection).not.toMatch(/<a(?:\s|>)/);
-    expect(addOnSection).not.toContain("<button");
-    expect(addOnSection).not.toContain("<input");
+    expect(addOnSection).toContain('type="checkbox"');
+    expect(addOnSection).toContain('type="number"');
+    expect(addOnSection).toContain("aria-label={t(\"publicSite.addOns.select\"");
+    expect(addOnSection).toContain("encodePublicAddOnSelection");
+    expect(addOnSection).not.toContain("service=");
+    expect(requestSource.indexOf("{/* Service selection */}")).toBeLessThan(requestSource.indexOf('t("publicSite.addOns.title")'));
+    expect(requestSource).toContain('min={1} max={999} step={1}');
+    expect(requestSource).toContain('type="checkbox"');
+    expect(requestSource).toContain("staleSelectionIds");
+    expect(ownerSource).toContain("requestedAddOnSnapshots.map");
+    expect(ownerSource).not.toContain("queries.companyAddOns.list");
   });
 
   it("formats flat, starting-at, and per-unit public prices", () => {
@@ -149,7 +160,7 @@ describe("company add-on catalog", () => {
     await t.mutation(catalogApi.mutations.companyAddOns.restore, { ...auth, addOnId: first });
     expect((await t.query(catalogApi.queries.companyAddOns.list, auth)).map((r: any) => r._id)).toEqual([second, first]);
     const projection = await t.query(catalogApi.queries.companyAddOns.listPublic, { slug: "catalog-a" });
-    expect(projection).toEqual([{ addOnId: second, name: "Public", description: "Description", pricingMethod: "flat", priceCents: 2500, unitLabel: null, estimatedDurationMinutes: null, displayOrder: 0 }]);
+    expect(projection).toEqual([{ addOnId: second, name: "Public", description: "Description", pricingMethod: "flat", priceCents: 2500, unitLabel: null, estimatedDurationMinutes: null, displayOrder: 0, selectionVersion: expect.any(String) }]);
     expect(Object.keys(projection[0])).not.toEqual(expect.arrayContaining(["companyId", "presetKey", "internalNotes", "createdByUserId", "archivedByUserId"]));
     const audits = await t.run((ctx) => ctx.db.query("auditLog").withIndex("by_companyId_timestamp", (q) => q.eq("companyId", s.companyA)).collect());
     expect(audits.map((entry) => entry.action)).toEqual(expect.arrayContaining(["create_company_add_on", "reorder_company_add_ons", "archive_company_add_on", "restore_company_add_on"]));
@@ -173,13 +184,69 @@ describe("company add-on catalog", () => {
 
     const projection = await t.query(catalogApi.queries.companyAddOns.listPublic, { slug: "catalog-a" });
     expect(projection).toEqual([
-      { addOnId: ids.flat, name: "Flat", description: "Flat description", pricingMethod: "flat", priceCents: 5000, unitLabel: null, estimatedDurationMinutes: null, displayOrder: 0 },
-      { addOnId: ids.starting, name: "Starting", description: null, pricingMethod: "starting_at", priceCents: 5000, unitLabel: null, estimatedDurationMinutes: null, displayOrder: 0 },
-      { addOnId: ids.perUnit, name: "Windows", description: null, pricingMethod: "per_unit", priceCents: 800, unitLabel: "window", estimatedDurationMinutes: null, displayOrder: 1 },
+      { addOnId: ids.flat, name: "Flat", description: "Flat description", pricingMethod: "flat", priceCents: 5000, unitLabel: null, estimatedDurationMinutes: null, displayOrder: 0, selectionVersion: expect.any(String) },
+      { addOnId: ids.starting, name: "Starting", description: null, pricingMethod: "starting_at", priceCents: 5000, unitLabel: null, estimatedDurationMinutes: null, displayOrder: 0, selectionVersion: expect.any(String) },
+      { addOnId: ids.perUnit, name: "Windows", description: null, pricingMethod: "per_unit", priceCents: 800, unitLabel: "window", estimatedDurationMinutes: null, displayOrder: 1, selectionVersion: expect.any(String) },
     ]);
     for (const item of projection) {
       expect(Object.keys(item)).not.toEqual(expect.arrayContaining(["companyId", "internalNotes", "presetKey", "createdByUserId", "archivedByUserId", "createdAt", "updatedAt", "archivedAt"]));
     }
     await expect(t.query(catalogApi.queries.companyAddOns.listPublic, { slug: "missing-site" })).resolves.toEqual([]);
+  });
+
+  it("round-trips safe URL selection state and ignores malformed entries", () => {
+    const encoded = encodePublicAddOnSelection({ companyAddOnId: "addon123", selectionVersion: "v1", quantity: 3 });
+    expect(parsePublicAddOnSelections(`?addOn=${encodeURIComponent(encoded)}&addOn=bad&addOn=id%7Cv2%7C1.5`)).toEqual([
+      { companyAddOnId: "addon123", selectionVersion: "v1", quantity: 3 },
+    ]);
+  });
+
+  it("creates immutable server-authoritative request snapshots and rejects invalid selections atomically", async () => {
+    const t = backend(); const s = await seed(t);
+    const ids = await t.run(async (ctx) => {
+      const base = { companyId: s.companyA, priceCents: 5000, isActive: true, isPublic: true, displayOrder: 0, createdByUserId: s.ownerA, createdAt: 100, updatedAt: 100 };
+      const flat = await ctx.db.insert("companyAddOns", { ...base, name: "Flat", pricingMethod: "flat" });
+      const starting = await ctx.db.insert("companyAddOns", { ...base, name: "Starting", pricingMethod: "starting_at", displayOrder: 1 });
+      const perUnit = await ctx.db.insert("companyAddOns", { ...base, name: "Windows", pricingMethod: "per_unit", priceCents: 800, unitLabel: "window", displayOrder: 2 });
+      const privateId = await ctx.db.insert("companyAddOns", { ...base, name: "Private", pricingMethod: "flat", isPublic: false });
+      const inactive = await ctx.db.insert("companyAddOns", { ...base, name: "Inactive", pricingMethod: "flat", isActive: false });
+      const archived = await ctx.db.insert("companyAddOns", { ...base, name: "Archived", pricingMethod: "flat", archivedAt: 200 });
+      const foreign = await ctx.db.insert("companyAddOns", { ...base, companyId: s.companyB, createdByUserId: s.ownerB, name: "Foreign", pricingMethod: "flat" });
+      const missing = await ctx.db.insert("companyAddOns", { ...base, name: "Missing", pricingMethod: "flat" }); await ctx.db.delete(missing);
+      return { flat, starting, perUnit, privateId, inactive, archived, foreign, missing };
+    });
+    const version = companyAddOnSelectionVersion({ updatedAt: 100 });
+    const requestId = await t.mutation(catalogApi.mutations.clientRequests.createClientRequestByToken, {
+      token: "catalog-a-token", requesterName: "Customer", requesterEmail: "snapshots@example.com", propertySnapshot: {},
+      requestedService: "Deep Clean", requestedAddOns: [
+        { companyAddOnId: ids.flat, selectionVersion: version },
+        { companyAddOnId: ids.starting, selectionVersion: version },
+        { companyAddOnId: ids.perUnit, selectionVersion: version, quantity: 3 },
+      ],
+    });
+    const saved = await t.run((ctx) => ctx.db.get(requestId));
+    expect(saved?.requestedService).toBe("Deep Clean");
+    expect(saved?.requestedAddOnSnapshots).toEqual([
+      { sourceCompanyAddOnId: ids.flat, name: "Flat", pricingMethod: "flat", priceCents: 5000, unitLabel: undefined, quantity: undefined },
+      { sourceCompanyAddOnId: ids.starting, name: "Starting", pricingMethod: "starting_at", priceCents: 5000, unitLabel: undefined, quantity: undefined },
+      { sourceCompanyAddOnId: ids.perUnit, name: "Windows", pricingMethod: "per_unit", priceCents: 800, unitLabel: "window", quantity: 3 },
+    ]);
+    await t.run((ctx) => ctx.db.patch(ids.flat, { name: "Edited", priceCents: 9000, updatedAt: 200 }));
+    expect((await t.run((ctx) => ctx.db.get(requestId)))?.requestedAddOnSnapshots?.[0]).toMatchObject({ name: "Flat", priceCents: 5000 });
+
+    const selection = (companyAddOnId: any, quantity?: number, selectionVersion = version) => [{ companyAddOnId, quantity, selectionVersion }];
+    for (const [value, message] of [
+      [selection(ids.flat, undefined, "stale"), "pricing changed"], [selection(ids.privateId), "unavailable"],
+      [selection(ids.inactive), "unavailable"], [selection(ids.archived), "unavailable"], [selection(ids.foreign), "unavailable"], [selection(ids.missing), "unavailable"],
+      [selection(ids.perUnit), "quantity"], [selection(ids.perUnit, 0), "quantity"], [selection(ids.perUnit, 1.5), "quantity"], [selection(ids.perUnit, 1000), "quantity"], [selection(ids.flat, 1, companyAddOnSelectionVersion({ updatedAt: 200 })), "only allowed"],
+      [[...selection(ids.starting), ...selection(ids.starting)], "Duplicate"], [Array.from({ length: 21 }, () => ({ companyAddOnId: ids.starting, selectionVersion: version })), "no more than 20"],
+    ] as const) {
+      await expect(t.run((ctx) => createRequestedAddOnSnapshots(ctx, s.companyA, value as any))).rejects.toThrow(message);
+    }
+    await expect(t.mutation(catalogApi.mutations.clientRequests.createClientRequestByToken, {
+      token: "catalog-a-token", requesterName: "Malformed", requesterEmail: "malformed@example.com", propertySnapshot: {},
+      requestedAddOns: [{ companyAddOnId: ids.starting }],
+    } as any)).rejects.toThrow();
+    expect((await t.run((ctx) => ctx.db.query("clientRequests").collect())).length).toBe(1);
   });
 });

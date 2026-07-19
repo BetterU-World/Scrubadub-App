@@ -1203,7 +1203,17 @@
       "description": "Enhance your cleaning service with these optional extras.",
       "startingAt": "Starting at {{price}}",
       "perUnit": "{{price}} per {{unit}}",
-      "pricingBasisNote": "Starting-at and per-unit totals depend on scope or quantity."
+      "pricingBasisNote": "Starting-at and per-unit totals depend on scope or quantity.",
+      "select": "Select {{name}}",
+      "quantity": "Quantity",
+      "continue_one": "Continue with {{count}} add-on",
+      "continue_other": "Continue with {{count}} add-ons",
+      "requestHelp": "Choose optional enhancements. You can review them before submitting.",
+      "reviewChanged": "One or more add-ons changed. Review the current pricing before submitting.",
+      "reviewUpdatedPrice": "Review and accept updated price",
+      "unavailableSelection": "A previously selected add-on is no longer available.",
+      "removeUnavailable": "Remove unavailable add-on",
+      "requestedTitle": "Requested Add-Ons"
     }
   },
   "siteBuilder": {

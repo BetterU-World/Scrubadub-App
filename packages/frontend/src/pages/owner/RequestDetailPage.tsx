@@ -822,6 +822,24 @@ export function RequestDetailPage() {
           )}
         </div>
 
+        {((request as any).requestedAddOnSnapshots?.length ?? 0) > 0 && (
+          <div className="border-t pt-3">
+            <p className="mb-2 text-sm font-medium text-gray-700">{t("publicSite.addOns.requestedTitle")}</p>
+            <div className="space-y-2">
+              {(request as any).requestedAddOnSnapshots.map((addOn: any) => (
+                <div key={addOn.sourceCompanyAddOnId} className="flex flex-col justify-between gap-1 rounded-lg bg-gray-50 p-3 text-sm sm:flex-row sm:items-center">
+                  <span className="font-medium text-gray-900">{addOn.name}</span>
+                  <span className="text-gray-600">
+                    {addOn.pricingMethod === "starting_at" ? `${t("addOns.methods.starting_at")} ` : ""}
+                    {formatPrice(addOn.priceCents)}
+                    {addOn.pricingMethod === "per_unit" ? ` × ${addOn.quantity} ${addOn.unitLabel}` : ""}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {request.notes && (
           <div className="border-t pt-3">
             <p className="text-sm font-medium text-gray-700 mb-1">{t("common.notes")}</p>

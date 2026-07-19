@@ -1291,6 +1291,14 @@ export default defineSchema({
     timeWindow: v.optional(v.string()),
     notes: v.optional(v.string()),
     requestedService: v.optional(v.string()),
+    requestedAddOnSnapshots: v.optional(v.array(v.object({
+      sourceCompanyAddOnId: v.id("companyAddOns"),
+      name: v.string(),
+      pricingMethod: v.union(v.literal("flat"), v.literal("starting_at"), v.literal("per_unit")),
+      priceCents: v.number(),
+      unitLabel: v.optional(v.string()),
+      quantity: v.optional(v.number()),
+    }))),
     source: v.union(v.literal("public_link"), v.literal("manual")),
     leadType: v.optional(
       v.union(
