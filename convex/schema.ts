@@ -90,6 +90,14 @@ export default defineSchema({
     inviteToken: v.optional(v.string()),
     inviteTokenHash: v.optional(v.string()),
     inviteTokenExpiry: v.optional(v.float64()),
+    invitationStatus: v.optional(v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("revoked")
+    )),
+    invitationSentAt: v.optional(v.float64()),
+    invitationAcceptedAt: v.optional(v.float64()),
+    invitationRevokedAt: v.optional(v.float64()),
 
     phone: v.optional(v.string()),
     resetToken: v.optional(v.string()),

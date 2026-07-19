@@ -882,6 +882,10 @@
     "deactivate": "Deactivate",
     "activate": "Activate",
     "invitePending": "Invite pending",
+    "resendInvitation": "Resend Invitation",
+    "revokeInvitation": "Revoke",
+    "invitationRevoked": "Invitation revoked",
+    "inviteActionFailed": "Unable to update this invitation. Please try again.",
     "inviteSent": "Invite sent successfully",
     "generateInviteLink": "Generate Invite Link",
     "createAndSendInvite": "Create Invite & Send Email",
@@ -1687,6 +1691,16 @@
       "serviceAgreements": "No service agreements yet.",
       "invoices": "No invoices yet.",
       "jobs": "No jobs yet."
+    }
+  },
+  "invite": {
+    "signIn": "Sign In",
+    "acceptFailedSafe": "We couldn't accept this invitation. Please refresh the page and try again.",
+    "states": {
+      "expired": { "title": "Invitation Expired", "body": "This invitation link has expired for your security. Please ask your company owner to send a new invitation." },
+      "accepted": { "title": "Invitation Already Used", "body": "This invitation has already been accepted. Please sign in using your email and password." },
+      "revoked": { "title": "Invitation No Longer Available", "body": "This invitation has been revoked by your company." },
+      "invalid": { "title": "Invitation Not Found", "body": "This invitation link is invalid or no longer exists." }
     }
   },
   "clientAuth": {

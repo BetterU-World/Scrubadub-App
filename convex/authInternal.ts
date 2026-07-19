@@ -92,6 +92,12 @@ export const createUser = internalMutation({
     ),
     inviteTokenHash: v.optional(v.string()),
     inviteTokenExpiry: v.optional(v.float64()),
+    invitationStatus: v.optional(v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("revoked")
+    )),
+    invitationSentAt: v.optional(v.float64()),
     // Manager permission flags
     canSeeAllJobs: v.optional(v.boolean()),
     canCreateJobs: v.optional(v.boolean()),
@@ -339,8 +345,17 @@ export const rotateInviteToken = internalMutation({
       inviteToken: undefined,
       inviteTokenHash: args.inviteTokenHash,
       inviteTokenExpiry: args.inviteTokenExpiry,
+      invitationStatus: "pending",
+      invitationSentAt: Date.now(),
+      invitationAcceptedAt: undefined,
+      invitationRevokedAt: undefined,
     });
   },
+});
+
+export const getUserById = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => await ctx.db.get(args.userId),
 });
 
 export const consumeInviteToken = internalMutation({
@@ -350,8 +365,23 @@ export const consumeInviteToken = internalMutation({
       passwordHash: args.passwordHash,
       status: "active",
       inviteToken: undefined,
-      inviteTokenHash: undefined,
       inviteTokenExpiry: undefined,
+      invitationStatus: "accepted",
+      invitationAcceptedAt: Date.now(),
+      invitationRevokedAt: undefined,
+    });
+  },
+});
+
+export const revokeInviteToken = internalMutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.userId, {
+      status: "inactive",
+      inviteToken: undefined,
+      inviteTokenExpiry: undefined,
+      invitationStatus: "revoked",
+      invitationRevokedAt: Date.now(),
     });
   },
 });

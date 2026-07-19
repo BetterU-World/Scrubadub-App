@@ -5,8 +5,26 @@ import { STAFF_SESSION_KEY } from "../../hooks/useAuth";
 import { useParams, useLocation } from "wouter";
 import { LoadingSpinner, PageLoader } from "@/components/ui/LoadingSpinner";
 import { PasswordInput } from "@/components/ui/PasswordInput";
+import { useTranslation } from "react-i18next";
+
+type InviteState = "expired" | "accepted" | "revoked" | "invalid";
+
+function InviteStateCard({ state }: { state: InviteState }) {
+  const { t } = useTranslation();
+  const showSignIn = state === "accepted";
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="card max-w-md w-full text-center">
+        <h1 className="text-xl font-semibold mb-2">{t(`invite.states.${state}.title`)}</h1>
+        <p className="text-gray-500 mb-4">{t(`invite.states.${state}.body`)}</p>
+        {showSignIn && <a href="/login" className="btn-primary inline-block">{t("invite.signIn")}</a>}
+      </div>
+    </div>
+  );
+}
 
 export function AcceptInvitePage() {
+  const { t } = useTranslation();
   const params = useParams<{ token: string }>();
   const [, setLocation] = useLocation();
   const inviteInfo = useQuery(api.queries.employees.getByInviteToken, {
@@ -21,17 +39,8 @@ export function AcceptInvitePage() {
 
   if (inviteInfo === undefined) return <PageLoader />;
 
-  if (inviteInfo === null || inviteInfo.status !== "pending") {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-        <div className="card max-w-md w-full text-center">
-          <h2 className="text-xl font-semibold mb-2">Invalid Invite</h2>
-          <p className="text-gray-500 mb-4">This invite link is invalid or has already been used.</p>
-          <a href="/login" className="btn-primary inline-block">Go to Login</a>
-        </div>
-      </div>
-    );
-  }
+  if (inviteInfo === null) return <InviteStateCard state="invalid" />;
+  if (inviteInfo.state !== "valid") return <InviteStateCard state={inviteInfo.state} />;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -49,8 +58,13 @@ export function AcceptInvitePage() {
       const result = await acceptInvite({ token: params.token!, password });
       localStorage.setItem(STAFF_SESSION_KEY, result.sessionToken);
       window.location.assign("/");
-    } catch (err: any) {
-      setError(err.message || "Failed to accept invite");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "";
+      if (message.includes("INVITE_EXPIRED")) return setError(t("invite.states.expired.body"));
+      if (message.includes("INVITE_ACCEPTED")) return setError(t("invite.states.accepted.body"));
+      if (message.includes("INVITE_REVOKED")) return setError(t("invite.states.revoked.body"));
+      if (message.includes("INVITE_INVALID")) return setError(t("invite.states.invalid.body"));
+      setError(t("invite.acceptFailedSafe"));
     } finally {
       setLoading(false);
     }
