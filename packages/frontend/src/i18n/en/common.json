@@ -1446,6 +1446,16 @@
     "quarterly": "Quarterly",
     "custom": "Custom"
   },
+  "addOnPropagation": {
+    "requiredTitle": "Required Add-Ons",
+    "committedTitle": "Committed Add-Ons",
+    "ownerTitle": "Proposal Add-Ons",
+    "workerHelp": "Complete these add-ons as part of this job.",
+    "quantity": "{{quantity}} {{unit}}",
+    "units": "units",
+    "monthly": "Monthly",
+    "oneTime": "One-time"
+  },
   "proposals": {
     "addOns": {
       "title": "Add-On Line Items",

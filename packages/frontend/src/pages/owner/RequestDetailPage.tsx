@@ -479,6 +479,7 @@ export function RequestDetailPage() {
       propertyName: request.propertySnapshot?.name || "",
       notes: notesParts.join("\n"),
     };
+    if (proposal?.status === "accepted") prefill.proposalId = proposal._id;
     if (request.propertyId) {
       prefill.propertyId = request.propertyId;
     }

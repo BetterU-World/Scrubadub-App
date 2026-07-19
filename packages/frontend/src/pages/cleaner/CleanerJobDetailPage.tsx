@@ -12,6 +12,7 @@ import { AsyncButton } from "@/components/ui/AsyncButton";
 import { useParams, Link, useLocation } from "wouter";
 import { JobTimeline } from "@/components/JobTimeline";
 import { JobWorkspaceProgress } from "@/components/JobWorkspaceProgress";
+import { AddOnSnapshotList } from "@/components/AddOnSnapshotList";
 import { JobSubmissionBlockers } from "@/components/JobSubmissionBlockers";
 import { StickyWorkspaceCTA } from "@/components/StickyWorkspaceCTA";
 import { JobTimingPanel } from "@/components/JobTimingPanel";
@@ -133,7 +134,7 @@ export function CleanerJobDetailPage() {
         <div className="card space-y-4">
           <div className="flex items-center gap-2">
             <StatusBadge status={job.status} />
-            <span className="text-sm text-gray-500 capitalize">{t(`jobTypes.${job.type}`, job.type.replace(/_/g, " "))}</span>
+            <span className="text-sm text-gray-500 capitalize">{t(`jobTypes.${job.type}`, { defaultValue: job.type.replace(/_/g, " ") })}</span>
             {hasArrived && (
               <span className="badge bg-green-100 text-green-700 flex items-center gap-1">
                 <MapPinCheck className="w-3 h-3" /> {t("jobs.arrived")}
@@ -165,6 +166,8 @@ export function CleanerJobDetailPage() {
 
           {job.notes && <p className="text-sm text-gray-600 border-t pt-3">{job.notes}</p>}
         </div>
+
+        <AddOnSnapshotList items={(job as any).requiredAddOns} audience="worker" />
 
         {showWorkspaceProgress && (
           <JobWorkspaceProgress

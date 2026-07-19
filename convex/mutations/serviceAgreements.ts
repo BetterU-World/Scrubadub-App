@@ -8,6 +8,8 @@ import {
   FALLBACK_SERVICE_AGREEMENT_TEMPLATE,
   renderDocumentTemplate,
 } from "../lib/documentMergeFields";
+import { copyAcceptedProposalAddOnSnapshots, formatAgreementAddOnLines } from "../lib/acceptedProposalAddOnSnapshots";
+import { calculateProposalTotals } from "../lib/proposalAddOnLineItems";
 
 const agreementFields = {
   title: v.string(),
@@ -201,12 +203,7 @@ export const createDraftFromAcceptedProposal = mutation({
   handler: async (ctx, args) => {
     const owner = await requireOwnerCompany(ctx, args.sessionToken, args.userId);
     const companyId = owner.companyId!;
-    const proposal = await ctx.db.get(args.proposalId);
-    if (!proposal) throw new Error("Proposal not found");
-    if (proposal.companyId !== companyId) throw new Error("Access denied");
-    if (proposal.status !== "accepted") {
-      throw new Error("Service agreements can only be created from accepted proposals");
-    }
+    const { proposal, snapshots } = await copyAcceptedProposalAddOnSnapshots(ctx, args.proposalId, companyId);
 
     const existing = await ctx.db
       .query("serviceAgreements")
@@ -222,15 +219,16 @@ export const createDraftFromAcceptedProposal = mutation({
       .first();
     if (account && account.companyId !== companyId) throw new Error("Access denied");
 
-    const request = await ctx.db.get(proposal.clientRequestId);
+    const request: any = await ctx.db.get(proposal.clientRequestId);
     if (!request) throw new Error("Lead not found");
     if (request.companyId !== companyId) throw new Error("Access denied");
 
-    const [template, property, walkthrough] = await Promise.all([
+    const [template, propertyResult, walkthrough] = await Promise.all([
       getDefaultServiceAgreementTemplate(ctx, companyId),
       request.propertyId ? ctx.db.get(request.propertyId) : null,
       getLatestAgreementWalkthrough(ctx, companyId, proposal),
     ]);
+    const property: any = propertyResult;
     const now = Date.now();
     const clientRelationshipId =
       (account as any)?.clientRelationshipId ??
@@ -251,13 +249,17 @@ export const createDraftFromAcceptedProposal = mutation({
       walkthrough?.address,
       request.propertySnapshot?.address
     );
-    const contractAmountCents = proposal.monthlyPriceCents ?? proposal.oneTimePriceCents;
-    const priceSummary =
-      proposal.monthlyPriceCents != null
-        ? `${formatCents(proposal.monthlyPriceCents)} per month`
-        : proposal.oneTimePriceCents != null
-          ? `${formatCents(proposal.oneTimePriceCents)} one-time`
-          : undefined;
+    const totals = calculateProposalTotals(proposal);
+    const priceParts = [
+      totals.hasMonthlyPricing ? `${formatCents(totals.monthlyTotalCents)} per month` : undefined,
+      totals.hasOneTimePricing ? `${formatCents(totals.oneTimeTotalCents)} one-time` : undefined,
+    ].filter(Boolean);
+    const priceSummary = priceParts.length ? priceParts.join(" + ") : undefined;
+    const contractAmountCents = totals.hasMonthlyPricing && !totals.hasOneTimePricing
+      ? totals.monthlyTotalCents
+      : totals.hasOneTimePricing && !totals.hasMonthlyPricing
+        ? totals.oneTimeTotalCents
+        : undefined;
     const servicesIncluded = firstText(
       proposal.scopeOfWork,
       walkthrough?.proposalNotes,
@@ -266,12 +268,7 @@ export const createDraftFromAcceptedProposal = mutation({
       request.requestedService,
       request.notes
     );
-    const billingSchedule =
-      proposal.monthlyPriceCents != null
-        ? "Monthly"
-        : proposal.oneTimePriceCents != null
-          ? "One-time"
-          : undefined;
+    const billingSchedule = [totals.hasMonthlyPricing ? "Monthly" : undefined, totals.hasOneTimePricing ? "One-time" : undefined].filter(Boolean).join(" + ") || undefined;
     const effectiveStartDate = request.requestedDate ?? undefined;
     const serviceFrequency =
       proposal.serviceFrequency ?? (request as any).estimatedFrequency ?? undefined;
@@ -292,6 +289,7 @@ export const createDraftFromAcceptedProposal = mutation({
       servicesIncluded,
       specialInstructions,
       exceptions,
+      addOnLineItems: formatAgreementAddOnLines(snapshots),
     });
     const body = renderDocumentTemplate(
       template?.body ?? FALLBACK_SERVICE_AGREEMENT_TEMPLATE,
@@ -321,6 +319,7 @@ export const createDraftFromAcceptedProposal = mutation({
       paymentTerms: billingSchedule,
       scopeOfWork: proposal.scopeOfWork,
       notes: proposal.notes,
+      acceptedProposalAddOnSnapshots: snapshots,
       createdAt: now,
       updatedAt: now,
     });

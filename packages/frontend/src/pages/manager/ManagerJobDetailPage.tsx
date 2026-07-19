@@ -9,6 +9,7 @@ import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { JobTimeline } from "@/components/JobTimeline";
 import { JobTimingPanel } from "@/components/JobTimingPanel";
+import { AddOnSnapshotList } from "@/components/AddOnSnapshotList";
 import { useTranslation } from "react-i18next";
 import { useParams } from "wouter";
 import {
@@ -211,6 +212,8 @@ export function ManagerJobDetailPage() {
           )}
         </div>
 
+        <AddOnSnapshotList items={(job as any).requiredAddOns} audience="worker" />
+
         {/* Assigned Cleaners */}
         {job.cleaners.length > 0 && (
           <div className="card">
@@ -218,7 +221,7 @@ export function ManagerJobDetailPage() {
               <Users className="w-4 h-4" /> {t("inspection.assignedCleaners")}
             </h3>
             <div className="space-y-1">
-              {job.cleaners.map((c) => (
+              {job.cleaners.map((c: any) => (
                 <div key={c!._id} className="text-sm text-gray-600">
                   {c!.name}
                 </div>

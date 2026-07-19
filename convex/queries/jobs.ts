@@ -4,6 +4,12 @@ import { hasManagerPermission } from "../lib/auth";
 import { requireOwnerManagerCompany, requireVerifiedStaffSession, requireWorkerCompany } from "../lib/sessionAuth";
 import { withPerfLog } from "../lib/perfLog";
 import { getActiveTeamIdsForUser } from "../lib/teams";
+import { operationalAddOnSnapshots } from "../lib/acceptedProposalAddOnSnapshots";
+
+function workerSafeJob(job: any) {
+  const { acceptedProposalAddOnSnapshots, sourceProposalId: _sourceProposalId, ...safe } = job;
+  return { ...safe, requiredAddOns: operationalAddOnSnapshots(acceptedProposalAddOnSnapshots) };
+}
 
 // Hard cap for company-scoped job queries
 const JOB_LIST_CAP = 2_000;
@@ -156,7 +162,7 @@ export const list = query({
             ? userMap.get(job.assignedManagerId) ?? null
             : null;
 
-          return {
+          const decorated = {
             ...job,
             propertyName: property?.name ?? job.propertySnapshot?.name ?? "Unknown",
             propertyAddress: property?.address ?? job.propertySnapshot?.address ?? "",
@@ -169,6 +175,7 @@ export const list = query({
             assignedTeamName: job.assignedTeamId ? teamMap.get(job.assignedTeamId)?.name ?? null : null,
             assignmentType: job.assignedTeamId ? "team" : "individual",
           };
+          return user.role === "owner" ? decorated : workerSafeJob(decorated);
         })
       );
     });
@@ -240,7 +247,7 @@ export const get = query({
       ? await ctx.db.get(job.assignedManagerId)
       : null;
 
-    return {
+    const decorated = {
       ...job,
       property: property ?? null,
       cleaners: cleaners.filter(Boolean),
@@ -252,6 +259,7 @@ export const get = query({
       assignedTeamMembers,
       assignmentType: job.assignedTeamId ? "team" : "individual",
     };
+    return user.role === "owner" ? decorated : workerSafeJob(decorated);
   },
 });
 
@@ -288,13 +296,13 @@ export const getForCleaner = query({
         myJobs.map(async (job) => {
           const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
           const team = job.assignedTeamId ? await ctx.db.get(job.assignedTeamId) : null;
-          return {
+          return workerSafeJob({
             ...job,
             propertyName: property?.name ?? job.propertySnapshot?.name ?? "Unknown",
             propertyAddress: property?.address ?? job.propertySnapshot?.address ?? "",
             assignedTeamName: team?.name ?? null,
             assignmentType: job.assignedTeamId ? "team" : "individual",
-          };
+          });
         })
       );
     });
@@ -356,7 +364,7 @@ export const getForManager = query({
           if (inspections.length > 0) {
             inspectionStatus = job.inspectionCycleOpen === true ? "reinspection_requested" : "submitted";
           }
-          return {
+          return workerSafeJob({
             ...job,
             propertyName: property?.name ?? job.propertySnapshot?.name ?? "Unknown",
             propertyAddress: property?.address ?? job.propertySnapshot?.address ?? "",
@@ -365,7 +373,7 @@ export const getForManager = query({
             inspectionStatus,
             assignedTeamName: job.assignedTeamId ? (await ctx.db.get(job.assignedTeamId))?.name ?? null : null,
             assignmentType: job.assignedTeamId ? "team" : "individual",
-          };
+          });
         })
       );
     });
@@ -440,7 +448,7 @@ export const getCalendarJobs = query({
                   .find((status) => outgoingSharedRecords.some(
                     (record) => record.fromCompanyId === args.companyId && record.status === status,
                   )) ?? null;
-          return {
+          const decorated = {
             ...job,
             propertyName: property?.name ?? job.propertySnapshot?.name ?? "Unknown",
             cleaners: cleaners.filter(Boolean),
@@ -448,6 +456,7 @@ export const getCalendarJobs = query({
             assignmentType: job.assignedTeamId ? "team" : "individual",
             partnerResponseStatus,
           };
+          return user.role === "owner" ? decorated : workerSafeJob(decorated);
         })
       );
     });

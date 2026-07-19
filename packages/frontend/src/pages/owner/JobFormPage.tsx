@@ -103,6 +103,7 @@ export function JobFormPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [sourceRequestId, setSourceRequestId] = useState<string | null>(null);
+  const [sourceProposalId, setSourceProposalId] = useState<string | null>(null);
 
   // Availability lookup for the selected date
   const cleanerAvailability = useQuery(
@@ -126,6 +127,7 @@ export function JobFormPage() {
       if (prefill.scheduledDate) setScheduledDate(prefill.scheduledDate);
       if (prefill.notes) setNotes(prefill.notes);
       if (prefill.requestId) setSourceRequestId(prefill.requestId);
+      if (prefill.proposalId) setSourceProposalId(prefill.proposalId);
       if (prefill.propertyId) setPropertyId(prefill.propertyId);
     } catch {
       // ignore malformed data
@@ -221,6 +223,7 @@ export function JobFormPage() {
           propertyId: propertyId as Id<"properties">,
           ...data,
           requireConfirmation: isPartnerMode ? false : requireConfirmation,
+          ...(sourceProposalId ? { proposalId: sourceProposalId as Id<"proposals">, clientRequestId: sourceRequestId as Id<"clientRequests"> } : {}),
         });
 
         if (isPartnerMode) {

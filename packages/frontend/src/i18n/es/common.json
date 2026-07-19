@@ -1446,6 +1446,16 @@
     "quarterly": "Trimestral",
     "custom": "Personalizado"
   },
+  "addOnPropagation": {
+    "requiredTitle": "Complementos requeridos",
+    "committedTitle": "Complementos acordados",
+    "ownerTitle": "Complementos de la propuesta",
+    "workerHelp": "Completa estos complementos como parte de este trabajo.",
+    "quantity": "{{quantity}} {{unit}}",
+    "units": "unidades",
+    "monthly": "Mensual",
+    "oneTime": "Una vez"
+  },
   "proposals": {
     "addOns": {
       "title": "Partidas de complementos",

@@ -12,6 +12,7 @@ import { useParams, Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { JobTimeline } from "@/components/JobTimeline";
 import { JobTimingPanel } from "@/components/JobTimingPanel";
+import { AddOnSnapshotList } from "@/components/AddOnSnapshotList";
 import { Calendar, Clock, MapPin, Key, CheckCircle, XCircle, Play, Wrench, MapPinCheck, Send } from "lucide-react";
 
 export function MaintenanceJobDetailPage() {
@@ -124,6 +125,8 @@ export function MaintenanceJobDetailPage() {
 
           {job.notes && <p className="text-sm text-gray-600 border-t pt-3">{job.notes}</p>}
         </div>
+
+        <AddOnSnapshotList items={(job as any).requiredAddOns} audience="worker" />
 
         <JobTimeline job={job as any} />
         <JobTimingPanel job={job as any} userId={user?._id} controls />

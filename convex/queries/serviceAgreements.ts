@@ -141,6 +141,17 @@ async function clientAgreementPayload(ctx: any, agreement: any) {
     clientRespondedAt: agreement.clientRespondedAt,
     declinedAt: agreement.declinedAt,
     clientResponseNote: agreement.clientResponseNote,
+    committedAddOns: (agreement.acceptedProposalAddOnSnapshots ?? []).map((line: any) => ({
+      snapshotId: line.snapshotId,
+      name: line.name,
+      pricingMethod: line.pricingMethod,
+      unitPriceCents: line.unitPriceCents,
+      unitLabel: line.unitLabel ?? null,
+      quantity: line.quantity ?? null,
+      finalizedPriceCents: line.finalizedPriceCents ?? null,
+      lineTotalCents: line.lineTotalCents,
+      billingCadence: line.billingCadence,
+    })),
   };
 }
 

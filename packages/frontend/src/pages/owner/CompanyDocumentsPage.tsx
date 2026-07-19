@@ -24,6 +24,9 @@ This Service Agreement is between {{company_name}} and {{client_name}} for clean
 ## Services Included
 {{services_included}}
 
+## Committed Add-Ons
+{{add_on_line_items}}
+
 ## Schedule and Pricing
 Service frequency: {{service_frequency}}
 Contract price: {{contract_price}}

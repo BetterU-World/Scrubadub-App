@@ -285,7 +285,9 @@ export function JobListPage() {
                         {job.scheduledDate}
                       </span>
                       {job.startTime && <span>{job.startTime}</span>}
-                      <span className="capitalize">{t(`jobTypes.${job.type}`, job.type.replace(/_/g, " "))}</span>
+                      <span className="capitalize">
+                        {t(`jobTypes.${job.type}`, { defaultValue: job.type.replace(/_/g, " ") })}
+                      </span>
                       <span>{job.durationMinutes}min</span>
                     </div>
                   </div>

@@ -82,6 +82,13 @@ export const getAgreementForOwnerDelivery = internalQuery({
         priceSummary: agreement.priceSummary ?? null,
         billingSchedule: agreement.billingSchedule ?? agreement.paymentTerms ?? null,
         effectiveStartDate: agreement.effectiveStartDate ?? null,
+        committedAddOns: (agreement.acceptedProposalAddOnSnapshots ?? []).map((line: any) => ({
+          name: line.name,
+          quantity: line.quantity ?? null,
+          unitLabel: line.unitLabel ?? null,
+          lineTotalCents: line.lineTotalCents,
+          billingCadence: line.billingCadence,
+        })),
       },
     };
   },

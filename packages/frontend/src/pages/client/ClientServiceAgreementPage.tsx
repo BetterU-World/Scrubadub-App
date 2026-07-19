@@ -11,6 +11,7 @@ import { CheckCircle, XCircle } from "lucide-react";
 import { ClientPortalShell } from "@/components/client/ClientPortalShell";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ServiceAgreementStatusBadge } from "@/components/ui/ServiceAgreementStatusBadge";
+import { AddOnSnapshotList } from "@/components/AddOnSnapshotList";
 import { PageBack } from "@/components/ui/PageBack";
 import { AsyncButton } from "@/components/ui/AsyncButton";
 
@@ -156,6 +157,8 @@ export function ClientServiceAgreementPage() {
           <Detail label={t("serviceAgreements.servicesIncluded")} value={agreement.servicesIncluded} />
           <Detail label={t("serviceAgreements.specialInstructions")} value={agreement.specialInstructions} />
           <Detail label={t("serviceAgreements.exceptions")} value={agreement.exceptions} />
+
+          <AddOnSnapshotList items={agreement.committedAddOns} audience="client" showPricing />
 
           {agreement.body && (
             <div className="border-t border-gray-100 pt-4">

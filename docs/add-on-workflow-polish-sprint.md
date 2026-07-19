@@ -6,7 +6,8 @@ Once a proposal is accepted, its proposal-owned add-on line items are the author
 
 ## Immediate follow-up PRs
 
-1. **Job and Service Agreement Add-On Propagation** — copy accepted proposal line items, including source traceability, finalized pricing, quantity, and billing cadence, into job and service-agreement-owned snapshots.
-2. **Invoice Add-On Propagation** — create invoice-owned line items from the accepted proposal (or the immutable downstream snapshot selected by the workflow), retaining the proposal reference and preventing catalog/request drift.
+1. **Accepted Proposal → Direct Jobs and Service Agreements** — copy accepted proposal line items into directly created jobs and service agreements. Worker projections contain operational requirements only.
+2. **Commercial Schedule and Partner Job Propagation** — add schedule-owned snapshots, explicit every-job/first-job applicability, deterministic generation, and sanitized partner copies.
+3. **Invoice Add-On Propagation** — create invoice-owned line items independently from the accepted proposal, retaining traceability and preventing catalog/request drift.
 
 These are the next scoped PRs in this sprint, not indefinite deferred work. Each downstream model owns its historical copy; future catalog, request, or proposal-draft changes cannot alter an accepted or billed record.
