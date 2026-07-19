@@ -196,7 +196,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose, triggerRef }: Sideb
             type="button"
             onClick={signOut}
             aria-label={t("auth.signOut")}
-            className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+            className="touch-target p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
             title={t("auth.signOut")}
           >
             <LogOut aria-hidden="true" className="w-4 h-4" />
@@ -218,7 +218,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose, triggerRef }: Sideb
           <Dialog.Overlay className="fixed inset-0 z-40 bg-black/50 md:hidden" />
           <Dialog.Content
             id="mobile-navigation"
-            className="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-gray-200 bg-white shadow-xl focus:outline-none md:hidden"
+            className="fixed bottom-[var(--safe-area-bottom)] left-0 top-[var(--safe-area-top)] z-50 flex w-64 flex-col border-r border-gray-200 bg-white shadow-xl focus:outline-none md:hidden"
             onCloseAutoFocus={(event) => {
               event.preventDefault();
               triggerRef?.current?.focus();
@@ -229,7 +229,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose, triggerRef }: Sideb
               <button
                 type="button"
                 aria-label={t("nav.closeNavigation")}
-                className="absolute right-3 top-3 z-10 rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                className="touch-target absolute right-3 top-3 z-10 rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
               >
                 <X aria-hidden="true" className="h-5 w-5" />
               </button>

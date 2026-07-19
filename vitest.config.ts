@@ -5,6 +5,9 @@ export default defineConfig({
     env: {
       TOKEN_PEPPER: "test-token-pepper",
     },
-    include: ["convex/lib/__tests__/**/*.test.ts"],
+    include: [
+      "convex/lib/__tests__/**/*.test.ts",
+      "packages/frontend/src/**/*.test.ts",
+    ],
   },
 });
