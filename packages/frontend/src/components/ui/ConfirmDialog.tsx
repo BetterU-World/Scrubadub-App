@@ -18,7 +18,7 @@ export function ConfirmDialog({
   onOpenChange,
   title,
   description,
-  confirmLabel = "Confirm",
+  confirmLabel,
   confirmVariant = "primary",
   onConfirm,
   loading,
@@ -43,27 +43,30 @@ export function ConfirmDialog({
       title={title}
       description={description}
       pending={pending}
-    >
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => onOpenChange(false)}
-              disabled={pending}
-            >
-              {t("common.cancel")}
-            </button>
-            <button
-              type="button"
-              onClick={handleConfirm}
-              disabled={pending}
-              className={
-                confirmVariant === "danger" ? "btn-danger" : "btn-primary"
-              }
-            >
-              {pending ? t("common.processing") : confirmLabel}
-            </button>
-          </div>
-    </DialogShell>
+      footer={
+        <>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => onOpenChange(false)}
+            disabled={pending}
+          >
+            {t("common.cancel")}
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={pending}
+            className={
+              confirmVariant === "danger" ? "btn-danger" : "btn-primary"
+            }
+          >
+            {pending
+              ? t("common.processing")
+              : (confirmLabel ?? t("common.confirm"))}
+          </button>
+        </>
+      }
+    />
   );
 }
