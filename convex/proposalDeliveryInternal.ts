@@ -1,6 +1,7 @@
 import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { resolveOperationalEmailIdentity } from "./lib/operationalEmailIdentity";
+import { assertProposalReadyForDelivery, calculateProposalTotals, proposalAddOnLineAmount } from "./lib/proposalAddOnLineItems";
 
 const PROPOSAL_TOKEN_EXPIRY_MS = 60 * 24 * 60 * 60 * 1000;
 const PROPOSAL_LINK_UNAVAILABLE_ERROR = "Proposal link unavailable or expired";
@@ -99,6 +100,20 @@ async function safeProposalPayload(ctx: any, proposal: any) {
     safeWalkthroughSummary(ctx, proposal),
   ]);
 
+  const totals = calculateProposalTotals(proposal);
+  const addOnLineItems = (proposal.addOnLineItems ?? []).map((line: any) => ({
+    name: line.name,
+    pricingMethod: line.pricingMethod,
+    unitPriceCents: line.unitPriceCents,
+    unitPriceLabel: formatCents(line.unitPriceCents),
+    unitLabel: line.unitLabel ?? null,
+    quantity: line.quantity ?? null,
+    finalizedPriceCents: line.finalizedPriceCents ?? null,
+    finalizedPriceLabel: formatCents(line.finalizedPriceCents),
+    billingCadence: line.billingCadence,
+    lineTotalCents: proposalAddOnLineAmount(line),
+    lineTotalLabel: formatCents(proposalAddOnLineAmount(line) ?? undefined),
+  }));
   return {
     company: branding,
     recipientEmail:
@@ -120,6 +135,12 @@ async function safeProposalPayload(ctx: any, proposal: any) {
       monthlyPriceLabel: formatCents(proposal.monthlyPriceCents),
       oneTimePriceCents: proposal.oneTimePriceCents ?? null,
       oneTimePriceLabel: formatCents(proposal.oneTimePriceCents),
+      addOnLineItems,
+      totals: {
+        ...totals,
+        monthlyTotalLabel: totals.hasMonthlyPricing ? formatCents(totals.monthlyTotalCents) : null,
+        oneTimeTotalLabel: totals.hasOneTimePricing ? formatCents(totals.oneTimeTotalCents) : null,
+      },
       status: proposal.status,
       sentAt: proposal.sentAt ?? null,
       acceptedAt: proposal.acceptedAt ?? null,
@@ -151,6 +172,7 @@ export const getProposalForOwnerDelivery = internalQuery({
     if (proposal.status === "accepted" || proposal.status === "declined") {
       throw new Error("Accepted or declined proposals cannot be sent");
     }
+    assertProposalReadyForDelivery(proposal);
 
     return await safeProposalPayload(ctx, proposal);
   },
@@ -169,6 +191,7 @@ export const setProposalDeliveryTokenAndSent = internalMutation({
     if (proposal.status === "accepted" || proposal.status === "declined") {
       throw new Error("Accepted or declined proposals cannot be sent");
     }
+    assertProposalReadyForDelivery(proposal);
 
     const now = Date.now();
     await ctx.db.patch(args.proposalId, {
@@ -228,6 +251,7 @@ export const respondToProposalByTokenHash = internalMutation({
 
     const now = Date.now();
     if (args.decision === "accepted") {
+      assertProposalReadyForDelivery(proposal);
       await ctx.db.patch(proposal._id, {
         status: "accepted",
         acceptedAt: now,

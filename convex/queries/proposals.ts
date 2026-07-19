@@ -1,6 +1,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwnerSession } from "../lib/sessionAuth";
+import { calculateProposalTotals } from "../lib/proposalAddOnLineItems";
 
 async function decorateProposal(ctx: any, proposal: any) {
   const relationship = proposal.clientRelationshipId
@@ -8,6 +9,7 @@ async function decorateProposal(ctx: any, proposal: any) {
     : null;
   return {
     ...proposal,
+    calculatedTotals: calculateProposalTotals(proposal),
     clientRelationship:
       relationship?.companyId === proposal.companyId
         ? {
