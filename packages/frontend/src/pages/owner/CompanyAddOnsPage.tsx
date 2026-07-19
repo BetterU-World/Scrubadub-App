@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
+import * as Dialog from "@radix-ui/react-dialog";
 import { ChevronDown, ChevronUp, Plus, RotateCcw, Search, Tags, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
@@ -126,7 +127,33 @@ export function CompanyAddOnsPage() {
     <button className="mt-6 text-sm font-medium text-gray-600" onClick={() => setShowArchived(!showArchived)}>{showArchived ? t("addOns.hideArchived") : t("addOns.showArchived", { count: archivedRecords.length })}</button>
     {showArchived && <div className="mt-3 space-y-2">{archivedRecords.length === 0 ? <p className="text-sm text-gray-500">{t("addOns.noArchived")}</p> : archivedRecords.map((item) => <div key={item._id} className="card flex items-center justify-between gap-3"><div><p className="font-medium">{item.name}</p><p className="text-sm text-gray-500">{currency(item.priceCents)}</p></div><button className="btn-secondary flex items-center gap-2" onClick={() => restore({ ...auth, addOnId: item._id })}><RotateCcw className="h-4 w-4" />{t("addOns.restore")}</button></div>)}</div>}
     {editing && !editing._id && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"><div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl bg-white shadow-xl"><div className="flex items-center justify-between border-b p-4"><h2 className="font-semibold">{t("addOns.create")}</h2><button onClick={() => setEditing(null)}><X /></button></div><Editor form={form} setForm={setForm} save={save} busy={busy} t={t} onCancel={() => setEditing(null)} /></div></div>}
-    {presetOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="presentation"><div ref={presetScrollRef} role="dialog" aria-modal="true" aria-labelledby="preset-browser-title" className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-5 shadow-xl"><div className="flex items-center justify-between"><h2 id="preset-browser-title" className="text-lg font-semibold">{t("addOns.presetTitle")}</h2><button aria-label={t("common.close")} onClick={() => setPresetOpen(false)}><X /></button></div><p className="mt-1 text-sm text-gray-600">{t("addOns.presetPricingControl")}</p><label className="mt-4 flex items-center gap-2 rounded-lg border px-3"><Search className="h-4 w-4 text-gray-400" /><input ref={presetSearchRef} className="w-full py-2 outline-none" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("addOns.searchPresets")} /></label><div className="mt-4 grid gap-3 sm:grid-cols-2">{(presets ?? []).filter((preset) => `${preset[locale].name} ${preset[locale].description}`.toLowerCase().includes(search.toLowerCase())).map((preset) => <div key={preset.presetKey} className="rounded-lg border p-4"><h3 className="font-semibold">{preset[locale].name}</h3><p className="mt-1 text-sm text-gray-600">{preset[locale].description}</p><p className="mt-2 text-sm font-medium">{t(`addOns.methods.${preset.pricingMethod}`)}</p><button className="btn-primary mt-3 w-full" onClick={() => beginPresetSetup(preset)}>{t("addOns.enablePreset")}</button></div>)}</div></div></div>}
+    <Dialog.Root open={presetOpen} onOpenChange={setPresetOpen}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
+        <Dialog.Content className="fixed inset-x-4 bottom-4 top-4 z-50 mx-auto flex max-h-[calc(100dvh-2rem)] w-auto max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-xl focus:outline-none">
+          <div className="shrink-0 border-b border-gray-200 p-5">
+            <div className="flex items-start justify-between gap-4 pr-1">
+              <div>
+                <Dialog.Title className="text-lg font-semibold text-gray-900">{t("addOns.presetTitle")}</Dialog.Title>
+                <Dialog.Description className="mt-1 text-sm text-gray-600">{t("addOns.presetPricingControl")}</Dialog.Description>
+              </div>
+              <Dialog.Close asChild>
+                <button type="button" aria-label={t("common.close")} className="shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"><X aria-hidden="true" className="h-5 w-5" /></button>
+              </Dialog.Close>
+            </div>
+            <label className="mt-4 flex items-center gap-2 rounded-lg border px-3">
+              <Search aria-hidden="true" className="h-4 w-4 text-gray-400" />
+              <input ref={presetSearchRef} className="w-full py-2 outline-none" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("addOns.searchPresets")} />
+            </label>
+          </div>
+          <div ref={presetScrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5">
+            <div className="grid gap-3 sm:grid-cols-2">
+              {(presets ?? []).filter((preset) => `${preset[locale].name} ${preset[locale].description}`.toLowerCase().includes(search.toLowerCase())).map((preset) => <div key={preset.presetKey} className="rounded-lg border p-4"><h3 className="font-semibold">{preset[locale].name}</h3><p className="mt-1 text-sm text-gray-600">{preset[locale].description}</p><p className="mt-2 text-sm font-medium">{t(`addOns.methods.${preset.pricingMethod}`)}</p><button className="btn-primary mt-3 w-full" onClick={() => beginPresetSetup(preset)}>{t("addOns.enablePreset")}</button></div>)}
+            </div>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
     {presetSetup && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="presentation"><div role="dialog" aria-modal="true" aria-labelledby="preset-setup-title" className="w-full max-w-md rounded-xl bg-white p-5 shadow-xl"><div className="flex items-center justify-between"><h2 id="preset-setup-title" className="text-lg font-semibold">{t("addOns.setPresetPrice", { name: presetSetup[locale].name })}</h2><button aria-label={t("common.close")} onClick={() => setPresetSetup(null)}><X /></button></div><p className="mt-2 text-sm text-gray-600">{t("addOns.presetSetupHelp")}</p>{presetError && <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{presetError}</div>}<div className="mt-4 space-y-4"><label className="block text-sm font-medium">{t("addOns.chooseChargeMethod")}<select className="input-field mt-1" value={presetMethod} onChange={(e) => { const method = e.target.value as Method; setPresetMethod(method); if (method !== "per_unit") setPresetUnitLabel(""); else if (!presetUnitLabel) setPresetUnitLabel(presetSetup.unitLabel?.[locale] ?? ""); }}><option value="flat">{t("addOns.methods.flat")}</option><option value="starting_at">{t("addOns.methods.starting_at")}</option><option value="per_unit">{t("addOns.methods.per_unit")}</option></select></label><label className="block text-sm font-medium">{t("addOns.setYourPrice")}<input className="input-field mt-1" type="number" min="0.01" step="0.01" value={presetPrice} onChange={(e) => setPresetPrice(e.target.value)} autoFocus /></label>{presetMethod === "per_unit" && <label className="block text-sm font-medium">{t("addOns.fields.unitLabel")}<input className="input-field mt-1" maxLength={40} value={presetUnitLabel} onChange={(e) => setPresetUnitLabel(e.target.value)} /></label>}<label className="block text-sm font-medium">{t("addOns.fields.duration")}<input className="input-field mt-1" type="number" min="1" max="1440" value={presetDuration} onChange={(e) => setPresetDuration(e.target.value)} /></label></div><div className="mt-5 flex justify-end gap-2"><button className="btn-secondary" onClick={() => { setPresetSetup(null); setPresetOpen(true); }}>{t("common.back")}</button><button className="btn-primary" disabled={busy || !presetPrice} onClick={confirmPreset}>{busy ? t("common.saving") : t("addOns.enableWithPrice")}</button></div></div></div>}
   </div>;
 }
