@@ -25,25 +25,25 @@ export function ClientPortalShell({
   const { t } = useTranslation();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-dvh bg-gray-50">
       <header className="border-b border-gray-200 bg-white">
         <div className={`mx-auto ${contentClassName} px-4`}>
-          <div className="flex flex-wrap items-center justify-between gap-3 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 py-3 sm:py-4">
             <Link
               href="/client/home"
-              className="flex items-center gap-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+              className="touch-target flex min-w-0 flex-1 items-center gap-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 sm:flex-none"
               aria-label={t("clientPortal.homeLabel")}
             >
               <img src="/logo-icon.png" alt="" className="h-9 w-9" />
-              <div>
+              <div className="min-w-0">
                 <p className="text-base font-semibold text-gray-900">{t("clientPortal.title")}</p>
-                {clientName && <p className="text-sm text-gray-500">{clientName}</p>}
+                {clientName && <p className="break-words text-sm text-gray-500">{clientName}</p>}
               </div>
             </Link>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <LanguageSwitcher />
               {onSignOut && (
-                <button type="button" onClick={onSignOut} className="btn-secondary text-sm">
+                <button type="button" onClick={onSignOut} className="btn-secondary touch-target text-sm">
                   {t("auth.signOut")}
                 </button>
               )}
@@ -63,7 +63,7 @@ export function ClientPortalShell({
                     target.scrollIntoView({ behavior: "smooth", block: "start" });
                     window.history.replaceState(null, "", item.href);
                   }}
-                  className="inline-flex min-h-10 flex-none items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="touch-target inline-flex flex-none items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   {index === 0 && <Home className="h-4 w-4" aria-hidden="true" />}
                   {item.label}

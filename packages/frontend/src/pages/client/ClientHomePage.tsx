@@ -64,11 +64,11 @@ function Section({
       : "border-gray-200 bg-white shadow-sm";
 
   return (
-    <section id={id} className={`scroll-mt-32 space-y-3 rounded-xl border p-5 sm:p-6 ${styles}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-gray-900">{title}</h2>
-          {description && <p className="mt-1 text-sm text-gray-500">{description}</p>}
+    <section id={id} className={`scroll-mt-32 space-y-3 rounded-xl border p-4 sm:p-6 ${styles}`}>
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="break-words text-base font-semibold text-gray-900">{title}</h2>
+          {description && <p className="mt-1 break-words text-sm text-gray-500">{description}</p>}
         </div>
         {count !== undefined && count > 0 && (
           <span className="badge bg-gray-100 text-gray-700" aria-label={`${count} ${title}`}>{count}</span>
@@ -94,20 +94,20 @@ function AttentionCard({ item, t }: { item: AttentionItem; t: (key: string, opti
   const content = (
     <>
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
+        <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wide text-primary-700">{t(item.labelKey)}</p>
-          <p className="mt-1 font-medium text-gray-900">{item.title}</p>
+          <p className="mt-1 break-words font-medium text-gray-900">{item.title}</p>
         </div>
         {item.detail && <p className="text-sm font-semibold text-gray-900">{item.detail}</p>}
       </div>
-      {item.companyName && <p className="mt-2 text-sm text-gray-600">{item.companyName}</p>}
+      {item.companyName && <p className="mt-2 break-words text-sm text-gray-600">{item.companyName}</p>}
       <p className="mt-3 text-sm font-medium text-primary-700">
         {item.href ? t("clientHome.reviewAgreement") : t("clientHome.viewDetailsBelow")}
       </p>
     </>
   );
 
-  const classes = "block rounded-lg border border-primary-200 bg-primary-50 p-4";
+  const classes = "touch-target block rounded-lg border border-primary-200 bg-primary-50 p-4";
   return item.href ? (
     <Link href={item.href} className={`${classes} focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 hover:border-primary-300`}>
       {content}
@@ -120,8 +120,8 @@ function AttentionCard({ item, t }: { item: AttentionItem; t: (key: string, opti
 function GroupHeading({ title, description }: { title: string; description: string }) {
   return (
     <div>
-      <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
-      <p className="mt-1 text-sm text-gray-500">{description}</p>
+      <h2 className="break-words text-xl font-semibold text-gray-900">{title}</h2>
+      <p className="mt-1 break-words text-sm text-gray-500">{description}</p>
     </div>
   );
 }
@@ -229,10 +229,10 @@ export function ClientHomePage() {
 
   return (
     <ClientPortalShell clientName={home.clientUser.displayName} onSignOut={signOut} navigation={navItems}>
-      <main className="space-y-8 px-4 py-6 sm:py-8">
+      <main className="space-y-6 px-4 py-6 sm:space-y-8 sm:py-8">
         <div id="overview" className="scroll-mt-32">
-          <p className="text-sm font-medium text-primary-700">{t("clientHome.welcome", { name: home.clientUser.displayName })}</p>
-          <h1 className="mt-1 text-2xl font-semibold text-gray-900 sm:text-3xl">{t("clientHome.overviewTitle")}</h1>
+          <p className="break-words text-sm font-medium text-primary-700">{t("clientHome.welcome", { name: home.clientUser.displayName })}</p>
+          <h1 className="mt-1 break-words text-2xl font-semibold text-gray-900 sm:text-3xl">{t("clientHome.overviewTitle")}</h1>
           <p className="mt-2 max-w-2xl text-sm text-gray-600">{t("clientHome.overviewDescription")}</p>
         </div>
 
@@ -254,12 +254,12 @@ export function ClientHomePage() {
             const location = locationFor(featuredService);
             return (
               <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-                <div>
-                  <p className="text-lg font-semibold text-gray-900">{serviceType(featuredService)}</p>
+                <div className="min-w-0">
+                  <p className="break-words text-lg font-semibold text-gray-900">{serviceType(featuredService)}</p>
                   {location && (
                     <div className="mt-1 text-sm text-gray-600">
-                      <p>{location.name}</p>
-                      {location.address && <p>{location.address}</p>}
+                      <p className="break-words">{location.name}</p>
+                      {location.address && <p className="break-words">{location.address}</p>}
                     </div>
                   )}
                   {companyFor(featuredService) && <p className="mt-2 text-sm text-gray-500">{companyFor(featuredService)}</p>}
@@ -285,9 +285,9 @@ export function ClientHomePage() {
                 const location = locationFor(job);
                 return (
                   <div key={job._id} className="grid gap-2 py-3 text-sm first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_auto]">
-                    <div>
-                      <p className="font-medium text-gray-900">{serviceType(job)}</p>
-                      {location && <p className="text-gray-500">{location.name}{location.address ? ` · ${location.address}` : ""}</p>}
+                    <div className="min-w-0">
+                      <p className="break-words font-medium text-gray-900">{serviceType(job)}</p>
+                      {location && <p className="break-words text-gray-500">{location.name}{location.address ? ` · ${location.address}` : ""}</p>}
                     </div>
                     <div className="sm:text-right">
                       <p className="text-gray-900">{formatDate(job.scheduledDate, t("clientHome.notSet"))}</p>
@@ -305,9 +305,9 @@ export function ClientHomePage() {
                 const location = locationFor(job);
                 return (
                   <div key={job._id} className="py-3 text-sm first:pt-0 last:pb-0">
-                    <p className="font-medium text-gray-900">{serviceType(job)}</p>
+                    <p className="break-words font-medium text-gray-900">{serviceType(job)}</p>
                     <p className="text-gray-500">{formatDate(job.completedAt || job.scheduledDate, t("clientHome.notSet"))}</p>
-                    {location && <p className="text-gray-500">{location.name}</p>}
+                    {location && <p className="break-words text-gray-500">{location.name}</p>}
                   </div>
                 );
               })}
@@ -324,12 +324,12 @@ export function ClientHomePage() {
                   <Link
                     key={agreement._id}
                     href={`/client/service-agreements/${agreement._id}`}
-                    className="block rounded-sm py-3 text-sm hover:text-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                    className="touch-target block rounded-sm py-3 text-sm hover:text-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-medium text-gray-900">{agreement.title}</p>
-                        {companyFor(agreement) && <p className="mt-1 text-gray-500">{companyFor(agreement)}</p>}
+                    <div className="flex flex-col items-start gap-2 sm:flex-row sm:justify-between sm:gap-3">
+                      <div className="min-w-0">
+                        <p className="break-words font-medium text-gray-900">{agreement.title}</p>
+                        {companyFor(agreement) && <p className="mt-1 break-words text-gray-500">{companyFor(agreement)}</p>}
                       </div>
                       <ServiceAgreementStatusBadge agreement={agreement} audience="client" />
                     </div>
@@ -342,7 +342,7 @@ export function ClientHomePage() {
               <div className="divide-y divide-gray-100">
                 {home.proposals.map((proposal: any) => (
                   <div key={proposal._id} className="py-3 text-sm first:pt-0 last:pb-0">
-                    <p className="font-medium text-gray-900">{proposal.title}</p>
+                    <p className="break-words font-medium text-gray-900">{proposal.title}</p>
                     <p className="text-gray-500">{t(getClientStatusTranslationKey("proposal", proposal.status))}</p>
                     {companyFor(proposal) && <p className="text-gray-500">{companyFor(proposal)}</p>}
                   </div>
@@ -358,8 +358,8 @@ export function ClientHomePage() {
             <div className="divide-y divide-gray-100">
               {home.invoices.map((invoice: any) => (
                 <div key={invoice._id} className="grid gap-2 py-3 text-sm first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_auto]">
-                  <div>
-                    <p className="font-medium text-gray-900">{invoice.title || invoice.invoiceNumber}</p>
+                  <div className="min-w-0">
+                    <p className="break-words font-medium text-gray-900">{invoice.title || invoice.invoiceNumber}</p>
                     {invoice.title && <p className="text-gray-500">{invoice.invoiceNumber}</p>}
                     <p className="text-gray-500">
                       {t(getClientStatusTranslationKey("invoice", invoice.status))}
@@ -368,7 +368,7 @@ export function ClientHomePage() {
                     {companyFor(invoice) && <p className="text-gray-500">{companyFor(invoice)}</p>}
                   </div>
                   <p className="font-semibold text-gray-900 sm:text-right">{formatCents(invoice.totalCents)}</p>
-                  {invoice.status === "issued" && <button type="button" onClick={() => payInvoice(invoice._id)} className="btn-primary justify-self-start text-sm sm:justify-self-end">{t("invoices.payOnline")}</button>}
+                  {invoice.status === "issued" && <button type="button" onClick={() => payInvoice(invoice._id)} className="btn-primary touch-target w-full justify-self-start text-sm sm:w-auto sm:justify-self-end">{t("invoices.payOnline")}</button>}
                   {invoice.addOnLineItems?.length > 0 && <div className="sm:col-span-2">
                     <AddOnSnapshotList items={invoice.addOnLineItems} audience="client" showPricing />
                     <dl className="mt-2 grid gap-1 text-sm sm:ml-auto sm:max-w-xs">
@@ -389,8 +389,8 @@ export function ClientHomePage() {
             <div className="grid gap-3 sm:grid-cols-2">
               {locations.map((item: any) => (
                 <div key={item._id} className="rounded-lg border border-gray-200 p-4 text-sm">
-                  <p className="font-medium text-gray-900">{item.name || item.clientName}</p>
-                  <p className="mt-1 text-gray-500">{item.address || item.serviceAddress || t("clientHome.notSet")}</p>
+                  <p className="break-words font-medium text-gray-900">{item.name || item.clientName}</p>
+                  <p className="mt-1 break-words text-gray-500">{item.address || item.serviceAddress || t("clientHome.notSet")}</p>
                 </div>
               ))}
             </div>
@@ -417,8 +417,8 @@ export function ClientHomePage() {
               <div className="grid gap-3 sm:grid-cols-2">
                 {home.relationships.map((relationship: any) => (
                   <div key={relationship._id} className="rounded-lg border border-gray-200 p-3">
-                    <p className="font-medium text-gray-900">{relationship.companyName}</p>
-                    <p className="text-sm text-gray-500">{relationship.businessName || relationship.displayName}</p>
+                    <p className="break-words font-medium text-gray-900">{relationship.companyName}</p>
+                    <p className="break-words text-sm text-gray-500">{relationship.businessName || relationship.displayName}</p>
                   </div>
                 ))}
               </div>

@@ -30,7 +30,7 @@ function Detail({ label, value }: { label: string; value?: string | null }) {
   return (
     <div>
       <p className="text-xs font-medium text-gray-500">{label}</p>
-      <p className="mt-1 whitespace-pre-wrap text-sm text-gray-900">{value}</p>
+      <p className="mt-1 whitespace-pre-wrap break-words text-sm text-gray-900">{value}</p>
     </div>
   );
 }
@@ -116,11 +116,11 @@ export function ClientServiceAgreementPage() {
         <PageBack href="/client/home" label={t("navigation.backToClientHome")} />
         <section className="card space-y-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase text-primary-700">
+            <div className="min-w-0">
+              <p className="break-words text-xs font-semibold uppercase text-primary-700">
                 {agreement.companyName}
               </p>
-              <h1 className="mt-2 text-2xl font-semibold text-gray-900">{agreement.title}</h1>
+              <h1 className="mt-2 break-words text-2xl font-semibold text-gray-900">{agreement.title}</h1>
               <p className="mt-1 text-sm text-gray-500">{t("guidance.client.agreementReview")}</p>
             </div>
             <ServiceAgreementStatusBadge agreement={agreement} audience="client" />
@@ -164,7 +164,7 @@ export function ClientServiceAgreementPage() {
             <div className="border-t border-gray-100 pt-4">
               <p className="text-xs font-semibold uppercase text-gray-500">{t("serviceAgreements.body")}</p>
               <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 p-4">
-                <p className="whitespace-pre-wrap text-sm leading-6 text-gray-700">{agreement.body}</p>
+                <p className="whitespace-pre-wrap break-words text-sm leading-6 text-gray-700">{agreement.body}</p>
               </div>
             </div>
           )}
@@ -202,7 +202,7 @@ export function ClientServiceAgreementPage() {
                   pendingLabel={t("common.acknowledging")}
                   disabled={loadingAction !== null && loadingAction !== "accept"}
                   onClick={handleAccept}
-                  className="btn-primary flex flex-1 items-center justify-center gap-2"
+                  className="btn-primary touch-target flex flex-1 items-center justify-center gap-2"
                 >
                   <CheckCircle aria-hidden="true" className="h-4 w-4" />
                   {t("clientAgreements.acknowledge")}
@@ -211,7 +211,7 @@ export function ClientServiceAgreementPage() {
                   type="button"
                   disabled={loadingAction !== null}
                   onClick={() => setShowDecline((current) => !current)}
-                  className="btn-secondary flex items-center justify-center gap-2 sm:flex-none"
+                  className="btn-secondary touch-target flex items-center justify-center gap-2 sm:flex-none"
                   aria-expanded={showDecline}
                   aria-controls="decline-agreement-panel"
                 >
@@ -234,11 +234,11 @@ export function ClientServiceAgreementPage() {
                       onChange={(event) => setNote(event.target.value)}
                     />
                   </div>
-                  <div className="flex flex-wrap justify-end gap-2">
-                    <button type="button" className="btn-secondary" onClick={() => setShowDecline(false)}>
+                  <div className="flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+                    <button type="button" className="btn-secondary touch-target" onClick={() => setShowDecline(false)}>
                       {t("common.cancel")}
                     </button>
-                    <button type="button" className="btn-secondary" onClick={() => setConfirmDecline(true)}>
+                    <button type="button" className="btn-secondary touch-target" onClick={() => setConfirmDecline(true)}>
                       {t("clientAgreements.continueDecline")}
                     </button>
                   </div>
