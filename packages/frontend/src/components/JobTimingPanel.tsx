@@ -74,7 +74,7 @@ export function JobTimingPanel({ job, userId, controls = false, ownerMode = fals
 
   return <>
     <section className={`card space-y-3 ${paused ? "border-amber-300 bg-amber-50" : ""}`} aria-live="polite">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="font-semibold flex items-center gap-2"><Timer className="w-5 h-5" /> {t("jobTimer.title")}</h3>
         {paused && <span className="badge bg-amber-200 text-amber-900">{t("jobTimer.paused")}</span>}
       </div>
@@ -86,14 +86,14 @@ export function JobTimingPanel({ job, userId, controls = false, ownerMode = fals
       {paused && <p className="text-sm text-amber-800">{t("jobTimer.pausedFor", { duration: formatDuration(values.currentPause) })}</p>}
       {canControl && (paused ?
         <AsyncButton pending={pending} pendingLabel={t("jobTimer.resuming")} onClick={handleResume} className="btn-primary w-full flex items-center justify-center gap-2"><Play className="w-4 h-4" /> {t("jobTimer.resume")}</AsyncButton> :
-        <button onClick={() => setShowPause(true)} className="btn-secondary w-full flex items-center justify-center gap-2"><Pause className="w-4 h-4" /> {t("jobTimer.pause")}</button>)}
+        <button onClick={() => setShowPause(true)} className="btn-secondary touch-target w-full flex items-center justify-center gap-2"><Pause className="w-4 h-4" /> {t("jobTimer.pause")}</button>)}
       {(job.pauseHistory?.length ?? 0) > 0 && <details className="text-sm"><summary className="cursor-pointer font-medium">{t("jobTimer.history")}</summary><div className="mt-2 space-y-2">{job.pauseHistory!.slice().reverse().map((p) => <div key={p.pausedAt} className="border-t pt-2 text-gray-600"><p>{t(`jobTimer.reasons.${p.reason}`)}{p.note ? ` — ${p.note}` : ""}</p><p className="text-xs">{new Date(p.pausedAt).toLocaleString()} · {p.resumedAt ? formatDuration(p.durationMs ?? p.resumedAt - p.pausedAt) : t("jobTimer.inProgress")}{actorNames.get(String(p.pausedByUserId)) ? ` · ${actorNames.get(String(p.pausedByUserId))}` : ""}</p></div>)}</div></details>}
     </section>
     <DialogShell open={showPause} onOpenChange={setShowPause} title={t("jobTimer.pauseTitle")} pending={pending}>
       <label className="block text-sm font-medium mb-1" htmlFor="pause-reason">{t("jobTimer.reason")}</label>
       <select id="pause-reason" className="input-field mb-3" value={reason} onChange={(e) => setReason(e.target.value as PauseReason)}>{reasons.map((value) => <option key={value} value={value}>{t(`jobTimer.reasons.${value}`)}</option>)}</select>
       {reason === "other" && <><label className="block text-sm font-medium mb-1" htmlFor="pause-note">{t("jobTimer.otherNote")}</label><textarea id="pause-note" className="input-field mb-3" maxLength={200} rows={3} value={note} onChange={(e) => setNote(e.target.value)} /></>}
-      <div className="flex justify-end gap-3"><button className="btn-secondary" onClick={() => setShowPause(false)}>{t("common.cancel")}</button><AsyncButton pending={pending} pendingLabel={t("jobTimer.pausing")} disabled={reason === "other" && !note.trim()} onClick={handlePause} className="btn-primary">{t("jobTimer.pause")}</AsyncButton></div>
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3"><button className="btn-secondary touch-target" onClick={() => setShowPause(false)}>{t("common.cancel")}</button><AsyncButton pending={pending} pendingLabel={t("jobTimer.pausing")} disabled={reason === "other" && !note.trim()} onClick={handlePause} className="btn-primary touch-target">{t("jobTimer.pause")}</AsyncButton></div>
     </DialogShell>
   </>;
 }

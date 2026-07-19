@@ -120,14 +120,14 @@ export function JobTimeline({ job }: { job: Job }) {
       <h3 className="text-sm font-semibold text-gray-700 mb-3">Timeline</h3>
       <ol className="relative border-l border-gray-200 ml-2 space-y-3">
         {events.map((e, i) => (
-          <li key={i} className="ml-4">
+          <li key={i} className="ml-4 min-w-0">
             <span
               className={`absolute -left-[11px] flex items-center justify-center w-[22px] h-[22px] rounded-full ring-2 ring-white ${e.color}`}
             >
               {e.icon}
             </span>
-            <p className="text-sm font-medium text-gray-900">{e.label}</p>
-            <p className="text-xs text-gray-500">{fmtTime(e.time)}</p>
+            <p className="break-words text-sm font-medium text-gray-900">{e.label}</p>
+            <p className="break-words text-xs text-gray-500">{fmtTime(e.time)}</p>
           </li>
         ))}
       </ol>

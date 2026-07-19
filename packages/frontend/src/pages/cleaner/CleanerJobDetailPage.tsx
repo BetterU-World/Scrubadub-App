@@ -132,7 +132,7 @@ export function CleanerJobDetailPage() {
 
       <div className="space-y-4">
         <div className="card space-y-4">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={job.status} />
             <span className="text-sm text-gray-500 capitalize">{t(`jobTypes.${job.type}`, { defaultValue: job.type.replace(/_/g, " ") })}</span>
             {hasArrived && (
@@ -143,15 +143,16 @@ export function CleanerJobDetailPage() {
           </div>
 
           <div className="space-y-2 text-sm text-gray-600">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-gray-400" /> {job.scheduledDate}
+            <div className="flex min-w-0 items-start gap-2">
+              <Calendar className="w-4 h-4 flex-shrink-0 text-gray-400" /> <span className="break-words">{job.scheduledDate}
               {job.startTime && ` at ${job.startTime}`}
+              </span>
             </div>
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-gray-400" /> {job.durationMinutes} {t("common.minutes")}
+            <div className="flex min-w-0 items-start gap-2">
+              <Clock className="w-4 h-4 flex-shrink-0 text-gray-400" /> <span>{job.durationMinutes} {t("common.minutes")}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-gray-400" /> {job.property?.address ?? (job as any).propertySnapshot?.address}
+            <div className="flex min-w-0 items-start gap-2">
+              <MapPin className="w-4 h-4 flex-shrink-0 text-gray-400" /> <span className="break-words">{job.property?.address ?? (job as any).propertySnapshot?.address}</span>
             </div>
           </div>
 
@@ -160,11 +161,11 @@ export function CleanerJobDetailPage() {
               <p className="text-sm font-medium text-yellow-800 flex items-center gap-1">
                 <Key className="w-4 h-4" /> {t("jobs.accessInstructions")}
               </p>
-              <p className="text-sm text-yellow-700 mt-1">{job.property?.accessInstructions ?? (job as any).propertySnapshot?.accessInstructions}</p>
+              <p className="break-words text-sm text-yellow-700 mt-1">{job.property?.accessInstructions ?? (job as any).propertySnapshot?.accessInstructions}</p>
             </div>
           )}
 
-          {job.notes && <p className="text-sm text-gray-600 border-t pt-3">{job.notes}</p>}
+          {job.notes && <p className="break-words whitespace-pre-wrap text-sm text-gray-600 border-t pt-3">{job.notes}</p>}
         </div>
 
         <AddOnSnapshotList items={(job as any).requiredAddOns} audience="worker" />
@@ -206,7 +207,7 @@ export function CleanerJobDetailPage() {
         {(canAccept || (canArrive && !canAccept) || canCleanerCancel) && (
           <div className="card space-y-3">
             {canAccept && (
-              <div className="flex gap-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
                 <AsyncButton
                   pending={accepting}
                   pendingLabel={t("jobs.accepting")}
@@ -222,13 +223,13 @@ export function CleanerJobDetailPage() {
                       setAccepting(false);
                     }
                   }}
-                  className="btn-primary flex-1 flex items-center justify-center gap-2"
+                  className="btn-primary touch-target flex-1 flex items-center justify-center gap-2"
                 >
                   <CheckCircle aria-hidden="true" className="w-4 h-4" /> {t("jobs.acceptJob")}
                 </AsyncButton>
                 <button
                   onClick={() => setShowDeny(true)}
-                  className="btn-danger flex items-center justify-center gap-2"
+                  className="btn-danger touch-target flex items-center justify-center gap-2"
                 >
                   <XCircle className="w-4 h-4" /> {t("jobs.deny")}
                 </button>
@@ -525,9 +526,9 @@ function InventoryChecklistSection({
     <div className="card">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between"
+        className="touch-target w-full flex items-center justify-between gap-2 text-left"
       >
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <Package className="w-5 h-5 text-primary-600" />
           <h3 className="font-semibold text-gray-900">{t("jobs.inventoryChecklist")}</h3>
           <span className="text-xs text-gray-400">
@@ -589,9 +590,9 @@ function InventoryChecklistItem({
 
   return (
     <div className={`rounded-lg border p-2.5 ${item.status ? STATUS_STYLES[item.status] || "bg-gray-50 border-gray-200" : "bg-gray-50 border-gray-200"}`}>
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0 flex-1" onClick={onToggleExpand}>
-          <span className="text-sm font-medium truncate">{item.name}</span>
+      <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="touch-target flex min-w-0 flex-1 cursor-pointer items-center gap-2" onClick={onToggleExpand}>
+          <span className="break-words text-sm font-medium">{item.name}</span>
           {item.required && (
             <span className="text-[10px] font-semibold text-red-600">*</span>
           )}
@@ -600,13 +601,13 @@ function InventoryChecklistItem({
           </span>
         </div>
         {editable ? (
-          <div className="flex gap-1 flex-shrink-0">
+          <div className="grid grid-cols-3 gap-1 sm:flex sm:flex-shrink-0">
             {STATUS_OPTIONS.map((s) => (
               <button
                 key={s}
                 disabled={saving}
                 onClick={() => onStatusChange(s)}
-                className={`px-2 py-0.5 text-[11px] font-medium rounded-full border transition-colors ${
+                className={`touch-target px-2 text-[11px] font-medium rounded-full border transition-colors ${
                   item.status === s
                     ? STATUS_STYLES[s]
                     : "bg-white border-gray-200 text-gray-500 hover:bg-gray-100"
@@ -651,7 +652,7 @@ function InventoryChecklistItem({
               qty ? Number(qty) : undefined,
               note || undefined
             )}
-            className="btn-primary text-[11px] py-0.5 px-2"
+            className="btn-primary touch-target text-[11px] px-3"
           >
             {saving ? "..." : t("common.save")}
           </button>
@@ -660,7 +661,7 @@ function InventoryChecklistItem({
 
       {/* Show note read-only when not expanded but note exists */}
       {!isExpanded && item.note && (
-        <p className="text-[11px] text-gray-500 mt-1 truncate">{item.note}</p>
+        <p className="break-words whitespace-pre-wrap text-[11px] text-gray-500 mt-1">{item.note}</p>
       )}
     </div>
   );

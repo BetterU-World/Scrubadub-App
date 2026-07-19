@@ -67,12 +67,12 @@ export function MaintenanceJobListPage() {
       <PageHeader title="Maintenance Jobs" description={`${activeJobs.length} active jobs`} />
 
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden">
+        <div className="grid grid-cols-3 rounded-lg border border-gray-200 overflow-hidden sm:inline-flex">
           {DATE_RANGES.map((r) => (
             <button
               key={r.value}
               onClick={() => setDateRange(r.value)}
-              className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+              className={`touch-target px-3 text-sm font-medium transition-colors ${
                 dateRange === r.value
                   ? "bg-primary-600 text-white"
                   : "bg-white text-gray-600 hover:bg-gray-50"
@@ -82,7 +82,7 @@ export function MaintenanceJobListPage() {
             </button>
           ))}
         </div>
-        <div className="relative flex-1 max-w-xs">
+        <div className="relative flex-1 sm:max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
@@ -108,9 +108,9 @@ export function MaintenanceJobListPage() {
               <div className="space-y-3">
                 {activeJobs.map((job) => (
                   <Link key={job._id} href={`/jobs/${job._id}`} className="card block hover:shadow-md transition-shadow">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-semibold text-gray-900">{job.propertyName}</h3>
+                    <div className="flex flex-col items-start gap-2 sm:flex-row sm:justify-between">
+                      <div className="min-w-0 w-full">
+                        <h3 className="font-semibold text-gray-900 break-words">{job.propertyName}</h3>
                         {(job as any).assignedTeamName && <p className="text-xs text-blue-600 mt-0.5">Team: {(job as any).assignedTeamName}</p>}
                         <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500">
                           <span className="flex items-center gap-1">
@@ -121,8 +121,8 @@ export function MaintenanceJobListPage() {
                               <Clock className="w-3.5 h-3.5" /> {job.startTime}
                             </span>
                           )}
-                          <span className="flex items-center gap-1">
-                            <MapPin className="w-3.5 h-3.5" /> {job.propertyAddress}
+                          <span className="flex min-w-0 items-start gap-1">
+                            <MapPin className="w-3.5 h-3.5 flex-shrink-0" /> <span className="break-words">{job.propertyAddress}</span>
                           </span>
                         </div>
                       </div>
@@ -140,9 +140,9 @@ export function MaintenanceJobListPage() {
               <div className="space-y-3">
                 {pastJobs.map((job) => (
                   <Link key={job._id} href={`/jobs/${job._id}`} className="card block opacity-75">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-medium text-gray-700">{job.propertyName}</h3>
+                    <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0 w-full">
+                        <h3 className="font-medium text-gray-700 break-words">{job.propertyName}</h3>
                         {(job as any).assignedTeamName && <p className="text-xs text-blue-600 mt-0.5">Team: {(job as any).assignedTeamName}</p>}
                         <p className="text-sm text-gray-400">{job.scheduledDate}</p>
                       </div>
