@@ -47,14 +47,14 @@ export function CommercialInvoiceListPage() {
         description={t("invoices.companyDescription")}
       />
 
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
         {STATUSES.map((value) => (
           <button
             key={value}
             type="button"
             onClick={() => setStatus(value)}
             className={clsx(
-              "rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+              "touch-target rounded-lg border px-3 text-sm font-medium transition-colors",
               status === value
                 ? "border-primary-200 bg-primary-50 text-primary-700"
                 : "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
@@ -74,8 +74,8 @@ export function CommercialInvoiceListPage() {
       ) : (
         <div className="card overflow-hidden">
           <TableScrollRegion label={t("invoices.companyTitle")}>
-            <table className="w-full min-w-[860px]">
-              <thead>
+            <table className="block w-full sm:table">
+              <thead className="hidden sm:table-header-group">
                 <tr className="border-b border-gray-200">
                   <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                     {t("invoices.invoiceNumber")}
@@ -94,29 +94,35 @@ export function CommercialInvoiceListPage() {
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="block space-y-3 sm:table-row-group sm:space-y-0">
                 {invoices.map((invoice: any) => (
-                  <tr key={invoice._id} className="border-b border-gray-100 last:border-0">
-                    <td className="px-4 py-3 whitespace-nowrap">
+                  <tr key={invoice._id} className="block rounded-lg border border-gray-200 p-4 sm:table-row sm:rounded-none sm:border-0 sm:border-b sm:border-gray-100 sm:p-0 sm:last:border-0">
+                    <td className="block sm:table-cell sm:px-4 sm:py-3 sm:whitespace-nowrap">
                       <Link
                         href={`/commercial-invoices/${invoice._id}`}
-                        className="font-medium text-gray-900 hover:text-primary-700"
+                        className="touch-target -mx-3 flex items-center px-3 font-semibold text-gray-900 hover:text-primary-700 sm:mx-0 sm:inline-flex sm:min-h-0 sm:p-0 sm:font-medium"
                       >
                         {invoice.invoiceNumber}
                       </Link>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
+                    <td className="block min-w-0 pb-3 text-sm text-gray-700 sm:table-cell sm:px-4 sm:py-3">
+                      <span className="mr-2 text-xs font-medium text-gray-500 sm:hidden">{t("invoices.commercialAccount")}</span>
+                      <span className="break-words">
                       {invoice.commercialAccountName ?? t("commercialAccounts.summary")}
+                      </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
+                    <td className="block border-t border-gray-100 py-2 text-sm text-gray-700 sm:table-cell sm:border-0 sm:px-4 sm:py-3 sm:whitespace-nowrap">
+                      <span className="mr-2 text-xs font-medium text-gray-500 sm:hidden">{t("invoices.billingPeriod")}</span>
                       {formatDate(invoice.billingStartDate)} - {formatDate(invoice.billingEndDate)}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
+                    <td className="block py-2 sm:table-cell sm:px-4 sm:py-3 sm:whitespace-nowrap">
+                      <span className="mr-2 text-xs font-medium text-gray-500 sm:hidden">{t("commercialAccounts.status")}</span>
                       <span className="badge bg-gray-100 text-gray-700">
                         {t(`invoices.statuses.${invoice.status}`)}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right text-sm font-semibold text-gray-900 whitespace-nowrap">
+                    <td className="block border-t border-gray-100 pt-3 text-left text-xl font-bold text-gray-900 sm:table-cell sm:border-0 sm:px-4 sm:py-3 sm:text-right sm:text-sm sm:font-semibold sm:whitespace-nowrap">
+                      <span className="mr-2 text-xs font-medium text-gray-500 sm:hidden">{t("invoices.total")}</span>
                       {formatCents(invoice.totalCents)}
                     </td>
                   </tr>

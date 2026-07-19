@@ -101,7 +101,7 @@ export function RequestListPage() {
         <LeadsHeader />
         <button
           onClick={() => setShowNewLead(true)}
-          className="btn-primary flex items-center justify-center gap-2 sm:mt-1"
+          className="btn-primary touch-target flex w-full items-center justify-center gap-2 sm:mt-1 sm:w-auto"
         >
           <Plus className="w-4 h-4" /> {t("requests.newLead")}
         </button>
@@ -113,7 +113,7 @@ export function RequestListPage() {
             <h2 className="font-semibold text-gray-900">{t("requests.manualLead")}</h2>
             <button
               onClick={() => setShowNewLead(false)}
-              className="p-1 text-gray-400 hover:text-gray-600"
+              className="touch-target flex items-center justify-center text-gray-400 hover:text-gray-600"
               aria-label="Close"
             >
               <X className="w-4 h-4" />
@@ -139,7 +139,7 @@ export function RequestListPage() {
             </div>
             <input className="input-field" placeholder={t("common.address")} value={newLead.propertyAddress} onChange={(e) => setNewLead({ ...newLead, propertyAddress: e.target.value })} />
             <textarea className="input-field" rows={3} placeholder={t("common.notes")} value={newLead.notes} onChange={(e) => setNewLead({ ...newLead, notes: e.target.value })} />
-            <button disabled={creatingLead} className="btn-primary w-full sm:w-auto" type="submit">
+            <button disabled={creatingLead} className="btn-primary touch-target w-full sm:w-auto" type="submit">
               {creatingLead ? t("requests.creatingLead") : t("requests.createLead")}
             </button>
           </form>
@@ -147,15 +147,15 @@ export function RequestListPage() {
       )}
 
       {/* Filters */}
-      <div className="flex gap-2 mb-4">
+      <div className="mb-4 flex max-w-full gap-2 overflow-x-auto overscroll-x-contain pb-1" role="group" aria-label={t("nav.requests")}>
         {statusOptions.map((opt) => (
           <button
             key={opt.value}
             onClick={() => setStatusFilter(opt.value)}
             className={
               statusFilter === opt.value
-                ? "badge bg-primary-100 text-primary-800 cursor-pointer"
-                : "badge bg-gray-100 text-gray-600 cursor-pointer hover:bg-gray-200"
+                ? "touch-target flex-none rounded-lg bg-primary-100 px-3 text-sm font-medium text-primary-800"
+                : "touch-target flex-none rounded-lg bg-gray-100 px-3 text-sm font-medium text-gray-600 hover:bg-gray-200"
             }
           >
             {opt.label}
@@ -186,21 +186,21 @@ export function RequestListPage() {
             <Link
               key={req._id}
               href={`/requests/${req._id}`}
-              className="card block hover:shadow-md transition-shadow"
+              className="card touch-target block hover:shadow-md transition-shadow"
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-semibold text-gray-900">
+                <div className="min-w-0 w-full">
+                  <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:gap-2">
+                    <h3 className="break-words font-semibold text-gray-900">
                       {req.requesterName}
                     </h3>
                     <StatusBadge status={req.status} />
                   </div>
                   <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500">
                     {(req.propertySnapshot?.address) && (
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5" />
-                        {req.propertySnapshot.address}
+                      <span className="flex min-w-0 items-start gap-1">
+                        <MapPin className="w-3.5 h-3.5 shrink-0" />
+                        <span className="break-words">{req.propertySnapshot.address}</span>
                       </span>
                     )}
                     {req.requestedDate && (
@@ -216,10 +216,12 @@ export function RequestListPage() {
                       </span>
                     )}
                   </div>
+                  {(req as any).notes && <p className="mt-2 line-clamp-2 break-words text-sm text-gray-600">{(req as any).notes}</p>}
                 </div>
-                <span className="text-xs text-gray-400 whitespace-nowrap">
-                  {timeAgo(req.createdAt)}
-                </span>
+                <div className="flex w-full items-center justify-between gap-3 border-t border-gray-100 pt-3 sm:w-auto sm:border-0 sm:pt-0">
+                  <span className="text-xs text-gray-400 whitespace-nowrap">{timeAgo(req.createdAt)}</span>
+                  <span className="text-sm font-medium text-primary-700">{t("common.open")}</span>
+                </div>
               </div>
             </Link>
           ))}
