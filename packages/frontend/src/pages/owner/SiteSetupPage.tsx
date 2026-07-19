@@ -5,7 +5,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import { Plus, X } from "lucide-react";
+import { ExternalLink, Globe2, Plus, X } from "lucide-react";
 import { ShareKit } from "@/components/owner/ShareKit";
 
 export function SiteSetupPage() {
@@ -130,6 +130,27 @@ export function SiteSetupPage() {
         description={t("guidance.owner.siteSetup")}
       />
 
+      {site && (
+        <section className="card mb-6 overflow-hidden border-primary-100 bg-primary-50/40" aria-labelledby="site-overview-title">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary-100 text-primary-700">
+                <Globe2 className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide text-primary-700">{t("siteBuilder.siteLiveHint")}</p>
+                <h2 id="site-overview-title" className="mt-1 break-words text-lg font-semibold text-gray-900">{site.brandName}</h2>
+                <p className="mt-1 break-all text-sm text-gray-600">{window.location.origin}/{site.slug}</p>
+              </div>
+            </div>
+            <a href={`/${site.slug}`} target="_blank" rel="noopener noreferrer" className="btn-primary touch-target inline-flex w-full items-center justify-center gap-2 sm:w-auto">
+              <ExternalLink className="h-4 w-4" aria-hidden="true" />
+              {t("common.open")}
+            </a>
+          </div>
+        </section>
+      )}
+
       {site && !site.bio && !site.serviceArea && (
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm">
           {t("siteBuilder.siteLiveHint")}
@@ -149,7 +170,7 @@ export function SiteSetupPage() {
       )}
 
       {tokenError && (
-        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-sm flex items-center justify-between">
+        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-sm flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
           <span>{tokenError}</span>
           <button
             type="button"
@@ -168,7 +189,7 @@ export function SiteSetupPage() {
                 );
               });
             }}
-            className="text-yellow-800 underline hover:text-yellow-900 ml-3 whitespace-nowrap"
+            className="touch-target text-yellow-800 underline hover:text-yellow-900 sm:ml-3 whitespace-nowrap"
           >
             {t("siteBuilder.retry")}
           </button>
@@ -181,8 +202,8 @@ export function SiteSetupPage() {
           <label className="block text-sm font-medium text-gray-700 mb-1">
             {t("siteBuilder.slug")}
           </label>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-400">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <span className="break-all text-sm text-gray-400">
               {window.location.origin}/
             </span>
             <input
@@ -292,7 +313,8 @@ export function SiteSetupPage() {
                 <button
                   type="button"
                   onClick={() => removeService(i)}
-                  className="p-1.5 text-gray-400 hover:text-red-500 rounded-lg hover:bg-gray-100"
+                  className="touch-target flex shrink-0 items-center justify-center text-gray-400 hover:text-red-500 rounded-lg hover:bg-gray-100"
+                  aria-label={`${t("common.delete")} ${svc || i + 1}`}
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -303,7 +325,7 @@ export function SiteSetupPage() {
             <button
               type="button"
               onClick={addService}
-              className="mt-2 text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
+              className="touch-target mt-2 text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
             >
               <Plus className="w-4 h-4" />
               {t("siteBuilder.addService")}
@@ -402,7 +424,7 @@ export function SiteSetupPage() {
           <button
             type="submit"
             disabled={saving}
-            className="btn-primary w-full flex items-center justify-center gap-2"
+            className="btn-primary touch-target w-full flex items-center justify-center gap-2"
           >
             {saving && <LoadingSpinner size="sm" />}
             {site ? t("siteBuilder.saveChanges") : t("siteBuilder.createSite")}

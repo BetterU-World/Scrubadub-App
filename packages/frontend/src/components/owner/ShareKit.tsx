@@ -124,7 +124,7 @@ function ShareRow({
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-gray-700">{label}</p>
-          <p className="text-xs text-primary-600 truncate">{url}</p>
+          <p className="break-all text-xs text-primary-600">{url}</p>
         </div>
       </div>
 
@@ -132,7 +132,7 @@ function ShareRow({
         <button
           type="button"
           onClick={handleCopy}
-          className="btn-secondary flex items-center gap-1.5 text-xs py-1.5 px-2.5"
+          className="btn-secondary touch-target flex items-center gap-1.5 text-xs px-3"
         >
           {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
           {copied ? "Copied" : "Copy"}
@@ -142,7 +142,7 @@ function ShareRow({
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className="btn-secondary flex items-center gap-1.5 text-xs py-1.5 px-2.5"
+          className="btn-secondary touch-target flex items-center gap-1.5 text-xs px-3"
         >
           <ExternalLink className="w-3.5 h-3.5" />
           Open
@@ -151,7 +151,7 @@ function ShareRow({
         <button
           type="button"
           onClick={() => setShowQr((p) => !p)}
-          className="btn-secondary flex items-center gap-1.5 text-xs py-1.5 px-2.5"
+          className="btn-secondary touch-target flex items-center gap-1.5 text-xs px-3"
         >
           <QrCode className="w-3.5 h-3.5" />
           {showQr ? "Hide QR" : "QR"}
@@ -161,7 +161,7 @@ function ShareRow({
           <button
             type="button"
             onClick={handleCopyCaption}
-            className="btn-secondary flex items-center gap-1.5 text-xs py-1.5 px-2.5"
+            className="btn-secondary touch-target flex items-center gap-1.5 text-xs px-3"
           >
             {copiedCaption ? (
               <Check className="w-3.5 h-3.5" />
