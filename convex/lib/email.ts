@@ -99,6 +99,8 @@ type ProposalEmailArgs = {
     notes?: string | null;
     monthlyPriceLabel?: string | null;
     oneTimePriceLabel?: string | null;
+    addOnLineItems?: Array<{ name: string; pricingMethod: string; unitPriceLabel?: string | null; unitLabel?: string | null; quantity?: number | null; finalizedPriceLabel?: string | null; billingCadence: string; lineTotalLabel?: string | null }>;
+    totals?: { monthlyTotalLabel?: string | null; oneTimeTotalLabel?: string | null };
   };
   walkthroughSummary?: {
     squareFootage?: number | null;
@@ -114,8 +116,8 @@ export async function sendProposalEmail(args: ProposalEmailArgs): Promise<boolea
   const logoUrl = args.companyLogoUrl || `${appUrl}/logo-icon.png`;
   const proposal = args.proposal;
   const estimateParts = [
-    proposal.monthlyPriceLabel ? `${proposal.monthlyPriceLabel} per month` : null,
-    proposal.oneTimePriceLabel ? `${proposal.oneTimePriceLabel} one-time` : null,
+    proposal.totals?.monthlyTotalLabel ? `${proposal.totals.monthlyTotalLabel} per month` : proposal.monthlyPriceLabel ? `${proposal.monthlyPriceLabel} per month` : null,
+    proposal.totals?.oneTimeTotalLabel ? `${proposal.totals.oneTimeTotalLabel} one-time` : proposal.oneTimePriceLabel ? `${proposal.oneTimePriceLabel} one-time` : null,
   ].filter(Boolean);
   const estimate = estimateParts.length ? estimateParts.join(" + ") : null;
   const walkthrough = args.walkthroughSummary;
@@ -168,6 +170,18 @@ export async function sendProposalEmail(args: ProposalEmailArgs): Promise<boolea
                   <div style="margin:0 0 20px;">
                     <p style="margin:0 0 6px; color:#111827; font-size:14px; font-weight:700;">Scope summary</p>
                     <p style="margin:0; color:#374151; font-size:14px; line-height:1.7;">${paragraphHtml(proposal.scopeOfWork)}</p>
+                  </div>
+                ` : ""}
+
+                ${proposal.addOnLineItems?.length ? `
+                  <div style="margin:0 0 20px;">
+                    <p style="margin:0 0 8px; color:#111827; font-size:14px; font-weight:700;">Add-ons</p>
+                    <table style="width:100%; border-collapse:collapse;">
+                      ${proposal.addOnLineItems.map((line) => detailRow(
+                        line.name,
+                        `${line.lineTotalLabel ?? "Price pending"}${line.quantity ? ` (${line.quantity} × ${line.unitPriceLabel} / ${line.unitLabel})` : ""} · ${line.billingCadence === "monthly" ? "Monthly" : "One-time"}`
+                      )).join("")}
+                    </table>
                   </div>
                 ` : ""}
 

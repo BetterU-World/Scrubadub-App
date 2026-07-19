@@ -32,6 +32,11 @@ type ProposalPayload = {
     notes?: string | null;
     monthlyPriceLabel?: string | null;
     oneTimePriceLabel?: string | null;
+    addOnLineItems?: Array<{
+      name: string; pricingMethod: "flat" | "starting_at" | "per_unit"; unitPriceLabel?: string | null; unitLabel?: string | null;
+      quantity?: number | null; finalizedPriceLabel?: string | null; billingCadence: "one_time" | "monthly"; lineTotalLabel?: string | null;
+    }>;
+    totals?: { monthlyTotalLabel?: string | null; oneTimeTotalLabel?: string | null };
     status: "draft" | "sent" | "accepted" | "declined";
     proposalResponseNote?: string | null;
   };
@@ -45,8 +50,8 @@ type ProposalPayload = {
 
 function priceSummary(proposal: ProposalPayload["proposal"]) {
   const parts = [
-    proposal.monthlyPriceLabel ? `${proposal.monthlyPriceLabel} per month` : null,
-    proposal.oneTimePriceLabel ? `${proposal.oneTimePriceLabel} one-time` : null,
+    proposal.totals?.monthlyTotalLabel ? `${proposal.totals.monthlyTotalLabel} per month` : proposal.monthlyPriceLabel ? `${proposal.monthlyPriceLabel} per month` : null,
+    proposal.totals?.oneTimeTotalLabel ? `${proposal.totals.oneTimeTotalLabel} one-time` : proposal.oneTimePriceLabel ? `${proposal.oneTimePriceLabel} one-time` : null,
   ].filter(Boolean);
   return parts.length ? parts.join(" + ") : "Estimate not set";
 }
@@ -203,6 +208,26 @@ export function ProposalViewPage() {
 
         {proposal.proposal.scopeOfWork && (
           <TextBlock title="Scope Summary" value={proposal.proposal.scopeOfWork} />
+        )}
+
+        {(proposal.proposal.addOnLineItems?.length ?? 0) > 0 && (
+          <div className="rounded-md border border-gray-200 bg-white p-4">
+            <h2 className="text-sm font-semibold text-gray-900">{t("proposals.addOns.title")}</h2>
+            <div className="mt-3 divide-y divide-gray-100">
+              {proposal.proposal.addOnLineItems!.map((line, index) => (
+                <div key={`${line.name}-${index}`} className="flex flex-col justify-between gap-1 py-3 sm:flex-row sm:items-center">
+                  <div>
+                    <p className="font-medium text-gray-900">{line.name}</p>
+                    <p className="text-xs text-gray-500">
+                      {line.billingCadence === "monthly" ? t("proposals.addOns.monthly") : t("proposals.addOns.oneTime")}
+                      {line.quantity ? ` · ${line.quantity} × ${line.unitPriceLabel} / ${line.unitLabel}` : ""}
+                    </p>
+                  </div>
+                  <p className="font-semibold text-gray-900">{line.lineTotalLabel}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
 
         {proposal.proposal.notes && (

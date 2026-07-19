@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import { requireOwnerSession } from "../lib/sessionAuth";
 import { ensureClientRelationshipForLead } from "../lib/clientRelationships";
+import { assertProposalReadyForDelivery, newProposalLineItemId, normalizeProposalAddOnLine, validateProposalAddOnLines } from "../lib/proposalAddOnLineItems";
 
 const proposalFrequencyValidator = v.union(
   v.literal("one_time"),
@@ -44,6 +45,10 @@ async function getOwnedProposal(
   return { owner, proposal: proposal as Doc<"proposals"> };
 }
 
+function requireDraft(proposal: Doc<"proposals">) {
+  if (proposal.status !== "draft") throw new Error("Return the proposal to draft before editing");
+}
+
 /** Create an owner-only draft proposal from a lead. Pricing is intentionally blank. */
 export const createProposalFromLead = mutation({
   args: {
@@ -80,6 +85,11 @@ export const createProposalFromLead = mutation({
       serviceFrequency: (request as any).estimatedFrequency,
       serviceFrequencyNotes: cleanOptional((request as any).estimatedFrequencyNotes, 1000),
       scopeOfWork: cleanOptional(request.requestedService, 4000),
+      addOnLineItems: ((request as any).requestedAddOnSnapshots ?? []).map((item: any) => normalizeProposalAddOnLine({
+        lineItemId: newProposalLineItemId(), sourceType: "request_snapshot", sourceClientRequestId: request._id,
+        sourceCompanyAddOnId: item.sourceCompanyAddOnId, name: item.name, pricingMethod: item.pricingMethod,
+        unitPriceCents: item.priceCents, unitLabel: item.unitLabel, quantity: item.quantity, billingCadence: "one_time",
+      })),
       status: "draft",
       createdAt: now,
       updatedAt: now,
@@ -136,9 +146,7 @@ export const updateProposal = mutation({
   },
   handler: async (ctx, args) => {
     const { proposal } = await getOwnedProposal(ctx, args.sessionToken, args.userId, args.proposalId);
-    if (proposal.status === "accepted" || proposal.status === "declined") {
-      throw new Error("Accepted or declined proposals cannot be edited");
-    }
+    requireDraft(proposal);
 
     await ctx.db.patch(args.proposalId, {
       title: cleanRequired(args.title, "Cleaning Proposal", 200),
@@ -160,6 +168,8 @@ export const markProposalSent = mutation({
   args: { userId: v.id("users"), sessionToken: v.string(), proposalId: v.id("proposals") },
   handler: async (ctx, args) => {
     const { proposal } = await getOwnedProposal(ctx, args.sessionToken, args.userId, args.proposalId);
+    if (proposal.status === "accepted" || proposal.status === "declined") throw new Error("Finalized proposals are immutable");
+    assertProposalReadyForDelivery(proposal);
     const now = Date.now();
     await ctx.db.patch(args.proposalId, {
       status: "sent",
@@ -177,6 +187,8 @@ export const markProposalAccepted = mutation({
   args: { userId: v.id("users"), sessionToken: v.string(), proposalId: v.id("proposals") },
   handler: async (ctx, args) => {
     const { proposal } = await getOwnedProposal(ctx, args.sessionToken, args.userId, args.proposalId);
+    if (proposal.status === "accepted" || proposal.status === "declined") throw new Error("Finalized proposals are immutable");
+    assertProposalReadyForDelivery(proposal);
     const now = Date.now();
     await ctx.db.patch(args.proposalId, {
       status: "accepted",
@@ -190,10 +202,66 @@ export const markProposalAccepted = mutation({
   },
 });
 
+export const addCatalogAddOnLine = mutation({
+  args: { userId: v.id("users"), sessionToken: v.string(), proposalId: v.id("proposals"), companyAddOnId: v.id("companyAddOns"), billingCadence: v.union(v.literal("one_time"), v.literal("monthly")) },
+  handler: async (ctx, args) => {
+    const { owner, proposal } = await getOwnedProposal(ctx, args.sessionToken, args.userId, args.proposalId); requireDraft(proposal);
+    const item = await ctx.db.get(args.companyAddOnId);
+    if (!item || item.companyId !== owner.companyId || !item.isActive || item.archivedAt !== undefined) throw new Error("Catalog add-on is unavailable");
+    const line = normalizeProposalAddOnLine({ lineItemId: newProposalLineItemId(), sourceType: "catalog", sourceCompanyAddOnId: item._id, name: item.name, pricingMethod: item.pricingMethod, unitPriceCents: item.priceCents, unitLabel: item.unitLabel, quantity: item.pricingMethod === "per_unit" ? 1 : undefined, billingCadence: args.billingCadence });
+    await ctx.db.patch(proposal._id, { addOnLineItems: validateProposalAddOnLines([...(proposal.addOnLineItems ?? []), line]), updatedAt: Date.now() });
+    return line.lineItemId;
+  },
+});
+
+const editableLineArgs = { name: v.string(), pricingMethod: v.union(v.literal("flat"), v.literal("starting_at"), v.literal("per_unit")), unitPriceCents: v.number(), unitLabel: v.optional(v.string()), quantity: v.optional(v.number()), finalizedPriceCents: v.optional(v.number()), billingCadence: v.union(v.literal("one_time"), v.literal("monthly")) };
+
+export const addCustomAddOnLine = mutation({
+  args: { userId: v.id("users"), sessionToken: v.string(), proposalId: v.id("proposals"), ...editableLineArgs },
+  handler: async (ctx, args) => {
+    const { proposal } = await getOwnedProposal(ctx, args.sessionToken, args.userId, args.proposalId); requireDraft(proposal);
+    const line = normalizeProposalAddOnLine({ lineItemId: newProposalLineItemId(), sourceType: "custom", name: args.name, pricingMethod: args.pricingMethod, unitPriceCents: args.unitPriceCents, unitLabel: args.unitLabel, quantity: args.quantity, finalizedPriceCents: args.finalizedPriceCents, billingCadence: args.billingCadence });
+    await ctx.db.patch(proposal._id, { addOnLineItems: validateProposalAddOnLines([...(proposal.addOnLineItems ?? []), line]), updatedAt: Date.now() });
+    return line.lineItemId;
+  },
+});
+
+export const updateAddOnLine = mutation({
+  args: { userId: v.id("users"), sessionToken: v.string(), proposalId: v.id("proposals"), lineItemId: v.string(), ...editableLineArgs },
+  handler: async (ctx, args) => {
+    const { proposal } = await getOwnedProposal(ctx, args.sessionToken, args.userId, args.proposalId); requireDraft(proposal);
+    const existing: any = (proposal.addOnLineItems ?? []).find((line: any) => line.lineItemId === args.lineItemId);
+    if (!existing) throw new Error("Proposal add-on line not found");
+    const updated = normalizeProposalAddOnLine({ ...existing, name: args.name, pricingMethod: args.pricingMethod, unitPriceCents: args.unitPriceCents, unitLabel: args.unitLabel, quantity: args.quantity, finalizedPriceCents: args.finalizedPriceCents, billingCadence: args.billingCadence });
+    const lines = (proposal.addOnLineItems ?? []).map((line: any) => line.lineItemId === args.lineItemId ? updated : line);
+    await ctx.db.patch(proposal._id, { addOnLineItems: validateProposalAddOnLines(lines as any), updatedAt: Date.now() });
+  },
+});
+
+export const removeAddOnLine = mutation({
+  args: { userId: v.id("users"), sessionToken: v.string(), proposalId: v.id("proposals"), lineItemId: v.string() },
+  handler: async (ctx, args) => {
+    const { proposal } = await getOwnedProposal(ctx, args.sessionToken, args.userId, args.proposalId); requireDraft(proposal);
+    const lines = (proposal.addOnLineItems ?? []).filter((line: any) => line.lineItemId !== args.lineItemId);
+    if (lines.length === (proposal.addOnLineItems ?? []).length) throw new Error("Proposal add-on line not found");
+    await ctx.db.patch(proposal._id, { addOnLineItems: lines, updatedAt: Date.now() });
+  },
+});
+
+export const returnProposalToDraft = mutation({
+  args: { userId: v.id("users"), sessionToken: v.string(), proposalId: v.id("proposals") },
+  handler: async (ctx, args) => {
+    const { proposal } = await getOwnedProposal(ctx, args.sessionToken, args.userId, args.proposalId);
+    if (proposal.status !== "sent") throw new Error("Only sent proposals can return to draft");
+    await ctx.db.patch(proposal._id, { status: "draft", sentAt: undefined, proposalTokenHash: undefined, proposalTokenCreatedAt: undefined, updatedAt: Date.now() });
+  },
+});
+
 export const markProposalDeclined = mutation({
   args: { userId: v.id("users"), sessionToken: v.string(), proposalId: v.id("proposals") },
   handler: async (ctx, args) => {
     const { proposal } = await getOwnedProposal(ctx, args.sessionToken, args.userId, args.proposalId);
+    if (proposal.status === "accepted" || proposal.status === "declined") throw new Error("Finalized proposals are immutable");
     const request = await ctx.db.get(proposal.clientRequestId) as Doc<"clientRequests"> | null;
     const now = Date.now();
     const requestPatch: Record<string, unknown> = {

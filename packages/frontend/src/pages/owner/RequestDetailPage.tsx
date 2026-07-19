@@ -14,6 +14,7 @@ import { ServiceAgreementCard } from "@/components/owner/ServiceAgreementCard";
 import { WalkthroughCard } from "@/components/owner/WalkthroughCard";
 import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
 import { ServiceAgreementStatusBadge } from "@/components/ui/ServiceAgreementStatusBadge";
+import { ProposalCatalogAddOnPicker } from "@/components/owner/ProposalCatalogAddOnPicker";
 import {
   User,
   Mail,
@@ -38,11 +39,38 @@ import {
   Sparkles,
   Send,
   ClipboardCheck,
+  Trash2,
+  RotateCcw,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 function leadPipelineStorageKey(userId: string) {
   return `scrubadub.request-details.lead-pipeline.${userId}`;
+}
+
+function ProposalAddOnLineEditor({ line, onSave, onRemove, t }: { line: any; onSave: (values: any) => Promise<any>; onRemove: () => Promise<any>; t: any }) {
+  const [name, setName] = useState(line.name);
+  const [method, setMethod] = useState(line.pricingMethod);
+  const [price, setPrice] = useState(String(line.unitPriceCents / 100));
+  const [unitLabel, setUnitLabel] = useState(line.unitLabel ?? "");
+  const [quantity, setQuantity] = useState(String(line.quantity ?? 1));
+  const [finalPrice, setFinalPrice] = useState(line.finalizedPriceCents ? String(line.finalizedPriceCents / 100) : "");
+  const [cadence, setCadence] = useState(line.billingCadence);
+  const [saving, setSaving] = useState(false);
+  const sourceLabel = line.sourceType === "request_snapshot" ? t("proposals.addOns.requested") : line.sourceType === "catalog" ? t("proposals.addOns.catalog") : t("proposals.addOns.custom");
+  return <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+    <div className="mb-3 flex items-center justify-between gap-2"><span className="badge bg-white text-gray-600">{sourceLabel}</span><button type="button" onClick={onRemove} aria-label={t("proposals.addOns.remove", { name })} className="rounded p-1 text-red-500 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button></div>
+    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <label className="text-xs text-gray-600">{t("common.name")}<input className="input-field mt-1" value={name} onChange={(e) => setName(e.target.value)} /></label>
+      <label className="text-xs text-gray-600">{t("proposals.addOns.method")}<select className="input-field mt-1" value={method} onChange={(e) => setMethod(e.target.value)}><option value="flat">{t("addOns.methods.flat")}</option><option value="starting_at">{t("addOns.methods.starting_at")}</option><option value="per_unit">{t("addOns.methods.per_unit")}</option></select></label>
+      <label className="text-xs text-gray-600">{t("proposals.addOns.unitPrice")}<input className="input-field mt-1" type="number" min="0.01" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} /></label>
+       {method === "per_unit" && <label className="text-xs text-gray-600">{t("publicSite.addOns.quantity")}<input className="input-field mt-1" type="number" min={1} max={999} step={1} value={quantity} onChange={(e) => setQuantity(e.target.value)} /></label>}
+       {method === "per_unit" && <label className="text-xs text-gray-600">{t("proposals.addOns.unitLabel")}<input className="input-field mt-1" value={unitLabel} maxLength={40} onChange={(e) => setUnitLabel(e.target.value)} /></label>}
+      {method === "starting_at" && <label className="text-xs text-gray-600">{t("proposals.addOns.finalPrice")}<input className="input-field mt-1" type="number" min={price || "0.01"} step="0.01" value={finalPrice} onChange={(e) => setFinalPrice(e.target.value)} /></label>}
+      <label className="text-xs text-gray-600">{t("proposals.addOns.cadence")}<select className="input-field mt-1" value={cadence} onChange={(e) => setCadence(e.target.value)}><option value="one_time">{t("proposals.addOns.oneTime")}</option><option value="monthly">{t("proposals.addOns.monthly")}</option></select></label>
+    </div>
+     <button type="button" disabled={saving} className="btn-secondary mt-3 text-sm" onClick={async () => { setSaving(true); try { await onSave({ name, pricingMethod: method, unitPriceCents: Math.round(Number(price) * 100), unitLabel: method === "per_unit" ? unitLabel : undefined, quantity: method === "per_unit" ? Number(quantity) : undefined, finalizedPriceCents: method === "starting_at" && finalPrice ? Math.round(Number(finalPrice) * 100) : undefined, billingCadence: cadence }); } finally { setSaving(false); } }}>{saving ? t("common.saving") : t("proposals.addOns.saveLine")}</button>
+  </div>;
 }
 
 function loadLeadPipelineExpanded(userId?: string) {
@@ -100,6 +128,11 @@ export function RequestDetailPage() {
     (api as any).mutations.proposals.createProposalFromLead
   );
   const updateProposalMut = useMutation((api as any).mutations.proposals.updateProposal);
+  const addCatalogAddOnLine = useMutation((api as any).mutations.proposals.addCatalogAddOnLine);
+  const addCustomAddOnLine = useMutation((api as any).mutations.proposals.addCustomAddOnLine);
+  const updateAddOnLine = useMutation((api as any).mutations.proposals.updateAddOnLine);
+  const removeAddOnLine = useMutation((api as any).mutations.proposals.removeAddOnLine);
+  const returnProposalToDraft = useMutation((api as any).mutations.proposals.returnProposalToDraft);
   const markProposalSent = useMutation((api as any).mutations.proposals.markProposalSent);
   const markProposalAccepted = useMutation(
     (api as any).mutations.proposals.markProposalAccepted
@@ -234,6 +267,8 @@ export function RequestDetailPage() {
   const [proposalActionLoading, setProposalActionLoading] = useState<string | null>(null);
   const [editingProposal, setEditingProposal] = useState(false);
   const [proposalLoadedId, setProposalLoadedId] = useState<string | null>(null);
+  const [customAddOnName, setCustomAddOnName] = useState("");
+  const [customAddOnPrice, setCustomAddOnPrice] = useState("");
   const previousProposalStatus = useRef<string | null>(null);
   const [accountLoadedKey, setAccountLoadedKey] = useState<string | null>(null);
   const [proposalForm, setProposalForm] = useState({
@@ -588,6 +623,17 @@ export function RequestDetailPage() {
     } finally {
       setSavingProposal(false);
     }
+  };
+
+  const handleReturnToDraft = async () => {
+    setProposalActionLoading("draft");
+    try {
+      await returnProposalToDraft({ userId: user!._id, sessionToken, proposalId: proposal._id });
+      setEditingProposal(true);
+      setToast({ message: t("proposals.addOns.returnedToDraft"), type: "success" });
+    } catch (err: any) {
+      setToast({ message: err.message || t("common.error"), type: "error" });
+    } finally { setProposalActionLoading(null); }
   };
 
   const handleProposalAction = async (action: "sent" | "accepted" | "declined") => {
@@ -1006,6 +1052,28 @@ export function RequestDetailPage() {
                 />
               </div>
             </div>
+            <div className="rounded-lg border border-gray-200 p-4 space-y-4">
+              <div>
+                <h4 className="font-semibold text-gray-900">{t("proposals.addOns.title")}</h4>
+                <p className="text-xs text-gray-500">{t("proposals.addOns.editorHelp")}</p>
+              </div>
+              <ProposalCatalogAddOnPicker onAdd={(companyAddOnId) => addCatalogAddOnLine({ userId: user!._id, sessionToken, proposalId: proposal._id, companyAddOnId, billingCadence: "one_time" })} />
+              <div className="grid gap-2 sm:grid-cols-[1fr_10rem_auto]">
+                <input className="input-field" value={customAddOnName} onChange={(e) => setCustomAddOnName(e.target.value)} placeholder={t("proposals.addOns.customName")} />
+                <input className="input-field" type="number" min="0.01" step="0.01" value={customAddOnPrice} onChange={(e) => setCustomAddOnPrice(e.target.value)} placeholder="0.00" />
+                <button type="button" className="btn-secondary" disabled={!customAddOnName.trim() || !customAddOnPrice} onClick={async () => {
+                  await addCustomAddOnLine({ userId: user!._id, sessionToken, proposalId: proposal._id, name: customAddOnName, pricingMethod: "flat", unitPriceCents: Math.round(Number(customAddOnPrice) * 100), billingCadence: "one_time" }); setCustomAddOnName(""); setCustomAddOnPrice("");
+                }}>{t("proposals.addOns.addCustom")}</button>
+              </div>
+              <div className="space-y-3">
+                {(proposal.addOnLineItems ?? []).map((line: any) => (
+                  <ProposalAddOnLineEditor key={line.lineItemId} line={line} t={t}
+                    onSave={(values) => updateAddOnLine({ userId: user!._id, sessionToken, proposalId: proposal._id, lineItemId: line.lineItemId, ...values })}
+                    onRemove={() => removeAddOnLine({ userId: user!._id, sessionToken, proposalId: proposal._id, lineItemId: line.lineItemId })} />
+                ))}
+              </div>
+              {(proposal as any).calculatedTotals?.hasUnfinalizedStartingAt && <p className="rounded bg-amber-50 p-2 text-sm text-amber-800">{t("proposals.addOns.finalizeWarning")}</p>}
+            </div>
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
                 {t("proposals.scopeOfWork")}
@@ -1084,7 +1152,10 @@ export function RequestDetailPage() {
                 <div>
                   <p className="text-xs font-medium text-gray-500">{t("proposals.estimatedContractAmount")}</p>
                   <p className="text-gray-900">
-                    {formatProposalAmount(proposal.monthlyPriceCents, proposal.oneTimePriceCents)}
+                    {formatProposalAmount(
+                      (proposal as any).calculatedTotals?.hasMonthlyPricing ? (proposal as any).calculatedTotals.monthlyTotalCents : undefined,
+                      (proposal as any).calculatedTotals?.hasOneTimePricing ? (proposal as any).calculatedTotals.oneTimeTotalCents : undefined
+                    )}
                   </p>
                 </div>
                 <div>
@@ -1117,6 +1188,31 @@ export function RequestDetailPage() {
                   </div>
                 )}
               </div>
+              {(proposal.addOnLineItems?.length ?? 0) > 0 && (
+                <div className="border-t border-gray-200 pt-4">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">{t("proposals.addOns.title")}</p>
+                  <div className="space-y-2">
+                    {proposal.addOnLineItems.map((line: any) => {
+                      const amount = line.pricingMethod === "starting_at"
+                        ? line.finalizedPriceCents
+                        : line.pricingMethod === "per_unit"
+                          ? line.unitPriceCents * line.quantity
+                          : line.unitPriceCents;
+                      return <div key={line.lineItemId} className="flex flex-col gap-1 rounded-md border border-gray-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="font-medium text-gray-900">{line.name}</p>
+                          <p className="text-xs text-gray-500">
+                            {line.sourceType === "request_snapshot" ? t("proposals.addOns.requested") : line.sourceType === "catalog" ? t("proposals.addOns.catalog") : t("proposals.addOns.custom")}
+                            {line.pricingMethod === "per_unit" ? ` · ${line.quantity} × ${formatPrice(line.unitPriceCents)} / ${line.unitLabel}` : ""}
+                            {` · ${line.billingCadence === "monthly" ? t("proposals.addOns.monthly") : t("proposals.addOns.oneTime")}`}
+                          </p>
+                        </div>
+                        <p className="font-semibold text-gray-900">{amount == null ? `${t("addOns.methods.starting_at")} ${formatPrice(line.unitPriceCents)}` : formatPrice(amount)}</p>
+                      </div>;
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
             {proposal.status === "accepted" && proposal.proposalResponseNote && (
               <div className="rounded-md border border-green-200 bg-green-50 p-3">
@@ -1578,7 +1674,7 @@ export function RequestDetailPage() {
               </div>
             )}
             <div className="flex gap-2 flex-wrap">
-              {(proposal.status === "draft" || proposal.status === "sent") && (
+              {proposal.status === "draft" && (
                 <button
                   onClick={() => setEditingProposal(true)}
                   className="btn-secondary text-sm"
@@ -1610,6 +1706,9 @@ export function RequestDetailPage() {
               )}
               {proposal.status === "sent" && (
                 <>
+                  <button onClick={handleReturnToDraft} disabled={proposalActionLoading === "draft"} className="btn-secondary flex items-center gap-2 text-sm">
+                    <RotateCcw className="w-4 h-4" />{t("proposals.addOns.returnToDraft")}
+                  </button>
                   <AsyncButton
                     onClick={handleSendProposalEmail}
                     pending={proposalActionLoading === "email"}
