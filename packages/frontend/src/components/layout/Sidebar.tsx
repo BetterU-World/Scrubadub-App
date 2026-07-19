@@ -9,7 +9,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { clsx } from "clsx";
 import { useTranslation } from "react-i18next";
-import { adminSection, getNavSectionsForRole } from "./navigation";
+import { adminSection, getNavSectionsForRole, isNavItemActive } from "./navigation";
 
 const SECTIONS_STORAGE_KEY = "scrubadub.sidebar.sections";
 const DEFAULT_SECTIONS: Record<string, boolean> = { "nav.dashboard": true };
@@ -126,15 +126,13 @@ export function Sidebar({ mobileOpen = false, onMobileClose, triggerRef }: Sideb
             onToggle={() => toggleSection(section.titleKey)}
           >
             {section.items.map((item) => {
-              const isActive =
-                item.href === "/"
-                  ? location === "/"
-                  : location.startsWith(item.href);
+              const isActive = isNavItemActive(item, location);
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   onClick={handleNavClick}
+                  aria-current={isActive ? "page" : undefined}
                   className={clsx(
                     "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150",
                     isActive
@@ -156,15 +154,13 @@ export function Sidebar({ mobileOpen = false, onMobileClose, triggerRef }: Sideb
             onToggle={() => toggleSection(adminSection.titleKey)}
           >
             {adminSection.items.map((item) => {
-              const isActive =
-                item.href === "/admin"
-                  ? location === "/admin"
-                  : location.startsWith(item.href);
+              const isActive = isNavItemActive(item, location);
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   onClick={handleNavClick}
+                  aria-current={isActive ? "page" : undefined}
                   className={clsx(
                     "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150",
                     isActive

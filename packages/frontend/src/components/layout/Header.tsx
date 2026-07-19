@@ -1,5 +1,4 @@
 import { Menu, LogOut } from "lucide-react";
-import { RefObject } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { NotificationBell } from "@/components/shared/NotificationBell";
@@ -7,12 +6,11 @@ import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 import { useTranslation } from "react-i18next";
 
 interface HeaderProps {
-  onMenuToggle?: () => void;
-  menuButtonRef?: RefObject<HTMLButtonElement>;
+  onMenuToggle?: (trigger: HTMLButtonElement) => void;
   menuOpen?: boolean;
 }
 
-export function Header({ onMenuToggle, menuButtonRef, menuOpen = false }: HeaderProps) {
+export function Header({ onMenuToggle, menuOpen = false }: HeaderProps) {
   const { user, signOut } = useAuth();
   const { t } = useTranslation();
 
@@ -20,9 +18,8 @@ export function Header({ onMenuToggle, menuButtonRef, menuOpen = false }: Header
     <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between md:px-6">
       <div className="flex items-center gap-3">
         <button
-          ref={menuButtonRef}
           type="button"
-          onClick={onMenuToggle}
+          onClick={(event) => onMenuToggle?.(event.currentTarget)}
           aria-label={menuOpen ? t("nav.closeNavigation") : t("nav.openNavigation")}
           aria-expanded={menuOpen}
           aria-controls="mobile-navigation"
