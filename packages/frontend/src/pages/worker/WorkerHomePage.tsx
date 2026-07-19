@@ -77,12 +77,12 @@ function SectionHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 mb-3">
+    <div className="flex flex-col items-start gap-2 mb-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
       <div className="flex items-center gap-2 min-w-0">
         <div className="p-2 rounded-lg bg-gray-100 text-gray-600">
           <Icon className="w-4 h-4" />
         </div>
-        <h2 className="font-semibold text-gray-900 truncate">{title}</h2>
+        <h2 className="font-semibold text-gray-900 break-words">{title}</h2>
       </div>
       {action}
     </div>
@@ -91,7 +91,7 @@ function SectionHeader({
 
 function SectionLink({ href, children }: SectionLinkProps) {
   return (
-    <Link href={href} className="text-sm font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1 flex-shrink-0">
+    <Link href={href} className="touch-target -ml-3 inline-flex items-center gap-1 px-3 text-sm font-medium text-primary-600 hover:text-primary-700 sm:ml-0">
       {children}
       <ChevronRight className="w-4 h-4" />
     </Link>
@@ -104,10 +104,10 @@ function EmptySummary({ children }: { children: React.ReactNode }) {
 
 function JobRow({ job }: { job: WorkerJob }) {
   return (
-    <Link href={`/jobs/${job._id}`} className="block rounded-lg border border-gray-100 bg-gray-50 px-3 py-3 hover:bg-gray-100 transition-colors">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="font-medium text-gray-900 truncate">{job.propertyName ?? "Job"}</p>
+    <Link href={`/jobs/${job._id}`} className="touch-target block rounded-lg border border-gray-100 bg-gray-50 px-3 py-3 hover:bg-gray-100 transition-colors">
+      <div className="flex flex-col items-start gap-2 sm:flex-row sm:justify-between sm:gap-3">
+        <div className="min-w-0 w-full">
+          <p className="font-medium text-gray-900 break-words">{job.propertyName ?? "Job"}</p>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
             <span className="flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5" />
@@ -120,9 +120,9 @@ function JobRow({ job }: { job: WorkerJob }) {
               </span>
             )}
             {job.propertyAddress && (
-              <span className="flex items-center gap-1 min-w-0">
+              <span className="flex min-w-0 items-start gap-1">
                 <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
-                <span className="truncate">{job.propertyAddress}</span>
+                <span className="break-words">{job.propertyAddress}</span>
               </span>
             )}
           </div>
@@ -130,7 +130,7 @@ function JobRow({ job }: { job: WorkerJob }) {
             <p className="text-xs text-blue-600 mt-1">Team: {job.assignedTeamName}</p>
           )}
         </div>
-        <StatusBadge status={job.status as any} />
+        <div className="flex-shrink-0"><StatusBadge status={job.status as any} /></div>
       </div>
     </Link>
   );
@@ -385,7 +385,7 @@ function QuickActionsSection() {
       <SectionHeader icon={ChevronRight} title="Quick Actions" />
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {actions.map((action) => (
-          <Link key={action.href} href={action.href} className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+          <Link key={action.href} href={action.href} className="touch-target flex items-center gap-2 rounded-lg border border-gray-200 px-3 text-sm font-medium text-gray-700 hover:bg-gray-50">
             <action.icon className="w-4 h-4 text-gray-400" />
             {action.label}
           </Link>

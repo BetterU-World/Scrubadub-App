@@ -188,23 +188,23 @@ export function AvailabilityPage() {
           {days.map((row) => (
             <div
               key={row.dayOfWeek}
-              className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50"
+              className="flex flex-col items-stretch gap-3 rounded-lg p-3 hover:bg-gray-50 sm:flex-row sm:items-center sm:p-2"
             >
-              <label className="flex items-center gap-2 w-28 cursor-pointer">
+              <label className="touch-target flex cursor-pointer items-center gap-2 sm:w-28">
                 <input
                   type="checkbox"
                   checked={row.enabled}
                   onChange={(e) =>
                     updateDay(row.dayOfWeek, { enabled: e.target.checked })
                   }
-                  className="w-4 h-4 text-primary-600 rounded border-gray-300"
+                  className="h-5 w-5 text-primary-600 rounded border-gray-300"
                 />
                 <span className="text-sm font-medium text-gray-700">
                   {DAY_NAMES[row.dayOfWeek]}
                 </span>
               </label>
               {row.enabled ? (
-                <div className="flex items-center gap-2 flex-1">
+                <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 flex-1">
                   <input
                     type="time"
                     value={minutesToTime(row.startMinutes)}
@@ -213,7 +213,7 @@ export function AvailabilityPage() {
                         startMinutes: timeToMinutes(e.target.value),
                       })
                     }
-                    className="input-field text-sm w-28"
+                    className="input-field min-w-0 w-full text-sm"
                   />
                   <span className="text-xs text-gray-400">to</span>
                   <input
@@ -224,7 +224,7 @@ export function AvailabilityPage() {
                         endMinutes: timeToMinutes(e.target.value),
                       })
                     }
-                    className="input-field text-sm w-28"
+                    className="input-field min-w-0 w-full text-sm"
                   />
                 </div>
               ) : (
@@ -240,7 +240,7 @@ export function AvailabilityPage() {
           <button
             onClick={handleSaveWeekly}
             disabled={savingWeekly}
-            className="btn-primary flex items-center gap-2"
+            className="btn-primary touch-target flex w-full items-center justify-center gap-2 sm:w-auto"
           >
             {savingWeekly && <LoadingSpinner size="sm" />}
             {savingWeekly ? "Saving..." : "Save Schedule"}
@@ -276,12 +276,12 @@ export function AvailabilityPage() {
 
         {selectedDate && selectedDateInfo && (
           <div className="p-3 bg-gray-50 rounded-lg space-y-3">
-            <div className="text-sm">
+            <div className="flex flex-col gap-1 text-sm sm:block">
               <span className="font-medium text-gray-700">
                 {selectedDateInfo.dayName}
               </span>
-              <span className="text-gray-400 ml-2">{selectedDate}</span>
-              <span className="ml-3 text-xs">
+              <span className="text-gray-400 sm:ml-2">{selectedDate}</span>
+              <span className="text-xs sm:ml-3">
                 {selectedDateInfo.hasOverride ? (
                   selectedDateInfo.isUnavailable ? (
                     <span className="text-red-600 font-medium">
@@ -299,7 +299,7 @@ export function AvailabilityPage() {
                 )}
               </span>
             </div>
-            <div className="flex gap-2">
+            <div className="grid gap-2 sm:grid-cols-2">
               <button
                 onClick={() => handleSetOverride(selectedDate, true)}
                 disabled={
@@ -307,7 +307,7 @@ export function AvailabilityPage() {
                   (selectedDateInfo.hasOverride &&
                     selectedDateInfo.isUnavailable)
                 }
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                className={`touch-target px-3 rounded-lg text-xs font-medium transition-colors ${
                   selectedDateInfo.hasOverride && selectedDateInfo.isUnavailable
                     ? "bg-red-200 text-red-800 cursor-default"
                     : "bg-red-100 text-red-700 hover:bg-red-200"
@@ -324,7 +324,7 @@ export function AvailabilityPage() {
                   (selectedDateInfo.hasOverride &&
                     !selectedDateInfo.isUnavailable)
                 }
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                className={`touch-target px-3 rounded-lg text-xs font-medium transition-colors ${
                   selectedDateInfo.hasOverride && !selectedDateInfo.isUnavailable
                     ? "bg-green-200 text-green-800 cursor-default"
                     : "bg-green-100 text-green-700 hover:bg-green-200"
@@ -355,13 +355,13 @@ export function AvailabilityPage() {
               return (
                 <div
                   key={o.date}
-                  className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50"
+                  className="flex flex-col items-start gap-2 p-3 rounded-lg hover:bg-gray-50 sm:flex-row sm:items-center sm:justify-between sm:p-2"
                 >
                   <div className="text-sm">
                     <span className="font-medium text-gray-700">{dayName}</span>
                     <span className="text-gray-400 ml-2">{o.date}</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
                     <span
                       className={`px-2 py-1 rounded text-xs font-medium ${
                         o.unavailable
@@ -377,7 +377,7 @@ export function AvailabilityPage() {
                           handleSetOverride(o.date, !o.unavailable)
                         }
                         disabled={isSaving}
-                        className="px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+                        className="touch-target rounded bg-gray-100 px-3 text-xs font-medium text-gray-600 hover:bg-gray-200 transition-colors"
                       >
                         {isSaving ? "..." : "Toggle"}
                       </button>

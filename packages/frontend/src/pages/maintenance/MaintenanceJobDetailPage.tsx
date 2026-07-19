@@ -91,7 +91,7 @@ export function MaintenanceJobDetailPage() {
 
       <div className="space-y-4">
         <div className="card space-y-4">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={job.status} />
             <span className="text-sm text-gray-500 capitalize">Maintenance</span>
             {hasArrived && (
@@ -102,15 +102,16 @@ export function MaintenanceJobDetailPage() {
           </div>
 
           <div className="space-y-2 text-sm text-gray-600">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-gray-400" /> {job.scheduledDate}
+            <div className="flex min-w-0 items-start gap-2">
+              <Calendar className="w-4 h-4 flex-shrink-0 text-gray-400" /> <span className="break-words">{job.scheduledDate}
               {job.startTime && ` at ${job.startTime}`}
+              </span>
             </div>
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-gray-400" /> {job.durationMinutes} minutes
+            <div className="flex min-w-0 items-start gap-2">
+              <Clock className="w-4 h-4 flex-shrink-0 text-gray-400" /> <span>{job.durationMinutes} minutes</span>
             </div>
-            <div className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-gray-400" /> {job.property?.address ?? (job as any).propertySnapshot?.address}
+            <div className="flex min-w-0 items-start gap-2">
+              <MapPin className="w-4 h-4 flex-shrink-0 text-gray-400" /> <span className="break-words">{job.property?.address ?? (job as any).propertySnapshot?.address}</span>
             </div>
           </div>
 
@@ -119,11 +120,11 @@ export function MaintenanceJobDetailPage() {
               <p className="text-sm font-medium text-yellow-800 flex items-center gap-1">
                 <Key className="w-4 h-4" /> Access Instructions
               </p>
-              <p className="text-sm text-yellow-700 mt-1">{job.property?.accessInstructions ?? (job as any).propertySnapshot?.accessInstructions}</p>
+              <p className="break-words text-sm text-yellow-700 mt-1">{job.property?.accessInstructions ?? (job as any).propertySnapshot?.accessInstructions}</p>
             </div>
           )}
 
-          {job.notes && <p className="text-sm text-gray-600 border-t pt-3">{job.notes}</p>}
+          {job.notes && <p className="break-words whitespace-pre-wrap text-sm text-gray-600 border-t pt-3">{job.notes}</p>}
         </div>
 
         <AddOnSnapshotList items={(job as any).requiredAddOns} audience="worker" />
@@ -151,7 +152,7 @@ export function MaintenanceJobDetailPage() {
 
         <div className="card space-y-3">
           {canAccept && (
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
               <AsyncButton
                 pending={accepting}
                 pendingLabel={t("jobs.accepting")}
@@ -167,13 +168,13 @@ export function MaintenanceJobDetailPage() {
                     setAccepting(false);
                   }
                 }}
-                className="btn-primary flex-1 flex items-center justify-center gap-2"
+                className="btn-primary touch-target flex-1 flex items-center justify-center gap-2"
               >
                 <CheckCircle aria-hidden="true" className="w-4 h-4" /> Accept Job
               </AsyncButton>
               <button
                 onClick={() => setShowDeny(true)}
-                className="btn-danger flex items-center justify-center gap-2"
+                className="btn-danger touch-target flex items-center justify-center gap-2"
               >
                 <XCircle className="w-4 h-4" /> Deny
               </button>
