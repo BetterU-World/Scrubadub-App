@@ -6,6 +6,7 @@ import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import {
   UserPlus,
   Copy,
@@ -87,9 +88,9 @@ export function AffiliateInvitesPage() {
           description='Click "Invite Affiliate" to get started.'
         />
       ) : (
-        <div className="card overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
+        <div className="card overflow-hidden">
+          <table className="block w-full text-sm sm:table">
+            <thead className="hidden sm:table-header-group">
               <tr className="border-b border-gray-200">
                 <th className="text-left py-3 px-3 font-medium text-gray-500">
                   Name
@@ -111,7 +112,7 @@ export function AffiliateInvitesPage() {
                 </th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="block space-y-3 sm:table-row-group sm:space-y-0">
               {affiliates.map((a) => (
                 <AffiliateRow
                   key={a._id}
@@ -159,6 +160,7 @@ function AffiliateRow({
     api.mutations.affiliateInvites.revokeAffiliateInvite
   );
   const [busy, setBusy] = useState<string | null>(null);
+  const [confirmRevoke, setConfirmRevoke] = useState(false);
   const [toast, setToast] = useSimpleFeedbackState();
 
   const displayStatus = deriveStatus(
@@ -210,12 +212,20 @@ function AffiliateRow({
   );
 
   return (
-    <tr className="border-b border-gray-100 last:border-0">
-      <td className="py-3 px-3 font-medium text-gray-900">
+    <>
+    <tr
+      aria-label={`${affiliate.name}, ${affiliate.email}`}
+      className="block rounded-lg border border-gray-200 p-4 sm:table-row sm:rounded-none sm:border-0 sm:border-b sm:border-gray-100 sm:p-0 sm:last:border-0"
+    >
+      <td className="block min-w-0 p-0 font-medium text-gray-900 sm:table-cell sm:px-3 sm:py-3">
         {affiliate.name}
       </td>
-      <td className="py-3 px-3 text-gray-600">{affiliate.email}</td>
-      <td className="py-3 px-3">
+      <td className="block min-w-0 break-all p-0 pt-1 text-gray-600 sm:table-cell sm:break-normal sm:px-3 sm:py-3">
+        <span className="mr-1 text-xs font-medium text-gray-400 sm:hidden">Email:</span>
+        {affiliate.email}
+      </td>
+      <td className="block p-0 pt-3 sm:table-cell sm:px-3 sm:py-3">
+        <span className="mr-1 text-xs font-medium text-gray-400 sm:hidden">Status:</span>
         <span
           className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${cfg.className}`}
         >
@@ -227,41 +237,63 @@ function AffiliateRow({
           </span>
         )}
       </td>
-      <td className="py-3 px-3 text-gray-600 font-mono text-xs">
+      <td className="block p-0 pt-2 font-mono text-xs text-gray-600 sm:table-cell sm:px-3 sm:py-3">
+        <span className="mr-1 font-sans font-medium text-gray-400 sm:hidden">Referral code:</span>
         {affiliate.referralCode ?? "—"}
       </td>
-      <td className="py-3 px-3 text-gray-500 text-xs">{createdDate}</td>
-      <td className="py-3 px-3">
-        <div className="flex items-center justify-end gap-1.5">
+      <td className="block p-0 pt-2 text-xs text-gray-500 sm:table-cell sm:px-3 sm:py-3">
+        <span className="mr-1 font-medium text-gray-400 sm:hidden">Created:</span>
+        {createdDate}
+      </td>
+      <td className="mt-3 block border-t border-gray-100 p-0 pt-3 sm:table-cell sm:border-0 sm:px-3 sm:py-3 sm:mt-0">
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end sm:gap-1.5">
 
           {/* Resend: available for pending or expired */}
           {(displayStatus === "pending" || displayStatus === "expired") && (
             <button
               onClick={handleResend}
               disabled={busy !== null}
-              className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-gray-100 rounded-lg disabled:opacity-50"
+              className="touch-target gap-2 rounded-lg px-3 text-sm font-medium text-primary-600 hover:bg-gray-100 hover:text-primary-700 disabled:opacity-50 sm:px-0 sm:text-gray-400"
               title="Resend invite"
+              aria-label={`Resend invite to ${affiliate.email}`}
             >
               <RefreshCw
                 className={`w-4 h-4 ${busy === "resend" ? "animate-spin" : ""}`}
               />
+              <span className="sm:sr-only">Resend invite</span>
             </button>
           )}
 
           {/* Revoke: available for pending or active */}
           {(displayStatus === "pending" || displayStatus === "active") && (
             <button
-              onClick={handleRevoke}
+              onClick={() => setConfirmRevoke(true)}
               disabled={busy !== null}
-              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-gray-100 rounded-lg disabled:opacity-50"
+              className="touch-target gap-2 rounded-lg px-3 text-sm font-medium text-red-600 hover:bg-red-50 hover:text-red-700 disabled:opacity-50 sm:px-0 sm:text-gray-400"
               title="Revoke"
+              aria-label={`Revoke affiliate invitation for ${affiliate.email}`}
             >
               <XCircle className="w-4 h-4" />
+              <span className="sm:sr-only">Revoke</span>
             </button>
           )}
         </div>
       </td>
     </tr>
+    <ConfirmDialog
+      open={confirmRevoke}
+      onOpenChange={setConfirmRevoke}
+      title={`Revoke ${affiliate.name}?`}
+      description={`This will revoke affiliate access for ${affiliate.email}.`}
+      confirmLabel="Revoke"
+      confirmVariant="danger"
+      onConfirm={async () => {
+        await handleRevoke();
+        setConfirmRevoke(false);
+      }}
+      loading={busy === "revoke"}
+    />
+    </>
   );
 }
 
