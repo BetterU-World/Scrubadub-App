@@ -1,8 +1,10 @@
 import { useEffect } from "react";
 import { useParams } from "wouter";
 import { useQuery } from "convex/react";
+import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { formatPublicAddOnPrice } from "@/lib/publicAddOnPresentation";
 import {
   MapPin,
   Mail,
@@ -96,9 +98,19 @@ interface ReviewData {
   createdAt: number;
 }
 
+interface PublicAddOnData {
+  addOnId: string;
+  name: string;
+  description: string | null;
+  pricingMethod: "flat" | "starting_at" | "per_unit";
+  priceCents: number;
+  unitLabel: string | null;
+}
+
 // ── Page component ───────────────────────────────────────────────────
 
 export function PublicSitePage() {
+  const { t, i18n } = useTranslation();
   const params = useParams<{ slug: string }>();
   const slug = params.slug ?? "";
 
@@ -111,6 +123,11 @@ export function PublicSitePage() {
     api.queries.companySites.getReviewedFeedbackBySlug,
     slug ? { slug, limit: 6 } : "skip"
   );
+
+  const addOns = useQuery(
+    (api as any).queries.companyAddOns.listPublic,
+    slug ? { slug } : "skip"
+  ) as PublicAddOnData[] | undefined;
 
   // Set SEO tags when site data loads
   usePageMeta(
@@ -223,6 +240,13 @@ export function PublicSitePage() {
         services={site.services}
         requestHref={requestHref}
         isDark={isDark}
+      />
+
+      <AddOnsSection
+        addOns={addOns ?? []}
+        isDark={isDark}
+        locale={i18n.resolvedLanguage ?? i18n.language}
+        t={t}
       />
 
       {/* ── How it works ───────────────────────────────────────── */}
@@ -544,6 +568,66 @@ function ServicesSection({
             </div>
           ))}
         </div>
+      </div>
+    </section>
+  );
+}
+
+function AddOnsSection({
+  addOns,
+  isDark,
+  locale,
+  t,
+}: {
+  addOns: PublicAddOnData[];
+  isDark: boolean;
+  locale: string;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}) {
+  if (addOns.length === 0) return null;
+
+  const priceLabel = (addOn: PublicAddOnData) => formatPublicAddOnPrice(addOn, locale, {
+    startingAt: (price) => t("publicSite.addOns.startingAt", { price }),
+    perUnit: (price, unit) => t("publicSite.addOns.perUnit", { price, unit }),
+  });
+
+  return (
+    <section className={`py-16 sm:py-20 ${isDark ? "bg-gray-900" : "bg-gray-50"}`}>
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <div className="mb-10 text-center">
+          <h2 className={`mb-3 text-3xl font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
+            {t("publicSite.addOns.title")}
+          </h2>
+          <p className={isDark ? "text-gray-400" : "text-gray-500"}>
+            {t("publicSite.addOns.description")}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {addOns.map((addOn) => (
+            <article
+              key={addOn.addOnId}
+              className={`rounded-xl border p-6 ${
+                isDark ? "border-gray-700 bg-gray-950" : "border-gray-200 bg-white"
+              }`}
+            >
+              <h3 className={`font-semibold ${isDark ? "text-white" : "text-gray-900"}`}>
+                {addOn.name}
+              </h3>
+              {addOn.description && (
+                <p className={`mt-2 text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                  {addOn.description}
+                </p>
+              )}
+              <p className="mt-4 font-semibold text-primary-500">{priceLabel(addOn)}</p>
+            </article>
+          ))}
+        </div>
+        {addOns.some((addOn) => addOn.pricingMethod !== "flat") && (
+          <p className={`mt-6 text-center text-xs ${isDark ? "text-gray-500" : "text-gray-400"}`}>
+            {t("publicSite.addOns.pricingBasisNote")}
+          </p>
+        )}
       </div>
     </section>
   );
