@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { TableScrollRegion } from "@/components/ui/TableScrollRegion";
 import { BarChart3, ChevronUp, ChevronDown, Trophy } from "lucide-react";
 
 type SortKey =
@@ -98,6 +99,11 @@ export function PerformancePage() {
     );
   };
 
+  const ariaSort = (column: SortKey) => {
+    if (sortKey !== column) return "none" as const;
+    return sortDir === "asc" ? ("ascending" as const) : ("descending" as const);
+  };
+
   return (
     <div>
       <PageHeader
@@ -113,55 +119,80 @@ export function PerformancePage() {
         />
       ) : (
         <div className="card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <TableScrollRegion label={t("performance.title")}>
+            <table className="w-full min-w-[860px]">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">
+                  <th scope="col" className="text-left py-3 px-4 text-sm font-medium text-gray-500">
                     {t("performance.rank")}
                   </th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">
+                  <th scope="col" className="text-left py-3 px-4 text-sm font-medium text-gray-500">
                     {t("performance.cleanerCol")}
                   </th>
                   <th
-                    className="text-left py-3 px-4 text-sm font-medium text-gray-500 cursor-pointer select-none hover:text-gray-700"
-                    onClick={() => handleSort("totalJobs")}
+                    scope="col"
+                    aria-sort={ariaSort("totalJobs")}
+                    className="px-4 text-left text-sm font-medium text-gray-500"
                   >
-                    <span className="inline-flex items-center gap-1">
+                    <button
+                      type="button"
+                      className="touch-target gap-1 text-left hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+                      onClick={() => handleSort("totalJobs")}
+                    >
                       {t("performance.jobsDone")} <SortIcon column="totalJobs" />
-                    </span>
+                    </button>
                   </th>
                   <th
-                    className="text-left py-3 px-4 text-sm font-medium text-gray-500 cursor-pointer select-none hover:text-gray-700"
-                    onClick={() => handleSort("averageScore")}
+                    scope="col"
+                    aria-sort={ariaSort("averageScore")}
+                    className="px-4 text-left text-sm font-medium text-gray-500"
                   >
-                    <span className="inline-flex items-center gap-1">
+                    <button
+                      type="button"
+                      className="touch-target gap-1 text-left hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+                      onClick={() => handleSort("averageScore")}
+                    >
                       {t("performance.avgScore")} <SortIcon column="averageScore" />
-                    </span>
+                    </button>
                   </th>
                   <th
-                    className="text-left py-3 px-4 text-sm font-medium text-gray-500 cursor-pointer select-none hover:text-gray-700"
-                    onClick={() => handleSort("averageTimeMinutes")}
+                    scope="col"
+                    aria-sort={ariaSort("averageTimeMinutes")}
+                    className="px-4 text-left text-sm font-medium text-gray-500"
                   >
-                    <span className="inline-flex items-center gap-1">
+                    <button
+                      type="button"
+                      className="touch-target gap-1 text-left hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+                      onClick={() => handleSort("averageTimeMinutes")}
+                    >
                       {t("performance.avgTime")} <SortIcon column="averageTimeMinutes" />
-                    </span>
+                    </button>
                   </th>
                   <th
-                    className="text-left py-3 px-4 text-sm font-medium text-gray-500 cursor-pointer select-none hover:text-gray-700"
-                    onClick={() => handleSort("consistencyScore")}
+                    scope="col"
+                    aria-sort={ariaSort("consistencyScore")}
+                    className="px-4 text-left text-sm font-medium text-gray-500"
                   >
-                    <span className="inline-flex items-center gap-1">
+                    <button
+                      type="button"
+                      className="touch-target gap-1 text-left hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+                      onClick={() => handleSort("consistencyScore")}
+                    >
                       {t("performance.consistency")} <SortIcon column="consistencyScore" />
-                    </span>
+                    </button>
                   </th>
                   <th
-                    className="text-left py-3 px-4 text-sm font-medium text-gray-500 cursor-pointer select-none hover:text-gray-700"
-                    onClick={() => handleSort("redFlagCount")}
+                    scope="col"
+                    aria-sort={ariaSort("redFlagCount")}
+                    className="px-4 text-left text-sm font-medium text-gray-500"
                   >
-                    <span className="inline-flex items-center gap-1">
+                    <button
+                      type="button"
+                      className="touch-target gap-1 text-left hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+                      onClick={() => handleSort("redFlagCount")}
+                    >
                       {t("performance.redFlagsCol")} <SortIcon column="redFlagCount" />
-                    </span>
+                    </button>
                   </th>
                 </tr>
               </thead>
@@ -182,27 +213,27 @@ export function PerformancePage() {
                       key={entry.cleanerId}
                       className={`border-b border-gray-100 last:border-0 ${rowHighlight}`}
                     >
-                      <td className="py-3 px-4 text-sm">
+                      <td className="py-3 px-4 text-sm whitespace-nowrap">
                         <RankCell rank={rank} />
                       </td>
                       <td className="py-3 px-4 text-sm font-medium text-gray-900">
                         {entry.cleanerName}
                       </td>
-                      <td className="py-3 px-4 text-sm text-gray-700">
+                      <td className="py-3 px-4 text-sm text-gray-700 whitespace-nowrap">
                         {entry.totalJobs}
                       </td>
-                      <td className="py-3 px-4 text-sm">
+                      <td className="py-3 px-4 text-sm whitespace-nowrap">
                         <ScoreBadge score={entry.averageScore} />
                       </td>
-                      <td className="py-3 px-4 text-sm text-gray-700">
+                      <td className="py-3 px-4 text-sm text-gray-700 whitespace-nowrap">
                         {entry.averageTimeMinutes > 0
                           ? t("performance.minSuffix", { count: entry.averageTimeMinutes })
                           : "--"}
                       </td>
-                      <td className="py-3 px-4 text-sm text-gray-700">
+                      <td className="py-3 px-4 text-sm text-gray-700 whitespace-nowrap">
                         {entry.totalJobs > 0 ? `${entry.consistencyScore}%` : "--"}
                       </td>
-                      <td className="py-3 px-4 text-sm">
+                      <td className="py-3 px-4 text-sm whitespace-nowrap">
                         {entry.redFlagCount > 0 ? (
                           <span className="badge bg-red-100 text-red-800">
                             {entry.redFlagCount}
@@ -216,7 +247,7 @@ export function PerformancePage() {
                 })}
               </tbody>
             </table>
-          </div>
+          </TableScrollRegion>
         </div>
       )}
     </div>

@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { TableScrollRegion } from "@/components/ui/TableScrollRegion";
 import { Building2, CalendarDays, ClipboardCheck, MapPin } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { clsx } from "clsx";
@@ -73,29 +74,29 @@ export function CommercialAccountListPage() {
         />
       ) : (
         <div className="card overflow-hidden">
-          <div className="overflow-x-auto">
+          <TableScrollRegion label={t("commercialAccounts.title")}>
             <table className="w-full min-w-[920px]">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                  <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                     {t("commercialAccounts.clientName")}
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                  <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                     {t("commercialAccounts.contractAmount")}
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                  <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                     {t("commercialAccounts.frequency")}
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                  <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                     {t("commercialAccounts.status")}
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                  <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                     {t("commercialAccounts.dates")}
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                  <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                     {t("commercialAccounts.assignment")}
                   </th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
+                  <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                     {t("commercialAccounts.source")}
                   </th>
                 </tr>
@@ -110,12 +111,12 @@ export function CommercialAccountListPage() {
                       >
                         {account.clientName}
                       </Link>
-                      <div className="mt-1 flex items-center gap-1 text-xs text-gray-500">
-                        <MapPin className="h-3.5 w-3.5" />
-                        <span>{account.serviceAddress || t("commercialAccounts.noServiceAddress")}</span>
+                      <div className="mt-1 flex items-start gap-1 text-xs text-gray-500">
+                        <MapPin className="h-3.5 w-3.5 shrink-0" />
+                        <span className="break-words">{account.serviceAddress || t("commercialAccounts.noServiceAddress")}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
+                    <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
                       {formatPrice(account.contractAmountCents, notSet)}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-700">
@@ -123,12 +124,12 @@ export function CommercialAccountListPage() {
                         ? t(`leadFrequencies.${account.serviceFrequency}`)
                         : t("common.unassigned")}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <span className="badge bg-gray-100 text-gray-700 capitalize">
                         {t(`commercialAccounts.statuses.${account.status}`)}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">
+                    <td className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap">
                       <div className="flex items-center gap-1">
                         <CalendarDays className="h-3.5 w-3.5 text-gray-400" />
                         <span>{formatDate(account.startDate, notSet)}</span>
@@ -149,10 +150,12 @@ export function CommercialAccountListPage() {
                       {account.sourceLead ? (
                         <Link
                           href={`/requests/${account.sourceLead._id}`}
-                          className="inline-flex items-center gap-1 text-primary-600 hover:text-primary-700"
+                          className="inline-flex items-start gap-1 text-primary-600 hover:text-primary-700"
                         >
-                          <ClipboardCheck className="h-3.5 w-3.5" />
-                          {account.sourceProposal?.title ?? account.sourceLead.businessName ?? account.sourceLead.requesterName}
+                          <ClipboardCheck className="h-3.5 w-3.5 shrink-0" />
+                          <span className="break-words">
+                            {account.sourceProposal?.title ?? account.sourceLead.businessName ?? account.sourceLead.requesterName}
+                          </span>
                         </Link>
                       ) : (
                         <span className="text-gray-400">{t("common.unavailable")}</span>
@@ -162,7 +165,7 @@ export function CommercialAccountListPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </TableScrollRegion>
         </div>
       )}
     </div>
