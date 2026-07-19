@@ -7,8 +7,8 @@ import { getActiveTeamIdsForUser } from "../lib/teams";
 import { operationalAddOnSnapshots } from "../lib/acceptedProposalAddOnSnapshots";
 
 function workerSafeJob(job: any) {
-  const { acceptedProposalAddOnSnapshots, sourceProposalId: _sourceProposalId, ...safe } = job;
-  return { ...safe, requiredAddOns: operationalAddOnSnapshots(acceptedProposalAddOnSnapshots) };
+  const { acceptedProposalAddOnSnapshots, requiredAddOnSnapshots, sourceProposalId: _sourceProposalId, ...safe } = job;
+  return { ...safe, requiredAddOns: requiredAddOnSnapshots ?? operationalAddOnSnapshots(acceptedProposalAddOnSnapshots) };
 }
 
 // Hard cap for company-scoped job queries

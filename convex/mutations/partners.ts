@@ -5,6 +5,7 @@ import { logAudit, createNotification } from "../lib/helpers";
 import { requireActiveSubscription } from "../lib/subscriptionGating";
 import { requireOwnerSession } from "../lib/sessionAuth";
 import { resolveOperationalEmailIdentity } from "../lib/operationalEmailIdentity";
+import { operationalAddOnSnapshots, sanitizedSharedJobAddOns } from "../lib/acceptedProposalAddOnSnapshots";
 
 // ── Partner Contacts ──────────────────────────────────────────────
 
@@ -471,6 +472,7 @@ export const shareJob = mutation({
       trashCanCount: property?.trashCanCount,
       restroomCount: property?.restroomCount,
     };
+    const operationalAddOns = job.requiredAddOnSnapshots ?? operationalAddOnSnapshots(job.acceptedProposalAddOnSnapshots);
 
     // Create the copied job in the target company (no propertyId — snapshot only)
     const copiedJobId = await ctx.db.insert("jobs", {
@@ -487,6 +489,7 @@ export const shareJob = mutation({
       reworkCount: 0,
       sharedFromJobId: args.jobId,
       sharedFromCompanyName: fromCompany?.name ?? "Partner",
+      requiredAddOnSnapshots: operationalAddOns.length ? sanitizedSharedJobAddOns(operationalAddOns) : undefined,
       propertySnapshot,
     });
 

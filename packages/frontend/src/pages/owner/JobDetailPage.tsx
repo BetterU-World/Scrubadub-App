@@ -285,7 +285,11 @@ export function JobDetailPage() {
           {job.notes && <p className="text-sm text-gray-600 border-t pt-3">{job.notes}</p>}
         </div>
 
-        <AddOnSnapshotList items={(job as any).acceptedProposalAddOnSnapshots} audience="owner" showPricing />
+        <AddOnSnapshotList
+          items={(job as any).acceptedProposalAddOnSnapshots ?? (job as any).requiredAddOnSnapshots}
+          audience="owner"
+          showPricing={Boolean((job as any).acceptedProposalAddOnSnapshots)}
+        />
 
         <JobTimeline job={job as any} />
         <JobTimingPanel job={job as any} userId={user?._id as any} controls={job.status === "in_progress" && job.assignedManagerId === user?._id} ownerMode />

@@ -7,6 +7,7 @@ import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
 import { Link } from "wouter";
+import { AddOnSnapshotList } from "@/components/AddOnSnapshotList";
 
 type ToastType = "success" | "error";
 type ScheduleStatus = "active" | "paused" | "ended";
@@ -29,6 +30,7 @@ const EMPTY_FORM = {
   assignedManagerId: "",
   assignedTeamId: "",
   notes: "",
+  addOnApplicability: {} as Record<string, "every_job" | "first_job">,
 };
 
 const EMPTY_GENERATE_FORM = {
@@ -68,6 +70,7 @@ export function CommercialScheduleCard({
   defaultCleanerId,
   defaultManagerId,
   defaultTeamId,
+  proposalAddOnLines = [],
   onToast,
 }: {
   commercialAccountId: Id<"commercialAccounts">;
@@ -77,6 +80,7 @@ export function CommercialScheduleCard({
   defaultCleanerId?: Id<"users">;
   defaultManagerId?: Id<"users">;
   defaultTeamId?: Id<"teams">;
+  proposalAddOnLines?: Array<{ lineItemId: string; name: string; quantity?: number; unitLabel?: string }>;
   onToast?: (message: string, type: ToastType) => void;
 }) {
   const { user, sessionToken } = useAuth();
@@ -191,6 +195,7 @@ export function CommercialScheduleCard({
       assignedManagerId: schedule.assignedManagerId ?? "",
       assignedTeamId: schedule.assignedTeamId ?? "",
       notes: schedule.notes ?? "",
+      addOnApplicability: {},
     });
     setEditingId(schedule._id);
     setShowForm(true);
@@ -210,6 +215,7 @@ export function CommercialScheduleCard({
     assignedManagerId: (form.assignedManagerId || undefined) as any,
     assignedTeamId: (form.assignedTeamId || undefined) as any,
     notes: form.notes || undefined,
+    addOnSelections: Object.entries(form.addOnApplicability).map(([sourceProposalLineItemId, executionApplicability]) => ({ sourceProposalLineItemId, executionApplicability })),
   });
 
   const handleSave = async () => {
@@ -539,6 +545,29 @@ export function CommercialScheduleCard({
             />
           </label>
 
+          {proposalAddOnLines.length > 0 && (!editingId || !schedules.find((item: any) => item._id === editingId)?.acceptedProposalAddOnSnapshots) && (
+            <fieldset className="space-y-2 rounded-lg border border-gray-200 bg-white p-3">
+              <legend className="px-1 text-sm font-semibold text-gray-900">{t("commercialSchedules.addOnsTitle")}</legend>
+              <p className="text-xs text-gray-600">{t("commercialSchedules.addOnsHelper")}</p>
+              {proposalAddOnLines.map((line) => {
+                const applicability = form.addOnApplicability[line.lineItemId];
+                return <div key={line.lineItemId} className="grid gap-2 rounded-md border border-gray-100 p-3 sm:grid-cols-[1fr_auto] sm:items-center">
+                  <label className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                    <input type="checkbox" checked={Boolean(applicability)} onChange={(event) => setForm({ ...form, addOnApplicability: event.target.checked ? { ...form.addOnApplicability, [line.lineItemId]: "every_job" } : Object.fromEntries(Object.entries(form.addOnApplicability).filter(([id]) => id !== line.lineItemId)) as any })} />
+                    {line.name}
+                  </label>
+                  {applicability && <label className="text-xs font-medium text-gray-600">
+                    <span className="sr-only">{t("commercialSchedules.executionApplicability", { name: line.name })}</span>
+                    <select className="input-field" value={applicability} onChange={(event) => setForm({ ...form, addOnApplicability: { ...form.addOnApplicability, [line.lineItemId]: event.target.value as "every_job" | "first_job" } })}>
+                      <option value="every_job">{t("addOnPropagation.every_job")}</option>
+                      <option value="first_job">{t("addOnPropagation.first_job")}</option>
+                    </select>
+                  </label>}
+                </div>;
+              })}
+            </fieldset>
+          )}
+
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -630,6 +659,13 @@ export function CommercialScheduleCard({
               {schedule.notes && (
                 <p className="mt-3 whitespace-pre-wrap text-sm text-gray-600">{schedule.notes}</p>
               )}
+              <div className="mt-3">
+                <AddOnSnapshotList
+                  items={schedule.acceptedProposalAddOnSnapshots?.map((item: any) => ({ ...item, executionRequirement: item.executionApplicability }))}
+                  audience="owner"
+                  showPricing
+                />
+              </div>
               <div className="mt-4 flex flex-wrap gap-2">
                 <button
                   type="button"

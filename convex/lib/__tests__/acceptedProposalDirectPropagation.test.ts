@@ -98,7 +98,7 @@ describe("accepted proposal direct propagation", () => {
 
   it("never exposes economic or trace fields in operational projections", () => {
     const projected = operationalAddOnSnapshots([{ snapshotId: "s", sourceProposalId: "p", sourceProposalLineItemId: "l", originalSourceType: "catalog", sourceCompanyAddOnId: "c", name: "Windows", pricingMethod: "flat", unitPriceCents: 1000, lineTotalCents: 1000, billingCadence: "one_time" }] as any);
-    expect(projected).toEqual([{ snapshotId: "s", name: "Windows", quantity: undefined, unitLabel: undefined }]);
+    expect(projected).toEqual([{ snapshotId: "s", name: "Windows", quantity: undefined, unitLabel: undefined, executionRequirement: undefined }]);
     expect(JSON.stringify(projected)).not.toMatch(/price|source/i);
   });
 
@@ -115,8 +115,8 @@ describe("accepted proposal direct propagation", () => {
     expect(component).toContain("aria-labelledby");
     expect(component).toContain("sm:flex-row");
     expect(jobs).toContain("copyAcceptedProposalAddOnSnapshots");
-    expect(schedules).not.toContain("acceptedProposalAddOnSnapshots");
-    expect(partners).not.toContain("acceptedProposalAddOnSnapshots");
+    expect(schedules).toContain("acceptedProposalAddOnSnapshots");
+    expect(partners).toContain("sanitizedSharedJobAddOns");
     const deliveryProjection = delivery.slice(delivery.indexOf("committedAddOns:"), delivery.indexOf("})),", delivery.indexOf("committedAddOns:")));
     expect(deliveryProjection).not.toMatch(/sourceProposal|sourceCompany|sourceClient/);
     expect(email).toContain("args.agreement.committedAddOns.map");
