@@ -1323,6 +1323,22 @@ export default defineSchema({
     issueDate: v.string(),
     dueDate: v.string(),
     subtotalCents: v.number(),
+    baseSubtotalCents: v.optional(v.number()),
+    addOnSubtotalCents: v.optional(v.number()),
+    sourceProposalId: v.optional(v.id("proposals")),
+    addOnLineItems: v.optional(v.array(v.object({
+      snapshotId: v.string(),
+      sourceProposalId: v.id("proposals"),
+      sourceProposalLineItemId: v.string(),
+      name: v.string(),
+      pricingMethod: v.union(v.literal("flat"), v.literal("starting_at"), v.literal("per_unit")),
+      unitPriceCents: v.number(),
+      unitLabel: v.optional(v.string()),
+      quantity: v.optional(v.number()),
+      finalizedPriceCents: v.optional(v.number()),
+      billingCadence: v.union(v.literal("one_time"), v.literal("monthly")),
+      lineTotalCents: v.number(),
+    }))),
     taxCents: v.number(),
     totalCents: v.number(),
     jobIds: v.array(v.id("jobs")),
@@ -1332,6 +1348,9 @@ export default defineSchema({
     issuedAt: v.optional(v.number()),
     paidAt: v.optional(v.number()),
     voidedAt: v.optional(v.number()),
+    sentAt: v.optional(v.number()),
+    stripeCheckoutSessionId: v.optional(v.string()),
+    stripePaymentIntentId: v.optional(v.string()),
   })
     .index("by_company", ["companyId"])
     .index("by_companyId_clientRelationshipId_updatedAt", ["companyId", "clientRelationshipId", "updatedAt"])

@@ -210,6 +210,10 @@ const stripeWebhook = httpAction(async (ctx, request) => {
             },
           );
         }
+        if (meta.type === "commercial_invoice_payment" && meta.invoiceId && session.payment_status === "paid") {
+          const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : (session.payment_intent as any)?.id ?? undefined;
+          await ctx.runMutation((internal as any).invoiceDeliveryInternal.markPaidFromCheckout, { invoiceId: meta.invoiceId as any, stripeCheckoutSessionId: session.id, stripePaymentIntentId: paymentIntentId });
+        }
         break;
       }
       case "account.updated": {
