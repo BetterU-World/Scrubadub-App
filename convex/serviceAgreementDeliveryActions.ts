@@ -31,11 +31,6 @@ export const sendServiceAgreement = action({
 
     const next = `/client/service-agreements/${args.agreementId}`;
     const viewUrl = `${appUrl()}/client/login?next=${encodeURIComponent(next)}`;
-    const result = await ctx.runMutation(
-      (internal as any).serviceAgreementDeliveryInternal.markAgreementSent,
-      ownerArgs
-    );
-
     const sent = await sendServiceAgreementEmail({
       email,
       viewUrl,
@@ -50,8 +45,13 @@ export const sendServiceAgreement = action({
     });
 
     if (!sent) {
-      throw new Error("Agreement was prepared, but the email could not be sent. Please try again.");
+      throw new Error("The agreement email could not be sent. Please try again.");
     }
+
+    const result = await ctx.runMutation(
+      (internal as any).serviceAgreementDeliveryInternal.markAgreementSent,
+      ownerArgs
+    );
 
     return { success: true, sentAt: result.sentAt };
   },

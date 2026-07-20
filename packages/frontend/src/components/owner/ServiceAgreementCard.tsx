@@ -301,7 +301,10 @@ export function ServiceAgreementCard({
       }
       showToast(t(`serviceAgreements.${action}Success`), "success");
     } catch (err: any) {
-      showToast(err.message || t("serviceAgreements.actionFailed"), "error");
+      const message = err.message?.includes("client email")
+        ? t("serviceAgreements.recipientEmailRequired")
+        : err.message || t("serviceAgreements.actionFailed");
+      showToast(message, "error");
     } finally {
       setActionLoading(null);
     }
