@@ -62,13 +62,12 @@ export const getAgreementForOwnerDelivery = internalQuery({
     if (!relationship || relationship.companyId !== agreement.companyId) {
       throw new Error("Client relationship required before sending");
     }
-    if (!relationship.clientUserId) {
-      throw new Error("Client must have SCRUB client access before sending");
-    }
 
     const recipientEmail = relationship.email ?? request?.requesterEmail ?? null;
-    const clientUser = await ctx.db.get(relationship.clientUserId);
     if (!recipientEmail) throw new Error("Add a client email before sending");
+    const clientUser = relationship.clientUserId
+      ? await ctx.db.get(relationship.clientUserId)
+      : null;
 
     return {
       recipientEmail,
