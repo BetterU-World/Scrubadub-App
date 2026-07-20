@@ -1,24 +1,28 @@
-import { useState, useRef, useEffect, useCallback } from "react";
 import { Link } from "wouter";
 import {
-  CheckCircle,
-  Award,
+  ArrowRight,
+  BarChart3,
+  BriefcaseBusiness,
   Building2,
-  Eye,
-  AlertTriangle,
-  MessageSquare,
-  EyeOff,
-  Home,
-  Users,
-  ShieldCheck,
-  Globe,
-  Inbox,
-  BookOpen,
+  CheckCircle,
+  ChevronRight,
+  CircleDollarSign,
   ClipboardCheck,
-  Play,
-  X,
-  RotateCcw,
-  Upload,
+  FileCheck2,
+  FileText,
+  Globe2,
+  Home,
+  Inbox,
+  Laptop,
+  Menu,
+  MessageSquareText,
+  MonitorSmartphone,
+  ShieldCheck,
+  Smartphone,
+  Sparkles,
+  UserCheck,
+  Users,
+  Wrench,
 } from "lucide-react";
 
 const plans = [
@@ -60,8 +64,7 @@ const plans = [
     price: "$149.99",
     period: "/mo",
     planKey: "pro",
-    description:
-      "For cleaning business owners and property managers running real operations.",
+    description: "For cleaning business owners and property managers running real operations.",
     features: [
       "Unlimited cleaners",
       "Unlimited properties",
@@ -78,444 +81,375 @@ const plans = [
   },
 ];
 
-const valueProps = [
+const lifecycle = [
+  { label: "Capture", detail: "Leads & requests", icon: Inbox },
+  { label: "Scope", detail: "Walkthroughs", icon: ClipboardCheck },
+  { label: "Win", detail: "Proposals & agreements", icon: FileCheck2 },
+  { label: "Schedule", detail: "Recurring services", icon: Sparkles },
+  { label: "Deliver", detail: "Jobs & field teams", icon: Users },
+  { label: "Get paid", detail: "Payments & invoices", icon: CircleDollarSign },
+  { label: "Improve", detail: "Reporting & insights", icon: BarChart3 },
+];
+
+const platformDepth = [
+  { icon: Globe2, title: "Win work online", copy: "Company microsites and service requests bring new opportunities directly into your operation." },
+  { icon: FileText, title: "Keep documents organized", copy: "Manage onboarding, company documents, manuals, and service agreements alongside the work." },
+  { icon: CircleDollarSign, title: "Keep money moving", copy: "Track client payments, cleaner payments, partner settlements, and commercial invoices." },
+  { icon: BarChart3, title: "Know what needs attention", copy: "Use reporting, performance insights, inspections, photo proof, and issue escalation to protect quality." },
+  { icon: Globe2, title: "Work in English or Spanish", copy: "Give teams consistent operational guidance in the language that works for them." },
+  { icon: Sparkles, title: "Reduce repetitive coordination", copy: "Recurring schedules, reminders, and workflow automation keep routine work moving." },
+];
+
+const faqs = [
   {
-    icon: Award,
-    title: "Gold Standard Operations",
-    description:
-      "Standardized workflows, inspections, and maintenance tracking — with every property set up for operational readiness from day one.",
+    question: "Is SCRUB only scheduling software?",
+    answer: "No. Scheduling is one part of SCRUB. The platform also supports leads and requests, walkthroughs, proposals, service agreements, recurring work, job delivery, client and worker experiences, payments, documents, and reporting.",
   },
   {
-    icon: Building2,
-    title: "Built for Real Cleaning Businesses",
-    description:
-      "Manage teams, properties, turnovers, and issues — from amenities and access instructions to linens and supplies — without spreadsheets or group chats.",
+    question: "What types of cleaning businesses is SCRUB built for?",
+    answer: "SCRUB is purpose-built for residential and maid-service businesses, commercial and janitorial companies, and short-term-rental or turnover operations.",
   },
   {
-    icon: Globe,
-    title: "Bilingual by Default",
-    description:
-      "Run your entire operation in English and Spanish — every workflow, checklist, and notification in the language that works best.",
+    question: "Does SCRUB support commercial cleaning?",
+    answer: "Yes. SCRUB includes commercial accounts, recurring commercial schedules, service relationships, invoicing, reporting, and operational oversight.",
   },
   {
-    icon: Eye,
-    title: "Owner-Level Visibility",
-    description:
-      "Know what's done, what needs attention, and who completed every job — instantly.",
+    question: "What can clients do in the client portal?",
+    answer: "Clients can review their service relationship, see upcoming and recurring services, manage requests, review proposals and agreements, and view payment information available to them.",
   },
   {
-    icon: Inbox,
-    title: "Client Requests & Booking",
-    description:
-      "Let clients submit requests and funnel new work directly into your operation.",
+    question: "What do cleaners and maintenance workers see?",
+    answer: "Workers receive a role-appropriate mobile dashboard with assigned work, job details, availability, documents, onboarding items, manuals, payments, and relevant maintenance workflows.",
   },
   {
-    icon: BookOpen,
-    title: "Built-In Training & SOPs",
-    description:
-      "Keep your team aligned with built-in Gold Standard manuals and workflows.",
+    question: "Can I use SCRUB from my phone?",
+    answer: "Yes. SCRUB is responsive across owner, client, and worker experiences, so the business can keep moving at the desk, in the truck, or at the job site. SCRUB is a web application and does not require a native mobile app.",
   },
   {
-    icon: Upload,
-    title: "Switch Without Rebuilding",
-    description:
-      "Import your properties in seconds via CSV. No need to rebuild your portfolio manually — get your entire operation running fast.",
+    question: "Does SCRUB support English and Spanish?",
+    answer: "Yes. SCRUB supports English and Spanish across operational workflows, helping owners and field teams work with consistent information.",
+  },
+  {
+    question: "Can I import existing business information?",
+    answer: "SCRUB supports CSV property imports so you can bring existing property information into the platform without rebuilding every record manually.",
+  },
+  {
+    question: "How do proposals and service agreements work?",
+    answer: "Owners can prepare and send professional proposals, capture the client's response, and send service agreements for signing as work moves toward active service.",
+  },
+  {
+    question: "Which plan is right for my company?",
+    answer: "Solo is designed for an owner completing their own cleans, Team supports up to five cleaners, and Pro supports unlimited cleaners plus advanced operational capabilities. Review the plan details below before starting your trial.",
+  },
+  {
+    question: "What happens during and after the free trial?",
+    answer: "Each plan includes a 14-day free trial with no charge today. The selected monthly subscription continues after the trial unless it is canceled.",
+  },
+  {
+    question: "How is account access protected?",
+    answer: "SCRUB uses protected account access and role-specific experiences for owners, clients, and workers, with dedicated invitation and sign-in flows for the people connected to your business.",
   },
 ];
 
-const problems = [
-  {
-    icon: AlertTriangle,
-    text: "Missed cleans and last-minute surprises",
-  },
-  {
-    icon: MessageSquare,
-    text: "Endless texts, calls, and group chats",
-  },
-  {
-    icon: EyeOff,
-    text: "No visibility into what was actually completed",
-  },
-  {
-    icon: RotateCcw,
-    text: "Rebuilding your property list every time you switch tools",
-  },
-];
-
-const steps = [
-  {
-    num: "1",
-    icon: Home,
-    title: "Set Up Your Properties",
-    description:
-      "Import via CSV or add manually — amenities, access instructions, linens, and supplies are captured upfront.",
-  },
-  {
-    num: "2",
-    icon: Users,
-    title: "Assign Your Team",
-    description: "Cleaners and maintenance receive clear job workflows.",
-  },
-  {
-    num: "3",
-    icon: ClipboardCheck,
-    title: "Verify the Work",
-    description:
-      "Photo-verified checklists confirm every job meets the Gold Standard.",
-  },
-  {
-    num: "4",
-    icon: ShieldCheck,
-    title: "Stay in Control",
-    description:
-      "Track progress, catch issues, and keep your operation running tight.",
-  },
-];
-
-const VIDEO_SRC = "/videos/Scrub_Owner_Dashboard_User_Guide.mp4";
-
-function VideoModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  const handleClose = useCallback(() => {
-    if (videoRef.current) {
-      videoRef.current.pause();
-      videoRef.current.currentTime = 0;
-    }
-    onClose();
-  }, [onClose]);
-
-  useEffect(() => {
-    if (!open) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handleClose();
-    };
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, [open, handleClose]);
-
-  if (!open) return null;
-
+function SectionHeading({ eyebrow, title, copy, centered = false }: { eyebrow: string; title: string; copy?: string; centered?: boolean }) {
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
-      onClick={handleClose}
-    >
-      <div
-        className="relative w-full max-w-4xl rounded-xl overflow-hidden bg-black shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          onClick={handleClose}
-          className="absolute top-3 right-3 z-10 p-1.5 rounded-full bg-black/50 text-white hover:bg-black/70 transition"
-          aria-label="Close video"
-        >
-          <X className="w-5 h-5" />
-        </button>
-        <video
-          ref={videoRef}
-          src={VIDEO_SRC}
-          controls
-          autoPlay
-          className="w-full aspect-video"
-        />
-      </div>
+    <div className={centered ? "mx-auto max-w-2xl text-center" : "max-w-2xl"}>
+      <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary-600">{eyebrow}</p>
+      <h2 className="mt-3 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">{title}</h2>
+      {copy && <p className="mt-4 text-base leading-7 text-gray-600 sm:text-lg">{copy}</p>}
     </div>
   );
 }
 
+function AnchorLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return <a href={href} className="touch-target inline-flex items-center justify-center text-sm font-medium text-gray-600 transition hover:text-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2">{children}</a>;
+}
+
 export function LandingPage() {
-  const [videoOpen, setVideoOpen] = useState(false);
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Nav */}
-      <nav className="bg-white border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-          <span className="flex items-center gap-2">
-            <img src="/logo-icon.png" alt="SCRUB" className="w-7 h-7" />
+    <div className="min-h-screen overflow-x-hidden bg-white text-gray-900">
+      <header className="sticky top-0 z-40 border-b border-gray-200/80 bg-white/95 backdrop-blur">
+        <nav aria-label="Main navigation" className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6">
+          <a href="#top" aria-label="SCRUB home" className="touch-target flex items-center gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">
+            <img src="/logo-icon.png" alt="" className="h-8 w-8" />
             <img src="/logo-word.png" alt="SCRUB" className="h-7 w-auto" />
-          </span>
-          <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="btn-secondary px-4 py-1.5 text-sm"
-            >
-              Login
-            </Link>
-            <Link
-              href="/get-started"
-              className="btn-primary px-4 py-1.5 text-sm"
-            >
-              Get Started
-            </Link>
+          </a>
+          <div className="hidden items-center gap-6 md:flex">
+            <AnchorLink href="#platform">Platform</AnchorLink>
+            <AnchorLink href="#solutions">Solutions</AnchorLink>
+            <AnchorLink href="#pricing">Pricing</AnchorLink>
+            <AnchorLink href="#faq">FAQ</AnchorLink>
           </div>
-        </div>
-      </nav>
-
-      {/* Hero */}
-      <section className="py-16 sm:py-24 text-center px-4">
-        <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 max-w-2xl mx-auto leading-tight">
-          Manage your cleaning operations all in one place.
-        </h1>
-        <p className="mt-4 text-lg text-gray-500 max-w-xl mx-auto">
-          The gold standard operations system for cleaning companies and short-term rental teams.
-        </p>
-        <div className="mt-8 flex justify-center gap-3">
-          <Link href="/get-started" className="btn-primary px-6 py-2.5">
-            Get Started
-          </Link>
-          <Link href="/login" className="btn-secondary px-6 py-2.5">
-            Sign In
-          </Link>
-        </div>
-
-        {/* Video Preview */}
-        <div className="mt-12 max-w-3xl mx-auto">
-          <button
-            onClick={() => setVideoOpen(true)}
-            className="group relative w-full rounded-xl overflow-hidden shadow-lg border border-gray-200 bg-gray-900 aspect-video cursor-pointer transition hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
-            aria-label="Watch product demo"
-          >
-            <video
-              src={VIDEO_SRC}
-              muted
-              playsInline
-              preload="metadata"
-              poster="/images/scrub-demo-poster.png"
-              className="w-full h-full object-cover opacity-80 group-hover:opacity-90 transition-opacity"
-            />
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <div className="flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/90 shadow-lg group-hover:scale-105 transition-transform">
-                <Play className="w-7 h-7 sm:w-9 sm:h-9 text-primary-600 ml-1" />
+          <div className="flex items-center gap-2">
+            <Link href="/login" className="touch-target hidden items-center px-3 text-sm font-medium text-gray-600 hover:text-primary-700 sm:inline-flex">Log in</Link>
+            <Link href="/get-started" className="btn-primary touch-target whitespace-nowrap px-4 text-sm">Start free</Link>
+            <details className="relative md:hidden">
+              <summary aria-label="Open navigation menu" className="touch-target flex cursor-pointer list-none items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-700 [&::-webkit-details-marker]:hidden">
+                <Menu className="h-5 w-5" aria-hidden="true" />
+              </summary>
+              <div className="absolute right-0 top-12 w-52 rounded-xl border border-gray-200 bg-white p-2 shadow-xl">
+                <a href="#platform" className="touch-target flex items-center rounded-lg px-3 text-sm font-medium text-gray-700 hover:bg-gray-50">Platform</a>
+                <a href="#solutions" className="touch-target flex items-center rounded-lg px-3 text-sm font-medium text-gray-700 hover:bg-gray-50">Solutions</a>
+                <a href="#pricing" className="touch-target flex items-center rounded-lg px-3 text-sm font-medium text-gray-700 hover:bg-gray-50">Pricing</a>
+                <a href="#faq" className="touch-target flex items-center rounded-lg px-3 text-sm font-medium text-gray-700 hover:bg-gray-50">FAQ</a>
+                <Link href="/login" className="touch-target flex items-center rounded-lg px-3 text-sm font-medium text-gray-700 hover:bg-gray-50 sm:hidden">Log in</Link>
               </div>
-              <span className="mt-3 text-sm font-medium text-white bg-black/40 px-3 py-1 rounded-full">
-                Watch Demo
-              </span>
-            </div>
-          </button>
-        </div>
-      </section>
-
-      <VideoModal open={videoOpen} onClose={() => setVideoOpen(false)} />
-
-      {/* Problem */}
-      <section className="pb-16 px-4">
-        <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">
-          Running cleaning operations shouldn't feel chaotic.
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
-          {problems.map((p) => (
-            <div key={p.text} className="card text-center">
-              <div className="inline-flex p-2 rounded-lg bg-red-100 text-red-600 mb-3">
-                <p.icon className="w-5 h-5" />
-              </div>
-              <p className="text-sm font-medium text-gray-700">{p.text}</p>
-            </div>
-          ))}
-        </div>
-        <p className="mt-8 text-gray-500 text-center max-w-2xl mx-auto">
-          SCRUB replaces scattered communication, manual property rebuilds,
-          and guesswork with one operational system built for cleaning
-          businesses and short-term rental operators.
-        </p>
-      </section>
-
-      {/* Why Scrubadub */}
-      <section className="pb-16 px-4">
-        <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">
-          Why SCRUB?
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {valueProps.map((vp) => (
-            <div key={vp.title} className="card text-center">
-              <div className="inline-flex p-2 rounded-lg bg-primary-100 text-primary-600 mb-3">
-                <vp.icon className="w-5 h-5" />
-              </div>
-              <h3 className="font-semibold text-gray-900">{vp.title}</h3>
-              <p className="text-sm text-gray-500 mt-2">{vp.description}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Explanation */}
-      <section className="pb-16 px-4 text-center max-w-2xl mx-auto">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">
-          One Platform. Total Control.
-        </h2>
-        <p className="text-gray-500">
-          Import your properties. Configure property setup details. Schedule
-          work, track performance, and train your team — all from one
-          operational system built on the Gold Standard.
-        </p>
-      </section>
-
-      {/* How It Works */}
-      <section className="pb-16 px-4">
-        <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">
-          How It Works
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
-          {steps.map((s) => (
-            <div key={s.num} className="card text-center">
-              <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary-600 text-white text-sm font-bold mb-3">
-                {s.num}
-              </div>
-              <div className="inline-flex p-2 rounded-lg bg-primary-100 text-primary-600 mb-3 ml-2">
-                <s.icon className="w-5 h-5" />
-              </div>
-              <h3 className="font-semibold text-gray-900">{s.title}</h3>
-              <p className="text-sm text-gray-500 mt-2">{s.description}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Who It's For */}
-      <section className="pb-16 px-4">
-        <h2 className="text-2xl font-bold text-gray-900 text-center mb-2">
-          Who SCRUB Is Built For
-        </h2>
-        <p className="text-center text-sm text-gray-500 mb-8 max-w-xl mx-auto">
-          SCRUB works best for cleaning operations that manage real teams, real
-          properties, and real accountability.
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
-          <div className="card">
-            <h3 className="font-semibold text-gray-900 mb-2">
-              Cleaning Companies
-            </h3>
-            <ul className="space-y-1.5 text-sm text-gray-500">
-              <li>Manage teams across multiple properties</li>
-              <li>Standardize training and inspections</li>
-              <li>Track job quality with photo verification</li>
-            </ul>
+            </details>
           </div>
-          <div className="card">
-            <h3 className="font-semibold text-gray-900 mb-2">
-              Short-Term Rental Operators
-            </h3>
-            <ul className="space-y-1.5 text-sm text-gray-500">
-              <li>Import your portfolio and get operational fast</li>
-              <li>Coordinate turnovers with full property context</li>
-              <li>Catch issues before the next booking</li>
-            </ul>
-          </div>
-          <div className="card">
-            <h3 className="font-semibold text-gray-900 mb-2">
-              Growing Cleaning Teams
-            </h3>
-            <ul className="space-y-1.5 text-sm text-gray-500">
-              <li>Replace spreadsheets and group chats</li>
-              <li>Keep cleaners accountable and organized</li>
-              <li>Run operations from one platform</li>
-            </ul>
-          </div>
-        </div>
-      </section>
+        </nav>
+      </header>
 
-      {/* Pricing */}
-      <section className="pb-16 px-4">
-        <h2 className="text-2xl font-bold text-gray-900 text-center mb-2">
-          Simple, Transparent Pricing
-        </h2>
-        <p className="text-center text-sm text-gray-500 mb-8">
-          Built for real cleaning operations, not basic scheduling.
-        </p>
-        <div className="max-w-5xl mx-auto grid grid-cols-1 sm:grid-cols-3 gap-6">
-          {plans.map((p) => (
-            <div
-              key={p.planKey}
-              className={`card flex flex-col ${p.popular ? "ring-2 ring-primary-500 relative" : ""}`}
-            >
-              {p.popular && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
-                  Most Popular
-                </span>
-              )}
-              <h3 className="text-lg font-semibold text-gray-900">
-                {p.name}
-              </h3>
-              <p className="text-sm text-gray-500 mt-1">{p.description}</p>
-              <div className="mt-4">
-                <span className="text-3xl font-bold text-gray-900">
-                  {p.price}
-                </span>
-                <span className="text-gray-500">{p.period}</span>
+      <main id="top">
+        <section className="relative px-4 py-16 sm:px-6 sm:py-24 lg:py-28">
+          <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[1.05fr_.95fr]">
+            <div>
+              <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary-200 bg-primary-50 px-3 py-1.5 text-sm font-semibold text-primary-700">
+                <Sparkles className="h-4 w-4" aria-hidden="true" />
+                Purpose-built for cleaning businesses
+              </p>
+              <h1 className="max-w-3xl text-4xl font-bold leading-[1.08] tracking-tight text-gray-900 sm:text-5xl lg:text-6xl">
+                The operating system for modern cleaning businesses.
+              </h1>
+              <p className="mt-6 text-xl font-semibold text-primary-700 sm:text-2xl">Everything your cleaning business needs. Nothing it doesn&apos;t.</p>
+              <p className="mt-4 max-w-2xl text-base leading-7 text-gray-600 sm:text-lg">
+                Connect sales, recurring service, field teams, clients, payments, and reporting in one cleaning-specific platform—without holding every detail together yourself.
+              </p>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <Link href="/get-started" className="btn-primary touch-target inline-flex w-full items-center justify-center gap-2 px-6 sm:w-auto">
+                  Start 14 days free <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+                <a href="#platform" className="btn-secondary touch-target inline-flex w-full items-center justify-center gap-2 px-6 sm:w-auto">
+                  See how SCRUB works <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                </a>
               </div>
-              <div className="mt-3 mb-1 px-3 py-2 bg-green-50 border border-green-200 rounded-lg text-center">
-                <p className="text-sm font-semibold text-gray-800">
-                  <span className="text-green-600">50</span>% OFF first{" "}
-                  <span className="text-green-600">3</span> months
-                </p>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Use code <span className="font-mono font-semibold text-gray-700">50OFF3</span> at checkout
-                </p>
-              </div>
-              <ul className="mt-4 space-y-2 flex-1">
-                {p.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-gray-600">
-                    <CheckCircle className="w-4 h-4 text-primary-500 mt-0.5 flex-shrink-0" />
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <Link
-                href={`/get-started?plan=${p.planKey}`}
-                className="btn-primary w-full text-center mt-6"
-              >
-                Get Started
-              </Link>
+              <p className="mt-3 text-sm text-gray-500">No charge today. Choose the plan that fits your operation.</p>
             </div>
-          ))}
-        </div>
-      </section>
 
-      {/* Social Proof */}
-      <section className="pb-16 px-4 text-center max-w-2xl mx-auto">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">
-          Built From Real Cleaning Operations
-        </h2>
-        <p className="text-gray-500">
-          SCRUB wasn't designed in a boardroom. It was built alongside
-          real cleaning teams solving real operational problems — from property
-          setup and turnovers to inspections, maintenance coordination, and
-          team accountability.
-        </p>
-      </section>
+            <div aria-label="SCRUB connects your cleaning business from first request through reporting" className="rounded-3xl border border-gray-200 bg-gray-50 p-4 shadow-xl shadow-gray-200/60 sm:p-6">
+              <div className="rounded-2xl bg-gray-900 p-5 text-white sm:p-6">
+                <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-300">Your operation</p>
+                    <p className="mt-1 text-lg font-semibold">One connected business</p>
+                  </div>
+                  <MonitorSmartphone className="h-8 w-8 text-primary-300" aria-hidden="true" />
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  {[
+                    [Inbox, "New work", "Leads & requests"],
+                    [FileCheck2, "Sales", "Proposals & agreements"],
+                    [Users, "Service", "Teams & recurring jobs"],
+                    [BarChart3, "Control", "Payments & reporting"],
+                  ].map(([Icon, title, detail]) => {
+                    const TileIcon = Icon as typeof Inbox;
+                    return (
+                      <div key={String(title)} className="rounded-xl border border-white/10 bg-white/5 p-3 sm:p-4">
+                        <TileIcon className="h-5 w-5 text-primary-300" aria-hidden="true" />
+                        <p className="mt-3 text-sm font-semibold">{String(title)}</p>
+                        <p className="mt-1 text-xs leading-5 text-gray-300">{String(detail)}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
-      {/* Final CTA */}
-      <section className="pb-16 px-4 text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">
-          Ready to run your operations the Gold Standard way?
-        </h2>
-        <div className="flex justify-center gap-3">
-          <Link href="/get-started" className="btn-primary px-6 py-2.5">
-            Get Started
-          </Link>
-          <Link href="/login" className="btn-secondary px-6 py-2.5">
-            Sign In
-          </Link>
-        </div>
-      </section>
+        <section aria-label="Product credibility" className="border-y border-gray-200 bg-gray-50 px-4 py-8 sm:px-6">
+          <div className="mx-auto flex max-w-5xl flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
+            <div className="rounded-full bg-primary-100 p-3 text-primary-700"><BriefcaseBusiness className="h-6 w-6" aria-hidden="true" /></div>
+            <div>
+              <p className="font-semibold text-gray-900">Built from real cleaning operations—not adapted from generic field-service software.</p>
+              <p className="mt-1 text-sm leading-6 text-gray-600">SCRUB brings the people, documents, client relationships, and daily work of a cleaning company into one purpose-built system.</p>
+            </div>
+          </div>
+        </section>
 
-      {/* SEO Footer Links */}
-      <section className="border-t border-gray-200 bg-white py-8 px-4">
-        <div className="max-w-5xl mx-auto text-center">
-          <p className="text-xs text-gray-400 mb-3">Learn more about SCRUB</p>
-          <nav className="flex flex-wrap justify-center gap-4 text-xs text-gray-500">
-            <Link href="/cleaning-business-software" className="hover:text-gray-700">Cleaning Business Software</Link>
-            <Link href="/airbnb-cleaning-software" className="hover:text-gray-700">Airbnb Cleaning Software</Link>
-            <Link href="/cleaning-company-management-software" className="hover:text-gray-700">Cleaning Company Management Software</Link>
-            <Link href="/cleaning-checklist-app" className="hover:text-gray-700">Cleaning Checklist App</Link>
-            <Link href="/janitorial-software" className="hover:text-gray-700">Janitorial Software</Link>
-            <Link href="/maid-service-software" className="hover:text-gray-700">Maid Service Software</Link>
-            <Link href="/commercial-cleaning-software" className="hover:text-gray-700">Commercial Cleaning Software</Link>
-            <Link href="/house-cleaning-business-software" className="hover:text-gray-700">House Cleaning Business Software</Link>
-          </nav>
+        <section id="platform" className="scroll-mt-20 px-4 py-20 sm:px-6 sm:py-24">
+          <div className="mx-auto max-w-6xl">
+            <SectionHeading centered eyebrow="The connected lifecycle" title="From first request to repeatable service" copy="SCRUB keeps the business context moving as your team turns an opportunity into ongoing work. Each stage stays clear without pretending the important decisions happen automatically." />
+            <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-7">
+              {lifecycle.map((step, index) => (
+                <li key={step.label} className="relative rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-100 text-primary-700"><step.icon className="h-5 w-5" aria-hidden="true" /></span>
+                    <span className="text-xs font-bold text-gray-300">{String(index + 1).padStart(2, "0")}</span>
+                  </div>
+                  <h3 className="mt-4 font-semibold text-gray-900">{step.label}</h3>
+                  <p className="mt-1 text-sm leading-5 text-gray-500">{step.detail}</p>
+                </li>
+              ))}
+            </ol>
+            <p className="mx-auto mt-8 max-w-3xl text-center text-base leading-7 text-gray-600">
+              Capture leads and requests, scope the work through walkthroughs, send proposals and agreements, build recurring schedules, equip the team, keep clients informed, and review the results.
+            </p>
+          </div>
+        </section>
+
+        <section className="bg-gray-50 px-4 py-20 sm:px-6 sm:py-24">
+          <div className="mx-auto max-w-6xl space-y-16 lg:space-y-24">
+            <div className="grid items-center gap-10 lg:grid-cols-2">
+              <div>
+                <SectionHeading eyebrow="For owners" title="Control without carrying every detail yourself" copy="See new requests, active work, recurring operations, clients, teams, issues, payments, and performance from the same system. Respond to what needs attention without rebuilding the story from messages and spreadsheets." />
+                <ul className="mt-6 space-y-3 text-sm text-gray-700">
+                  {["Manage leads, clients, commercial accounts, and active work", "Coordinate schedules, teams, maintenance, and exceptions", "Review performance and keep the business moving from your phone"].map((item) => <li key={item} className="flex gap-3"><CheckCircle className="mt-0.5 h-5 w-5 flex-none text-primary-600" aria-hidden="true" /><span>{item}</span></li>)}
+                </ul>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2" aria-label="Owner platform capabilities">
+                <RoleCard icon={Inbox} title="Know what is new" copy="Requests, walkthroughs, proposals, and client activity stay visible." />
+                <RoleCard icon={Wrench} title="Catch what needs attention" copy="Red flags, maintenance, and operational status help owners act earlier." />
+                <RoleCard icon={Users} title="Coordinate the team" copy="Jobs, availability, assignments, documents, and guidance stay connected." />
+                <RoleCard icon={BarChart3} title="Review the operation" copy="Performance, analytics, payments, and records support better decisions." />
+              </div>
+            </div>
+
+            <div className="grid items-center gap-10 lg:grid-cols-2">
+              <div className="order-2 grid gap-4 sm:grid-cols-2 lg:order-1" aria-label="Client portal capabilities">
+                <RoleCard icon={FileCheck2} title="Review and approve" copy="Professional proposals and service agreements move decisions forward." />
+                <RoleCard icon={Sparkles} title="See ongoing service" copy="Upcoming and recurring work remains easy for clients to understand." />
+                <RoleCard icon={MessageSquareText} title="Make a request" copy="Clients have a clear place to manage service needs and communication." />
+                <RoleCard icon={CircleDollarSign} title="Track payments" copy="Payment and invoice visibility keeps the relationship clear." />
+              </div>
+              <div className="order-1 lg:order-2">
+                <SectionHeading eyebrow="For clients" title="A professional experience before and after the sale" copy="Give every client the confidence and clarity of a larger operation without creating more administrative work. Proposals, agreements, requests, recurring services, and payment visibility live in a dedicated client experience." />
+              </div>
+            </div>
+
+            <div className="grid items-center gap-10 lg:grid-cols-2">
+              <div>
+                <SectionHeading eyebrow="For workers" title="Clear work before arrival, on the job, and when something changes" copy="Workers are more than checklist users. Their mobile experience brings together today's work, job details, availability, documents, onboarding, manuals, payments, and maintenance context." />
+                <ul className="mt-6 space-y-3 text-sm text-gray-700">
+                  {["See assigned work and the details needed to complete it", "Manage availability and required onboarding information", "Use manuals, documents, maintenance workflows, and issue visibility in the field"].map((item) => <li key={item} className="flex gap-3"><CheckCircle className="mt-0.5 h-5 w-5 flex-none text-primary-600" aria-hidden="true" /><span>{item}</span></li>)}
+                </ul>
+              </div>
+              <div className="mx-auto w-full max-w-sm rounded-[2rem] border-8 border-gray-900 bg-white p-3 shadow-xl" aria-label="Worker mobile experience">
+                <div className="rounded-[1.35rem] bg-gray-50 p-4">
+                  <div className="flex items-center justify-between"><div><p className="text-xs text-gray-500">Worker workspace</p><p className="font-semibold text-gray-900">Today&apos;s work</p></div><Smartphone className="h-6 w-6 text-primary-600" aria-hidden="true" /></div>
+                  <div className="mt-4 space-y-3">
+                    {["Job details and instructions", "Availability and schedule", "Documents and onboarding", "Manuals and maintenance"].map((item, index) => <div key={item} className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-100 text-xs font-bold text-primary-700">{index + 1}</span><span className="text-sm font-medium text-gray-700">{item}</span></div>)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="solutions" className="scroll-mt-20 px-4 py-20 sm:px-6 sm:py-24">
+          <div className="mx-auto max-w-6xl">
+            <SectionHeading centered eyebrow="Purpose-built solutions" title="Built around the way cleaning businesses actually operate" copy="Different cleaning models need different operational detail. SCRUB supports each without making one the default identity of the platform." />
+            <div className="mt-12 grid gap-6 lg:grid-cols-3">
+              <SolutionCard icon={Home} title="Residential & maid service" copy="Turn new leads into recurring client relationships with proposals, agreements, team coordination, and client visibility." items={["Leads and recurring clients", "Proposals and service agreements", "Team and client experiences"]} />
+              <SolutionCard icon={Building2} title="Commercial & janitorial" copy="Manage long-running service relationships with dedicated commercial workflows and operational oversight." items={["Commercial accounts", "Recurring schedules and invoicing", "Reporting and service oversight"]} />
+              <SolutionCard icon={Sparkles} title="Short-term rental & turnover" copy="Give field teams the property context they need while keeping fast-moving turnovers and maintenance organized." items={["Detailed property information", "Access, linens, and supplies", "Turnovers and maintenance coordination"]} />
+            </div>
+          </div>
+        </section>
+
+        <section className="border-y border-gray-200 bg-gray-50 px-4 py-20 sm:px-6 sm:py-24">
+          <div className="mx-auto max-w-6xl">
+            <SectionHeading eyebrow="Platform depth" title="The supporting systems are already connected" copy="Once the core operation is clear, SCRUB adds the practical tools that keep standards, people, payments, and growth organized." />
+            <div className="mt-10 grid gap-x-10 gap-y-8 md:grid-cols-2 lg:grid-cols-3">
+              {platformDepth.map((item) => <div key={item.title} className="flex gap-4"><span className="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-white text-primary-700 shadow-sm"><item.icon className="h-5 w-5" aria-hidden="true" /></span><div><h3 className="font-semibold text-gray-900">{item.title}</h3><p className="mt-1 text-sm leading-6 text-gray-600">{item.copy}</p></div></div>)}
+            </div>
+          </div>
+        </section>
+
+        <section className="px-4 py-20 sm:px-6 sm:py-24">
+          <div className="mx-auto grid max-w-6xl items-center gap-10 rounded-3xl bg-gray-900 px-6 py-10 text-white sm:px-10 sm:py-14 lg:grid-cols-[.8fr_1.2fr]">
+            <div className="flex justify-center"><div className="flex h-40 w-40 items-center justify-center rounded-full border border-primary-400/30 bg-primary-400/10"><Laptop className="h-16 w-16 text-primary-300" aria-hidden="true" /><Smartphone className="-ml-3 mt-16 h-12 w-12 text-white" aria-hidden="true" /></div></div>
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary-300">Mobile operation</p>
+              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Built for the desk, the truck, and the job site</h2>
+              <p className="mt-4 text-base leading-7 text-gray-300 sm:text-lg">Owners can manage the business from a phone. Workers can use field workflows where the work happens. Clients can access their relationship from a responsive portal. No one has to wait to get back to a desk.</p>
+            </div>
+          </div>
+        </section>
+
+        <section aria-labelledby="trust-heading" className="bg-primary-50 px-4 py-16 sm:px-6">
+          <div className="mx-auto max-w-6xl">
+            <div className="grid gap-8 md:grid-cols-[.9fr_1.1fr] md:items-center">
+              <div><p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary-700">Professional by design</p><h2 id="trust-heading" className="mt-3 text-3xl font-bold tracking-tight text-gray-900">Clear access. Clear records. Clear relationships.</h2></div>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <TrustItem icon={ShieldCheck} title="Protected access" copy="Dedicated sign-in and invitation flows help connect the right people." />
+                <TrustItem icon={UserCheck} title="Role-based experiences" copy="Owners, clients, and workers see the tools relevant to them." />
+                <TrustItem icon={FileCheck2} title="Professional records" copy="Documents, approvals, service history, and payments stay organized." />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="pricing" className="scroll-mt-20 px-4 py-20 sm:px-6 sm:py-24">
+          <div className="mx-auto max-w-6xl">
+            <SectionHeading centered eyebrow="Pricing" title="Choose the plan that fits your operation" copy="Every plan includes a 14-day free trial. Start with the team size and operational depth your business needs today." />
+            <div className="mt-12 grid gap-6 lg:grid-cols-3">
+              {plans.map((plan) => (
+                <article key={plan.planKey} className={`relative flex flex-col rounded-2xl border bg-white p-6 shadow-sm ${plan.popular ? "border-primary-500 ring-1 ring-primary-500" : "border-gray-200"}`}>
+                  {plan.popular && <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary-600 px-3 py-1 text-xs font-semibold text-white">Most Popular</span>}
+                  <h3 className="text-xl font-semibold text-gray-900">{plan.name}</h3>
+                  <p className="mt-2 min-h-12 text-sm leading-6 text-gray-600">{plan.description}</p>
+                  <p className="mt-5"><span className="text-4xl font-bold text-gray-900">{plan.price}</span><span className="text-gray-500">{plan.period}</span></p>
+                  <div className="mt-4 rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-center"><p className="text-sm font-semibold text-gray-800"><span className="text-green-700">50% OFF</span> first 3 months</p><p className="mt-0.5 text-xs text-gray-500">Use code <span className="font-mono font-semibold text-gray-700">50OFF3</span> at checkout</p></div>
+                  <ul className="mt-6 flex-1 space-y-3">
+                    {plan.features.map((feature) => <li key={feature} className="flex items-start gap-2 text-sm text-gray-600"><CheckCircle className="mt-0.5 h-4 w-4 flex-none text-primary-600" aria-hidden="true" />{feature}</li>)}
+                  </ul>
+                  <Link href={`/get-started?plan=${plan.planKey}`} className="btn-primary touch-target mt-7 inline-flex w-full items-center justify-center">Start 14 days free</Link>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="faq" className="scroll-mt-20 border-y border-gray-200 bg-gray-50 px-4 py-20 sm:px-6 sm:py-24">
+          <div className="mx-auto max-w-3xl">
+            <SectionHeading centered eyebrow="FAQ" title="Questions before you start" copy="Straight answers about where SCRUB fits and how the platform works." />
+            <div className="mt-10 divide-y divide-gray-200 border-y border-gray-200">
+              {faqs.map((faq) => (
+                <details key={faq.question} className="group py-1">
+                  <summary className="touch-target flex cursor-pointer list-none items-center justify-between gap-4 py-4 text-left font-semibold text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 [&::-webkit-details-marker]:hidden">
+                    {faq.question}<ChevronRight className="h-5 w-5 flex-none text-gray-400 transition-transform group-open:rotate-90" aria-hidden="true" />
+                  </summary>
+                  <p className="max-w-2xl pb-5 pr-8 text-sm leading-6 text-gray-600">{faq.answer}</p>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="px-4 py-20 text-center sm:px-6 sm:py-24">
+          <div className="mx-auto max-w-3xl">
+            <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">One connected business. More room to grow.</h2>
+            <p className="mt-4 text-base leading-7 text-gray-600 sm:text-lg">Replace scattered coordination with clearer work, more professional client relationships, and a team that knows what comes next.</p>
+            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row"><Link href="/get-started" className="btn-primary touch-target inline-flex w-full items-center justify-center gap-2 px-6 sm:w-auto">Start 14 days free <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link><a href="#platform" className="btn-secondary touch-target inline-flex w-full items-center justify-center px-6 sm:w-auto">Explore the platform</a></div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="border-t border-gray-200 bg-gray-900 px-4 py-12 text-gray-300 sm:px-6">
+        <div className="mx-auto grid max-w-6xl gap-10 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
+          <div><div className="flex items-center gap-2"><img src="/logo-icon.png" alt="" className="h-8 w-8" /><span className="text-xl font-bold text-white">SCRUB</span></div><p className="mt-4 max-w-sm text-sm leading-6 text-gray-400">The operating system for modern cleaning businesses. Built for residential, commercial, and short-term-rental operations.</p></div>
+          <FooterGroup title="Platform" links={[["Platform", "#platform"], ["Pricing", "#pricing"], ["FAQ", "#faq"], ["Log in", "/login"]]} />
+          <FooterGroup title="Solutions" links={[["Residential cleaning", "/house-cleaning-business-software"], ["Commercial cleaning", "/commercial-cleaning-software"], ["Janitorial companies", "/janitorial-software"], ["Short-term rentals", "/airbnb-cleaning-software"]]} />
+          <FooterGroup title="Company" links={[["Contact", "/contact"], ["Privacy", "/privacy"], ["Terms", "/terms"], ["Start free", "/get-started"]]} />
         </div>
-      </section>
+        <div className="mx-auto mt-10 flex max-w-6xl flex-col gap-2 border-t border-white/10 pt-6 text-xs text-gray-500 sm:flex-row sm:items-center sm:justify-between"><p>© {new Date().getFullYear()} SCRUB. All rights reserved.</p><p>Everything your cleaning business needs. Nothing it doesn&apos;t.</p></div>
+      </footer>
     </div>
   );
+}
+
+function RoleCard({ icon: Icon, title, copy }: { icon: typeof Inbox; title: string; copy: string }) {
+  return <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-100 text-primary-700"><Icon className="h-5 w-5" aria-hidden="true" /></span><h3 className="mt-4 font-semibold text-gray-900">{title}</h3><p className="mt-2 text-sm leading-6 text-gray-600">{copy}</p></div>;
+}
+
+function SolutionCard({ icon: Icon, title, copy, items }: { icon: typeof Home; title: string; copy: string; items: string[] }) {
+  return <article className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"><span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-100 text-primary-700"><Icon className="h-6 w-6" aria-hidden="true" /></span><h3 className="mt-5 text-xl font-semibold text-gray-900">{title}</h3><p className="mt-3 text-sm leading-6 text-gray-600">{copy}</p><ul className="mt-5 space-y-2">{items.map((item) => <li key={item} className="flex gap-2 text-sm text-gray-700"><CheckCircle className="mt-0.5 h-4 w-4 flex-none text-primary-600" aria-hidden="true" />{item}</li>)}</ul></article>;
+}
+
+function TrustItem({ icon: Icon, title, copy }: { icon: typeof ShieldCheck; title: string; copy: string }) {
+  return <div><Icon className="h-6 w-6 text-primary-700" aria-hidden="true" /><h3 className="mt-3 font-semibold text-gray-900">{title}</h3><p className="mt-1 text-sm leading-6 text-gray-600">{copy}</p></div>;
+}
+
+function FooterGroup({ title, links }: { title: string; links: string[][] }) {
+  return <div><h2 className="text-sm font-semibold text-white">{title}</h2><ul className="mt-2 text-sm">{links.map(([label, href]) => <li key={label}>{href.startsWith("#") ? <a href={href} className="touch-target inline-flex items-center hover:text-white">{label}</a> : <Link href={href} className="touch-target inline-flex items-center hover:text-white">{label}</Link>}</li>)}</ul></div>;
 }
