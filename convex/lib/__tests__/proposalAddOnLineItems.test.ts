@@ -7,6 +7,7 @@ import { api } from "../../_generated/api";
 import { hashPassword } from "../password";
 import {
   MAX_PROPOSAL_ADD_ON_LINES,
+  assertProposalReadyForDelivery,
   calculateProposalTotals,
   normalizeProposalAddOnLine,
   validateProposalAddOnLines,
@@ -58,7 +59,45 @@ describe("proposal add-on line items", () => {
     ] });
     expect(totals).toMatchObject({ monthlyTotalCents: 12_500, oneTimeTotalCents: 12_900, hasMonthlyPricing: true, hasOneTimePricing: true, hasUnfinalizedStartingAt: false });
     expect(calculateProposalTotals({ addOnLineItems: [custom({ pricingMethod: "starting_at" })] }).hasUnfinalizedStartingAt).toBe(true);
+    expect(() => assertProposalReadyForDelivery({ addOnLineItems: [custom({ pricingMethod: "starting_at" })] })).toThrow("Finalize");
+    expect(normalizeProposalAddOnLine(custom({ pricingMethod: "starting_at", finalizedPriceCents: 1000 })).finalizedPriceCents).toBe(1000);
+    expect(normalizeProposalAddOnLine(custom({ pricingMethod: "starting_at", finalizedPriceCents: 1001 })).finalizedPriceCents).toBe(1001);
     expect(() => normalizeProposalAddOnLine(custom({ pricingMethod: "starting_at", finalizedPriceCents: 999 }))).toThrow("below");
+    expect(calculateProposalTotals({ addOnLineItems: [custom(), custom({ lineItemId: "units", pricingMethod: "per_unit", unitLabel: "room", quantity: 2 })] }).hasUnfinalizedStartingAt).toBe(false);
+  });
+
+  it("persists final prices and remains blocked until every starting-at line is finalized", async () => {
+    const { t, auth, requestId } = await setup();
+    const proposalId = await t.mutation(proposals.createProposalFromLead, { ...auth, clientRequestId: requestId });
+    const firstId = await t.mutation(proposals.addCustomAddOnLine, { ...auth, proposalId, name: "First quote", pricingMethod: "starting_at", unitPriceCents: 3000, billingCadence: "one_time" });
+    const secondId = await t.mutation(proposals.addCustomAddOnLine, { ...auth, proposalId, name: "Second quote", pricingMethod: "starting_at", unitPriceCents: 5000, billingCadence: "monthly" });
+
+    await t.mutation(proposals.updateAddOnLine, { ...auth, proposalId, lineItemId: firstId, name: "First quote", pricingMethod: "starting_at", unitPriceCents: 3000, finalizedPriceCents: 3000, billingCadence: "one_time" });
+    let stored: any = await t.run((ctx) => ctx.db.get(proposalId));
+    expect(stored.addOnLineItems.find((line: any) => line.lineItemId === firstId).finalizedPriceCents).toBe(3000);
+    expect(calculateProposalTotals(stored).hasUnfinalizedStartingAt).toBe(true);
+    await expect(t.mutation(proposals.markProposalSent, { ...auth, proposalId })).rejects.toThrow("Finalize");
+
+    await expect(t.mutation(proposals.updateAddOnLine, { ...auth, proposalId, lineItemId: secondId, name: "Second quote", pricingMethod: "starting_at", unitPriceCents: 5000, finalizedPriceCents: 4999, billingCadence: "monthly" })).rejects.toThrow("below");
+    await t.mutation(proposals.updateAddOnLine, { ...auth, proposalId, lineItemId: secondId, name: "Second quote", pricingMethod: "starting_at", unitPriceCents: 5000, finalizedPriceCents: 6500, billingCadence: "monthly" });
+    stored = await t.run((ctx) => ctx.db.get(proposalId));
+    expect(calculateProposalTotals(stored).hasUnfinalizedStartingAt).toBe(false);
+    await expect(t.mutation(proposals.markProposalSent, { ...auth, proposalId })).resolves.toBeNull();
+  });
+
+  it("removes fields that are incompatible with a changed pricing method", async () => {
+    const { t, auth, requestId } = await setup();
+    const proposalId = await t.mutation(proposals.createProposalFromLead, { ...auth, clientRequestId: requestId });
+    const lineItemId = await t.mutation(proposals.addCustomAddOnLine, { ...auth, proposalId, name: "Variable", pricingMethod: "per_unit", unitPriceCents: 1000, unitLabel: "room", quantity: 4, billingCadence: "one_time" });
+    await t.mutation(proposals.updateAddOnLine, { ...auth, proposalId, lineItemId, name: "Variable", pricingMethod: "starting_at", unitPriceCents: 1000, finalizedPriceCents: 1200, billingCadence: "one_time" });
+    let line: any = (await t.run((ctx) => ctx.db.get(proposalId)))!.addOnLineItems!.find((item: any) => item.lineItemId === lineItemId);
+    expect(line).toMatchObject({ pricingMethod: "starting_at", finalizedPriceCents: 1200 });
+    expect(line.unitLabel).toBeUndefined();
+    expect(line.quantity).toBeUndefined();
+    await t.mutation(proposals.updateAddOnLine, { ...auth, proposalId, lineItemId, name: "Variable", pricingMethod: "flat", unitPriceCents: 1000, billingCadence: "one_time" });
+    line = (await t.run((ctx) => ctx.db.get(proposalId)))!.addOnLineItems!.find((item: any) => item.lineItemId === lineItemId);
+    expect(line.pricingMethod).toBe("flat");
+    expect(line.finalizedPriceCents).toBeUndefined();
   });
 
   it("enforces quantities, traceability, uniqueness, limits, and overflow bounds", () => {
@@ -133,6 +172,8 @@ describe("proposal add-on line items", () => {
     expect(owner).toContain("returnProposalToDraft");
     expect(owner).toContain('proposal.status === "draft" &&');
     expect(owner).toContain('aria-label={t("proposals.addOns.remove",');
+    expect(owner).toContain('onFeedback(t("proposals.addOns.lineSaved"), "success")');
+    expect(owner).toContain('onFeedback(err.message || t("proposals.addOns.lineSaveFailed"), "error")');
     expect(publicView).toContain("sm:flex-row");
     expect(email).toContain("proposal.addOnLineItems.map");
     const publicMapping = delivery.slice(delivery.indexOf("const addOnLineItems"), delivery.indexOf("return {", delivery.indexOf("const addOnLineItems")));
@@ -140,5 +181,7 @@ describe("proposal add-on line items", () => {
     expect(publicMapping).not.toContain("sourceClientRequestId");
     expect(en.proposals.addOns.returnToDraft).toBeTruthy();
     expect(es.proposals.addOns.returnToDraft).toBeTruthy();
+    expect(en.proposals.addOns.lineSaved).toBe("Add-on line saved.");
+    expect(es.proposals.addOns.lineSaved).toBeTruthy();
   });
 });
