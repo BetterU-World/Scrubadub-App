@@ -96,8 +96,8 @@ export function RequestListPage() {
   const sorted = [...requests].sort((a, b) => b.createdAt - a.createdAt);
 
   return (
-    <div>
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+    <div className="min-w-0 max-w-full">
+      <div className="mb-4 flex min-w-0 max-w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <LeadsHeader />
         <button
           onClick={() => setShowNewLead(true)}
@@ -147,7 +147,7 @@ export function RequestListPage() {
       )}
 
       {/* Filters */}
-      <div className="mb-4 flex max-w-full gap-2 overflow-x-auto overscroll-x-contain pb-1" role="group" aria-label={t("nav.requests")}>
+      <div className="mb-4 flex w-full min-w-0 max-w-full gap-2 overflow-x-auto overscroll-x-contain pb-1" role="group" aria-label={t("nav.requests")}>
         {statusOptions.map((opt) => (
           <button
             key={opt.value}
@@ -194,11 +194,11 @@ export function RequestListPage() {
                     <h3 className="break-words font-semibold text-gray-900">
                       {req.requesterName}
                     </h3>
-                    <StatusBadge status={req.status} />
+                    <StatusBadge status={req.status} className="max-w-full whitespace-normal break-words" />
                   </div>
                   <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500">
                     {(req.propertySnapshot?.address) && (
-                      <span className="flex min-w-0 items-start gap-1">
+                      <span className="flex min-w-0 max-w-full items-start gap-1">
                         <MapPin className="w-3.5 h-3.5 shrink-0" />
                         <span className="break-words">{req.propertySnapshot.address}</span>
                       </span>
@@ -210,9 +210,9 @@ export function RequestListPage() {
                       </span>
                     )}
                     {(req as any).requestedService && (
-                      <span className="flex items-center gap-1">
+                      <span className="flex min-w-0 max-w-full items-start gap-1">
                         <Sparkles className="w-3.5 h-3.5" />
-                        {(req as any).requestedService}
+                        <span className="min-w-0 break-words">{(req as any).requestedService}</span>
                       </span>
                     )}
                   </div>

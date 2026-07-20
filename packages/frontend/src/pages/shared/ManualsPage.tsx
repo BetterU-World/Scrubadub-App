@@ -84,12 +84,12 @@ function SeedManualsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">{t("manuals.seedManuals")}</h2>
-          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
+      <div className="relative max-h-[calc(100dvh-2rem)] w-full min-w-0 max-w-lg overflow-y-auto rounded-xl bg-white p-4 shadow-xl sm:p-6">
+        <div className="mb-4 flex min-w-0 items-center justify-between gap-3">
+          <h2 className="min-w-0 break-words text-lg font-semibold text-gray-900">{t("manuals.seedManuals")}</h2>
+          <button onClick={onClose} className="touch-target flex shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600" aria-label={t("common.closeDialog")}>
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -102,7 +102,7 @@ function SeedManualsModal({
           value={json}
           onChange={(e) => { setJson(e.target.value); setError(null); setResult(null); }}
           placeholder={`[\n  {\n    "title": "Cleaner Onboarding",\n    "category": "cleaner",\n    "roleVisibility": "both",\n    "blobKey": "https://…blob…/file.pdf"\n  }\n]`}
-          className="input-field font-mono text-xs h-48 resize-none"
+          className="input-field h-48 max-w-full resize-none font-mono text-xs"
         />
 
         {error && (
@@ -114,12 +114,12 @@ function SeedManualsModal({
           </p>
         )}
 
-        <div className="flex justify-end gap-2 mt-4">
-          <button onClick={onClose} className="btn-secondary text-sm">{t("common.cancel")}</button>
+        <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button onClick={onClose} className="btn-secondary touch-target w-full text-sm sm:w-auto">{t("common.cancel")}</button>
           <button
             onClick={handleSeed}
             disabled={seeding || !json.trim()}
-            className="btn-primary text-sm flex items-center gap-1.5"
+            className="btn-primary touch-target flex w-full items-center justify-center gap-1.5 text-sm sm:w-auto"
           >
             <Upload className="w-4 h-4" />
             {seeding ? t("manuals.seeding") : t("manuals.seed")}
@@ -177,24 +177,24 @@ export function ManualsPage() {
   };
 
   return (
-    <div>
+    <div className="min-w-0 max-w-full">
       <PageHeader
         title={t("manuals.title")}
         description={t("guidance.worker.manuals")}
         action={
           user.isSuperadmin && (
-            <div className="flex items-center gap-2">
+            <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
               <button
                 onClick={handleExport}
                 disabled={!exportedManuals || exportedManuals.length === 0}
-                className="btn-secondary flex items-center gap-1.5 text-sm"
+                className="btn-secondary touch-target flex w-full items-center justify-center gap-1.5 text-sm sm:w-auto"
               >
                 {copied ? <Check className="w-4 h-4" /> : <Download className="w-4 h-4" />}
                 {copied ? t("manuals.exportCopied") : t("manuals.exportManuals")}
               </button>
               <button
                 onClick={() => setShowSeed(true)}
-                className="btn-secondary flex items-center gap-1.5 text-sm"
+                className="btn-secondary touch-target flex w-full items-center justify-center gap-1.5 text-sm sm:w-auto"
               >
                 <Upload className="w-4 h-4" /> {t("manuals.seedManuals")}
               </button>
@@ -202,7 +202,7 @@ export function ManualsPage() {
           )
         }
       />
-      <div className="space-y-8 max-w-2xl">
+      <div className="w-full min-w-0 max-w-2xl space-y-8">
         <p className="text-xs text-gray-400">{t("manuals.lastUpdated", { date: "March 1, 2026" })}</p>
 
         {/* Static in-app guides */}
@@ -215,30 +215,30 @@ export function ManualsPage() {
             {user.role === "owner" && (
               <Link
                 href="/manuals/owner"
-                className="card flex items-center justify-between gap-4 hover:shadow-md transition-shadow"
+                className="card flex min-w-0 flex-col items-stretch gap-3 transition-shadow hover:shadow-md sm:flex-row sm:items-center sm:justify-between sm:gap-4"
               >
-                <div className="min-w-0">
-                  <p className="font-medium text-gray-900 truncate">{t("manuals.ownerGuide")}</p>
-                  <p className="text-sm text-gray-500 mt-0.5 truncate">
+                <div className="w-full min-w-0">
+                  <p className="break-words font-medium text-gray-900 sm:truncate">{t("manuals.ownerGuide")}</p>
+                  <p className="mt-0.5 break-words text-sm text-gray-500 sm:truncate">
                     {t("manuals.ownerGuideDesc")}
                   </p>
                 </div>
-                <span className="btn-secondary flex items-center gap-1.5 text-sm flex-shrink-0">
+                <span className="btn-secondary touch-target flex w-full flex-shrink-0 items-center justify-center gap-1.5 text-sm sm:w-auto">
                   <BookOpen className="w-4 h-4" /> {t("manuals.read")}
                 </span>
               </Link>
             )}
             <Link
               href="/manuals/cleaner"
-              className="card flex items-center justify-between gap-4 hover:shadow-md transition-shadow"
+              className="card flex min-w-0 flex-col items-stretch gap-3 transition-shadow hover:shadow-md sm:flex-row sm:items-center sm:justify-between sm:gap-4"
             >
-              <div className="min-w-0">
-                <p className="font-medium text-gray-900 truncate">{t("manuals.cleanerGuide")}</p>
-                <p className="text-sm text-gray-500 mt-0.5 truncate">
+              <div className="w-full min-w-0">
+                <p className="break-words font-medium text-gray-900 sm:truncate">{t("manuals.cleanerGuide")}</p>
+                <p className="mt-0.5 break-words text-sm text-gray-500 sm:truncate">
                   {t("manuals.cleanerGuideDesc")}
                 </p>
               </div>
-              <span className="btn-secondary flex items-center gap-1.5 text-sm flex-shrink-0">
+              <span className="btn-secondary touch-target flex w-full flex-shrink-0 items-center justify-center gap-1.5 text-sm sm:w-auto">
                 <BookOpen className="w-4 h-4" /> {t("manuals.read")}
               </span>
             </Link>
@@ -259,14 +259,14 @@ export function ManualsPage() {
                   {grouped[cat].map((m) => (
                     <div
                       key={m._id}
-                      className="card flex items-center justify-between gap-4"
+                      className="card flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
                     >
-                      <div className="min-w-0">
-                        <p className="font-medium text-gray-900 truncate">
+                      <div className="w-full min-w-0">
+                        <p className="break-words font-medium text-gray-900 sm:truncate">
                           {m.title}
                         </p>
                         {m.description && (
-                          <p className="text-sm text-gray-500 mt-0.5 truncate">
+                          <p className="mt-0.5 break-words text-sm text-gray-500 sm:truncate">
                             {m.description}
                           </p>
                         )}
@@ -277,7 +277,7 @@ export function ManualsPage() {
                       <button
                         onClick={() => handleOpen(m._id)}
                         disabled={loadingId === m._id}
-                        className="btn-secondary flex items-center gap-1.5 text-sm flex-shrink-0"
+                        className="btn-secondary touch-target flex w-full flex-shrink-0 items-center justify-center gap-1.5 text-sm sm:w-auto"
                       >
                         <ExternalLink className="w-4 h-4" />
                         {loadingId === m._id ? t("manuals.opening") : t("manuals.open")}
