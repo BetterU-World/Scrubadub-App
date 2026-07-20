@@ -64,7 +64,7 @@ const plans = [
     price: "$149.99",
     period: "/mo",
     planKey: "pro",
-    description: "For cleaning business owners and property managers running real operations.",
+    description: "For cleaning business owners and property managers running large operations.",
     features: [
       "Unlimited cleaners",
       "Unlimited properties",
