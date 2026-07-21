@@ -17,6 +17,15 @@ describe("request workflow hotfix contracts", () => {
     expect(requestDetail).toContain('t("requests.propertyAlreadyLinked")');
   });
 
+  it("saves the selected enum and requires server confirmation before success feedback", () => {
+    expect(requestDetail).toContain("const selectedLeadType = leadTypeVal");
+    expect(requestDetail).toContain("leadType: selectedLeadType as any");
+    expect(requestDetail).toContain("result.leadType !== selectedLeadType");
+    expect(requestDetail).toContain("setLeadTypeVal(result.leadType)");
+    expect(requestDetail.indexOf("result.leadType !== selectedLeadType"))
+      .toBeLessThan(requestDetail.indexOf('t("requests.leadDetailsSaved")'));
+  });
+
   it("contains long request content and mobile action groups without clipping", () => {
     expect(requestDetail).toContain("min-w-0 break-all text-primary-600");
     expect(requestDetail).toContain("min-w-0 break-words");

@@ -365,14 +365,14 @@ export const createManualClientRequest = mutation({
 
 /**
  * Update universal lead details for a request.
- * Owner-only; scoped to company.
+ * Owner/Manager; scoped to company.
  */
 export const updateLeadDetails = mutation({
   args: {
     userId: v.optional(v.id("users")),
     sessionToken: v.string(),
     requestId: v.id("clientRequests"),
-    leadType: v.optional(leadTypeValidator),
+    leadType: leadTypeValidator,
     businessName: v.optional(v.string()),
     businessContactTitle: v.optional(v.string()),
     businessWebsite: v.optional(v.string()),
@@ -381,7 +381,7 @@ export const updateLeadDetails = mutation({
     estimatedFrequencyNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
 
     const request = await ctx.db.get(args.requestId);
     if (!request) throw new Error("Request not found");
@@ -396,6 +396,8 @@ export const updateLeadDetails = mutation({
       estimatedFrequency: args.estimatedFrequency,
       estimatedFrequencyNotes: cleanOptional(args.estimatedFrequencyNotes, 1000),
     });
+
+    return { leadType: args.leadType };
   },
 });
 

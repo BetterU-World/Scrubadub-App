@@ -2009,11 +2009,12 @@ export function RequestDetailPage() {
                 ) {
                   throw new Error(t("requests.invalidEstimate"));
                 }
-                await updateLeadDetailsMut({
+                const selectedLeadType = leadTypeVal;
+                const result = await updateLeadDetailsMut({
                   userId: user!._id,
                   sessionToken,
                   requestId: request._id,
-                  leadType: leadTypeVal as any,
+                  leadType: selectedLeadType as any,
                   businessName: businessNameVal,
                   businessContactTitle: businessContactTitleVal,
                   businessWebsite: businessWebsiteVal,
@@ -2021,6 +2022,10 @@ export function RequestDetailPage() {
                   estimatedFrequency: (estimatedFrequencyVal || undefined) as any,
                   estimatedFrequencyNotes: estimatedFrequencyNotesVal,
                 });
+                if (result.leadType !== selectedLeadType) {
+                  throw new Error(t("requests.leadDetailsSaveNotConfirmed"));
+                }
+                setLeadTypeVal(result.leadType);
                 setToast({ message: t("requests.leadDetailsSaved"), type: "success" });
               } catch (err: any) {
                 setToast({ message: err.message || "Failed", type: "error" });

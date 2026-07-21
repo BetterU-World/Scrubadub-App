@@ -87,6 +87,69 @@ describe("request-to-property workflow", () => {
     }
   });
 
+  it("persists classification and supports immediate save-to-create for owners and managers", async () => {
+    const t = backend();
+    const s = await seed(t);
+    const ownerAuth = await login(t, "owner-a@property.test");
+    const managerAuth = await login(t, "manager-a@property.test");
+
+    for (const [userId, sessionToken, leadType, expectedType] of [
+      [s.ownerA, ownerAuth.sessionToken, "residential", "residential"],
+      [s.managerA, managerAuth.sessionToken, "commercial", "commercial"],
+      [s.ownerA, ownerAuth.sessionToken, "str_airbnb", "vacation_rental"],
+    ] as const) {
+      const requestId = await request(t, s.companyA, "booking_request");
+      const saved = await t.mutation(api.mutations.clientRequests.updateLeadDetails, {
+        requestId,
+        userId,
+        sessionToken,
+        leadType,
+      });
+      expect(saved).toEqual({ leadType });
+      await expect(t.query(api.queries.clientRequests.getRequestById, {
+        id: requestId,
+        userId,
+        sessionToken,
+      })).resolves.toMatchObject({ leadType });
+
+      const created = await t.mutation(api.mutations.clientRequests.createPropertyFromRequest, {
+        requestId,
+        userId,
+        sessionToken,
+      });
+      expect(created.created).toBe(true);
+      await expect(t.run((ctx) => ctx.db.get(created.propertyId))).resolves.toMatchObject({ type: expectedType });
+    }
+  });
+
+  it("rejects cross-company classification updates and keeps unsupported saved types ineligible", async () => {
+    const t = backend();
+    const s = await seed(t);
+    const auth = await login(t, "owner-a@property.test");
+    const foreignRequest = await request(t, s.companyB, "booking_request");
+    await expect(t.mutation(api.mutations.clientRequests.updateLeadDetails, {
+      requestId: foreignRequest,
+      userId: s.ownerA,
+      sessionToken: auth.sessionToken,
+      leadType: "residential",
+    })).rejects.toThrow("Access denied");
+
+    for (const leadType of ["booking_request", "other", "move_out", "post_construction"] as const) {
+      const requestId = await request(t, s.companyA, "booking_request");
+      await expect(t.mutation(api.mutations.clientRequests.updateLeadDetails, {
+        requestId,
+        userId: s.ownerA,
+        sessionToken: auth.sessionToken,
+        leadType,
+      })).resolves.toEqual({ leadType });
+      await expect(t.mutation(api.mutations.clientRequests.createPropertyFromRequest, {
+        requestId,
+        userId: s.ownerA,
+        sessionToken: auth.sessionToken,
+      })).rejects.toThrow("Classify this request as Residential, Commercial, or STR");
+    }
+  });
+
   it("requires explicit supported classification and a non-empty address", async () => {
     const t = backend();
     const s = await seed(t);

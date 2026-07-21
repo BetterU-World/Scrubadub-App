@@ -330,6 +330,7 @@
     "estimatedFrequencyNotes": "Frequency Notes",
     "saveLeadDetails": "Save Lead Details",
     "leadDetailsSaved": "Lead details saved",
+    "leadDetailsSaveNotConfirmed": "The selected lead type was not saved. Please try again.",
     "invalidEstimate": "Enter a valid estimated value",
     "manualLead": "Manual Lead",
     "service": "Service"
