@@ -330,6 +330,7 @@
     "estimatedFrequencyNotes": "Notas de frecuencia",
     "saveLeadDetails": "Guardar detalles",
     "leadDetailsSaved": "Detalles guardados",
+    "leadDetailsSaveNotConfirmed": "No se guardó el tipo de prospecto seleccionado. Inténtalo de nuevo.",
     "invalidEstimate": "Ingresa un valor estimado válido",
     "manualLead": "Prospecto manual",
     "service": "Servicio"
