@@ -682,9 +682,9 @@ export function WalkthroughCard({
           editing ? (
             <div className="space-y-3">
               <SchedulingFields form={form} setForm={setForm} managers={walkthroughAssignees ?? []} currentUserId={user?._id} t={t} />
-              <div className="flex gap-2">
-                <button type="button" onClick={handleCreate} disabled={saving} className="btn-primary text-sm">{saving ? t("common.saving") : t("walkthroughs.schedule")}</button>
-                <button type="button" onClick={() => setEditing(false)} className="btn-secondary text-sm">{t("common.cancel")}</button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button type="button" onClick={handleCreate} disabled={saving} className="btn-primary w-full text-sm sm:w-auto">{saving ? t("common.saving") : t("walkthroughs.schedule")}</button>
+                <button type="button" onClick={() => setEditing(false)} className="btn-secondary w-full text-sm sm:w-auto">{t("common.cancel")}</button>
               </div>
             </div>
           ) : (
@@ -804,11 +804,11 @@ export function WalkthroughCard({
           </div>
 
           <div className="space-y-3 border-t pt-4">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <h4 className="text-sm font-semibold text-gray-900">{t("walkthroughs.rooms")}</h4>
               <button
                 type="button"
-                className="btn-secondary flex items-center gap-2 px-2 py-1 text-xs"
+                className="btn-secondary flex w-full items-center justify-center gap-2 px-2 py-1 text-xs sm:w-auto"
                 onClick={() =>
                   setForm({
                     ...form,
@@ -866,14 +866,14 @@ export function WalkthroughCard({
           </div>
 
           <div className="space-y-3 border-t pt-4">
-            <div className="flex items-center justify-between gap-2">
-              <div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
                 <h4 className="text-sm font-semibold text-gray-900">{t("walkthroughs.photos")}</h4>
-                <p className="text-xs text-gray-500">{t("walkthroughs.photoTodo")}</p>
+                <p className="break-words text-xs text-gray-500">{t("walkthroughs.photoTodo")}</p>
               </div>
               <button
                 type="button"
-                className="btn-secondary flex items-center gap-2 px-2 py-1 text-xs"
+                className="btn-secondary flex w-full items-center justify-center gap-2 px-2 py-1 text-xs sm:w-auto"
                 onClick={() => setForm({ ...form, photos: [...form.photos, { url: "", caption: "" }] })}
               >
                 <Plus className="h-3 w-3" />

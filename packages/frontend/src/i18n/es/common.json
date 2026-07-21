@@ -263,6 +263,13 @@
     "requestArchived": "Solicitud archivada",
     "requestDeclined": "Solicitud rechazada",
     "propertyCreated": "Propiedad creada",
+    "propertyCreatedAndLinked": "La propiedad se creó y se vinculó a esta solicitud.",
+    "propertyAlreadyLinked": "Esta solicitud ya está vinculada a una propiedad.",
+    "propertyClassificationRequired": "Clasifica esta solicitud como Residencial, Comercial o STR antes de crear una propiedad.",
+    "propertyAddressRequired": "Agrega una dirección válida antes de crear una propiedad.",
+    "propertyPermissionRequired": "Solo un Propietario o Gerente puede crear una propiedad desde esta solicitud.",
+    "propertyClientRelationshipInvalid": "La relación de cliente vinculada no es válida. Revisa el vínculo e inténtalo de nuevo.",
+    "propertyCreationFailed": "No se pudo crear y vincular la propiedad.",
     "propertyLinked": "Propiedad vinculada",
     "createProperty": "Crear propiedad",
     "creating": "Creando...",
@@ -1602,6 +1609,7 @@
     }
   },
   "clientRelationships": {
+    "title": "Clientes",
     "addProperty": "Agregar propiedad",
     "propertiesHelper": "Las propiedades son las ubicaciones de servicio que pertenecen a este cliente.",
     "detailDescription": "Identidad del cliente, informacion de contacto e historial completo de la relacion.",

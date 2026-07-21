@@ -27,6 +27,8 @@ describe("PageHeader responsive contract", () => {
     );
 
     expect(markup).toContain("min-w-0 w-full sm:w-auto sm:flex-shrink-0");
+    expect(markup).toContain("min-w-0");
+    expect(markup).toContain("break-words text-2xl");
     expect(markup).toContain("A long localized page title");
     expect(markup).toContain("Descripción localizada");
     expect(markup).toContain("Crear una nueva cuenta comercial");

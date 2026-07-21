@@ -145,10 +145,11 @@ describe("commercial conversion rules", () => {
       ["str_airbnb", "vacation_rental"],
     ] as const) {
       const source = await requestAndProposal(t, s, { leadType });
-      const propertyId = await t.mutation((api as any).mutations.clientRequests.createPropertyFromRequest, {
+      const result = await t.mutation((api as any).mutations.clientRequests.createPropertyFromRequest, {
         requestId: source.requestId, userId: s.ownerA, sessionToken: auth.sessionToken,
       });
-      await expect(t.run((ctx) => ctx.db.get(propertyId))).resolves.toMatchObject({ type: expectedType });
+      expect(result.created).toBe(true);
+      await expect(t.run((ctx) => ctx.db.get(result.propertyId))).resolves.toMatchObject({ type: expectedType });
     }
 
     const missing = await requestAndProposal(t, s);
