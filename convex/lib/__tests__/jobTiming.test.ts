@@ -16,6 +16,11 @@ describe("job timing", () => {
     expect(result).toEqual({ elapsedMs: 60_000, totalPausedMs: 30_000, activeMs: 30_000, currentPauseMs: 30_000 });
   });
 
+  it("uses cancellation as the terminal timing boundary", () => {
+    const job = { startedAt: 1_000, cancelledAt: 61_000, pauseHistory: [{ pausedAt: 31_000, resumedAt: 41_000, durationMs: 10_000 }] };
+    expect(getJobTiming(job, 3_600_000)).toEqual({ elapsedMs: 60_000, totalPausedMs: 10_000, activeMs: 50_000, currentPauseMs: 0 });
+  });
+
   it("requires and trims Other notes", () => {
     expect(() => normalizePauseNote("other", "   ")).toThrow("required");
     expect(normalizePauseNote("other", "  Door code issue  ")).toBe("Door code issue");

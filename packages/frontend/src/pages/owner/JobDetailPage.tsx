@@ -414,7 +414,7 @@ export function JobDetailPage() {
               </div>
             )}
             {/* Re-Inspection CTA: visible when cycle is closed and inspections exist */}
-            {inspectionSummary && !inspectionSummary.inspectionCycleOpen && inspectionSummary.count > 0 && (
+            {job.status !== "cancelled" && inspectionSummary && !inspectionSummary.inspectionCycleOpen && inspectionSummary.count > 0 && (
               <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between gap-3">
                 <span className="text-sm text-amber-800">{t("inspection.cycleClosed")}</span>
                 <button
@@ -1221,7 +1221,7 @@ export function JobDetailPage() {
       </div>
 
       {/* Owner self-execution controls — only when owner is explicitly self-assigned */}
-      {user?.role === "owner" && (job as any).assignedManagerId === user._id && (
+      {job.status !== "cancelled" && user?.role === "owner" && (job as any).assignedManagerId === user._id && (
         <div className="card border-primary-200 mt-6">
           <h3 className="font-semibold text-gray-900 flex items-center gap-2 mb-3">
             <CheckCircle className="w-5 h-5 text-primary-600" /> {t("jobs.ownerExecution")}

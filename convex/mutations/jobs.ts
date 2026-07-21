@@ -240,6 +240,18 @@ export const cancel = mutation({
     const notes = args.notes?.trim();
     if (args.reason === "other" && !notes) throw new Error("Notes are required when reason is Other");
     const cancelledAt = Date.now();
+    let pauseHistory = job.pauseHistory;
+    if (job.currentPauseStartedAt !== undefined) {
+      pauseHistory = [...(job.pauseHistory ?? [])];
+      const openPauseIndex = findOpenPauseIndex(pauseHistory);
+      if (openPauseIndex < 0) throw new Error("Pause history is inconsistent");
+      const openPause = pauseHistory[openPauseIndex];
+      pauseHistory[openPauseIndex] = {
+        ...openPause,
+        resumedAt: cancelledAt,
+        durationMs: Math.max(0, cancelledAt - openPause.pausedAt),
+      };
+    }
 
     await ctx.db.patch(args.jobId, {
       status: "cancelled",
@@ -249,6 +261,7 @@ export const cancel = mutation({
       cancelReason: args.reason,
       cancelNotes: notes,
       currentPauseStartedAt: undefined,
+      pauseHistory,
     });
 
     const recipientIds = new Set(await getJobRecipientUserIds(ctx, job));

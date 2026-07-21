@@ -18,11 +18,12 @@ export function CancelJobDialog({ open, onOpenChange, onConfirm }: {
   const [reason, setReason] = useState<JobCancelReason | "">("");
   const [notes, setNotes] = useState("");
   const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
   const needsNotes = reason === "other";
   const valid = Boolean(reason) && (!needsNotes || Boolean(notes.trim()));
 
   const close = (next: boolean) => {
-    if (!next) { setReason(""); setNotes(""); }
+    if (!next) { setReason(""); setNotes(""); setError(""); }
     onOpenChange(next);
   };
 
@@ -38,12 +39,15 @@ export function CancelJobDialog({ open, onOpenChange, onConfirm }: {
         <button type="button" className="btn-danger" disabled={!valid || pending} onClick={async () => {
           if (!reason || !valid) return;
           setPending(true);
+          setError("");
           try { await onConfirm(reason, notes.trim() || undefined); close(false); }
+          catch (cause) { setError(cause instanceof Error ? cause.message : t("common.failed")); }
           finally { setPending(false); }
         }}>{pending ? t("common.saving") : t("jobs.cancelJob")}</button>
       </>}
     >
       <div className="space-y-4">
+        {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
         <label className="block text-sm font-medium text-gray-700">
           {t("jobs.cancelReason")} <span className="text-red-600">*</span>
           <select className="input-field mt-1" value={reason} onChange={(event) => setReason(event.target.value as JobCancelReason)}>

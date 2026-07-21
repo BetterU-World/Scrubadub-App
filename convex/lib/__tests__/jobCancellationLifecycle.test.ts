@@ -3,6 +3,7 @@ import { convexTest } from "convex-test";
 import schema from "../../schema";
 import { api } from "../../_generated/api";
 import { hashPassword } from "../password";
+import { getJobTiming } from "../jobTiming";
 
 const modules = import.meta.glob("../../**/*.ts");
 const PASSWORD = "test-password-123";
@@ -18,7 +19,11 @@ async function seed(t: ReturnType<typeof convexTest>) {
     const foreignOwner = await ctx.db.insert("users", { email: "foreign-owner@test.dev", passwordHash, name: "Foreign Owner", companyId: otherCompanyId, role: "owner", status: "active" });
     const scheduled = await ctx.db.insert("jobs", { companyId, cleanerIds: [worker], type: "standard", status: "scheduled", scheduledDate: "2026-07-22", durationMinutes: 60, reworkCount: 0 });
     const completed = await ctx.db.insert("jobs", { companyId, cleanerIds: [worker], type: "standard", status: "approved", scheduledDate: "2026-07-21", durationMinutes: 60, reworkCount: 0, completedAt: Date.now() });
-    return { companyId, owner, manager, worker, foreignOwner, scheduled, completed };
+    const pausedAt = Date.now() - 30_000;
+    const paused = await ctx.db.insert("jobs", { companyId, cleanerIds: [worker], type: "standard", status: "in_progress", scheduledDate: "2026-07-22", durationMinutes: 60, reworkCount: 0, startedAt: pausedAt - 30_000, currentPauseStartedAt: pausedAt, pauseHistory: [{ pausedAt, reason: "break", note: "Lunch", pausedByUserId: worker }] });
+    const closedPauseHistory = [{ pausedAt: pausedAt - 20_000, resumedAt: pausedAt - 10_000, durationMs: 10_000, reason: "supplies" as const, note: "Restock", pausedByUserId: worker, resumedByUserId: worker }];
+    const notPaused = await ctx.db.insert("jobs", { companyId, cleanerIds: [worker], type: "standard", status: "in_progress", scheduledDate: "2026-07-22", durationMinutes: 60, reworkCount: 0, startedAt: pausedAt - 30_000, pauseHistory: closedPauseHistory });
+    return { companyId, owner, manager, worker, foreignOwner, scheduled, completed, paused, pausedAt, notPaused, closedPauseHistory };
   });
 }
 
@@ -61,6 +66,31 @@ describe("job cancellation lifecycle", () => {
     await t.mutation(api.mutations.jobs.cancel, { jobId: s.scheduled, reason: "staff_unavailable", userId: s.manager, sessionToken: auth.sessionToken });
     const notifications = await t.run((ctx) => ctx.db.query("notifications").collect());
     expect(new Set(notifications.map((notification) => notification.userId))).toEqual(new Set([s.worker, s.owner]));
+  });
+
+  it("atomically closes an active pause at cancellation and freezes historical timing", async () => {
+    const t = convexTest(schema, modules); const s = await seed(t); const auth = await login(t, "cancel-owner@test.dev");
+    await t.mutation(api.mutations.jobs.cancel, { jobId: s.paused, reason: "weather", notes: "  Storm warning  ", userId: s.owner, sessionToken: auth.sessionToken });
+    const job = await t.run((ctx) => ctx.db.get(s.paused));
+    expect(job).toMatchObject({ status: "cancelled", cancelledBy: s.owner, cancelReason: "weather", cancelNotes: "Storm warning", cancelledAt: expect.any(Number) });
+    expect(job?.currentPauseStartedAt).toBeUndefined();
+    const finalPause = job!.pauseHistory!.at(-1)!;
+    expect(finalPause).toMatchObject({ pausedAt: s.pausedAt, reason: "break", note: "Lunch", pausedByUserId: s.worker, resumedAt: job!.cancelledAt, durationMs: job!.cancelledAt! - s.pausedAt });
+    expect(job!.pauseHistory!.every((pause) => pause.resumedAt !== undefined)).toBe(true);
+    const atCancellation = getJobTiming(job!, job!.cancelledAt);
+    const muchLater = getJobTiming(job!, job!.cancelledAt! + 3_600_000);
+    expect(muchLater).toEqual(atCancellation);
+    expect(muchLater.totalPausedMs).toBe(job!.cancelledAt! - s.pausedAt);
+    expect(muchLater.currentPauseMs).toBe(0);
+  });
+
+  it("does not fabricate or modify pause history when cancellation occurs while not paused", async () => {
+    const t = convexTest(schema, modules); const s = await seed(t); const auth = await login(t, "cancel-owner@test.dev");
+    await t.mutation(api.mutations.jobs.cancel, { jobId: s.notPaused, reason: "scheduling_conflict", userId: s.owner, sessionToken: auth.sessionToken });
+    const job = await t.run((ctx) => ctx.db.get(s.notPaused));
+    expect(job?.status).toBe("cancelled");
+    expect(job?.currentPauseStartedAt).toBeUndefined();
+    expect(job?.pauseHistory).toEqual(s.closedPauseHistory);
   });
 
   it("rejects workers, cross-company actors, completed/repeated cancellation, and Other without notes", async () => {
