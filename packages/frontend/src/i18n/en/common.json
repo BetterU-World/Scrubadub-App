@@ -263,6 +263,13 @@
     "requestArchived": "Request archived",
     "requestDeclined": "Request declined",
     "propertyCreated": "Property created",
+    "propertyCreatedAndLinked": "Property created and linked to this request.",
+    "propertyAlreadyLinked": "This request is already linked to a property.",
+    "propertyClassificationRequired": "Classify this request as Residential, Commercial, or STR before creating a property.",
+    "propertyAddressRequired": "Add a valid property address before creating a property.",
+    "propertyPermissionRequired": "Only an Owner or Manager can create a property from this request.",
+    "propertyClientRelationshipInvalid": "The linked client relationship is invalid. Review the client link and try again.",
+    "propertyCreationFailed": "Failed to create and link the property.",
     "propertyLinked": "Property linked",
     "createProperty": "Create Property",
     "creating": "Creating...",
@@ -1602,6 +1609,7 @@
     }
   },
   "clientRelationships": {
+    "title": "Clients",
     "addProperty": "Add Property",
     "propertiesHelper": "Properties are the service locations that belong to this client.",
     "detailDescription": "Customer identity, contact information, and complete relationship history.",

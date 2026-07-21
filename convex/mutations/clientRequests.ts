@@ -1,6 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwnerSession } from "../lib/sessionAuth";
+import { requireOwnerManagerSession, requireOwnerSession } from "../lib/sessionAuth";
 import { checkRateLimit } from "../lib/rateLimit";
 import { propertyTypeFromRequestLeadType } from "../lib/commercialEligibility";
 import { createRequestedAddOnSnapshots } from "../lib/companyAddOnSelection";
@@ -177,7 +177,7 @@ export const archiveClientRequest = mutation({
 
 /**
  * Create a property from a client request's propertySnapshot.
- * Auth-gated: caller must be an owner in the same company as the request.
+ * Auth-gated: caller must be an owner or manager in the same company as the request.
  * No-op if the request already has a propertyId.
  */
 export const createPropertyFromRequest = mutation({
@@ -187,26 +187,40 @@ export const createPropertyFromRequest = mutation({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
 
     const request = await ctx.db.get(args.requestId);
     if (!request) throw new Error("Request not found");
     if (request.companyId !== owner.companyId) throw new Error("Access denied");
 
     // No-op if already linked
-    if (request.propertyId) return request.propertyId;
+    if (request.propertyId) {
+      return { propertyId: request.propertyId, created: false };
+    }
 
     const snap = request.propertySnapshot ?? {};
-    const address = snap.address || "Address pending";
+    const address = snap.address?.trim();
+    if (!address) {
+      throw new Error("A valid property address is required");
+    }
     const propertyType = propertyTypeFromRequestLeadType(request.leadType);
     if (!propertyType) {
-      throw new Error("Classify this request before creating a property");
+      throw new Error(
+        "Classify this request as Residential, Commercial, or STR before creating a property"
+      );
+    }
+
+    if (request.clientRelationshipId) {
+      const relationship = await ctx.db.get(request.clientRelationshipId);
+      if (!relationship || relationship.companyId !== request.companyId) {
+        throw new Error("Client relationship must belong to the request company");
+      }
     }
 
     const propertyId = await ctx.db.insert("properties", {
       companyId: request.companyId,
       clientRelationshipId: request.clientRelationshipId,
-      name: snap.name || address,
+      name: snap.name?.trim() || address,
       type: propertyType,
       address,
       amenities: [],
@@ -216,7 +230,7 @@ export const createPropertyFromRequest = mutation({
 
     await ctx.db.patch(args.requestId, { propertyId });
 
-    return propertyId;
+    return { propertyId, created: true };
   },
 });
 

@@ -521,13 +521,25 @@ export function RequestDetailPage() {
   const handleCreateProperty = async () => {
     setCreatingProperty(true);
     try {
-      await createProperty({ requestId: request._id, userId: user!._id, sessionToken });
-      setToast({ message: t("requests.propertyCreated"), type: "success" });
-    } catch (err: any) {
+      const result = await createProperty({ requestId: request._id, userId: user!._id, sessionToken });
       setToast({
-        message: err.message?.includes("Classify this request")
-          ? t("commercialConversion.propertyClassificationRequiredError")
-          : err.message || "Failed to create property",
+        message: result.created
+          ? t("requests.propertyCreatedAndLinked")
+          : t("requests.propertyAlreadyLinked"),
+        type: "success",
+      });
+    } catch (err: any) {
+      const message = err.message?.includes("Classify this request")
+        ? t("requests.propertyClassificationRequired")
+        : err.message?.includes("property address is required")
+          ? t("requests.propertyAddressRequired")
+          : err.message?.includes("Owner or manager session required")
+            ? t("requests.propertyPermissionRequired")
+            : err.message?.includes("Client relationship must belong")
+              ? t("requests.propertyClientRelationshipInvalid")
+              : err.message || t("requests.propertyCreationFailed");
+      setToast({
+        message,
         type: "error",
       });
     } finally {
@@ -790,12 +802,12 @@ export function RequestDetailPage() {
         description={t("guidance.owner.requestDetail")}
         back={{ href: "/requests", label: t("navigation.backToRequests") }}
         action={
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             {canMarkContacted && (
               <button
                 onClick={handleMarkContacted}
                 disabled={contactingLoading}
-                className="btn-secondary flex items-center gap-2"
+                className="btn-secondary flex w-full items-center justify-center gap-2 sm:w-auto"
               >
                 <PhoneOutgoing className="w-4 h-4" /> {contactingLoading ? t("requests.contacting") : t("requests.markContacted")}
               </button>
@@ -804,13 +816,13 @@ export function RequestDetailPage() {
               <>
                 <button
                   onClick={handleConvert}
-                  className="btn-primary flex items-center gap-2"
+                  className="btn-primary flex w-full items-center justify-center gap-2 sm:w-auto"
                 >
                   <Briefcase className="w-4 h-4" /> {t("requests.convertToJob")}
                 </button>
                 <button
                   onClick={() => setShowDecline(true)}
-                  className="btn-danger flex items-center gap-2"
+                  className="btn-danger flex w-full items-center justify-center gap-2 sm:w-auto"
                 >
                   <XCircle className="w-4 h-4" /> {t("requests.decline")}
                 </button>
@@ -820,7 +832,7 @@ export function RequestDetailPage() {
               <button
                 onClick={handleArchive}
                 disabled={archiving}
-                className="btn-secondary flex items-center gap-2 text-gray-500"
+                className="btn-secondary flex w-full items-center justify-center gap-2 text-gray-500 sm:w-auto"
               >
                 <Archive className="w-4 h-4" /> {archiving ? t("requests.archiving") : t("requests.archive")}
               </button>
@@ -849,53 +861,53 @@ export function RequestDetailPage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-          <div className="flex items-center gap-2 text-gray-600">
-            <User className="w-4 h-4 text-gray-400" />
-            {request.requesterName}
+          <div className="flex min-w-0 items-center gap-2 text-gray-600">
+            <User className="h-4 w-4 shrink-0 text-gray-400" />
+            <span className="min-w-0 break-words">{request.requesterName}</span>
           </div>
-          <div className="flex items-center gap-2 text-gray-600">
-            <Mail className="w-4 h-4 text-gray-400" />
+          <div className="flex min-w-0 items-center gap-2 text-gray-600">
+            <Mail className="h-4 w-4 shrink-0 text-gray-400" />
             <a
               href={`mailto:${request.requesterEmail}`}
-              className="text-primary-600 hover:underline"
+              className="min-w-0 break-all text-primary-600 hover:underline"
             >
               {request.requesterEmail}
             </a>
           </div>
           {request.requesterPhone && (
-            <div className="flex items-center gap-2 text-gray-600">
-              <Phone className="w-4 h-4 text-gray-400" />
-              {request.requesterPhone}
+            <div className="flex min-w-0 items-center gap-2 text-gray-600">
+              <Phone className="h-4 w-4 shrink-0 text-gray-400" />
+              <span className="min-w-0 break-words">{request.requesterPhone}</span>
             </div>
           )}
           {request.propertySnapshot?.address && (
-            <div className="flex items-center gap-2 text-gray-600">
-              <MapPin className="w-4 h-4 text-gray-400" />
-              {request.propertySnapshot.address}
+            <div className="flex min-w-0 items-center gap-2 text-gray-600">
+              <MapPin className="h-4 w-4 shrink-0 text-gray-400" />
+              <span className="min-w-0 break-words">{request.propertySnapshot.address}</span>
             </div>
           )}
           {request.propertySnapshot?.name && (
-            <div className="flex items-center gap-2 text-gray-600">
-              <FileText className="w-4 h-4 text-gray-400" />
-              {request.propertySnapshot.name}
+            <div className="flex min-w-0 items-center gap-2 text-gray-600">
+              <FileText className="h-4 w-4 shrink-0 text-gray-400" />
+              <span className="min-w-0 break-words">{request.propertySnapshot.name}</span>
             </div>
           )}
           {request.requestedDate && (
-            <div className="flex items-center gap-2 text-gray-600">
-              <Calendar className="w-4 h-4 text-gray-400" />
-              {request.requestedDate}
+            <div className="flex min-w-0 items-center gap-2 text-gray-600">
+              <Calendar className="h-4 w-4 shrink-0 text-gray-400" />
+              <span className="min-w-0 break-words">{request.requestedDate}</span>
             </div>
           )}
           {request.timeWindow && (
-            <div className="flex items-center gap-2 text-gray-600">
-              <Clock className="w-4 h-4 text-gray-400" />
-              {request.timeWindow}
+            <div className="flex min-w-0 items-center gap-2 text-gray-600">
+              <Clock className="h-4 w-4 shrink-0 text-gray-400" />
+              <span className="min-w-0 break-words">{request.timeWindow}</span>
             </div>
           )}
           {(request as any).requestedService && (
-            <div className="flex items-center gap-2 text-gray-600">
-              <Sparkles className="w-4 h-4 text-gray-400" />
-              {(request as any).requestedService}
+            <div className="flex min-w-0 items-center gap-2 text-gray-600">
+              <Sparkles className="h-4 w-4 shrink-0 text-gray-400" />
+              <span className="min-w-0 break-words">{(request as any).requestedService}</span>
             </div>
           )}
         </div>
@@ -906,8 +918,8 @@ export function RequestDetailPage() {
             <div className="space-y-2">
               {(request as any).requestedAddOnSnapshots.map((addOn: any) => (
                 <div key={addOn.sourceCompanyAddOnId} className="flex flex-col justify-between gap-1 rounded-lg bg-gray-50 p-3 text-sm sm:flex-row sm:items-center">
-                  <span className="font-medium text-gray-900">{addOn.name}</span>
-                  <span className="text-gray-600">
+                  <span className="min-w-0 break-words font-medium text-gray-900">{addOn.name}</span>
+                  <span className="min-w-0 break-words text-gray-600">
                     {addOn.pricingMethod === "starting_at" ? `${t("addOns.methods.starting_at")} ` : ""}
                     {formatPrice(addOn.priceCents)}
                     {addOn.pricingMethod === "per_unit" ? ` × ${addOn.quantity} ${addOn.unitLabel}` : ""}
@@ -921,7 +933,7 @@ export function RequestDetailPage() {
         {request.notes && (
           <div className="border-t pt-3">
             <p className="text-sm font-medium text-gray-700 mb-1">{t("common.notes")}</p>
-            <p className="text-sm text-gray-600">{request.notes}</p>
+            <p className="break-words text-sm text-gray-600">{request.notes}</p>
           </div>
         )}
 
@@ -932,14 +944,25 @@ export function RequestDetailPage() {
               <Check className="w-4 h-4" /> {t("requests.propertyLinked")}
             </p>
           ) : canAct && request.propertySnapshot?.address ? (
-            <button
-              onClick={handleCreateProperty}
-              disabled={creatingProperty}
-              className="btn-secondary flex items-center gap-2 text-sm"
-            >
-              <Building2 className="w-4 h-4" />
-              {creatingProperty ? t("requests.creating") : t("requests.createProperty")}
-            </button>
+            <div className="space-y-2">
+              <button
+                onClick={handleCreateProperty}
+                disabled={creatingProperty}
+                className="btn-secondary flex w-full items-center justify-center gap-2 text-sm sm:w-auto"
+              >
+                <Building2 className="h-4 w-4 shrink-0" />
+                {creatingProperty ? t("requests.creating") : t("requests.createProperty")}
+              </button>
+              {!(["residential", "commercial", "str_airbnb"] as const).includes((request as any).leadType) && (
+                <button
+                  type="button"
+                  onClick={() => document.getElementById("request-lead-classification")?.scrollIntoView({ behavior: "smooth" })}
+                  className="block break-words text-left text-xs font-medium text-amber-700 hover:text-amber-800"
+                >
+                  {t("requests.propertyClassificationRequired")}
+                </button>
+              )}
+            </div>
           ) : null}
         </div>
       </div>
@@ -1681,13 +1704,13 @@ export function RequestDetailPage() {
             {proposal.scopeOfWork && (
               <div className="border-t pt-3">
                 <p className="text-xs font-medium text-gray-500 mb-1">{t("proposals.scopeOfWork")}</p>
-                <p className="text-sm text-gray-600 whitespace-pre-wrap">{proposal.scopeOfWork}</p>
+                <p className="break-words whitespace-pre-wrap text-sm text-gray-600">{proposal.scopeOfWork}</p>
               </div>
             )}
             {proposal.notes && (
               <div className="border-t pt-3">
                 <p className="text-xs font-medium text-gray-500 mb-1">{t("common.notes")}</p>
-                <p className="text-sm text-gray-600 whitespace-pre-wrap">{proposal.notes}</p>
+                <p className="break-words whitespace-pre-wrap text-sm text-gray-600">{proposal.notes}</p>
               </div>
             )}
             {proposal.status === "declined" && (
@@ -1784,7 +1807,7 @@ export function RequestDetailPage() {
           </h3>
         </div>
         {(request as any).clientRelationship ? (
-          <div className="inline-flex w-fit rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
+          <div className="inline-flex max-w-full break-words rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
             {(request as any).clientRelationship.displayName}
           </div>
         ) : (
@@ -2060,10 +2083,10 @@ export function RequestDetailPage() {
           <label className="block text-xs font-medium text-gray-600 mb-1">
             {t("requests.nextFollowUp")}
           </label>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <input
               type="datetime-local"
-              className="input-field text-sm flex-1"
+              className="input-field min-w-0 flex-1 text-sm"
               value={followUpVal}
               onChange={(e) => setFollowUpVal(e.target.value)}
             />
@@ -2091,7 +2114,7 @@ export function RequestDetailPage() {
                   setSavingFollowUp(false);
                 }
               }}
-              className="btn-secondary flex items-center gap-1.5 text-xs py-1 px-2.5"
+              className="btn-secondary flex w-full items-center justify-center gap-1.5 px-2.5 py-1 text-xs sm:w-auto"
             >
               <Save className="w-3 h-3" />
               {savingFollowUp ? "..." : t("common.save")}
@@ -2115,7 +2138,7 @@ export function RequestDetailPage() {
                     setSavingFollowUp(false);
                   }
                 }}
-                className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                className="self-start rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 sm:self-auto"
                 title={t("requests.clearFollowUp")}
               >
                 <X className="w-4 h-4" />
@@ -2172,7 +2195,7 @@ export function RequestDetailPage() {
           <h3 className="text-sm font-semibold text-gray-900">
             {t("requests.clientNotes")}
           </h3>
-          <p className="text-sm text-gray-600 whitespace-pre-wrap">
+          <p className="break-words whitespace-pre-wrap text-sm text-gray-600">
             {request.clientNotes}
           </p>
           {request.updatedByClientAt && (
