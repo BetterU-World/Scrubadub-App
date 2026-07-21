@@ -12,6 +12,7 @@ import { CommercialScheduleCard } from "@/components/owner/CommercialScheduleCar
 import { ServiceAgreementCard } from "@/components/owner/ServiceAgreementCard";
 import { WalkthroughCard } from "@/components/owner/WalkthroughCard";
 import { CommercialInvoiceCard } from "@/components/owner/CommercialInvoiceCard";
+import { CommercialAccountLifecycleDialog } from "@/components/owner/CommercialAccountLifecycleDialog";
 import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
 import {
   Building2,
@@ -27,7 +28,6 @@ import { useTranslation } from "react-i18next";
 type AccountStatus = "active" | "paused" | "ended";
 
 const FREQUENCIES = ["one_time", "weekly", "biweekly", "monthly", "quarterly", "custom"] as const;
-const STATUSES: AccountStatus[] = ["active", "paused", "ended"];
 
 const EMPTY_FORM = {
   clientRelationshipId: "",
@@ -109,6 +109,7 @@ export function CommercialAccountDetailPage() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useFeedbackState<{ message: string; type: "success" | "error" }>();
   const [form, setForm] = useState(EMPTY_FORM);
+  const [lifecycleAction, setLifecycleAction] = useState<"pause" | "resume" | "end" | null>(null);
 
   const account = useQuery(
     (api as any).queries.commercialAccounts.getById,
@@ -242,17 +243,28 @@ export function CommercialAccountDetailPage() {
                   {t("common.cancel")}
                 </button>
               </>
-            ) : (
-              <button type="button" onClick={() => setEditing(true)} className="btn-primary">
-                {t("commercialAccounts.edit")}
-              </button>
-            )}
+            ) : (<>
+              {account.status !== "ended" && <button type="button" onClick={() => setEditing(true)} className="btn-secondary">{t("commercialAccounts.edit")}</button>}
+              {account.status === "active" && <button type="button" onClick={() => setLifecycleAction("pause")} className="btn-secondary">{t("commercialAccounts.lifecycle.pause.action")}</button>}
+              {account.status === "paused" && <button type="button" onClick={() => setLifecycleAction("resume")} className="btn-primary">{t("commercialAccounts.lifecycle.resume.action")}</button>}
+              {account.status !== "ended" && <button type="button" onClick={() => setLifecycleAction("end")} className="btn-danger">{t("commercialAccounts.lifecycle.end.action")}</button>}
+            </>)}
           </div>
         }
       />
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-6">
+          {account.status !== "active" && account.lifecycleHistory?.length > 0 && (() => {
+            const latest = [...account.lifecycleHistory].reverse().find((event: any) => event.type === account.status);
+            return latest ? <section className={`card border ${account.status === "paused" ? "border-amber-200 bg-amber-50" : "border-gray-300 bg-gray-50"}`}>
+              <h2 className="font-semibold text-gray-900">{t(`commercialAccounts.lifecycle.${latest.type}.historyTitle`)}</h2>
+              {latest.reason && <p className="mt-2 text-sm text-gray-700">{t(`commercialAccounts.lifecycle.reasons.${latest.reason}`)}</p>}
+              {latest.effectiveDate && <p className="mt-1 text-sm text-gray-700">{t("commercialAccounts.lifecycle.effectiveDateValue", { date: formatDate(latest.effectiveDate, notSet) })}</p>}
+              {latest.notes && <p className="mt-2 whitespace-pre-wrap text-sm text-gray-700">{latest.notes}</p>}
+              <p className="mt-2 text-xs text-gray-500">{t("commercialAccounts.lifecycle.byAndWhen", { name: latest.actorName, date: new Date(latest.occurredAt).toLocaleString() })}</p>
+            </section> : null;
+          })()}
           <section className="card">
             <div className="mb-4 flex items-center gap-2">
               <Building2 className="h-5 w-5 text-gray-400" />
@@ -264,14 +276,7 @@ export function CommercialAccountDetailPage() {
                   <span className="text-xs font-medium text-gray-600">{t("commercialAccounts.clientName")}</span>
                   <input className="input-field mt-1" value={form.clientName} onChange={(e) => setForm({ ...form, clientName: e.target.value })} />
                 </label>
-                <label className="block">
-                  <span className="text-xs font-medium text-gray-600">{t("commercialAccounts.status")}</span>
-                  <select className="input-field mt-1" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as AccountStatus })}>
-                    {STATUSES.map((status) => (
-                      <option key={status} value={status}>{t(`commercialAccounts.statuses.${status}`)}</option>
-                    ))}
-                  </select>
-                </label>
+                <DetailItem label={t("commercialAccounts.status")} value={<span className="badge bg-gray-100 text-gray-700">{t(`commercialAccounts.statuses.${account.status}`)}</span>} />
                 <label className="block sm:col-span-2">
                   <span className="text-xs font-medium text-gray-600">{t("commercialAccounts.client")}</span>
                   <select
@@ -430,6 +435,15 @@ export function CommercialAccountDetailPage() {
               </p>
             )}
           </CollapsibleSection>
+          {account.lifecycleHistory?.length > 0 && <CollapsibleSection title={t("commercialAccounts.lifecycle.history")}>
+            <ol className="space-y-4">{[...account.lifecycleHistory].reverse().map((event: any, index: number) => <li key={`${event.occurredAt}-${index}`} className="border-l-2 border-gray-200 pl-4">
+              <p className="font-medium text-gray-900">{t(`commercialAccounts.lifecycle.${event.type}.historyTitle`)}</p>
+              {event.reason && <p className="text-sm text-gray-700">{t(`commercialAccounts.lifecycle.reasons.${event.reason}`)}</p>}
+              <p className="text-xs text-gray-500">{t("commercialAccounts.lifecycle.byAndWhen", { name: event.actorName, date: new Date(event.occurredAt).toLocaleString() })}</p>
+              {event.effectiveDate && <p className="text-xs text-gray-500">{t("commercialAccounts.lifecycle.effectiveDateValue", { date: formatDate(event.effectiveDate, notSet) })}</p>}
+              {event.notes && <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{event.notes}</p>}
+            </li>)}</ol>
+          </CollapsibleSection>}
         </div>
 
         <aside className="space-y-6">
@@ -540,6 +554,8 @@ export function CommercialAccountDetailPage() {
           </div>
         </aside>
       </div>
+
+      {lifecycleAction && <CommercialAccountLifecycleDialog action={lifecycleAction} accountId={account._id} futureJobCount={account.futureActiveJobCount ?? 0} open onOpenChange={(open) => !open && setLifecycleAction(null)} onSuccess={(message) => showToast(message, "success")} />}
 
     </div>
   );

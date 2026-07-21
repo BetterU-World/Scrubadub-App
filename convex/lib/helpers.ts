@@ -45,11 +45,15 @@ export async function createNotification(
       | "inspection_submitted"
       | "calendar_sync_alert"
       | "service_agreement_accepted"
-      | "service_agreement_declined";
+      | "service_agreement_declined"
+      | "commercial_account_paused"
+      | "commercial_account_resumed"
+      | "commercial_account_ended";
     title: string;
     message: string;
     relatedJobId?: Id<"jobs">;
     relatedClientRequestId?: Id<"clientRequests">;
+    relatedCommercialAccountId?: Id<"commercialAccounts">;
   }
 ) {
   await ctx.db.insert("notifications", {

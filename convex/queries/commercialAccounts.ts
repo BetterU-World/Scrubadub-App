@@ -26,12 +26,16 @@ async function decorateAccount(ctx: any, account: any) {
   const sourceLead = request?.companyId === account.companyId ? request : null;
   const sourceProposal = proposal?.companyId === account.companyId ? proposal : null;
   const linkedProperty = property?.companyId === account.companyId ? property : null;
+  const today = new Date().toISOString().slice(0, 10);
+  const accountJobs = await ctx.db.query("jobs").withIndex("by_commercialAccount", (q: any) => q.eq("commercialAccountId", account._id)).collect();
+  const futureActiveJobCount = accountJobs.filter((job: any) => job.scheduledDate >= today && !["approved", "cancelled"].includes(job.status)).length;
 
   return {
     ...account,
     assignedManagerName: manager?.name ?? null,
     assignedCleanerName: cleaner?.name ?? null,
     assignedTeamName: team?.name ?? null,
+    futureActiveJobCount,
     clientRelationship:
       clientRelationship?.companyId === account.companyId
         ? {

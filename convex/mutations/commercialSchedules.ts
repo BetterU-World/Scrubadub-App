@@ -361,6 +361,9 @@ export const generateCommercialJobsFromSchedule = mutation({
     if (!account || account.companyId !== schedule.companyId) {
       throw new Error("Commercial account must belong to your company");
     }
+    if (account.status !== "active") {
+      throw new Error("Only active commercial accounts can generate recurring jobs");
+    }
 
     await assertProperty(ctx, schedule.propertyId, schedule.companyId);
     await assertUserAssignment(ctx, schedule.assignedCleanerId, schedule.companyId, "cleaner");

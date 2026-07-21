@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwnerSession } from "../lib/sessionAuth";
+import { requireOwnerManagerSession, requireOwnerSession } from "../lib/sessionAuth";
+import { createNotification, logAudit } from "../lib/helpers";
 import { ensureClientRelationshipForLead } from "../lib/clientRelationships";
 import {
   commercialEligibilityError,
@@ -258,6 +259,8 @@ export const update = mutation({
     const account = await ctx.db.get(args.accountId);
     if (!account) throw new Error("Commercial account not found");
     if (account.companyId !== owner.companyId) throw new Error("Access denied");
+    if (account.status === "ended") throw new Error("Ended commercial accounts cannot be edited");
+    if (args.status !== account.status) throw new Error("Use a commercial account lifecycle action to change status");
 
     const patch = await buildAccountPatch(ctx, owner.companyId, args);
     await ctx.db.patch(args.accountId, {
@@ -277,4 +280,93 @@ export const update = mutation({
       }
     }
   },
+});
+
+const pauseReasonValidator = v.union(
+  v.literal("client_request"), v.literal("seasonal_pause"), v.literal("property_unavailable"),
+  v.literal("payment_issue"), v.literal("staffing_issue"), v.literal("contract_review"),
+  v.literal("safety_concern"), v.literal("other")
+);
+const endReasonValidator = v.union(
+  v.literal("client_terminated"), v.literal("company_terminated"), v.literal("contract_completed"),
+  v.literal("nonpayment"), v.literal("pricing_disagreement"), v.literal("service_quality_issue"),
+  v.literal("property_closed"), v.literal("safety_concern"), v.literal("other")
+);
+
+function cleanLifecycleNotes(notes: string | undefined) {
+  return cleanOptional(notes, 4000);
+}
+
+function cleanEffectiveDate(value: string | undefined) {
+  if (!value) return undefined;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) throw new Error("Effective date must be a valid date");
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  if (date.toISOString().slice(0, 10) !== value) throw new Error("Effective date must be a valid date");
+  return value;
+}
+
+async function lifecycleContext(ctx: any, args: any) {
+  const actor = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
+  const account = await ctx.db.get(args.commercialAccountId) as any;
+  if (!account) throw new Error("Commercial account not found");
+  if (account.companyId !== actor.companyId) throw new Error("Access denied");
+  return { actor, account };
+}
+
+async function futureActiveJobCount(ctx: any, accountId: any) {
+  const today = new Date().toISOString().slice(0, 10);
+  const jobs = await ctx.db.query("jobs").withIndex("by_commercialAccount", (q: any) => q.eq("commercialAccountId", accountId)).collect();
+  return jobs.filter((job: any) => job.scheduledDate >= today && !["approved", "cancelled"].includes(job.status)).length;
+}
+
+async function notifyLifecycle(ctx: any, actor: any, account: any, type: "paused" | "resumed" | "ended") {
+  const recipients = new Set<any>();
+  if (actor.role === "owner" && account.assignedManagerId) recipients.add(account.assignedManagerId);
+  if (actor.role === "manager") {
+    const users = await ctx.db.query("users").collect();
+    users.filter((user: any) => user.companyId === actor.companyId && user.role === "owner" && user.status === "active").forEach((user: any) => recipients.add(user._id));
+  }
+  recipients.delete(actor._id);
+  for (const userId of recipients) {
+    await createNotification(ctx, {
+      companyId: actor.companyId, userId, type: `commercial_account_${type}` as any,
+      title: `Commercial account ${type}`,
+      message: `${account.clientName} was ${type} by ${actor.name}.`,
+      relatedCommercialAccountId: account._id,
+    });
+  }
+}
+
+async function transition(ctx: any, args: any, target: "paused" | "active" | "ended", eventType: "paused" | "resumed" | "ended") {
+  const { actor, account } = await lifecycleContext(ctx, args);
+  const allowed = eventType === "paused" ? account.status === "active" : eventType === "resumed" ? account.status === "paused" : account.status !== "ended";
+  if (!allowed) throw new Error(`Commercial account cannot be ${eventType} from ${account.status}`);
+  const notes = cleanLifecycleNotes(args.notes);
+  const reason = args.reason?.trim();
+  if (eventType !== "resumed" && !reason) throw new Error("Reason is required");
+  if (reason === "other" && !notes) throw new Error("Notes are required when reason is Other");
+  const effectiveDate = cleanEffectiveDate(args.effectiveDate);
+  const now = Date.now();
+  const count = await futureActiveJobCount(ctx, account._id);
+  const event = { type: eventType, occurredAt: now, actorId: actor._id, actorName: actor.name, actorRole: actor.role, reason: reason || undefined, notes, effectiveDate };
+  await ctx.db.patch(account._id, { status: target, lifecycleHistory: [...(account.lifecycleHistory ?? []), event], updatedAt: now });
+  await notifyLifecycle(ctx, actor, account, eventType);
+  await logAudit(ctx, { companyId: actor.companyId, userId: actor._id, action: `${eventType === "paused" ? "pause" : eventType === "resumed" ? "resume" : "end"}_commercial_account`, entityType: "commercialAccount", entityId: String(account._id), details: JSON.stringify({ priorStatus: account.status, newStatus: target, reason: reason || null, notes: notes || null, effectiveDate: effectiveDate || null, actorRole: actor.role, actorName: actor.name, futureActiveJobCount: count }) });
+  return { status: target, changed: true, futureActiveJobCount: count };
+}
+
+export const pauseCommercialAccount = mutation({
+  args: { commercialAccountId: v.id("commercialAccounts"), reason: pauseReasonValidator, notes: v.optional(v.string()), effectiveDate: v.optional(v.string()), userId: v.id("users"), sessionToken: v.string() },
+  handler: (ctx, args) => transition(ctx, args, "paused", "paused"),
+});
+
+export const resumeCommercialAccount = mutation({
+  args: { commercialAccountId: v.id("commercialAccounts"), notes: v.optional(v.string()), userId: v.id("users"), sessionToken: v.string() },
+  handler: (ctx, args) => transition(ctx, args, "active", "resumed"),
+});
+
+export const endCommercialAccount = mutation({
+  args: { commercialAccountId: v.id("commercialAccounts"), reason: endReasonValidator, notes: v.optional(v.string()), effectiveDate: v.optional(v.string()), userId: v.id("users"), sessionToken: v.string() },
+  handler: (ctx, args) => transition(ctx, args, "ended", "ended"),
 });
