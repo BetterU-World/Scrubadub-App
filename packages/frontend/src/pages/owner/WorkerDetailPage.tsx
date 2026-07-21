@@ -9,6 +9,8 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
 import { Link, useParams } from "wouter";
 import { useTranslation } from "react-i18next";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { useSimpleFeedbackState } from "@/components/ui/FeedbackProvider";
 import {
   Banknote,
   BarChart3,
@@ -99,6 +101,8 @@ const PAY_TYPES = [
   "manual",
 ] as const;
 
+const OPERATIONAL_ROLES = ["cleaner", "maintenance", "manager"] as const;
+
 function nextProfileOnboardingStatus(items: Array<{ required?: boolean; status: string }>) {
   const requiredItems = items.filter((item) => item.required !== false);
   if (requiredItems.some((item) => item.status === "blocked")) return "blocked";
@@ -182,12 +186,18 @@ export function WorkerDetailPage() {
   const [savingPaymentProfile, setSavingPaymentProfile] = useState(false);
   const [paymentProfileError, setPaymentProfileError] = useState<string | null>(null);
   const [paymentProfileDraft, setPaymentProfileDraft] = useState<Record<string, any> | null>(null);
+  const [selectedOperationalRole, setSelectedOperationalRole] = useState<string>("");
+  const [confirmOperationalRole, setConfirmOperationalRole] = useState<string | null>(null);
+  const [changingOperationalRole, setChangingOperationalRole] = useState(false);
+  const [operationalRoleError, setOperationalRoleError] = useState<string | null>(null);
+  const [, setToast] = useSimpleFeedbackState();
 
   const upsertWorkerProfile = useMutation((api as any).mutations.workers.upsertWorkerProfile);
   const updateWorkerProfile = useMutation((api as any).mutations.workers.updateWorkerProfile);
   const updateWorkerEligibility = useMutation((api as any).mutations.workers.updateWorkerEligibility);
   const upsertOnboardingItem = useMutation((api as any).mutations.workers.upsertWorkerOnboardingItem);
   const upsertDocumentStatus = useMutation((api as any).mutations.workers.upsertWorkerDocumentStatus);
+  const changeOperationalRole = useMutation((api as any).mutations.workers.changeOperationalRole);
 
   const employees = useQuery(
     api.queries.employees.list,
@@ -259,6 +269,36 @@ export function WorkerDetailPage() {
     documents: documents ?? [],
     onboardingItems: onboardingItems ?? [],
   });
+
+  const currentOperationalRole = workerUser.role as typeof OPERATIONAL_ROLES[number];
+  const nextOperationalRole = (selectedOperationalRole || currentOperationalRole) as typeof OPERATIONAL_ROLES[number];
+
+  const handleChangeOperationalRole = async () => {
+    if (!confirmOperationalRole || changingOperationalRole) return;
+    setChangingOperationalRole(true);
+    setOperationalRoleError(null);
+    try {
+      await changeOperationalRole({
+        userId: user._id,
+        sessionToken,
+        workerUserId: workerUser._id,
+        role: confirmOperationalRole,
+      });
+      setSelectedOperationalRole("");
+      setConfirmOperationalRole(null);
+      setToast(t("employees.operationalRole.changed", {
+        name: workerUser.name,
+        role: t(`employees.operationalRole.roles.${confirmOperationalRole}`),
+      }));
+    } catch (err: any) {
+      const message = err.message?.includes("cleaner limit")
+        ? t("employees.operationalRole.cleanerLimit")
+        : t("employees.operationalRole.failed");
+      setOperationalRoleError(message);
+    } finally {
+      setChangingOperationalRole(false);
+    }
+  };
 
   const ensureWorkerProfileId = async () => {
     if (workerProfile?._id) return workerProfile._id;
@@ -509,6 +549,39 @@ export function WorkerDetailPage() {
           <DetailItem label="Start Date" value={formatDate(workerProfile?.createdAt ?? workerUser?._creationTime)} />
           <DetailItem label="Onboarding" value={formatLabel(workerProfile?.onboardingStatus)} />
           <DetailItem label="Eligibility" value={formatLabel(workerProfile?.jobEligibilityStatus)} />
+        </div>
+        <div className="mt-5 rounded-lg border border-gray-200 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="max-w-xl">
+              <h3 className="text-sm font-semibold text-gray-900">{t("employees.operationalRole.title")}</h3>
+              <p className="mt-1 text-sm text-gray-500">{t("employees.operationalRole.helper")}</p>
+            </div>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-end">
+              <label className="text-sm font-medium text-gray-700">
+                {t("employees.operationalRole.newRole")}
+                <select
+                  className="input-field mt-1 w-full sm:w-48"
+                  value={nextOperationalRole}
+                  disabled={changingOperationalRole}
+                  onChange={(event) => setSelectedOperationalRole(event.target.value)}
+                >
+                  {OPERATIONAL_ROLES.map((role) => (
+                    <option key={role} value={role}>{t(`employees.operationalRole.roles.${role}`)}</option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className="btn-secondary w-full sm:w-auto"
+                disabled={changingOperationalRole || nextOperationalRole === currentOperationalRole}
+                onClick={() => setConfirmOperationalRole(nextOperationalRole)}
+              >
+                {t("employees.operationalRole.change")}
+              </button>
+            </div>
+          </div>
+          {operationalRoleError && <p role="alert" className="mt-3 text-sm text-red-700">{operationalRoleError}</p>}
+          <p className="mt-3 text-xs text-gray-500">{t("employees.operationalRole.preserved")}</p>
         </div>
       </CollapsibleSection>
 
@@ -917,6 +990,18 @@ export function WorkerDetailPage() {
           </div>
         </CollapsibleSection>
       </div>
+      <ConfirmDialog
+        open={Boolean(confirmOperationalRole)}
+        onOpenChange={(open) => !open && setConfirmOperationalRole(null)}
+        title={t("employees.operationalRole.confirmTitle", { name: workerUser.name })}
+        description={t("employees.operationalRole.confirmDescription", {
+          from: t(`employees.operationalRole.roles.${currentOperationalRole}`),
+          to: confirmOperationalRole ? t(`employees.operationalRole.roles.${confirmOperationalRole}`) : "",
+        })}
+        confirmLabel={t("employees.operationalRole.confirm")}
+        onConfirm={handleChangeOperationalRole}
+        loading={changingOperationalRole}
+      />
     </div>
   );
 }

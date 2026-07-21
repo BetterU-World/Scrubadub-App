@@ -975,7 +975,25 @@
     "roleMaintenance": "Maintenance",
     "defaultManager": "Default Manager",
     "noDefaultManager": "No default manager",
-    "defaultManagerHint": "Auto-assigned to new jobs"
+    "defaultManagerHint": "Auto-assigned to new jobs",
+    "operationalRole": {
+      "title": "Operational Role",
+      "helper": "Change this worker's application role without recreating their account or history.",
+      "newRole": "New role",
+      "change": "Change Role",
+      "confirm": "Confirm Role Change",
+      "confirmTitle": "Change {{name}}'s role?",
+      "confirmDescription": "Change the operational role from {{from}} to {{to}}? Their account, profile, assignments, history, teams, documents, payments, and Stripe connection will be preserved.",
+      "preserved": "Existing assignments and historical records remain linked. Review future manager or worker assignments after the change.",
+      "changed": "{{name}} is now a {{role}}.",
+      "failed": "The operational role could not be changed. Please try again.",
+      "cleanerLimit": "Your plan's active-cleaner limit must be increased before assigning the Cleaner role.",
+      "roles": {
+        "cleaner": "Cleaner",
+        "maintenance": "Maintenance",
+        "manager": "Manager"
+      }
+    }
   },
   "partners": {
     "title": "Partners",
