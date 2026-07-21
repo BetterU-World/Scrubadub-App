@@ -1,5 +1,6 @@
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { LeadsHeader } from "@/components/ui/LeadsHeader";
@@ -7,197 +8,80 @@ import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useTranslation } from "react-i18next";
 import { useTimeAgo } from "@/hooks/useTimeAgo";
-import {
-  Inbox,
-  MapPin,
-  Calendar,
-  Clock,
-  AlertCircle,
-  ChevronRight,
-} from "lucide-react";
+import { AlertCircle, ArrowRight, Building2, CheckCircle2, Inbox, Link2, MapPin, Search } from "lucide-react";
 
-const STAGES = [
-  { value: "new", labelKey: "status.new", color: "bg-blue-50 border-blue-200" },
-  { value: "contacted", labelKey: "status.contacted", color: "bg-indigo-50 border-indigo-200" },
-  { value: "walkthrough_scheduled", labelKey: "status.walkthroughScheduled", color: "bg-purple-50 border-purple-200" },
-  { value: "proposal_needed", labelKey: "status.proposalNeeded", color: "bg-orange-50 border-orange-200" },
-  { value: "proposal_sent", labelKey: "status.proposalSent", color: "bg-yellow-50 border-yellow-200" },
-  { value: "negotiating", labelKey: "status.negotiating", color: "bg-amber-50 border-amber-200" },
-  { value: "accepted", labelKey: "status.accepted", color: "bg-green-50 border-green-200" },
-  { value: "declined", labelKey: "status.declined", color: "bg-gray-50 border-gray-200" },
-  { value: "converted", labelKey: "status.converted", color: "bg-primary-50 border-primary-200" },
-] as const;
-
-const LEGACY_STAGE_MAP: Record<string, string> = {
-  quoted: "proposal_sent",
-  won: "accepted",
-  lost: "declined",
-};
-
-function displayStage(stage: string | undefined) {
-  if (!stage) return "new";
-  return LEGACY_STAGE_MAP[stage] ?? stage;
-}
-
-function FollowUpBadge({ nextFollowUpAt }: { nextFollowUpAt: number }) {
-  const { t } = useTranslation();
-  const now = Date.now();
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
-
-  if (nextFollowUpAt <= now) {
-    return (
-      <span className="inline-flex items-center gap-1 text-xs font-medium text-red-700 bg-red-100 rounded-full px-2 py-0.5">
-        <AlertCircle className="w-3 h-3" /> {t("pipeline.overdue")}
-      </span>
-    );
-  }
-  if (nextFollowUpAt <= todayEnd.getTime()) {
-    return (
-      <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-100 rounded-full px-2 py-0.5">
-        <Clock className="w-3 h-3" /> {t("pipeline.today")}
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full px-2 py-0.5">
-      <Calendar className="w-3 h-3" />
-      {new Date(nextFollowUpAt).toLocaleDateString()}
-    </span>
-  );
-}
-
-function FollowUpsWidget({ userId, sessionToken }: { userId: any; sessionToken: string }) {
-  const { t } = useTranslation();
-  const followUps = useQuery(
-    api.queries.clientRequests.listFollowUps,
-    sessionToken ? { userId, sessionToken, limit: 5 } : "skip"
-  );
-
-  if (!followUps || followUps.length === 0) return null;
-
-  return (
-    <div className="card mb-6">
-      <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-        <Clock className="w-4 h-4 text-gray-500" />
-        {t("pipeline.upcomingFollowUps")}
-      </h3>
-      <div className="space-y-2">
-        {followUps.map((req) => (
-          <Link
-            key={req._id}
-            href={`/requests/${req._id}`}
-            className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50 transition-colors group"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">
-                  {req.requesterName}
-                </p>
-                <p className="text-xs text-gray-500 truncate">
-                  {req.propertySnapshot?.address || t("pipeline.noAddress")}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <FollowUpBadge nextFollowUpAt={(req as any).nextFollowUpAt} />
-              <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
-            </div>
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
-}
+const STAGES = ["new", "qualification", "walkthrough", "proposal", "decision", "agreement", "onboarding", "converted", "closed"] as const;
+const ATTENTION = ["all", "needs_attention", "overdue", "blocked", "stale"] as const;
 
 export function PipelinePage() {
   const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const timeAgo = useTimeAgo();
-
+  const [search, setSearch] = useState("");
+  const [attention, setAttention] = useState<(typeof ATTENTION)[number]>("all");
+  const [leadType, setLeadType] = useState("all");
+  const [sort, setSort] = useState("attention");
   const allRequests = useQuery(
     api.queries.clientRequests.listRequestsForPipeline,
     user && sessionToken ? { userId: user._id, sessionToken } : "skip"
   );
 
-  if (!user || allRequests === undefined) return <PageLoader />;
+  const filtered = useMemo(() => {
+    if (!allRequests) return [];
+    const term = search.trim().toLocaleLowerCase();
+    return allRequests
+      .filter((request: any) => {
+        const haystack = [request.requesterName, request.requesterEmail, request.businessName, request.propertySnapshot?.address].filter(Boolean).join(" ").toLocaleLowerCase();
+        const attentionMatch = attention === "all" || (attention === "needs_attention" ? ["overdue", "blocked", "stale"].includes(request.pipeline.attention) : request.pipeline.attention === attention);
+        return (!term || haystack.includes(term)) && attentionMatch && (leadType === "all" || request.leadType === leadType);
+      })
+      .sort((a: any, b: any) => {
+        if (sort === "oldest") return a.createdAt - b.createdAt;
+        if (sort === "newest") return b.createdAt - a.createdAt;
+        const priority: Record<string, number> = { overdue: 0, blocked: 1, stale: 2, active: 3, none: 4 };
+        return (priority[a.pipeline.attention] ?? 5) - (priority[b.pipeline.attention] ?? 5) || a.pipeline.latestActivityAt - b.pipeline.latestActivityAt;
+      });
+  }, [allRequests, attention, leadType, search, sort]);
 
-  // Group by stage
-  const byStage: Record<string, typeof allRequests> = {};
-  for (const stage of STAGES) {
-    byStage[stage.value] = [];
-  }
-  for (const req of allRequests) {
-    const stage = displayStage((req as any).leadStage);
-    if (byStage[stage]) {
-      byStage[stage].push(req);
-    }
-  }
+  if (!user || allRequests === undefined) return <PageLoader />;
+  const attentionCount = allRequests.filter((request: any) => ["overdue", "blocked", "stale"].includes(request.pipeline.attention)).length;
 
   return (
     <div>
       <LeadsHeader />
+      <section aria-label={t("pipeline.workspaceControls")} className="card mb-5 space-y-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div><p className="text-2xl font-semibold text-gray-900">{allRequests.length}</p><p className="text-xs text-gray-500">{t("pipeline.totalLeads")}</p></div>
+          <div><p className="text-2xl font-semibold text-amber-700">{attentionCount}</p><p className="text-xs text-gray-500">{t("pipeline.needAttention")}</p></div>
+          <div><p className="text-2xl font-semibold text-green-700">{allRequests.filter((request: any) => request.pipeline.stage === "converted").length}</p><p className="text-xs text-gray-500">{t("pipeline.converted")}</p></div>
+        </div>
+        <div className="grid gap-2 md:grid-cols-[minmax(220px,1fr)_auto_auto_auto]">
+          <label className="relative"><span className="sr-only">{t("pipeline.search")}</span><Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" /><input value={search} onChange={(event) => setSearch(event.target.value)} className="input-field pl-9" placeholder={t("pipeline.searchPlaceholder")} /></label>
+          <select aria-label={t("pipeline.attentionFilter")} className="input-field" value={attention} onChange={(event) => setAttention(event.target.value as any)}>{ATTENTION.map((value) => <option key={value} value={value}>{t(`pipeline.filters.${value}`)}</option>)}</select>
+          <select aria-label={t("pipeline.leadTypeFilter")} className="input-field" value={leadType} onChange={(event) => setLeadType(event.target.value)}><option value="all">{t("pipeline.filters.allTypes")}</option>{["booking_request", "residential", "str_airbnb", "commercial", "move_out", "post_construction", "other"].map((value) => <option key={value} value={value}>{t(`leadTypes.${value}`)}</option>)}</select>
+          <select aria-label={t("pipeline.sort")} className="input-field" value={sort} onChange={(event) => setSort(event.target.value)}><option value="attention">{t("pipeline.sorts.attention")}</option><option value="newest">{t("pipeline.sorts.newest")}</option><option value="oldest">{t("pipeline.sorts.oldest")}</option></select>
+        </div>
+      </section>
 
-      <FollowUpsWidget userId={user._id} sessionToken={sessionToken} />
-
-      {allRequests.length === 0 ? (
-        <EmptyState
-          icon={Inbox}
-          title={t("pipeline.noRequestsYet")}
-          description={t("pipeline.noRequestsYetDesc")}
-        />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-4">
-          {STAGES.map((stage) => {
-            const items = byStage[stage.value];
-            return (
-              <div key={stage.value}>
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-semibold text-gray-700">
-                    {t(stage.labelKey)}
-                  </h3>
-                  <span className="badge bg-gray-100 text-gray-600">
-                    {items.length}
-                  </span>
+      {allRequests.length === 0 ? <EmptyState icon={Inbox} title={t("pipeline.noRequestsYet")} description={t("pipeline.noRequestsYetDesc")} /> : filtered.length === 0 ? <EmptyState icon={Search} title={t("pipeline.noMatches")} description={t("pipeline.noMatchesDesc")} /> : (
+        <div className="-mx-4 overflow-x-auto px-4 pb-4" tabIndex={0} aria-label={t("pipeline.boardLabel")}>
+          <div className="grid min-w-max grid-flow-col auto-cols-[minmax(280px,320px)] gap-4">
+            {STAGES.map((stage) => {
+              const items = filtered.filter((request: any) => request.pipeline.stage === stage);
+              return <section key={stage} aria-labelledby={`pipeline-${stage}`}>
+                <div className="mb-2 flex items-center justify-between"><h2 id={`pipeline-${stage}`} className="text-sm font-semibold text-gray-700">{t(`pipeline.stages.${stage}`)}</h2><span className="badge bg-gray-100 text-gray-600" aria-label={t("pipeline.stageCount", { count: items.length })}>{items.length}</span></div>
+                <div className="min-h-[150px] space-y-2 rounded-xl border border-gray-200 bg-gray-50 p-2">
+                  {items.length === 0 ? <p className="py-8 text-center text-xs text-gray-400">{t("pipeline.noLeads")}</p> : items.map((request: any) => <article key={request._id} className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+                    <div className="flex items-start justify-between gap-2"><div className="min-w-0"><Link href={`/requests/${request._id}`} className="font-medium text-gray-900 hover:text-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500">{request.requesterName}</Link>{request.businessName && <p className="truncate text-xs text-gray-500">{request.businessName}</p>}</div>{request.leadType === "commercial" ? <Building2 className="h-4 w-4 shrink-0 text-gray-400" /> : null}</div>
+                    {request.propertySnapshot?.address && <p className="mt-1 flex items-center gap-1 truncate text-xs text-gray-500"><MapPin className="h-3 w-3 shrink-0" />{request.propertySnapshot.address}</p>}
+                    {request.pipeline.attention !== "none" && request.pipeline.attention !== "active" && <span className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${request.pipeline.attention === "overdue" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-800"}`}><AlertCircle className="h-3 w-3" />{t(`pipeline.attention.${request.pipeline.attention}`)}</span>}
+                    <div className="mt-2 flex flex-wrap gap-1" aria-label={t("pipeline.linkedRecords")}>{Object.entries(request.pipeline.linked).filter(([key, value]) => key !== "clientPortal" && value).map(([key]) => <span key={key} title={t(`pipeline.links.${key}`)} className="inline-flex items-center rounded bg-gray-100 p-1 text-gray-500"><Link2 className="h-3 w-3" /><span className="sr-only">{t(`pipeline.links.${key}`)}</span></span>)}{request.pipeline.linked.clientPortal === "active" && <span title={t("pipeline.links.clientPortal")} className="inline-flex items-center rounded bg-green-100 p-1 text-green-700"><CheckCircle2 className="h-3 w-3" /><span className="sr-only">{t("pipeline.links.clientPortal")}</span></span>}</div>
+                    <div className="mt-3 border-t pt-2"><p className="text-[11px] uppercase tracking-wide text-gray-400">{t("pipeline.nextAction")}</p><Link href={`/requests/${request._id}${request.pipeline.nextAction.hrefSuffix}`} className="mt-0.5 inline-flex items-center gap-1 text-sm font-medium text-primary-700 hover:text-primary-800">{t(`pipeline.actions.${request.pipeline.nextAction.key}`)}<ArrowRight className="h-3.5 w-3.5" /></Link><p className="mt-1 text-xs text-gray-400">{t("pipeline.lastActivity", { value: timeAgo(request.pipeline.latestActivityAt) })}</p></div>
+                  </article>)}
                 </div>
-                <div className={`rounded-xl border p-2 ${stage.color} min-h-[120px] space-y-2`}>
-                  {items.length === 0 ? (
-                    <p className="text-xs text-gray-400 text-center py-6">
-                      {t("pipeline.noLeads")}
-                    </p>
-                  ) : (
-                    items.map((req) => (
-                      <Link
-                        key={req._id}
-                        href={`/requests/${req._id}`}
-                        className="block bg-white rounded-lg border border-gray-200 p-3 shadow-sm hover:shadow-md transition-shadow"
-                      >
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {req.requesterName}
-                        </p>
-                        {req.propertySnapshot?.address && (
-                          <p className="flex items-center gap-1 text-xs text-gray-500 mt-1 truncate">
-                            <MapPin className="w-3 h-3 flex-shrink-0" />
-                            {req.propertySnapshot.address}
-                          </p>
-                        )}
-                        <div className="flex items-center justify-between mt-2">
-                          <span className="text-xs text-gray-400">
-                            {timeAgo(req.createdAt)}
-                          </span>
-                          {(req as any).nextFollowUpAt && (
-                            <FollowUpBadge
-                              nextFollowUpAt={(req as any).nextFollowUpAt}
-                            />
-                          )}
-                        </div>
-                      </Link>
-                    ))
-                  )}
-                </div>
-              </div>
-            );
-          })}
+              </section>;
+            })}
+          </div>
         </div>
       )}
     </div>
