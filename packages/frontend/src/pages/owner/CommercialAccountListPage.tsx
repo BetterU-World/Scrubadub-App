@@ -11,9 +11,9 @@ import { Building2, CalendarDays, ClipboardCheck, MapPin } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { clsx } from "clsx";
 
-type AccountStatus = "active" | "paused" | "ended";
+type AccountStatus = "operations" | "active" | "paused" | "ended";
 
-const STATUSES: AccountStatus[] = ["active", "paused", "ended"];
+const STATUSES: AccountStatus[] = ["operations", "active", "paused", "ended"];
 
 function formatPrice(cents: number | undefined, fallback: string) {
   if (cents == null) return fallback;
@@ -31,15 +31,16 @@ function formatDate(date: string | undefined, fallback: string) {
 export function CommercialAccountListPage() {
   const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
-  const [status, setStatus] = useState<AccountStatus>("active");
+  const [status, setStatus] = useState<AccountStatus>("operations");
   const notSet = t("commercialAccounts.notSet");
 
   const accounts = useQuery(
     (api as any).queries.commercialAccounts.listByCompany,
-    user ? { userId: user._id, sessionToken, status } : "skip"
+    user ? { userId: user._id, sessionToken, status: status === "operations" ? undefined : status } : "skip"
   );
 
   if (!user || accounts === undefined) return <PageLoader />;
+  const visibleAccounts = status === "operations" ? accounts.filter((account: any) => account.status !== "ended") : accounts;
 
   return (
     <div>
@@ -48,7 +49,7 @@ export function CommercialAccountListPage() {
         description={t("guidance.owner.commercialAccounts")}
       />
 
-      <div className="mb-4 grid grid-cols-3 gap-2 sm:flex sm:flex-wrap">
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
         {STATUSES.map((value) => (
           <button
             key={value}
@@ -66,7 +67,7 @@ export function CommercialAccountListPage() {
         ))}
       </div>
 
-      {accounts.length === 0 ? (
+      {visibleAccounts.length === 0 ? (
         <EmptyState
           icon={Building2}
           title={t("commercialAccounts.emptyTitle")}
@@ -102,7 +103,7 @@ export function CommercialAccountListPage() {
                 </tr>
               </thead>
               <tbody className="block space-y-3 sm:table-row-group sm:space-y-0">
-                {accounts.map((account: any) => (
+                {visibleAccounts.map((account: any) => (
                   <tr key={account._id} className="block rounded-lg border border-gray-200 p-4 sm:table-row sm:rounded-none sm:border-0 sm:border-b sm:border-gray-100 sm:p-0 sm:last:border-0">
                     <td className="block min-w-0 pb-3 sm:table-cell sm:px-4 sm:py-3">
                       <Link
@@ -128,7 +129,7 @@ export function CommercialAccountListPage() {
                     </td>
                     <td className="block py-2 sm:table-cell sm:px-4 sm:py-3 sm:whitespace-nowrap">
                       <span className="mr-2 text-xs font-medium text-gray-500 sm:hidden">{t("commercialAccounts.status")}</span>
-                      <span className="badge bg-gray-100 text-gray-700 capitalize">
+                      <span className={clsx("badge", account.status === "active" ? "bg-green-100 text-green-800" : account.status === "paused" ? "bg-amber-100 text-amber-800" : "bg-gray-200 text-gray-800")}>
                         {t(`commercialAccounts.statuses.${account.status}`)}
                       </span>
                     </td>

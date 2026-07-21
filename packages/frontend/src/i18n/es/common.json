@@ -1173,6 +1173,7 @@
     "allCaughtUpDesc": "¡Estás al día!",
     "viewJob": "Ver trabajo",
     "viewRequest": "Ver solicitud",
+    "viewCommercialAccount": "Ver cuenta",
     "none": "Aún no hay notificaciones",
     "jobAssigned": "Trabajo asignado",
     "jobCompleted": "Trabajo completado",
@@ -1923,9 +1924,22 @@
     "invoices": "Facturas",
     "clientPortal": "Portal del cliente",
     "statuses": {
+      "operations": "Operaciones activas",
       "active": "Activa",
       "paused": "Pausada",
       "ended": "Finalizada"
+    },
+    "lifecycle": {
+      "reason": "Motivo", "notes": "Notas (opcional)", "history": "Historial del ciclo de vida", "byAndWhen": "Por {{name}} el {{date}}",
+      "futureJobs": "Queda {{count}} trabajo activo futuro programado.", "futureJobs_other": "Quedan {{count}} trabajos activos futuros programados.", "futureJobsUnchanged": "No se cancelaran automaticamente y deben revisarse por separado.", "error": "No se pudo completar el cambio del ciclo de vida.",
+      "validation": { "reason": "Selecciona un motivo.", "otherNotes": "Ingresa notas cuando el motivo sea Otro." },
+      "pause": { "action": "Pausar", "title": "Pausar cuenta comercial", "description": "La pausa entra en vigor inmediatamente. Los trabajos futuros existentes no se cancelaran automaticamente. No se crearan nuevos trabajos recurrentes hasta reanudar el servicio.", "confirm": "Pausar cuenta", "success": "Cuenta comercial pausada.", "historyTitle": "Servicio pausado" },
+      "resume": { "action": "Reanudar", "title": "Reanudar cuenta comercial", "description": "La creacion futura de trabajos recurrentes se reanudara segun el horario existente. Los trabajos omitidos no se reponen.", "confirm": "Reanudar cuenta", "success": "Cuenta comercial reanudada.", "historyTitle": "Servicio reanudado" },
+      "end": { "action": "Finalizar", "title": "Finalizar cuenta comercial", "description": "Finalizar el servicio entra en vigor inmediatamente y es permanente. Los trabajos futuros existentes no se cancelaran automaticamente. No se crearan nuevos trabajos recurrentes.", "confirm": "Finalizar cuenta", "success": "Cuenta comercial finalizada.", "historyTitle": "Servicio finalizado" },
+      "reasons": {
+        "client_request": "Solicitud del cliente", "seasonal_pause": "Pausa estacional", "property_unavailable": "Propiedad no disponible", "payment_issue": "Problema de pago", "staffing_issue": "Problema de personal", "contract_review": "Revision del contrato", "safety_concern": "Problema de seguridad", "other": "Otro",
+        "client_terminated": "Finalizado por el cliente", "company_terminated": "Finalizado por la empresa", "contract_completed": "Contrato completado", "nonpayment": "Falta de pago", "pricing_disagreement": "Desacuerdo de precios", "service_quality_issue": "Problema de calidad", "property_closed": "Propiedad cerrada"
+      }
     }
   },
   "propertyIntelligence": {

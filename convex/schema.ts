@@ -729,13 +729,17 @@ export default defineSchema({
       v.literal("inspection_submitted"),
       v.literal("calendar_sync_alert"),
       v.literal("service_agreement_accepted"),
-      v.literal("service_agreement_declined")
+      v.literal("service_agreement_declined"),
+      v.literal("commercial_account_paused"),
+      v.literal("commercial_account_resumed"),
+      v.literal("commercial_account_ended")
     ),
     title: v.string(),
     message: v.string(),
     read: v.boolean(),
     relatedJobId: v.optional(v.id("jobs")),
     relatedClientRequestId: v.optional(v.id("clientRequests")),
+    relatedCommercialAccountId: v.optional(v.id("commercialAccounts")),
   }).index("by_userId_read", ["userId", "read"]),
 
   auditLog: defineTable({
@@ -1266,6 +1270,15 @@ export default defineSchema({
       v.literal("ended")
     ),
     notes: v.optional(v.string()),
+    lifecycleHistory: v.optional(v.array(v.object({
+      type: v.union(v.literal("paused"), v.literal("resumed"), v.literal("ended")),
+      occurredAt: v.number(),
+      actorId: v.id("users"),
+      actorName: v.string(),
+      actorRole: v.union(v.literal("owner"), v.literal("manager")),
+      reason: v.optional(v.string()),
+      notes: v.optional(v.string()),
+    }))),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
