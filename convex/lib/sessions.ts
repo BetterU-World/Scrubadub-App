@@ -137,6 +137,21 @@ export async function requireOwnerSession(
   return principal as typeof principal & { role: "owner"; companyId: Id<"companies"> };
 }
 
+export async function requireOwnerManagerSession(
+  ctx: ActionCtx,
+  token: string,
+  claimedUserId?: Id<"users">
+): Promise<StaffSessionPrincipal & { role: "owner" | "manager"; companyId: Id<"companies"> }> {
+  const principal = await requireStaffSession(ctx, token, claimedUserId);
+  if ((principal.role !== "owner" && principal.role !== "manager") || !principal.companyId) {
+    throw new Error("Owner or manager session required");
+  }
+  return principal as typeof principal & {
+    role: "owner" | "manager";
+    companyId: Id<"companies">;
+  };
+}
+
 export async function requireAffiliateSession(
   ctx: ActionCtx,
   token: string,

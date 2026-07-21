@@ -333,7 +333,37 @@
     "leadDetailsSaveNotConfirmed": "The selected lead type was not saved. Please try again.",
     "invalidEstimate": "Enter a valid estimated value",
     "manualLead": "Manual Lead",
-    "service": "Service"
+    "service": "Service",
+    "clientPortal": {
+      "title": "Client Portal",
+      "relationship": "Client relationship",
+      "relationshipHelper": "Create or reuse a company-scoped client relationship for this request.",
+      "createRelationship": "Create Client Relationship",
+      "inviteClient": "Invite Client",
+      "resendInvitation": "Resend Invitation",
+      "sendInvitation": "Send Invitation",
+      "invitationSent": "Invitation sent.",
+      "invitationFailed": "The invitation could not be sent. Please try again.",
+      "missingEmail": "A client email address is required before an invitation can be sent.",
+      "invalidEmail": "Enter a valid client email address before sending an invitation.",
+      "permissionDenied": "Only an Owner or Manager can invite a client.",
+      "existingAccount": "Client Portal Active",
+      "confirmTitle": "Invite {{name}}?",
+      "confirmRecipient": "An invitation will be emailed to:",
+      "company": "Company: {{company}}",
+      "accessIntro": "{{name}} will be able to:",
+      "access": {
+        "proposals": "View proposals",
+        "agreements": "View agreements",
+        "invoices": "View invoices",
+        "portal": "Access the Client Portal"
+      },
+      "statuses": {
+        "not_invited": "Not Invited",
+        "pending": "Invitation Pending",
+        "active": "Client Portal Active"
+      }
+    }
   },
   "feedback": {
     "closeNotification": "Close notification",

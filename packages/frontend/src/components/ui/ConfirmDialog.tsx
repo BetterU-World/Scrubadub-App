@@ -1,12 +1,13 @@
 import { useTranslation } from "react-i18next";
 import { DialogShell } from "./DialogShell";
 import { useState } from "react";
+import type { ReactNode } from "react";
 
 interface ConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
-  description: string;
+  description: ReactNode;
   confirmLabel?: string;
   confirmVariant?: "primary" | "danger";
   onConfirm: () => void | Promise<void>;

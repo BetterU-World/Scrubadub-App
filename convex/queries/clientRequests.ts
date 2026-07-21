@@ -87,6 +87,17 @@ export const getRequestById = query({
     const clientRelationship = request.clientRelationshipId
       ? await ctx.db.get(request.clientRelationshipId)
       : null;
+    const linkedClientUser = clientRelationship?.clientUserId
+      ? await ctx.db.get(clientRelationship.clientUserId)
+      : null;
+    const pendingClientUser = clientRelationship?.pendingInviteClientUserId
+      ? await ctx.db.get(clientRelationship.pendingInviteClientUserId)
+      : null;
+    const clientPortalStatus = linkedClientUser?.status === "active"
+      ? "active"
+      : clientRelationship?.inviteTokenHash || linkedClientUser?.status === "pending" || pendingClientUser
+        ? "pending"
+        : "not_invited";
 
     return {
       ...request,
@@ -98,8 +109,11 @@ export const getRequestById = query({
               businessName: clientRelationship.businessName,
               clientType: clientRelationship.clientType,
               status: clientRelationship.status,
+              email: clientRelationship.email,
             }
           : null,
+      clientPortalStatus,
+      clientPortalInviteSentAt: clientRelationship?.inviteSentAt,
     };
   },
 });

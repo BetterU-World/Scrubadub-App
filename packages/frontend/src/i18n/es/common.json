@@ -333,7 +333,37 @@
     "leadDetailsSaveNotConfirmed": "No se guardó el tipo de prospecto seleccionado. Inténtalo de nuevo.",
     "invalidEstimate": "Ingresa un valor estimado válido",
     "manualLead": "Prospecto manual",
-    "service": "Servicio"
+    "service": "Servicio",
+    "clientPortal": {
+      "title": "Portal del cliente",
+      "relationship": "Relación con el cliente",
+      "relationshipHelper": "Crea o reutiliza una relación de cliente de la compañía para esta solicitud.",
+      "createRelationship": "Crear relación de cliente",
+      "inviteClient": "Invitar cliente",
+      "resendInvitation": "Reenviar invitación",
+      "sendInvitation": "Enviar invitación",
+      "invitationSent": "Invitación enviada.",
+      "invitationFailed": "No se pudo enviar la invitación. Inténtalo de nuevo.",
+      "missingEmail": "Se requiere el correo electrónico del cliente antes de enviar una invitación.",
+      "invalidEmail": "Ingresa un correo electrónico válido del cliente antes de enviar una invitación.",
+      "permissionDenied": "Solo un Propietario o Gerente puede invitar a un cliente.",
+      "existingAccount": "Portal del cliente activo",
+      "confirmTitle": "¿Invitar a {{name}}?",
+      "confirmRecipient": "Se enviará una invitación por correo electrónico a:",
+      "company": "Compañía: {{company}}",
+      "accessIntro": "{{name}} podrá:",
+      "access": {
+        "proposals": "Ver propuestas",
+        "agreements": "Ver acuerdos",
+        "invoices": "Ver facturas",
+        "portal": "Acceder al Portal del cliente"
+      },
+      "statuses": {
+        "not_invited": "No invitado",
+        "pending": "Invitación pendiente",
+        "active": "Portal del cliente activo"
+      }
+    }
   },
   "feedback": {
     "closeNotification": "Cerrar notificación",
