@@ -2,7 +2,7 @@ import { mutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { logAudit, createNotification } from "../lib/helpers";
-import { requireOwnerSession, requireWorkerSession } from "../lib/sessionAuth";
+import { requireOwnerManagerSession, requireOwnerSession, requireWorkerSession } from "../lib/sessionAuth";
 import { requireActiveSubscription } from "../lib/subscriptionGating";
 import { assertTeamInCompany, canSubmitFinalJob, getJobRecipientUserIds, isUserAssignedToJob } from "../lib/teams";
 import { resolveOperationalEmailIdentity } from "../lib/operationalEmailIdentity";
@@ -16,6 +16,18 @@ const pauseReasonValidator = v.union(
   v.literal("client_interruption"),
   v.literal("travel_between_service_areas"),
   v.literal("equipment_issue"),
+  v.literal("other")
+);
+
+const cancelReasonValidator = v.union(
+  v.literal("client_cancelled"),
+  v.literal("weather"),
+  v.literal("property_unavailable"),
+  v.literal("staff_unavailable"),
+  v.literal("duplicate_booking"),
+  v.literal("scheduling_conflict"),
+  v.literal("pricing_disagreement"),
+  v.literal("safety_concern"),
   v.literal("other")
 );
 
@@ -209,32 +221,60 @@ export const update = mutation({
 });
 
 export const cancel = mutation({
-  args: { jobId: v.id("jobs"), userId: v.optional(v.id("users")), sessionToken: v.string() },
+  args: {
+    jobId: v.id("jobs"),
+    reason: cancelReasonValidator,
+    notes: v.optional(v.string()),
+    userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
+  },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const actor = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
-    if (job.companyId !== owner.companyId) throw new Error("Not your company");
+    if (job.companyId !== actor.companyId) throw new Error("Access denied");
+    if (job.status === "cancelled") throw new Error("Job is already cancelled");
+    if (job.status === "approved" || job.status === "submitted") {
+      throw new Error("Completed jobs cannot be cancelled");
+    }
+    const notes = args.notes?.trim();
+    if (args.reason === "other" && !notes) throw new Error("Notes are required when reason is Other");
+    const cancelledAt = Date.now();
 
-    await ctx.db.patch(args.jobId, { status: "cancelled" });
+    await ctx.db.patch(args.jobId, {
+      status: "cancelled",
+      cancelledAt,
+      cancelledBy: actor._id,
+      cancelledByName: actor.name,
+      cancelReason: args.reason,
+      cancelNotes: notes,
+      currentPauseStartedAt: undefined,
+    });
 
-    for (const cleanerId of await getJobRecipientUserIds(ctx, job)) {
+    const recipientIds = new Set(await getJobRecipientUserIds(ctx, job));
+    if (actor.role === "manager") {
+      const companyUsers = await ctx.db.query("users").withIndex("by_companyId", (q) => q.eq("companyId", job.companyId)).collect();
+      for (const owner of companyUsers.filter((user) => user.role === "owner")) recipientIds.add(owner._id);
+    }
+    recipientIds.delete(actor._id);
+    for (const recipientId of recipientIds) {
       await createNotification(ctx, {
         companyId: job.companyId,
-        userId: cleanerId,
-        type: "job_denied",
+        userId: recipientId,
+        type: "job_cancelled",
         title: "Job Cancelled",
-        message: `A job scheduled for ${job.scheduledDate} has been cancelled`,
+        message: `A job scheduled for ${job.scheduledDate} has been cancelled by ${actor.name}`,
         relatedJobId: args.jobId,
       });
     }
 
     await logAudit(ctx, {
-      companyId: owner.companyId,
-      userId: owner._id,
+      companyId: actor.companyId,
+      userId: actor._id,
       action: "cancel_job",
       entityType: "job",
       entityId: args.jobId,
+      details: JSON.stringify({ reason: args.reason, notes, cancelledAt }),
     });
   },
 });

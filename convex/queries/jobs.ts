@@ -44,6 +44,7 @@ export const list = query({
             q.eq("companyId", args.companyId)
           )
           .take(JOB_LIST_CAP);
+        jobs = jobs.filter((job) => job.status !== "cancelled");
       }
 
       if (user.role === "cleaner" || user.role === "maintenance") {
@@ -82,6 +83,7 @@ export const list = query({
               j.arrivedAt ?? 0,
               j.acceptedAt ?? 0,
               j.deniedAt ?? 0,
+              j.cancelledAt ?? 0,
             );
           jobs.sort((a, b) => latest(b) - latest(a));
           break;

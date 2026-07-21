@@ -9,7 +9,7 @@ import { requireUserId } from "@/lib/requireUserId";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { CancelJobDialog } from "@/components/CancelJobDialog";
 import { useParams, Link } from "wouter";
 import { JobTimeline } from "@/components/JobTimeline";
 import { JobTimingPanel } from "@/components/JobTimingPanel";
@@ -178,7 +178,7 @@ export function JobDetailPage() {
   if (job === null) return <div className="text-center py-12 text-gray-500">{t("jobs.jobNotFound")}</div>;
 
   const canReview = job.status === "submitted";
-  const canCancel = ["scheduled", "confirmed"].includes(job.status);
+  const canCancel = !["cancelled", "submitted", "approved"].includes(job.status);
   const detailPartnerStatus = incomingShared?.status
     ?? getPartnerResponseStatus((sharedStatus ?? []).map((status) => status.status));
 
@@ -564,7 +564,7 @@ export function JobDetailPage() {
         )}
 
         {/* Inventory checklist review */}
-        {job.inventoryChecklist && job.inventoryChecklist.length > 0 && (
+        {job.status !== "cancelled" && job.inventoryChecklist && job.inventoryChecklist.length > 0 && (
           <OwnerInventoryChecklistReview checklist={job.inventoryChecklist} />
         )}
 
@@ -1345,18 +1345,13 @@ export function JobDetailPage() {
         </div>
       )}
 
-      <ConfirmDialog
+      <CancelJobDialog
         open={showCancel}
         onOpenChange={setShowCancel}
-        title={t("jobs.cancelJob")}
-        description={t("jobs.cancelJobConfirm")}
-        confirmLabel={t("jobs.cancelJob")}
-        confirmVariant="danger"
-        onConfirm={async () => {
+        onConfirm={async (reason, notes) => {
           const uid = requireUserId(user);
           if (!uid) return;
-          await cancelJob({ jobId: job._id, userId: uid, sessionToken: getStaffSessionToken() });
-          setShowCancel(false);
+          await cancelJob({ jobId: job._id, reason, notes, userId: uid, sessionToken: getStaffSessionToken() });
         }}
       />
 

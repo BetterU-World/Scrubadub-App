@@ -27,6 +27,7 @@ export async function createNotification(
       | "job_assigned"
       | "job_confirmed"
       | "job_denied"
+      | "job_cancelled"
       | "job_started"
       | "job_submitted"
       | "job_approved"

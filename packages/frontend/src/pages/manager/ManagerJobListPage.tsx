@@ -10,7 +10,7 @@ import { Link } from "wouter";
 import { MapPin, Clock, Users, Search, Eye } from "lucide-react";
 import { format } from "date-fns";
 
-type StatusFilter = "all" | "scheduled" | "confirmed" | "in_progress" | "submitted" | "approved";
+type StatusFilter = "all" | "scheduled" | "confirmed" | "in_progress" | "submitted" | "approved" | "cancelled";
 
 export function ManagerJobListPage() {
   const { user } = useAuth();
@@ -49,6 +49,7 @@ export function ManagerJobListPage() {
   const statusOptions: { value: StatusFilter; label: string }[] = [
     { value: "all", label: "All" },
     { value: "scheduled", label: "Scheduled" },
+    { value: "cancelled", label: "Cancelled" },
     { value: "confirmed", label: "Confirmed" },
     { value: "in_progress", label: "In Progress" },
     { value: "submitted", label: "Submitted" },

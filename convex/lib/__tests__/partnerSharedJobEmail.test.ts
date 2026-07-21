@@ -70,7 +70,7 @@ describe("partner shared-job email", () => {
     await expect(t.mutation(api.mutations.partners.acceptSharedJob, { userId: seeded.ownerA, sessionToken: auth.sessionToken, sharedJobId: shared.sharedJobId })).rejects.toThrow("Not authorized");
 
     await t.mutation(api.mutations.partners.rejectSharedJob, { userId: seeded.activeB, sessionToken: authB.sessionToken, sharedJobId: shared.sharedJobId });
-    const afterReject = await t.query(api.queries.jobs.list, { companyId: seeded.companyB, userId: seeded.activeB, sessionToken: authB.sessionToken });
+    const afterReject = await t.query(api.queries.jobs.list, { companyId: seeded.companyB, userId: seeded.activeB, sessionToken: authB.sessionToken, status: "cancelled" });
     expect(afterReject[0]).toMatchObject({ _id: shared.copiedJobId, status: "cancelled", partnerResponseStatus: "rejected" });
     await expect(t.query(api.queries.partners.getIncomingSharedStatus, { copiedJobId: shared.copiedJobId, userId: seeded.activeB, sessionToken: authB.sessionToken })).resolves.toMatchObject({ status: "rejected" });
     await expect(t.query(api.queries.partners.getSharedJobStatus, { jobId: seeded.jobId, userId: seeded.ownerA, sessionToken: auth.sessionToken })).resolves.toEqual(expect.arrayContaining([expect.objectContaining({ status: "rejected" })]));
