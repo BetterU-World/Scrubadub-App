@@ -1,5 +1,7 @@
 import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
+import { ensureClientRelationshipForLead } from "./lib/clientRelationships";
+import { logAudit } from "./lib/helpers";
 
 export const getClientUserByEmail = internalQuery({
   args: { email: v.string() },
@@ -56,13 +58,67 @@ export const getRelationshipForOwner = internalQuery({
   },
   handler: async (ctx, args) => {
     const owner = await ctx.db.get(args.userId);
-    if (!owner || owner.role !== "owner" || owner.status !== "active" || !owner.companyId) {
-      throw new Error("Owner access required");
+    if (!owner || (owner.role !== "owner" && owner.role !== "manager") || owner.status !== "active" || !owner.companyId) {
+      throw new Error("Owner or manager access required");
     }
     const relationship = await ctx.db.get(args.relationshipId);
     if (!relationship) throw new Error("Client relationship not found");
     if (relationship.companyId !== owner.companyId) throw new Error("Access denied");
     return { owner, relationship };
+  },
+});
+
+export const resolveRelationshipForRequest = internalMutation({
+  args: {
+    userId: v.id("users"),
+    requestId: v.id("clientRequests"),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user || (user.role !== "owner" && user.role !== "manager") || user.status !== "active" || !user.companyId) {
+      throw new Error("Owner or manager access required");
+    }
+    const request = await ctx.db.get(args.requestId);
+    if (!request) throw new Error("Request not found");
+    if (request.companyId !== user.companyId) throw new Error("Access denied");
+    if (request.status === "archived") throw new Error("Archived requests cannot invite clients");
+    if (!request.requesterEmail?.trim()) throw new Error("Client email is required");
+
+    const relationshipId = await ensureClientRelationshipForLead(ctx, request);
+    const relationship: any = await ctx.db.get(relationshipId);
+    if (!relationship || relationship.companyId !== user.companyId) throw new Error("Access denied");
+    if (relationship.status === "archived") throw new Error("Archived client relationships cannot invite clients");
+    if (!relationship.clientUserId && !relationship.pendingInviteClientUserId && !relationship.inviteTokenHash) {
+      await ctx.db.patch(relationshipId, {
+        email: request.requesterEmail.trim().toLowerCase(),
+        updatedAt: Date.now(),
+      });
+    }
+    return relationshipId;
+  },
+});
+
+export const recordRequestInvitationAudit = internalMutation({
+  args: {
+    userId: v.id("users"),
+    requestId: v.id("clientRequests"),
+    relationshipId: v.id("clientRelationships"),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    const request = await ctx.db.get(args.requestId);
+    const relationship = await ctx.db.get(args.relationshipId);
+    if (!user?.companyId || request?.companyId !== user.companyId || relationship?.companyId !== user.companyId) {
+      throw new Error("Access denied");
+    }
+    await logAudit(ctx, {
+      companyId: user.companyId,
+      userId: user._id,
+      action: "client_portal_invitation_sent_from_request",
+      entityType: "clientRequest",
+      entityId: args.requestId,
+      details: String(args.relationshipId),
+    });
   },
 });
 

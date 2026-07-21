@@ -174,6 +174,9 @@ export function RequestDetailPage() {
   const sendProposalEmail = useAction(
     (api as any).proposalDeliveryActions.sendProposal
   );
+  const inviteClientFromRequest = useAction(
+    (api as any).clientAuthActions.inviteClientFromRequest
+  );
   const createCommercialAccount = useMutation(
     (api as any).mutations.commercialAccounts.create
   );
@@ -284,6 +287,8 @@ export function RequestDetailPage() {
   const [archiving, setArchiving] = useState(false);
   const [savingLeadDetails, setSavingLeadDetails] = useState(false);
   const [creatingClientRelationship, setCreatingClientRelationship] = useState(false);
+  const [showClientInvite, setShowClientInvite] = useState(false);
+  const [sendingClientInvite, setSendingClientInvite] = useState(false);
   const [leadTypeVal, setLeadTypeVal] = useState("booking_request");
   const [businessNameVal, setBusinessNameVal] = useState("");
   const [businessContactTitleVal, setBusinessContactTitleVal] = useState("");
@@ -463,6 +468,10 @@ export function RequestDetailPage() {
   const canAct = request.status === "new" || request.status === "accepted" || request.status === "contacted";
   const canMarkContacted = request.status === "new";
   const canArchive = request.status !== "archived";
+  const clientPortalRecipientEmail =
+    (request as any).clientPortalStatus === "pending"
+      ? (request as any).clientRelationship?.email || request.requesterEmail
+      : request.requesterEmail;
   const handleMarkContacted = async () => {
     setContactingLoading(true);
     try {
@@ -638,6 +647,35 @@ export function RequestDetailPage() {
       setToast({ message: err.message || "Failed to create client relationship", type: "error" });
     } finally {
       setCreatingClientRelationship(false);
+    }
+  };
+
+  const handleInviteClient = async () => {
+    if (sendingClientInvite) return;
+    setSendingClientInvite(true);
+    try {
+      const result = await inviteClientFromRequest({
+        userId: user!._id,
+        sessionToken,
+        requestId: request._id,
+      });
+      if (result.status === "active") {
+        setToast({ message: t("requests.clientPortal.existingAccount"), type: "success" });
+      } else {
+        setToast({ message: t("requests.clientPortal.invitationSent"), type: "success" });
+      }
+      setShowClientInvite(false);
+    } catch (err: any) {
+      const message = err.message?.includes("Invalid email")
+        ? t("requests.clientPortal.invalidEmail")
+        : err.message?.includes("email")
+          ? t("requests.clientPortal.missingEmail")
+          : err.message?.includes("Owner or manager")
+            ? t("requests.clientPortal.permissionDenied")
+            : t("requests.clientPortal.invitationFailed");
+      setToast({ message, type: "error" });
+    } finally {
+      setSendingClientInvite(false);
     }
   };
 
@@ -1798,30 +1836,63 @@ export function RequestDetailPage() {
         )}
       </CollapsibleSection>
 
-      {/* Client relationship */}
+      {/* Client relationship and portal access */}
       <div className="card mt-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <Link2 className="w-4 h-4 text-gray-500" />
-          <h3 className="text-sm font-semibold text-gray-900">
-            Client relationship
-          </h3>
-        </div>
-        {(request as any).clientRelationship ? (
-          <div className="inline-flex max-w-full break-words rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
-            {(request as any).clientRelationship.displayName}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Link2 className="h-4 w-4 text-gray-500" />
+              <h3 className="text-sm font-semibold text-gray-900">{t("requests.clientPortal.relationship")}</h3>
+            </div>
+            {(request as any).clientRelationship ? (
+              <a
+                href={`/clients/${(request as any).clientRelationship._id}`}
+                className="inline-flex max-w-full break-words rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100"
+              >
+                {(request as any).clientRelationship.displayName}
+              </a>
+            ) : (
+              <p className="text-sm text-gray-500">{t("requests.clientPortal.relationshipHelper")}</p>
+            )}
           </div>
-        ) : (
+          <div className="flex min-w-0 flex-col items-start gap-2 sm:items-end">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium text-gray-500">{t("requests.clientPortal.title")}</span>
+              <span className={`badge ${(request as any).clientPortalStatus === "active" ? "bg-green-100 text-green-700" : (request as any).clientPortalStatus === "pending" ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-700"}`}>
+                {t(`requests.clientPortal.statuses.${(request as any).clientPortalStatus}`)}
+              </span>
+            </div>
+            {(request as any).clientPortalStatus !== "active" && request.status !== "archived" && (
+              <button
+                type="button"
+                onClick={() => setShowClientInvite(true)}
+                disabled={!request.requesterEmail?.trim() || sendingClientInvite}
+                title={!request.requesterEmail?.trim() ? t("requests.clientPortal.missingEmail") : undefined}
+                className="btn-secondary flex w-full items-center justify-center gap-2 text-sm sm:w-auto"
+              >
+                <Send className="h-4 w-4" />
+                {(request as any).clientPortalStatus === "pending"
+                  ? t("requests.clientPortal.resendInvitation")
+                  : t("requests.clientPortal.inviteClient")}
+              </button>
+            )}
+            {!request.requesterEmail?.trim() && request.status !== "archived" && (
+              <p className="max-w-sm text-xs text-amber-700">{t("requests.clientPortal.missingEmail")}</p>
+            )}
+            {(request as any).clientPortalStatus === "active" && (
+              <p className="text-xs text-green-700">{t("requests.clientPortal.existingAccount")}</p>
+            )}
+          </div>
+        </div>
+        {!(request as any).clientRelationship && (
           <>
-            <p className="text-sm text-gray-500">
-              Create a company-scoped client relationship from this lead. This does not create a client login.
-            </p>
             <button
               onClick={handleCreateClientRelationship}
               disabled={creatingClientRelationship}
               className="btn-secondary flex items-center gap-2 text-sm"
             >
               <Link2 className="w-4 h-4" />
-              {creatingClientRelationship ? "Creating..." : "Create Client Relationship"}
+              {creatingClientRelationship ? t("requests.creating") : t("requests.clientPortal.createRelationship")}
             </button>
           </>
         )}
@@ -2252,6 +2323,31 @@ export function RequestDetailPage() {
       )}
 
       {/* Decline dialog */}
+      <ConfirmDialog
+        open={showClientInvite}
+        onOpenChange={setShowClientInvite}
+        title={t("requests.clientPortal.confirmTitle", { name: request.requesterName })}
+        description={
+          <div className="space-y-3">
+            <p>{t("requests.clientPortal.confirmRecipient")}</p>
+            <p className="break-all font-medium text-gray-900">{clientPortalRecipientEmail}</p>
+            {(request as any).businessName && <p>{t("requests.clientPortal.company", { company: (request as any).businessName })}</p>}
+            <div>
+              <p>{t("requests.clientPortal.accessIntro", { name: request.requesterName })}</p>
+              <ul className="mt-1 list-disc space-y-1 pl-5">
+                <li>{t("requests.clientPortal.access.proposals")}</li>
+                <li>{t("requests.clientPortal.access.agreements")}</li>
+                <li>{t("requests.clientPortal.access.invoices")}</li>
+                <li>{t("requests.clientPortal.access.portal")}</li>
+              </ul>
+            </div>
+          </div>
+        }
+        confirmLabel={t("requests.clientPortal.sendInvitation")}
+        onConfirm={handleInviteClient}
+        loading={sendingClientInvite}
+      />
+
       <ConfirmDialog
         open={showDecline}
         onOpenChange={setShowDecline}

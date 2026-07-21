@@ -8,7 +8,7 @@ import { hashPassword, verifyBcryptPassword } from "./lib/password";
 import { generateSecureToken, hashToken, INVITE_TOKEN_EXPIRY_MS, RESET_TOKEN_EXPIRY_MS } from "./lib/tokens";
 import { validateEmail, validatePassword } from "./lib/validation";
 import { validateRequiredEnv } from "./lib/validateEnv";
-import { issueSession, requireOwnerSession } from "./lib/sessions";
+import { issueSession, requireOwnerManagerSession } from "./lib/sessions";
 import { recordSecurityEventFromAction } from "./lib/securityEventActions";
 
 validateRequiredEnv();
@@ -27,6 +27,57 @@ function displayNameForRelationship(relationship: any) {
   return relationship.primaryContactName || relationship.displayName || relationship.businessName || "Client";
 }
 
+async function sendClientInvitation(ctx: any, userId: Id<"users">, relationshipId: Id<"clientRelationships">) {
+    const { relationship } = await ctx.runQuery(
+      internal.clientAuthInternal.getRelationshipForOwner,
+      { userId, relationshipId }
+    );
+
+    if (relationship.status === "archived") throw new Error("Archived client relationships cannot invite clients");
+    const email = cleanEmail(relationship.email || "");
+    const now = Date.now();
+
+    if (relationship.clientUserId) {
+      const linkedUser = await ctx.runQuery(internal.clientAuthInternal.getClientUserById, {
+        clientUserId: relationship.clientUserId,
+      });
+      if (linkedUser?.status === "active") {
+        return { inviteUrl: `${appUrl()}/client/login`, emailSent: false, status: "active" as const };
+      }
+    }
+
+    const existingClientUser = await ctx.runQuery(internal.clientAuthInternal.getClientUserByEmail, { email });
+    let clientUserId = relationship.clientUserId as Id<"clientUsers"> | undefined;
+    let pendingInviteClientUserId: Id<"clientUsers"> | undefined;
+    if (!clientUserId && existingClientUser) pendingInviteClientUserId = existingClientUser._id;
+    else if (!clientUserId) {
+      clientUserId = await ctx.runMutation(internal.clientAuthInternal.createClientUser, {
+        email,
+        displayName: displayNameForRelationship(relationship),
+        phone: relationship.phone,
+        status: "pending",
+      });
+    }
+
+    const token = generateSecureToken();
+    const inviteUrl = `${appUrl()}/client/accept-invite/${token}`;
+    await ctx.runMutation(internal.clientAuthInternal.setRelationshipInvite, {
+      relationshipId: relationship._id,
+      clientUserId,
+      pendingInviteClientUserId,
+      inviteTokenHash: hashToken(token),
+      inviteTokenExpiry: now + INVITE_TOKEN_EXPIRY_MS,
+      inviteSentAt: now,
+    });
+    await ctx.runMutation(internal.mutations.scheduleEmail.scheduleClientInviteEmail, {
+      email,
+      token,
+      name: displayNameForRelationship(relationship),
+      companyId: relationship.companyId,
+    });
+    return { inviteUrl, emailSent: true, status: "pending" as const };
+}
+
 export const inviteClient = action({
   args: {
     userId: v.id("users"),
@@ -38,63 +89,32 @@ export const inviteClient = action({
     emailSent: boolean;
     status: "pending" | "active";
   }> => {
-    const principal = await requireOwnerSession(ctx, args.sessionToken, args.userId);
-    const { relationship } = await ctx.runQuery(
-      internal.clientAuthInternal.getRelationshipForOwner,
-      { userId: principal.userId, relationshipId: args.relationshipId }
-    );
+    const principal = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
+    return await sendClientInvitation(ctx, principal.userId, args.relationshipId);
+  },
+});
 
-    const email = cleanEmail(relationship.email || "");
-    const now = Date.now();
-
-    if (relationship.clientUserId) {
-      const linkedUser = await ctx.runQuery(internal.clientAuthInternal.getClientUserById, {
-        clientUserId: relationship.clientUserId,
-      });
-      if (linkedUser?.status === "active") {
-        return { inviteUrl: `${appUrl()}/client/login`, emailSent: false, status: "active" };
-      }
-    }
-
-    const existingClientUser = await ctx.runQuery(
-      internal.clientAuthInternal.getClientUserByEmail,
-      { email }
-    );
-
-    let clientUserId = relationship.clientUserId as Id<"clientUsers"> | undefined;
-    let pendingInviteClientUserId: Id<"clientUsers"> | undefined;
-
-    if (!clientUserId && existingClientUser) {
-      pendingInviteClientUserId = existingClientUser._id;
-    } else if (!clientUserId) {
-      clientUserId = await ctx.runMutation(internal.clientAuthInternal.createClientUser, {
-        email,
-        displayName: displayNameForRelationship(relationship),
-        phone: relationship.phone,
-        status: "pending",
+export const inviteClientFromRequest = action({
+  args: {
+    userId: v.id("users"),
+    sessionToken: v.string(),
+    requestId: v.id("clientRequests"),
+  },
+  handler: async (ctx, args): Promise<{ inviteUrl: string; emailSent: boolean; status: "pending" | "active" }> => {
+    const principal = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
+    const relationshipId = await ctx.runMutation(internal.clientAuthInternal.resolveRelationshipForRequest, {
+      userId: principal.userId,
+      requestId: args.requestId,
+    });
+    const result = await sendClientInvitation(ctx, principal.userId, relationshipId);
+    if (result.emailSent) {
+      await ctx.runMutation(internal.clientAuthInternal.recordRequestInvitationAudit, {
+        userId: principal.userId,
+        requestId: args.requestId,
+        relationshipId,
       });
     }
-
-    const token = generateSecureToken();
-    const inviteUrl = `${appUrl()}/client/accept-invite/${token}`;
-
-    await ctx.runMutation(internal.clientAuthInternal.setRelationshipInvite, {
-      relationshipId: relationship._id,
-      clientUserId,
-      pendingInviteClientUserId,
-      inviteTokenHash: hashToken(token),
-      inviteTokenExpiry: now + INVITE_TOKEN_EXPIRY_MS,
-      inviteSentAt: now,
-    });
-
-    await ctx.runMutation(internal.mutations.scheduleEmail.scheduleClientInviteEmail, {
-      email,
-      token,
-      name: displayNameForRelationship(relationship),
-      companyId: relationship.companyId,
-    });
-
-    return { inviteUrl, emailSent: true, status: "pending" };
+    return result;
   },
 });
 
