@@ -1278,7 +1278,6 @@ export default defineSchema({
       actorRole: v.union(v.literal("owner"), v.literal("manager")),
       reason: v.optional(v.string()),
       notes: v.optional(v.string()),
-      effectiveDate: v.optional(v.string()),
     }))),
     createdAt: v.number(),
     updatedAt: v.number(),

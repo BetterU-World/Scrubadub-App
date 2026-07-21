@@ -2,6 +2,7 @@ import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwnerManagerSession, requireOwnerSession } from "../lib/sessionAuth";
 import { createNotification, logAudit } from "../lib/helpers";
+import { currentDateForTimezone, isFutureActiveCommercialJob } from "../lib/commercialAccountLifecycle";
 import { ensureClientRelationshipForLead } from "../lib/clientRelationships";
 import {
   commercialEligibilityError,
@@ -297,15 +298,6 @@ function cleanLifecycleNotes(notes: string | undefined) {
   return cleanOptional(notes, 4000);
 }
 
-function cleanEffectiveDate(value: string | undefined) {
-  if (!value) return undefined;
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  if (!match) throw new Error("Effective date must be a valid date");
-  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
-  if (date.toISOString().slice(0, 10) !== value) throw new Error("Effective date must be a valid date");
-  return value;
-}
-
 async function lifecycleContext(ctx: any, args: any) {
   const actor = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
   const account = await ctx.db.get(args.commercialAccountId) as any;
@@ -314,10 +306,11 @@ async function lifecycleContext(ctx: any, args: any) {
   return { actor, account };
 }
 
-async function futureActiveJobCount(ctx: any, accountId: any) {
-  const today = new Date().toISOString().slice(0, 10);
-  const jobs = await ctx.db.query("jobs").withIndex("by_commercialAccount", (q: any) => q.eq("commercialAccountId", accountId)).collect();
-  return jobs.filter((job: any) => job.scheduledDate >= today && !["approved", "cancelled"].includes(job.status)).length;
+async function futureActiveJobCount(ctx: any, account: any) {
+  const company = await ctx.db.get(account.companyId);
+  const today = currentDateForTimezone(company?.timezone);
+  const jobs = await ctx.db.query("jobs").withIndex("by_commercialAccount", (q: any) => q.eq("commercialAccountId", account._id)).collect();
+  return jobs.filter((job: any) => isFutureActiveCommercialJob(job, today)).length;
 }
 
 async function notifyLifecycle(ctx: any, actor: any, account: any, type: "paused" | "resumed" | "ended") {
@@ -346,18 +339,17 @@ async function transition(ctx: any, args: any, target: "paused" | "active" | "en
   const reason = args.reason?.trim();
   if (eventType !== "resumed" && !reason) throw new Error("Reason is required");
   if (reason === "other" && !notes) throw new Error("Notes are required when reason is Other");
-  const effectiveDate = cleanEffectiveDate(args.effectiveDate);
   const now = Date.now();
-  const count = await futureActiveJobCount(ctx, account._id);
-  const event = { type: eventType, occurredAt: now, actorId: actor._id, actorName: actor.name, actorRole: actor.role, reason: reason || undefined, notes, effectiveDate };
+  const count = await futureActiveJobCount(ctx, account);
+  const event = { type: eventType, occurredAt: now, actorId: actor._id, actorName: actor.name, actorRole: actor.role, reason: reason || undefined, notes };
   await ctx.db.patch(account._id, { status: target, lifecycleHistory: [...(account.lifecycleHistory ?? []), event], updatedAt: now });
   await notifyLifecycle(ctx, actor, account, eventType);
-  await logAudit(ctx, { companyId: actor.companyId, userId: actor._id, action: `${eventType === "paused" ? "pause" : eventType === "resumed" ? "resume" : "end"}_commercial_account`, entityType: "commercialAccount", entityId: String(account._id), details: JSON.stringify({ priorStatus: account.status, newStatus: target, reason: reason || null, notes: notes || null, effectiveDate: effectiveDate || null, actorRole: actor.role, actorName: actor.name, futureActiveJobCount: count }) });
+  await logAudit(ctx, { companyId: actor.companyId, userId: actor._id, action: `${eventType === "paused" ? "pause" : eventType === "resumed" ? "resume" : "end"}_commercial_account`, entityType: "commercialAccount", entityId: String(account._id), details: JSON.stringify({ priorStatus: account.status, newStatus: target, reason: reason || null, notes: notes || null, actorRole: actor.role, actorName: actor.name, futureActiveJobCount: count }) });
   return { status: target, changed: true, futureActiveJobCount: count };
 }
 
 export const pauseCommercialAccount = mutation({
-  args: { commercialAccountId: v.id("commercialAccounts"), reason: pauseReasonValidator, notes: v.optional(v.string()), effectiveDate: v.optional(v.string()), userId: v.id("users"), sessionToken: v.string() },
+  args: { commercialAccountId: v.id("commercialAccounts"), reason: pauseReasonValidator, notes: v.optional(v.string()), userId: v.id("users"), sessionToken: v.string() },
   handler: (ctx, args) => transition(ctx, args, "paused", "paused"),
 });
 
@@ -367,6 +359,6 @@ export const resumeCommercialAccount = mutation({
 });
 
 export const endCommercialAccount = mutation({
-  args: { commercialAccountId: v.id("commercialAccounts"), reason: endReasonValidator, notes: v.optional(v.string()), effectiveDate: v.optional(v.string()), userId: v.id("users"), sessionToken: v.string() },
+  args: { commercialAccountId: v.id("commercialAccounts"), reason: endReasonValidator, notes: v.optional(v.string()), userId: v.id("users"), sessionToken: v.string() },
   handler: (ctx, args) => transition(ctx, args, "ended", "ended"),
 });

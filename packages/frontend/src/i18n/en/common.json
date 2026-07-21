@@ -1173,6 +1173,7 @@
     "allCaughtUpDesc": "You're all caught up!",
     "viewJob": "View Job",
     "viewRequest": "View Request",
+    "viewCommercialAccount": "View Account",
     "none": "No notifications yet",
     "jobAssigned": "Job Assigned",
     "jobCompleted": "Job Completed",
@@ -1930,8 +1931,6 @@
     },
     "lifecycle": {
       "reason": "Reason",
-      "effectiveDate": "Effective date (optional)",
-      "effectiveDateValue": "Effective {{date}}",
       "notes": "Notes (optional)",
       "history": "Lifecycle history",
       "byAndWhen": "By {{name}} on {{date}}",
@@ -1940,9 +1939,9 @@
       "futureJobsUnchanged": "They will not be cancelled automatically and must be reviewed separately.",
       "error": "The lifecycle change could not be completed.",
       "validation": { "reason": "Select a reason.", "otherNotes": "Enter notes when the reason is Other." },
-      "pause": { "action": "Pause", "title": "Pause Commercial Account", "description": "Pausing prevents new recurring jobs until service is resumed.", "confirm": "Pause account", "success": "Commercial account paused.", "historyTitle": "Service paused" },
+      "pause": { "action": "Pause", "title": "Pause Commercial Account", "description": "Pausing takes effect immediately. Existing future jobs will not be cancelled automatically. New recurring jobs will not be created until service is resumed.", "confirm": "Pause account", "success": "Commercial account paused.", "historyTitle": "Service paused" },
       "resume": { "action": "Resume", "title": "Resume Commercial Account", "description": "Future recurring job creation will resume based on the existing schedule. Missed jobs are not backfilled.", "confirm": "Resume account", "success": "Commercial account resumed.", "historyTitle": "Service resumed" },
-      "end": { "action": "End", "title": "End Commercial Account", "description": "Ending service is permanent and preserves the account's history.", "confirm": "End account", "success": "Commercial account ended.", "historyTitle": "Service ended" },
+      "end": { "action": "End", "title": "End Commercial Account", "description": "Ending service takes effect immediately and is permanent. Existing future jobs will not be cancelled automatically. No new recurring jobs will be created.", "confirm": "End account", "success": "Commercial account ended.", "historyTitle": "Service ended" },
       "reasons": {
         "client_request": "Client request", "seasonal_pause": "Seasonal pause", "property_unavailable": "Property unavailable", "payment_issue": "Payment issue", "staffing_issue": "Staffing issue", "contract_review": "Contract review", "safety_concern": "Safety concern", "other": "Other",
         "client_terminated": "Client terminated", "company_terminated": "Company terminated", "contract_completed": "Contract completed", "nonpayment": "Nonpayment", "pricing_disagreement": "Pricing disagreement", "service_quality_issue": "Service quality issue", "property_closed": "Property closed"

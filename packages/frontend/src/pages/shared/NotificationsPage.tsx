@@ -89,6 +89,11 @@ export function NotificationsPage() {
                       {t("notifications.viewRequest")}
                   </Link>
                 )}
+                {n.relatedCommercialAccountId && user.role === "owner" && (
+                  <Link href={`/commercial-accounts/${n.relatedCommercialAccountId}`} className="text-xs text-primary-600 hover:text-primary-700 whitespace-nowrap">
+                    {t("notifications.viewCommercialAccount")}
+                  </Link>
+                )}
               </div>
             </div>
           ))}

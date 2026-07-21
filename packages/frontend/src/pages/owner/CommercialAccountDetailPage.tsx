@@ -260,7 +260,6 @@ export function CommercialAccountDetailPage() {
             return latest ? <section className={`card border ${account.status === "paused" ? "border-amber-200 bg-amber-50" : "border-gray-300 bg-gray-50"}`}>
               <h2 className="font-semibold text-gray-900">{t(`commercialAccounts.lifecycle.${latest.type}.historyTitle`)}</h2>
               {latest.reason && <p className="mt-2 text-sm text-gray-700">{t(`commercialAccounts.lifecycle.reasons.${latest.reason}`)}</p>}
-              {latest.effectiveDate && <p className="mt-1 text-sm text-gray-700">{t("commercialAccounts.lifecycle.effectiveDateValue", { date: formatDate(latest.effectiveDate, notSet) })}</p>}
               {latest.notes && <p className="mt-2 whitespace-pre-wrap text-sm text-gray-700">{latest.notes}</p>}
               <p className="mt-2 text-xs text-gray-500">{t("commercialAccounts.lifecycle.byAndWhen", { name: latest.actorName, date: new Date(latest.occurredAt).toLocaleString() })}</p>
             </section> : null;
@@ -440,7 +439,6 @@ export function CommercialAccountDetailPage() {
               <p className="font-medium text-gray-900">{t(`commercialAccounts.lifecycle.${event.type}.historyTitle`)}</p>
               {event.reason && <p className="text-sm text-gray-700">{t(`commercialAccounts.lifecycle.reasons.${event.reason}`)}</p>}
               <p className="text-xs text-gray-500">{t("commercialAccounts.lifecycle.byAndWhen", { name: event.actorName, date: new Date(event.occurredAt).toLocaleString() })}</p>
-              {event.effectiveDate && <p className="text-xs text-gray-500">{t("commercialAccounts.lifecycle.effectiveDateValue", { date: formatDate(event.effectiveDate, notSet) })}</p>}
               {event.notes && <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{event.notes}</p>}
             </li>)}</ol>
           </CollapsibleSection>}

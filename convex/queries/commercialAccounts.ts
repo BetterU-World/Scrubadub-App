@@ -2,6 +2,7 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwnerSession } from "../lib/sessionAuth";
 import { resolveCommercialEligibility } from "../lib/commercialEligibility";
+import { currentDateForTimezone, isFutureActiveCommercialJob } from "../lib/commercialAccountLifecycle";
 
 async function requireOwnerCompany(ctx: any, sessionToken: string, userId: any) {
   const user = await requireOwnerSession(ctx, sessionToken, userId);
@@ -26,9 +27,10 @@ async function decorateAccount(ctx: any, account: any) {
   const sourceLead = request?.companyId === account.companyId ? request : null;
   const sourceProposal = proposal?.companyId === account.companyId ? proposal : null;
   const linkedProperty = property?.companyId === account.companyId ? property : null;
-  const today = new Date().toISOString().slice(0, 10);
+  const company = await ctx.db.get(account.companyId);
+  const today = currentDateForTimezone(company?.timezone);
   const accountJobs = await ctx.db.query("jobs").withIndex("by_commercialAccount", (q: any) => q.eq("commercialAccountId", account._id)).collect();
-  const futureActiveJobCount = accountJobs.filter((job: any) => job.scheduledDate >= today && !["approved", "cancelled"].includes(job.status)).length;
+  const futureActiveJobCount = accountJobs.filter((job: any) => isFutureActiveCommercialJob(job, today)).length;
 
   return {
     ...account,

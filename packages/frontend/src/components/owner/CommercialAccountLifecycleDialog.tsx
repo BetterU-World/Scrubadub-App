@@ -18,7 +18,6 @@ export function CommercialAccountLifecycleDialog({ action, accountId, futureJobC
   const { t } = useTranslation();
   const [reason, setReason] = useState("");
   const [notes, setNotes] = useState("");
-  const [effectiveDate, setEffectiveDate] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const pause = useMutation((api as any).mutations.commercialAccounts.pauseCommercialAccount);
@@ -33,12 +32,12 @@ export function CommercialAccountLifecycleDialog({ action, accountId, futureJobC
     setPending(true); setError("");
     try {
       const common = { commercialAccountId: accountId, userId: user._id, sessionToken, notes: notes.trim() || undefined };
-      if (action === "pause") await pause({ ...common, reason, effectiveDate: effectiveDate || undefined });
+      if (action === "pause") await pause({ ...common, reason });
       else if (action === "resume") await resume(common);
-      else await end({ ...common, reason, effectiveDate: effectiveDate || undefined });
+      else await end({ ...common, reason });
       onOpenChange(false);
       onSuccess(t(`commercialAccounts.lifecycle.${action}.success`));
-      setReason(""); setNotes(""); setEffectiveDate("");
+      setReason(""); setNotes("");
     } catch (err: any) {
       setError(err.message || t("commercialAccounts.lifecycle.error"));
     } finally { setPending(false); }
@@ -50,7 +49,6 @@ export function CommercialAccountLifecycleDialog({ action, accountId, futureJobC
     footer={<><button type="button" className="btn-secondary" disabled={pending} onClick={() => onOpenChange(false)}>{t("common.cancel")}</button><button type="button" className={action === "end" ? "btn-danger" : "btn-primary"} disabled={pending} onClick={submit}>{pending ? t("common.saving") : t(`commercialAccounts.lifecycle.${action}.confirm`)}</button></>}>
     <div className="space-y-4">
       {action !== "resume" && <label className="block"><span className="text-sm font-medium text-gray-700">{t("commercialAccounts.lifecycle.reason")}</span><select className="input-field mt-1" value={reason} onChange={(e) => setReason(e.target.value)}><option value="">{t("common.select")}</option>{reasons.map((value) => <option key={value} value={value}>{t(`commercialAccounts.lifecycle.reasons.${value}`)}</option>)}</select></label>}
-      {action !== "resume" && <label className="block"><span className="text-sm font-medium text-gray-700">{t("commercialAccounts.lifecycle.effectiveDate")}</span><input type="date" className="input-field mt-1" value={effectiveDate} onChange={(e) => setEffectiveDate(e.target.value)} /></label>}
       <label className="block"><span className="text-sm font-medium text-gray-700">{t("commercialAccounts.lifecycle.notes")}</span><textarea className="input-field mt-1" rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} /></label>
       {action !== "resume" && <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"><p className="font-medium">{t("commercialAccounts.lifecycle.futureJobs", { count: futureJobCount })}</p><p className="mt-1">{t("commercialAccounts.lifecycle.futureJobsUnchanged")}</p></div>}
       {error && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
