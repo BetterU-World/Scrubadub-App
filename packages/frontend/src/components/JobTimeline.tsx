@@ -7,7 +7,9 @@ import {
   Send,
   ThumbsUp,
   RotateCcw,
+  Ban,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface Job {
   _creationTime: number;
@@ -18,6 +20,10 @@ interface Job {
   startedAt?: number;
   completedAt?: number;
   approvedAt?: number;
+  cancelledAt?: number;
+  cancelledByName?: string;
+  cancelReason?: string;
+  cancelNotes?: string;
   reworkCount: number;
 }
 
@@ -40,6 +46,7 @@ function fmtTime(ts: number) {
 }
 
 export function JobTimeline({ job }: { job: Job }) {
+  const { t } = useTranslation();
   const events: TimelineEvent[] = [];
 
   events.push({
@@ -110,6 +117,16 @@ export function JobTimeline({ job }: { job: Job }) {
       time: job.approvedAt ?? job.completedAt!,
       icon: <ThumbsUp className="w-4 h-4" />,
       color: "text-green-600 bg-green-100",
+    });
+  }
+
+  if (job.cancelledAt) {
+    const reason = job.cancelReason ? t(`jobs.cancelReasons.${job.cancelReason}`, { defaultValue: job.cancelReason.replace(/_/g, " ") }) : undefined;
+    events.push({
+      label: t(job.cancelNotes ? "jobs.timelineCancelledWithNotes" : "jobs.timelineCancelled", { reason: reason ?? "", actor: job.cancelledByName ?? "", notes: job.cancelNotes ?? "" }),
+      time: job.cancelledAt,
+      icon: <Ban className="w-4 h-4" />,
+      color: "text-gray-600 bg-gray-100",
     });
   }
 

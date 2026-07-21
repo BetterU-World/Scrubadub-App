@@ -9,11 +9,13 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Link } from "wouter";
 import { MapPin, Clock, Users, Search, Eye } from "lucide-react";
 import { format } from "date-fns";
+import { useTranslation } from "react-i18next";
 
-type StatusFilter = "all" | "scheduled" | "confirmed" | "in_progress" | "submitted" | "approved";
+type StatusFilter = "all" | "scheduled" | "confirmed" | "in_progress" | "submitted" | "approved" | "cancelled";
 
 export function ManagerJobListPage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
 
@@ -49,6 +51,7 @@ export function ManagerJobListPage() {
   const statusOptions: { value: StatusFilter; label: string }[] = [
     { value: "all", label: "All" },
     { value: "scheduled", label: "Scheduled" },
+    { value: "cancelled", label: t("status.cancelled") },
     { value: "confirmed", label: "Confirmed" },
     { value: "in_progress", label: "In Progress" },
     { value: "submitted", label: "Submitted" },

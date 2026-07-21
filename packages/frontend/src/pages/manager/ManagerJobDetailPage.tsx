@@ -10,6 +10,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { JobTimeline } from "@/components/JobTimeline";
 import { JobTimingPanel } from "@/components/JobTimingPanel";
 import { AddOnSnapshotList } from "@/components/AddOnSnapshotList";
+import { CancelJobDialog } from "@/components/CancelJobDialog";
 import { useTranslation } from "react-i18next";
 import { useParams } from "wouter";
 import {
@@ -23,6 +24,7 @@ import {
   ClipboardCheck,
   Upload,
   X,
+  XCircle,
   AlertTriangle,
   Star,
   Flag,
@@ -54,6 +56,8 @@ export function ManagerJobDetailPage() {
   const generateUploadUrl = useMutation(api.mutations.storage.generateUploadUrl);
   const resolveRedFlag = useMutation(api.mutations.redFlags.managerResolveRedFlag);
   const updateLifecycle = useMutation(api.mutations.redFlags.managerUpdateLifecycle);
+  const cancelJob = useMutation(api.mutations.jobs.cancel);
+  const [showCancel, setShowCancel] = useState(false);
 
   // Inspection form state
   const [showForm, setShowForm] = useState(false);
@@ -149,6 +153,11 @@ export function ManagerJobDetailPage() {
       <PageHeader
         title={property?.name ?? t("jobs.jobDetails")}
         back={{ href: "/jobs", label: t("navigation.backToJobs") }}
+        action={!['cancelled', 'submitted', 'approved'].includes(job.status) ? (
+          <button className="btn-danger flex items-center gap-2" onClick={() => setShowCancel(true)}>
+            <XCircle className="w-4 h-4" /> {t("jobs.cancelJob")}
+          </button>
+        ) : undefined}
       />
 
       <div className="space-y-4">
@@ -313,7 +322,7 @@ export function ManagerJobDetailPage() {
             </p>
           </div>
         )}
-        {(!inspectionSummary || inspectionSummary.count === 0 || inspectionSummary.inspectionCycleOpen) && !showForm && (
+        {job.status !== "cancelled" && (!inspectionSummary || inspectionSummary.count === 0 || inspectionSummary.inspectionCycleOpen) && !showForm && (
           <button
             onClick={() => setShowForm(true)}
             className="btn-primary w-full flex items-center justify-center gap-2"
@@ -323,7 +332,7 @@ export function ManagerJobDetailPage() {
         )}
 
         {/* ── Inspection Form ──────────────────────────────────── */}
-        {showForm && (
+        {job.status !== "cancelled" && showForm && (
           <div className="card border-blue-200">
             <h3 className="font-semibold text-blue-700 flex items-center gap-2 mb-4">
               <ClipboardCheck className="w-5 h-5" /> {t("inspection.houseCheck")}
@@ -614,6 +623,11 @@ export function ManagerJobDetailPage() {
           </div>
         )}
       </div>
+      <CancelJobDialog open={showCancel} onOpenChange={setShowCancel} onConfirm={async (reason, notes) => {
+        if (!user) return;
+        await cancelJob({ jobId, reason, notes, userId: user._id, sessionToken: getStaffSessionToken() });
+        setToast({ message: t("jobs.cancelledSuccess"), type: "success" });
+      }} />
     </div>
   );
 }

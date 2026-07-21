@@ -9,7 +9,7 @@ import { requireUserId } from "@/lib/requireUserId";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { CancelJobDialog } from "@/components/CancelJobDialog";
 import { useParams, Link } from "wouter";
 import { JobTimeline } from "@/components/JobTimeline";
 import { JobTimingPanel } from "@/components/JobTimingPanel";
@@ -178,7 +178,7 @@ export function JobDetailPage() {
   if (job === null) return <div className="text-center py-12 text-gray-500">{t("jobs.jobNotFound")}</div>;
 
   const canReview = job.status === "submitted";
-  const canCancel = ["scheduled", "confirmed"].includes(job.status);
+  const canCancel = !["cancelled", "submitted", "approved"].includes(job.status);
   const detailPartnerStatus = incomingShared?.status
     ?? getPartnerResponseStatus((sharedStatus ?? []).map((status) => status.status));
 
@@ -414,7 +414,7 @@ export function JobDetailPage() {
               </div>
             )}
             {/* Re-Inspection CTA: visible when cycle is closed and inspections exist */}
-            {inspectionSummary && !inspectionSummary.inspectionCycleOpen && inspectionSummary.count > 0 && (
+            {job.status !== "cancelled" && inspectionSummary && !inspectionSummary.inspectionCycleOpen && inspectionSummary.count > 0 && (
               <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between gap-3">
                 <span className="text-sm text-amber-800">{t("inspection.cycleClosed")}</span>
                 <button
@@ -564,7 +564,7 @@ export function JobDetailPage() {
         )}
 
         {/* Inventory checklist review */}
-        {job.inventoryChecklist && job.inventoryChecklist.length > 0 && (
+        {job.status !== "cancelled" && job.inventoryChecklist && job.inventoryChecklist.length > 0 && (
           <OwnerInventoryChecklistReview checklist={job.inventoryChecklist} />
         )}
 
@@ -1221,7 +1221,7 @@ export function JobDetailPage() {
       </div>
 
       {/* Owner self-execution controls — only when owner is explicitly self-assigned */}
-      {user?.role === "owner" && (job as any).assignedManagerId === user._id && (
+      {job.status !== "cancelled" && user?.role === "owner" && (job as any).assignedManagerId === user._id && (
         <div className="card border-primary-200 mt-6">
           <h3 className="font-semibold text-gray-900 flex items-center gap-2 mb-3">
             <CheckCircle className="w-5 h-5 text-primary-600" /> {t("jobs.ownerExecution")}
@@ -1345,18 +1345,13 @@ export function JobDetailPage() {
         </div>
       )}
 
-      <ConfirmDialog
+      <CancelJobDialog
         open={showCancel}
         onOpenChange={setShowCancel}
-        title={t("jobs.cancelJob")}
-        description={t("jobs.cancelJobConfirm")}
-        confirmLabel={t("jobs.cancelJob")}
-        confirmVariant="danger"
-        onConfirm={async () => {
+        onConfirm={async (reason, notes) => {
           const uid = requireUserId(user);
           if (!uid) return;
-          await cancelJob({ jobId: job._id, userId: uid, sessionToken: getStaffSessionToken() });
-          setShowCancel(false);
+          await cancelJob({ jobId: job._id, reason, notes, userId: uid, sessionToken: getStaffSessionToken() });
         }}
       />
 

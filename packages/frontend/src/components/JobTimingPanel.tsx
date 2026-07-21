@@ -10,7 +10,7 @@ import { DialogShell } from "@/components/ui/DialogShell";
 
 type PauseReason = "break" | "waiting_for_access" | "supplies" | "client_interruption" | "travel_between_service_areas" | "equipment_issue" | "other";
 type PauseRecord = { pausedAt: number; resumedAt?: number; durationMs?: number; reason: PauseReason; note?: string; pausedByUserId: Id<"users">; resumedByUserId?: Id<"users"> };
-type TimingJob = { _id: Id<"jobs">; status: string; startedAt?: number; completedAt?: number; currentPauseStartedAt?: number; pauseHistory?: PauseRecord[]; cleaners?: Array<{ _id: Id<"users">; name: string }>; assignedTeamMembers?: Array<{ _id: Id<"users">; name: string }>; assignedManagerName?: string | null };
+type TimingJob = { _id: Id<"jobs">; status: string; startedAt?: number; completedAt?: number; cancelledAt?: number; currentPauseStartedAt?: number; pauseHistory?: PauseRecord[]; cleaners?: Array<{ _id: Id<"users">; name: string }>; assignedTeamMembers?: Array<{ _id: Id<"users">; name: string }>; assignedManagerName?: string | null };
 
 const reasons: PauseReason[] = ["break", "waiting_for_access", "supplies", "client_interruption", "travel_between_service_areas", "equipment_issue", "other"];
 
@@ -24,7 +24,7 @@ function formatDuration(ms: number) {
 
 function timing(job: TimingJob, now: number) {
   if (!job.startedAt) return { elapsed: 0, paused: 0, active: 0, currentPause: 0 };
-  const end = job.completedAt ?? now;
+  const end = job.completedAt ?? job.cancelledAt ?? now;
   const elapsed = Math.max(0, end - job.startedAt);
   const paused = (job.pauseHistory ?? []).reduce((sum, p) => sum + (p.durationMs ?? (p.resumedAt ? Math.max(0, p.resumedAt - p.pausedAt) : Math.max(0, end - p.pausedAt))), 0);
   return { elapsed, paused, active: Math.max(0, elapsed - paused), currentPause: job.currentPauseStartedAt ? Math.max(0, end - job.currentPauseStartedAt) : 0 };
@@ -43,10 +43,10 @@ export function JobTimingPanel({ job, userId, controls = false, ownerMode = fals
   const ownerResumeJob = useMutation(api.mutations.jobs.ownerResumeJob);
 
   useEffect(() => {
-    if (!job.startedAt || job.completedAt) return;
+    if (!job.startedAt || job.completedAt || job.cancelledAt) return;
     const interval = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(interval);
-  }, [job.startedAt, job.completedAt]);
+  }, [job.startedAt, job.completedAt, job.cancelledAt]);
 
   const values = timing(job, now);
   const actorNames = useMemo(() => new Map([...(job.cleaners ?? []), ...(job.assignedTeamMembers ?? [])].map((u) => [String(u._id), u.name])), [job.cleaners, job.assignedTeamMembers]);
