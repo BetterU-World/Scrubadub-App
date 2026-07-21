@@ -4,6 +4,7 @@ import { logAudit } from "../lib/helpers";
 import { requireActiveWorkerProfile, requireOwnerSession } from "../lib/sessionAuth";
 import { revokeAllSessionsForPrincipal } from "../lib/sessionRevocation";
 import { writeSecurityEvent } from "../lib/securityEvents";
+import { cleanerLimit, planDisplayName, tierToScrubPlan } from "../lib/plans";
 
 const workerTypeValidator = v.union(
   v.literal("w2_employee"),
@@ -92,6 +93,34 @@ function defaultWorkerTypeForRole(role: ExistingWorkerRole) {
 
 function defaultEligibilityForStatus(status: string) {
   return status === "active" ? "eligible" as const : "ineligible" as const;
+}
+
+const managerPermissionFields = {
+  canSeeAllJobs: undefined,
+  canCreateJobs: undefined,
+  canAssignCleaners: undefined,
+  canRequestRework: undefined,
+  canApproveForms: undefined,
+  canManageSchedule: undefined,
+  canResolveRedFlags: undefined,
+  canManageBusinessConfiguration: undefined,
+};
+
+async function enforceCleanerLimitForRoleChange(ctx: any, companyId: any, target: any, nextRole: ExistingWorkerRole) {
+  if (nextRole !== "cleaner" || target.role === "cleaner" || target.status !== "active") return;
+  const company = await ctx.db.get(companyId);
+  if (!company) throw new Error("Company not found");
+  const plan = tierToScrubPlan(company.tier);
+  const limit = cleanerLimit(plan);
+  if (limit === null) return;
+  const companyUsers = await ctx.db
+    .query("users")
+    .withIndex("by_companyId", (q: any) => q.eq("companyId", companyId))
+    .collect();
+  const activeCleaners = companyUsers.filter((user: any) => user.role === "cleaner" && user.status === "active").length;
+  if (activeCleaners >= limit) {
+    throw new Error(`Your ${planDisplayName(plan)} plan cleaner limit has been reached`);
+  }
 }
 
 function nextProfileOnboardingStatus(items: Array<{ required?: boolean; status: string }>) {
@@ -224,6 +253,77 @@ export const backfillCompanyWorkerProfiles = mutation({
     });
 
     return { created, skippedExisting, skippedNonWorker };
+  },
+});
+
+export const changeOperationalRole = mutation({
+  args: {
+    userId: v.id("users"),
+    sessionToken: v.string(),
+    workerUserId: v.id("users"),
+    role: v.union(v.literal("cleaner"), v.literal("maintenance"), v.literal("manager")),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const db: any = ctx.db;
+    const target = await db.get(args.workerUserId);
+    if (!target || target.companyId !== owner.companyId) throw new Error("Worker user not found");
+    if (!isExistingWorkerRole(target.role)) {
+      throw new Error("Only cleaners, maintenance workers, and managers can change operational roles");
+    }
+    if (target._id === owner._id || target.role === "owner") throw new Error("Owner roles cannot be changed here");
+    if (target.role === args.role) return { changed: false, previousRole: target.role, role: target.role };
+
+    await enforceCleanerLimitForRoleChange(ctx, owner.companyId, target, args.role);
+    const now = Date.now();
+    const existingProfile = await getExistingProfileForUser({ ...ctx, db }, target._id);
+    const userPatch: Record<string, unknown> = { role: args.role };
+    if (args.role === "manager") {
+      for (const key of Object.keys(managerPermissionFields)) userPatch[key] = false;
+    } else {
+      Object.assign(userPatch, managerPermissionFields);
+    }
+    await db.patch(target._id, userPatch);
+
+    let workerProfileId;
+    if (existingProfile) {
+      const eligibleRoles = Array.from(new Set([...existingProfile.eligibleRoles, args.role]));
+      await db.patch(existingProfile._id, {
+        primaryRole: args.role,
+        eligibleRoles,
+        updatedAt: now,
+      });
+      workerProfileId = existingProfile._id;
+    } else {
+      workerProfileId = await db.insert("workerProfiles", {
+        companyId: owner.companyId,
+        userId: target._id,
+        workerType: defaultWorkerTypeForRole(args.role),
+        workerStatus: target.status,
+        primaryRole: args.role,
+        eligibleRoles: [target.role, args.role],
+        onboardingStatus: "in_progress",
+        jobEligibilityStatus: defaultEligibilityForStatus(target.status),
+        payProfile: {
+          currency: "usd",
+          stripeConnectUserFieldSource: "users",
+          taxDocsHandledOffPlatform: true,
+        },
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    await logAudit(ctx, {
+      companyId: owner.companyId,
+      userId: owner._id,
+      action: "change_worker_operational_role",
+      entityType: "user",
+      entityId: target._id,
+      details: JSON.stringify({ previousRole: target.role, role: args.role, workerProfileId }),
+    });
+
+    return { changed: true, previousRole: target.role, role: args.role, workerProfileId };
   },
 });
 

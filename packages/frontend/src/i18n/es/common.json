@@ -975,7 +975,25 @@
     "roleMaintenance": "Mantenimiento",
     "defaultManager": "Manager Predeterminado",
     "noDefaultManager": "Sin manager predeterminado",
-    "defaultManagerHint": "Asignado automáticamente a nuevos trabajos"
+    "defaultManagerHint": "Asignado automáticamente a nuevos trabajos",
+    "operationalRole": {
+      "title": "Rol operativo",
+      "helper": "Cambia el rol de este trabajador en la aplicación sin recrear su cuenta ni su historial.",
+      "newRole": "Nuevo rol",
+      "change": "Cambiar rol",
+      "confirm": "Confirmar cambio de rol",
+      "confirmTitle": "¿Cambiar el rol de {{name}}?",
+      "confirmDescription": "¿Cambiar el rol operativo de {{from}} a {{to}}? Se conservarán su cuenta, perfil, asignaciones, historial, equipos, documentos, pagos y conexión de Stripe.",
+      "preserved": "Las asignaciones existentes y los registros históricos permanecen vinculados. Revisa las asignaciones futuras de manager o trabajador después del cambio.",
+      "changed": "{{name}} ahora tiene el rol de {{role}}.",
+      "failed": "No se pudo cambiar el rol operativo. Inténtalo de nuevo.",
+      "cleanerLimit": "Debes aumentar el límite de limpiadores activos de tu plan antes de asignar el rol de Limpiador.",
+      "roles": {
+        "cleaner": "Limpiador",
+        "maintenance": "Mantenimiento",
+        "manager": "Manager"
+      }
+    }
   },
   "partners": {
     "title": "Socios",
