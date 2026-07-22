@@ -2503,8 +2503,20 @@
     },
     "completion": {
       "title": "Assessment complete",
-      "development": "Your responses have been securely recorded for the assessment foundation. The personalized Assessment Report will be introduced in the next release before this experience is made publicly available."
+      "score": "Operations Score",
+      "outOf": "out of 100",
+      "maturity": "Operational Maturity",
+      "confidence": "Confidence",
+      "next": "Your result is securely frozen. Your detailed operational report is the next experience."
     },
+    "maturity": {
+      "establishing_foundations": "Establishing Foundations",
+      "building_consistency": "Building Consistency",
+      "operating_reliably": "Operating Reliably",
+      "ready_to_scale": "Ready to Scale",
+      "operationally_advanced": "Operationally Advanced"
+    },
+    "confidence": { "high": "High", "moderate": "Moderate", "limited": "Limited" },
     "sections": {
       "business": { "title": "Your Business", "intro": "First, help us understand the shape and current stage of your cleaning operation." },
       "scheduling": { "title": "Scheduling and Organization", "intro": "Now let’s look at how recurring work, assignments, and schedule changes stay organized." },

@@ -98,9 +98,27 @@ describe("operations assessment foundation", () => {
       answers[question.key] = answerValue;
       await t.mutation(assessmentApi.saveResponse, { attemptId: created.attemptId, capability, responseLanguage: "en", response: { questionKey: question.key, answerValue } });
     }
-    await expect(t.mutation(assessmentApi.complete, { attemptId: created.attemptId, capability })).resolves.toEqual({ completed: true });
+    const firstResult = await t.mutation(assessmentApi.complete, { attemptId: created.attemptId, capability });
+    const repeatedResult = await t.mutation(assessmentApi.complete, { attemptId: created.attemptId, capability });
+    expect(firstResult).toMatchObject({ definitionVersion: 2, confidenceKey: "high" });
+    expect(repeatedResult).toEqual(firstResult);
+    await expect(t.mutation(assessmentApi.saveResponse, { attemptId: created.attemptId, capability, responseLanguage: "en", response: { questionKey: "business.primary_model", answerValue: "commercial" } })).rejects.toThrow("cannot be changed");
     const attempt = await t.run((ctx) => ctx.db.get(created.attemptId));
     expect(attempt).toMatchObject({ status: "completed", requiredApplicableCount: 26, requiredAnsweredCount: 26, optionalAnsweredCount: 0 });
+    expect(attempt?.completedAt).toBe(firstResult.completedAt);
+    await t.run(async (ctx) => {
+      const definition = await ctx.db.get(attempt!.definitionId);
+      await ctx.db.patch(attempt!.definitionId, { definitionVersion: 2, questions: definition!.questions.map((question) => ({ ...question, scoring: question.scoring ? { ...question.scoring, optionValues: Object.fromEntries(Object.keys(question.scoring.optionValues).map((key) => [key, 100])) } : undefined })) });
+    });
+    expect(await t.mutation(assessmentApi.complete, { attemptId: created.attemptId, capability })).toEqual(firstResult);
+  });
+
+  it("rejects completion for expired attempts and invalid capabilities", async () => {
+    const t = backend();
+    const created = await t.mutation(assessmentApi.start, { capability: token("2"), browserKey: token("3"), responseLanguage: "en", firstResponse: { questionKey: "business.team_size", answerValue: "solo" } });
+    await expect(t.mutation(assessmentApi.complete, { attemptId: created.attemptId, capability: token("4") })).rejects.toThrow("unavailable");
+    await t.run((ctx) => ctx.db.patch(created.attemptId, { expiresAt: Date.now() - 1 }));
+    await expect(t.mutation(assessmentApi.complete, { attemptId: created.attemptId, capability: token("2") })).rejects.toThrow("expired");
   });
 
   it("rate limits repeated attempt creation per browser key", async () => {

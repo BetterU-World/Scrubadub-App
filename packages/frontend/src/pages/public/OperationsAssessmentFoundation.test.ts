@@ -60,4 +60,14 @@ describe("operations assessment public foundation", () => {
     expect(page).toContain("headingRef.current?.focus()");
     expect(page).not.toContain("overflow-x-auto");
   });
+
+  it("restores completed attempts into the frozen completion state", () => {
+    const page = read("packages/frontend/src/pages/public/OperationsAssessmentPage.tsx");
+    expect(page).toContain('result.attempt.status === "completed"');
+    expect(page).toContain("result.attempt.completionSnapshot");
+    expect(page).toContain('setView("complete")');
+    expect(page).toContain('aria-live="polite"');
+    expect(page).toContain("completionResult.operationsScore");
+    expect(page).not.toContain("clearProgress();\n        setView(\"complete\")");
+  });
 });

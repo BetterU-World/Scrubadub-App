@@ -1,6 +1,7 @@
 export const ASSESSMENT_KEY = "operations_foundation";
-export const DEFINITION_VERSION = 1;
+export const DEFINITION_VERSION = 2;
 export const ASSESSMENT_SCHEMA_VERSION = 1;
+export const SCORING_VERSION = 1;
 export const BENCHMARK_COMPATIBILITY_KEY = "operations_foundation_v1";
 export const UNFINISHED_ATTEMPT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 export const QUALITATIVE_MAX_LENGTH = 1500;
@@ -27,6 +28,12 @@ export interface AssessmentQuestion {
   futureRoadmapDomains?: string[];
   benchmarkDimensionKey?: string;
   futureAchievementKeys?: string[];
+  scoring?: {
+    weight: number;
+    optionValues: Record<string, number | null>;
+    reverseScored?: boolean;
+    uncertainValues?: string[];
+  };
 }
 
 const option = (group: string, value: string) => ({ value, labelKey: `assessment.options.${group}.${value}` });
@@ -51,6 +58,7 @@ const q = (
   options: options(group, values),
   futureScoreKey: key,
   futureConfidenceKey: sectionKey,
+  scoring: "futureScoreKey" in metadata && metadata.futureScoreKey === undefined ? undefined : scored(values),
   ...metadata,
 });
 
@@ -60,10 +68,27 @@ const teamApplicability = {
   value: "solo",
 };
 
+const scored = (values: string[], metadata: { reverseScored?: boolean; uncertainValues?: string[] } = {}) => ({
+  weight: 1,
+  optionValues: Object.fromEntries(values.map((value, index) => [value, Math.round(index * 100 / (values.length - 1))])),
+  ...metadata,
+});
+
+const SECTION_WEIGHTS: Record<string, number> = {
+  business: 10,
+  scheduling: 18,
+  team: 14,
+  quality: 18,
+  client: 14,
+  financial: 16,
+  growth: 10,
+};
+
 export const INITIAL_ASSESSMENT_DEFINITION = {
   key: ASSESSMENT_KEY,
   definitionVersion: DEFINITION_VERSION,
   schemaVersion: ASSESSMENT_SCHEMA_VERSION,
+  scoringVersion: SCORING_VERSION,
   benchmarkCompatibilityKey: BENCHMARK_COMPATIBILITY_KEY,
   status: "published" as const,
   sections: [
@@ -73,18 +98,19 @@ export const INITIAL_ASSESSMENT_DEFINITION = {
     titleKey: `assessment.sections.${key}.title`,
     introKey: `assessment.sections.${key}.intro`,
     order: index + 1,
+    scoringWeight: SECTION_WEIGHTS[key],
   })),
   questions: [
     q("business.primary_model", "business", 1, "businessModel", ["residential", "commercial", "str", "mixed"], { benchmarkDimensionKey: "business_model", futureScoreKey: undefined }),
     q("business.service_mix", "business", 2, "serviceMix", ["recurring_residential", "one_time_residential", "commercial_janitorial", "str_turnovers", "specialty", "mixed"], { benchmarkDimensionKey: "service_mix", futureScoreKey: undefined }),
     q("business.team_size", "business", 3, "teamSize", ["solo", "2_4", "5_10", "11_25", "26_plus"], { helpKey: "assessment.questions.business.team_size.help", benchmarkDimensionKey: "team_size_band", futureScoreKey: undefined }),
     q("business.years_operating", "business", 4, "yearsOperating", ["under_1", "1_3", "4_7", "8_plus"], { benchmarkDimensionKey: "years_operating_band", futureScoreKey: undefined }),
-    q("business.growth_stage", "business", 5, "growthStage", ["establishing", "stabilizing", "growing", "scaling", "optimizing"], { benchmarkDimensionKey: "growth_stage", futureScoreKey: undefined }),
+    q("business.growth_stage", "business", 5, "growthStage", ["establishing", "stabilizing", "growing", "scaling", "optimizing"], { benchmarkDimensionKey: "growth_stage", scoring: scored(["establishing", "stabilizing", "growing", "scaling", "optimizing"]) }),
 
-    q("scheduling.primary_method", "scheduling", 1, "schedulingMethod", ["memory_messages", "paper", "spreadsheet_calendar", "scheduling_software", "integrated_platform"], { futureRoadmapDomains: ["scheduling_organization"] }),
-    q("scheduling.recurring_work", "scheduling", 2, "processMaturity", ["ad_hoc", "partly_documented", "mostly_consistent", "standardized", "automated_visible"], { futureRoadmapDomains: ["scheduling_organization"] }),
-    q("scheduling.assignment_clarity", "scheduling", 3, "consistency", ["rarely_clear", "sometimes_clear", "usually_clear", "always_clear"], { futureRoadmapDomains: ["scheduling_organization", "worker_communication"] }),
-    q("scheduling.change_handling", "scheduling", 4, "processMaturity", ["ad_hoc", "partly_documented", "mostly_consistent", "standardized", "automated_visible"], { futureRoadmapDomains: ["scheduling_organization", "worker_communication"] }),
+    q("scheduling.primary_method", "scheduling", 1, "schedulingMethod", ["memory_messages", "paper", "spreadsheet_calendar", "scheduling_software", "integrated_platform"], { futureRoadmapDomains: ["scheduling_organization"], scoring: scored(["memory_messages", "paper", "spreadsheet_calendar", "scheduling_software", "integrated_platform"]) }),
+    q("scheduling.recurring_work", "scheduling", 2, "processMaturity", ["ad_hoc", "partly_documented", "mostly_consistent", "standardized", "automated_visible"], { futureRoadmapDomains: ["scheduling_organization"], scoring: scored(["ad_hoc", "partly_documented", "mostly_consistent", "standardized", "automated_visible"]) }),
+    q("scheduling.assignment_clarity", "scheduling", 3, "consistency", ["rarely_clear", "sometimes_clear", "usually_clear", "always_clear"], { futureRoadmapDomains: ["scheduling_organization", "worker_communication"], scoring: scored(["rarely_clear", "sometimes_clear", "usually_clear", "always_clear"]) }),
+    q("scheduling.change_handling", "scheduling", 4, "processMaturity", ["ad_hoc", "partly_documented", "mostly_consistent", "standardized", "automated_visible"], { futureRoadmapDomains: ["scheduling_organization", "worker_communication"], scoring: scored(["ad_hoc", "partly_documented", "mostly_consistent", "standardized", "automated_visible"]) }),
 
     q("team.assignment_delivery", "team", 1, "communicationMethod", ["verbal", "text_threads", "email", "shared_calendar", "workforce_app"], { applicability: teamApplicability, futureRoadmapDomains: ["worker_communication"] }),
     q("team.material_changes", "team", 2, "communicationMethod", ["verbal", "text_threads", "email", "shared_calendar", "workforce_app"], { applicability: teamApplicability, futureRoadmapDomains: ["worker_communication"] }),
@@ -108,14 +134,14 @@ export const INITIAL_ASSESSMENT_DEFINITION = {
 
     q("growth.primary_objective", "growth", 1, "growthObjective", ["stability", "more_clients", "larger_contracts", "build_team", "improve_margin", "reduce_owner_load"], { benchmarkDimensionKey: "primary_growth_objective", futureScoreKey: undefined }),
     q("growth.bottleneck", "growth", 2, "bottleneck", ["lead_flow", "scheduling", "hiring_retention", "communication", "quality", "client_admin", "financial_visibility", "owner_capacity"], { benchmarkDimensionKey: "primary_bottleneck", futureScoreKey: undefined }),
-    q("growth.capacity", "growth", 3, "capacity", ["significant_room", "some_room", "near_capacity", "over_capacity", "uncertain"], { futureRoadmapDomains: ["automation_scale"] }),
-    q("growth.fragmentation", "growth", 4, "fragmentation", ["one_system", "two_systems", "several_tools", "mostly_messages_paper", "uncertain"], { benchmarkDimensionKey: "process_fragmentation", futureRoadmapDomains: ["operational_foundation", "automation_scale"] }),
+    q("growth.capacity", "growth", 3, "capacity", ["significant_room", "some_room", "near_capacity", "over_capacity", "uncertain"], { futureRoadmapDomains: ["automation_scale"], futureScoreKey: undefined }),
+    q("growth.fragmentation", "growth", 4, "fragmentation", ["one_system", "two_systems", "several_tools", "mostly_messages_paper", "uncertain"], { benchmarkDimensionKey: "process_fragmentation", futureRoadmapDomains: ["operational_foundation", "automation_scale"], scoring: { weight: 1, optionValues: { one_system: 100, two_systems: 70, several_tools: 35, mostly_messages_paper: 0, uncertain: null }, reverseScored: true, uncertainValues: ["uncertain"] } }),
     q("growth.automation_readiness", "growth", 5, "readiness", ["not_priority", "exploring", "ready_for_one_area", "ready_for_multiple", "already_automating"], { futureRoadmapDomains: ["automation_scale"] }),
 
     { key: "perspective.pride", sectionKey: "perspective", categoryKey: "perspective", promptKey: "assessment.questions.perspective.pride.prompt", helpKey: "assessment.questions.perspective.pride.help", kind: "text", required: false, qualitative: true, order: 1, maxLength: QUALITATIVE_MAX_LENGTH },
     { key: "perspective.improve", sectionKey: "perspective", categoryKey: "perspective", promptKey: "assessment.questions.perspective.improve.prompt", helpKey: "assessment.questions.perspective.improve.help", kind: "text", required: false, qualitative: true, order: 2, maxLength: QUALITATIVE_MAX_LENGTH },
   ] satisfies AssessmentQuestion[],
-  futureMaturityKeys: ["establishing_foundations", "building_consistency", "organized_growing", "systematized", "ready_to_scale"],
+  futureMaturityKeys: ["establishing_foundations", "building_consistency", "operating_reliably", "ready_to_scale", "operationally_advanced"],
   futureRoadmapDomainKeys: ["operational_foundation", "scheduling_organization", "worker_communication", "client_experience", "quality_assurance", "financial_discipline", "automation_scale"],
 };
 
@@ -140,6 +166,18 @@ export function validateDefinition(definition = INITIAL_ASSESSMENT_DEFINITION): 
     if (question.kind === "text" && !question.qualitative) errors.push(`Text question must be qualitative: ${question.key}`);
     if (question.qualitative && question.required) errors.push(`Qualitative question must be optional: ${question.key}`);
     if (question.kind !== "text" && !question.options?.length) errors.push(`Question has no options: ${question.key}`);
+    if (question.scoring) {
+      if (question.kind !== "single") errors.push(`Only single-choice questions are scoreable: ${question.key}`);
+      if (question.scoring.weight <= 0) errors.push(`Scoring weight must be positive: ${question.key}`);
+      const optionValues = new Set(question.options?.map((option) => option.value));
+      for (const [value, score] of Object.entries(question.scoring.optionValues)) {
+        if (!optionValues.has(value)) errors.push(`Scoring references an unknown option: ${question.key}.${value}`);
+        if (score !== null && (score < 0 || score > 100)) errors.push(`Scoring value is outside 0-100: ${question.key}.${value}`);
+      }
+      for (const option of question.options ?? []) {
+        if (!(option.value in question.scoring.optionValues)) errors.push(`Option has no scoring value: ${question.key}.${option.value}`);
+      }
+    }
   }
   for (const question of definition.questions) {
     if (question.applicability && !questionKeys.has(question.applicability.questionKey)) {
