@@ -106,6 +106,12 @@ describe("operations assessment foundation", () => {
     const attempt = await t.run((ctx) => ctx.db.get(created.attemptId));
     expect(attempt).toMatchObject({ status: "completed", requiredApplicableCount: 26, requiredAnsweredCount: 26, optionalAnsweredCount: 0 });
     expect(attempt?.completedAt).toBe(firstResult.completedAt);
+    await expect(t.mutation(assessmentApi.generateReport, { attemptId: created.attemptId, capability: token("6") })).rejects.toThrow("unavailable");
+    const firstReport = await t.mutation(assessmentApi.generateReport, { attemptId: created.attemptId, capability });
+    const repeatedReport = await t.mutation(assessmentApi.generateReport, { attemptId: created.attemptId, capability });
+    expect(repeatedReport).toEqual(firstReport);
+    expect(firstReport.payload.branchContext.soloOperator).toBe(true);
+    expect(firstReport.payload.scorecard.map((item: any) => item.sectionKey)).not.toContain("team");
     await t.run(async (ctx) => {
       const definition = await ctx.db.get(attempt!.definitionId);
       await ctx.db.patch(attempt!.definitionId, { definitionVersion: 2, questions: definition!.questions.map((question) => ({ ...question, scoring: question.scoring ? { ...question.scoring, optionValues: Object.fromEntries(Object.keys(question.scoring.optionValues).map((key) => [key, 100])) } : undefined })) });
@@ -119,6 +125,7 @@ describe("operations assessment foundation", () => {
     await expect(t.mutation(assessmentApi.complete, { attemptId: created.attemptId, capability: token("4") })).rejects.toThrow("unavailable");
     await t.run((ctx) => ctx.db.patch(created.attemptId, { expiresAt: Date.now() - 1 }));
     await expect(t.mutation(assessmentApi.complete, { attemptId: created.attemptId, capability: token("2") })).rejects.toThrow("expired");
+    await expect(t.mutation(assessmentApi.generateReport, { attemptId: created.attemptId, capability: token("2") })).rejects.toThrow("expired");
   });
 
   it("rate limits repeated attempt creation per browser key", async () => {

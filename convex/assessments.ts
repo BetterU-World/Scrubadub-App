@@ -14,6 +14,7 @@ import {
   type AssessmentQuestion,
 } from "./lib/assessmentDefinition";
 import { scoreAssessment } from "./lib/assessmentScoring";
+import { REPORT_VERSION, generateReportSnapshot } from "./lib/assessmentReport";
 
 const languageValidator = v.union(v.literal("en"), v.literal("es"));
 const responseInputValidator = v.object({
@@ -292,6 +293,27 @@ export const complete = mutation({
       completionSnapshot,
     });
     return completionSnapshot;
+  },
+});
+
+export const generateReport = mutation({
+  args: { attemptId: v.id("assessmentAttempts"), capability: v.string() },
+  handler: async (ctx, args) => {
+    const attempt = await requireAttempt(ctx, args.attemptId, args.capability);
+    if (attempt.status !== "completed" || !attempt.completionSnapshot) throw new Error("Complete the assessment before viewing the report");
+    if (attempt.reportSnapshot) return attempt.reportSnapshot;
+    const definition = await ctx.db.get(attempt.definitionId);
+    if (!definition || definition.definitionVersion !== attempt.completionSnapshot.definitionVersion) throw new Error("Assessment report is unavailable");
+    await ctx.db.query("assessmentResponses").withIndex("by_attemptId", (q) => q.eq("attemptId", attempt._id)).collect();
+    const generatedAt = Date.now();
+    const reportSnapshot = {
+      scoringVersion: attempt.completionSnapshot.scoringVersion,
+      reportContentVersion: REPORT_VERSION,
+      generatedAt,
+      payload: generateReportSnapshot(attempt.completionSnapshot, generatedAt),
+    };
+    await ctx.db.patch(attempt._id, { reportContentVersion: REPORT_VERSION, reportSnapshot });
+    return reportSnapshot;
   },
 });
 

@@ -2511,6 +2511,24 @@
       "operationally_advanced": "Operativamente Avanzado"
     },
     "confidence": { "high": "Alta", "moderate": "Moderada", "limited": "Limitada" },
+    "report": {
+      "identity": "Evaluación de Operaciones SCRUB",
+      "title": "Informe de Evaluación",
+      "completed": "Completada el {{date}}",
+      "version": "Versión del informe {{version}}",
+      "executiveSummary": "Resumen Ejecutivo",
+      "scorecard": "Cuadro de Mando Operativo",
+      "strengths": "Fortalezas",
+      "opportunities": "Oportunidades de Mejora",
+      "roadmap": "Hoja de Ruta de Crecimiento",
+      "nextSteps": "Próximos Pasos",
+      "scoreAria": "Puntuación de {{section}}: {{score}} de 100",
+      "bands": { "strong_foundation": "Base Sólida", "generally_reliable": "Generalmente Confiable", "developing_consistency": "Desarrollando Consistencia", "priority_opportunity": "Oportunidad Prioritaria" },
+      "emptyStrengths": "La evidencia disponible todavía no respalda una fortaleza distintiva.",
+      "emptyOpportunities": "No hay una oportunidad prioritaria respaldada con suficiente evidencia para presentarla aquí.",
+      "roadmapReserved": "La planificación priorizada de acciones se incorporará en la Hoja de Ruta de Crecimiento.",
+      "nextCopy": "Revisa el cuadro de mando y los hallazgos en conjunto. Son la base para decidir qué prácticas operativas merecen atención primero."
+    },
     "sections": {
       "business": { "title": "Tu Negocio", "intro": "Primero, ayúdanos a comprender la estructura y la etapa actual de tu operación de limpieza." },
       "scheduling": { "title": "Programación y Organización", "intro": "Ahora veamos cómo se organizan el trabajo recurrente, las asignaciones y los cambios de horario." },

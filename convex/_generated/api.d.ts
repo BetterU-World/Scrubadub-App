@@ -38,6 +38,7 @@ import type * as invoiceActions from "../invoiceActions.js";
 import type * as invoiceDeliveryInternal from "../invoiceDeliveryInternal.js";
 import type * as lib_acceptedProposalAddOnSnapshots from "../lib/acceptedProposalAddOnSnapshots.js";
 import type * as lib_assessmentDefinition from "../lib/assessmentDefinition.js";
+import type * as lib_assessmentReport from "../lib/assessmentReport.js";
 import type * as lib_assessmentScoring from "../lib/assessmentScoring.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as lib_clientRelationships from "../lib/clientRelationships.js";
@@ -219,6 +220,7 @@ declare const fullApi: ApiFromModules<{
   invoiceDeliveryInternal: typeof invoiceDeliveryInternal;
   "lib/acceptedProposalAddOnSnapshots": typeof lib_acceptedProposalAddOnSnapshots;
   "lib/assessmentDefinition": typeof lib_assessmentDefinition;
+  "lib/assessmentReport": typeof lib_assessmentReport;
   "lib/assessmentScoring": typeof lib_assessmentScoring;
   "lib/auth": typeof lib_auth;
   "lib/clientRelationships": typeof lib_clientRelationships;
