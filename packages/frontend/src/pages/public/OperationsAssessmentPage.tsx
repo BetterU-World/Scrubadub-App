@@ -19,6 +19,11 @@ type Definition = {
   sections: { key: string; titleKey: string; introKey: string; order: number }[];
   questions: Question[];
 };
+type CompletionResult = {
+  operationsScore: number;
+  maturityKey: string;
+  confidenceKey: "high" | "moderate" | "limited";
+};
 
 const assessmentApi = (api as any).assessments;
 
@@ -70,6 +75,7 @@ export function OperationsAssessmentPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [restored, setRestored] = useState(false);
+  const [completionResult, setCompletionResult] = useState<CompletionResult | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -92,7 +98,12 @@ export function OperationsAssessmentPage() {
           setProgress(next);
           await i18n.changeLanguage(next.language);
           setRestored(true);
-          setView("question");
+          if (result.attempt.status === "completed" && result.attempt.completionSnapshot) {
+            setCompletionResult(result.attempt.completionSnapshot as CompletionResult);
+            setView("complete");
+          } else {
+            setView("question");
+          }
         } else {
           clearProgress();
           setProgress({ answers: {}, language: i18n.resolvedLanguage === "es" ? "es" : "en", lastActivityAt: Date.now() });
@@ -118,7 +129,7 @@ export function OperationsAssessmentPage() {
   }, [definition]);
 
   useEffect(() => {
-    if (view === "question" || view === "section") headingRef.current?.focus();
+    if (view === "question" || view === "section" || view === "complete") headingRef.current?.focus();
   }, [view, index]);
 
   useEffect(() => {
@@ -190,8 +201,8 @@ export function OperationsAssessmentPage() {
     if (index === questions.length - 1) {
       setBusy(true);
       try {
-        await complete({ attemptId: progress.attemptId as Id<"assessmentAttempts">, capability: progress.capability });
-        clearProgress();
+        const result = await complete({ attemptId: progress.attemptId as Id<"assessmentAttempts">, capability: progress.capability });
+        setCompletionResult(result as CompletionResult);
         setView("complete");
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : t("assessment.errors.complete"));
@@ -247,8 +258,13 @@ export function OperationsAssessmentPage() {
     <AssessmentShell>
       <div className="mx-auto max-w-xl rounded-3xl border border-primary-100 bg-white p-6 text-center shadow-sm sm:p-10">
         <Check className="mx-auto h-12 w-12 rounded-full bg-primary-100 p-3 text-primary-700" />
-        <h1 className="mt-5 text-3xl font-bold text-gray-900">{t("assessment.completion.title")}</h1>
-        <p className="mt-4 leading-7 text-gray-600">{t("assessment.completion.development")}</p>
+        <h1 ref={headingRef} tabIndex={-1} className="mt-5 text-3xl font-bold text-gray-900 outline-none">{t("assessment.completion.title")}</h1>
+        {completionResult && <div role="status" aria-live="polite" className="mt-8 grid gap-4 sm:grid-cols-3">
+          <div className="rounded-2xl bg-primary-50 p-4"><p className="text-sm font-medium text-primary-800">{t("assessment.completion.score")}</p><p className="mt-2 text-4xl font-bold text-primary-900">{completionResult.operationsScore}</p><p className="text-xs text-primary-700">{t("assessment.completion.outOf")}</p></div>
+          <div className="rounded-2xl bg-gray-50 p-4"><p className="text-sm font-medium text-gray-600">{t("assessment.completion.maturity")}</p><p className="mt-2 font-semibold text-gray-900">{t(`assessment.maturity.${completionResult.maturityKey}`)}</p></div>
+          <div className="rounded-2xl bg-gray-50 p-4"><p className="text-sm font-medium text-gray-600">{t("assessment.completion.confidence")}</p><p className="mt-2 font-semibold text-gray-900">{t(`assessment.confidence.${completionResult.confidenceKey}`)}</p></div>
+        </div>}
+        <p className="mt-6 leading-7 text-gray-600">{t("assessment.completion.next")}</p>
       </div>
     </AssessmentShell>
   );

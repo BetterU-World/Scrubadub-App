@@ -13,6 +13,7 @@ import {
   type AnswerMap,
   type AssessmentQuestion,
 } from "./lib/assessmentDefinition";
+import { scoreAssessment } from "./lib/assessmentScoring";
 
 const languageValidator = v.union(v.literal("en"), v.literal("es"));
 const responseInputValidator = v.object({
@@ -198,9 +199,10 @@ export const recover = mutation({
   handler: async (ctx, args) => {
     try {
       const attempt = await requireAttempt(ctx, args.attemptId, args.capability);
-      if (attempt.status !== "in_progress") return null;
+      if (attempt.status !== "in_progress" && attempt.status !== "completed") return null;
       const definition = await ctx.db.get(attempt.definitionId);
       if (!definition) return null;
+      if (attempt.status === "in_progress" && !definition.scoringVersion) return null;
       const responses = await ctx.db.query("assessmentResponses").withIndex("by_attemptId", (q) => q.eq("attemptId", attempt._id)).collect();
       return { attempt, definition, responses };
     } catch {
@@ -240,14 +242,56 @@ export const complete = mutation({
   args: { attemptId: v.id("assessmentAttempts"), capability: v.string() },
   handler: async (ctx, args) => {
     const attempt = await requireAttempt(ctx, args.attemptId, args.capability);
-    if (attempt.status === "completed") return { completed: true };
+    if (attempt.status === "completed") {
+      if (!attempt.completionSnapshot) throw new Error("Assessment result is unavailable");
+      return attempt.completionSnapshot;
+    }
     const definition = await ctx.db.get(attempt.definitionId);
-    if (!definition) throw new Error("Assessment definition is unavailable");
+    if (!definition || definition.definitionVersion !== attempt.definitionVersion) throw new Error("Assessment definition is unavailable");
     const counts = await cleanupAndCounts(ctx, attempt, definition);
     if (counts.requiredAnsweredCount !== counts.requiredApplicableCount) throw new Error("Complete all required questions before finishing");
+    const answers = await answerMap(ctx, attempt._id);
+    for (const question of definition.questions as AssessmentQuestion[]) {
+      const answer = answers[question.key];
+      if (answer === undefined || !isApplicable(question, answers)) continue;
+      if (question.kind === "single" && (typeof answer !== "string" || !question.options?.some((option) => option.value === answer))) {
+        throw new Error("One or more responses must be reviewed before finishing");
+      }
+    }
+    const scoring = scoreAssessment(definition as any, answers);
     const now = Date.now();
-    await ctx.db.patch(attempt._id, { ...counts, status: "completed", completedAt: now, lastActivityAt: now });
-    return { completed: true };
+    const completionSnapshot = {
+      definitionId: definition._id,
+      definitionVersion: definition.definitionVersion,
+      scoringVersion: definition.scoringVersion!,
+      benchmarkCompatibilityKey: definition.benchmarkCompatibilityKey,
+      completedAt: now,
+      operationsScore: scoring.operationsScore,
+      maturityKey: scoring.maturityKey,
+      confidenceKey: scoring.confidence,
+      confidenceMetadata: scoring.confidenceMetadata,
+      sectionResults: scoring.sectionResults,
+      applicableSectionIds: scoring.applicableSectionIds,
+      applicableQuestionCount: scoring.applicableQuestionCount,
+      answeredScoredQuestionCount: scoring.answeredScoredQuestionCount,
+      evidenceIds: scoring.evidenceIds,
+      branchContext: { teamSize: typeof answers["business.team_size"] === "string" ? answers["business.team_size"] : undefined, soloOperator: answers["business.team_size"] === "solo" },
+    };
+    await ctx.db.patch(attempt._id, {
+      ...counts,
+      status: "completed",
+      completedAt: now,
+      lastActivityAt: now,
+      scoringVersion: definition.scoringVersion,
+      confidenceResult: {
+        level: scoring.confidence,
+        coverageScore: scoring.confidenceMetadata.coverageScore,
+        reasonKeys: scoring.confidenceMetadata.reasonKeys,
+        categoryCoverage: scoring.confidenceMetadata.categoryCoverage,
+      },
+      completionSnapshot,
+    });
+    return completionSnapshot;
   },
 });
 

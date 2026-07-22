@@ -2497,8 +2497,20 @@
     },
     "completion": {
       "title": "Evaluación completada",
-      "development": "Tus respuestas se registraron de forma segura para la base de la evaluación. El Informe de Evaluación personalizado se incorporará en la próxima versión antes de que esta experiencia esté disponible públicamente."
+      "score": "Puntuación de Operaciones",
+      "outOf": "de 100",
+      "maturity": "Madurez Operativa",
+      "confidence": "Confianza",
+      "next": "Tu resultado está guardado de forma segura. Tu informe operativo detallado será la próxima experiencia."
     },
+    "maturity": {
+      "establishing_foundations": "Estableciendo Bases",
+      "building_consistency": "Construyendo Consistencia",
+      "operating_reliably": "Operando de Forma Confiable",
+      "ready_to_scale": "Listo para Escalar",
+      "operationally_advanced": "Operativamente Avanzado"
+    },
+    "confidence": { "high": "Alta", "moderate": "Moderada", "limited": "Limitada" },
     "sections": {
       "business": { "title": "Tu Negocio", "intro": "Primero, ayúdanos a comprender la estructura y la etapa actual de tu operación de limpieza." },
       "scheduling": { "title": "Programación y Organización", "intro": "Ahora veamos cómo se organizan el trabajo recurrente, las asignaciones y los cambios de horario." },
