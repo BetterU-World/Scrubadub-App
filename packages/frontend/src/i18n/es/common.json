@@ -2494,7 +2494,8 @@
       "save": "No pudimos guardar esta respuesta. Inténtalo de nuevo.",
       "complete": "Completa todas las preguntas obligatorias antes de finalizar.",
       "unavailable": "La evaluación no está disponible temporalmente. Inténtalo de nuevo más tarde.",
-      "branchRefresh": "Tus respuestas cambiaron las preguntas aplicables. Actualizamos la evaluación; continúa desde la siguiente pregunta correspondiente."
+      "branchRefresh": "Tus respuestas cambiaron las preguntas aplicables. Actualizamos la evaluación; continúa desde la siguiente pregunta correspondiente.",
+      "rateLimit": "Tuvimos problemas para guardar esa respuesta. Tu selección está segura en este dispositivo. Inténtalo de nuevo en un momento."
     },
     "completion": {
       "title": "Evaluación completada",

@@ -41,6 +41,7 @@ import type * as invoiceDeliveryInternal from "../invoiceDeliveryInternal.js";
 import type * as lib_acceptedProposalAddOnSnapshots from "../lib/acceptedProposalAddOnSnapshots.js";
 import type * as lib_assessmentApplicability from "../lib/assessmentApplicability.js";
 import type * as lib_assessmentDefinition from "../lib/assessmentDefinition.js";
+import type * as lib_assessmentRateLimits from "../lib/assessmentRateLimits.js";
 import type * as lib_assessmentReport from "../lib/assessmentReport.js";
 import type * as lib_assessmentRoadmap from "../lib/assessmentRoadmap.js";
 import type * as lib_assessmentScoring from "../lib/assessmentScoring.js";
@@ -227,6 +228,7 @@ declare const fullApi: ApiFromModules<{
   "lib/acceptedProposalAddOnSnapshots": typeof lib_acceptedProposalAddOnSnapshots;
   "lib/assessmentApplicability": typeof lib_assessmentApplicability;
   "lib/assessmentDefinition": typeof lib_assessmentDefinition;
+  "lib/assessmentRateLimits": typeof lib_assessmentRateLimits;
   "lib/assessmentReport": typeof lib_assessmentReport;
   "lib/assessmentRoadmap": typeof lib_assessmentRoadmap;
   "lib/assessmentScoring": typeof lib_assessmentScoring;

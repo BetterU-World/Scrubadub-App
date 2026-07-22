@@ -70,6 +70,8 @@ export function OperationsAssessmentPage() {
   const [roadmap, setRoadmap] = useState<AssessmentRoadmap | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const progressRef = useRef(progress);
+  const persistenceRef = useRef<Promise<boolean> | null>(null);
+  const lastSavedRef = useRef("");
   progressRef.current = progress;
 
   useEffect(() => {
@@ -168,7 +170,7 @@ export function OperationsAssessmentPage() {
     setError("");
   }
 
-  async function persistCurrent() {
+  async function persistCurrentOnce() {
     if (!question || !definition) return true;
     const latest = progressRef.current;
     if (!isQuestionApplicable(question, latest.answers)) {
@@ -199,7 +201,12 @@ export function OperationsAssessmentPage() {
         const created = await start({ capability, browserKey: getBrowserKey(), responseLanguage: latest.language, priorResponses, firstResponse: responseArgs(question, answer) });
         attemptId = created.attemptId;
       } else {
-        await saveResponse({ attemptId: attemptId as Id<"assessmentAttempts">, capability, responseLanguage: latest.language, response: responseArgs(question, answer) });
+        const response = responseArgs(question, answer);
+        const submissionKey = `${attemptId}:${latest.language}:${JSON.stringify(response)}`;
+        if (lastSavedRef.current !== submissionKey) {
+          await saveResponse({ attemptId: attemptId as Id<"assessmentAttempts">, capability, responseLanguage: latest.language, response });
+          lastSavedRef.current = submissionKey;
+        }
       }
       const next = { ...latest, attemptId, capability, lastActivityAt: Date.now() };
       setProgress(next);
@@ -207,11 +214,21 @@ export function OperationsAssessmentPage() {
       saveProgress(next);
       return true;
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : t("assessment.errors.save"));
+      const message = caught instanceof Error ? caught.message : "";
+      setError(/rate limit|too many/i.test(message) ? t("assessment.errors.rateLimit") : t("assessment.errors.save"));
       return false;
     } finally {
       setBusy(false);
     }
+  }
+
+  function persistCurrent() {
+    if (persistenceRef.current) return persistenceRef.current;
+    const pending = persistCurrentOnce().finally(() => {
+      if (persistenceRef.current === pending) persistenceRef.current = null;
+    });
+    persistenceRef.current = pending;
+    return pending;
   }
 
   async function goNext() {

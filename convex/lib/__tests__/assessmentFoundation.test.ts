@@ -133,11 +133,11 @@ describe("operations assessment foundation", () => {
     await expect(t.mutation(assessmentApi.generateRoadmap, { attemptId: created.attemptId, capability: token("2") })).rejects.toThrow("expired");
   });
 
-  it("rate limits repeated attempt creation per browser key", async () => {
+  it("rate limits abusive attempt creation per browser key without blocking normal retries", async () => {
     const t = backend();
-    for (let index = 0; index < 10; index++) {
+    for (let index = 0; index < 30; index++) {
       await t.mutation(assessmentApi.start, { capability: index.toString(16).padStart(64, "0"), browserKey: token("9"), responseLanguage: "en", firstResponse: { questionKey: "business.primary_model", answerValue: "mixed" } });
     }
-    await expect(t.mutation(assessmentApi.start, { capability: "a".repeat(63) + "b", browserKey: token("9"), responseLanguage: "en", firstResponse: { questionKey: "business.primary_model", answerValue: "mixed" } })).rejects.toThrow("Rate limit");
+    await expect(t.mutation(assessmentApi.start, { capability: "f".repeat(64), browserKey: token("9"), responseLanguage: "en", firstResponse: { questionKey: "business.primary_model", answerValue: "mixed" } })).rejects.toThrow("Rate limit");
   });
 });
