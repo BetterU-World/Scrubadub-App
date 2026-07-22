@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { OperationsAssessmentRoadmap, type AssessmentRoadmap } from "./OperationsAssessmentRoadmap";
 
 type Localized = { en: string; es: string };
 type Finding = { id: string; sectionKey: string; title: Localized; observation: Localized; whyItMatters: Localized; readiness: string };
@@ -11,7 +12,7 @@ export type AssessmentReport = {
   roadmap: { status: string; message: Localized };
 };
 
-export function OperationsAssessmentReport({ report }: { report: AssessmentReport }) {
+export function OperationsAssessmentReport({ report, roadmap }: { report: AssessmentReport; roadmap: AssessmentRoadmap }) {
   const { t, i18n } = useTranslation();
   const language = i18n.resolvedLanguage === "es" ? "es" : "en";
   const heading = useRef<HTMLHeadingElement>(null);
@@ -33,7 +34,7 @@ export function OperationsAssessmentReport({ report }: { report: AssessmentRepor
     <ReportSection title={t("assessment.report.scorecard")}><div className="grid gap-4 md:grid-cols-2">{report.scorecard.map((item) => <article key={item.sectionKey} className="rounded-2xl border border-gray-200 bg-white p-5"><div className="flex items-start justify-between gap-4"><h3 className="font-semibold text-gray-900">{text(item.title)}</h3><span className="font-bold text-gray-900">{item.score}</span></div><div className="mt-4 h-2 overflow-hidden rounded-full bg-gray-200" role="img" aria-label={t("assessment.report.scoreAria", { section: text(item.title), score: item.score })}><div className="h-full bg-primary-600" style={{ width: `${item.score}%` }} /></div><p className="mt-3 text-sm font-medium text-primary-800">{t(`assessment.report.bands.${item.statusKey}`)}</p><p className="mt-2 text-sm leading-6 text-gray-600">{text(item.interpretation)}.</p></article>)}</div></ReportSection>
     <Findings title={t("assessment.report.strengths")} empty={t("assessment.report.emptyStrengths")} findings={report.strengths} text={text} />
     <Findings title={t("assessment.report.opportunities")} empty={t("assessment.report.emptyOpportunities")} findings={report.opportunities} text={text} />
-    <ReportSection title={t("assessment.report.roadmap")}><div className="rounded-2xl border border-dashed border-primary-300 bg-primary-50 p-6"><p className="leading-7 text-primary-900">{text(report.roadmap.message)}</p><p className="mt-3 text-sm font-medium text-primary-800">{t("assessment.report.roadmapReserved")}</p></div></ReportSection>
+    <OperationsAssessmentRoadmap roadmap={roadmap} />
     <ReportSection title={t("assessment.report.nextSteps")}><p className="leading-7 text-gray-700">{t("assessment.report.nextCopy")}</p></ReportSection>
   </main>;
 }

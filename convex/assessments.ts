@@ -15,6 +15,7 @@ import {
 } from "./lib/assessmentDefinition";
 import { scoreAssessment } from "./lib/assessmentScoring";
 import { REPORT_VERSION, generateReportSnapshot } from "./lib/assessmentReport";
+import { ROADMAP_VERSION, generateRoadmapSnapshot } from "./lib/assessmentRoadmap";
 
 const languageValidator = v.union(v.literal("en"), v.literal("es"));
 const responseInputValidator = v.object({
@@ -314,6 +315,19 @@ export const generateReport = mutation({
     };
     await ctx.db.patch(attempt._id, { reportContentVersion: REPORT_VERSION, reportSnapshot });
     return reportSnapshot;
+  },
+});
+
+export const generateRoadmap = mutation({
+  args: { attemptId: v.id("assessmentAttempts"), capability: v.string() },
+  handler: async (ctx, args) => {
+    const attempt = await requireAttempt(ctx, args.attemptId, args.capability);
+    if (attempt.status !== "completed" || !attempt.completionSnapshot || !attempt.reportSnapshot) throw new Error("Complete the assessment report before viewing the roadmap");
+    if (attempt.roadmapSnapshot) return attempt.roadmapSnapshot;
+    const generatedAt = Date.now();
+    const roadmapSnapshot = { roadmapVersion: ROADMAP_VERSION, generatedAt, payload: generateRoadmapSnapshot(attempt.reportSnapshot.payload, generatedAt) };
+    await ctx.db.patch(attempt._id, { roadmapSnapshot });
+    return roadmapSnapshot;
   },
 });
 
