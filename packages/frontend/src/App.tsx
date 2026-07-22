@@ -200,7 +200,7 @@ export default function App() {
   ) : null;
 
   // --- PUBLIC ROUTES: bypass all auth guards, no layout ---
-  if (pathname === "/assessment" && isOperationsAssessmentEnabled) {
+  if (pathname === "/assessment" && (isOperationsAssessmentEnabled || new URLSearchParams(window.location.search).has("return"))) {
     return (
       <>
         <Analytics />

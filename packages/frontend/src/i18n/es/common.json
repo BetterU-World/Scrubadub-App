@@ -2511,6 +2511,13 @@
       "operationally_advanced": "Operativamente Avanzado"
     },
     "confidence": { "high": "Alta", "moderate": "Moderada", "limited": "Limitada" },
+    "trust": "No se requiere una cuenta. Los resultados son privados, la información de contacto es opcional y solo se solicita después del informe completo. Esta evaluación ofrece orientación operativa, no asesoría legal, fiscal, contable, laboral ni certificación de seguridad.",
+    "continuity": {
+      "title": "Conserva esta evaluación", "copy": "Recibe opcionalmente un enlace seguro para volver a este informe y hoja de ruta completos durante 60 días.", "email": "Correo electrónico", "firstName": "Nombre (opcional)", "businessName": "Nombre del negocio (opcional)",
+      "marketingConsent": "También deseo recibir ocasionalmente novedades del producto o recursos operativos útiles.", "deliveryConsent": "Al enviar, autorizas a SCRUB a entregar el enlace transaccional solicitado. El consentimiento de marketing es separado y opcional.", "submit": "Enviarme un enlace seguro", "sending": "Enviando…", "success": "Tu enlace seguro fue enviado.", "failure": "No pudimos enviar el enlace. Tu informe sigue disponible en este navegador.",
+      "supportTitle": "Explora el apoyo de SCRUB", "supportCopy": "Tu hoja de ruta puede implementarse con las herramientas adecuadas para tu negocio. SCRUB ayuda a las empresas de limpieza a centralizar muchos de estos procesos cuando estén listas.", "interested": "Quiero saber cómo podría ayudar SCRUB", "notNow": "Ahora no", "interestSaved": "Tu preferencia fue guardada.", "interestNeedsEmail": "Solicita primero un enlace seguro para asociar esta preferencia de forma segura.",
+      "returnedTitle": "Acceso seguro a la evaluación", "returnedCopy": "Estás viendo tu informe y Hoja de Ruta de Crecimiento congelados mediante un enlace seguro de solo lectura.", "invalidLink": "Este enlace de evaluación no es válido o ha vencido."
+    },
     "report": {
       "identity": "Evaluación de Operaciones SCRUB",
       "title": "Informe de Evaluación",

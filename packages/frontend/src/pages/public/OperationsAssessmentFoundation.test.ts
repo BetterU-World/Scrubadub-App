@@ -93,4 +93,23 @@ describe("operations assessment public foundation", () => {
     expect(roadmap).not.toContain("dependencyKeys");
     expect(roadmap).not.toContain("priority:");
   });
+
+  it("keeps the full report ahead of optional continuity and separates consent", () => {
+    const report = read("packages/frontend/src/pages/public/OperationsAssessmentReport.tsx");
+    const continuity = read("packages/frontend/src/pages/public/AssessmentContinuity.tsx");
+    expect(report.indexOf("<OperationsAssessmentRoadmap")).toBeLessThan(report.indexOf("<AssessmentContinuity"));
+    expect(continuity).toContain('type="email"');
+    expect(continuity).toContain("marketingConsent: false");
+    expect(continuity).toContain('role="status"');
+    expect(continuity).not.toMatch(/unlock|pricing|subscribe|payment/i);
+  });
+
+  it("allows secure completed returns while new starts remain feature flagged", () => {
+    const app = read("packages/frontend/src/App.tsx");
+    expect(app).toContain('new URLSearchParams(window.location.search).has("return")');
+    expect(app).toContain("isOperationsAssessmentEnabled");
+    const page = read("packages/frontend/src/pages/public/OperationsAssessmentPage.tsx");
+    expect(page).toContain("openReturnLink");
+    expect(page).toContain('setView("report")');
+  });
 });

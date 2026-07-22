@@ -120,6 +120,12 @@ async function cleanupAndCounts(ctx: any, attempt: Doc<"assessmentAttempts">, de
   };
 }
 
+async function recordMilestone(ctx: any, attempt: Doc<"assessmentAttempts">, eventKey: string, metadata: any = {}) {
+  const deduplicationKey = `${attempt._id}:${eventKey}`;
+  const existing = await ctx.db.query("assessmentEvents").withIndex("by_deduplicationKey", (q: any) => q.eq("deduplicationKey", deduplicationKey)).unique();
+  if (!existing) await ctx.db.insert("assessmentEvents", { attemptId: attempt._id, eventKey, deduplicationKey, language: attempt.responseLanguage, metadata, createdAt: Date.now() });
+}
+
 export const prepare = mutation({
   args: {},
   handler: async (ctx) => ensureDefinition(ctx),
@@ -181,6 +187,7 @@ export const start = mutation({
     });
     const counts = await cleanupAndCounts(ctx, (await ctx.db.get(attemptId))!, definition);
     await ctx.db.patch(attemptId, counts);
+    await recordMilestone(ctx, (await ctx.db.get(attemptId))!, "assessment_started", { definitionVersion: definition.definitionVersion, branchType: normalized.answerValue === "solo" ? "solo" : undefined });
     return { attemptId };
   },
 });
@@ -293,6 +300,7 @@ export const complete = mutation({
       },
       completionSnapshot,
     });
+    await recordMilestone(ctx, (await ctx.db.get(attempt._id))!, "assessment_completed", { definitionVersion: definition.definitionVersion, scoringVersion: definition.scoringVersion, maturityKey: scoring.maturityKey, confidenceKey: scoring.confidence, branchType: completionSnapshot.branchContext.soloOperator ? "solo" : "team", scoreBand: scoring.operationsScore < 40 ? "0_39" : scoring.operationsScore < 60 ? "40_59" : scoring.operationsScore < 75 ? "60_74" : scoring.operationsScore < 90 ? "75_89" : "90_100" });
     return completionSnapshot;
   },
 });
@@ -314,6 +322,7 @@ export const generateReport = mutation({
       payload: generateReportSnapshot(attempt.completionSnapshot, generatedAt),
     };
     await ctx.db.patch(attempt._id, { reportContentVersion: REPORT_VERSION, reportSnapshot });
+    await recordMilestone(ctx, attempt, "report_generated", { reportVersion: REPORT_VERSION, scoringVersion: attempt.scoringVersion });
     return reportSnapshot;
   },
 });
@@ -327,6 +336,7 @@ export const generateRoadmap = mutation({
     const generatedAt = Date.now();
     const roadmapSnapshot = { roadmapVersion: ROADMAP_VERSION, generatedAt, payload: generateRoadmapSnapshot(attempt.reportSnapshot.payload, generatedAt) };
     await ctx.db.patch(attempt._id, { roadmapSnapshot });
+    await recordMilestone(ctx, attempt, "roadmap_generated", { roadmapVersion: ROADMAP_VERSION, reportVersion: attempt.reportContentVersion });
     return roadmapSnapshot;
   },
 });

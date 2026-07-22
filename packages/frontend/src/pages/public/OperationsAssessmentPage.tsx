@@ -22,6 +22,7 @@ type Definition = {
   questions: Question[];
 };
 const assessmentApi = (api as any).assessments;
+const continuityApi = (api as any).assessmentContinuity;
 
 function applicable(question: Question, answers: Record<string, Answer>): boolean {
   const rule = question.applicability;
@@ -65,6 +66,7 @@ export function OperationsAssessmentPage() {
   const complete = useMutation(assessmentApi.complete);
   const generateReport = useMutation(assessmentApi.generateReport);
   const generateRoadmap = useMutation(assessmentApi.generateRoadmap);
+  const openReturnLink = useMutation(continuityApi.openReturnLink);
   const abandon = useMutation(assessmentApi.abandon);
   const [definition, setDefinition] = useState<Definition | null>(null);
   const [progress, setProgress] = useState<LocalAssessmentProgress>(() => loadProgress() ?? { answers: {}, language: i18n.resolvedLanguage === "es" ? "es" : "en", lastActivityAt: Date.now() });
@@ -79,6 +81,11 @@ export function OperationsAssessmentPage() {
 
   useEffect(() => {
     let active = true;
+    const returnToken = new URLSearchParams(window.location.search).get("return");
+    if (returnToken) {
+      openReturnLink({ token: returnToken }).then(async (result: any) => { if (!active) return; await i18n.changeLanguage(result.language); setReport(result.report); setRoadmap(result.roadmap); setView("report"); }).catch(() => setError(t("assessment.continuity.invalidLink")));
+      return () => { active = false; };
+    }
     prepare({}).then(async (prepared: Definition) => {
       if (!active) return;
       setDefinition(prepared);
@@ -113,7 +120,7 @@ export function OperationsAssessmentPage() {
       }
     }).catch(() => setError(t("assessment.errors.unavailable")));
     return () => { active = false; };
-  }, [prepare, recover, generateReport, generateRoadmap, i18n, t]);
+  }, [prepare, recover, generateReport, generateRoadmap, openReturnLink, i18n, t]);
 
   const questions = useMemo(() => definition ? definition.questions.filter((question) => applicable(question, progress.answers)).sort((a, b) => {
     const sectionA = definition.sections.find((section) => section.key === a.sectionKey)?.order ?? 0;
@@ -242,7 +249,9 @@ export function OperationsAssessmentPage() {
     setError("");
   }
 
-  if (!definition && !error) return <AssessmentShell><p className="text-center text-gray-600">{t("common.loading")}</p></AssessmentShell>;
+  if (view === "report" && report && roadmap) return <AssessmentShell><OperationsAssessmentReport report={report} roadmap={roadmap} attemptId={progress.attemptId} capability={progress.capability} /></AssessmentShell>;
+  if (!definition && error) return <AssessmentShell><div role="alert" className="mx-auto max-w-xl rounded-2xl bg-white p-6 text-center text-gray-700">{error}</div></AssessmentShell>;
+  if (!definition) return <AssessmentShell><p className="text-center text-gray-600">{t("common.loading")}</p></AssessmentShell>;
 
   if (view === "intro") return (
     <AssessmentShell>
@@ -250,6 +259,7 @@ export function OperationsAssessmentPage() {
         <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary-700">{t("assessment.eyebrow")}</p>
         <h1 className="mt-3 text-3xl font-bold tracking-tight text-gray-900 sm:text-5xl">{t("assessment.title")}</h1>
         <p className="mt-5 text-base leading-7 text-gray-600 sm:text-lg">{t("assessment.introduction")}</p>
+        <p className="mt-4 text-sm leading-6 text-gray-500">{t("assessment.trust")}</p>
         <div className="mt-8 grid gap-3 text-left sm:grid-cols-3">
           {["scope", "account", "local"].map((key) => <div key={key} className="rounded-2xl border border-gray-200 bg-white p-4"><Check className="h-5 w-5 text-primary-600"/><p className="mt-3 text-sm leading-6 text-gray-700">{t(`assessment.introPoints.${key}`)}</p></div>)}
         </div>
@@ -258,8 +268,6 @@ export function OperationsAssessmentPage() {
       </div>
     </AssessmentShell>
   );
-
-  if (view === "report" && report && roadmap) return <AssessmentShell><OperationsAssessmentReport report={report} roadmap={roadmap} /></AssessmentShell>;
 
   if (!question || !section) return <AssessmentShell><p>{t("assessment.errors.unavailable")}</p></AssessmentShell>;
 
