@@ -2500,7 +2500,8 @@
       "save": "We could not save this answer. Please try again.",
       "complete": "Complete all required questions before finishing.",
       "unavailable": "The assessment is temporarily unavailable. Please try again later.",
-      "branchRefresh": "Your answers changed which questions apply. We refreshed the assessment; please continue from the next applicable question."
+      "branchRefresh": "Your answers changed which questions apply. We refreshed the assessment; please continue from the next applicable question.",
+      "rateLimit": "We had trouble saving that answer. Your selection is safe on this device. Please try again in a moment."
     },
     "completion": {
       "title": "Assessment complete",

@@ -121,4 +121,12 @@ describe("operations assessment public foundation", () => {
     expect(page).toContain("assessment.errors.branchRefresh");
     expect(page).not.toContain("function applicable(");
   });
+
+  it("deduplicates rapid persistence and translates rate-limit recovery", () => {
+    const page = read("packages/frontend/src/pages/public/OperationsAssessmentPage.tsx");
+    expect(page).toContain("persistenceRef.current");
+    expect(page).toContain("lastSavedRef.current");
+    expect(page).toContain("assessment.errors.rateLimit");
+    expect(page).toContain("/rate limit|too many/i");
+  });
 });

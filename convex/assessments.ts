@@ -16,6 +16,7 @@ import {
 import { scoreAssessment } from "./lib/assessmentScoring";
 import { REPORT_VERSION, generateReportSnapshot } from "./lib/assessmentReport";
 import { ROADMAP_VERSION, generateRoadmapSnapshot } from "./lib/assessmentRoadmap";
+import { ASSESSMENT_LIMITS, sameNormalizedResponse } from "./lib/assessmentRateLimits";
 
 const languageValidator = v.union(v.literal("en"), v.literal("es"));
 const responseInputValidator = v.object({
@@ -167,10 +168,10 @@ export const start = mutation({
     }
     if (!normalizedResponses.some(({ question, normalized }) => !question.qualitative && (normalized.answerValue || normalized.answerValues?.length))) throw new Error("A substantive first answer is required");
     const browserKeyHash = await hashTokenForLookup(args.browserKey);
-    await checkRateLimit(ctx, { key: `assessment:start:${browserKeyHash}`, limit: 10, windowMs: 24 * 60 * 60 * 1000 });
     const capabilityHash = await hashTokenForLookup(args.capability);
     const duplicate = await ctx.db.query("assessmentAttempts").withIndex("by_capabilityHash", (q) => q.eq("capabilityHash", capabilityHash)).unique();
     if (duplicate) return { attemptId: duplicate._id };
+    await checkRateLimit(ctx, { key: `assessment:creation:${browserKeyHash}`, ...ASSESSMENT_LIMITS.creation });
     const now = Date.now();
     const attemptId = await ctx.db.insert("assessmentAttempts", {
       definitionId: definition._id,
@@ -229,7 +230,6 @@ export const saveResponse = mutation({
   handler: async (ctx, args) => {
     const attempt = await requireAttempt(ctx, args.attemptId, args.capability);
     if (attempt.status !== "in_progress") throw new Error("Completed assessments cannot be changed");
-    await checkRateLimit(ctx, { key: `assessment:response:${attempt.capabilityHash}`, limit: 120, windowMs: 60_000 });
     const definition = await ctx.db.get(attempt.definitionId);
     if (!definition || definition.definitionVersion !== attempt.definitionVersion) throw new Error("Assessment definition is unavailable");
     const question = questionFor(definition, args.response.questionKey);
@@ -237,6 +237,8 @@ export const saveResponse = mutation({
     if (!isApplicable(question, currentAnswers)) throw new Error("Question is not applicable");
     const normalized = normalizeResponse(question, args.response);
     const existing = await ctx.db.query("assessmentResponses").withIndex("by_attemptId_questionKey", (q) => q.eq("attemptId", attempt._id).eq("questionKey", question.key)).unique();
+    if (sameNormalizedResponse(existing, normalized)) return cleanupAndCounts(ctx, attempt, definition);
+    await checkRateLimit(ctx, { key: `assessment:response-write:${attempt._id}`, ...ASSESSMENT_LIMITS.responseWrite });
     const now = Date.now();
     if (question.kind === "text" && !normalized.qualitativeText) {
       if (existing) await ctx.db.delete(existing._id);
@@ -259,6 +261,7 @@ export const complete = mutation({
       if (!attempt.completionSnapshot) throw new Error("Assessment result is unavailable");
       return attempt.completionSnapshot;
     }
+    await checkRateLimit(ctx, { key: `assessment:completion:${attempt._id}`, ...ASSESSMENT_LIMITS.completion });
     const definition = await ctx.db.get(attempt.definitionId);
     if (!definition || definition.definitionVersion !== attempt.definitionVersion) throw new Error("Assessment definition is unavailable");
     const counts = await cleanupAndCounts(ctx, attempt, definition);
@@ -315,6 +318,7 @@ export const generateReport = mutation({
     const attempt = await requireAttempt(ctx, args.attemptId, args.capability);
     if (attempt.status !== "completed" || !attempt.completionSnapshot) throw new Error("Complete the assessment before viewing the report");
     if (attempt.reportSnapshot) return attempt.reportSnapshot;
+    await checkRateLimit(ctx, { key: `assessment:report:${attempt._id}`, ...ASSESSMENT_LIMITS.reportGeneration });
     const definition = await ctx.db.get(attempt.definitionId);
     if (!definition || definition.definitionVersion !== attempt.completionSnapshot.definitionVersion) throw new Error("Assessment report is unavailable");
     await ctx.db.query("assessmentResponses").withIndex("by_attemptId", (q) => q.eq("attemptId", attempt._id)).collect();
@@ -337,6 +341,7 @@ export const generateRoadmap = mutation({
     const attempt = await requireAttempt(ctx, args.attemptId, args.capability);
     if (attempt.status !== "completed" || !attempt.completionSnapshot || !attempt.reportSnapshot) throw new Error("Complete the assessment report before viewing the roadmap");
     if (attempt.roadmapSnapshot) return attempt.roadmapSnapshot;
+    await checkRateLimit(ctx, { key: `assessment:roadmap:${attempt._id}`, ...ASSESSMENT_LIMITS.roadmapGeneration });
     const generatedAt = Date.now();
     const roadmapSnapshot = { roadmapVersion: ROADMAP_VERSION, generatedAt, payload: generateRoadmapSnapshot(attempt.reportSnapshot.payload, generatedAt) };
     await ctx.db.patch(attempt._id, { roadmapSnapshot });
