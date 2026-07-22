@@ -112,6 +112,10 @@ describe("operations assessment foundation", () => {
     expect(repeatedReport).toEqual(firstReport);
     expect(firstReport.payload.branchContext.soloOperator).toBe(true);
     expect(firstReport.payload.scorecard.map((item: any) => item.sectionKey)).not.toContain("team");
+    await expect(t.mutation(assessmentApi.generateRoadmap, { attemptId: created.attemptId, capability: token("6") })).rejects.toThrow("unavailable");
+    const firstRoadmap = await t.mutation(assessmentApi.generateRoadmap, { attemptId: created.attemptId, capability });
+    expect(await t.mutation(assessmentApi.generateRoadmap, { attemptId: created.attemptId, capability })).toEqual(firstRoadmap);
+    expect(Object.values(firstRoadmap.payload.stages).flat().some((item: any) => item.sectionKey === "team")).toBe(false);
     await t.run(async (ctx) => {
       const definition = await ctx.db.get(attempt!.definitionId);
       await ctx.db.patch(attempt!.definitionId, { definitionVersion: 2, questions: definition!.questions.map((question) => ({ ...question, scoring: question.scoring ? { ...question.scoring, optionValues: Object.fromEntries(Object.keys(question.scoring.optionValues).map((key) => [key, 100])) } : undefined })) });
@@ -126,6 +130,7 @@ describe("operations assessment foundation", () => {
     await t.run((ctx) => ctx.db.patch(created.attemptId, { expiresAt: Date.now() - 1 }));
     await expect(t.mutation(assessmentApi.complete, { attemptId: created.attemptId, capability: token("2") })).rejects.toThrow("expired");
     await expect(t.mutation(assessmentApi.generateReport, { attemptId: created.attemptId, capability: token("2") })).rejects.toThrow("expired");
+    await expect(t.mutation(assessmentApi.generateRoadmap, { attemptId: created.attemptId, capability: token("2") })).rejects.toThrow("expired");
   });
 
   it("rate limits repeated attempt creation per browser key", async () => {

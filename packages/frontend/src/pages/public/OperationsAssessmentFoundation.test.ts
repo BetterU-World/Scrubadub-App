@@ -82,4 +82,15 @@ describe("operations assessment public foundation", () => {
     expect(report).not.toContain("applicableWeight");
     expect(report).not.toContain("benchmarkKey");
   });
+
+  it("renders an accessible roadmap without exposing roadmap internals", () => {
+    const roadmap = read("packages/frontend/src/pages/public/OperationsAssessmentRoadmap.tsx");
+    expect(roadmap).toContain('aria-labelledby="growth-roadmap-heading"');
+    expect(roadmap).toContain("recommendedActions");
+    expect(roadmap).toContain("successIndicators");
+    expect(roadmap).toContain("roadmap.stageOrder.map");
+    expect(roadmap).not.toContain("evidenceReferences");
+    expect(roadmap).not.toContain("dependencyKeys");
+    expect(roadmap).not.toContain("priority:");
+  });
 });

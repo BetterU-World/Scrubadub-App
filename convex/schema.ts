@@ -131,6 +131,11 @@ export default defineSchema({
       generatedAt: v.number(),
       payload: v.any(),
     })),
+    roadmapSnapshot: v.optional(v.object({
+      roadmapVersion: v.number(),
+      generatedAt: v.number(),
+      payload: v.any(),
+    })),
     consentVersion: v.optional(v.string()),
     researchEligible: v.optional(v.boolean()),
     deletedAt: v.optional(v.number()),

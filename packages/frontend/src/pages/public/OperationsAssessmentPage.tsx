@@ -7,6 +7,7 @@ import { ArrowLeft, ArrowRight, Check, RotateCcw, ShieldCheck } from "lucide-rea
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 import { clearProgress, getBrowserKey, loadProgress, randomHex, saveProgress, type LocalAssessmentProgress } from "@/lib/assessmentPersistence";
 import { OperationsAssessmentReport, type AssessmentReport } from "./OperationsAssessmentReport";
+import type { AssessmentRoadmap } from "./OperationsAssessmentRoadmap";
 
 type Answer = string | string[];
 type Question = {
@@ -63,6 +64,7 @@ export function OperationsAssessmentPage() {
   const saveResponse = useMutation(assessmentApi.saveResponse);
   const complete = useMutation(assessmentApi.complete);
   const generateReport = useMutation(assessmentApi.generateReport);
+  const generateRoadmap = useMutation(assessmentApi.generateRoadmap);
   const abandon = useMutation(assessmentApi.abandon);
   const [definition, setDefinition] = useState<Definition | null>(null);
   const [progress, setProgress] = useState<LocalAssessmentProgress>(() => loadProgress() ?? { answers: {}, language: i18n.resolvedLanguage === "es" ? "es" : "en", lastActivityAt: Date.now() });
@@ -72,6 +74,7 @@ export function OperationsAssessmentPage() {
   const [busy, setBusy] = useState(false);
   const [restored, setRestored] = useState(false);
   const [report, setReport] = useState<AssessmentReport | null>(null);
+  const [roadmap, setRoadmap] = useState<AssessmentRoadmap | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -97,6 +100,8 @@ export function OperationsAssessmentPage() {
           if (result.attempt.status === "completed" && result.attempt.completionSnapshot) {
             const frozen = await generateReport({ attemptId: saved.attemptId as Id<"assessmentAttempts">, capability: saved.capability });
             setReport(frozen.payload as AssessmentReport);
+            const plan = await generateRoadmap({ attemptId: saved.attemptId as Id<"assessmentAttempts">, capability: saved.capability });
+            setRoadmap(plan.payload as AssessmentRoadmap);
             setView("report");
           } else {
             setView("question");
@@ -108,7 +113,7 @@ export function OperationsAssessmentPage() {
       }
     }).catch(() => setError(t("assessment.errors.unavailable")));
     return () => { active = false; };
-  }, [prepare, recover, generateReport, i18n, t]);
+  }, [prepare, recover, generateReport, generateRoadmap, i18n, t]);
 
   const questions = useMemo(() => definition ? definition.questions.filter((question) => applicable(question, progress.answers)).sort((a, b) => {
     const sectionA = definition.sections.find((section) => section.key === a.sectionKey)?.order ?? 0;
@@ -201,6 +206,8 @@ export function OperationsAssessmentPage() {
         await complete({ attemptId: progress.attemptId as Id<"assessmentAttempts">, capability: progress.capability });
         const frozen = await generateReport({ attemptId: progress.attemptId as Id<"assessmentAttempts">, capability: progress.capability });
         setReport(frozen.payload as AssessmentReport);
+        const plan = await generateRoadmap({ attemptId: progress.attemptId as Id<"assessmentAttempts">, capability: progress.capability });
+        setRoadmap(plan.payload as AssessmentRoadmap);
         setView("report");
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : t("assessment.errors.complete"));
@@ -252,7 +259,7 @@ export function OperationsAssessmentPage() {
     </AssessmentShell>
   );
 
-  if (view === "report" && report) return <AssessmentShell><OperationsAssessmentReport report={report} /></AssessmentShell>;
+  if (view === "report" && report && roadmap) return <AssessmentShell><OperationsAssessmentReport report={report} roadmap={roadmap} /></AssessmentShell>;
 
   if (!question || !section) return <AssessmentShell><p>{t("assessment.errors.unavailable")}</p></AssessmentShell>;
 

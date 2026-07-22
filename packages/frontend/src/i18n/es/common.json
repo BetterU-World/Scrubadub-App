@@ -2529,6 +2529,22 @@
       "roadmapReserved": "La planificación priorizada de acciones se incorporará en la Hoja de Ruta de Crecimiento.",
       "nextCopy": "Revisa el cuadro de mando y los hallazgos en conjunto. Son la base para decidir qué prácticas operativas merecen atención primero."
     },
+    "roadmap": {
+      "introduction": "Esta secuencia prioriza el impacto operativo y las dependencias. Las etapas indican el orden, no plazos rígidos.",
+      "priority": "Prioridad {{number}}",
+      "current": "Estado actual",
+      "target": "Estado objetivo",
+      "why": "Por qué importa",
+      "actions": "Acciones recomendadas",
+      "success": "Indicadores de éxito",
+      "sparse": "No hay otra recomendación con suficiente respaldo para esta etapa.",
+      "stages": {
+        "now": { "title": "Ahora", "description": "Comienza con estas bases de mayor impacto." },
+        "next": { "title": "A continuación", "description": "Aborda estas prioridades cuando las bases inmediatas estén estables." },
+        "later": { "title": "Más adelante", "description": "Mantén estas mejoras valiosas a la vista sin distraerte de las prioridades actuales." },
+        "maintain": { "title": "Mantener", "description": "Protege estas fortalezas respaldadas mientras cambia la operación." }
+      }
+    },
     "sections": {
       "business": { "title": "Tu Negocio", "intro": "Primero, ayúdanos a comprender la estructura y la etapa actual de tu operación de limpieza." },
       "scheduling": { "title": "Programación y Organización", "intro": "Ahora veamos cómo se organizan el trabajo recurrente, las asignaciones y los cambios de horario." },

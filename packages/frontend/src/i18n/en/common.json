@@ -2535,6 +2535,22 @@
       "roadmapReserved": "Prioritized action planning will be introduced in the Growth Roadmap.",
       "nextCopy": "Review the scorecard and findings together. They provide the foundation for deciding which operational practices deserve attention first."
     },
+    "roadmap": {
+      "introduction": "This sequence prioritizes operational impact and dependencies. The stages describe order, not rigid deadlines.",
+      "priority": "Priority {{number}}",
+      "current": "Current state",
+      "target": "Target state",
+      "why": "Why this matters",
+      "actions": "Recommended actions",
+      "success": "Success indicators",
+      "sparse": "No additional recommendation is supported strongly enough for this stage.",
+      "stages": {
+        "now": { "title": "Now", "description": "Start with these highest-leverage foundations." },
+        "next": { "title": "Next", "description": "Address these priorities after the immediate foundations are stable." },
+        "later": { "title": "Later", "description": "Keep these worthwhile improvements in view without distracting from current priorities." },
+        "maintain": { "title": "Maintain", "description": "Protect these supported strengths as the operation changes." }
+      }
+    },
     "sections": {
       "business": { "title": "Your Business", "intro": "First, help us understand the shape and current stage of your cleaning operation." },
       "scheduling": { "title": "Scheduling and Organization", "intro": "Now let’s look at how recurring work, assignments, and schedule changes stay organized." },
