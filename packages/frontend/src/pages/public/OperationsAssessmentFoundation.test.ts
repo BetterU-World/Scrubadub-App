@@ -65,9 +65,21 @@ describe("operations assessment public foundation", () => {
     const page = read("packages/frontend/src/pages/public/OperationsAssessmentPage.tsx");
     expect(page).toContain('result.attempt.status === "completed"');
     expect(page).toContain("result.attempt.completionSnapshot");
-    expect(page).toContain('setView("complete")');
-    expect(page).toContain('aria-live="polite"');
-    expect(page).toContain("completionResult.operationsScore");
-    expect(page).not.toContain("clearProgress();\n        setView(\"complete\")");
+    expect(page).toContain('setView("report")');
+    expect(page).toContain("generateReport");
+    expect(page).not.toContain("clearProgress();\n        setView(\"report\")");
+  });
+
+  it("renders the advisory report without exposing internal evidence or formula data", () => {
+    const report = read("packages/frontend/src/pages/public/OperationsAssessmentReport.tsx");
+    expect(report).toContain("executiveSummary");
+    expect(report).toContain("scorecard");
+    expect(report).toContain("strengths");
+    expect(report).toContain("opportunities");
+    expect(report).toContain('role="img"');
+    expect(report).toContain("heading.current?.focus()");
+    expect(report).not.toContain("evidenceReferences");
+    expect(report).not.toContain("applicableWeight");
+    expect(report).not.toContain("benchmarkKey");
   });
 });

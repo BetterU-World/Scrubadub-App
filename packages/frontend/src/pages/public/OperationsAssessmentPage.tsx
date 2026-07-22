@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { ArrowLeft, ArrowRight, Check, RotateCcw, ShieldCheck } from "lucide-react";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 import { clearProgress, getBrowserKey, loadProgress, randomHex, saveProgress, type LocalAssessmentProgress } from "@/lib/assessmentPersistence";
+import { OperationsAssessmentReport, type AssessmentReport } from "./OperationsAssessmentReport";
 
 type Answer = string | string[];
 type Question = {
@@ -19,12 +20,6 @@ type Definition = {
   sections: { key: string; titleKey: string; introKey: string; order: number }[];
   questions: Question[];
 };
-type CompletionResult = {
-  operationsScore: number;
-  maturityKey: string;
-  confidenceKey: "high" | "moderate" | "limited";
-};
-
 const assessmentApi = (api as any).assessments;
 
 function applicable(question: Question, answers: Record<string, Answer>): boolean {
@@ -67,15 +62,16 @@ export function OperationsAssessmentPage() {
   const recover = useMutation(assessmentApi.recover);
   const saveResponse = useMutation(assessmentApi.saveResponse);
   const complete = useMutation(assessmentApi.complete);
+  const generateReport = useMutation(assessmentApi.generateReport);
   const abandon = useMutation(assessmentApi.abandon);
   const [definition, setDefinition] = useState<Definition | null>(null);
   const [progress, setProgress] = useState<LocalAssessmentProgress>(() => loadProgress() ?? { answers: {}, language: i18n.resolvedLanguage === "es" ? "es" : "en", lastActivityAt: Date.now() });
-  const [view, setView] = useState<"intro" | "section" | "question" | "complete">("intro");
+  const [view, setView] = useState<"intro" | "section" | "question" | "report">("intro");
   const [index, setIndex] = useState(0);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [restored, setRestored] = useState(false);
-  const [completionResult, setCompletionResult] = useState<CompletionResult | null>(null);
+  const [report, setReport] = useState<AssessmentReport | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -99,8 +95,9 @@ export function OperationsAssessmentPage() {
           await i18n.changeLanguage(next.language);
           setRestored(true);
           if (result.attempt.status === "completed" && result.attempt.completionSnapshot) {
-            setCompletionResult(result.attempt.completionSnapshot as CompletionResult);
-            setView("complete");
+            const frozen = await generateReport({ attemptId: saved.attemptId as Id<"assessmentAttempts">, capability: saved.capability });
+            setReport(frozen.payload as AssessmentReport);
+            setView("report");
           } else {
             setView("question");
           }
@@ -111,7 +108,7 @@ export function OperationsAssessmentPage() {
       }
     }).catch(() => setError(t("assessment.errors.unavailable")));
     return () => { active = false; };
-  }, [prepare, recover, i18n, t]);
+  }, [prepare, recover, generateReport, i18n, t]);
 
   const questions = useMemo(() => definition ? definition.questions.filter((question) => applicable(question, progress.answers)).sort((a, b) => {
     const sectionA = definition.sections.find((section) => section.key === a.sectionKey)?.order ?? 0;
@@ -129,7 +126,7 @@ export function OperationsAssessmentPage() {
   }, [definition]);
 
   useEffect(() => {
-    if (view === "question" || view === "section" || view === "complete") headingRef.current?.focus();
+    if (view === "question" || view === "section") headingRef.current?.focus();
   }, [view, index]);
 
   useEffect(() => {
@@ -201,9 +198,10 @@ export function OperationsAssessmentPage() {
     if (index === questions.length - 1) {
       setBusy(true);
       try {
-        const result = await complete({ attemptId: progress.attemptId as Id<"assessmentAttempts">, capability: progress.capability });
-        setCompletionResult(result as CompletionResult);
-        setView("complete");
+        await complete({ attemptId: progress.attemptId as Id<"assessmentAttempts">, capability: progress.capability });
+        const frozen = await generateReport({ attemptId: progress.attemptId as Id<"assessmentAttempts">, capability: progress.capability });
+        setReport(frozen.payload as AssessmentReport);
+        setView("report");
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : t("assessment.errors.complete"));
       } finally { setBusy(false); }
@@ -254,20 +252,7 @@ export function OperationsAssessmentPage() {
     </AssessmentShell>
   );
 
-  if (view === "complete") return (
-    <AssessmentShell>
-      <div className="mx-auto max-w-xl rounded-3xl border border-primary-100 bg-white p-6 text-center shadow-sm sm:p-10">
-        <Check className="mx-auto h-12 w-12 rounded-full bg-primary-100 p-3 text-primary-700" />
-        <h1 ref={headingRef} tabIndex={-1} className="mt-5 text-3xl font-bold text-gray-900 outline-none">{t("assessment.completion.title")}</h1>
-        {completionResult && <div role="status" aria-live="polite" className="mt-8 grid gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl bg-primary-50 p-4"><p className="text-sm font-medium text-primary-800">{t("assessment.completion.score")}</p><p className="mt-2 text-4xl font-bold text-primary-900">{completionResult.operationsScore}</p><p className="text-xs text-primary-700">{t("assessment.completion.outOf")}</p></div>
-          <div className="rounded-2xl bg-gray-50 p-4"><p className="text-sm font-medium text-gray-600">{t("assessment.completion.maturity")}</p><p className="mt-2 font-semibold text-gray-900">{t(`assessment.maturity.${completionResult.maturityKey}`)}</p></div>
-          <div className="rounded-2xl bg-gray-50 p-4"><p className="text-sm font-medium text-gray-600">{t("assessment.completion.confidence")}</p><p className="mt-2 font-semibold text-gray-900">{t(`assessment.confidence.${completionResult.confidenceKey}`)}</p></div>
-        </div>}
-        <p className="mt-6 leading-7 text-gray-600">{t("assessment.completion.next")}</p>
-      </div>
-    </AssessmentShell>
-  );
+  if (view === "report" && report) return <AssessmentShell><OperationsAssessmentReport report={report} /></AssessmentShell>;
 
   if (!question || !section) return <AssessmentShell><p>{t("assessment.errors.unavailable")}</p></AssessmentShell>;
 

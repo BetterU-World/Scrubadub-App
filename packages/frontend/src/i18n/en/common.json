@@ -2517,6 +2517,24 @@
       "operationally_advanced": "Operationally Advanced"
     },
     "confidence": { "high": "High", "moderate": "Moderate", "limited": "Limited" },
+    "report": {
+      "identity": "SCRUB Operations Assessment",
+      "title": "Assessment Report",
+      "completed": "Completed {{date}}",
+      "version": "Report version {{version}}",
+      "executiveSummary": "Executive Summary",
+      "scorecard": "Operational Scorecard",
+      "strengths": "Strengths",
+      "opportunities": "Improvement Opportunities",
+      "roadmap": "Growth Roadmap",
+      "nextSteps": "Next Steps",
+      "scoreAria": "{{section}} score: {{score}} out of 100",
+      "bands": { "strong_foundation": "Strong Foundation", "generally_reliable": "Generally Reliable", "developing_consistency": "Developing Consistency", "priority_opportunity": "Priority Opportunity" },
+      "emptyStrengths": "The available evidence does not support a distinct strength finding yet.",
+      "emptyOpportunities": "No priority improvement opportunity is supported strongly enough to present here.",
+      "roadmapReserved": "Prioritized action planning will be introduced in the Growth Roadmap.",
+      "nextCopy": "Review the scorecard and findings together. They provide the foundation for deciding which operational practices deserve attention first."
+    },
     "sections": {
       "business": { "title": "Your Business", "intro": "First, help us understand the shape and current stage of your cleaning operation." },
       "scheduling": { "title": "Scheduling and Organization", "intro": "Now let’s look at how recurring work, assignments, and schedule changes stay organized." },
