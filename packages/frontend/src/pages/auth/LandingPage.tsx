@@ -24,6 +24,7 @@ import {
   Users,
   Wrench,
 } from "lucide-react";
+import { isOperationsAssessmentEnabled } from "../../lib/assessmentFeature";
 
 const plans = [
   {
@@ -214,14 +215,16 @@ export function LandingPage() {
               <p className="mt-4 max-w-2xl text-base leading-7 text-gray-600 sm:text-lg">
                 Connect sales, recurring service, field teams, clients, payments, and reporting in one cleaning-specific platform—without holding every detail together yourself.
               </p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <Link href="/get-started" className="btn-primary touch-target inline-flex w-full items-center justify-center gap-2 px-6 sm:w-auto">
                   Start 14 days free <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
                 <a href="#platform" className="btn-secondary touch-target inline-flex w-full items-center justify-center gap-2 px-6 sm:w-auto">
                   See how SCRUB works <ChevronRight className="h-4 w-4" aria-hidden="true" />
                 </a>
+                {isOperationsAssessmentEnabled && <Link href="/assessment" className="touch-target inline-flex w-full items-center justify-center px-4 font-medium text-primary-700 hover:text-primary-800 sm:w-auto">Get Your Operations Assessment</Link>}
               </div>
+              {isOperationsAssessmentEnabled && <p className="mt-3 max-w-xl text-sm leading-6 text-gray-500">See what is working, where operations may be holding you back, and what to improve next. No account required.</p>}
               <p className="mt-3 text-sm text-gray-500">No charge today. Choose the plan that fits your operation.</p>
             </div>
 
@@ -295,6 +298,7 @@ export function LandingPage() {
                 <ul className="mt-6 space-y-3 text-sm text-gray-700">
                   {["Manage leads, clients, commercial accounts, and active work", "Coordinate schedules, teams, maintenance, and exceptions", "Review performance and keep the business moving from your phone"].map((item) => <li key={item} className="flex gap-3"><CheckCircle className="mt-0.5 h-5 w-5 flex-none text-primary-600" aria-hidden="true" /><span>{item}</span></li>)}
                 </ul>
+                {isOperationsAssessmentEnabled && <Link href="/assessment" className="mt-6 inline-flex min-h-11 items-center gap-2 font-semibold text-primary-700 hover:text-primary-800">Get Your Operations Assessment <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>}
               </div>
               <div className="grid gap-4 sm:grid-cols-2" aria-label="Owner platform capabilities">
                 <RoleCard icon={Inbox} title="Know what is new" copy="Requests, walkthroughs, proposals, and client activity stay visible." />
@@ -420,7 +424,7 @@ export function LandingPage() {
           <div className="mx-auto max-w-3xl">
             <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">One connected business. More room to grow.</h2>
             <p className="mt-4 text-base leading-7 text-gray-600 sm:text-lg">Replace scattered coordination with clearer work, more professional client relationships, and a team that knows what comes next.</p>
-            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row"><Link href="/get-started" className="btn-primary touch-target inline-flex w-full items-center justify-center gap-2 px-6 sm:w-auto">Start 14 days free <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link><a href="#platform" className="btn-secondary touch-target inline-flex w-full items-center justify-center px-6 sm:w-auto">Explore the platform</a></div>
+            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row sm:flex-wrap"><Link href="/get-started" className="btn-primary touch-target inline-flex w-full items-center justify-center gap-2 px-6 sm:w-auto">Start 14 days free <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link><a href="#platform" className="btn-secondary touch-target inline-flex w-full items-center justify-center px-6 sm:w-auto">Explore the platform</a>{isOperationsAssessmentEnabled && <Link href="/assessment" className="touch-target inline-flex w-full items-center justify-center px-4 font-medium text-primary-700 hover:text-primary-800 sm:w-auto">Get Your Operations Assessment</Link>}</div>
           </div>
         </section>
       </main>
