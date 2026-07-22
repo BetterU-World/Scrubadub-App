@@ -145,16 +145,6 @@ export const INITIAL_ASSESSMENT_DEFINITION = {
   futureRoadmapDomainKeys: ["operational_foundation", "scheduling_organization", "worker_communication", "client_experience", "quality_assurance", "financial_discipline", "automation_scale"],
 };
 
-export function isApplicable(question: AssessmentQuestion, answers: AnswerMap): boolean {
-  const rule = question.applicability;
-  if (!rule) return true;
-  const answer = answers[rule.questionKey];
-  if (answer === undefined) return false;
-  if (rule.operator === "includes") return Array.isArray(answer) && answer.includes(rule.value);
-  const equals = !Array.isArray(answer) && answer === rule.value;
-  return rule.operator === "equals" ? equals : !equals;
-}
-
 export function validateDefinition(definition = INITIAL_ASSESSMENT_DEFINITION): string[] {
   const errors: string[] = [];
   const sectionKeys = new Set(definition.sections.map((section) => section.key));
@@ -194,3 +184,4 @@ export function assertDefinitionMutable(status: string): void {
 export function sanitizeQualitativeText(value: string, maxLength = QUALITATIVE_MAX_LENGTH): string {
   return value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "").trim().slice(0, maxLength);
 }
+export { isQuestionApplicable as isApplicable } from "./assessmentApplicability";
