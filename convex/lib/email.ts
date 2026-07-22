@@ -48,6 +48,18 @@ export function getOperationalEmailHeaders(identity: OperationalEmailIdentity) {
   };
 }
 
+export async function sendAssessmentReportEmail(args: { email: string; language: "en" | "es"; token: string; expiresAt: number }): Promise<boolean> {
+  const url = `${getAppUrl()}/assessment?return=${encodeURIComponent(args.token)}`;
+  const es = args.language === "es";
+  const subject = es ? "Tu Evaluación de Operaciones SCRUB" : "Your SCRUB Operations Assessment";
+  const intro = es ? "Tu informe y Hoja de Ruta de Crecimiento están disponibles mediante el enlace seguro de abajo." : "Your assessment report and Growth Roadmap are available through the secure link below.";
+  const expiry = new Date(args.expiresAt).toLocaleDateString(es ? "es-US" : "en-US");
+  try {
+    const { error } = await getResendClient().emails.send({ ...getPlatformEmailHeaders(), to: args.email, subject, html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:24px"><h1>${escapeHtml(es ? "Evaluación de Operaciones SCRUB" : "SCRUB Operations Assessment")}</h1><p>${escapeHtml(intro)}</p><p><a href="${escapeHtml(url)}" style="display:inline-block;padding:12px 18px;background:#166534;color:white;text-decoration:none;border-radius:8px">${escapeHtml(es ? "Ver mi evaluación" : "View my assessment")}</a></p><p>${escapeHtml(es ? `Este enlace vence el ${expiry}.` : `This link expires on ${expiry}.`)}</p></div>`, text: `${subject}\n\n${intro}\n\n${url}\n\n${es ? "El enlace vence" : "Link expires"}: ${expiry}` });
+    return !error;
+  } catch { return false; }
+}
+
 function getAppUrl(): string {
   if (!APP_URL) {
     throw new Error("APP_URL environment variable is required");

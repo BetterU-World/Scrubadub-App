@@ -160,6 +160,37 @@ export default defineSchema({
     .index("by_attemptId_questionKey", ["attemptId", "questionKey"])
     .index("by_attemptId", ["attemptId"]),
 
+  assessmentProspects: defineTable({
+    attemptId: v.id("assessmentAttempts"),
+    normalizedEmail: v.string(),
+    firstName: v.optional(v.string()),
+    businessName: v.optional(v.string()),
+    preferredLanguage: v.union(v.literal("en"), v.literal("es")),
+    deliveryAuthorizedAt: v.number(),
+    marketingConsent: v.boolean(),
+    marketingConsentAt: v.optional(v.number()),
+    consentVersion: v.optional(v.string()),
+    scrubInterest: v.union(v.literal("interested"), v.literal("not_now"), v.literal("unspecified")),
+    scrubInterestAt: v.optional(v.number()),
+    deliveryStatus: v.union(v.literal("pending"), v.literal("delivered"), v.literal("failed")),
+    reportVersion: v.number(),
+    roadmapVersion: v.number(),
+    source: v.literal("assessment_report"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_attemptId", ["attemptId"]).index("by_email", ["normalizedEmail"]),
+
+  assessmentReportTokens: defineTable({
+    attemptId: v.id("assessmentAttempts"), prospectId: v.id("assessmentProspects"), tokenHash: v.string(),
+    scope: v.literal("assessment_report_read"), createdAt: v.number(), expiresAt: v.number(), revokedAt: v.optional(v.number()), openedAt: v.optional(v.number()),
+  }).index("by_tokenHash", ["tokenHash"]).index("by_attemptId", ["attemptId"]),
+
+  assessmentEvents: defineTable({
+    attemptId: v.optional(v.id("assessmentAttempts")), eventKey: v.string(), deduplicationKey: v.string(), language: v.union(v.literal("en"), v.literal("es")),
+    metadata: v.optional(v.object({ definitionVersion: v.optional(v.number()), scoringVersion: v.optional(v.number()), reportVersion: v.optional(v.number()), roadmapVersion: v.optional(v.number()), maturityKey: v.optional(v.string()), confidenceKey: v.optional(v.string()), branchType: v.optional(v.string()), scoreBand: v.optional(v.string()) })),
+    createdAt: v.number(),
+  }).index("by_deduplicationKey", ["deduplicationKey"]).index("by_attemptId", ["attemptId"]),
+
   companies: defineTable({
     name: v.string(),
     timezone: v.string(),

@@ -23,6 +23,8 @@ import type * as actions_settlements from "../actions/settlements.js";
 import type * as actions_stripeConnect from "../actions/stripeConnect.js";
 import type * as actions_stripePayouts from "../actions/stripePayouts.js";
 import type * as affiliateInviteActions from "../affiliateInviteActions.js";
+import type * as assessmentContinuity from "../assessmentContinuity.js";
+import type * as assessmentContinuityActions from "../assessmentContinuityActions.js";
 import type * as assessments from "../assessments.js";
 import type * as auth from "../auth.js";
 import type * as authActions from "../authActions.js";
@@ -206,6 +208,8 @@ declare const fullApi: ApiFromModules<{
   "actions/stripeConnect": typeof actions_stripeConnect;
   "actions/stripePayouts": typeof actions_stripePayouts;
   affiliateInviteActions: typeof affiliateInviteActions;
+  assessmentContinuity: typeof assessmentContinuity;
+  assessmentContinuityActions: typeof assessmentContinuityActions;
   assessments: typeof assessments;
   auth: typeof auth;
   authActions: typeof authActions;

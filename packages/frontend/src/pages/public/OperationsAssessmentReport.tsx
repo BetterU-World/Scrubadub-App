@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { OperationsAssessmentRoadmap, type AssessmentRoadmap } from "./OperationsAssessmentRoadmap";
+import { AssessmentContinuity } from "./AssessmentContinuity";
 
 type Localized = { en: string; es: string };
 type Finding = { id: string; sectionKey: string; title: Localized; observation: Localized; whyItMatters: Localized; readiness: string };
@@ -12,7 +13,7 @@ export type AssessmentReport = {
   roadmap: { status: string; message: Localized };
 };
 
-export function OperationsAssessmentReport({ report, roadmap }: { report: AssessmentReport; roadmap: AssessmentRoadmap }) {
+export function OperationsAssessmentReport({ report, roadmap, attemptId, capability }: { report: AssessmentReport; roadmap: AssessmentRoadmap; attemptId?: string; capability?: string }) {
   const { t, i18n } = useTranslation();
   const language = i18n.resolvedLanguage === "es" ? "es" : "en";
   const heading = useRef<HTMLHeadingElement>(null);
@@ -36,6 +37,7 @@ export function OperationsAssessmentReport({ report, roadmap }: { report: Assess
     <Findings title={t("assessment.report.opportunities")} empty={t("assessment.report.emptyOpportunities")} findings={report.opportunities} text={text} />
     <OperationsAssessmentRoadmap roadmap={roadmap} />
     <ReportSection title={t("assessment.report.nextSteps")}><p className="leading-7 text-gray-700">{t("assessment.report.nextCopy")}</p></ReportSection>
+    <AssessmentContinuity attemptId={attemptId} capability={capability} />
   </main>;
 }
 

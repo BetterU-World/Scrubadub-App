@@ -2517,6 +2517,13 @@
       "operationally_advanced": "Operationally Advanced"
     },
     "confidence": { "high": "High", "moderate": "Moderate", "limited": "Limited" },
+    "trust": "No account is required. Results are private, contact information is optional and requested only after your complete report. This assessment provides operational guidance, not legal, tax, accounting, employment, or safety certification.",
+    "continuity": {
+      "title": "Preserve this assessment", "copy": "Optionally receive a secure link so you can return to this complete report and roadmap for 60 days.", "email": "Email address", "firstName": "First name (optional)", "businessName": "Business name (optional)",
+      "marketingConsent": "I would also like occasional product updates or helpful operational resources.", "deliveryConsent": "Submitting authorizes SCRUB to send the requested transactional report link. Marketing consent is separate and optional.", "submit": "Email me a secure link", "sending": "Sending…", "success": "Your secure link has been sent.", "failure": "We could not send the link. Your report remains available in this browser.",
+      "supportTitle": "Explore SCRUB support", "supportCopy": "Your roadmap can be implemented with the tools that fit your business. SCRUB is designed to help cleaning companies centralize many of these workflows when they are ready.", "interested": "I’d like to learn how SCRUB could help", "notNow": "Not right now", "interestSaved": "Your preference has been saved.", "interestNeedsEmail": "Request a secure link first so this preference can be associated safely.",
+      "returnedTitle": "Secure assessment access", "returnedCopy": "You are viewing your frozen report and Growth Roadmap through a read-only secure link.", "invalidLink": "This assessment link is invalid or expired."
+    },
     "report": {
       "identity": "SCRUB Operations Assessment",
       "title": "Assessment Report",
