@@ -2499,7 +2499,8 @@
       "required": "Choose an answer before continuing.",
       "save": "We could not save this answer. Please try again.",
       "complete": "Complete all required questions before finishing.",
-      "unavailable": "The assessment is temporarily unavailable. Please try again later."
+      "unavailable": "The assessment is temporarily unavailable. Please try again later.",
+      "branchRefresh": "Your answers changed which questions apply. We refreshed the assessment; please continue from the next applicable question."
     },
     "completion": {
       "title": "Assessment complete",

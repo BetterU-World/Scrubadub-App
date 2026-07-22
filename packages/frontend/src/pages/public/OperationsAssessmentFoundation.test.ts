@@ -112,4 +112,13 @@ describe("operations assessment public foundation", () => {
     expect(page).toContain("openReturnLink");
     expect(page).toContain('setView("report")');
   });
+
+  it("uses the shared applicability evaluator and context-aware stale-state recovery", () => {
+    const page = read("packages/frontend/src/pages/public/OperationsAssessmentPage.tsx");
+    expect(page).toContain('from "../../../../../convex/lib/assessmentApplicability"');
+    expect(page).toContain("priorResponses");
+    expect(page).toContain("progressRef.current");
+    expect(page).toContain("assessment.errors.branchRefresh");
+    expect(page).not.toContain("function applicable(");
+  });
 });

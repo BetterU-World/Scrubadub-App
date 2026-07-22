@@ -8,6 +8,7 @@ import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 import { clearProgress, getBrowserKey, loadProgress, randomHex, saveProgress, type LocalAssessmentProgress } from "@/lib/assessmentPersistence";
 import { OperationsAssessmentReport, type AssessmentReport } from "./OperationsAssessmentReport";
 import type { AssessmentRoadmap } from "./OperationsAssessmentRoadmap";
+import { isQuestionApplicable } from "../../../../../convex/lib/assessmentApplicability";
 
 type Answer = string | string[];
 type Question = {
@@ -24,16 +25,6 @@ type Definition = {
 const assessmentApi = (api as any).assessments;
 const continuityApi = (api as any).assessmentContinuity;
 
-function applicable(question: Question, answers: Record<string, Answer>): boolean {
-  const rule = question.applicability;
-  if (!rule) return true;
-  const answer = answers[rule.questionKey];
-  if (answer === undefined) return false;
-  if (rule.operator === "includes") return Array.isArray(answer) && answer.includes(rule.value);
-  const equals = !Array.isArray(answer) && answer === rule.value;
-  return rule.operator === "equals" ? equals : !equals;
-}
-
 function responseArgs(question: Question, answer: Answer | undefined) {
   if (question.kind === "text") return { questionKey: question.key, qualitativeText: typeof answer === "string" ? answer : "" };
   if (question.kind === "multi") return { questionKey: question.key, answerValues: Array.isArray(answer) ? answer : [] };
@@ -49,7 +40,7 @@ function validatedAnswers(definition: Definition, candidate: Record<string, Answ
   });
   for (const question of ordered) {
     const value = candidate[question.key];
-    if (value === undefined || !applicable(question, accepted)) continue;
+    if (value === undefined || !isQuestionApplicable(question, accepted)) continue;
     if (question.kind === "text" && typeof value === "string" && value.length <= (question.maxLength ?? 1500)) accepted[question.key] = value;
     if (question.kind === "single" && typeof value === "string" && question.options?.some((item) => item.value === value)) accepted[question.key] = value;
     if (question.kind === "multi" && Array.isArray(value) && value.every((item) => question.options?.some((option) => option.value === item))) accepted[question.key] = value;
@@ -78,6 +69,8 @@ export function OperationsAssessmentPage() {
   const [report, setReport] = useState<AssessmentReport | null>(null);
   const [roadmap, setRoadmap] = useState<AssessmentRoadmap | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const progressRef = useRef(progress);
+  progressRef.current = progress;
 
   useEffect(() => {
     let active = true;
@@ -122,7 +115,7 @@ export function OperationsAssessmentPage() {
     return () => { active = false; };
   }, [prepare, recover, generateReport, generateRoadmap, openReturnLink, i18n, t]);
 
-  const questions = useMemo(() => definition ? definition.questions.filter((question) => applicable(question, progress.answers)).sort((a, b) => {
+  const questions = useMemo(() => definition ? definition.questions.filter((question) => isQuestionApplicable(question, progress.answers)).sort((a, b) => {
     const sectionA = definition.sections.find((section) => section.key === a.sectionKey)?.order ?? 0;
     const sectionB = definition.sections.find((section) => section.key === b.sectionKey)?.order ?? 0;
     return sectionA - sectionB || a.order - b.order;
@@ -160,13 +153,15 @@ export function OperationsAssessmentPage() {
   function updateProgress(nextAnswers: Record<string, Answer>, currentQuestionKey = question?.key) {
     const next = { ...progress, answers: nextAnswers, currentQuestionKey, language: i18n.resolvedLanguage === "es" ? "es" as const : "en" as const, lastActivityAt: Date.now() };
     setProgress(next);
+    progressRef.current = next;
     saveProgress(next);
   }
 
   function choose(answer: Answer) {
     if (!question || !definition) return;
-    const candidate = { ...progress.answers, [question.key]: answer };
-    const discarded = definition.questions.filter((item) => progress.answers[item.key] !== undefined && !applicable(item, candidate)).map((item) => item.key);
+    const current = progressRef.current;
+    const candidate = { ...current.answers, [question.key]: answer };
+    const discarded = definition.questions.filter((item) => current.answers[item.key] !== undefined && !isQuestionApplicable(item, candidate)).map((item) => item.key);
     if (discarded.length && !window.confirm(t("assessment.confirm.branchChange"))) return;
     for (const key of discarded) delete candidate[key];
     updateProgress(candidate);
@@ -174,27 +169,41 @@ export function OperationsAssessmentPage() {
   }
 
   async function persistCurrent() {
-    if (!question) return true;
-    const answer = progress.answers[question.key];
+    if (!question || !definition) return true;
+    const latest = progressRef.current;
+    if (!isQuestionApplicable(question, latest.answers)) {
+      const answers = validatedAnswers(definition, latest.answers);
+      const next = { ...latest, answers, currentQuestionKey: undefined, lastActivityAt: Date.now() };
+      setProgress(next); progressRef.current = next; saveProgress(next);
+      const visible = definition.questions.filter((item) => isQuestionApplicable(item, answers));
+      const firstMissing = visible.findIndex((item) => item.required && answers[item.key] === undefined);
+      setIndex(firstMissing >= 0 ? firstMissing : Math.max(0, visible.length - 1)); setView("question"); setError(t("assessment.errors.branchRefresh"));
+      return false;
+    }
+    const answer = latest.answers[question.key];
     const empty = answer === undefined || answer === "" || (Array.isArray(answer) && !answer.length);
     if (question.required && empty) {
       setError(t("assessment.errors.required"));
       return false;
     }
-    if (!progress.attemptId && empty) return true;
+    if (!latest.attemptId && empty) return true;
     setBusy(true);
     try {
-      let attemptId = progress.attemptId;
-      let capability = progress.capability;
+      let attemptId = latest.attemptId;
+      let capability = latest.capability;
       if (!attemptId) {
         capability = randomHex();
-        const created = await start({ capability, browserKey: getBrowserKey(), responseLanguage: progress.language, firstResponse: responseArgs(question, answer) });
+        const accepted = validatedAnswers(definition, latest.answers);
+        const currentPosition = definition.questions.findIndex((item) => item.key === question.key);
+        const priorResponses = definition.questions.slice(0, currentPosition).filter((item) => accepted[item.key] !== undefined && isQuestionApplicable(item, accepted)).map((item) => responseArgs(item, accepted[item.key]));
+        const created = await start({ capability, browserKey: getBrowserKey(), responseLanguage: latest.language, priorResponses, firstResponse: responseArgs(question, answer) });
         attemptId = created.attemptId;
       } else {
-        await saveResponse({ attemptId: attemptId as Id<"assessmentAttempts">, capability, responseLanguage: progress.language, response: responseArgs(question, answer) });
+        await saveResponse({ attemptId: attemptId as Id<"assessmentAttempts">, capability, responseLanguage: latest.language, response: responseArgs(question, answer) });
       }
-      const next = { ...progress, attemptId, capability, lastActivityAt: Date.now() };
+      const next = { ...latest, attemptId, capability, lastActivityAt: Date.now() };
       setProgress(next);
+      progressRef.current = next;
       saveProgress(next);
       return true;
     } catch (caught) {
@@ -210,10 +219,11 @@ export function OperationsAssessmentPage() {
     if (index === questions.length - 1) {
       setBusy(true);
       try {
-        await complete({ attemptId: progress.attemptId as Id<"assessmentAttempts">, capability: progress.capability });
-        const frozen = await generateReport({ attemptId: progress.attemptId as Id<"assessmentAttempts">, capability: progress.capability });
+        const latest = progressRef.current;
+        await complete({ attemptId: latest.attemptId as Id<"assessmentAttempts">, capability: latest.capability });
+        const frozen = await generateReport({ attemptId: latest.attemptId as Id<"assessmentAttempts">, capability: latest.capability });
         setReport(frozen.payload as AssessmentReport);
-        const plan = await generateRoadmap({ attemptId: progress.attemptId as Id<"assessmentAttempts">, capability: progress.capability });
+        const plan = await generateRoadmap({ attemptId: latest.attemptId as Id<"assessmentAttempts">, capability: latest.capability });
         setRoadmap(plan.payload as AssessmentRoadmap);
         setView("report");
       } catch (caught) {

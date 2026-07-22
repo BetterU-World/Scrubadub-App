@@ -144,16 +144,28 @@ export const start = mutation({
     capability: v.string(),
     browserKey: v.string(),
     responseLanguage: languageValidator,
+    priorResponses: v.optional(v.array(responseInputValidator)),
     firstResponse: responseInputValidator,
   },
   handler: async (ctx, args) => {
     requireSafeToken(args.capability, "assessment capability");
     requireSafeToken(args.browserKey, "browser key");
     const definition = await ensureDefinition(ctx);
-    const question = questionFor(definition, args.firstResponse.questionKey);
-    if (!isApplicable(question, {})) throw new Error("Question is not applicable");
-    const normalized = normalizeResponse(question, args.firstResponse);
-    if (question.qualitative || (!normalized.answerValue && !normalized.answerValues?.length)) throw new Error("A substantive first answer is required");
+    const answers: AnswerMap = {};
+    const normalizedResponses: Array<{ question: AssessmentQuestion; normalized: ReturnType<typeof normalizeResponse> }> = [];
+    const seen = new Set<string>();
+    for (const input of [...(args.priorResponses ?? []), args.firstResponse]) {
+      if (seen.has(input.questionKey)) throw new Error("Duplicate initial response");
+      seen.add(input.questionKey);
+      const question = questionFor(definition, input.questionKey);
+      if (!isApplicable(question, answers)) throw new Error("Question is not applicable");
+      const normalized = normalizeResponse(question, input);
+      normalizedResponses.push({ question, normalized });
+      if (normalized.answerValue) answers[question.key] = normalized.answerValue;
+      else if (normalized.answerValues?.length) answers[question.key] = normalized.answerValues;
+      else if (normalized.qualitativeText) answers[question.key] = normalized.qualitativeText;
+    }
+    if (!normalizedResponses.some(({ question, normalized }) => !question.qualitative && (normalized.answerValue || normalized.answerValues?.length))) throw new Error("A substantive first answer is required");
     const browserKeyHash = await hashTokenForLookup(args.browserKey);
     await checkRateLimit(ctx, { key: `assessment:start:${browserKeyHash}`, limit: 10, windowMs: 24 * 60 * 60 * 1000 });
     const capabilityHash = await hashTokenForLookup(args.capability);
@@ -173,21 +185,13 @@ export const start = mutation({
       lastActivityAt: now,
       expiresAt: now + UNFINISHED_ATTEMPT_TTL_MS,
       requiredApplicableCount: 0,
-      requiredAnsweredCount: 1,
+      requiredAnsweredCount: normalizedResponses.filter(({ question }) => question.required).length,
       optionalAnsweredCount: 0,
     });
-    await ctx.db.insert("assessmentResponses", {
-      attemptId,
-      questionKey: question.key,
-      sectionKey: question.sectionKey,
-      categoryKey: question.categoryKey,
-      ...normalized,
-      answeredAt: now,
-      updatedAt: now,
-    });
+    for (const { question, normalized } of normalizedResponses) if (normalized.answerValue || normalized.answerValues?.length || normalized.qualitativeText) await ctx.db.insert("assessmentResponses", { attemptId, questionKey: question.key, sectionKey: question.sectionKey, categoryKey: question.categoryKey, ...normalized, answeredAt: now, updatedAt: now });
     const counts = await cleanupAndCounts(ctx, (await ctx.db.get(attemptId))!, definition);
     await ctx.db.patch(attemptId, counts);
-    await recordMilestone(ctx, (await ctx.db.get(attemptId))!, "assessment_started", { definitionVersion: definition.definitionVersion, branchType: normalized.answerValue === "solo" ? "solo" : undefined });
+    await recordMilestone(ctx, (await ctx.db.get(attemptId))!, "assessment_started", { definitionVersion: definition.definitionVersion, branchType: answers["business.team_size"] === "solo" ? "solo" : answers["business.team_size"] ? "team" : undefined });
     return { attemptId };
   },
 });
