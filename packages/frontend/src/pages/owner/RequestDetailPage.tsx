@@ -140,9 +140,6 @@ export function RequestDetailPage() {
   const archiveRequest = useMutation(
     api.mutations.clientRequests.archiveClientRequest
   );
-  const updateLeadStage = useMutation(
-    api.mutations.clientRequests.updateLeadStage
-  );
   const updateLeadNotesMut = useMutation(
     api.mutations.clientRequests.updateLeadNotes
   );
@@ -879,8 +876,30 @@ export function RequestDetailPage() {
         }
       />
 
+      {(request as any).pipeline && (
+        <section className="card mb-4 border-l-4 border-l-primary-500" aria-labelledby="request-pipeline-summary">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <div>
+              <p id="request-pipeline-summary" className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("pipeline.currentPosition")}</p>
+              <p className="mt-1 text-lg font-semibold text-gray-900">{t(`pipeline.stages.${(request as any).pipeline.stage}`)}</p>
+              <p className="mt-1 text-sm text-gray-600">{t("pipeline.nextAction")}: {t(`pipeline.actions.${(request as any).pipeline.nextAction.key}`)}</p>
+            </div>
+            {(request as any).pipeline.attention !== "none" && (request as any).pipeline.attention !== "active" && (
+              <span className="inline-flex self-start items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800">
+                <AlertCircle className="h-3.5 w-3.5" /> {t(`pipeline.attention.${(request as any).pipeline.attention}`)}
+              </span>
+            )}
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2" aria-label={t("pipeline.linkedRecords")}>
+            {Object.entries((request as any).pipeline.linked).filter(([, value]) => value && value !== "not_invited").map(([key]) => (
+              <span key={key} className="rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-700">{t(`pipeline.links.${key}`)}</span>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Info card */}
-      <div className="card space-y-4">
+      <div id="request-contact" className="card scroll-mt-24 space-y-4">
         <div className="flex items-center gap-2 flex-wrap">
           <StatusBadge status={request.status} />
           <span className="text-xs text-gray-400">
@@ -1009,16 +1028,16 @@ export function RequestDetailPage() {
         title={t("walkthroughs.title")}
         subtitle={t("guidance.owner.walkthrough")}
         defaultExpanded
-        className="mt-4"
+        className="mt-4 scroll-mt-24"
         contentClassName="-m-4 mt-0"
       >
-        <WalkthroughCard
+        <div id="request-walkthrough"><WalkthroughCard
           clientRequestId={request._id}
           allowCreate
           onToast={(message, type) => {
             setToast({ message, type });
           }}
-        />
+        /></div>
       </CollapsibleSection>
 
       {/* Proposal */}
@@ -1032,8 +1051,10 @@ export function RequestDetailPage() {
             <ServiceAgreementStatusBadge agreement={serviceAgreement} />
           )}
         </> : undefined}
-        className="mt-4"
+        className="mt-4 scroll-mt-24"
       >
+
+        <div id="request-proposal" className="scroll-mt-24" />
 
         {!proposalUnlocked ? (
           <p className="rounded-md bg-gray-50 p-3 text-sm text-gray-600">
@@ -1322,7 +1343,7 @@ export function RequestDetailPage() {
               </div>
             )}
             {proposal.status === "accepted" && (
-              <div className="space-y-3">
+              <div id="request-agreement" className="scroll-mt-24 space-y-3">
                 <div className="rounded-md border border-green-200 bg-green-50 p-3 text-sm font-medium text-green-800 flex items-center gap-2">
                   <Check className="w-4 h-4" />
                   {t("proposals.acceptedBanner")}
@@ -1837,7 +1858,7 @@ export function RequestDetailPage() {
       </CollapsibleSection>
 
       {/* Client relationship and portal access */}
-      <div className="card mt-4 space-y-3">
+      <div id="request-client-portal" className="card mt-4 scroll-mt-24 space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -1907,65 +1928,8 @@ export function RequestDetailPage() {
         className="mt-4"
       >
 
-        {/* Stage selector */}
-        <div className="space-y-3">
-          <p className="text-sm font-medium text-gray-700">
-            {t("requests.currentStage", {
-              stage: t(`requests.leadStages.${(request as any).leadStage ?? "new"}`, {
-                defaultValue: t("requests.leadStages.unknown"),
-              }),
-            })}
-          </p>
-          <div className="flex flex-wrap gap-2" role="group" aria-label={t("requests.leadStage")}>
-            {([
-              "new",
-              "contacted",
-              "walkthrough_scheduled",
-              "proposal_needed",
-              "proposal_sent",
-              "negotiating",
-              "accepted",
-              "declined",
-              "converted",
-            ] as const).map(
-              (stage) => {
-                const current = (request as any).leadStage ?? "new";
-                const isActive = current === stage;
-                return (
-                  <button
-                    key={stage}
-                    onClick={async () => {
-                      try {
-                        const stageLabel = t(`requests.leadStages.${stage}`);
-                        await updateLeadStage({
-                          userId: user!._id,
-                          sessionToken,
-                          requestId: request._id,
-                          leadStage: stage,
-                        });
-                        setToast({ message: t("requests.stageUpdated", { stage: stageLabel }), type: "success" });
-                      } catch (err: any) {
-                        setToast({ message: err.message || "Failed", type: "error" });
-                      }
-                    }}
-                    aria-pressed={isActive}
-                    className={`min-h-9 rounded-full border px-3 py-2 text-xs font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 ${
-                      isActive
-                        ? "border-primary-600 bg-primary-600 text-white shadow-sm"
-                        : "border-gray-300 bg-white text-gray-700 hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700"
-                    }`}
-                  >
-                    {t(`requests.leadStages.${stage}`)}
-                  </button>
-                );
-              }
-            )}
-          </div>
-        </div>
-
-
         {/* Lead Details */}
-        <div id="request-lead-classification" className="border-t pt-4 space-y-3 scroll-mt-24">
+        <div id="request-lead-classification" className="space-y-3 scroll-mt-24">
           <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide">
             {t("requests.leadDetails")}
           </h4>

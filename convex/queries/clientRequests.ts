@@ -1,8 +1,10 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwnerSession, requireStaffCompany, requireVerifiedStaffSession } from "../lib/sessionAuth";
+import { requireOwnerManagerSession, requireOwnerSession, requireStaffCompany, requireVerifiedStaffSession } from "../lib/sessionAuth";
+import { deriveLeadPipelineState } from "../lib/leadPipelineState";
 
 const REQUEST_LIST_CAP = 2_000;
+const PIPELINE_LINKED_RECORD_CAP = 5_000;
 
 /**
  * Public query – returns minimal branding info for a company given its
@@ -98,6 +100,20 @@ export const getRequestById = query({
       : clientRelationship?.inviteTokenHash || linkedClientUser?.status === "pending" || pendingClientUser
         ? "pending"
         : "not_invited";
+    const [walkthroughs, proposals, agreements, commercialAccounts] = await Promise.all([
+      ctx.db.query("walkthroughs").withIndex("by_clientRequest", (q) => q.eq("clientRequestId", request._id)).collect(),
+      ctx.db.query("proposals").withIndex("by_clientRequestId", (q) => q.eq("clientRequestId", request._id)).collect(),
+      ctx.db.query("serviceAgreements").withIndex("by_clientRequest", (q) => q.eq("clientRequestId", request._id)).collect(),
+      ctx.db.query("commercialAccounts").withIndex("by_clientRequestId", (q) => q.eq("clientRequestId", request._id)).collect(),
+    ]);
+    const pipeline = deriveLeadPipelineState({
+      request,
+      walkthroughs,
+      proposals,
+      agreements,
+      commercialAccounts,
+      clientPortalStatus,
+    });
 
     return {
       ...request,
@@ -114,6 +130,7 @@ export const getRequestById = query({
           : null,
       clientPortalStatus,
       clientPortalInviteSentAt: clientRelationship?.inviteSentAt,
+      pipeline,
     };
   },
 });
@@ -122,8 +139,8 @@ export const getRequestById = query({
 
 /**
  * List requests for the pipeline board.
- * Owner-only; company-scoped. Treats missing leadStage as "new".
- * Returns newest-first.
+ * Owner/manager, company-scoped operational projection. Pipeline stage is
+ * derived from canonical linked records; legacy leadStage is never rewritten.
  */
 export const listRequestsForPipeline = query({
   args: {
@@ -147,7 +164,7 @@ export const listRequestsForPipeline = query({
     ),
   },
   handler: async (ctx, args) => {
-    const user = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const user = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
     const companyId = user.companyId;
 
     const requests = await ctx.db
@@ -155,11 +172,45 @@ export const listRequestsForPipeline = query({
       .withIndex("by_companyId", (q) => q.eq("companyId", companyId))
       .take(REQUEST_LIST_CAP);
 
-    // Treat missing leadStage as "new"
-    const enriched = requests.map((r) => ({
-      ...r,
-      leadStage: (r as any).leadStage ?? "new",
-    }));
+    const [proposals, walkthroughs, agreements, commercialAccounts, relationships] = await Promise.all([
+      ctx.db.query("proposals").withIndex("by_companyId", (q) => q.eq("companyId", companyId)).take(PIPELINE_LINKED_RECORD_CAP),
+      ctx.db.query("walkthroughs").withIndex("by_company", (q) => q.eq("companyId", companyId)).take(PIPELINE_LINKED_RECORD_CAP),
+      ctx.db.query("serviceAgreements").withIndex("by_company", (q) => q.eq("companyId", companyId)).take(PIPELINE_LINKED_RECORD_CAP),
+      ctx.db.query("commercialAccounts").withIndex("by_companyId", (q) => q.eq("companyId", companyId)).take(PIPELINE_LINKED_RECORD_CAP),
+      ctx.db.query("clientRelationships").withIndex("by_companyId", (q) => q.eq("companyId", companyId)).take(PIPELINE_LINKED_RECORD_CAP),
+    ]);
+    const relationshipMap = new Map(relationships.map((record) => [record._id, record]));
+    const group = <T extends { clientRequestId?: any }>(records: T[]) => {
+      const map = new Map<string, T[]>();
+      for (const record of records) {
+        if (!record.clientRequestId) continue;
+        const key = String(record.clientRequestId);
+        map.set(key, [...(map.get(key) ?? []), record]);
+      }
+      return map;
+    };
+    const proposalsByRequest = group(proposals);
+    const walkthroughsByRequest = group(walkthroughs);
+    const agreementsByRequest = group(agreements);
+    const accountsByRequest = group(commercialAccounts);
+
+    const enriched = requests.map((request) => {
+      const relationship = request.clientRelationshipId ? relationshipMap.get(request.clientRelationshipId) : undefined;
+      const clientPortalStatus = relationship?.clientUserId
+        ? "active" as const
+        : relationship?.inviteTokenHash || relationship?.pendingInviteClientUserId
+          ? "pending" as const
+          : "not_invited" as const;
+      const pipeline = deriveLeadPipelineState({
+        request,
+        proposals: proposalsByRequest.get(String(request._id)) ?? [],
+        walkthroughs: walkthroughsByRequest.get(String(request._id)) ?? [],
+        agreements: agreementsByRequest.get(String(request._id)) ?? [],
+        commercialAccounts: accountsByRequest.get(String(request._id)) ?? [],
+        clientPortalStatus,
+      });
+      return { ...request, pipeline };
+    });
 
     const filtered = args.leadStage
       ? enriched.filter((r) => r.leadStage === args.leadStage)
