@@ -4,6 +4,117 @@ import { bedroomsValidator } from "./lib/propertyBedrooms";
 import { securityEventTypeValidator, securityMetadataValidator, securityOutcomeValidator, securityPrincipalTypeValidator } from "./lib/securityEvents";
 
 export default defineSchema({
+  assessmentDefinitions: defineTable({
+    key: v.string(),
+    definitionVersion: v.number(),
+    schemaVersion: v.number(),
+    scoringVersion: v.optional(v.number()),
+    reportContentVersion: v.optional(v.number()),
+    benchmarkCompatibilityKey: v.string(),
+    status: v.union(v.literal("draft"), v.literal("published"), v.literal("retired")),
+    sections: v.array(v.object({
+      key: v.string(),
+      titleKey: v.string(),
+      introKey: v.string(),
+      order: v.number(),
+    })),
+    questions: v.array(v.object({
+      key: v.string(),
+      sectionKey: v.string(),
+      categoryKey: v.string(),
+      promptKey: v.string(),
+      helpKey: v.optional(v.string()),
+      kind: v.union(v.literal("single"), v.literal("multi"), v.literal("text")),
+      required: v.boolean(),
+      qualitative: v.boolean(),
+      order: v.number(),
+      maxSelections: v.optional(v.number()),
+      maxLength: v.optional(v.number()),
+      options: v.optional(v.array(v.object({ value: v.string(), labelKey: v.string() }))),
+      applicability: v.optional(v.object({
+        questionKey: v.string(),
+        operator: v.union(v.literal("equals"), v.literal("not_equals"), v.literal("includes")),
+        value: v.string(),
+      })),
+      futureScoreKey: v.optional(v.string()),
+      futureConfidenceKey: v.optional(v.string()),
+      futureRoadmapDomains: v.optional(v.array(v.string())),
+      benchmarkDimensionKey: v.optional(v.string()),
+      futureAchievementKeys: v.optional(v.array(v.string())),
+    })),
+    futureMaturityKeys: v.array(v.string()),
+    futureRoadmapDomainKeys: v.array(v.string()),
+    createdAt: v.number(),
+    createdBy: v.string(),
+    publishedAt: v.optional(v.number()),
+    retiredAt: v.optional(v.number()),
+  })
+    .index("by_key_version", ["key", "definitionVersion"])
+    .index("by_key_status", ["key", "status"]),
+
+  assessmentAttempts: defineTable({
+    definitionId: v.id("assessmentDefinitions"),
+    definitionVersion: v.number(),
+    scoringVersion: v.optional(v.number()),
+    reportContentVersion: v.optional(v.number()),
+    benchmarkCompatibilityKey: v.string(),
+    status: v.union(v.literal("in_progress"), v.literal("completed"), v.literal("abandoned"), v.literal("deleted")),
+    audience: v.literal("public"),
+    responseLanguage: v.union(v.literal("en"), v.literal("es")),
+    capabilityHash: v.string(),
+    browserKeyHash: v.string(),
+    startedAt: v.number(),
+    lastActivityAt: v.number(),
+    completedAt: v.optional(v.number()),
+    expiresAt: v.number(),
+    sourceSnapshot: v.optional(v.object({
+      referrer: v.optional(v.string()),
+      utmSource: v.optional(v.string()),
+      utmMedium: v.optional(v.string()),
+      utmCampaign: v.optional(v.string()),
+    })),
+    requiredApplicableCount: v.optional(v.number()),
+    requiredAnsweredCount: v.optional(v.number()),
+    optionalAnsweredCount: v.optional(v.number()),
+    benchmarkDimensions: v.optional(v.array(v.object({ key: v.string(), value: v.string() }))),
+    benchmarkEligible: v.optional(v.boolean()),
+    benchmarkExclusionReasons: v.optional(v.array(v.string())),
+    confidenceResult: v.optional(v.object({
+      level: v.union(v.literal("high"), v.literal("moderate"), v.literal("limited")),
+      coverageScore: v.number(),
+      reasonKeys: v.array(v.string()),
+      categoryCoverage: v.array(v.object({ categoryKey: v.string(), coverageScore: v.number() })),
+    })),
+    reportSnapshot: v.optional(v.object({
+      scoringVersion: v.number(),
+      reportContentVersion: v.number(),
+      generatedAt: v.number(),
+      payload: v.any(),
+    })),
+    consentVersion: v.optional(v.string()),
+    researchEligible: v.optional(v.boolean()),
+    deletedAt: v.optional(v.number()),
+    anonymizedAt: v.optional(v.number()),
+  })
+    .index("by_capabilityHash", ["capabilityHash"])
+    .index("by_status_lastActivityAt", ["status", "lastActivityAt"])
+    .index("by_expiresAt", ["expiresAt"]),
+
+  assessmentResponses: defineTable({
+    attemptId: v.id("assessmentAttempts"),
+    questionKey: v.string(),
+    sectionKey: v.string(),
+    categoryKey: v.string(),
+    responseKind: v.union(v.literal("single"), v.literal("multi"), v.literal("qualitative")),
+    answerValue: v.optional(v.string()),
+    answerValues: v.optional(v.array(v.string())),
+    qualitativeText: v.optional(v.string()),
+    answeredAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_attemptId_questionKey", ["attemptId", "questionKey"])
+    .index("by_attemptId", ["attemptId"]),
+
   companies: defineTable({
     name: v.string(),
     timezone: v.string(),

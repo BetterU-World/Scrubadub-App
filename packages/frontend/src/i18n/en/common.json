@@ -2472,5 +2472,118 @@
     "client": {
       "agreementReview": "This agreement records the service terms provided for your review. Its status updates after an available response is submitted."
     }
+  },
+  "assessment": {
+    "eyebrow": "A practical operations review",
+    "title": "SCRUB Operations Assessment",
+    "headerLabel": "Operations Assessment",
+    "introduction": "This assessment looks at the systems behind your cleaning business—from scheduling and team communication to quality, client experience, financial visibility, and growth.",
+    "introPoints": {
+      "scope": "Understand what is working and where operations may be holding you back.",
+      "account": "No account or contact information is required.",
+      "local": "Your progress can be saved on this device while you work."
+    },
+    "required": "Required",
+    "optional": "Optional",
+    "localSave": "Your progress is saved on this device.",
+    "restored": "Welcome back. Your progress has been restored.",
+    "qualitativePrivacy": "Please do not include private information about employees or clients.",
+    "characterCount": "{{current}} of {{max}} characters",
+    "progress": { "section": "Section {{current}} of {{total}}", "question": "Question {{current}} of {{total}} in this section" },
+    "actions": { "begin": "Begin Assessment", "startOver": "Start Over", "complete": "Complete Assessment", "continue": "Continue", "dismiss": "Dismiss", "pause": "Save and Exit" },
+    "confirm": {
+      "startOver": "Start over and remove the assessment progress saved on this device?",
+      "branchChange": "This change makes some later questions inapplicable and will remove those answers. Continue?"
+    },
+    "errors": {
+      "required": "Choose an answer before continuing.",
+      "save": "We could not save this answer. Please try again.",
+      "complete": "Complete all required questions before finishing.",
+      "unavailable": "The assessment is temporarily unavailable. Please try again later."
+    },
+    "completion": {
+      "title": "Assessment complete",
+      "development": "Your responses have been securely recorded for the assessment foundation. The personalized Assessment Report will be introduced in the next release before this experience is made publicly available."
+    },
+    "sections": {
+      "business": { "title": "Your Business", "intro": "First, help us understand the shape and current stage of your cleaning operation." },
+      "scheduling": { "title": "Scheduling and Organization", "intro": "Now let’s look at how recurring work, assignments, and schedule changes stay organized." },
+      "team": { "title": "Team Communication", "intro": "Next, we’ll examine how assignments, changes, and job information reach your team." },
+      "quality": { "title": "Quality and Consistency", "intro": "Let’s review the systems that help service quality remain dependable from job to job." },
+      "client": { "title": "Client Experience", "intro": "This section looks at how expectations, updates, requests, and issues are handled." },
+      "financial": { "title": "Financial Visibility", "intro": "We’ll focus on the consistency of financial processes rather than requesting exact financial figures." },
+      "growth": { "title": "Growth and Operational Goals", "intro": "Now consider where the business is heading and which constraints matter most." },
+      "perspective": { "title": "Your Perspective", "intro": "Numbers and processes do not tell the whole story. These final questions are optional and help capture what matters most to you." }
+    },
+    "questions": {
+      "business": {
+        "primary_model": { "prompt": "Which business model best describes your operation?" },
+        "service_mix": { "prompt": "Which service mix best represents most of your current work?" },
+        "team_size": { "prompt": "How many cleaners regularly work in your operation?", "help": "Team size helps keep later questions relevant to the way your business operates." },
+        "years_operating": { "prompt": "How long has the business been operating?" },
+        "growth_stage": { "prompt": "Which stage best describes the business today?" }
+      },
+      "scheduling": {
+        "primary_method": { "prompt": "What is the primary way jobs are scheduled?" },
+        "recurring_work": { "prompt": "How consistently is recurring work organized?" },
+        "assignment_clarity": { "prompt": "How clear is it who is responsible for each scheduled job?" },
+        "change_handling": { "prompt": "How consistently are schedule changes recorded and communicated?" }
+      },
+      "team": {
+        "assignment_delivery": { "prompt": "How do workers usually receive job assignments?" },
+        "material_changes": { "prompt": "How are important job or schedule changes usually communicated?" },
+        "confirmation": { "prompt": "How consistently do workers confirm assignments or important changes?" },
+        "instructions_access": { "prompt": "How reliably can workers find current job instructions when they need them?" }
+      },
+      "quality": {
+        "standard_procedures": { "prompt": "How consistently are cleaning procedures or checklists documented?" },
+        "verification": { "prompt": "How is completed work usually verified?" },
+        "issue_handling": { "prompt": "How consistently are quality issues documented and followed through?" },
+        "rework_pattern": { "prompt": "How often does work require a return visit or significant correction?" }
+      },
+      "client": {
+        "inquiry_followup": { "prompt": "How consistently are new inquiries followed up?" },
+        "expectations": { "prompt": "How are service scope and client expectations documented?" },
+        "updates": { "prompt": "How consistently do clients receive important service updates?" },
+        "request_handling": { "prompt": "How consistently are client requests or concerns tracked through resolution?" }
+      },
+      "financial": {
+        "pricing": { "prompt": "How consistently is pricing determined and documented?" },
+        "invoicing": { "prompt": "How consistently are invoices created and sent?" },
+        "payment_visibility": { "prompt": "How clearly can you see which client payments are outstanding?" },
+        "job_profitability": { "prompt": "How clearly can you tell whether individual jobs or accounts are profitable?", "help": "We are asking about process visibility—not requesting revenue, profit, or account balances." }
+      },
+      "growth": {
+        "primary_objective": { "prompt": "What is the business’s primary goal right now?" },
+        "bottleneck": { "prompt": "Which operational constraint currently has the greatest impact?" },
+        "capacity": { "prompt": "How much additional work could the current operation absorb reliably?" },
+        "fragmentation": { "prompt": "How many places do you rely on to manage core operational information?" },
+        "automation_readiness": { "prompt": "How ready is the business to automate repeatable operational work?" }
+      },
+      "perspective": {
+        "pride": { "prompt": "What are you most proud of about the way your business operates today?", "help": "Your perspective helps recognize what you have already built successfully." },
+        "improve": { "prompt": "If you could instantly improve one part of running your cleaning business, what would it be?", "help": "This may later help place practical priorities in the right order. It does not change a numerical score." }
+      }
+    },
+    "options": {
+      "businessModel": { "residential": "Residential cleaning", "commercial": "Commercial or janitorial", "str": "Short-term rental or turnover", "mixed": "A mixed operation" },
+      "serviceMix": { "recurring_residential": "Mostly recurring residential", "one_time_residential": "Mostly one-time residential", "commercial_janitorial": "Mostly commercial or janitorial", "str_turnovers": "Mostly short-term-rental turnovers", "specialty": "Mostly specialty cleaning", "mixed": "A balanced mix" },
+      "teamSize": { "solo": "Just me", "2_4": "2–4", "5_10": "5–10", "11_25": "11–25", "26_plus": "26 or more" },
+      "yearsOperating": { "under_1": "Less than 1 year", "1_3": "1–3 years", "4_7": "4–7 years", "8_plus": "8 years or more" },
+      "growthStage": { "establishing": "Establishing the business", "stabilizing": "Building consistency", "growing": "Actively growing", "scaling": "Expanding the team or service capacity", "optimizing": "Improving an established operation" },
+      "schedulingMethod": { "memory_messages": "Memory, calls, or message threads", "paper": "Paper calendar or planner", "spreadsheet_calendar": "Spreadsheet or shared calendar", "scheduling_software": "Dedicated scheduling software", "integrated_platform": "An integrated operations platform" },
+      "processMaturity": { "ad_hoc": "Handled differently each time", "partly_documented": "Some steps are documented", "mostly_consistent": "Usually follows a consistent process", "standardized": "A documented standard process", "automated_visible": "Standardized with automation or shared visibility" },
+      "consistency": { "rarely_clear": "Rarely", "sometimes_clear": "Sometimes", "usually_clear": "Usually", "always_clear": "Consistently" },
+      "communicationMethod": { "verbal": "Mostly verbal or by phone", "text_threads": "Text messages or group chats", "email": "Email", "shared_calendar": "A shared calendar or schedule", "workforce_app": "A workforce or operations app" },
+      "qualityVerification": { "none": "No regular verification", "complaints_only": "Mainly when a client reports a problem", "spot_checks": "Occasional spot checks", "every_job": "A review process for most or all jobs", "documented_evidence": "Documented checklists, photos, or approval evidence" },
+      "frequency": { "frequent": "Frequently", "monthly": "Several times a month", "occasional": "Occasionally", "rare": "Rarely", "tracked_improving": "Rarely, and patterns are tracked" },
+      "documentation": { "verbal_only": "Mostly verbal", "basic_message": "A basic message or estimate", "written_scope": "A written scope of work", "proposal_agreement": "A proposal or service agreement", "standardized_workflow": "A standardized proposal and agreement process" },
+      "visibility": { "unclear": "Difficult to determine", "manual_check": "Available after manual review", "usually_current": "Usually current and visible", "real_time": "Current and readily visible" },
+      "growthObjective": { "stability": "Create more stability and consistency", "more_clients": "Win more clients", "larger_contracts": "Win larger contracts", "build_team": "Build or strengthen the team", "improve_margin": "Improve margins", "reduce_owner_load": "Reduce the owner’s daily administrative load" },
+      "bottleneck": { "lead_flow": "Lead flow", "scheduling": "Scheduling and coordination", "hiring_retention": "Hiring or retention", "communication": "Team communication", "quality": "Quality consistency", "client_admin": "Client administration", "financial_visibility": "Financial visibility", "owner_capacity": "Owner capacity" },
+      "capacity": { "significant_room": "Significant room for more work", "some_room": "Some room for more work", "near_capacity": "Near current capacity", "over_capacity": "Already beyond comfortable capacity", "uncertain": "Not sure" },
+      "fragmentation": { "one_system": "One primary system", "two_systems": "Two main systems", "several_tools": "Several separate tools", "mostly_messages_paper": "Mostly messages, paper, or memory", "uncertain": "Not sure" },
+      "readiness": { "not_priority": "Not a current priority", "exploring": "Exploring possibilities", "ready_for_one_area": "Ready to automate one area", "ready_for_multiple": "Ready to connect several areas", "already_automating": "Already automating repeatable work" }
+    }
   }
 }

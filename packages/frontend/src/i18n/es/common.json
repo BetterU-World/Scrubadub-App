@@ -2466,5 +2466,118 @@
     "client": {
       "agreementReview": "Este acuerdo registra los términos del servicio proporcionados para tu revisión. Su estado se actualiza después de enviar una respuesta disponible."
     }
+  },
+  "assessment": {
+    "eyebrow": "Una revisión práctica de operaciones",
+    "title": "Evaluación de Operaciones de SCRUB",
+    "headerLabel": "Evaluación de Operaciones",
+    "introduction": "Esta evaluación analiza los sistemas que sostienen tu negocio de limpieza: desde la programación y la comunicación del equipo hasta la calidad, la experiencia del cliente, la visibilidad financiera y el crecimiento.",
+    "introPoints": {
+      "scope": "Comprende qué está funcionando y dónde las operaciones pueden estar frenando el negocio.",
+      "account": "No se requiere una cuenta ni información de contacto.",
+      "local": "Tu progreso puede guardarse en este dispositivo mientras avanzas."
+    },
+    "required": "Obligatoria",
+    "optional": "Opcional",
+    "localSave": "Tu progreso se guarda en este dispositivo.",
+    "restored": "Te damos la bienvenida de nuevo. Se restauró tu progreso.",
+    "qualitativePrivacy": "No incluyas información privada sobre empleados o clientes.",
+    "characterCount": "{{current}} de {{max}} caracteres",
+    "progress": { "section": "Sección {{current}} de {{total}}", "question": "Pregunta {{current}} de {{total}} en esta sección" },
+    "actions": { "begin": "Comenzar la evaluación", "startOver": "Comenzar de nuevo", "complete": "Completar la evaluación", "continue": "Continuar", "dismiss": "Descartar", "pause": "Guardar y salir" },
+    "confirm": {
+      "startOver": "¿Comenzar de nuevo y eliminar el progreso de la evaluación guardado en este dispositivo?",
+      "branchChange": "Este cambio hará que algunas preguntas posteriores dejen de aplicar y eliminará esas respuestas. ¿Continuar?"
+    },
+    "errors": {
+      "required": "Selecciona una respuesta antes de continuar.",
+      "save": "No pudimos guardar esta respuesta. Inténtalo de nuevo.",
+      "complete": "Completa todas las preguntas obligatorias antes de finalizar.",
+      "unavailable": "La evaluación no está disponible temporalmente. Inténtalo de nuevo más tarde."
+    },
+    "completion": {
+      "title": "Evaluación completada",
+      "development": "Tus respuestas se registraron de forma segura para la base de la evaluación. El Informe de Evaluación personalizado se incorporará en la próxima versión antes de que esta experiencia esté disponible públicamente."
+    },
+    "sections": {
+      "business": { "title": "Tu Negocio", "intro": "Primero, ayúdanos a comprender la estructura y la etapa actual de tu operación de limpieza." },
+      "scheduling": { "title": "Programación y Organización", "intro": "Ahora veamos cómo se organizan el trabajo recurrente, las asignaciones y los cambios de horario." },
+      "team": { "title": "Comunicación del Equipo", "intro": "A continuación, veremos cómo llegan al equipo las asignaciones, los cambios y la información del trabajo." },
+      "quality": { "title": "Calidad y Consistencia", "intro": "Revisemos los sistemas que ayudan a mantener una calidad de servicio confiable en cada trabajo." },
+      "client": { "title": "Experiencia del Cliente", "intro": "Esta sección analiza cómo se gestionan las expectativas, actualizaciones, solicitudes y problemas." },
+      "financial": { "title": "Visibilidad Financiera", "intro": "Nos centraremos en la consistencia de los procesos financieros sin solicitar cifras financieras exactas." },
+      "growth": { "title": "Crecimiento y Objetivos Operativos", "intro": "Ahora considera hacia dónde se dirige el negocio y qué limitaciones son más importantes." },
+      "perspective": { "title": "Tu Perspectiva", "intro": "Los números y los procesos no cuentan toda la historia. Estas preguntas finales son opcionales y ayudan a expresar lo que más te importa." }
+    },
+    "questions": {
+      "business": {
+        "primary_model": { "prompt": "¿Qué modelo de negocio describe mejor tu operación?" },
+        "service_mix": { "prompt": "¿Qué combinación de servicios representa mejor la mayor parte de tu trabajo actual?" },
+        "team_size": { "prompt": "¿Cuántas personas realizan limpiezas regularmente en tu operación?", "help": "El tamaño del equipo ayuda a mantener las preguntas posteriores relevantes para la manera en que opera tu negocio." },
+        "years_operating": { "prompt": "¿Cuánto tiempo lleva operando el negocio?" },
+        "growth_stage": { "prompt": "¿Qué etapa describe mejor el negocio hoy?" }
+      },
+      "scheduling": {
+        "primary_method": { "prompt": "¿Cuál es la forma principal de programar los trabajos?" },
+        "recurring_work": { "prompt": "¿Con qué consistencia se organiza el trabajo recurrente?" },
+        "assignment_clarity": { "prompt": "¿Qué tan claro está quién es responsable de cada trabajo programado?" },
+        "change_handling": { "prompt": "¿Con qué consistencia se registran y comunican los cambios de horario?" }
+      },
+      "team": {
+        "assignment_delivery": { "prompt": "¿Cómo reciben normalmente los trabajadores sus asignaciones?" },
+        "material_changes": { "prompt": "¿Cómo se comunican normalmente los cambios importantes de trabajo u horario?" },
+        "confirmation": { "prompt": "¿Con qué consistencia confirman los trabajadores las asignaciones o cambios importantes?" },
+        "instructions_access": { "prompt": "¿Con qué fiabilidad pueden los trabajadores encontrar instrucciones actualizadas cuando las necesitan?" }
+      },
+      "quality": {
+        "standard_procedures": { "prompt": "¿Con qué consistencia se documentan los procedimientos o listas de limpieza?" },
+        "verification": { "prompt": "¿Cómo se verifica normalmente el trabajo completado?" },
+        "issue_handling": { "prompt": "¿Con qué consistencia se documentan y resuelven los problemas de calidad?" },
+        "rework_pattern": { "prompt": "¿Con qué frecuencia un trabajo requiere una visita de regreso o una corrección importante?" }
+      },
+      "client": {
+        "inquiry_followup": { "prompt": "¿Con qué consistencia se da seguimiento a las nuevas consultas?" },
+        "expectations": { "prompt": "¿Cómo se documentan el alcance del servicio y las expectativas del cliente?" },
+        "updates": { "prompt": "¿Con qué consistencia reciben los clientes actualizaciones importantes del servicio?" },
+        "request_handling": { "prompt": "¿Con qué consistencia se rastrean las solicitudes o inquietudes del cliente hasta su resolución?" }
+      },
+      "financial": {
+        "pricing": { "prompt": "¿Con qué consistencia se determina y documenta el precio?" },
+        "invoicing": { "prompt": "¿Con qué consistencia se crean y envían las facturas?" },
+        "payment_visibility": { "prompt": "¿Con qué claridad puedes ver qué pagos de clientes están pendientes?" },
+        "job_profitability": { "prompt": "¿Con qué claridad puedes determinar si cada trabajo o cuenta es rentable?", "help": "Preguntamos sobre la visibilidad del proceso, no solicitamos ingresos, ganancias ni saldos de cuentas." }
+      },
+      "growth": {
+        "primary_objective": { "prompt": "¿Cuál es el objetivo principal del negocio en este momento?" },
+        "bottleneck": { "prompt": "¿Qué limitación operativa tiene actualmente el mayor impacto?" },
+        "capacity": { "prompt": "¿Cuánto trabajo adicional podría asumir la operación actual de manera confiable?" },
+        "fragmentation": { "prompt": "¿Cuántos lugares utilizas para gestionar la información operativa principal?" },
+        "automation_readiness": { "prompt": "¿Qué tan preparado está el negocio para automatizar trabajo operativo repetible?" }
+      },
+      "perspective": {
+        "pride": { "prompt": "¿De qué te sientes más orgulloso en la manera en que opera tu negocio hoy?", "help": "Tu perspectiva ayuda a reconocer lo que ya has construido con éxito." },
+        "improve": { "prompt": "Si pudieras mejorar instantáneamente una parte de la gestión de tu negocio de limpieza, ¿cuál sería?", "help": "Esto podrá ayudar más adelante a ordenar correctamente las prioridades prácticas. No cambia una puntuación numérica." }
+      }
+    },
+    "options": {
+      "businessModel": { "residential": "Limpieza residencial", "commercial": "Comercial o conserjería", "str": "Alquiler de corta duración o rotación", "mixed": "Una operación mixta" },
+      "serviceMix": { "recurring_residential": "Principalmente residencial recurrente", "one_time_residential": "Principalmente residencial de una sola vez", "commercial_janitorial": "Principalmente comercial o conserjería", "str_turnovers": "Principalmente rotaciones de alquileres de corta duración", "specialty": "Principalmente limpieza especializada", "mixed": "Una combinación equilibrada" },
+      "teamSize": { "solo": "Solo yo", "2_4": "2–4", "5_10": "5–10", "11_25": "11–25", "26_plus": "26 o más" },
+      "yearsOperating": { "under_1": "Menos de 1 año", "1_3": "1–3 años", "4_7": "4–7 años", "8_plus": "8 años o más" },
+      "growthStage": { "establishing": "Estableciendo el negocio", "stabilizing": "Construyendo consistencia", "growing": "Creciendo activamente", "scaling": "Ampliando el equipo o la capacidad", "optimizing": "Mejorando una operación establecida" },
+      "schedulingMethod": { "memory_messages": "Memoria, llamadas o conversaciones de mensajes", "paper": "Calendario o agenda en papel", "spreadsheet_calendar": "Hoja de cálculo o calendario compartido", "scheduling_software": "Software dedicado de programación", "integrated_platform": "Una plataforma integrada de operaciones" },
+      "processMaturity": { "ad_hoc": "Se maneja de forma diferente cada vez", "partly_documented": "Algunos pasos están documentados", "mostly_consistent": "Normalmente sigue un proceso consistente", "standardized": "Un proceso estándar documentado", "automated_visible": "Estandarizado con automatización o visibilidad compartida" },
+      "consistency": { "rarely_clear": "Rara vez", "sometimes_clear": "A veces", "usually_clear": "Normalmente", "always_clear": "De forma consistente" },
+      "communicationMethod": { "verbal": "Principalmente verbal o por teléfono", "text_threads": "Mensajes de texto o chats grupales", "email": "Correo electrónico", "shared_calendar": "Un calendario o programa compartido", "workforce_app": "Una aplicación de personal u operaciones" },
+      "qualityVerification": { "none": "Sin verificación regular", "complaints_only": "Principalmente cuando un cliente informa un problema", "spot_checks": "Revisiones ocasionales", "every_job": "Un proceso de revisión para la mayoría o todos los trabajos", "documented_evidence": "Listas, fotos o evidencia de aprobación documentadas" },
+      "frequency": { "frequent": "Frecuentemente", "monthly": "Varias veces al mes", "occasional": "Ocasionalmente", "rare": "Rara vez", "tracked_improving": "Rara vez y se rastrean los patrones" },
+      "documentation": { "verbal_only": "Principalmente verbal", "basic_message": "Un mensaje o estimado básico", "written_scope": "Un alcance de trabajo por escrito", "proposal_agreement": "Una propuesta o acuerdo de servicio", "standardized_workflow": "Un proceso estandarizado de propuestas y acuerdos" },
+      "visibility": { "unclear": "Difícil de determinar", "manual_check": "Disponible después de una revisión manual", "usually_current": "Normalmente actual y visible", "real_time": "Actual y fácilmente visible" },
+      "growthObjective": { "stability": "Crear más estabilidad y consistencia", "more_clients": "Conseguir más clientes", "larger_contracts": "Conseguir contratos más grandes", "build_team": "Construir o fortalecer el equipo", "improve_margin": "Mejorar los márgenes", "reduce_owner_load": "Reducir la carga administrativa diaria del propietario" },
+      "bottleneck": { "lead_flow": "Flujo de prospectos", "scheduling": "Programación y coordinación", "hiring_retention": "Contratación o retención", "communication": "Comunicación del equipo", "quality": "Consistencia de calidad", "client_admin": "Administración de clientes", "financial_visibility": "Visibilidad financiera", "owner_capacity": "Capacidad del propietario" },
+      "capacity": { "significant_room": "Mucho espacio para más trabajo", "some_room": "Algo de espacio para más trabajo", "near_capacity": "Cerca de la capacidad actual", "over_capacity": "Ya supera una capacidad cómoda", "uncertain": "No estoy seguro" },
+      "fragmentation": { "one_system": "Un sistema principal", "two_systems": "Dos sistemas principales", "several_tools": "Varias herramientas separadas", "mostly_messages_paper": "Principalmente mensajes, papel o memoria", "uncertain": "No estoy seguro" },
+      "readiness": { "not_priority": "No es una prioridad actual", "exploring": "Explorando posibilidades", "ready_for_one_area": "Listo para automatizar un área", "ready_for_multiple": "Listo para conectar varias áreas", "already_automating": "Ya automatiza trabajo repetible" }
+    }
   }
 }

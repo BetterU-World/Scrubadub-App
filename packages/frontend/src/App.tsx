@@ -98,6 +98,7 @@ import { PrivacyPage } from "@/pages/public/PrivacyPage";
 import { ContactPage } from "@/pages/public/ContactPage";
 import { GetStartedPage } from "@/pages/public/GetStartedPage";
 import { PostCheckoutSetupPage } from "@/pages/public/PostCheckoutSetupPage";
+import { OperationsAssessmentPage } from "@/pages/public/OperationsAssessmentPage";
 import { ClientLoginPage } from "@/pages/client/ClientLoginPage";
 import { ClientForgotPasswordPage } from "@/pages/client/ClientForgotPasswordPage";
 import { ClientResetPasswordPage } from "@/pages/client/ClientResetPasswordPage";
@@ -116,6 +117,7 @@ import { CommercialCleaningSoftwarePage } from "@/pages/seo/CommercialCleaningSo
 import { HouseCleaningBusinessSoftwarePage } from "@/pages/seo/HouseCleaningBusinessSoftwarePage";
 
 import { Footer } from "@/components/layout/Footer";
+import { isOperationsAssessmentEnabled } from "@/lib/assessmentFeature";
 
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 
@@ -198,6 +200,17 @@ export default function App() {
   ) : null;
 
   // --- PUBLIC ROUTES: bypass all auth guards, no layout ---
+  if (pathname === "/assessment" && isOperationsAssessmentEnabled) {
+    return (
+      <>
+        <Analytics />
+        <ErrorBoundary>
+          <Route path="/assessment" component={OperationsAssessmentPage} />
+        </ErrorBoundary>
+      </>
+    );
+  }
+
   if (pathname.startsWith("/r/")) {
     return (
       <>
@@ -261,7 +274,7 @@ export default function App() {
     "/jobs", "/calendar", "/red-flags", "/performance", "/analytics",
     "/partners", "/requests", "/clients", "/commercial-accounts", "/commercial-invoices", "/feedback", "/cleaner-leads", "/audit-log", "/notifications", "/manuals", "/proposal",
     "/admin", "/site", "/affiliate", "/availability", "/owner", "/settings", "/payments",
-    "/terms", "/privacy", "/contact", "/get-started", "/setup",
+    "/terms", "/privacy", "/contact", "/get-started", "/setup", "/assessment",
     "/inventory-templates",
     "/owner/settings/add-ons",
     "/cleaning-business-software", "/airbnb-cleaning-software", "/cleaning-company-management-software",
