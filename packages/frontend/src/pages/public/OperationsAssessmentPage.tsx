@@ -3,7 +3,7 @@ import { useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, ArrowRight, Check, RotateCcw, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, CheckCircle2, LoaderCircle, RotateCcw, ShieldCheck } from "lucide-react";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 import { clearProgress, getBrowserKey, loadProgress, randomHex, saveProgress, type LocalAssessmentProgress } from "@/lib/assessmentPersistence";
 import { OperationsAssessmentReport, type AssessmentReport } from "./OperationsAssessmentReport";
@@ -61,7 +61,7 @@ export function OperationsAssessmentPage() {
   const abandon = useMutation(assessmentApi.abandon);
   const [definition, setDefinition] = useState<Definition | null>(null);
   const [progress, setProgress] = useState<LocalAssessmentProgress>(() => loadProgress() ?? { answers: {}, language: i18n.resolvedLanguage === "es" ? "es" : "en", lastActivityAt: Date.now() });
-  const [view, setView] = useState<"intro" | "section" | "question" | "report">("intro");
+  const [view, setView] = useState<"intro" | "section" | "question" | "completing" | "report">("intro");
   const [index, setIndex] = useState(0);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -133,7 +133,7 @@ export function OperationsAssessmentPage() {
   }, [definition]);
 
   useEffect(() => {
-    if (view === "question" || view === "section") headingRef.current?.focus();
+    if (view === "question" || view === "section" || view === "completing") headingRef.current?.focus();
   }, [view, index]);
 
   useEffect(() => {
@@ -235,6 +235,7 @@ export function OperationsAssessmentPage() {
     if (!await persistCurrent()) return;
     if (index === questions.length - 1) {
       setBusy(true);
+      setView("completing");
       try {
         const latest = progressRef.current;
         await complete({ attemptId: latest.attemptId as Id<"assessmentAttempts">, capability: latest.capability });
@@ -245,6 +246,7 @@ export function OperationsAssessmentPage() {
         setView("report");
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : t("assessment.errors.complete"));
+        setView("question");
       } finally { setBusy(false); }
       return;
     }
@@ -279,6 +281,24 @@ export function OperationsAssessmentPage() {
   if (view === "report" && report && roadmap) return <AssessmentShell><OperationsAssessmentReport report={report} roadmap={roadmap} attemptId={progress.attemptId} capability={progress.capability} /></AssessmentShell>;
   if (!definition && error) return <AssessmentShell><div role="alert" className="mx-auto max-w-xl rounded-2xl bg-white p-6 text-center text-gray-700">{error}</div></AssessmentShell>;
   if (!definition) return <AssessmentShell><p className="text-center text-gray-600">{t("common.loading")}</p></AssessmentShell>;
+
+  if (view === "completing") return (
+    <AssessmentShell>
+      <main className="mx-auto max-w-2xl py-10 text-center sm:py-20">
+        <CheckCircle2 className="mx-auto h-14 w-14 text-primary-600" aria-hidden="true" />
+        <p className="mt-6 text-sm font-semibold uppercase tracking-[0.16em] text-primary-700">{t("assessment.completion.eyebrow")}</p>
+        <h1 ref={headingRef} tabIndex={-1} className="mt-3 text-3xl font-bold text-gray-900 outline-none sm:text-5xl">{t("assessment.completion.title")}</h1>
+        <p className="mx-auto mt-5 max-w-xl text-base leading-7 text-gray-600 sm:text-lg">{t("assessment.completion.acknowledgement")}</p>
+        <div role="status" className="mx-auto mt-8 flex max-w-md items-center justify-center gap-3 rounded-2xl border border-gray-200 bg-white px-5 py-4 text-left shadow-sm">
+          <LoaderCircle className="h-5 w-5 flex-none animate-spin text-primary-600 motion-reduce:animate-none" aria-hidden="true" />
+          <div>
+            <p className="font-semibold text-gray-900">{t("assessment.completion.preparing")}</p>
+            <p className="mt-1 text-sm text-gray-600">{t("assessment.completion.preparingCopy")}</p>
+          </div>
+        </div>
+      </main>
+    </AssessmentShell>
+  );
 
   if (view === "intro") return (
     <AssessmentShell>

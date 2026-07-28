@@ -19,30 +19,35 @@ export type AssessmentRoadmap = {
 };
 export function OperationsAssessmentRoadmap({
   roadmap,
+  stages = roadmap.stageOrder,
+  showHeading = true,
 }: {
   roadmap: AssessmentRoadmap;
+  stages?: string[];
+  showHeading?: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const lang = i18n.resolvedLanguage === "es" ? "es" : "en";
   const text = (x: L) => x[lang];
   return (
-    <section aria-labelledby="growth-roadmap-heading">
-      <h2
-        id="growth-roadmap-heading"
-        className="text-3xl font-bold text-gray-900"
-      >
-        {t("assessment.report.roadmap")}
-      </h2>
-      <p className="mt-3 max-w-3xl leading-7 text-gray-600">
-        {t("assessment.roadmap.introduction")}
-      </p>
-      <div className="mt-8 space-y-10">
-        {roadmap.stageOrder.map((stage, index) => (
+    <section aria-labelledby={showHeading ? "growth-roadmap-heading" : undefined}>
+      {showHeading && (
+        <>
+          <h2
+            id="growth-roadmap-heading"
+            className="text-3xl font-bold text-gray-900"
+          >
+            {t("assessment.report.roadmap")}
+          </h2>
+          <p className="mt-3 max-w-3xl leading-7 text-gray-600">
+            {t("assessment.roadmap.introduction")}
+          </p>
+        </>
+      )}
+      <div className={showHeading ? "mt-8 space-y-10" : "space-y-10"}>
+        {stages.map((stage) => (
           <section key={stage} aria-labelledby={`roadmap-${stage}`}>
             <div className="flex items-baseline gap-3">
-              <span className="text-sm font-semibold text-primary-700">
-                {index + 1}
-              </span>
               <h3
                 id={`roadmap-${stage}`}
                 className="text-2xl font-bold text-gray-900"
@@ -77,14 +82,6 @@ export function OperationsAssessmentRoadmap({
                       </div>
                       <div>
                         <dt className="text-sm font-semibold text-gray-900">
-                          {t("assessment.roadmap.target")}
-                        </dt>
-                        <dd className="mt-1 leading-6 text-gray-700">
-                          {text(item.targetState)}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm font-semibold text-gray-900">
                           {t("assessment.roadmap.why")}
                         </dt>
                         <dd className="mt-1 leading-6 text-gray-700">
@@ -96,7 +93,7 @@ export function OperationsAssessmentRoadmap({
                       {t("assessment.roadmap.actions")}
                     </h5>
                     <ul className="mt-2 list-disc space-y-2 pl-5 text-gray-700">
-                      {item.recommendedActions.map((x, i) => (
+                      {item.recommendedActions.slice(0, 3).map((x, i) => (
                         <li key={i}>{text(x)}</li>
                       ))}
                     </ul>
@@ -111,11 +108,6 @@ export function OperationsAssessmentRoadmap({
                     {item.sequencing && (
                       <p className="mt-5 rounded-xl bg-gray-50 p-3 text-sm text-gray-700">
                         {text(item.sequencing)}
-                      </p>
-                    )}
-                    {item.scrubSupport && (
-                      <p className="mt-4 border-t border-gray-100 pt-4 text-sm text-gray-500">
-                        {text(item.scrubSupport)}
                       </p>
                     )}
                   </article>

@@ -2498,10 +2498,14 @@
       "rateLimit": "Tuvimos problemas para guardar esa respuesta. Tu selección está segura en este dispositivo. Inténtalo de nuevo en un momento."
     },
     "completion": {
+      "eyebrow": "Tu revisión está completa",
       "title": "Evaluación completada",
+      "acknowledgement": "Revisaste los sistemas principales de tu operación. Es un paso importante para que el negocio sea más fácil de dirigir.",
+      "preparing": "Preparando tu revisión de operaciones",
+      "preparingCopy": "Estamos organizando tu cuadro de resultados y ordenando las prioridades respaldadas por tus respuestas.",
       "score": "Puntuación de Operaciones",
       "outOf": "de 100",
-      "maturity": "Madurez Operativa",
+      "maturity": "Etapa Operativa",
       "confidence": "Confianza",
       "next": "Tu resultado está guardado de forma segura. Tu informe operativo detallado será la próxima experiencia."
     },
@@ -2517,7 +2521,7 @@
     "continuity": {
       "title": "Conserva esta evaluación", "copy": "Recibe opcionalmente un enlace seguro para volver a este informe y hoja de ruta completos durante 60 días.", "email": "Correo electrónico", "firstName": "Nombre (opcional)", "businessName": "Nombre del negocio (opcional)",
       "marketingConsent": "También deseo recibir ocasionalmente novedades del producto o recursos operativos útiles.", "deliveryConsent": "Al enviar, autorizas a SCRUB a entregar el enlace transaccional solicitado. El consentimiento de marketing es separado y opcional.", "submit": "Enviarme un enlace seguro", "sending": "Enviando…", "success": "Tu enlace seguro fue enviado.", "failure": "No pudimos enviar el enlace. Tu informe sigue disponible en este navegador.",
-      "supportTitle": "Explora el apoyo de SCRUB", "supportCopy": "Tu hoja de ruta puede implementarse con las herramientas adecuadas para tu negocio. SCRUB ayuda a las empresas de limpieza a centralizar muchos de estos procesos cuando estén listas.", "interested": "Quiero saber cómo podría ayudar SCRUB", "notNow": "Ahora no", "interestSaved": "Tu preferencia fue guardada.", "interestNeedsEmail": "Solicita primero un enlace seguro para asociar esta preferencia de forma segura.",
+      "supportTitle": "Dónde encaja SCRUB", "supportCopy": "Puedes implementar estas prioridades con las herramientas adecuadas para tu negocio. Si deseas programación, información de trabajos, registros de calidad, flujos de clientes y visibilidad financiera en un solo espacio de operaciones de limpieza, SCRUB está diseñado para apoyar ese trabajo.", "interested": "Muéstrame cómo SCRUB apoya estas prioridades", "notNow": "Ahora no", "interestSaved": "Tu preferencia fue guardada.", "interestNeedsEmail": "Solicita primero un enlace seguro para asociar esta preferencia de forma segura.",
       "returnedTitle": "Acceso seguro a la evaluación", "returnedCopy": "Estás viendo tu informe y Hoja de Ruta de Crecimiento congelados mediante un enlace seguro de solo lectura.", "invalidLink": "Este enlace de evaluación no es válido o ha vencido."
     },
     "report": {
@@ -2526,12 +2530,30 @@
       "completed": "Completada el {{date}}",
       "version": "Versión del informe {{version}}",
       "executiveSummary": "Resumen Ejecutivo",
+      "executiveDiagnosis": "Diagnóstico Ejecutivo",
+      "strongestFoundation": "Base más sólida",
+      "firstPriority": "Primera prioridad",
+      "startHere": "Empieza Aquí",
+      "startHereCopy": "Estas son las prioridades de mayor impacto que debes abordar primero.",
       "scorecard": "Cuadro de Mando Operativo",
+      "scorecardCopy": "Estas puntuaciones reflejan la consistencia, visibilidad y repetibilidad de cada área operativa aplicable.",
+      "whatComesNext": "Lo Que Sigue",
+      "strengthsToProtect": "Fortalezas Que Debes Proteger",
+      "strengthsToProtectCopy": "Vale la pena proteger las prácticas confiables a medida que cambia la operación.",
       "strengths": "Fortalezas",
       "opportunities": "Oportunidades de Mejora",
       "roadmap": "Hoja de Ruta de Crecimiento",
       "nextSteps": "Próximos Pasos",
       "scoreAria": "Puntuación de {{section}}: {{score}} de 100",
+      "metricExplanations": {
+        "score": "Una medida de consistencia, visibilidad y repetibilidad operativa en las áreas que corresponden a tu negocio.",
+        "stage": "La confiabilidad actual de tus sistemas operativos, no el tamaño, la antigüedad ni la ambición de tu negocio."
+      },
+      "confidenceExplanations": {
+        "high": "Tus respuestas completadas ofrecen una base sólida para esta revisión.",
+        "moderate": "Tus respuestas muestran un patrón útil, con algunas conclusiones expresadas con la prudencia adecuada.",
+        "limited": "La evidencia disponible es más limitada o incierta, por lo que esta revisión presenta menos conclusiones."
+      },
       "bands": { "strong_foundation": "Base Sólida", "generally_reliable": "Generalmente Confiable", "developing_consistency": "Desarrollando Consistencia", "priority_opportunity": "Oportunidad Prioritaria" },
       "emptyStrengths": "La evidencia disponible todavía no respalda una fortaleza distintiva.",
       "emptyOpportunities": "No hay una oportunidad prioritaria respaldada con suficiente evidencia para presentarla aquí.",
@@ -2541,11 +2563,11 @@
     "roadmap": {
       "introduction": "Esta secuencia prioriza el impacto operativo y las dependencias. Las etapas indican el orden, no plazos rígidos.",
       "priority": "Prioridad {{number}}",
-      "current": "Estado actual",
+      "current": "Situación Actual",
       "target": "Estado objetivo",
       "why": "Por qué importa",
-      "actions": "Acciones recomendadas",
-      "success": "Indicadores de éxito",
+      "actions": "Acciones Prácticas",
+      "success": "Cómo Se Ve el Éxito",
       "sparse": "No hay otra recomendación con suficiente respaldo para esta etapa.",
       "stages": {
         "now": { "title": "Ahora", "description": "Comienza con estas bases de mayor impacto." },
