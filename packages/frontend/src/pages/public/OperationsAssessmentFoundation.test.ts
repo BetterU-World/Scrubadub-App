@@ -72,6 +72,7 @@ describe("operations assessment public foundation", () => {
 
   it("renders the advisory report without exposing internal evidence or formula data", () => {
     const report = read("packages/frontend/src/pages/public/OperationsAssessmentReport.tsx");
+    expect(report).toContain("executiveDiagnosis");
     expect(report).toContain("executiveSummary");
     expect(report).toContain("scorecard");
     expect(report).toContain("strengths");
@@ -83,15 +84,39 @@ describe("operations assessment public foundation", () => {
     expect(report).not.toContain("benchmarkKey");
   });
 
-  it("renders an accessible roadmap without exposing roadmap internals", () => {
+  it("renders an accessible, staged roadmap without exposing roadmap internals", () => {
     const roadmap = read("packages/frontend/src/pages/public/OperationsAssessmentRoadmap.tsx");
-    expect(roadmap).toContain('aria-labelledby="growth-roadmap-heading"');
+    expect(roadmap).toContain('aria-labelledby={showHeading ? "growth-roadmap-heading" : undefined}');
     expect(roadmap).toContain("recommendedActions");
     expect(roadmap).toContain("successIndicators");
-    expect(roadmap).toContain("roadmap.stageOrder.map");
+    expect(roadmap).toContain("stages.map");
+    expect(roadmap).toContain("recommendedActions.slice(0, 3)");
     expect(roadmap).not.toContain("evidenceReferences");
     expect(roadmap).not.toContain("dependencyKeys");
     expect(roadmap).not.toContain("priority:");
+  });
+
+  it("orders the polished report from diagnosis to action, evidence, follow-on work, and strengths", () => {
+    const report = read("packages/frontend/src/pages/public/OperationsAssessmentReport.tsx");
+    const diagnosis = report.indexOf("assessment.report.executiveDiagnosis");
+    const now = report.indexOf("assessment.report.startHere");
+    const scorecard = report.indexOf("assessment.report.scorecard");
+    const next = report.indexOf("assessment.report.whatComesNext");
+    const maintain = report.indexOf("assessment.report.strengthsToProtect");
+    expect(diagnosis).toBeLessThan(now);
+    expect(now).toBeLessThan(scorecard);
+    expect(scorecard).toBeLessThan(next);
+    expect(next).toBeLessThan(maintain);
+    expect(report).not.toContain("<Findings");
+  });
+
+  it("provides a professional completion transition before report generation", () => {
+    const page = read("packages/frontend/src/pages/public/OperationsAssessmentPage.tsx");
+    expect(page).toContain('"completing"');
+    expect(page).toContain("assessment.completion.acknowledgement");
+    expect(page).toContain("assessment.completion.preparing");
+    expect(page.indexOf('setView("completing")')).toBeLessThan(page.indexOf("await complete("));
+    expect(page).toContain("motion-reduce:animate-none");
   });
 
   it("keeps the full report ahead of optional continuity and separates consent", () => {

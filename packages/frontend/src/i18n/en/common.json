@@ -2504,10 +2504,14 @@
       "rateLimit": "We had trouble saving that answer. Your selection is safe on this device. Please try again in a moment."
     },
     "completion": {
+      "eyebrow": "Your review is complete",
       "title": "Assessment complete",
+      "acknowledgement": "You reviewed the core systems behind your operation. That is a meaningful step toward making the business easier to run.",
+      "preparing": "Preparing your operations review",
+      "preparingCopy": "We are organizing your scorecard and sequencing the priorities supported by your responses.",
       "score": "Operations Score",
       "outOf": "out of 100",
-      "maturity": "Operational Maturity",
+      "maturity": "Operating Stage",
       "confidence": "Confidence",
       "next": "Your result is securely frozen. Your detailed operational report is the next experience."
     },
@@ -2523,7 +2527,7 @@
     "continuity": {
       "title": "Preserve this assessment", "copy": "Optionally receive a secure link so you can return to this complete report and roadmap for 60 days.", "email": "Email address", "firstName": "First name (optional)", "businessName": "Business name (optional)",
       "marketingConsent": "I would also like occasional product updates or helpful operational resources.", "deliveryConsent": "Submitting authorizes SCRUB to send the requested transactional report link. Marketing consent is separate and optional.", "submit": "Email me a secure link", "sending": "Sending…", "success": "Your secure link has been sent.", "failure": "We could not send the link. Your report remains available in this browser.",
-      "supportTitle": "Explore SCRUB support", "supportCopy": "Your roadmap can be implemented with the tools that fit your business. SCRUB is designed to help cleaning companies centralize many of these workflows when they are ready.", "interested": "I’d like to learn how SCRUB could help", "notNow": "Not right now", "interestSaved": "Your preference has been saved.", "interestNeedsEmail": "Request a secure link first so this preference can be associated safely.",
+      "supportTitle": "Where SCRUB fits", "supportCopy": "You can implement these priorities with the tools that fit your business. If you want scheduling, job information, quality records, client workflows, and financial visibility in one cleaning-operations workspace, SCRUB is designed to support that work.", "interested": "Show me how SCRUB supports these priorities", "notNow": "Not right now", "interestSaved": "Your preference has been saved.", "interestNeedsEmail": "Request a secure link first so this preference can be associated safely.",
       "returnedTitle": "Secure assessment access", "returnedCopy": "You are viewing your frozen report and Growth Roadmap through a read-only secure link.", "invalidLink": "This assessment link is invalid or expired."
     },
     "report": {
@@ -2532,12 +2536,30 @@
       "completed": "Completed {{date}}",
       "version": "Report version {{version}}",
       "executiveSummary": "Executive Summary",
+      "executiveDiagnosis": "Executive Diagnosis",
+      "strongestFoundation": "Strongest foundation",
+      "firstPriority": "First priority",
+      "startHere": "Start Here",
+      "startHereCopy": "These are the highest-leverage priorities to address first.",
       "scorecard": "Operational Scorecard",
+      "scorecardCopy": "These scores reflect the consistency, visibility, and repeatability of each applicable operating area.",
+      "whatComesNext": "What Comes Next",
+      "strengthsToProtect": "Strengths to Protect",
+      "strengthsToProtectCopy": "Reliable practices are worth protecting as the operation changes.",
       "strengths": "Strengths",
       "opportunities": "Improvement Opportunities",
       "roadmap": "Growth Roadmap",
       "nextSteps": "Next Steps",
       "scoreAria": "{{section}} score: {{score}} out of 100",
+      "metricExplanations": {
+        "score": "A measure of operational consistency, visibility, and repeatability across the areas that apply to your business.",
+        "stage": "The current reliability of your operating systems—not the size, age, or ambition of your business."
+      },
+      "confidenceExplanations": {
+        "high": "Your completed responses provide a strong basis for this review.",
+        "moderate": "Your responses show a useful pattern, with some conclusions kept appropriately measured.",
+        "limited": "The available evidence is narrower or less certain, so this review presents fewer conclusions."
+      },
       "bands": { "strong_foundation": "Strong Foundation", "generally_reliable": "Generally Reliable", "developing_consistency": "Developing Consistency", "priority_opportunity": "Priority Opportunity" },
       "emptyStrengths": "The available evidence does not support a distinct strength finding yet.",
       "emptyOpportunities": "No priority improvement opportunity is supported strongly enough to present here.",
@@ -2547,11 +2569,11 @@
     "roadmap": {
       "introduction": "This sequence prioritizes operational impact and dependencies. The stages describe order, not rigid deadlines.",
       "priority": "Priority {{number}}",
-      "current": "Current state",
+      "current": "Current Situation",
       "target": "Target state",
       "why": "Why this matters",
-      "actions": "Recommended actions",
-      "success": "Success indicators",
+      "actions": "Practical Actions",
+      "success": "What Success Looks Like",
       "sparse": "No additional recommendation is supported strongly enough for this stage.",
       "stages": {
         "now": { "title": "Now", "description": "Start with these highest-leverage foundations." },

@@ -32,6 +32,19 @@ describe("assessment report generation", () => {
     expect(limited.executiveSummary[0].en).toContain("limited or uncertain");
     expect(limited.strengths.length).toBeLessThanOrEqual(2); expect(limited.opportunities.length).toBeLessThanOrEqual(2);
   });
+  it("builds a deterministic diagnosis from frozen report facts", () => {
+    const report = generateReportSnapshot(completion(), 1);
+    expect(report.executiveDiagnosis.headline.en).toContain("Scheduling and Organization");
+    expect(report.executiveDiagnosis.headline.en).toContain("Quality and Consistency");
+    expect(report.executiveDiagnosis.strongestArea.sectionKey).toBe("scheduling");
+    expect(report.executiveDiagnosis.priorityArea.sectionKey).toBe("quality");
+    expect(report.executiveDiagnosis.summary.en).toContain("team-based operation");
+  });
+  it("uses branch-aware diagnosis language without exposing private responses", () => {
+    const report = generateReportSnapshot(completion({ branchContext: { soloOperator: true, teamSize: "solo" } }), 1);
+    expect(report.executiveDiagnosis.summary.en).toContain("solo operation");
+    expect(JSON.stringify(report.executiveDiagnosis)).not.toContain("5_10");
+  });
   it("selects priorities deterministically without duplicate section findings", () => {
     const report = generateReportSnapshot(completion(), 1);
     expect(report.strengths[0].sectionKey).toBe("scheduling");
