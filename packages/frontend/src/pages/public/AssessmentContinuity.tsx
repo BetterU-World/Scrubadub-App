@@ -82,6 +82,15 @@ export function AssessmentContinuity({
       setMessage(t("assessment.continuity.interestNeedsEmail"));
     }
   }
+  async function followScrubSupport(event: React.MouseEvent<HTMLAnchorElement>) {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      void saveInterest(true);
+      return;
+    }
+    event.preventDefault();
+    await saveInterest(true);
+    window.location.assign("/#platform");
+  }
   return (
     <div className="space-y-8">
       <section
@@ -175,9 +184,9 @@ export function AssessmentContinuity({
           {t("assessment.continuity.supportCopy")}
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
-          <button className="btn-primary" onClick={() => saveInterest(true)}>
+          <a href="/#platform" className="btn-primary" onClick={followScrubSupport}>
             {t("assessment.continuity.interested")}
-          </button>
+          </a>
           <button className="btn-secondary" onClick={() => saveInterest(false)}>
             {t("assessment.continuity.notNow")}
           </button>
