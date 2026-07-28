@@ -22,6 +22,11 @@ type Definition = {
   sections: { key: string; titleKey: string; introKey: string; order: number }[];
   questions: Question[];
 };
+type AssessmentHistoryState = {
+  scrubAssessment: true;
+  view: "intro" | "section" | "question";
+  questionKey?: string;
+};
 const assessmentApi = (api as any).assessments;
 const continuityApi = (api as any).assessmentContinuity;
 
@@ -74,6 +79,30 @@ export function OperationsAssessmentPage() {
   const lastSavedRef = useRef("");
   progressRef.current = progress;
 
+  function applyHistoryState(state: AssessmentHistoryState) {
+    if (state.questionKey && definition) {
+      const target = questions.findIndex((item) => item.key === state.questionKey);
+      if (target >= 0) setIndex(target);
+    }
+    setView(state.view);
+    setError("");
+  }
+
+  function recordHistory(state: AssessmentHistoryState, replace = false) {
+    if (replace) window.history.replaceState(state, "", window.location.href);
+    else window.history.pushState(state, "", window.location.href);
+    applyHistoryState(state);
+  }
+
+  useEffect(() => {
+    const onPopState = (event: PopStateEvent) => {
+      const state = event.state as AssessmentHistoryState | null;
+      if (state?.scrubAssessment) applyHistoryState(state);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  });
+
   useEffect(() => {
     let active = true;
     const returnToken = new URLSearchParams(window.location.search).get("return");
@@ -107,6 +136,26 @@ export function OperationsAssessmentPage() {
             setView("report");
           } else {
             setView("question");
+            const restoredQuestions = (result.definition as Definition).questions
+              .filter((item) => isQuestionApplicable(item, next.answers))
+              .sort((a, b) => {
+                const sectionA = (result.definition as Definition).sections.find((section) => section.key === a.sectionKey)?.order ?? 0;
+                const sectionB = (result.definition as Definition).sections.find((section) => section.key === b.sectionKey)?.order ?? 0;
+                return sectionA - sectionB || a.order - b.order;
+              });
+            const restoredKey = next.currentQuestionKey && restoredQuestions.some((item) => item.key === next.currentQuestionKey)
+              ? next.currentQuestionKey
+              : restoredQuestions.find((item) => item.required && next.answers[item.key] === undefined)?.key ?? restoredQuestions[restoredQuestions.length - 1]?.key;
+            window.history.replaceState({ scrubAssessment: true, view: "intro" } satisfies AssessmentHistoryState, "", window.location.href);
+            let restoredSection = "";
+            for (const restoredQuestion of restoredQuestions) {
+              if (restoredQuestion.sectionKey !== restoredSection) {
+                restoredSection = restoredQuestion.sectionKey;
+                window.history.pushState({ scrubAssessment: true, view: "section", questionKey: restoredQuestion.key } satisfies AssessmentHistoryState, "", window.location.href);
+              }
+              window.history.pushState({ scrubAssessment: true, view: "question", questionKey: restoredQuestion.key } satisfies AssessmentHistoryState, "", window.location.href);
+              if (restoredQuestion.key === restoredKey) break;
+            }
           }
         } else {
           clearProgress();
@@ -114,6 +163,9 @@ export function OperationsAssessmentPage() {
         }
       }
     }).catch(() => setError(t("assessment.errors.unavailable")));
+    if (!(window.history.state as AssessmentHistoryState | null)?.scrubAssessment) {
+      window.history.replaceState({ scrubAssessment: true, view: "intro" } satisfies AssessmentHistoryState, "", window.location.href);
+    }
     return () => { active = false; };
   }, [prepare, recover, generateReport, generateRoadmap, openReturnLink, i18n, t]);
 
@@ -153,7 +205,7 @@ export function OperationsAssessmentPage() {
   const sectionQuestionIndex = sectionQuestions.findIndex((item) => item.key === question?.key);
 
   function updateProgress(nextAnswers: Record<string, Answer>, currentQuestionKey = question?.key) {
-    const next = { ...progress, answers: nextAnswers, currentQuestionKey, language: i18n.resolvedLanguage === "es" ? "es" as const : "en" as const, lastActivityAt: Date.now() };
+    const next = { ...progressRef.current, answers: nextAnswers, currentQuestionKey, language: i18n.resolvedLanguage === "es" ? "es" as const : "en" as const, lastActivityAt: Date.now() };
     setProgress(next);
     progressRef.current = next;
     saveProgress(next);
@@ -252,19 +304,14 @@ export function OperationsAssessmentPage() {
     }
     const nextIndex = index + 1;
     const changingSection = questions[nextIndex].sectionKey !== question.sectionKey;
-    setIndex(nextIndex);
-    updateProgress(progress.answers, questions[nextIndex].key);
-    setView(changingSection ? "section" : "question");
+    updateProgress(progressRef.current.answers, questions[nextIndex].key);
+    recordHistory({ scrubAssessment: true, view: changingSection ? "section" : "question", questionKey: questions[nextIndex].key });
   }
 
-  async function goBack() {
-    if (!await persistCurrent()) return;
-    if (index === 0) { setView("intro"); return; }
-    const previous = index - 1;
-    setIndex(previous);
-    updateProgress(progress.answers, questions[previous].key);
-    setView("question");
-    setError("");
+  function goBack() {
+    // Answers are written to local progress as they change. Backward navigation
+    // must never be gated by forward validation or a network mutation.
+    window.history.go(sectionQuestionIndex === 0 ? -2 : -1);
   }
 
   async function startOver() {
@@ -310,7 +357,7 @@ export function OperationsAssessmentPage() {
         <div className="mt-8 grid gap-3 text-left sm:grid-cols-3">
           {["scope", "account", "local"].map((key) => <div key={key} className="rounded-2xl border border-gray-200 bg-white p-4"><Check className="h-5 w-5 text-primary-600"/><p className="mt-3 text-sm leading-6 text-gray-700">{t(`assessment.introPoints.${key}`)}</p></div>)}
         </div>
-        <button type="button" className="btn-primary mt-8 w-full sm:w-auto sm:px-8" onClick={() => { setView("section"); setIndex(0); }}>{t("assessment.actions.begin")}</button>
+        <button type="button" className="btn-primary mt-8 w-full sm:w-auto sm:px-8" onClick={() => recordHistory({ scrubAssessment: true, view: "section", questionKey: questions[0]?.key })}>{t("assessment.actions.begin")}</button>
         {Object.keys(progress.answers).length > 0 && <button type="button" className="touch-target mt-3 w-full gap-2 text-sm text-gray-600 sm:w-auto sm:ml-3" onClick={startOver}><RotateCcw className="h-4 w-4"/>{t("assessment.actions.startOver")}</button>}
       </div>
     </AssessmentShell>
@@ -324,7 +371,7 @@ export function OperationsAssessmentPage() {
         <p className="text-sm font-semibold text-primary-700">{t("assessment.progress.section", { current: sectionIndex + 1, total: definition!.sections.length })}</p>
         <h1 ref={headingRef} tabIndex={-1} className="mt-3 text-3xl font-bold text-gray-900 outline-none sm:text-4xl">{t(section.titleKey)}</h1>
         <p className="mt-5 text-base leading-7 text-gray-600">{t(section.introKey)}</p>
-        <button type="button" className="btn-primary mt-8 w-full gap-2 sm:w-auto" onClick={() => setView("question")}>{t("assessment.actions.continue")}<ArrowRight className="h-4 w-4"/></button>
+        <button type="button" className="btn-primary mt-8 w-full gap-2 sm:w-auto" onClick={() => recordHistory({ scrubAssessment: true, view: "question", questionKey: question.key })}>{t("assessment.actions.continue")}<ArrowRight className="h-4 w-4"/></button>
       </div>
     </AssessmentShell>
   );

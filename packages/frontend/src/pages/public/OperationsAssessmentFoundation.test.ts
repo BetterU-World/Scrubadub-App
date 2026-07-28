@@ -143,6 +143,8 @@ describe("operations assessment public foundation", () => {
     expect(page).toContain('from "../../../../../convex/lib/assessmentApplicability"');
     expect(page).toContain("priorResponses");
     expect(page).toContain("progressRef.current");
+    expect(page).toContain("...progressRef.current, answers: nextAnswers");
+    expect(page).toContain("updateProgress(progressRef.current.answers");
     expect(page).toContain("assessment.errors.branchRefresh");
     expect(page).not.toContain("function applicable(");
   });
@@ -153,5 +155,15 @@ describe("operations assessment public foundation", () => {
     expect(page).toContain("lastSavedRef.current");
     expect(page).toContain("assessment.errors.rateLimit");
     expect(page).toContain("/rate limit|too many/i");
+  });
+
+  it("keeps backward navigation local, history-aware, and independent of forward validation", () => {
+    const page = read("packages/frontend/src/pages/public/OperationsAssessmentPage.tsx");
+    expect(page).toContain('window.addEventListener("popstate"');
+    expect(page).toContain("window.history.pushState");
+    expect(page).toContain("window.history.go(");
+    const backHandler = page.slice(page.indexOf("function goBack()"), page.indexOf("async function startOver()"));
+    expect(backHandler).not.toContain("persistCurrent");
+    expect(backHandler).not.toContain("assessment.errors.required");
   });
 });
