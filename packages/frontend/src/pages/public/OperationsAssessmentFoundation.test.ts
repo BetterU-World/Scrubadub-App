@@ -129,6 +129,14 @@ describe("operations assessment public foundation", () => {
     expect(continuity).not.toMatch(/unlock|pricing|subscribe|payment/i);
   });
 
+  it("links the SCRUB support CTA to the platform while preserving interest analytics", () => {
+    const continuity = read("packages/frontend/src/pages/public/AssessmentContinuity.tsx");
+    expect(continuity).toContain('href="/#platform"');
+    expect(continuity).toContain("onClick={followScrubSupport}");
+    expect(continuity).toContain("await saveInterest(true)");
+    expect(continuity).toContain('window.location.assign("/#platform")');
+  });
+
   it("allows secure completed returns while new starts remain feature flagged", () => {
     const app = read("packages/frontend/src/App.tsx");
     expect(app).toContain('new URLSearchParams(window.location.search).has("return")');
