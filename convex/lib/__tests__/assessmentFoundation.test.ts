@@ -78,7 +78,31 @@ describe("operations assessment foundation", () => {
 
   it("sanitizes and bounds qualitative text", () => {
     expect(sanitizeQualitativeText("  proud\u0000 of my team  ")).toBe("proud of my team");
+    expect(sanitizeQualitativeText("line one\r\nline two\rline three")).toBe("line one\nline two\nline three");
     expect(sanitizeQualitativeText("x".repeat(2000))).toHaveLength(1500);
+  });
+
+  it("persists, normalizes, updates, and clears the optional improvement reflection", async () => {
+    const t = backend();
+    const capability = token("e");
+    const created = await t.mutation(assessmentApi.start, {
+      capability, browserKey: token("9"), responseLanguage: "en",
+      firstResponse: { questionKey: "business.primary_model", answerValue: "residential" },
+    });
+    await t.mutation(assessmentApi.saveResponse, {
+      attemptId: created.attemptId, capability, responseLanguage: "en",
+      response: { questionKey: "perspective.improve", qualitativeText: "  Scheduling\r\nand\u0000 follow-up  " },
+    });
+    let row = await t.run((ctx) => ctx.db.query("assessmentResponses")
+      .withIndex("by_attemptId_questionKey", (q) => q.eq("attemptId", created.attemptId).eq("questionKey", "perspective.improve")).unique());
+    expect(row?.qualitativeText).toBe("Scheduling\nand follow-up");
+    await t.mutation(assessmentApi.saveResponse, {
+      attemptId: created.attemptId, capability, responseLanguage: "es",
+      response: { questionKey: "perspective.improve", qualitativeText: "" },
+    });
+    row = await t.run((ctx) => ctx.db.query("assessmentResponses")
+      .withIndex("by_attemptId_questionKey", (q) => q.eq("attemptId", created.attemptId).eq("questionKey", "perspective.improve")).unique());
+    expect(row).toBeNull();
   });
 
   it("requires every applicable required response before completion", async () => {

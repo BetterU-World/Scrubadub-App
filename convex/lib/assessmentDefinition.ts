@@ -182,6 +182,6 @@ export function assertDefinitionMutable(status: string): void {
 }
 
 export function sanitizeQualitativeText(value: string, maxLength = QUALITATIVE_MAX_LENGTH): string {
-  return value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "").trim().slice(0, maxLength);
+  return value.replace(/\r\n?/g, "\n").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "").trim().slice(0, maxLength);
 }
 export { isQuestionApplicable as isApplicable } from "./assessmentApplicability";

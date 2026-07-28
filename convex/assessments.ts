@@ -63,8 +63,10 @@ function normalizeResponse(question: AssessmentQuestion, input: {
   if (question.kind === "text") {
     if (input.answerValue !== undefined || input.answerValues !== undefined) throw new Error("Invalid qualitative response");
     const raw = input.qualitativeText ?? "";
-    if (raw.length > (question.maxLength ?? QUALITATIVE_MAX_LENGTH)) throw new Error("Response is too long");
-    const qualitativeText = sanitizeQualitativeText(raw, question.maxLength);
+    const maxLength = question.maxLength ?? QUALITATIVE_MAX_LENGTH;
+    const normalizedText = sanitizeQualitativeText(raw, Number.MAX_SAFE_INTEGER);
+    if (normalizedText.length > maxLength) throw new Error("Response is too long");
+    const qualitativeText = sanitizeQualitativeText(normalizedText, maxLength);
     return { responseKind: "qualitative" as const, qualitativeText: qualitativeText || undefined };
   }
   const allowed = new Set((question.options ?? []).map((item) => item.value));
