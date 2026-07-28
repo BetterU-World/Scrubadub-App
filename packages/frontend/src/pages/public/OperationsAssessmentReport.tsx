@@ -20,7 +20,7 @@ export type AssessmentReport = {
   roadmap: { status: string; message: Localized };
 };
 
-export function OperationsAssessmentReport({ report, roadmap, attemptId, capability }: { report: AssessmentReport; roadmap: AssessmentRoadmap; attemptId?: string; capability?: string }) {
+export function OperationsAssessmentReport({ report, roadmap, attemptId, capability, showContinuity = true }: { report: AssessmentReport; roadmap: AssessmentRoadmap; attemptId?: string; capability?: string; showContinuity?: boolean }) {
   const { t, i18n } = useTranslation();
   const language = i18n.resolvedLanguage === "es" ? "es" : "en";
   const heading = useRef<HTMLHeadingElement>(null);
@@ -87,7 +87,7 @@ export function OperationsAssessmentReport({ report, roadmap, attemptId, capabil
           : <p className="rounded-2xl bg-gray-50 p-5 text-gray-600">{t("assessment.report.emptyStrengths")}</p>}
     </ReportSection>
 
-    <AssessmentContinuity attemptId={attemptId} capability={capability} />
+    {showContinuity && <AssessmentContinuity attemptId={attemptId} capability={capability} />}
   </main>;
 }
 

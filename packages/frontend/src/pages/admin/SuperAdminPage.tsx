@@ -1,4 +1,5 @@
 import { useQuery } from "convex/react";
+import { Link } from "wouter";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -11,6 +12,7 @@ import {
   Wrench,
   Activity,
   Mail,
+  ClipboardList,
 } from "lucide-react";
 
 export function SuperAdminPage() {
@@ -34,7 +36,11 @@ export function SuperAdminPage() {
 
   return (
     <div>
-      <PageHeader title="Super Admin" description="Platform-wide analytics" />
+      <PageHeader
+        title="Super Admin"
+        description="Platform-wide analytics"
+        action={<Link href="/admin/assessments" className="btn-secondary inline-flex w-full items-center justify-center gap-2 sm:w-auto"><ClipboardList className="h-4 w-4" />Assessment Results</Link>}
+      />
 
       {/* Overview tiles */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

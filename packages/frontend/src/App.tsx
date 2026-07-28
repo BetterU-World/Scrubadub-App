@@ -79,6 +79,8 @@ import { ManagerRedFlagsPage } from "@/pages/manager/ManagerRedFlagsPage";
 // Admin pages
 import { SuperAdminPage } from "@/pages/admin/SuperAdminPage";
 import { AffiliateInvitesPage } from "@/pages/admin/AffiliateInvitesPage";
+import { AssessmentResultsPage } from "@/pages/admin/AssessmentResultsPage";
+import { AssessmentResultDetailPage } from "@/pages/admin/AssessmentResultDetailPage";
 
 // Shared pages
 import { NotificationsPage } from "@/pages/shared/NotificationsPage";
@@ -473,6 +475,8 @@ export default function App() {
           <Route path="/manuals" component={ManualsPage} />
           {user?.isSuperadmin === true && (
             <>
+              <Route path="/admin/assessments/:attemptId" component={AssessmentResultDetailPage} />
+              <Route path="/admin/assessments" component={AssessmentResultsPage} />
               <Route path="/admin/affiliates" component={AffiliateInvitesPage} />
               <Route path="/admin" component={SuperAdminPage} />
             </>

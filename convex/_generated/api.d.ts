@@ -139,6 +139,7 @@ import type * as queries_affiliateInvites from "../queries/affiliateInvites.js";
 import type * as queries_affiliateLedger from "../queries/affiliateLedger.js";
 import type * as queries_affiliatePayoutBatches from "../queries/affiliatePayoutBatches.js";
 import type * as queries_affiliatePayoutRequests from "../queries/affiliatePayoutRequests.js";
+import type * as queries_assessmentAdmin from "../queries/assessmentAdmin.js";
 import type * as queries_auditLog from "../queries/auditLog.js";
 import type * as queries_availability from "../queries/availability.js";
 import type * as queries_billing from "../queries/billing.js";
@@ -326,6 +327,7 @@ declare const fullApi: ApiFromModules<{
   "queries/affiliateLedger": typeof queries_affiliateLedger;
   "queries/affiliatePayoutBatches": typeof queries_affiliatePayoutBatches;
   "queries/affiliatePayoutRequests": typeof queries_affiliatePayoutRequests;
+  "queries/assessmentAdmin": typeof queries_assessmentAdmin;
   "queries/auditLog": typeof queries_auditLog;
   "queries/availability": typeof queries_availability;
   "queries/billing": typeof queries_billing;
