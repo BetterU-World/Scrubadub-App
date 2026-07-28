@@ -2546,14 +2546,65 @@
     }
   },
   "assessment": {
-    "eyebrow": "A practical operations review",
-    "title": "SCRUB Operations Assessment",
+    "eyebrow": "Free cleaning business operations assessment",
+    "title": "See how your cleaning business is really operating.",
     "headerLabel": "Operations Assessment",
-    "introduction": "This assessment looks at the systems behind your cleaning business—from scheduling and team communication to quality, client experience, financial visibility, and growth.",
+    "introduction": "In about seven minutes, review how work moves through your business, identify operational strengths and bottlenecks, and receive a practical plan for what to improve next.",
+    "meta": {
+      "free": "Free",
+      "duration": "About 7 minutes",
+      "noAccount": "No account required"
+    },
     "introPoints": {
       "scope": "Understand what is working and where operations may be holding you back.",
       "account": "No account or contact information is required.",
       "local": "Your progress can be saved on this device while you work."
+    },
+    "value": {
+      "eyebrow": "Your personalized result",
+      "title": "Leave with more than a score",
+      "copy": "Your completed review turns your responses into a clear operational picture and an ordered path forward.",
+      "items": {
+        "score": "Operations Score",
+        "diagnosis": "Executive Diagnosis",
+        "scorecard": "Category-level scorecard",
+        "roadmap": "Prioritized Growth Roadmap",
+        "steps": "Practical next steps"
+      }
+    },
+    "coverage": {
+      "title": "A focused review of the systems behind the work",
+      "copy": "Designed specifically for cleaning businesses, the assessment looks beyond revenue or company size to the consistency, visibility, and repeatability of everyday operations.",
+      "items": {
+        "scheduling": "Scheduling and organization",
+        "team": "Team communication",
+        "quality": "Quality and consistency",
+        "client": "Client experience",
+        "financial": "Financial visibility",
+        "growth": "Growth readiness"
+      }
+    },
+    "audience": {
+      "title": "Useful at different stages of a cleaning business",
+      "copy": "Questions adapt to the shape of your operation, so the review stays relevant whether you handle every job yourself or coordinate a growing team.",
+      "items": {
+        "solo": "Solo cleaning business owners",
+        "team": "Owners building or managing a team",
+        "models": "Residential, commercial, and turnover operations"
+      }
+    },
+    "expectations": {
+      "title": "A practical review, not a generic business quiz",
+      "copy": "The goal is not to reward the most impressive answer. It is to identify the priorities most useful for the way your business operates now.",
+      "items": {
+        "honest": "Choose the answer that best reflects your current process.",
+        "optional": "The final written reflection questions are optional.",
+        "result": "Your complete report and prioritized roadmap are available immediately after completion."
+      }
+    },
+    "scrub": {
+      "title": "The value of the assessment stands on its own",
+      "copy": "You can act on the recommendations with the tools that fit your business. Near the end, you can also see where SCRUB may support the operational gaps you choose to address."
     },
     "required": "Required",
     "optional": "Optional",
@@ -2562,7 +2613,7 @@
     "qualitativePrivacy": "Please do not include private information about employees or clients.",
     "characterCount": "{{current}} of {{max}} characters",
     "progress": { "section": "Section {{current}} of {{total}}", "question": "Question {{current}} of {{total}} in this section" },
-    "actions": { "begin": "Begin Assessment", "startOver": "Start Over", "complete": "Complete Assessment", "continue": "Continue", "dismiss": "Dismiss", "pause": "Save and Exit" },
+    "actions": { "begin": "Start My Free Assessment", "continueAssessment": "Continue My Assessment", "startOver": "Start Over", "complete": "Complete Assessment", "continue": "Continue", "dismiss": "Dismiss", "pause": "Save and Exit" },
     "confirm": {
       "startOver": "Start over and remove the assessment progress saved on this device?",
       "branchChange": "This change makes some later questions inapplicable and will remove those answers. Continue?"
@@ -2595,7 +2646,7 @@
       "operationally_advanced": "Operationally Advanced"
     },
     "confidence": { "high": "High", "moderate": "Moderate", "limited": "Limited" },
-    "trust": "No account is required. Results are private, contact information is optional and requested only after your complete report. This assessment provides operational guidance, not legal, tax, accounting, employment, or safety certification.",
+    "trust": "Answer based on how the business operates today—there are no perfect answers. Your result appears after completion, and purchasing SCRUB is not required. This is operational guidance, not legal, tax, accounting, employment, or safety advice.",
     "continuity": {
       "title": "Preserve this assessment", "copy": "Optionally receive a secure link so you can return to this complete report and roadmap for 60 days.", "email": "Email address", "firstName": "First name (optional)", "businessName": "Business name (optional)",
       "marketingConsent": "I would also like occasional product updates or helpful operational resources.", "deliveryConsent": "Submitting authorizes SCRUB to send the requested transactional report link. Marketing consent is separate and optional.", "submit": "Email me a secure link", "sending": "Sending…", "success": "Your secure link has been sent.", "failure": "We could not send the link. Your report remains available in this browser.",

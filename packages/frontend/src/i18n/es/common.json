@@ -2540,14 +2540,65 @@
     }
   },
   "assessment": {
-    "eyebrow": "Una revisión práctica de operaciones",
-    "title": "Evaluación de Operaciones de SCRUB",
+    "eyebrow": "Evaluación gratuita de operaciones para negocios de limpieza",
+    "title": "Descubre cómo funciona realmente tu negocio de limpieza.",
     "headerLabel": "Evaluación de Operaciones",
-    "introduction": "Esta evaluación analiza los sistemas que sostienen tu negocio de limpieza: desde la programación y la comunicación del equipo hasta la calidad, la experiencia del cliente, la visibilidad financiera y el crecimiento.",
+    "introduction": "En aproximadamente siete minutos, revisa cómo fluye el trabajo en tu negocio, identifica fortalezas y obstáculos operativos, y recibe un plan práctico para decidir qué mejorar después.",
+    "meta": {
+      "free": "Gratis",
+      "duration": "Aproximadamente 7 minutos",
+      "noAccount": "No requiere una cuenta"
+    },
     "introPoints": {
       "scope": "Comprende qué está funcionando y dónde las operaciones pueden estar frenando el negocio.",
       "account": "No se requiere una cuenta ni información de contacto.",
       "local": "Tu progreso puede guardarse en este dispositivo mientras avanzas."
+    },
+    "value": {
+      "eyebrow": "Tu resultado personalizado",
+      "title": "Recibe mucho más que una puntuación",
+      "copy": "La revisión convierte tus respuestas en una imagen operativa clara y una ruta ordenada para avanzar.",
+      "items": {
+        "score": "Puntuación de Operaciones",
+        "diagnosis": "Diagnóstico Ejecutivo",
+        "scorecard": "Cuadro de mando por categoría",
+        "roadmap": "Hoja de Ruta de Crecimiento priorizada",
+        "steps": "Próximos pasos prácticos"
+      }
+    },
+    "coverage": {
+      "title": "Una revisión enfocada de los sistemas detrás del trabajo",
+      "copy": "Diseñada específicamente para negocios de limpieza, la evaluación va más allá de los ingresos o el tamaño de la empresa para revisar la consistencia, visibilidad y repetibilidad de las operaciones diarias.",
+      "items": {
+        "scheduling": "Programación y organización",
+        "team": "Comunicación del equipo",
+        "quality": "Calidad y consistencia",
+        "client": "Experiencia del cliente",
+        "financial": "Visibilidad financiera",
+        "growth": "Preparación para el crecimiento"
+      }
+    },
+    "audience": {
+      "title": "Útil en diferentes etapas de un negocio de limpieza",
+      "copy": "Las preguntas se adaptan a la forma de tu operación para que la revisión sea relevante, ya sea que realices cada trabajo personalmente o coordines un equipo en crecimiento.",
+      "items": {
+        "solo": "Propietarios que trabajan por cuenta propia",
+        "team": "Propietarios que forman o dirigen un equipo",
+        "models": "Operaciones residenciales, comerciales y de rotación"
+      }
+    },
+    "expectations": {
+      "title": "Una revisión práctica, no un cuestionario genérico",
+      "copy": "El objetivo no es premiar la respuesta más impresionante. Es identificar las prioridades más útiles para la forma en que funciona tu negocio hoy.",
+      "items": {
+        "honest": "Elige la respuesta que mejor refleje tu proceso actual.",
+        "optional": "Las preguntas finales de reflexión escrita son opcionales.",
+        "result": "Tu informe completo y hoja de ruta priorizada estarán disponibles inmediatamente al terminar."
+      }
+    },
+    "scrub": {
+      "title": "El valor de la evaluación es independiente",
+      "copy": "Puedes aplicar las recomendaciones con las herramientas adecuadas para tu negocio. Cerca del final, también podrás ver dónde SCRUB puede apoyar las brechas operativas que decidas abordar."
     },
     "required": "Obligatoria",
     "optional": "Opcional",
@@ -2556,7 +2607,7 @@
     "qualitativePrivacy": "No incluyas información privada sobre empleados o clientes.",
     "characterCount": "{{current}} de {{max}} caracteres",
     "progress": { "section": "Sección {{current}} de {{total}}", "question": "Pregunta {{current}} de {{total}} en esta sección" },
-    "actions": { "begin": "Comenzar la evaluación", "startOver": "Comenzar de nuevo", "complete": "Completar la evaluación", "continue": "Continuar", "dismiss": "Descartar", "pause": "Guardar y salir" },
+    "actions": { "begin": "Comenzar Mi Evaluación Gratuita", "continueAssessment": "Continuar Mi Evaluación", "startOver": "Comenzar de nuevo", "complete": "Completar la evaluación", "continue": "Continuar", "dismiss": "Descartar", "pause": "Guardar y salir" },
     "confirm": {
       "startOver": "¿Comenzar de nuevo y eliminar el progreso de la evaluación guardado en este dispositivo?",
       "branchChange": "Este cambio hará que algunas preguntas posteriores dejen de aplicar y eliminará esas respuestas. ¿Continuar?"
@@ -2589,7 +2640,7 @@
       "operationally_advanced": "Operativamente Avanzado"
     },
     "confidence": { "high": "Alta", "moderate": "Moderada", "limited": "Limitada" },
-    "trust": "No se requiere una cuenta. Los resultados son privados, la información de contacto es opcional y solo se solicita después del informe completo. Esta evaluación ofrece orientación operativa, no asesoría legal, fiscal, contable, laboral ni certificación de seguridad.",
+    "trust": "Responde según cómo funciona el negocio hoy; no hay respuestas perfectas. Tu resultado aparece al completar la evaluación y no es necesario comprar SCRUB. Esta es orientación operativa, no asesoría legal, fiscal, contable, laboral ni de seguridad.",
     "continuity": {
       "title": "Conserva esta evaluación", "copy": "Recibe opcionalmente un enlace seguro para volver a este informe y hoja de ruta completos durante 60 días.", "email": "Correo electrónico", "firstName": "Nombre (opcional)", "businessName": "Nombre del negocio (opcional)",
       "marketingConsent": "También deseo recibir ocasionalmente novedades del producto o recursos operativos útiles.", "deliveryConsent": "Al enviar, autorizas a SCRUB a entregar el enlace transaccional solicitado. El consentimiento de marketing es separado y opcional.", "submit": "Enviarme un enlace seguro", "sending": "Enviando…", "success": "Tu enlace seguro fue enviado.", "failure": "No pudimos enviar el enlace. Tu informe sigue disponible en este navegador.",
