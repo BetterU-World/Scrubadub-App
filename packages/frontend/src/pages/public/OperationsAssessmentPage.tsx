@@ -308,6 +308,13 @@ export function OperationsAssessmentPage() {
     recordHistory({ scrubAssessment: true, view: changingSection ? "section" : "question", questionKey: questions[nextIndex].key });
   }
 
+  function beginAssessment() {
+    const savedQuestion = progress.currentQuestionKey && questions.some((item) => item.key === progress.currentQuestionKey)
+      ? progress.currentQuestionKey
+      : questions[0]?.key;
+    recordHistory({ scrubAssessment: true, view: "section", questionKey: savedQuestion });
+  }
+
   function goBack() {
     // Answers are written to local progress as they change. Backward navigation
     // must never be gated by forward validation or a network mutation.
@@ -349,17 +356,52 @@ export function OperationsAssessmentPage() {
 
   if (view === "intro") return (
     <AssessmentShell>
-      <div className="mx-auto max-w-2xl text-center">
-        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary-700">{t("assessment.eyebrow")}</p>
-        <h1 className="mt-3 text-3xl font-bold tracking-tight text-gray-900 sm:text-5xl">{t("assessment.title")}</h1>
-        <p className="mt-5 text-base leading-7 text-gray-600 sm:text-lg">{t("assessment.introduction")}</p>
-        <p className="mt-4 text-sm leading-6 text-gray-500">{t("assessment.trust")}</p>
-        <div className="mt-8 grid gap-3 text-left sm:grid-cols-3">
-          {["scope", "account", "local"].map((key) => <div key={key} className="rounded-2xl border border-gray-200 bg-white p-4"><Check className="h-5 w-5 text-primary-600"/><p className="mt-3 text-sm leading-6 text-gray-700">{t(`assessment.introPoints.${key}`)}</p></div>)}
-        </div>
-        <button type="button" className="btn-primary mt-8 w-full sm:w-auto sm:px-8" onClick={() => recordHistory({ scrubAssessment: true, view: "section", questionKey: questions[0]?.key })}>{t("assessment.actions.begin")}</button>
-        {Object.keys(progress.answers).length > 0 && <button type="button" className="touch-target mt-3 w-full gap-2 text-sm text-gray-600 sm:w-auto sm:ml-3" onClick={startOver}><RotateCcw className="h-4 w-4"/>{t("assessment.actions.startOver")}</button>}
-      </div>
+      <main className="mx-auto max-w-5xl">
+        <section className="mx-auto max-w-3xl py-4 text-center sm:py-10" aria-labelledby="assessment-intro-title">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary-700">{t("assessment.eyebrow")}</p>
+          <h1 id="assessment-intro-title" className="mt-4 text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">{t("assessment.title")}</h1>
+          <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-gray-600 sm:text-xl">{t("assessment.introduction")}</p>
+          <div className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm font-medium text-gray-700">
+            {["free", "duration", "noAccount"].map((key) => <span key={key} className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary-600" aria-hidden="true"/>{t(`assessment.meta.${key}`)}</span>)}
+          </div>
+          <button type="button" className="btn-primary mt-8 w-full sm:w-auto sm:px-8" onClick={beginAssessment}>{t(Object.keys(progress.answers).length ? "assessment.actions.continueAssessment" : "assessment.actions.begin")}</button>
+          <p className="mx-auto mt-5 max-w-2xl text-sm leading-6 text-gray-500">{t("assessment.trust")}</p>
+          {Object.keys(progress.answers).length > 0 && <button type="button" className="touch-target mt-3 text-sm text-gray-600" onClick={startOver}><RotateCcw className="h-4 w-4"/>{t("assessment.actions.startOver")}</button>}
+        </section>
+
+        <section className="mt-12 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-10" aria-labelledby="assessment-value-title">
+          <p className="text-sm font-semibold uppercase tracking-[0.14em] text-primary-700">{t("assessment.value.eyebrow")}</p>
+          <h2 id="assessment-value-title" className="mt-2 text-3xl font-bold text-gray-900">{t("assessment.value.title")}</h2>
+          <p className="mt-3 max-w-2xl leading-7 text-gray-600">{t("assessment.value.copy")}</p>
+          <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            {["score", "diagnosis", "scorecard", "roadmap", "steps"].map((key) => <div key={key} className="rounded-2xl bg-gray-50 p-4"><Check className="h-5 w-5 text-primary-600" aria-hidden="true"/><p className="mt-3 font-semibold leading-6 text-gray-900">{t(`assessment.value.items.${key}`)}</p></div>)}
+          </div>
+        </section>
+
+        <section className="mt-16 grid gap-8 lg:grid-cols-[1fr_1.2fr] lg:items-start" aria-labelledby="assessment-coverage-title">
+          <div><h2 id="assessment-coverage-title" className="text-3xl font-bold text-gray-900">{t("assessment.coverage.title")}</h2><p className="mt-4 leading-7 text-gray-600">{t("assessment.coverage.copy")}</p></div>
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {["scheduling", "team", "quality", "client", "financial", "growth"].map((key) => <li key={key} className="flex min-h-14 items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 font-medium text-gray-800"><CheckCircle2 className="h-5 w-5 flex-none text-primary-600" aria-hidden="true"/>{t(`assessment.coverage.items.${key}`)}</li>)}
+          </ul>
+        </section>
+
+        <section className="mt-16 rounded-3xl bg-primary-50 p-6 sm:p-10" aria-labelledby="assessment-audience-title">
+          <h2 id="assessment-audience-title" className="text-3xl font-bold text-gray-900">{t("assessment.audience.title")}</h2>
+          <p className="mt-3 max-w-3xl leading-7 text-gray-700">{t("assessment.audience.copy")}</p>
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">{["solo", "team", "models"].map((key) => <p key={key} className="rounded-2xl bg-white p-5 font-semibold leading-6 text-gray-900">{t(`assessment.audience.items.${key}`)}</p>)}</div>
+        </section>
+
+        <section className="mt-16 grid gap-8 border-b border-gray-200 pb-16 lg:grid-cols-2" aria-labelledby="assessment-expectations-title">
+          <div><h2 id="assessment-expectations-title" className="text-3xl font-bold text-gray-900">{t("assessment.expectations.title")}</h2><p className="mt-4 leading-7 text-gray-600">{t("assessment.expectations.copy")}</p></div>
+          <ul className="space-y-4">{["honest", "optional", "result"].map((key) => <li key={key} className="flex gap-3 leading-7 text-gray-700"><Check className="mt-1 h-5 w-5 flex-none text-primary-600" aria-hidden="true"/>{t(`assessment.expectations.items.${key}`)}</li>)}</ul>
+        </section>
+
+        <section className="py-16 text-center" aria-labelledby="assessment-scrub-title">
+          <h2 id="assessment-scrub-title" className="text-2xl font-bold text-gray-900">{t("assessment.scrub.title")}</h2>
+          <p className="mx-auto mt-3 max-w-3xl leading-7 text-gray-600">{t("assessment.scrub.copy")}</p>
+          <button type="button" className="btn-primary mt-7 w-full sm:w-auto sm:px-8" onClick={beginAssessment}>{t(Object.keys(progress.answers).length ? "assessment.actions.continueAssessment" : "assessment.actions.begin")}</button>
+        </section>
+      </main>
     </AssessmentShell>
   );
 

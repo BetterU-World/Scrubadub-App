@@ -35,6 +35,33 @@ describe("operations assessment public foundation", () => {
     expect(loadProgress(target)).toBeNull();
   });
 
+  it("presents the assessment value, audience, expectations, and consistent bilingual CTA", () => {
+    const en = JSON.parse(read("packages/frontend/src/i18n/en/common.json")).assessment;
+    const es = JSON.parse(read("packages/frontend/src/i18n/es/common.json")).assessment;
+    expect(en.title).toBe("See how your cleaning business is really operating.");
+    expect(en.actions.begin).toBe("Start My Free Assessment");
+    expect(es.actions.begin).toBe("Comenzar Mi Evaluación Gratuita");
+    for (const catalog of [en, es]) {
+      expect(catalog.meta.duration).toMatch(/7/);
+      expect(catalog.value.items).toHaveProperty("score");
+      expect(catalog.value.items).toHaveProperty("diagnosis");
+      expect(catalog.value.items).toHaveProperty("scorecard");
+      expect(catalog.value.items).toHaveProperty("roadmap");
+      expect(catalog.coverage.items).toHaveProperty("financial");
+      expect(catalog.audience.items).toHaveProperty("solo");
+      expect(catalog.expectations.items).toHaveProperty("optional");
+      expect(catalog.scrub.copy).toBeTruthy();
+    }
+  });
+
+  it("uses one assessment-start action while preserving saved-question continuation", () => {
+    const page = read("packages/frontend/src/pages/public/OperationsAssessmentPage.tsx");
+    expect(page.match(/onClick=\{beginAssessment\}/g)).toHaveLength(2);
+    expect(page).toContain("progress.currentQuestionKey");
+    expect(page).toContain("assessment.actions.continueAssessment");
+    expect(page).toContain('view: "section", questionKey: savedQuestion');
+  });
+
   it("routes assessment before auth guards and reserves it from slug routing", () => {
     const app = read("packages/frontend/src/App.tsx");
     expect(app.indexOf('pathname === "/assessment"')).toBeLessThan(app.indexOf("// --- GUARD 1"));
