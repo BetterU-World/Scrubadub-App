@@ -187,7 +187,7 @@ export default defineSchema({
 
   assessmentEvents: defineTable({
     attemptId: v.optional(v.id("assessmentAttempts")), eventKey: v.string(), deduplicationKey: v.string(), language: v.union(v.literal("en"), v.literal("es")),
-    metadata: v.optional(v.object({ definitionVersion: v.optional(v.number()), scoringVersion: v.optional(v.number()), reportVersion: v.optional(v.number()), roadmapVersion: v.optional(v.number()), maturityKey: v.optional(v.string()), confidenceKey: v.optional(v.string()), branchType: v.optional(v.string()), scoreBand: v.optional(v.string()) })),
+    metadata: v.optional(v.object({ definitionVersion: v.optional(v.number()), scoringVersion: v.optional(v.number()), reportVersion: v.optional(v.number()), roadmapVersion: v.optional(v.number()), maturityKey: v.optional(v.string()), confidenceKey: v.optional(v.string()), branchType: v.optional(v.string()), scoreBand: v.optional(v.string()), deviceCategory: v.optional(v.union(v.literal("mobile"), v.literal("desktop"))), sectionKey: v.optional(v.string()), questionKey: v.optional(v.string()), sessionId: v.optional(v.string()) })),
     createdAt: v.number(),
   }).index("by_deduplicationKey", ["deduplicationKey"]).index("by_attemptId", ["attemptId"]),
 

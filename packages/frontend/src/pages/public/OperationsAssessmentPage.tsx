@@ -29,6 +29,12 @@ type AssessmentHistoryState = {
 };
 const assessmentApi = (api as any).assessments;
 const continuityApi = (api as any).assessmentContinuity;
+const clarityHelperKeys: Record<string, string> = {
+  "business.primary_model": "assessment.clarity.closest",
+  "scheduling.primary_method": "assessment.clarity.mostOften",
+  "growth.primary_objective": "assessment.clarity.primaryGoal",
+  "growth.bottleneck": "assessment.clarity.greatestImpact",
+};
 
 function responseArgs(question: Question, answer: Answer | undefined) {
   if (question.kind === "text") return { questionKey: question.key, qualitativeText: typeof answer === "string" ? answer : "" };
@@ -63,6 +69,7 @@ export function OperationsAssessmentPage() {
   const generateReport = useMutation(assessmentApi.generateReport);
   const generateRoadmap = useMutation(assessmentApi.generateRoadmap);
   const openReturnLink = useMutation(continuityApi.openReturnLink);
+  const recordEvent = useMutation(continuityApi.recordEvent);
   const abandon = useMutation(assessmentApi.abandon);
   const [definition, setDefinition] = useState<Definition | null>(null);
   const [progress, setProgress] = useState<LocalAssessmentProgress>(() => loadProgress() ?? { answers: {}, language: i18n.resolvedLanguage === "es" ? "es" : "en", lastActivityAt: Date.now() });
@@ -77,6 +84,7 @@ export function OperationsAssessmentPage() {
   const progressRef = useRef(progress);
   const persistenceRef = useRef<Promise<boolean> | null>(null);
   const lastSavedRef = useRef("");
+  const sessionIdRef = useRef(randomHex().slice(0, 32));
   progressRef.current = progress;
 
   function applyHistoryState(state: AssessmentHistoryState) {
@@ -118,6 +126,14 @@ export function OperationsAssessmentPage() {
         const result = await recover({ attemptId: saved.attemptId as Id<"assessmentAttempts">, capability: saved.capability });
         if (!active) return;
         if (result) {
+          void recordEvent({
+            attemptId: saved.attemptId as Id<"assessmentAttempts">,
+            capability: saved.capability,
+            eventKey: "assessment_resumed",
+            deduplicationKey: `${saved.attemptId}:assessment_resumed:${sessionIdRef.current}`,
+            language: result.attempt.responseLanguage,
+            metadata: { sessionId: sessionIdRef.current },
+          }).catch(() => {});
           const answers: Record<string, Answer> = {};
           for (const row of result.responses) {
             if (row.responseKind === "single" && row.answerValue) answers[row.questionKey] = row.answerValue;
@@ -167,7 +183,7 @@ export function OperationsAssessmentPage() {
       window.history.replaceState({ scrubAssessment: true, view: "intro" } satisfies AssessmentHistoryState, "", window.location.href);
     }
     return () => { active = false; };
-  }, [prepare, recover, generateReport, generateRoadmap, openReturnLink, i18n, t]);
+  }, [prepare, recover, generateReport, generateRoadmap, openReturnLink, recordEvent, i18n, t]);
 
   const questions = useMemo(() => definition ? definition.questions.filter((question) => isQuestionApplicable(question, progress.answers)).sort((a, b) => {
     const sectionA = definition.sections.find((section) => section.key === a.sectionKey)?.order ?? 0;
@@ -203,6 +219,19 @@ export function OperationsAssessmentPage() {
   const sectionIndex = definition?.sections.findIndex((item) => item.key === section?.key) ?? 0;
   const sectionQuestions = questions.filter((item) => item.sectionKey === section?.key);
   const sectionQuestionIndex = sectionQuestions.findIndex((item) => item.key === question?.key);
+  const clarityHelperKey = question ? clarityHelperKeys[question.key] : undefined;
+
+  useEffect(() => {
+    if (view !== "question" || !question || !progress.attemptId) return;
+    void recordEvent({
+      attemptId: progress.attemptId as Id<"assessmentAttempts">,
+      capability: progress.capability,
+      eventKey: "assessment_progress",
+      deduplicationKey: `${progress.attemptId}:assessment_progress:${sessionIdRef.current}:${question.key}`,
+      language: progress.language,
+      metadata: { sessionId: sessionIdRef.current, sectionKey: question.sectionKey, questionKey: question.key },
+    }).catch(() => {});
+  }, [view, question?.key, progress.attemptId, progress.language, recordEvent]);
 
   function updateProgress(nextAnswers: Record<string, Answer>, currentQuestionKey = question?.key) {
     const next = { ...progressRef.current, answers: nextAnswers, currentQuestionKey, language: i18n.resolvedLanguage === "es" ? "es" as const : "en" as const, lastActivityAt: Date.now() };
@@ -250,7 +279,7 @@ export function OperationsAssessmentPage() {
         const accepted = validatedAnswers(definition, latest.answers);
         const currentPosition = definition.questions.findIndex((item) => item.key === question.key);
         const priorResponses = definition.questions.slice(0, currentPosition).filter((item) => accepted[item.key] !== undefined && isQuestionApplicable(item, accepted)).map((item) => responseArgs(item, accepted[item.key]));
-        const created = await start({ capability, browserKey: getBrowserKey(), responseLanguage: latest.language, priorResponses, firstResponse: responseArgs(question, answer) });
+        const created = await start({ capability, browserKey: getBrowserKey(), responseLanguage: latest.language, deviceCategory: window.innerWidth < 768 ? "mobile" : "desktop", sessionId: sessionIdRef.current, priorResponses, firstResponse: responseArgs(question, answer) });
         attemptId = created.attemptId;
       } else {
         const response = responseArgs(question, answer);
@@ -361,6 +390,7 @@ export function OperationsAssessmentPage() {
           <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary-700">{t("assessment.eyebrow")}</p>
           <h1 id="assessment-intro-title" className="mt-4 text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">{t("assessment.title")}</h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-gray-600 sm:text-xl">{t("assessment.introduction")}</p>
+          <p className="mx-auto mt-5 max-w-2xl rounded-2xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm font-medium leading-6 text-primary-900">{t("assessment.clarity.globalGuidance")}</p>
           <div className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm font-medium text-gray-700">
             {["free", "duration", "noAccount"].map((key) => <span key={key} className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary-600" aria-hidden="true"/>{t(`assessment.meta.${key}`)}</span>)}
           </div>
@@ -432,7 +462,8 @@ export function OperationsAssessmentPage() {
           <p className="text-sm font-medium text-gray-500">{question.required ? t("assessment.required") : t("assessment.optional")}</p>
           <h1 id="assessment-question-heading" ref={headingRef} tabIndex={-1} className="mt-2 break-words text-2xl font-bold leading-tight text-gray-900 outline-none sm:text-3xl">{t(question.promptKey)}</h1>
           {question.helpKey && <p className="mt-3 text-sm leading-6 text-gray-600">{t(question.helpKey)}</p>}
-          <fieldset className="mt-6 space-y-3" aria-labelledby="assessment-question-heading" aria-describedby={error ? "assessment-question-error" : undefined}>
+          {clarityHelperKey && <p id="assessment-choice-guidance" className="mt-3 text-sm font-medium leading-6 text-primary-800">{t(clarityHelperKey)}</p>}
+          <fieldset className="mt-6 space-y-3" aria-labelledby="assessment-question-heading" aria-describedby={[clarityHelperKey && "assessment-choice-guidance", error && "assessment-question-error"].filter(Boolean).join(" ") || undefined}>
             <legend className="sr-only">{t(question.promptKey)}</legend>
             {question.kind !== "text" && question.options?.map((item) => {
               const checked = Array.isArray(answer) ? answer.includes(item.value) : answer === item.value;

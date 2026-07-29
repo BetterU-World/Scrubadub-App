@@ -22,6 +22,8 @@ describe("assessment results admin", () => {
     expect(backend).toContain("requireSuperadminSession");
     expect(backend).toContain("getAssessmentResults");
     expect(backend).toContain("getAssessmentResultDetail");
+    expect(backend).toContain("aggregateAssessmentAnalytics");
+    expect(backend).toContain('query("assessmentEvents")');
     expect(backend).not.toContain('query("assessmentResponses")');
     expect(backend).not.toContain("capabilityHash:");
     expect(backend).not.toContain("browserKeyHash:");
@@ -35,6 +37,10 @@ describe("assessment results admin", () => {
     expect(list).toContain("TableScrollRegion");
     expect(list).toContain("resultsTableLabel");
     expect(list).toContain("searchPlaceholder");
+    expect(list).toContain("analytics.funnel");
+    expect(list).toContain("analytics.completionBehavior");
+    expect(list).toContain("analytics.resumeReturn");
+    expect(list).toContain("analytics.scrubInterest");
     expect(detail).toContain("showContinuity={false}");
     expect(detail).toContain("assessmentAdmin.privacyNote");
   });
