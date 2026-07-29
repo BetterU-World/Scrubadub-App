@@ -219,10 +219,15 @@ const eventMetadata = v.object({
   confidenceKey: v.optional(v.string()),
   branchType: v.optional(v.string()),
   scoreBand: v.optional(v.string()),
+  deviceCategory: v.optional(v.union(v.literal("mobile"), v.literal("desktop"))),
+  sectionKey: v.optional(v.string()),
+  questionKey: v.optional(v.string()),
+  sessionId: v.optional(v.string()),
 });
 export const recordEvent = mutation({
   args: {
     attemptId: v.optional(v.id("assessmentAttempts")),
+    capability: v.optional(v.string()),
     eventKey: v.string(),
     deduplicationKey: v.string(),
     language: v.union(v.literal("en"), v.literal("es")),
@@ -236,9 +241,16 @@ export const recordEvent = mutation({
     });
     if (
       !/^[a-z_]{3,40}$/.test(args.eventKey) ||
-      args.deduplicationKey.length > 160
+      args.deduplicationKey.length > 160 ||
+      (args.metadata?.sectionKey && !/^[a-z0-9_.-]{1,80}$/.test(args.metadata.sectionKey)) ||
+      (args.metadata?.questionKey && !/^[a-z0-9_.-]{1,120}$/.test(args.metadata.questionKey)) ||
+      (args.metadata?.sessionId && !/^[a-f0-9]{16,64}$/i.test(args.metadata.sessionId))
     )
       return { recorded: false };
+    if (args.attemptId && ["assessment_resumed", "assessment_progress", "scrub_support_cta_clicked"].includes(args.eventKey)) {
+      const attempt = await ctx.db.get(args.attemptId);
+      if (!attempt || !args.capability || attempt.capabilityHash !== (await hashTokenForLookup(args.capability))) return { recorded: false };
+    }
     const existing = await ctx.db
       .query("assessmentEvents")
       .withIndex("by_deduplicationKey", (q) =>
@@ -246,7 +258,14 @@ export const recordEvent = mutation({
       )
       .unique();
     if (existing) return { recorded: false };
-    await ctx.db.insert("assessmentEvents", { ...args, createdAt: Date.now() });
+    await ctx.db.insert("assessmentEvents", {
+      attemptId: args.attemptId,
+      eventKey: args.eventKey,
+      deduplicationKey: args.deduplicationKey,
+      language: args.language,
+      metadata: args.metadata,
+      createdAt: Date.now(),
+    });
     return { recorded: true };
   },
 });

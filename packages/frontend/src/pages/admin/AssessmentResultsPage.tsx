@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { TableScrollRegion } from "@/components/ui/TableScrollRegion";
-import { BarChart3, CheckCircle2, Eye, Mail, Search, Sparkles, Target, Users } from "lucide-react";
+import { BarChart3, CheckCircle2, Clock3, Eye, Laptop, Mail, RotateCcw, Search, Sparkles, Target, Users } from "lucide-react";
 
 type Localized = { en: string; es: string };
 type Area = { sectionKey: string; title: Localized };
@@ -73,6 +73,10 @@ export function AssessmentResultsPage() {
   if (!canAccess) return null;
 
   const stats = data.stats;
+  const analytics = data.analytics;
+  const duration = (milliseconds: number | null) => milliseconds === null
+    ? t("assessmentAdmin.notAvailable")
+    : t("assessmentAdmin.analytics.minutes", { count: Math.round(milliseconds / 6000) / 10 });
   return (
     <div className="min-w-0">
       <PageHeader
@@ -92,6 +96,52 @@ export function AssessmentResultsPage() {
           <Metric icon={Mail} label={t("assessmentAdmin.contactCaptured")} value={stats.contactCaptures} detail={t("assessmentAdmin.captureAndInterest", { rate: stats.contactCaptureRate, count: stats.scrubInterest })} />
         </div>
       </section>
+
+      <div className="mt-8 space-y-6">
+        <AnalyticsSection icon={BarChart3} title={t("assessmentAdmin.analytics.funnel")}>
+          <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <AnalyticsFact label={t("assessmentAdmin.starts")} value={analytics.funnel.starts} />
+            <AnalyticsFact label={t("assessmentAdmin.completions")} value={analytics.funnel.completions} detail={`${analytics.funnel.completionRate}%`} />
+            <AnalyticsFact label={t("assessmentAdmin.analytics.abandoned")} value={analytics.funnel.abandoned} />
+            <AnalyticsFact label={t("assessmentAdmin.analytics.inProgress")} value={analytics.funnel.inProgress} />
+          </dl>
+          {analytics.daily.length > 0 && <div className="mt-6 overflow-x-auto border-t border-gray-100 pt-5"><h3 className="mb-3 text-sm font-semibold text-gray-800">{t("assessmentAdmin.analytics.dailyActivity")}</h3><table className="w-full min-w-[520px] text-left text-sm"><thead className="text-xs uppercase tracking-wide text-gray-500"><tr><th className="pb-2">{t("assessmentAdmin.analytics.day")}</th><th className="pb-2">{t("assessmentAdmin.starts")}</th><th className="pb-2">{t("assessmentAdmin.completions")}</th><th className="pb-2">{t("assessmentAdmin.analytics.rate")}</th></tr></thead><tbody className="divide-y divide-gray-100">{analytics.daily.map((row) => <tr key={row.day}><td className="py-2 font-medium text-gray-700">{row.day}</td><td>{row.starts}</td><td>{row.completions}</td><td>{row.completionRate}%</td></tr>)}</tbody></table></div>}
+        </AnalyticsSection>
+
+        <AnalyticsSection icon={Clock3} title={t("assessmentAdmin.analytics.completionBehavior")}>
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,0.7fr)_minmax(0,1.3fr)]">
+            <dl className="grid grid-cols-2 gap-4">
+              <AnalyticsFact label={t("assessmentAdmin.analytics.averageTime")} value={duration(analytics.completionBehavior.averageDurationMs)} />
+              <AnalyticsFact label={t("assessmentAdmin.analytics.medianTime")} value={duration(analytics.completionBehavior.medianDurationMs)} />
+            </dl>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <RankedList title={t("assessmentAdmin.analytics.abandonmentQuestions")} rows={analytics.completionBehavior.abandonmentByQuestion.map((row) => ({ ...row, label: t(`assessment.questions.${row.key}.prompt`, { defaultValue: row.key }) }))} empty={t("assessmentAdmin.analytics.noTrackedData")} />
+              <RankedList title={t("assessmentAdmin.analytics.abandonmentSections")} rows={analytics.completionBehavior.abandonmentBySection.map((row) => ({ ...row, label: t(`assessment.sections.${row.key}.title`, { defaultValue: row.key }) }))} empty={t("assessmentAdmin.analytics.noTrackedData")} />
+            </div>
+          </div>
+        </AnalyticsSection>
+
+        <div className="grid gap-6 xl:grid-cols-2">
+          <AnalyticsSection icon={Laptop} title={t("assessmentAdmin.analytics.device")}>
+            <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs uppercase tracking-wide text-gray-500"><tr><th className="pb-3">{t("assessmentAdmin.analytics.device")}</th><th className="pb-3">{t("assessmentAdmin.starts")}</th><th className="pb-3">{t("assessmentAdmin.completions")}</th><th className="pb-3">{t("assessmentAdmin.analytics.rate")}</th></tr></thead><tbody className="divide-y divide-gray-100">{analytics.devices.map((row) => <tr key={row.deviceCategory}><td className="py-3 font-medium text-gray-800">{t(`assessmentAdmin.analytics.${row.deviceCategory}`)}</td><td>{row.starts}</td><td>{row.completions}</td><td>{row.completionRate}%</td></tr>)}</tbody></table></div>
+          </AnalyticsSection>
+          <AnalyticsSection icon={RotateCcw} title={t("assessmentAdmin.analytics.resumeReturn")}>
+            <dl className="grid grid-cols-2 gap-4">
+              <AnalyticsFact label={t("assessmentAdmin.analytics.resumed")} value={analytics.continuity.resumedAttempts} detail={t("assessmentAdmin.analytics.completedPercent", { rate: analytics.continuity.completedResumeRate })} />
+              <AnalyticsFact label={t("assessmentAdmin.analytics.secureReturns")} value={analytics.continuity.secureReturnAttempts} detail={t("assessmentAdmin.analytics.completedPercent", { rate: analytics.continuity.secureReturnRate })} />
+              <AnalyticsFact label={t("assessmentAdmin.analytics.averageSessions")} value={analytics.continuity.averageSessionsPerCompleted ?? t("assessmentAdmin.notAvailable")} detail={t("assessmentAdmin.analytics.trackedCompletions", { count: analytics.continuity.sessionTrackedCompletions })} />
+            </dl>
+          </AnalyticsSection>
+        </div>
+
+        <AnalyticsSection icon={Target} title={t("assessmentAdmin.analytics.scrubInterest")}>
+          <dl className="grid gap-4 sm:grid-cols-3">
+            <AnalyticsFact label={t("assessmentAdmin.analytics.ctaClicks")} value={analytics.conversion.ctaClickAttempts} detail={`${analytics.conversion.ctaClickThroughRate}% CTR`} />
+            <AnalyticsFact label={t("assessmentAdmin.analytics.interestSubmissions")} value={analytics.conversion.interestSubmissions} detail={`${analytics.conversion.interestSubmissionRate}%`} />
+            <AnalyticsFact label={t("assessmentAdmin.analytics.associatedInterest")} value={stats.scrubInterest} detail={t("assessmentAdmin.analytics.associatedInterestCopy")} />
+          </dl>
+        </AnalyticsSection>
+      </div>
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <AreaSummary icon={Target} title={t("assessmentAdmin.commonPriorities")} areas={data.commonPriorityAreas} language={language} empty={t("assessmentAdmin.noCompleted")} />
@@ -205,6 +255,15 @@ function Metric({ icon: Icon, label, value, detail }: { icon: typeof Users; labe
     <p className="mt-2 text-3xl font-bold text-gray-900">{value}</p>
     {detail && <p className="mt-1 text-xs leading-5 text-gray-500">{detail}</p>}
   </div>;
+}
+function AnalyticsSection({ icon: Icon, title, children }: { icon: typeof Users; title: string; children: React.ReactNode }) {
+  return <section className="card"><h2 className="mb-5 flex items-center gap-2 text-lg font-semibold text-gray-900"><Icon className="h-5 w-5 text-primary-600" aria-hidden="true" />{title}</h2>{children}</section>;
+}
+function AnalyticsFact({ label, value, detail }: { label: string; value: number | string; detail?: string }) {
+  return <div><dt className="text-xs font-medium uppercase tracking-wide text-gray-500">{label}</dt><dd className="mt-1 text-2xl font-bold text-gray-900">{value}</dd>{detail && <dd className="mt-1 text-xs text-gray-500">{detail}</dd>}</div>;
+}
+function RankedList({ title, rows, empty }: { title: string; rows: Array<{ key: string; label: string; count: number }>; empty: string }) {
+  return <div><h3 className="text-sm font-semibold text-gray-800">{title}</h3>{rows.length ? <ol className="mt-3 space-y-2">{rows.map((row) => <li key={row.key} className="flex items-start justify-between gap-3 text-sm"><span className="text-gray-600">{row.label}</span><span className="rounded-full bg-gray-100 px-2 py-0.5 font-semibold text-gray-700">{row.count}</span></li>)}</ol> : <p className="mt-3 text-sm text-gray-500">{empty}</p>}</div>;
 }
 function AreaSummary({ icon: Icon, title, areas, language, empty }: { icon: typeof Target; title: string; areas: Array<Area & { count: number }>; language: "en" | "es"; empty: string }) {
   return <section className="card">

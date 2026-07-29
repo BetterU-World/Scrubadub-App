@@ -18,6 +18,9 @@ export function AssessmentContinuity({
   const interest = useMutation(
     (api as any).assessmentContinuity.submitInterest,
   );
+  const recordEvent = useMutation(
+    (api as any).assessmentContinuity.recordEvent,
+  );
   const [form, setForm] = useState({
     email: "",
     firstName: "",
@@ -83,6 +86,13 @@ export function AssessmentContinuity({
     }
   }
   async function followScrubSupport(event: React.MouseEvent<HTMLAnchorElement>) {
+    void recordEvent({
+      attemptId: attemptId as Id<"assessmentAttempts">,
+      capability,
+      eventKey: "scrub_support_cta_clicked",
+      deduplicationKey: `${attemptId}:scrub_support_cta_clicked`,
+      language: i18n.resolvedLanguage === "es" ? "es" : "en",
+    }).catch(() => {});
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
       void saveInterest(true);
       return;

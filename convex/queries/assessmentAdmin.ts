@@ -2,6 +2,7 @@ import { query } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { requireSuperadminSession } from "../lib/sessionAuth";
+import { aggregateAssessmentAnalytics } from "../lib/assessmentAnalytics";
 
 const SCAN_CAP = 10_000;
 const RECENT_LIMIT = 100;
@@ -94,13 +95,14 @@ export const getAssessmentResults = query({
   handler: async (ctx, args) => {
     await requireSuperadminSession(ctx, args.sessionToken, args.userId);
 
-    const [allAttempts, recentCompleted, prospectsByAttempt] = await Promise.all([
+    const [allAttempts, recentCompleted, allEvents, prospectsByAttempt] = await Promise.all([
       ctx.db.query("assessmentAttempts").take(SCAN_CAP),
       ctx.db
         .query("assessmentAttempts")
         .withIndex("by_status_lastActivityAt", (q) => q.eq("status", "completed"))
         .order("desc")
         .take(RECENT_LIMIT),
+      ctx.db.query("assessmentEvents").take(SCAN_CAP),
       prospectMap(ctx),
     ]);
 
@@ -120,7 +122,8 @@ export const getAssessmentResults = query({
 
     return {
       generatedAt: Date.now(),
-      scanCapped: allAttempts.length >= SCAN_CAP,
+      scanCapped: allAttempts.length >= SCAN_CAP || allEvents.length >= SCAN_CAP,
+      analytics: aggregateAssessmentAnalytics(activeAttempts, allEvents),
       stats: {
         starts: activeAttempts.length,
         completions: completed.length,

@@ -147,6 +147,8 @@ export const start = mutation({
     capability: v.string(),
     browserKey: v.string(),
     responseLanguage: languageValidator,
+    deviceCategory: v.optional(v.union(v.literal("mobile"), v.literal("desktop"))),
+    sessionId: v.optional(v.string()),
     priorResponses: v.optional(v.array(responseInputValidator)),
     firstResponse: responseInputValidator,
   },
@@ -194,7 +196,8 @@ export const start = mutation({
     for (const { question, normalized } of normalizedResponses) if (normalized.answerValue || normalized.answerValues?.length || normalized.qualitativeText) await ctx.db.insert("assessmentResponses", { attemptId, questionKey: question.key, sectionKey: question.sectionKey, categoryKey: question.categoryKey, ...normalized, answeredAt: now, updatedAt: now });
     const counts = await cleanupAndCounts(ctx, (await ctx.db.get(attemptId))!, definition);
     await ctx.db.patch(attemptId, counts);
-    await recordMilestone(ctx, (await ctx.db.get(attemptId))!, "assessment_started", { definitionVersion: definition.definitionVersion, branchType: answers["business.team_size"] === "solo" ? "solo" : answers["business.team_size"] ? "team" : undefined });
+    const sessionId = args.sessionId && /^[a-f0-9]{16,64}$/i.test(args.sessionId) ? args.sessionId : undefined;
+    await recordMilestone(ctx, (await ctx.db.get(attemptId))!, "assessment_started", { definitionVersion: definition.definitionVersion, branchType: answers["business.team_size"] === "solo" ? "solo" : answers["business.team_size"] ? "team" : undefined, deviceCategory: args.deviceCategory, sessionId });
     return { attemptId };
   },
 });
