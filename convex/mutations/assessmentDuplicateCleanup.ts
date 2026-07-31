@@ -75,7 +75,7 @@ async function collectEvidence(ctx: any) {
   return { attempts, evidence, scanCapped: attempts.length >= SCAN_CAP || childScanCapped };
 }
 
-async function classify(ctx: any, reviewedSurvivor?: AttemptId) {
+async function classify(ctx: any, reviewedSurvivor?: AttemptId, deleteAllUnfinished = false) {
   const { attempts, evidence, scanCapped } = await collectEvidence(ctx);
   const browserGroupSizes = new Map<string, number>();
   const capabilityGroupSizes = new Map<string, number>();
@@ -91,16 +91,17 @@ async function classify(ctx: any, reviewedSurvivor?: AttemptId) {
     const resumeEventCount = events.filter((event) => event.eventKey === "assessment_resumed").length;
     const nonBaselineEventCount = events.filter((event) => !["assessment_started", "assessment_progress", "assessment_resumed"].includes(event.eventKey)).length;
     const hasResultVersionEvidence = Boolean(attempt.scoringVersion || attempt.reportContentVersion || attempt.confidenceResult);
-    const protectedReasons = [
+    const absoluteProtectedReasons = [
       attempt.status === "completed" ? "completed_status" : null,
       attempt.completedAt ? "completion_timestamp" : null,
       attempt.completionSnapshot ? "completion_snapshot" : null,
       attempt.reportSnapshot ? "report_snapshot" : null,
       attempt.roadmapSnapshot ? "roadmap_snapshot" : null,
-      prospects.length ? "contact_capture" : null,
       tokens.length ? "report_token" : null,
       hasResultVersionEvidence ? "result_version_evidence" : null,
     ].filter((reason): reason is string => Boolean(reason));
+    const absoluteProtection = absoluteProtectedReasons.length > 0;
+    const protectedReasons = [...absoluteProtectedReasons, ...(prospects.length && !deleteAllUnfinished ? ["contact_capture"] : [])];
     const protectedEvidence = protectedReasons.length > 0;
     const meaningful = protectedEvidence || distinctResponseCount > 1 || responseModified || progressEventCount > 0 || resumeEventCount > 0 || (attempt.status === "in_progress" && attempt.lastActivityAt > attempt.startedAt);
     return {
@@ -115,34 +116,40 @@ async function classify(ctx: any, reviewedSurvivor?: AttemptId) {
       resumeEventCount,
       nonBaselineEventCount,
       protectedReasons,
+      absoluteProtectedReasons,
+      absoluteProtection,
       protectedEvidence,
       meaningful,
     };
   });
 
   const meaningfulInProgress = evaluated.filter((row) => row.attempt.status === "in_progress" && row.meaningful && !row.protectedEvidence);
-  const reviewed = reviewedSurvivor ? meaningfulInProgress.find((row) => row.attempt._id === reviewedSurvivor) : undefined;
-  const automaticSurvivor = !reviewedSurvivor && meaningfulInProgress.length === 1 ? meaningfulInProgress[0] : undefined;
+  const reviewed = !deleteAllUnfinished && reviewedSurvivor ? meaningfulInProgress.find((row) => row.attempt._id === reviewedSurvivor) : undefined;
+  const automaticSurvivor = !deleteAllUnfinished && !reviewedSurvivor && meaningfulInProgress.length === 1 ? meaningfulInProgress[0] : undefined;
   const survivor = reviewed ?? automaticSurvivor;
   const blockingReasons: string[] = [];
   if (scanCapped) blockingReasons.push("Assessment cleanup scan reached its safety cap");
-  if (reviewedSurvivor && !reviewed) blockingReasons.push("Reviewed survivor is missing, protected, or not a meaningful in-progress candidate");
-  if (!reviewedSurvivor && meaningfulInProgress.length > 1) blockingReasons.push("Multiple meaningful in-progress candidates require a reviewed survivor");
-  if (!reviewedSurvivor && meaningfulInProgress.length === 0) blockingReasons.push("No legitimate meaningful in-progress assessment could be identified");
-  for (const row of evaluated) {
-    if (row.attempt.status === "abandoned" && row.meaningful) {
-      blockingReasons.push(`Meaningful abandoned assessment requires manual review: ${row.attempt._id}`);
+  if (deleteAllUnfinished && reviewedSurvivor) blockingReasons.push("Delete-all-unfinished policy cannot be combined with a preserved survivor");
+  if (!deleteAllUnfinished) {
+    if (reviewedSurvivor && !reviewed) blockingReasons.push("Reviewed survivor is missing, protected, or not a meaningful in-progress candidate");
+    if (!reviewedSurvivor && meaningfulInProgress.length > 1) blockingReasons.push("Multiple meaningful in-progress candidates require a reviewed survivor");
+    if (!reviewedSurvivor && meaningfulInProgress.length === 0) blockingReasons.push("No legitimate meaningful in-progress assessment could be identified");
+    for (const row of evaluated) {
+      if (row.attempt.status === "abandoned" && row.meaningful) {
+        blockingReasons.push(`Meaningful abandoned assessment requires manual review: ${row.attempt._id}`);
+      }
     }
   }
 
   const proposed = evaluated.filter((row) => {
+    if (deleteAllUnfinished) return !row.absoluteProtection && ["in_progress", "abandoned"].includes(row.attempt.status);
     if (row.protectedEvidence || row.attempt._id === survivor?.attempt._id) return false;
     if (row.attempt.status === "abandoned") return !row.meaningful && row.distinctResponseCount <= 1 && row.nonBaselineEventCount === 0;
     if (row.attempt.status !== "in_progress") return false;
     if (reviewedSurvivor && row.meaningful) return true;
     return !row.meaningful && row.distinctResponseCount <= 1 && row.nonBaselineEventCount === 0;
   });
-  if (proposed.some((row) => row.protectedEvidence)) blockingReasons.push("A proposed deletion contains protected evidence");
+  if (proposed.some((row) => row.absoluteProtection)) blockingReasons.push("A proposed deletion contains absolute completion protection");
 
   const proposedIds = proposed.map((row) => row.attempt._id);
   const proposedSet = new Set(proposedIds.map(String));
@@ -163,7 +170,10 @@ async function classify(ctx: any, reviewedSurvivor?: AttemptId) {
     const isSurvivor = row.attempt._id === survivor?.attempt._id;
     let classification = "preserve_other";
     let reason = "Status is outside the one-time cleanup scope";
-    if (row.protectedEvidence) {
+    if (row.absoluteProtection) {
+      classification = "preserve_protected";
+      reason = `Absolute completion protection: ${row.absoluteProtectedReasons.join(", ")}`;
+    } else if (row.protectedEvidence) {
       classification = "preserve_protected";
       reason = `Protected evidence: ${row.protectedReasons.join(", ")}`;
     } else if (isSurvivor) {
@@ -171,7 +181,7 @@ async function classify(ctx: any, reviewedSurvivor?: AttemptId) {
       reason = reviewedSurvivor ? "Explicitly reviewed meaningful in-progress survivor" : "Only meaningful in-progress survivor";
     } else if (isProposed) {
       classification = "delete_duplicate";
-      reason = row.meaningful ? "Explicit survivor selection identifies this historical in-progress record as duplicate" : row.attempt.status === "abandoned" ? "Baseline-only abandoned duplicate" : "Baseline-only in-progress duplicate";
+      reason = deleteAllUnfinished ? "Explicit delete-all-unfinished policy" : row.meaningful ? "Explicit survivor selection identifies this historical in-progress record as duplicate" : row.attempt.status === "abandoned" ? "Baseline-only abandoned duplicate" : "Baseline-only in-progress duplicate";
     } else if (row.meaningful) {
       classification = "preserve_meaningful";
       reason = "Meaningful progress requires preservation or manual review";
@@ -229,6 +239,7 @@ async function classify(ctx: any, reviewedSurvivor?: AttemptId) {
     rateLimitsByAttempt,
     report: {
       totalAssessmentRecords: attempts.length,
+      deleteAllUnfinished,
       blocked: blockingReasons.length > 0,
       blockingReasons,
       meaningfulInProgressCandidateIds: meaningfulInProgress.map((row) => row.attempt._id),
@@ -250,12 +261,13 @@ export const cleanup = mutation({
     userId: v.id("users"),
     sessionToken: v.string(),
     preserveInProgressAttemptId: v.optional(v.id("assessmentAttempts")),
+    deleteAllUnfinished: v.optional(v.boolean()),
     confirm: v.optional(v.string()),
     approvedAttemptIds: v.optional(v.array(v.id("assessmentAttempts"))),
   },
   handler: async (ctx, args) => {
     await authenticateWithoutSessionTouch(ctx, args.sessionToken, args.userId);
-    const classification = await classify(ctx, args.preserveInProgressAttemptId);
+    const classification = await classify(ctx, args.preserveInProgressAttemptId, args.deleteAllUnfinished === true);
     if (args.mode === "dry_run") return { mode: "dry_run" as const, ...classification.report };
 
     if (args.confirm !== CONFIRMATION) throw new Error("Exact cleanup confirmation is required");
@@ -266,7 +278,7 @@ export const cleanup = mutation({
     const approvedSet = new Set(args.approvedAttemptIds.map(String));
     for (const row of classification.evaluated) {
       if (!approvedSet.has(String(row.attempt._id))) continue;
-      if (row.protectedEvidence || row.attempt.status === "completed" || row.attempt.completedAt) {
+      if (row.absoluteProtection || row.attempt.status === "completed" || row.attempt.completedAt) {
         throw new Error(`Protected assessment cannot be deleted: ${row.attempt._id}`);
       }
     }
@@ -292,6 +304,7 @@ export const cleanup = mutation({
     const remaining = classification.attempts.filter((attempt) => !approvedSet.has(String(attempt._id)));
     return {
       mode: "confirmed" as const,
+      deleteAllUnfinished: args.deleteAllUnfinished === true,
       deletedAttemptIds: args.approvedAttemptIds,
       preservedAttemptIds: remaining.map((attempt) => attempt._id),
       deletedCounts,

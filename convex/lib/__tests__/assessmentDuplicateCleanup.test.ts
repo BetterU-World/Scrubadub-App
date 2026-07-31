@@ -87,12 +87,12 @@ async function prospect(s: TestBackend, attemptId: Id<"assessmentAttempts">) {
   }));
 }
 
-const dryRun = (s: TestBackend, preserveInProgressAttemptId?: Id<"assessmentAttempts">) => s.t.mutation(cleanupApi, {
-  mode: "dry_run", userId: s.founder, sessionToken: SESSION_TOKEN, preserveInProgressAttemptId,
+const dryRun = (s: TestBackend, preserveInProgressAttemptId?: Id<"assessmentAttempts">, deleteAllUnfinished = false) => s.t.mutation(cleanupApi, {
+  mode: "dry_run", userId: s.founder, sessionToken: SESSION_TOKEN, preserveInProgressAttemptId, deleteAllUnfinished,
 });
 
-const confirmed = (s: TestBackend, approvedAttemptIds: Id<"assessmentAttempts">[], preserveInProgressAttemptId?: Id<"assessmentAttempts">, confirm = "DELETE_DUPLICATE_ASSESSMENTS") => s.t.mutation(cleanupApi, {
-  mode: "confirmed", userId: s.founder, sessionToken: SESSION_TOKEN, preserveInProgressAttemptId, confirm, approvedAttemptIds,
+const confirmed = (s: TestBackend, approvedAttemptIds: Id<"assessmentAttempts">[], preserveInProgressAttemptId?: Id<"assessmentAttempts">, confirm = "DELETE_DUPLICATE_ASSESSMENTS", deleteAllUnfinished = false) => s.t.mutation(cleanupApi, {
+  mode: "confirmed", userId: s.founder, sessionToken: SESSION_TOKEN, preserveInProgressAttemptId, deleteAllUnfinished, confirm, approvedAttemptIds,
 });
 
 async function tableCounts(s: TestBackend) {
@@ -200,6 +200,56 @@ describe("one-time assessment duplicate cleanup", () => {
     expect(report.blocked).toBe(true);
     expect(report.blockingReasons.join(" ")).toContain(String(abandoned));
     expect(report.proposedDeletionIds).not.toContain(abandoned);
+  });
+
+  it("deletes every unfinished assessment only under the explicit delete-all policy", async () => {
+    const s = await backend();
+    const completed = await Promise.all([1, 2, 3].map((offset) => attempt(s, { status: "completed", completedAt: s.now + offset })));
+    const meaningful = await attempt(s, { meaningful: true });
+    await response(s, meaningful);
+    await response(s, meaningful, "business.team_size");
+    const withContact = await attempt(s);
+    await response(s, withContact);
+    await prospect(s, withContact);
+    const abandoned = await attempt(s, { status: "abandoned" });
+    await response(s, abandoned);
+    await response(s, abandoned, "business.team_size");
+
+    const conservative = await dryRun(s);
+    expect(conservative.proposedDeletionIds).not.toContain(meaningful);
+    expect(conservative.proposedDeletionIds).not.toContain(withContact);
+    expect(conservative.blocked).toBe(true);
+
+    const reviewed = await dryRun(s, undefined, true);
+    expect(reviewed.blocked).toBe(false);
+    expect(reviewed.deleteAllUnfinished).toBe(true);
+    expect(new Set(reviewed.proposedDeletionIds)).toEqual(new Set([meaningful, withContact, abandoned]));
+    expect(reviewed.attempts.find((row: any) => row.attemptId === withContact)).toMatchObject({ hasProspect: true, hasEmail: true, classification: "delete_duplicate" });
+    expect(reviewed.projectedFunnel).toEqual({ starts: 3, completed: 3, inProgress: 0, abandoned: 0 });
+
+    const beforeMismatch = await tableCounts(s);
+    await expect(confirmed(s, reviewed.proposedDeletionIds, undefined, "DELETE_DUPLICATE_ASSESSMENTS", false)).rejects.toThrow();
+    expect(await tableCounts(s)).toEqual(beforeMismatch);
+
+    const result = await confirmed(s, reviewed.proposedDeletionIds, undefined, "DELETE_DUPLICATE_ASSESSMENTS", true);
+    expect(result.deleteAllUnfinished).toBe(true);
+    expect(result.finalFunnel).toEqual({ starts: 3, completed: 3, inProgress: 0, abandoned: 0 });
+    expect(new Set(result.preservedAttemptIds)).toEqual(new Set(completed));
+  });
+
+  it("keeps completed and result-bearing attempts absolutely protected in delete-all mode", async () => {
+    const s = await backend();
+    const completed = await attempt(s, { status: "completed", completedAt: s.now + 1 });
+    const resultBearing = await attempt(s, { scoringVersion: 1, report: true, roadmap: true });
+    const unfinished = await attempt(s, { meaningful: true });
+    await response(s, unfinished);
+    await response(s, unfinished, "business.team_size");
+
+    const report = await dryRun(s, undefined, true);
+    expect(report.blocked).toBe(false);
+    expect(report.proposedDeletionIds).toEqual([unfinished]);
+    expect(report.preservedIds).toEqual(expect.arrayContaining([completed, resultBearing]));
+    expect(report.attempts.find((row: any) => row.attemptId === resultBearing).reason).toContain("Absolute completion protection");
   });
 
   it("makes dry runs and rejected confirmations write nothing", async () => {
