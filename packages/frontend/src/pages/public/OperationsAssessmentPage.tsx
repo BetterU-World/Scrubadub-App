@@ -275,7 +275,14 @@ export function OperationsAssessmentPage() {
       let attemptId = latest.attemptId;
       let capability = latest.capability;
       if (!attemptId) {
-        capability = randomHex();
+        // Persist the creation key before the mutation. If the request succeeds but
+        // the page reloads before its response arrives, the retry must use the same
+        // key so the server returns the original assessment instead of creating one.
+        capability = capability ?? randomHex();
+        const pendingCreation = { ...latest, capability, lastActivityAt: Date.now() };
+        setProgress(pendingCreation);
+        progressRef.current = pendingCreation;
+        saveProgress(pendingCreation);
         const accepted = validatedAnswers(definition, latest.answers);
         const currentPosition = definition.questions.findIndex((item) => item.key === question.key);
         const priorResponses = definition.questions.slice(0, currentPosition).filter((item) => accepted[item.key] !== undefined && isQuestionApplicable(item, accepted)).map((item) => responseArgs(item, accepted[item.key]));

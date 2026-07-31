@@ -27,6 +27,24 @@ describe("assessment rate-limit policy", () => {
     expect(rows.find((row) => row.key.includes("creation"))?.count).toBe(1);
   });
 
+  it("keeps one assessment and one start event across creation retries", async () => {
+    const t = backend();
+    const capability = token(3);
+    const args = { capability, browserKey: token(4), responseLanguage: "en" as const, firstResponse: { questionKey: "business.primary_model", answerValue: "mixed" } };
+    const created = await t.mutation(assessmentApi.start, args);
+
+    expect(await t.mutation(assessmentApi.start, args)).toEqual(created);
+    await t.mutation(assessmentApi.recover, { attemptId: created.attemptId, capability });
+    await t.mutation(assessmentApi.saveResponse, { attemptId: created.attemptId, capability, responseLanguage: "en", response: { questionKey: "business.team_size", answerValue: "5_10" } });
+
+    const beforeCompletion = await t.run(async (ctx) => ({
+      attempts: await ctx.db.query("assessmentAttempts").collect(),
+      starts: (await ctx.db.query("assessmentEvents").collect()).filter((event) => event.eventKey === "assessment_started"),
+    }));
+    expect(beforeCompletion.attempts).toHaveLength(1);
+    expect(beforeCompletion.starts).toHaveLength(1);
+  });
+
   it("keeps resume and analytics outside the response-write bucket and isolates attempts", async () => {
     const t = backend();
     for (const seed of [10, 20]) {

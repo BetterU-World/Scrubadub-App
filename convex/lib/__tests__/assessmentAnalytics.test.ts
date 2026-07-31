@@ -31,5 +31,31 @@ describe("assessment analytics aggregation", () => {
     ]);
     expect(result.continuity).toMatchObject({ resumedAttempts: 1, completedResumed: 1, completedResumeRate: 50, secureReturnAttempts: 1, averageSessionsPerCompleted: 1.5 });
     expect(result.conversion).toMatchObject({ ctaClickAttempts: 1, ctaClickThroughRate: 50, interestSubmissions: 1, interestSubmissionRate: 50 });
+    expect(result.funnel.starts).toBe(result.funnel.completions + result.funnel.inProgress + result.funnel.abandoned);
+  });
+
+  it("partitions every assessment record exactly once even when legacy completion data is incomplete", () => {
+    const result = aggregateAssessmentAnalytics([
+      { _id: "completed", status: "completed", startedAt: 1_000 },
+      { _id: "active", status: "in_progress", startedAt: 2_000 },
+      { _id: "abandoned", status: "abandoned", startedAt: 3_000 },
+      { _id: "deleted", status: "deleted", startedAt: 4_000 },
+    ], []);
+
+    expect(result.funnel).toMatchObject({ starts: 3, completions: 1, inProgress: 1, abandoned: 1 });
+    expect(result.funnel.starts).toBe(result.funnel.completions + result.funnel.inProgress + result.funnel.abandoned);
+    expect(result.completionBehavior.averageDurationMs).toBeNull();
+  });
+
+  it("moves an existing record from in progress to completed without adding a start", () => {
+    const inProgress = aggregateAssessmentAnalytics([
+      { _id: "same-attempt", status: "in_progress", startedAt: 1_000 },
+    ], []);
+    const completed = aggregateAssessmentAnalytics([
+      { _id: "same-attempt", status: "completed", startedAt: 1_000, completedAt: 2_000 },
+    ], []);
+
+    expect(inProgress.funnel).toMatchObject({ starts: 1, completions: 0, inProgress: 1, abandoned: 0 });
+    expect(completed.funnel).toMatchObject({ starts: 1, completions: 1, inProgress: 0, abandoned: 0 });
   });
 });
