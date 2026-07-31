@@ -10,7 +10,7 @@ import { approvedIdsFromLatestDryRun, canConfirmAssessmentCleanup } from "./asse
 
 const read = (path: string) => readFileSync(resolve(process.cwd(), path), "utf8");
 const report = (overrides: Partial<CleanupDryRun> = {}): CleanupDryRun => ({
-  mode: "dry_run", totalAssessmentRecords: 2, blocked: false, blockingReasons: [],
+  mode: "dry_run", totalAssessmentRecords: 2, deleteAllUnfinished: false, blocked: false, blockingReasons: [],
   meaningfulInProgressCandidateIds: [], remainingMeaningfulInProgressAttemptId: null,
   preservedIds: ["preserved" as any], proposedDeletionIds: ["delete-a" as any, "delete-b" as any],
   currentFunnel: { starts: 2, completed: 0, inProgress: 2, abandoned: 0 },
@@ -30,11 +30,13 @@ describe("temporary assessment cleanup superadmin UI", () => {
   });
 
   it("requires an unblocked current dry run and the exact confirmation phrase", () => {
-    expect(canConfirmAssessmentCleanup(report(), "DELETE_DUPLICATE_ASSESSMENTS")).toBe(true);
-    expect(canConfirmAssessmentCleanup(report(), "delete_duplicate_assessments")).toBe(false);
-    expect(canConfirmAssessmentCleanup(report({ blocked: true }), "DELETE_DUPLICATE_ASSESSMENTS")).toBe(false);
-    expect(canConfirmAssessmentCleanup(report({ proposedDeletionIds: [] }), "DELETE_DUPLICATE_ASSESSMENTS")).toBe(false);
-    expect(canConfirmAssessmentCleanup(null, "DELETE_DUPLICATE_ASSESSMENTS")).toBe(false);
+    expect(canConfirmAssessmentCleanup(report(), "DELETE_DUPLICATE_ASSESSMENTS", false)).toBe(true);
+    expect(canConfirmAssessmentCleanup(report(), "delete_duplicate_assessments", false)).toBe(false);
+    expect(canConfirmAssessmentCleanup(report({ blocked: true }), "DELETE_DUPLICATE_ASSESSMENTS", false)).toBe(false);
+    expect(canConfirmAssessmentCleanup(report({ proposedDeletionIds: [] }), "DELETE_DUPLICATE_ASSESSMENTS", false)).toBe(false);
+    expect(canConfirmAssessmentCleanup(report({ deleteAllUnfinished: true }), "DELETE_DUPLICATE_ASSESSMENTS", false)).toBe(false);
+    expect(canConfirmAssessmentCleanup(report({ deleteAllUnfinished: true }), "DELETE_DUPLICATE_ASSESSMENTS", true)).toBe(true);
+    expect(canConfirmAssessmentCleanup(null, "DELETE_DUPLICATE_ASSESSMENTS", false)).toBe(false);
   });
 
   it("takes approved IDs directly from the latest dry run without sharing its mutable array", () => {
@@ -52,6 +54,7 @@ describe("temporary assessment cleanup superadmin UI", () => {
       "Projected dependent-record deletions", "Surviving assessments", "Proposed deletions",
       "Copyable dry-run JSON", "preserveInProgressAttemptId", "window.confirm",
       "Assessment cleanup completed", "Final funnel", "protectedRecordsDeleted",
+      "Delete all unfinished assessments", "deleteAllUnfinished",
     ]) expect(page).toContain(text);
   });
 

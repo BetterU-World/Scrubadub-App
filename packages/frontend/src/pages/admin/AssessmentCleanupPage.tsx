@@ -41,6 +41,7 @@ type AttemptRow = {
 export type CleanupDryRun = {
   mode: "dry_run";
   totalAssessmentRecords: number;
+  deleteAllUnfinished: boolean;
   blocked: boolean;
   blockingReasons: string[];
   meaningfulInProgressCandidateIds: Id<"assessmentAttempts">[];
@@ -60,6 +61,7 @@ export type CleanupResult = {
   finalFunnel: Funnel;
   remainingMeaningfulInProgressAttemptId: Id<"assessmentAttempts"> | null;
   protectedRecordsDeleted: boolean;
+  deleteAllUnfinished?: boolean;
 };
 
 export function AssessmentCleanupPage() {
@@ -69,6 +71,7 @@ export function AssessmentCleanupPage() {
   const [dryRun, setDryRun] = useState<CleanupDryRun | null>(null);
   const [result, setResult] = useState<CleanupResult | null>(null);
   const [selectedSurvivor, setSelectedSurvivor] = useState<Id<"assessmentAttempts"> | "">("");
+  const [deleteAllUnfinished, setDeleteAllUnfinished] = useState(false);
   const [confirmation, setConfirmation] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -84,7 +87,8 @@ export function AssessmentCleanupPage() {
         mode: "dry_run",
         userId: user!._id,
         sessionToken,
-        preserveInProgressAttemptId: selectedSurvivor || undefined,
+        preserveInProgressAttemptId: deleteAllUnfinished ? undefined : selectedSurvivor || undefined,
+        deleteAllUnfinished,
       }) as CleanupDryRun;
       setDryRun(next);
     } catch (caught) {
@@ -94,7 +98,7 @@ export function AssessmentCleanupPage() {
   }
 
   async function confirmCleanup() {
-    if (!canConfirmAssessmentCleanup(dryRun, confirmation)) return;
+    if (!canConfirmAssessmentCleanup(dryRun, confirmation, deleteAllUnfinished)) return;
     const approvedAttemptIds = approvedIdsFromLatestDryRun(dryRun!);
     const counts = dryRun!.projectedDeletionCounts;
     const accepted = window.confirm(
@@ -110,7 +114,8 @@ export function AssessmentCleanupPage() {
         mode: "confirmed",
         userId: user!._id,
         sessionToken,
-        preserveInProgressAttemptId: selectedSurvivor || undefined,
+        preserveInProgressAttemptId: deleteAllUnfinished ? undefined : selectedSurvivor || undefined,
+        deleteAllUnfinished,
         confirm: CONFIRMATION,
         approvedAttemptIds,
       }) as CleanupResult;
@@ -131,7 +136,7 @@ export function AssessmentCleanupPage() {
   const proposed = new Set(dryRun?.proposedDeletionIds.map(String) ?? []);
   const survivors = dryRun?.attempts.filter((attempt) => !proposed.has(String(attempt.attemptId))) ?? [];
   const deletions = dryRun?.attempts.filter((attempt) => proposed.has(String(attempt.attemptId))) ?? [];
-  const canConfirm = canConfirmAssessmentCleanup(dryRun, confirmation);
+  const canConfirm = canConfirmAssessmentCleanup(dryRun, confirmation, deleteAllUnfinished);
 
   return <div className="min-w-0">
     <PageHeader title="Temporary assessment cleanup" description="Founder-only historical duplicate assessment cleanup. Remove this page after production cleanup." back={{ href: "/admin", label: "Back to Super Admin" }} />
@@ -139,6 +144,10 @@ export function AssessmentCleanupPage() {
       <h2 className="font-semibold text-amber-950">Dry run required</h2>
       <p className="mt-2 text-sm text-amber-900">No cleanup runs automatically. Review a current dry run before entering the destructive confirmation phrase.</p>
       <button type="button" className="btn-secondary mt-4" disabled={busy} onClick={runDryRun}>Run assessment cleanup dry run</button>
+      <label className="mt-5 flex items-start gap-3 rounded-lg border border-red-300 bg-white p-4">
+        <input type="checkbox" className="mt-1 h-5 w-5" checked={deleteAllUnfinished} onChange={(event) => { setDeleteAllUnfinished(event.target.checked); setSelectedSurvivor(""); setDryRun(null); setConfirmation(""); }} />
+        <span><strong className="text-red-900">Delete all unfinished assessments</strong><span className="mt-1 block text-sm text-red-800">This will delete all in-progress and abandoned assessment attempts, including attempts containing saved progress. Completed assessments will remain.</span></span>
+      </label>
     </section>
 
     {error && <div role="alert" className="mt-4 rounded-xl bg-red-50 p-4 text-sm text-red-800">{error}</div>}
@@ -151,11 +160,12 @@ export function AssessmentCleanupPage() {
 
       <section className={`card ${dryRun.blocked ? "border-red-300 bg-red-50" : "border-emerald-300 bg-emerald-50"}`}>
         <h2 className="font-semibold">Cleanup {dryRun.blocked ? "blocked" : "ready for review"}</h2>
+        <p className="mt-2 text-sm"><strong>Policy:</strong> {dryRun.deleteAllUnfinished ? "Delete all unfinished assessments" : "Preserve meaningful unfinished progress"}</p>
         {dryRun.blockingReasons.length > 0 && <ul className="mt-3 list-disc space-y-1 pl-5 text-sm">{dryRun.blockingReasons.map((reason) => <li key={reason}>{reason}</li>)}</ul>}
         <p className="mt-3 text-sm"><strong>Proposed deletions:</strong> {dryRun.proposedDeletionIds.length}</p>
       </section>
 
-      {dryRun.meaningfulInProgressCandidateIds.length > 1 && <section className="card">
+      {!dryRun.deleteAllUnfinished && dryRun.meaningfulInProgressCandidateIds.length > 1 && <section className="card">
         <h2 className="font-semibold">Select the legitimate unfinished assessment</h2>
         <p className="mt-2 text-sm text-gray-600">Select only after manually reviewing the candidates, then rerun the dry run.</p>
         <select className="input-field mt-3" value={selectedSurvivor} onChange={(event) => setSelectedSurvivor(event.target.value as Id<"assessmentAttempts">)}>
