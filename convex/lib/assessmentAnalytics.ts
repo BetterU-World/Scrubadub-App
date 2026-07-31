@@ -46,10 +46,12 @@ function utcDay(timestamp: number) {
 
 export function aggregateAssessmentAnalytics(attempts: Attempt[], events: Event[], now = Date.now()) {
   const active = attempts.filter((attempt) => attempt.status !== "deleted");
-  const completed = active.filter((attempt) => attempt.status === "completed" && attempt.completedAt);
+  const completed = active.filter((attempt) => attempt.status === "completed");
   const abandoned = active.filter((attempt) => attempt.status === "abandoned");
   const completedIds = new Set(completed.map((attempt) => String(attempt._id)));
-  const durations = completed.map((attempt) => Math.max(0, attempt.completedAt! - attempt.startedAt));
+  const durations = completed
+    .filter((attempt) => attempt.completedAt !== undefined)
+    .map((attempt) => Math.max(0, attempt.completedAt! - attempt.startedAt));
   const startEvents = events.filter((event) => event.eventKey === "assessment_started" && event.attemptId);
   const deviceByAttempt = new Map(startEvents.map((event) => [String(event.attemptId), event.metadata?.deviceCategory]));
   const progressByAttempt = new Map<string, Event>();
