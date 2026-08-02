@@ -3,17 +3,20 @@ import type { ReactNode } from "react";
 import {
   getMobileNavItemsForRole,
   ownerSections,
+  workerSections,
 } from "../components/layout/navigation";
+import { Ellipsis } from "lucide-react";
 
 interface DemoShellProps {
   children: ReactNode;
   presentation: boolean;
+  persona?: "owner" | "worker";
 }
 
-const mobileItems = getMobileNavItemsForRole("owner");
-
-export function DemoShell({ children, presentation }: DemoShellProps) {
+export function DemoShell({ children, presentation, persona = "owner" }: DemoShellProps) {
   const { t } = useTranslation();
+  const sections = persona === "worker" ? workerSections : ownerSections;
+  const mobileItems = getMobileNavItemsForRole(persona);
 
   if (presentation) {
     return (
@@ -34,7 +37,7 @@ export function DemoShell({ children, presentation }: DemoShellProps) {
           <p className="mt-1 text-sm text-gray-500">BrightSide Cleaning Co.</p>
         </div>
         <nav className="flex-1 space-y-2 overflow-y-auto p-4" aria-label="Demo navigation">
-          {ownerSections.map((section) => (
+          {sections.map((section) => (
             <section key={section.titleKey} aria-labelledby={`demo-${section.titleKey}`}>
               <h2
                 id={`demo-${section.titleKey}`}
@@ -96,6 +99,12 @@ export function DemoShell({ children, presentation }: DemoShellProps) {
               <span className="whitespace-nowrap">{t(item.labelKey)}</span>
             </div>
           ))}
+          {persona === "worker" && (
+            <div className="flex min-w-0 flex-1 flex-col items-center gap-1 px-1 py-1 text-xs text-gray-500">
+              <Ellipsis aria-hidden="true" className="h-5 w-5" />
+              <span className="whitespace-nowrap">{t("nav.more")}</span>
+            </div>
+          )}
         </div>
       </nav>
     </div>
