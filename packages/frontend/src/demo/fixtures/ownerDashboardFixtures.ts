@@ -1,11 +1,12 @@
 import type { OwnerDashboardViewModel } from "../../features/owner-dashboard/ownerDashboardViewModel";
+import { brightSideCompany, brightSideProperties } from "./brightSideEntities";
 
 // All people, businesses, properties, activity, and identifiers below are fictional.
 // This deterministic fixture exists only for SCRUB Demo Mode and marketing presentation.
 export const brightSideOwnerDashboardFixture = {
   viewer: {
     firstName: "Maya",
-    companyName: "BrightSide Cleaning Co.",
+    companyName: brightSideCompany.name,
   },
   metrics: [
     { key: "properties", value: 24, tone: "default" },
@@ -28,21 +29,21 @@ export const brightSideOwnerDashboardFixture = {
   upcomingJobs: [
     {
       id: "job-riverstone-turnover",
-      propertyName: "Riverstone Retreat",
+      propertyName: brightSideProperties.riverstoneRetreat.name,
       scheduleLabel: "Today · 9:00 AM",
       type: "turnover",
       status: "in_progress",
     },
     {
       id: "job-linden-standard",
-      propertyName: "Linden House",
+      propertyName: brightSideProperties.lindenHouse.name,
       scheduleLabel: "Today · 11:30 AM",
       type: "standard",
       status: "confirmed",
     },
     {
       id: "job-harbor-deep-clean",
-      propertyName: "Harborview Cottage",
+      propertyName: brightSideProperties.harborviewCottage.name,
       scheduleLabel: "Tomorrow · 8:00 AM",
       type: "deep_clean",
       status: "scheduled",

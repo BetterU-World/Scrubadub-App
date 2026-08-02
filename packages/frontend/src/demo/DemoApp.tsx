@@ -1,6 +1,10 @@
 import { DemoOwnerPage } from "@/pages/demo/DemoOwnerPage";
-import { isDemoPresentationMode } from "./demoRoute";
+import { DemoWorkerPage } from "@/pages/demo/DemoWorkerPage";
+import { getDemoPersona, isDemoPresentationMode } from "./demoRoute";
 
 export function DemoApp() {
-  return <DemoOwnerPage presentation={isDemoPresentationMode(window.location.search)} />;
+  const presentation = isDemoPresentationMode(window.location.search);
+  return getDemoPersona(window.location.pathname) === "worker"
+    ? <DemoWorkerPage presentation={presentation} />
+    : <DemoOwnerPage presentation={presentation} />;
 }

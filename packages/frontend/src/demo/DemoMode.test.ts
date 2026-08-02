@@ -19,28 +19,75 @@ vi.mock("wouter", () => ({
 }));
 
 import { DemoOwnerPage } from "../pages/demo/DemoOwnerPage";
-import { ownerSections } from "../components/layout/navigation";
+import { DemoWorkerPage } from "../pages/demo/DemoWorkerPage";
+import { ownerSections, workerSections } from "../components/layout/navigation";
 import { ownerDashboardFixtures } from "./fixtures/ownerDashboardFixtures";
+import { brightSideWorkerHomeFixture } from "./fixtures/workerShowcaseFixtures";
 import {
+  getDemoPersona,
   isDemoModeEnabled,
   isDemoPresentationMode,
   shouldRenderDemoApp,
 } from "./demoRoute";
 
 describe("Demo Mode routing", () => {
-  it("is disabled by default and only enables the exact internal owner route", () => {
+  it("is disabled by default and only enables exact internal Showcase routes", () => {
     expect(isDemoModeEnabled(undefined)).toBe(false);
     expect(isDemoModeEnabled("false")).toBe(false);
     expect(shouldRenderDemoApp("/internal/demo/owner", undefined)).toBe(false);
     expect(shouldRenderDemoApp("/internal/demo/owner", "true")).toBe(true);
     expect(shouldRenderDemoApp("/demo", "true")).toBe(false);
-    expect(shouldRenderDemoApp("/internal/demo/worker", "true")).toBe(false);
+    expect(shouldRenderDemoApp("/internal/demo/worker", "true")).toBe(true);
+    expect(shouldRenderDemoApp("/internal/demo/unknown", "true")).toBe(false);
+    expect(getDemoPersona("/internal/demo/owner")).toBe("owner");
+    expect(getDemoPersona("/internal/demo/worker")).toBe("worker");
+    expect(getDemoPersona("/internal/demo/unknown")).toBeNull();
   });
 
   it("recognizes only presentation=1", () => {
     expect(isDemoPresentationMode("?presentation=1")).toBe(true);
     expect(isDemoPresentationMode("?presentation=0")).toBe(false);
     expect(isDemoPresentationMode("?viewport=desktop")).toBe(false);
+  });
+});
+
+describe("Worker Showcase", () => {
+  it("renders a cohesive, populated BrightSide workday with static interactions", () => {
+    const html = renderToStaticMarkup(createElement(DemoWorkerPage));
+
+    expect(html).toContain("BrightSide Cleaning Co.");
+    expect(html).toContain("Riverstone Retreat");
+    expect(html).toContain("Current assignment");
+    expect(html).toContain("Completed-cleaning photos");
+    expect(html).toContain("9 of 12");
+    expect(html).not.toContain("href=");
+    expect(html).not.toContain("<button");
+    expect(html).not.toContain("<input");
+  });
+
+  it("mirrors the complete production worker navigation and mobile More item", () => {
+    const html = renderToStaticMarkup(createElement(DemoWorkerPage));
+
+    for (const section of workerSections) {
+      expect(html).toContain(section.titleKey);
+      for (const item of section.items) expect(html).toContain(item.labelKey);
+    }
+    expect(html).toContain("nav.more");
+  });
+
+  it("removes shell chrome in presentation mode", () => {
+    const html = renderToStaticMarkup(createElement(DemoWorkerPage, { presentation: true }));
+
+    expect(html).toContain("Riverstone Retreat");
+    expect(html).not.toContain("Demo Mode");
+    expect(html).not.toContain("Fictional workspace");
+  });
+
+  it("keeps the canonical fixture deterministic and aligned with the owner fixture", () => {
+    expect(brightSideWorkerHomeFixture.worker.companyName).toBe(ownerDashboardFixtures.canonical.viewer.companyName);
+    expect(brightSideWorkerHomeFixture.todayJobs[0].propertyName).toBe(ownerDashboardFixtures.canonical.upcomingJobs[0].propertyName);
+    expect(brightSideWorkerHomeFixture.todayJobs[0].status).toBe(ownerDashboardFixtures.canonical.upcomingJobs[0].status);
+    expect(JSON.stringify(brightSideWorkerHomeFixture)).not.toMatch(/@|\d{3}[-.)]\s*\d{3}/);
   });
 });
 
@@ -119,6 +166,9 @@ describe("Owner Dashboard demo", () => {
       "packages/frontend/src/demo/DemoApp.tsx",
       "packages/frontend/src/demo/DemoShell.tsx",
       "packages/frontend/src/pages/demo/DemoOwnerPage.tsx",
+      "packages/frontend/src/pages/demo/DemoWorkerPage.tsx",
+      "packages/frontend/src/demo/ShowcaseWorkerJobPreview.tsx",
+      "packages/frontend/src/features/worker-home/WorkerHomePresentation.tsx",
       "packages/frontend/src/features/owner-dashboard/OwnerDashboardPresentation.tsx",
     ];
     const source = demoFiles.map((file) => readFileSync(resolve(root, file), "utf8")).join("\n");
