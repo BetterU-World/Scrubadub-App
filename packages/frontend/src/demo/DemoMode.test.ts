@@ -19,6 +19,7 @@ vi.mock("wouter", () => ({
 }));
 
 import { DemoOwnerPage } from "../pages/demo/DemoOwnerPage";
+import { ownerSections } from "../components/layout/navigation";
 import { ownerDashboardFixtures } from "./fixtures/ownerDashboardFixtures";
 import {
   isDemoModeEnabled,
@@ -51,6 +52,19 @@ describe("Owner Dashboard demo", () => {
     expect(html).toContain("Riverstone Retreat");
     expect(html).toContain("Loose porch railing needs maintenance review");
     expect(html).toContain("data-demo-static-card");
+    expect(html).not.toContain("href=");
+    expect(html).not.toContain("<button");
+  });
+
+  it("shows the complete production owner navigation hierarchy without making it interactive", () => {
+    const html = renderToStaticMarkup(createElement(DemoOwnerPage));
+
+    for (const section of ownerSections) {
+      expect(html).toContain(section.titleKey);
+      for (const item of section.items) {
+        expect(html).toContain(item.labelKey);
+      }
+    }
     expect(html).not.toContain("href=");
     expect(html).not.toContain("<button");
   });
