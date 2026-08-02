@@ -276,7 +276,7 @@ export default function App() {
     "/client",
     "/jobs", "/calendar", "/red-flags", "/performance", "/analytics",
     "/partners", "/requests", "/clients", "/commercial-accounts", "/commercial-invoices", "/feedback", "/cleaner-leads", "/audit-log", "/notifications", "/manuals", "/proposal",
-    "/admin", "/site", "/affiliate", "/availability", "/owner", "/settings", "/payments",
+    "/admin", "/site", "/affiliate", "/availability", "/owner", "/settings", "/payments", "/internal",
     "/terms", "/privacy", "/contact", "/get-started", "/setup", "/assessment",
     "/inventory-templates",
     "/owner/settings/add-ons",
