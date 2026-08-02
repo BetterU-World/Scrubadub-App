@@ -1,37 +1,16 @@
-import {
-  BarChart3,
-  Building2,
-  Calendar,
-  ClipboardCheck,
-  Flag,
-  Inbox,
-  LayoutDashboard,
-  Users,
-} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ReactNode } from "react";
+import {
+  getMobileNavItemsForRole,
+  ownerSections,
+} from "../components/layout/navigation";
 
 interface DemoShellProps {
   children: ReactNode;
   presentation: boolean;
 }
 
-const desktopItems = [
-  { labelKey: "nav.overview", icon: LayoutDashboard, active: true },
-  { labelKey: "nav.properties", icon: Building2, active: false },
-  { labelKey: "nav.employees", icon: Users, active: false },
-  { labelKey: "nav.jobs", icon: ClipboardCheck, active: false },
-  { labelKey: "nav.calendar", icon: Calendar, active: false },
-  { labelKey: "nav.redFlags", icon: Flag, active: false },
-  { labelKey: "nav.performance", icon: BarChart3, active: false },
-] as const;
-
-const mobileItems = [
-  { labelKey: "nav.overview", icon: LayoutDashboard, active: true },
-  { labelKey: "nav.jobs", icon: ClipboardCheck, active: false },
-  { labelKey: "nav.requests", icon: Inbox, active: false },
-  { labelKey: "nav.properties", icon: Building2, active: false },
-] as const;
+const mobileItems = getMobileNavItemsForRole("owner");
 
 export function DemoShell({ children, presentation }: DemoShellProps) {
   const { t } = useTranslation();
@@ -54,33 +33,37 @@ export function DemoShell({ children, presentation }: DemoShellProps) {
           </div>
           <p className="mt-1 text-sm text-gray-500">BrightSide Cleaning Co.</p>
         </div>
-        <nav className="flex-1 space-y-1 p-4" aria-label="Demo navigation">
-          <p className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
-            {t("nav.dashboard")}
-          </p>
-          {desktopItems.map((item) => (
-            <div
-              key={item.labelKey}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium ${
-                item.active ? "bg-primary-50 text-primary-700" : "text-gray-600"
-              }`}
-            >
-              <item.icon className="h-5 w-5" />
-              {t(item.labelKey)}
-            </div>
+        <nav className="flex-1 space-y-2 overflow-y-auto p-4" aria-label="Demo navigation">
+          {ownerSections.map((section) => (
+            <section key={section.titleKey} aria-labelledby={`demo-${section.titleKey}`}>
+              <h2
+                id={`demo-${section.titleKey}`}
+                className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400"
+              >
+                {t(section.titleKey)}
+              </h2>
+              <div className="space-y-0.5">
+                {section.items.map((item) => {
+                  const active = item.href === "/";
+                  return (
+                    <div
+                      key={item.href}
+                      aria-current={active ? "page" : undefined}
+                      className={`flex items-center gap-3 rounded-lg px-3 py-1 text-[13px] font-medium transition-colors ${
+                        active
+                          ? "bg-primary-50 text-primary-700"
+                          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                      }`}
+                    >
+                      <item.icon aria-hidden="true" className="h-4.5 w-4.5 flex-shrink-0" />
+                      <span>{t(item.labelKey)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
           ))}
         </nav>
-        <div className="border-t border-gray-200 p-4">
-          <div className="flex items-center gap-3 px-3 py-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-100 text-sm font-medium text-primary-700">
-              M
-            </div>
-            <div>
-              <p className="text-sm font-medium text-gray-900">Maya</p>
-              <p className="text-xs capitalize text-gray-500">Owner</p>
-            </div>
-          </div>
-        </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col pb-[var(--mobile-bottom-occlusion)] md:pb-0">
@@ -105,10 +88,11 @@ export function DemoShell({ children, presentation }: DemoShellProps) {
         <div className="flex h-[var(--mobile-nav-height)] gap-1 px-2 py-2">
           {mobileItems.map((item) => (
             <div
-              key={item.labelKey}
-              className={`flex min-w-0 flex-1 flex-col items-center gap-1 px-1 py-1 text-xs ${item.active ? "text-primary-600" : "text-gray-500"}`}
+              key={item.href}
+              aria-current={item.href === "/" ? "page" : undefined}
+              className={`flex min-w-0 flex-1 flex-col items-center gap-1 px-1 py-1 text-xs ${item.href === "/" ? "text-primary-600" : "text-gray-500"}`}
             >
-              <item.icon className="h-5 w-5" />
+              <item.icon aria-hidden="true" className="h-5 w-5" />
               <span className="whitespace-nowrap">{t(item.labelKey)}</span>
             </div>
           ))}
