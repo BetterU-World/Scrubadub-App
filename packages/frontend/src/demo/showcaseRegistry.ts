@@ -5,6 +5,7 @@ import {
   type NavItem,
   type NavSection,
 } from "../components/layout/navigation";
+import { CircleUserRound, CreditCard, FileText, Home, MapPin, Sparkles, Wrench } from "lucide-react";
 
 export type ShowcasePersona = "owner" | "worker" | "client";
 export type ShowcasePageAvailability = "implemented" | "preview" | "placeholder" | "hidden";
@@ -77,6 +78,16 @@ const workerDispositions: Record<string, ShowcaseDisposition> = {
   "/settings": placeholder("/settings", "review the worker profile and setup", ["Maintain profile preferences", "Review onboarding requirements", "Understand document and payment setup"]),
 };
 
+const clientPages: ShowcasePageDefinition[] = [
+  ["home", "/", "/client/home", "clientPortal.navigation.home", Home],
+  ["services", "/services", "/client/services", "clientPortal.navigation.services", Wrench],
+  ["requests", "/requests", "/client/requests", "clientPortal.navigation.requests", Sparkles],
+  ["documents", "/documents", "/client/documents", "clientPortal.navigation.documents", FileText],
+  ["billing", "/billing", "/client/billing", "clientPortal.navigation.billing", CreditCard],
+  ["locations", "/locations", "/client/locations", "clientPortal.navigation.locations", MapPin],
+  ["account", "/account", "/client/account", "clientPortal.navigation.account", CircleUserRound],
+].map(([id, relativePath, sourceHref, labelKey, icon], index) => ({ id: `client:${id}`, persona: "client", relativePath, sourceHref, labelKey, icon, availability: "implemented", shell: "client-sections", mobile: { visible: index < 4, priority: index } } as ShowcasePageDefinition));
+
 export const workerShowcaseJourneyRoutes = {
   jobs: "/jobs",
   jobDetail: "/jobs/:showcaseJobId",
@@ -132,20 +143,21 @@ function adaptItem(persona: "owner" | "worker", item: NavItem): ShowcasePageDefi
 }
 
 export function getShowcaseNavigationSections(
-  persona: "owner" | "worker"
+  persona: ShowcasePersona
 ): ShowcaseNavigationSection[] {
+  if (persona === "client") return [{ titleKey: "clientPortal.title", pages: clientPages }];
   return sources[persona].map((section) => ({
     titleKey: section.titleKey,
     pages: section.items.map((item) => adaptItem(persona, item)).filter((page) => page.availability !== "hidden"),
   }));
 }
 
-export function getShowcasePages(persona: "owner" | "worker"): ShowcasePageDefinition[] {
+export function getShowcasePages(persona: ShowcasePersona): ShowcasePageDefinition[] {
   return getShowcaseNavigationSections(persona).flatMap((section) => section.pages);
 }
 
 export function getShowcasePage(
-  persona: "owner" | "worker",
+  persona: ShowcasePersona,
   relativePath: string
 ): ShowcasePageDefinition | undefined {
   return getShowcasePages(persona).find((page) => page.relativePath === relativePath);

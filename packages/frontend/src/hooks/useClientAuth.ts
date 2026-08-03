@@ -5,7 +5,7 @@ import {
   clearClientSession,
   CLIENT_SESSION_KEY,
   getClientSessionToken,
-} from "@/lib/clientSession";
+} from "../lib/clientSession";
 
 export { CLIENT_SESSION_KEY, getClientSessionToken };
 

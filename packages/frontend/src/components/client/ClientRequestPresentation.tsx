@@ -1,9 +1,9 @@
 import { Link } from "wouter";
 import { Check, Circle, XCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { ClientPortalSection, formatClientDate } from "@/components/client/ClientPortalPage";
-import { ServiceAgreementStatusBadge } from "@/components/ui/ServiceAgreementStatusBadge";
-import { deriveClientRequestTimeline, getClientRequestStatusSummary, type ClientRequestTimelineEvent } from "@/lib/clientRequestTimeline";
+import { ClientPortalSection, formatClientDate } from "./ClientPortalPage";
+import { ServiceAgreementStatusBadge } from "../ui/ServiceAgreementStatusBadge";
+import { deriveClientRequestTimeline, getClientRequestStatusSummary, type ClientRequestTimelineEvent } from "../../lib/clientRequestTimeline";
 
 const badgeStyles: Record<string, string> = { declined: "bg-red-50 text-red-700", proposal_available: "bg-amber-50 text-amber-800", agreement_available: "bg-amber-50 text-amber-800", completed: "bg-green-50 text-green-800", in_progress: "bg-blue-50 text-blue-800" };
 export function ClientRequestStatus({ status }: { status: string }) { const { t } = useTranslation(); return <span className={`badge max-w-full whitespace-normal ${badgeStyles[status] ?? "bg-primary-50 text-primary-800"}`}>{t(`clientRequests.statuses.${status}`)}</span>; }

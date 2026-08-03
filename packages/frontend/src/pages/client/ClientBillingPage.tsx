@@ -1,10 +1,10 @@
 import { useAction, useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
-import { AddOnSnapshotList } from "@/components/AddOnSnapshotList";
-import { ClientPortalPage, ClientPortalSection, formatClientDate, formatClientMoney } from "@/components/client/ClientPortalPage";
-import { useClientAuth } from "@/hooks/useClientAuth";
-import { getClientStatusTranslationKey } from "@/lib/clientPresentation";
+import { AddOnSnapshotList } from "../../components/AddOnSnapshotList";
+import { ClientPortalPage, ClientPortalSection, formatClientDate, formatClientMoney } from "../../components/client/ClientPortalPage";
+import { useClientAuth } from "../../hooks/useClientAuth";
+import { getClientStatusTranslationKey } from "../../lib/clientPresentation";
 
 export function ClientBillingPresentation({ data, onPay }: { data: any; onPay: (id: any) => void }) {
   const { t } = useTranslation();

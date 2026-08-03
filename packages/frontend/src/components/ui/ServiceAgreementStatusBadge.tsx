@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import {
   getServiceAgreementPresentationStatus,
   type ServiceAgreementStatusSource,
-} from "@/lib/serviceAgreementStatus";
+} from "../../lib/serviceAgreementStatus";
 
 const styles = {
   not_created: "bg-gray-100 text-gray-700",

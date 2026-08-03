@@ -1,8 +1,8 @@
 import { useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
-import { ClientPortalPage, ClientPortalSection } from "@/components/client/ClientPortalPage";
-import { useClientAuth } from "@/hooks/useClientAuth";
+import { ClientPortalPage, ClientPortalSection } from "../../components/client/ClientPortalPage";
+import { useClientAuth } from "../../hooks/useClientAuth";
 
 export function ClientLocationsPresentation({ data }: { data: any }) {
   const { t } = useTranslation();

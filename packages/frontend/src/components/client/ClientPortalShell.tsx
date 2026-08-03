@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { ChevronDown, Menu } from "lucide-react";
-import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
+import { LanguageSwitcher } from "../shared/LanguageSwitcher";
 
 const routes = [
   { href: "/client/home", key: "home" },
