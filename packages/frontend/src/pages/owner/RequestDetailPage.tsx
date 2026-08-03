@@ -15,6 +15,7 @@ import { WalkthroughCard } from "@/components/owner/WalkthroughCard";
 import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
 import { ServiceAgreementStatusBadge } from "@/components/ui/ServiceAgreementStatusBadge";
 import { ProposalCatalogAddOnPicker } from "@/components/owner/ProposalCatalogAddOnPicker";
+import { RequestScheduleConfirmation } from "@/components/owner/RequestScheduleConfirmation";
 import {
   User,
   Mail,
@@ -875,6 +876,8 @@ export function RequestDetailPage() {
           </div>
         }
       />
+
+      <RequestScheduleConfirmation request={request} />
 
       {(request as any).pipeline && (
         <section className="card mb-4 border-l-4 border-l-primary-500" aria-labelledby="request-pipeline-summary">

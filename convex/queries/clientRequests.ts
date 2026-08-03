@@ -100,11 +100,12 @@ export const getRequestById = query({
       : clientRelationship?.inviteTokenHash || linkedClientUser?.status === "pending" || pendingClientUser
         ? "pending"
         : "not_invited";
-    const [walkthroughs, proposals, agreements, commercialAccounts] = await Promise.all([
+    const [walkthroughs, proposals, agreements, commercialAccounts, scheduledJob] = await Promise.all([
       ctx.db.query("walkthroughs").withIndex("by_clientRequest", (q) => q.eq("clientRequestId", request._id)).collect(),
       ctx.db.query("proposals").withIndex("by_clientRequestId", (q) => q.eq("clientRequestId", request._id)).collect(),
       ctx.db.query("serviceAgreements").withIndex("by_clientRequest", (q) => q.eq("clientRequestId", request._id)).collect(),
       ctx.db.query("commercialAccounts").withIndex("by_clientRequestId", (q) => q.eq("clientRequestId", request._id)).collect(),
+      ctx.db.query("jobs").withIndex("by_sourceClientRequestId", (q) => q.eq("sourceClientRequestId", request._id)).first(),
     ]);
     const pipeline = deriveLeadPipelineState({
       request,
@@ -131,6 +132,7 @@ export const getRequestById = query({
       clientPortalStatus,
       clientPortalInviteSentAt: clientRelationship?.inviteSentAt,
       pipeline,
+      scheduledJob: scheduledJob?.companyId === request.companyId ? { _id: scheduledJob._id, scheduledDate: scheduledJob.scheduledDate, startTime: scheduledJob.startTime, durationMinutes: scheduledJob.durationMinutes, status: scheduledJob.status, clientSchedulingNote: scheduledJob.clientSchedulingNote } : null,
     };
   },
 });

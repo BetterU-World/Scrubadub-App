@@ -215,8 +215,9 @@ async function requestLinkedRecords(ctx: any, request: any) {
     ctx.db.query("serviceAgreements").withIndex("by_clientRequest", (q: any) => q.eq("clientRequestId", request._id)).collect(),
   ]);
   const proposalIds = new Set(proposals.map((proposal: any) => String(proposal._id)));
+  const directJobs = await ctx.db.query("jobs").withIndex("by_sourceClientRequestId", (q: any) => q.eq("sourceClientRequestId", request._id)).collect();
   const companyJobs = await ctx.db.query("jobs").withIndex("by_companyId_scheduledDate", (q: any) => q.eq("companyId", request.companyId)).take(CAP);
-  const jobs = companyJobs.filter((job: any) => job.sourceProposalId && proposalIds.has(String(job.sourceProposalId)));
+  const jobs = [...directJobs, ...companyJobs.filter((job: any) => job.sourceProposalId && proposalIds.has(String(job.sourceProposalId)))].filter((job, index, all) => all.findIndex(item => item._id === job._id) === index);
   return { proposals, agreements, jobs };
 }
 
@@ -236,7 +237,7 @@ function projectClientRequest(context: any, request: any, linked: any) {
     timeWindow: request.timeWindow,
     status: deriveClientRequestStatus({ requestStatus: request.status, ...linked, today }),
     actionRequired: linked.agreements.some((item: any) => item.status === "sent") || linked.proposals.some((item: any) => item.status === "sent"),
-    scheduledService: activeJob ? { _id: activeJob._id, scheduledDate: activeJob.scheduledDate, startTime: activeJob.startTime, status: activeJob.status } : null,
+    scheduledService: activeJob ? { _id: activeJob._id, scheduledDate: activeJob.scheduledDate, startTime: activeJob.startTime, durationMinutes: activeJob.durationMinutes, status: activeJob.status, clientSchedulingNote: activeJob.clientSchedulingNote } : null,
   };
 }
 
