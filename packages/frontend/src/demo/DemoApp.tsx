@@ -1,5 +1,6 @@
 import { DemoOwnerPage } from "@/pages/demo/DemoOwnerPage";
 import { DemoWorkerPage } from "@/pages/demo/DemoWorkerPage";
+import { DemoClientPage, DemoClientRequestDetailPage } from "@/pages/demo/DemoClientPage";
 import {
   DemoWorkerChecklistPage,
   DemoWorkerJobDetailPage,
@@ -30,13 +31,18 @@ function ShowcaseRoutes() {
       {persona === "worker" && <Route path={buildShowcasePath("worker", workerShowcaseJourneyRoutes.checklist)}>
         {(params) => <DemoWorkerChecklistPage showcaseJobId={(params as Record<string, string>).showcaseJobId} presentation={presentation} currentPath={location} />}
       </Route>}
+      {persona === "client" && <Route path={buildShowcasePath("client", "/requests/:requestId")}>
+        {(params) => <DemoClientRequestDetailPage requestId={(params as Record<string, string>).requestId} presentation={presentation} currentPath={location} />}
+      </Route>}
       {persona === "worker" && <Route path={buildShowcasePath("worker", workerShowcaseJourneyRoutes.jobDetail)}>
         {(params) => <DemoWorkerJobDetailPage showcaseJobId={(params as Record<string, string>).showcaseJobId} presentation={presentation} currentPath={location} />}
       </Route>}
       {pages.map((page) => (
         <Route key={page.id} path={buildShowcasePath(persona, page.relativePath)}>
           {page.availability === "implemented" ? (
-            persona === "worker" && page.relativePath === workerShowcaseJourneyRoutes.jobs ? (
+            persona === "client" ? (
+              <DemoClientPage page={page.relativePath} presentation={presentation} currentPath={location} />
+            ) : persona === "worker" && page.relativePath === workerShowcaseJourneyRoutes.jobs ? (
               <DemoWorkerJobsPage presentation={presentation} currentPath={location} />
             ) : persona === "worker" ? (
               <DemoWorkerPage presentation={presentation} currentPath={location} />

@@ -12,7 +12,7 @@ import {
 interface DemoShellProps {
   children: ReactNode;
   presentation: boolean;
-  persona?: "owner" | "worker";
+  persona?: "owner" | "worker" | "client";
   currentPath?: string;
 }
 

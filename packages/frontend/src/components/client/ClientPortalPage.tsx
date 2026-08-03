@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
-import { ClientPortalShell } from "@/components/client/ClientPortalShell";
-import { PageLoader } from "@/components/ui/LoadingSpinner";
-import { useClientAuth } from "@/hooks/useClientAuth";
+import { ClientPortalShell } from "./ClientPortalShell";
+import { PageLoader } from "../ui/LoadingSpinner";
+import { useClientAuth } from "../../hooks/useClientAuth";
 
 export function ClientPortalPage({ title, description, data, children }: { title: string; description: string; data: any; children: ReactNode }) {
   const { t } = useTranslation();

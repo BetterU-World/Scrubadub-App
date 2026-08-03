@@ -7,7 +7,7 @@ vi.mock("wouter", () => ({
   Link: ({ href, children, ...props }: { href: string; children: ReactNode }) => createElement("a", { href, ...props }, children),
   useLocation: () => ["/client/services", vi.fn()],
 }));
-vi.mock("@/components/shared/LanguageSwitcher", () => ({ LanguageSwitcher: () => createElement("button", null, "Language") }));
+vi.mock("../shared/LanguageSwitcher", () => ({ LanguageSwitcher: () => createElement("button", null, "Language") }));
 
 import { ClientPortalShell } from "./ClientPortalShell";
 
