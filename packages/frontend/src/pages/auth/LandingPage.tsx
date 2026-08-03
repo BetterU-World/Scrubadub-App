@@ -20,6 +20,12 @@ import {
   Users,
 } from "lucide-react";
 import { isOperationsAssessmentEnabled } from "../../lib/assessmentFeature";
+import {
+  MarketingClientPortal,
+  MarketingOwnerDashboard,
+  MarketingOwnerJobs,
+  MarketingWorkerWorkspace,
+} from "../../components/marketing/product-proof/MarketingProductCompositions";
 
 const plans = [
   {
@@ -221,20 +227,7 @@ export function LandingPage() {
               <p className="mt-3 text-sm text-gray-500">No charge today. Choose the plan that fits your operation.</p>
             </div>
 
-            <div className="relative overflow-hidden rounded-[1.4rem] border border-gray-200/80 bg-white p-1.5 shadow-[0_30px_80px_-36px_rgba(15,23,42,0.38)] sm:p-2">
-              <div className="flex items-center gap-1.5 px-3 py-2" aria-hidden="true"><span className="h-2 w-2 rounded-full bg-red-300" /><span className="h-2 w-2 rounded-full bg-amber-300" /><span className="h-2 w-2 rounded-full bg-green-300" /><span className="ml-2 text-[11px] font-medium text-gray-400">Example SCRUB workspace</span></div>
-              <ProductVisual
-                alt="Example SCRUB owner dashboard showing jobs, requests, and operational alerts."
-                avif="/images/product-proof/product-proof-owner-dashboard-1200.avif"
-                webp="/images/product-proof/product-proof-owner-dashboard-1200.webp"
-                mobileAvif="/images/product-proof/product-proof-owner-dashboard-mobile-415.avif"
-                mobileWebp="/images/product-proof/product-proof-owner-dashboard-mobile-415.webp"
-                width={1200}
-                height={860}
-                eager
-                className="aspect-[1200/860] rounded-xl object-cover object-top"
-              />
-            </div>
+            <MarketingOwnerDashboard />
           </div>
         </section>
 
@@ -255,9 +248,7 @@ export function LandingPage() {
             copy="Requests, active work, approvals, schedules, teams, red flags, and maintenance stay visible in one operational workspace."
             bullets={["See today’s operational picture", "Track jobs, approvals, and red flags", "Coordinate properties, workers, and schedules", "Keep the business organized from one workspace"]}
           >
-            <FramedVisual label="Example SCRUB workspace">
-              <ProductVisual alt="Example SCRUB owner jobs workspace showing the active operating schedule." avif="/images/product-proof/product-proof-owner-jobs-1200.avif" webp="/images/product-proof/product-proof-owner-jobs-1200.webp" width={1200} height={860} className="aspect-[1200/860] object-cover object-top" />
-            </FramedVisual>
+            <MarketingOwnerJobs />
           </ProductProofSection>
         </section>
 
@@ -271,10 +262,7 @@ export function LandingPage() {
             bullets={["Open the assigned Riverstone job", "Review access instructions and required add-ons", "Follow checklists and cleaning guidance", "Document and submit completed work"]}
             reverse
           >
-            <div className="relative mx-auto min-h-[40rem] w-full max-w-md sm:min-h-[43rem]" aria-label="Example Worker Showcase screens">
-              <PhoneVisual className="relative z-20 w-[78%]"><ProductVisual alt="Example worker workspace showing today’s assigned Riverstone cleaning job." avif="/images/product-proof/product-proof-worker-home-375.avif" webp="/images/product-proof/product-proof-worker-home-375.webp" width={375} height={812} className="aspect-[375/812] object-cover object-top" /></PhoneVisual>
-              <PhoneVisual className="absolute right-0 top-24 z-10 w-[72%]"><ProductVisual alt="Example worker job detail showing Riverstone property and schedule information." avif="/images/product-proof/product-proof-worker-job-375.avif" webp="/images/product-proof/product-proof-worker-job-375.webp" width={375} height={812} className="aspect-[375/812] object-cover object-top" /></PhoneVisual>
-            </div>
+            <MarketingWorkerWorkspace />
           </ProductProofSection>
         </section>
 
@@ -285,10 +273,7 @@ export function LandingPage() {
             copy="A dedicated client portal brings current service, requests, confirmed schedules, documents, billing, and locations into one professional relationship."
             bullets={["See current and upcoming service", "Follow each request from submission to scheduling", "Understand requested versus confirmed timing", "Keep documents, billing, and service locations close"]}
           >
-            <div className="relative pb-4 sm:pb-10">
-              <FramedVisual label="Example SCRUB client workspace"><ProductVisual alt="Example client portal showing current service, recent activity, and items needing attention." avif="/images/product-proof/product-proof-client-home-1024.avif" webp="/images/product-proof/product-proof-client-home-1024.webp" width={1024} height={768} className="aspect-[4/3] object-cover object-top" /></FramedVisual>
-              <div className="relative z-10 -mt-8 ml-auto mr-3 w-[82%] max-w-sm rounded-2xl border border-gray-200/80 bg-white p-1.5 shadow-[0_24px_60px_-24px_rgba(15,23,42,0.35)] sm:-mt-20 sm:mr-6 sm:w-2/3"><ProductVisual alt="Example client portal showing a confirmed cleaning-request timeline." avif="/images/product-proof/product-proof-client-request-timeline-753.avif" webp="/images/product-proof/product-proof-client-request-timeline-753.webp" width={753} height={1004} className="aspect-[753/1004] rounded-[0.8rem] object-cover object-top" /></div>
-            </div>
+            <MarketingClientPortal />
           </ProductProofSection>
         </section>
 
@@ -413,16 +398,6 @@ export function LandingPage() {
   );
 }
 
-function ProductVisual({ alt, avif, webp, mobileAvif, mobileWebp, width, height, eager = false, className = "" }: { alt: string; avif: string; webp: string; mobileAvif?: string; mobileWebp?: string; width: number; height: number; eager?: boolean; className?: string }) {
-  return <picture>
-    {mobileAvif && <source media="(max-width: 639px)" type="image/avif" srcSet={mobileAvif} />}
-    {mobileWebp && <source media="(max-width: 639px)" type="image/webp" srcSet={mobileWebp} />}
-    <source type="image/avif" srcSet={avif} />
-    <source type="image/webp" srcSet={webp} />
-    <img src={webp} alt={alt} width={width} height={height} loading={eager ? "eager" : "lazy"} decoding="async" fetchPriority={eager ? "high" : "auto"} className={`block h-auto w-full ${className}`} />
-  </picture>;
-}
-
 function ProductProofSection({ eyebrow, title, copy, bullets, reverse = false, children }: { eyebrow: string; title: string; copy: string; bullets: string[]; reverse?: boolean; children: React.ReactNode }) {
   return <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-2 lg:gap-14">
     <div className={reverse ? "lg:order-2" : ""}>
@@ -431,17 +406,6 @@ function ProductProofSection({ eyebrow, title, copy, bullets, reverse = false, c
     </div>
     <div className={reverse ? "lg:order-1" : ""}>{children}</div>
   </div>;
-}
-
-function FramedVisual({ label, children }: { label: string; children: React.ReactNode }) {
-  return <figure className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-1.5 shadow-[0_24px_60px_-28px_rgba(15,23,42,0.32)]">
-    <figcaption className="px-2 py-1.5 text-[11px] font-medium text-gray-400">{label}</figcaption>
-    <div className="overflow-hidden rounded-[0.8rem] bg-white">{children}</div>
-  </figure>;
-}
-
-function PhoneVisual({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <div className={`overflow-hidden rounded-[1.8rem] border border-gray-200/80 bg-white p-1.5 shadow-[0_26px_70px_-30px_rgba(15,23,42,0.42)] ${className}`}><div className="overflow-hidden rounded-[1.4rem] bg-white">{children}</div></div>;
 }
 
 function ConnectedOperationBridge() {

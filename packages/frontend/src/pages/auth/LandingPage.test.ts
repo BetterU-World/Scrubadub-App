@@ -74,16 +74,16 @@ describe("SCRUB landing page messaging contracts", () => {
     expect(html).not.toMatch(/testimonial|trusted by|customers served|jobs completed/i);
   });
 
-  it("uses authentic static product proof without exposing Showcase runtime routes", () => {
+  it("uses authentic native product proof without raster UI or Showcase runtime routes", () => {
     const html = renderPage();
 
     expect(html).toContain("One job. Three connected experiences. One source of truth.");
-    expect(html).toContain("product-proof-owner-dashboard-1200.avif");
-    expect(html).toContain("product-proof-owner-jobs-1200.avif");
-    expect(html).toContain("product-proof-worker-job-375.webp");
-    expect(html).toContain("product-proof-client-request-timeline-753.avif");
-    expect(html).toContain('fetchPriority="high"');
-    expect(html).toContain('loading="lazy"');
+    for (const fact of ["BrightSide Cleaning Co.", "Riverstone Retreat", "Good morning, Elena", "Sarah Johnson", "Linden House", "Completed-cleaning photos"]) expect(html).toContain(fact);
+    for (const label of ["Upcoming jobs", "Open red flags", "Awaiting approval", "Maintenance items", "Under Review"]) expect(html).toContain(label);
+    expect(html).not.toContain("Getting Started");
+    expect(html).not.toContain("/images/product-proof/");
+    expect(html).not.toContain("<picture");
+    expect(html).not.toContain("<button");
     expect(html).not.toContain("/internal/demo/");
     expect(html).not.toContain("<iframe");
   });
