@@ -202,6 +202,17 @@ describe("Owner Dashboard demo", () => {
     expect(html).toContain("BrightSide Cleaning Co.");
     expect(html).not.toContain("Demo Mode");
     expect(html).not.toContain("Fictional workspace");
+    expect(html).not.toContain("dashboard.gettingStarted");
+  });
+
+  it("renders a distinct read-only Owner jobs presentation for Product Proof", () => {
+    const html = renderToStaticMarkup(createElement(DemoOwnerPage, { presentation: true, currentPath: "/internal/demo/owner/jobs" }));
+
+    expect(html).toContain("Operating schedule");
+    expect(html).toContain("Riverstone Retreat");
+    expect(html).toContain("Maple &amp; Main Offices");
+    expect(html).not.toContain("Welcome back");
+    expect(html).not.toMatch(/<input|<form|<button/);
   });
 
   it("keeps the canonical fixture deterministic and scenario-ready", () => {
@@ -281,11 +292,11 @@ describe("SCRUB Showcase registry", () => {
     expect(getShowcasePages("worker")).toHaveLength(workerSections.flatMap((section) => section.items).length);
   });
 
-  it("implements the Owner root and Worker core destinations while preserving other placeholders", () => {
+  it("implements the Owner and Worker core destinations while preserving other placeholders", () => {
     const ownerPages = getShowcasePages("owner");
     const workerPages = getShowcasePages("worker");
-    expect(ownerPages.filter((page) => page.availability === "implemented").map((page) => page.relativePath)).toEqual(["/"]);
-    expect(ownerPages.filter((page) => page.relativePath !== "/").every((page) => page.availability === "placeholder")).toBe(true);
+    expect(ownerPages.filter((page) => page.availability === "implemented").map((page) => page.relativePath)).toEqual(["/", "/jobs"]);
+    expect(ownerPages.filter((page) => !["/", "/jobs"].includes(page.relativePath)).every((page) => page.availability === "placeholder")).toBe(true);
     expect(workerPages.filter((page) => page.availability === "implemented").map((page) => page.relativePath)).toEqual(["/", "/jobs"]);
     expect(workerPages.filter((page) => !["/", "/jobs"].includes(page.relativePath)).every((page) => page.availability === "placeholder")).toBe(true);
     expect(workerShowcaseJourneyRoutes.jobDetail).toBe("/jobs/:showcaseJobId");

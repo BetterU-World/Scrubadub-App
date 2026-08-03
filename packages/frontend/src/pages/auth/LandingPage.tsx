@@ -221,8 +221,8 @@ export function LandingPage() {
               <p className="mt-3 text-sm text-gray-500">No charge today. Choose the plan that fits your operation.</p>
             </div>
 
-            <div className="relative rounded-3xl border border-gray-200 bg-gray-900 p-2 shadow-2xl shadow-gray-300/70 sm:p-3">
-              <div className="flex items-center gap-1.5 px-3 py-2" aria-hidden="true"><span className="h-2.5 w-2.5 rounded-full bg-red-300" /><span className="h-2.5 w-2.5 rounded-full bg-amber-300" /><span className="h-2.5 w-2.5 rounded-full bg-green-300" /><span className="ml-2 text-xs text-gray-400">Example SCRUB workspace</span></div>
+            <div className="relative overflow-hidden rounded-[1.4rem] border border-gray-200/80 bg-white p-1.5 shadow-[0_30px_80px_-36px_rgba(15,23,42,0.38)] sm:p-2">
+              <div className="flex items-center gap-1.5 px-3 py-2" aria-hidden="true"><span className="h-2 w-2 rounded-full bg-red-300" /><span className="h-2 w-2 rounded-full bg-amber-300" /><span className="h-2 w-2 rounded-full bg-green-300" /><span className="ml-2 text-[11px] font-medium text-gray-400">Example SCRUB workspace</span></div>
               <ProductVisual
                 alt="Example SCRUB owner dashboard showing jobs, requests, and operational alerts."
                 avif="/images/product-proof/product-proof-owner-dashboard-1200.avif"
@@ -232,7 +232,7 @@ export function LandingPage() {
                 width={1200}
                 height={860}
                 eager
-                className="aspect-[1200/860] rounded-2xl object-cover object-top"
+                className="aspect-[1200/860] rounded-xl object-cover object-top"
               />
             </div>
           </div>
@@ -256,7 +256,7 @@ export function LandingPage() {
             bullets={["See today’s operational picture", "Track jobs, approvals, and red flags", "Coordinate properties, workers, and schedules", "Keep the business organized from one workspace"]}
           >
             <FramedVisual label="Example SCRUB workspace">
-              <ProductVisual alt="Example SCRUB owner dashboard showing upcoming jobs and operational alerts." avif="/images/product-proof/product-proof-owner-operations-1200.avif" webp="/images/product-proof/product-proof-owner-operations-1200.webp" width={1200} height={500} className="aspect-[12/5] object-cover object-top" />
+              <ProductVisual alt="Example SCRUB owner jobs workspace showing the active operating schedule." avif="/images/product-proof/product-proof-owner-jobs-1200.avif" webp="/images/product-proof/product-proof-owner-jobs-1200.webp" width={1200} height={860} className="aspect-[1200/860] object-cover object-top" />
             </FramedVisual>
           </ProductProofSection>
         </section>
@@ -271,9 +271,9 @@ export function LandingPage() {
             bullets={["Open the assigned Riverstone job", "Review access instructions and required add-ons", "Follow checklists and cleaning guidance", "Document and submit completed work"]}
             reverse
           >
-            <div className="mx-auto grid max-w-xs grid-cols-1 items-start gap-5 sm:max-w-xl sm:grid-cols-2" aria-label="Example Worker Showcase screens">
-              <PhoneVisual><ProductVisual alt="Example worker workspace showing today’s assigned Riverstone cleaning job." avif="/images/product-proof/product-proof-worker-home-375.avif" webp="/images/product-proof/product-proof-worker-home-375.webp" width={375} height={812} className="aspect-[375/812] object-cover object-top" /></PhoneVisual>
-              <PhoneVisual className="sm:mt-8"><ProductVisual alt="Example worker job detail showing Riverstone property and schedule information." avif="/images/product-proof/product-proof-worker-job-375.avif" webp="/images/product-proof/product-proof-worker-job-375.webp" width={375} height={812} className="aspect-[375/812] object-cover object-top" /></PhoneVisual>
+            <div className="relative mx-auto min-h-[40rem] w-full max-w-md sm:min-h-[43rem]" aria-label="Example Worker Showcase screens">
+              <PhoneVisual className="relative z-20 w-[78%]"><ProductVisual alt="Example worker workspace showing today’s assigned Riverstone cleaning job." avif="/images/product-proof/product-proof-worker-home-375.avif" webp="/images/product-proof/product-proof-worker-home-375.webp" width={375} height={812} className="aspect-[375/812] object-cover object-top" /></PhoneVisual>
+              <PhoneVisual className="absolute right-0 top-24 z-10 w-[72%]"><ProductVisual alt="Example worker job detail showing Riverstone property and schedule information." avif="/images/product-proof/product-proof-worker-job-375.avif" webp="/images/product-proof/product-proof-worker-job-375.webp" width={375} height={812} className="aspect-[375/812] object-cover object-top" /></PhoneVisual>
             </div>
           </ProductProofSection>
         </section>
@@ -285,9 +285,9 @@ export function LandingPage() {
             copy="A dedicated client portal brings current service, requests, confirmed schedules, documents, billing, and locations into one professional relationship."
             bullets={["See current and upcoming service", "Follow each request from submission to scheduling", "Understand requested versus confirmed timing", "Keep documents, billing, and service locations close"]}
           >
-            <div className="grid gap-4">
+            <div className="relative pb-4 sm:pb-10">
               <FramedVisual label="Example SCRUB client workspace"><ProductVisual alt="Example client portal showing current service, recent activity, and items needing attention." avif="/images/product-proof/product-proof-client-home-1024.avif" webp="/images/product-proof/product-proof-client-home-1024.webp" width={1024} height={768} className="aspect-[4/3] object-cover object-top" /></FramedVisual>
-              <div className="ml-auto w-full max-w-md rounded-2xl border border-gray-200 bg-white p-2 shadow-xl sm:w-3/4"><ProductVisual alt="Example client portal showing a confirmed cleaning-request timeline." avif="/images/product-proof/product-proof-client-request-timeline-753.avif" webp="/images/product-proof/product-proof-client-request-timeline-753.webp" width={753} height={1004} className="aspect-[753/1004] rounded-xl object-cover object-top" /></div>
+              <div className="relative z-10 -mt-8 ml-auto mr-3 w-[82%] max-w-sm rounded-2xl border border-gray-200/80 bg-white p-1.5 shadow-[0_24px_60px_-24px_rgba(15,23,42,0.35)] sm:-mt-20 sm:mr-6 sm:w-2/3"><ProductVisual alt="Example client portal showing a confirmed cleaning-request timeline." avif="/images/product-proof/product-proof-client-request-timeline-753.avif" webp="/images/product-proof/product-proof-client-request-timeline-753.webp" width={753} height={1004} className="aspect-[753/1004] rounded-[0.8rem] object-cover object-top" /></div>
             </div>
           </ProductProofSection>
         </section>
@@ -434,14 +434,14 @@ function ProductProofSection({ eyebrow, title, copy, bullets, reverse = false, c
 }
 
 function FramedVisual({ label, children }: { label: string; children: React.ReactNode }) {
-  return <figure className="overflow-hidden rounded-2xl border border-gray-200 bg-gray-900 p-2 shadow-xl">
-    <figcaption className="px-2 py-1.5 text-xs font-medium text-gray-300">{label}</figcaption>
-    <div className="overflow-hidden rounded-xl bg-white">{children}</div>
+  return <figure className="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-1.5 shadow-[0_24px_60px_-28px_rgba(15,23,42,0.32)]">
+    <figcaption className="px-2 py-1.5 text-[11px] font-medium text-gray-400">{label}</figcaption>
+    <div className="overflow-hidden rounded-[0.8rem] bg-white">{children}</div>
   </figure>;
 }
 
 function PhoneVisual({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <div className={`overflow-hidden rounded-[1.75rem] border-[6px] border-gray-900 bg-gray-900 shadow-xl ${className}`}><div className="mx-auto my-1 h-1.5 w-12 rounded-full bg-gray-600" aria-hidden="true" /><div className="overflow-hidden rounded-[1.25rem] bg-white">{children}</div></div>;
+  return <div className={`overflow-hidden rounded-[1.8rem] border border-gray-200/80 bg-white p-1.5 shadow-[0_26px_70px_-30px_rgba(15,23,42,0.42)] ${className}`}><div className="overflow-hidden rounded-[1.4rem] bg-white">{children}</div></div>;
 }
 
 function ConnectedOperationBridge() {
