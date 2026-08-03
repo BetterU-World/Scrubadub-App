@@ -11,7 +11,7 @@ export const sendInvoice = action({
   handler: async (ctx, args): Promise<{ sentAt: number }> => {
     const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const payload: any = await ctx.runQuery((internal as any).invoiceDeliveryInternal.getForOwnerDelivery, { companyId: owner.companyId, invoiceId: args.invoiceId });
-    const viewUrl = `${(process.env.APP_URL ?? "http://localhost:5173").replace(/\/+$/, "")}/client/home#billing`;
+    const viewUrl = `${(process.env.APP_URL ?? "http://localhost:5173").replace(/\/+$/, "")}/client/billing`;
     if (!await sendInvoiceEmail({ ...payload, viewUrl })) throw new Error("Invoice email could not be sent");
     return await ctx.runMutation((internal as any).invoiceDeliveryInternal.markSent, { companyId: owner.companyId, invoiceId: args.invoiceId });
   },

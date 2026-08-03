@@ -107,6 +107,11 @@ import { ClientForgotPasswordPage } from "@/pages/client/ClientForgotPasswordPag
 import { ClientResetPasswordPage } from "@/pages/client/ClientResetPasswordPage";
 import { ClientAcceptInvitePage } from "@/pages/client/ClientAcceptInvitePage";
 import { ClientHomePage } from "@/pages/client/ClientHomePage";
+import { ClientServicesPage } from "@/pages/client/ClientServicesPage";
+import { ClientDocumentsPage } from "@/pages/client/ClientDocumentsPage";
+import { ClientBillingPage } from "@/pages/client/ClientBillingPage";
+import { ClientLocationsPage } from "@/pages/client/ClientLocationsPage";
+import { ClientAccountPage } from "@/pages/client/ClientAccountPage";
 import { ClientServiceAgreementPage } from "@/pages/client/ClientServiceAgreementPage";
 
 // SEO landing pages
@@ -258,6 +263,11 @@ export default function App() {
             <Route path="/client/reset-password/:token" component={ClientResetPasswordPage} />
             <Route path="/client/accept-invite/:token" component={ClientAcceptInvitePage} />
             <Route path="/client/service-agreements/:agreementId" component={ClientServiceAgreementPage} />
+            <Route path="/client/services" component={ClientServicesPage} />
+            <Route path="/client/documents" component={ClientDocumentsPage} />
+            <Route path="/client/billing" component={ClientBillingPage} />
+            <Route path="/client/locations" component={ClientLocationsPage} />
+            <Route path="/client/account" component={ClientAccountPage} />
             <Route path="/client/home" component={ClientHomePage} />
             <Route>
               <Redirect to="/client/login" />
