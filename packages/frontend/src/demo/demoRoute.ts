@@ -12,9 +12,13 @@ export function shouldRenderDemoApp(pathname: string, enabledValue: unknown): bo
 }
 
 export function getDemoPersona(pathname: string): DemoPersona | null {
-  if (pathname === OWNER_DEMO_PATH) return "owner";
-  if (pathname === WORKER_DEMO_PATH) return "worker";
+  if (matchesPersonaPath(pathname, OWNER_DEMO_PATH)) return "owner";
+  if (matchesPersonaPath(pathname, WORKER_DEMO_PATH)) return "worker";
   return null;
+}
+
+function matchesPersonaPath(pathname: string, personaPath: string): boolean {
+  return pathname === personaPath || pathname.startsWith(`${personaPath}/`);
 }
 
 export function isDemoPresentationMode(search: string): boolean {
