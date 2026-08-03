@@ -244,6 +244,7 @@
     "sat": "Sat"
   },
   "requests": {
+    "authenticatedClientSource": "Authenticated Client Portal",
     "leads": "Leads",
     "leadsDescription": "Manage incoming requests and your sales pipeline",
     "listView": "List View",
@@ -1848,7 +1849,17 @@
     "sectionNavigation": "Client portal sections",
     "navigationLabel": "Client portal pages",
     "menu": "Portal menu",
-    "navigation": { "home": "Home", "services": "My Services", "documents": "Documents", "billing": "Billing", "locations": "Locations", "account": "Account" }
+    "navigation": { "home": "Home", "services": "My Services", "requests": "Requests", "documents": "Documents", "billing": "Billing", "locations": "Locations", "account": "Account" }
+  },
+  "clientRequests": {
+    "title": "Requests", "description": "Request additional service and track requests sent to your cleaning company.", "requestService": "Request service", "serviceRequest": "Service request", "newTitle": "Request service", "newDescription": "Share your preferred service details. Your cleaning company will review and confirm availability.", "detailTitle": "Request details", "detailDescription": "Review what you requested and its current status.", "empty": "You have not submitted any service requests yet.", "notFound": "This request is unavailable.", "backToRequests": "Back to requests",
+    "provider": "Cleaning company", "providerLabel": "Choose a cleaning company", "selectProvider": "Select a cleaning company", "location": "Service location", "locationLabel": "Choose a service location", "selectLocation": "Select a location", "noLocations": "No eligible service locations are available for this cleaning company.", "service": "Requested service", "serviceLabel": "Choose a service", "selectService": "Select a service", "preferredDate": "Preferred date", "preferredTime": "Preferred time", "selectTime": "Select a preferred time", "preferenceNotice": "Your preferred date and time are not guaranteed until the cleaning company confirms them.",
+    "addOns": "Add-ons", "quantity": "Quantity", "notes": "Notes", "notesLabel": "Service notes (optional)", "notesHelp": "Share access needs, priorities, or other helpful context. Do not include passwords or payment details.", "reviewRequest": "Review request", "reviewTitle": "Review your request", "reviewNotice": "Confirm these details before sending your request.", "editRequest": "Edit request", "submitRequest": "Submit request", "submitting": "Submitting…", "none": "None", "awaitingNotice": "This is a service request, not a confirmed appointment. The cleaning company will review your preferred date and time.",
+    "confirmationTitle": "Your request has been received.", "confirmationMessage": "This is not yet a confirmed appointment. The cleaning company will review your preferred date and time and confirm the service.", "submitted": "Submitted", "submittedOn": "Submitted {{date}}", "preferredDateValue": "Preferred {{date}}", "actionRequired": "Action required", "confirmedService": "Confirmed service", "startingAt": "Starting at {{price}}", "perUnit": "{{price}} per {{unit}}",
+    "timeWindows": { "morning": "Morning (8 AM–12 PM)", "afternoon": "Afternoon (12–5 PM)", "evening": "Evening (5–8 PM)" },
+    "services": { "Standard Clean": "Standard clean", "Deep Clean": "Deep clean", "Turnover": "Turnover", "Move In/Out": "Move in / move out", "Maintenance": "Maintenance", "Other": "Other" },
+    "statuses": { "submitted": "Submitted", "under_review": "Under review", "proposal_available": "Proposal available", "agreement_available": "Agreement available", "processing": "Processing", "scheduled": "Scheduled", "in_progress": "In progress", "completed": "Completed", "declined": "Declined" },
+    "validation": { "summary": "Please correct the following:", "provider": "Select a cleaning company.", "location": "Select a service location.", "service": "Select a requested service.", "date": "Select a preferred date.", "datePast": "Preferred date cannot be in the past.", "time": "Select a preferred time.", "notes": "Notes must be 2,000 characters or fewer.", "quantity": "Enter a valid quantity for {{name}}.", "submitFailed": "Unable to submit the request. Please try again." }
   },
   "clientServices": { "title": "My Services", "description": "View your current, upcoming, and recently completed cleaning services.", "current": "Current service", "upcoming": "Upcoming services", "recent": "Recent services", "noCurrent": "No service is currently in progress.", "noUpcoming": "No upcoming service is currently scheduled.", "noRecent": "Completed services will appear here." },
   "clientDocuments": { "title": "Documents", "description": "Review proposals and service agreements shared by your cleaning companies.", "perMonth": "per month" },

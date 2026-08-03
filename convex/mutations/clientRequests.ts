@@ -1,9 +1,117 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwnerManagerSession, requireOwnerSession } from "../lib/sessionAuth";
+import { requireOwnerManagerSession, requireOwnerSession, requireVerifiedClientSession, requireActiveClientRelationship } from "../lib/sessionAuth";
 import { checkRateLimit } from "../lib/rateLimit";
 import { propertyTypeFromRequestLeadType } from "../lib/commercialEligibility";
 import { createRequestedAddOnSnapshots } from "../lib/companyAddOnSelection";
+import { AUTHENTICATED_REQUEST_SERVICES, AUTHENTICATED_REQUEST_TIME_WINDOWS } from "../lib/clientRequestPortal";
+
+const authenticatedLocationValidator = v.union(
+  v.object({ type: v.literal("property"), id: v.id("properties") }),
+  v.object({ type: v.literal("commercial_account"), id: v.id("commercialAccounts") })
+);
+
+function dateInTimeZone(timeZone: string, date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
+  const value = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${value("year")}-${value("month")}-${value("day")}`;
+}
+
+export const createAuthenticatedClientRequest = mutation({
+  args: {
+    clientUserId: v.id("clientUsers"),
+    sessionToken: v.string(),
+    clientRelationshipId: v.id("clientRelationships"),
+    location: authenticatedLocationValidator,
+    requestedService: v.string(),
+    requestedDate: v.string(),
+    timeWindow: v.string(),
+    notes: v.optional(v.string()),
+    requestedAddOns: v.optional(v.array(v.object({
+      companyAddOnId: v.id("companyAddOns"),
+      selectionVersion: v.string(),
+      quantity: v.optional(v.number()),
+    }))),
+    idempotencyKey: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const clientUser = await requireVerifiedClientSession(ctx, args.sessionToken, args.clientUserId);
+    const relationship = await requireActiveClientRelationship(ctx, clientUser, args.clientRelationshipId);
+    const company = await ctx.db.get(relationship.companyId);
+    if (!company) throw new Error("Cleaning company is unavailable");
+    const key = args.idempotencyKey.trim();
+    if (!/^[A-Za-z0-9_-]{16,128}$/.test(key)) throw new Error("Invalid submission key");
+
+    const existing = await ctx.db
+      .query("clientRequests")
+      .withIndex("by_originClientUserId_idempotencyKey", (q) => q.eq("originClientUserId", clientUser._id).eq("idempotencyKey", key))
+      .unique();
+    if (existing) return { requestId: existing._id, replayed: true };
+
+    await checkRateLimit(ctx, { key: `client:${clientUser._id}:createAuthenticatedRequest`, limit: 5, windowMs: 600_000 });
+    if (!AUTHENTICATED_REQUEST_SERVICES.includes(args.requestedService as any)) throw new Error("Select a supported service");
+    if (!AUTHENTICATED_REQUEST_TIME_WINDOWS.includes(args.timeWindow as any)) throw new Error("Select a supported time window");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(args.requestedDate) || Number.isNaN(Date.parse(`${args.requestedDate}T00:00:00Z`))) throw new Error("Enter a valid preferred date");
+    if (args.requestedDate < dateInTimeZone(company.timezone || "UTC")) throw new Error("Preferred date cannot be in the past");
+    const maxDate = new Date(); maxDate.setUTCFullYear(maxDate.getUTCFullYear() + 2);
+    if (args.requestedDate > maxDate.toISOString().slice(0, 10)) throw new Error("Preferred date is too far in the future");
+    const notes = args.notes?.trim();
+    if (notes && notes.length > 2000) throw new Error("Notes must be 2,000 characters or fewer");
+
+    let propertyId: any;
+    let commercialAccountId: any;
+    let propertySnapshot: { name?: string; address?: string };
+    if (args.location.type === "property") {
+      const property = await ctx.db.get(args.location.id);
+      if (!property || property.companyId !== relationship.companyId || property.clientRelationshipId !== relationship._id || !property.active) throw new Error("Selected location is unavailable");
+      propertyId = property._id;
+      propertySnapshot = { name: property.name, address: property.address };
+    } else {
+      const account = await ctx.db.get(args.location.id);
+      if (!account || account.companyId !== relationship.companyId || account.clientRelationshipId !== relationship._id || account.status !== "active") throw new Error("Selected location is unavailable");
+      commercialAccountId = account._id;
+      propertySnapshot = { name: account.clientName, address: account.serviceAddress };
+    }
+
+    const requestedAddOnSnapshots = await createRequestedAddOnSnapshots(ctx, relationship.companyId, args.requestedAddOns ?? []);
+    const requestId = await ctx.db.insert("clientRequests", {
+      companyId: relationship.companyId,
+      clientRelationshipId: relationship._id,
+      originClientUserId: clientUser._id,
+      idempotencyKey: key,
+      createdAt: Date.now(),
+      status: "new",
+      leadStage: "new",
+      requesterName: relationship.primaryContactName || relationship.displayName || clientUser.displayName,
+      requesterEmail: clientUser.email,
+      requesterPhone: clientUser.phone,
+      propertySnapshot,
+      propertyId,
+      commercialAccountId,
+      requestedDate: args.requestedDate,
+      timeWindow: args.timeWindow,
+      requestedService: args.requestedService,
+      requestedAddOnSnapshots: requestedAddOnSnapshots.length ? requestedAddOnSnapshots : undefined,
+      notes: notes || undefined,
+      source: "authenticated_client",
+      leadType: "booking_request",
+    });
+
+    const users = await ctx.db.query("users").withIndex("by_companyId", (q) => q.eq("companyId", relationship.companyId)).collect();
+    for (const owner of users.filter((user) => user.role === "owner" && user.status === "active")) {
+      await ctx.db.insert("notifications", {
+        companyId: relationship.companyId,
+        userId: owner._id,
+        type: "new_client_request",
+        title: "New authenticated client request",
+        message: `${clientUser.displayName} requested ${args.requestedService} at ${propertySnapshot.name || "a service location"}.`,
+        read: false,
+        relatedClientRequestId: requestId,
+      });
+    }
+    return { requestId, replayed: false };
+  },
+});
 
 /**
  * Public mutation – called by external visitors via a company's public

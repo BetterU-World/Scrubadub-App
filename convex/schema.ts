@@ -1617,7 +1617,9 @@ export default defineSchema({
       unitLabel: v.optional(v.string()),
       quantity: v.optional(v.number()),
     }))),
-    source: v.union(v.literal("public_link"), v.literal("manual")),
+    source: v.union(v.literal("public_link"), v.literal("manual"), v.literal("authenticated_client")),
+    originClientUserId: v.optional(v.id("clientUsers")),
+    idempotencyKey: v.optional(v.string()),
     leadType: v.optional(
       v.union(
         v.literal("booking_request"),
@@ -1630,6 +1632,7 @@ export default defineSchema({
       )
     ),
     propertyId: v.optional(v.id("properties")),
+    commercialAccountId: v.optional(v.id("commercialAccounts")),
     // Client portal fields
     portalToken: v.optional(v.string()),
     portalEnabled: v.optional(v.boolean()),
@@ -1674,6 +1677,7 @@ export default defineSchema({
   })
     .index("by_companyId", ["companyId"])
     .index("by_companyId_clientRelationshipId_createdAt", ["companyId", "clientRelationshipId", "createdAt"])
+    .index("by_originClientUserId_idempotencyKey", ["originClientUserId", "idempotencyKey"])
     .index("by_companyId_status", ["companyId", "status"])
     .index("by_portalToken", ["portalToken"]),
 

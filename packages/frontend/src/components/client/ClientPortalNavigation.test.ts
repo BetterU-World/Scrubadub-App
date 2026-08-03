@@ -20,6 +20,7 @@ describe("client portal route navigation", () => {
     expect(html).toContain("Mis servicios");
     expect(html).toContain('aria-current="page"');
     expect(html).toContain('href="/client/account"');
+    expect(html).toContain('href="/client/requests"');
     expect(html).toContain("btn-secondary touch-target");
   });
 });

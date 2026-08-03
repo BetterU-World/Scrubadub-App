@@ -7,6 +7,7 @@ import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 const routes = [
   { href: "/client/home", key: "home" },
   { href: "/client/services", key: "services" },
+  { href: "/client/requests", key: "requests" },
   { href: "/client/documents", key: "documents" },
   { href: "/client/billing", key: "billing" },
   { href: "/client/locations", key: "locations" },
