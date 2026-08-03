@@ -62,6 +62,7 @@ describe("authenticated client service requests", () => {
     expect(clientList.requests.find((item: any) => item._id === s.historical).status).toBe("under_review");
     const detail = await s.t.query(s.portal.getClientRequestDetail, { clientUserId: s.client, sessionToken: s.clientAuth.sessionToken, requestId: created.requestId });
     expect(detail.request._id).toBe(created.requestId);
+    expect(detail.request.timelineFacts).toMatchObject({ request: { status: "new" }, proposals: [], agreements: [], jobs: [] });
     const ownerList = await s.t.query(api.queries.clientRequests.getCompanyRequests, { companyId: s.company, userId: s.owner, sessionToken: s.ownerAuth.sessionToken });
     expect(ownerList.some((item: any) => item._id === created.requestId && item.source === "authenticated_client")).toBe(true);
     const notifications = await s.t.run((ctx) => ctx.db.query("notifications").collect());
@@ -79,6 +80,8 @@ describe("authenticated client service requests", () => {
     await expect(s.t.mutation(s.create, { ...valid(s, { idempotencyKey: "snapshot_injection_123" }), propertySnapshot: { address: "Injected" } } as any)).rejects.toThrow();
     const foreignDetail = await s.t.query(s.portal.getClientRequestDetail, { clientUserId: s.client, sessionToken: s.clientAuth.sessionToken, requestId: await s.t.run((ctx) => ctx.db.insert("clientRequests", { companyId: s.company, clientRelationshipId: s.otherRelationship, createdAt: 3, status: "new", requesterName: "Other", requesterEmail: "other@test.dev", propertySnapshot: {}, source: "manual" })) });
     expect(foreignDetail.request).toBeNull();
+    const inactiveDetail = await s.t.query(s.portal.getClientRequestDetail, { clientUserId: s.client, sessionToken: s.clientAuth.sessionToken, requestId: await s.t.run((ctx) => ctx.db.insert("clientRequests", { companyId: s.company, clientRelationshipId: s.inactiveRelationship, createdAt: 4, status: "contacted", requesterName: "Inactive", requesterEmail: "inactive@test.dev", propertySnapshot: {}, source: "manual", leadNotes: "private" })) });
+    expect(inactiveDetail.request).toBeNull();
   });
 
   it("derives lifecycle labels without calling converted requests scheduled before a linked job exists", async () => {

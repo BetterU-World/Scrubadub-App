@@ -226,6 +226,12 @@ function projectClientRequest(context: any, request: any, linked: any) {
   const activeJob = linked.jobs.find((job: any) => job.status === "in_progress")
     ?? linked.jobs.find((job: any) => !["cancelled", "approved"].includes(job.status) && job.scheduledDate >= today)
     ?? linked.jobs.find((job: any) => job.status === "approved" || job.completedAt);
+  const timelineFacts = {
+    request: { status: request.status, submittedAt: request.createdAt, contactedAt: request.contactedAt },
+    proposals: linked.proposals.map((item: any) => ({ status: item.status, sentAt: item.sentAt, acceptedAt: item.acceptedAt, declinedAt: item.declinedAt })),
+    agreements: linked.agreements.map((item: any) => ({ _id: item._id, status: item.status, sentAt: item.sentAt, signedAt: item.signedAt, clientRespondedAt: item.clientRespondedAt, declinedAt: item.declinedAt })),
+    jobs: linked.jobs.map((item: any) => ({ status: item.status, scheduledDate: item.scheduledDate, startTime: item.startTime, startedAt: item.startedAt, completedAt: item.completedAt, approvedAt: item.approvedAt })),
+  };
   return {
     _id: request._id,
     requestedService: request.requestedService,
@@ -238,6 +244,7 @@ function projectClientRequest(context: any, request: any, linked: any) {
     status: deriveClientRequestStatus({ requestStatus: request.status, ...linked, today }),
     actionRequired: linked.agreements.some((item: any) => item.status === "sent") || linked.proposals.some((item: any) => item.status === "sent"),
     scheduledService: activeJob ? { _id: activeJob._id, scheduledDate: activeJob.scheduledDate, startTime: activeJob.startTime, durationMinutes: activeJob.durationMinutes, status: activeJob.status, clientSchedulingNote: activeJob.clientSchedulingNote } : null,
+    timelineFacts,
   };
 }
 
