@@ -21,6 +21,8 @@ vi.mock("wouter", () => ({
 import { DemoOwnerPage } from "../pages/demo/DemoOwnerPage";
 import { DemoWorkerPage } from "../pages/demo/DemoWorkerPage";
 import { ownerSections, workerSections } from "../components/layout/navigation";
+import { ShowcaseNotFoundPage } from "./ShowcaseNotFoundPage";
+import { ShowcasePlaceholderPage } from "./ShowcasePlaceholderPage";
 import { ownerDashboardFixtures } from "./fixtures/ownerDashboardFixtures";
 import { brightSideWorkerHomeFixture } from "./fixtures/workerShowcaseFixtures";
 import {
@@ -29,18 +31,31 @@ import {
   isDemoPresentationMode,
   shouldRenderDemoApp,
 } from "./demoRoute";
+import {
+  assertShowcaseRegistryComplete,
+  buildShowcasePath,
+  getShowcasePage,
+  getShowcasePages,
+} from "./showcaseRegistry";
 
 describe("Demo Mode routing", () => {
-  it("is disabled by default and only enables exact internal Showcase routes", () => {
+  it("is disabled by default and recognizes only strict Owner and Worker path segments", () => {
     expect(isDemoModeEnabled(undefined)).toBe(false);
     expect(isDemoModeEnabled("false")).toBe(false);
     expect(shouldRenderDemoApp("/internal/demo/owner", undefined)).toBe(false);
     expect(shouldRenderDemoApp("/internal/demo/owner", "true")).toBe(true);
     expect(shouldRenderDemoApp("/demo", "true")).toBe(false);
     expect(shouldRenderDemoApp("/internal/demo/worker", "true")).toBe(true);
+    expect(shouldRenderDemoApp("/internal/demo/worker/jobs", "true")).toBe(true);
+    expect(shouldRenderDemoApp("/internal/demo/owner/properties", "true")).toBe(true);
+    expect(shouldRenderDemoApp("/internal/demo/worker/something-unknown", "true")).toBe(true);
+    expect(shouldRenderDemoApp("/internal/demo/workerish", "true")).toBe(false);
+    expect(shouldRenderDemoApp("/internal/demo/ownerish", "true")).toBe(false);
     expect(shouldRenderDemoApp("/internal/demo/unknown", "true")).toBe(false);
     expect(getDemoPersona("/internal/demo/owner")).toBe("owner");
     expect(getDemoPersona("/internal/demo/worker")).toBe("worker");
+    expect(getDemoPersona("/internal/demo/worker/jobs?ignored=true")).toBe("worker");
+    expect(getDemoPersona("/internal/demo/workerish")).toBeNull();
     expect(getDemoPersona("/internal/demo/unknown")).toBeNull();
   });
 
@@ -52,7 +67,7 @@ describe("Demo Mode routing", () => {
 });
 
 describe("Worker Showcase", () => {
-  it("renders a cohesive, populated BrightSide workday with static interactions", () => {
+  it("renders a cohesive, populated BrightSide workday with Showcase-only navigation", () => {
     const html = renderToStaticMarkup(createElement(DemoWorkerPage));
 
     expect(html).toContain("BrightSide Cleaning Co.");
@@ -60,8 +75,8 @@ describe("Worker Showcase", () => {
     expect(html).toContain("Current assignment");
     expect(html).toContain("Completed-cleaning photos");
     expect(html).toContain("9 of 12");
-    expect(html).not.toContain("href=");
-    expect(html).not.toContain("<button");
+    expect(html).toContain('href="/internal/demo/worker/jobs"');
+    expect(html).not.toContain('href="/jobs"');
     expect(html).not.toContain("<input");
   });
 
@@ -92,18 +107,18 @@ describe("Worker Showcase", () => {
 });
 
 describe("Owner Dashboard demo", () => {
-  it("renders the canonical fixture synchronously with static interactions", () => {
+  it("renders the canonical fixture synchronously with Showcase-only navigation", () => {
     const html = renderToStaticMarkup(createElement(DemoOwnerPage));
 
     expect(html).toContain("BrightSide Cleaning Co.");
     expect(html).toContain("Riverstone Retreat");
     expect(html).toContain("Loose porch railing needs maintenance review");
     expect(html).toContain("data-demo-static-card");
-    expect(html).not.toContain("href=");
-    expect(html).not.toContain("<button");
+    expect(html).toContain('href="/internal/demo/owner/jobs"');
+    expect(html).not.toContain('href="/jobs"');
   });
 
-  it("shows the complete production owner navigation hierarchy without making it interactive", () => {
+  it("shows the complete production owner navigation hierarchy as safe links", () => {
     const html = renderToStaticMarkup(createElement(DemoOwnerPage));
 
     for (const section of ownerSections) {
@@ -112,8 +127,9 @@ describe("Owner Dashboard demo", () => {
         expect(html).toContain(item.labelKey);
       }
     }
-    expect(html).not.toContain("href=");
-    expect(html).not.toContain("<button");
+    const hrefs = [...html.matchAll(/href="([^"]+)"/g)].map((match) => match[1]);
+    expect(hrefs.length).toBeGreaterThan(0);
+    expect(hrefs.every((href) => href.startsWith("/internal/demo/owner"))).toBe(true);
   });
 
   it("renders presentation mode without the demo shell chrome", () => {
@@ -168,6 +184,9 @@ describe("Owner Dashboard demo", () => {
       "packages/frontend/src/pages/demo/DemoOwnerPage.tsx",
       "packages/frontend/src/pages/demo/DemoWorkerPage.tsx",
       "packages/frontend/src/demo/ShowcaseWorkerJobPreview.tsx",
+      "packages/frontend/src/demo/ShowcasePlaceholderPage.tsx",
+      "packages/frontend/src/demo/ShowcaseNotFoundPage.tsx",
+      "packages/frontend/src/demo/showcaseRegistry.ts",
       "packages/frontend/src/features/worker-home/WorkerHomePresentation.tsx",
       "packages/frontend/src/features/owner-dashboard/OwnerDashboardPresentation.tsx",
     ];
@@ -186,5 +205,62 @@ describe("Owner Dashboard demo", () => {
     expect(demoBranch).toBeLessThan(convexClient);
     expect(demoBranch).toBeLessThan(sentryInit);
     expect(mainSource).toContain("if (!demoMode && import.meta.env.PROD");
+  });
+});
+
+describe("SCRUB Showcase registry", () => {
+  it("classifies every production Owner and Worker navigation item exactly once", () => {
+    expect(() => assertShowcaseRegistryComplete()).not.toThrow();
+    expect(getShowcasePages("owner")).toHaveLength(ownerSections.flatMap((section) => section.items).length);
+    expect(getShowcasePages("worker")).toHaveLength(workerSections.flatMap((section) => section.items).length);
+  });
+
+  it("implements only the existing persona roots and classifies all other pages as placeholders", () => {
+    for (const persona of ["owner", "worker"] as const) {
+      const pages = getShowcasePages(persona);
+      expect(pages.filter((page) => page.availability === "implemented").map((page) => page.relativePath)).toEqual(["/"]);
+      expect(pages.filter((page) => page.relativePath !== "/").every((page) => page.availability === "placeholder")).toBe(true);
+    }
+  });
+
+  it("builds only persona-scoped Showcase destinations and preserves presentation mode", () => {
+    expect(buildShowcasePath("owner", "/jobs")).toBe("/internal/demo/owner/jobs");
+    expect(buildShowcasePath("worker", "/payments", true)).toBe("/internal/demo/worker/payments?presentation=1");
+  });
+
+  it("renders polished placeholder and not-found states without production destinations", () => {
+    const workerPayments = getShowcasePage("worker", "/payments")!;
+    const placeholderHtml = renderToStaticMarkup(createElement(ShowcasePlaceholderPage, {
+      page: workerPayments,
+      currentPath: "/internal/demo/worker/payments",
+      presentation: true,
+    }));
+    const notFoundHtml = renderToStaticMarkup(createElement(ShowcaseNotFoundPage, {
+      persona: "worker",
+      currentPath: "/internal/demo/worker/something-unknown",
+      presentation: true,
+    }));
+
+    expect(placeholderHtml).toContain("SCRUB Showcase");
+    expect(placeholderHtml).toContain("not included in SCRUB Showcase yet");
+    expect(placeholderHtml).toContain("Review planned job payments");
+    expect(placeholderHtml).toContain('href="/internal/demo/worker?presentation=1"');
+    expect(placeholderHtml).not.toContain('href="/payments"');
+    expect(notFoundHtml).toContain("Showcase page not found");
+    expect(notFoundHtml).toContain("safely inside SCRUB Showcase");
+  });
+
+  it("marks the current desktop and mobile destination with aria-current", () => {
+    const ownerHtml = renderToStaticMarkup(createElement(DemoOwnerPage, {
+      currentPath: "/internal/demo/owner/jobs",
+    }));
+    const workerHtml = renderToStaticMarkup(createElement(DemoWorkerPage, {
+      currentPath: "/internal/demo/worker/availability",
+    }));
+
+    expect(ownerHtml).toContain('href="/internal/demo/owner/jobs" aria-current="page"');
+    expect(workerHtml).toContain('href="/internal/demo/worker/availability" aria-current="page"');
+    expect(ownerHtml).not.toContain('href="/internal/demo/worker');
+    expect(workerHtml).not.toContain('href="/internal/demo/owner');
   });
 });
