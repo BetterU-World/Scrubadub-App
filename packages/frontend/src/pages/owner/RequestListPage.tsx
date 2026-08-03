@@ -195,6 +195,7 @@ export function RequestListPage() {
                       {req.requesterName}
                     </h3>
                     <StatusBadge status={req.status} className="max-w-full whitespace-normal break-words" />
+                    {(req as any).source === "authenticated_client" && <span className="badge bg-primary-50 text-primary-800">{t("requests.authenticatedClientSource")}</span>}
                   </div>
                   <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-500">
                     {(req.propertySnapshot?.address) && (

@@ -244,6 +244,7 @@
     "sat": "Sáb"
   },
   "requests": {
+    "authenticatedClientSource": "Portal del cliente autenticado",
     "leads": "Prospectos",
     "leadsDescription": "Gestiona solicitudes entrantes y tu pipeline de ventas",
     "listView": "Vista de lista",
@@ -1848,7 +1849,17 @@
     "sectionNavigation": "Secciones del portal del cliente",
     "navigationLabel": "Páginas del portal del cliente",
     "menu": "Menú del portal",
-    "navigation": { "home": "Inicio", "services": "Mis servicios", "documents": "Documentos", "billing": "Facturación", "locations": "Ubicaciones", "account": "Cuenta" }
+    "navigation": { "home": "Inicio", "services": "Mis servicios", "requests": "Solicitudes", "documents": "Documentos", "billing": "Facturación", "locations": "Ubicaciones", "account": "Cuenta" }
+  },
+  "clientRequests": {
+    "title": "Solicitudes", "description": "Solicita servicios adicionales y consulta las solicitudes enviadas a tu empresa de limpieza.", "requestService": "Solicitar servicio", "serviceRequest": "Solicitud de servicio", "newTitle": "Solicitar servicio", "newDescription": "Comparte tus preferencias. La empresa de limpieza revisará y confirmará la disponibilidad.", "detailTitle": "Detalles de la solicitud", "detailDescription": "Consulta lo que solicitaste y su estado actual.", "empty": "Aún no has enviado solicitudes de servicio.", "notFound": "Esta solicitud no está disponible.", "backToRequests": "Volver a solicitudes",
+    "provider": "Empresa de limpieza", "providerLabel": "Elige una empresa de limpieza", "selectProvider": "Selecciona una empresa de limpieza", "location": "Ubicación del servicio", "locationLabel": "Elige una ubicación de servicio", "selectLocation": "Selecciona una ubicación", "noLocations": "No hay ubicaciones elegibles para esta empresa de limpieza.", "service": "Servicio solicitado", "serviceLabel": "Elige un servicio", "selectService": "Selecciona un servicio", "preferredDate": "Fecha preferida", "preferredTime": "Horario preferido", "selectTime": "Selecciona un horario preferido", "preferenceNotice": "La fecha y el horario preferidos no están garantizados hasta que la empresa de limpieza los confirme.",
+    "addOns": "Servicios adicionales", "quantity": "Cantidad", "notes": "Notas", "notesLabel": "Notas del servicio (opcional)", "notesHelp": "Comparte necesidades de acceso, prioridades u otro contexto útil. No incluyas contraseñas ni datos de pago.", "reviewRequest": "Revisar solicitud", "reviewTitle": "Revisa tu solicitud", "reviewNotice": "Confirma estos detalles antes de enviar la solicitud.", "editRequest": "Editar solicitud", "submitRequest": "Enviar solicitud", "submitting": "Enviando…", "none": "Ninguno", "awaitingNotice": "Esta es una solicitud de servicio, no una cita confirmada. La empresa de limpieza revisará la fecha y el horario preferidos.",
+    "confirmationTitle": "Hemos recibido tu solicitud.", "confirmationMessage": "Esta aún no es una cita confirmada. La empresa de limpieza revisará la fecha y el horario preferidos y confirmará el servicio.", "submitted": "Enviada", "submittedOn": "Enviada el {{date}}", "preferredDateValue": "Preferida: {{date}}", "actionRequired": "Acción requerida", "confirmedService": "Servicio confirmado", "startingAt": "Desde {{price}}", "perUnit": "{{price}} por {{unit}}",
+    "timeWindows": { "morning": "Mañana (8 a. m.–12 p. m.)", "afternoon": "Tarde (12–5 p. m.)", "evening": "Noche (5–8 p. m.)" },
+    "services": { "Standard Clean": "Limpieza estándar", "Deep Clean": "Limpieza profunda", "Turnover": "Cambio de huéspedes", "Move In/Out": "Mudanza de entrada / salida", "Maintenance": "Mantenimiento", "Other": "Otro" },
+    "statuses": { "submitted": "Enviada", "under_review": "En revisión", "proposal_available": "Propuesta disponible", "agreement_available": "Acuerdo disponible", "processing": "En proceso", "scheduled": "Programada", "in_progress": "En curso", "completed": "Completada", "declined": "Rechazada" },
+    "validation": { "summary": "Corrige lo siguiente:", "provider": "Selecciona una empresa de limpieza.", "location": "Selecciona una ubicación de servicio.", "service": "Selecciona el servicio solicitado.", "date": "Selecciona una fecha preferida.", "datePast": "La fecha preferida no puede estar en el pasado.", "time": "Selecciona un horario preferido.", "notes": "Las notas deben tener 2,000 caracteres o menos.", "quantity": "Ingresa una cantidad válida para {{name}}.", "submitFailed": "No se pudo enviar la solicitud. Inténtalo de nuevo." }
   },
   "clientServices": { "title": "Mis servicios", "description": "Consulta tus servicios de limpieza actuales, próximos y completados recientemente.", "current": "Servicio actual", "upcoming": "Próximos servicios", "recent": "Servicios recientes", "noCurrent": "No hay ningún servicio en curso.", "noUpcoming": "No hay ningún servicio próximo programado.", "noRecent": "Los servicios completados aparecerán aquí." },
   "clientDocuments": { "title": "Documentos", "description": "Consulta las propuestas y los acuerdos de servicio compartidos por tus empresas de limpieza.", "perMonth": "por mes" },

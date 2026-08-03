@@ -902,6 +902,7 @@ export function RequestDetailPage() {
       <div id="request-contact" className="card scroll-mt-24 space-y-4">
         <div className="flex items-center gap-2 flex-wrap">
           <StatusBadge status={request.status} />
+          {(request as any).source === "authenticated_client" && <span className="badge bg-primary-50 text-primary-800">{t("requests.authenticatedClientSource")}</span>}
           <span className="text-xs text-gray-400">
             {t("requests.submitted")} {new Date(request.createdAt).toLocaleString()}
           </span>

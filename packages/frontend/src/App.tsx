@@ -112,6 +112,9 @@ import { ClientDocumentsPage } from "@/pages/client/ClientDocumentsPage";
 import { ClientBillingPage } from "@/pages/client/ClientBillingPage";
 import { ClientLocationsPage } from "@/pages/client/ClientLocationsPage";
 import { ClientAccountPage } from "@/pages/client/ClientAccountPage";
+import { ClientRequestsPage } from "@/pages/client/ClientRequestsPage";
+import { ClientRequestNewPage } from "@/pages/client/ClientRequestNewPage";
+import { ClientRequestDetailPage } from "@/pages/client/ClientRequestDetailPage";
 import { ClientServiceAgreementPage } from "@/pages/client/ClientServiceAgreementPage";
 
 // SEO landing pages
@@ -263,6 +266,9 @@ export default function App() {
             <Route path="/client/reset-password/:token" component={ClientResetPasswordPage} />
             <Route path="/client/accept-invite/:token" component={ClientAcceptInvitePage} />
             <Route path="/client/service-agreements/:agreementId" component={ClientServiceAgreementPage} />
+            <Route path="/client/requests/new" component={ClientRequestNewPage} />
+            <Route path="/client/requests/:requestId" component={ClientRequestDetailPage} />
+            <Route path="/client/requests" component={ClientRequestsPage} />
             <Route path="/client/services" component={ClientServicesPage} />
             <Route path="/client/documents" component={ClientDocumentsPage} />
             <Route path="/client/billing" component={ClientBillingPage} />
