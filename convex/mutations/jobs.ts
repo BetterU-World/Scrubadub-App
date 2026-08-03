@@ -9,6 +9,69 @@ import { resolveOperationalEmailIdentity } from "../lib/operationalEmailIdentity
 import { MAX_JOB_PAUSE_CYCLES, normalizePauseNote } from "../lib/jobTiming";
 import { copyAcceptedProposalAddOnSnapshots } from "../lib/acceptedProposalAddOnSnapshots";
 
+const requestJobTypeValidator = v.union(
+  v.literal("standard"), v.literal("deep_clean"), v.literal("turnover"),
+  v.literal("move_in_out"), v.literal("maintenance"), v.literal("post_construction")
+);
+
+function dateInTimeZone(timezone: string) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" })
+    .format(new Date());
+}
+
+function timeInTimeZone(timezone: string) {
+  return new Intl.DateTimeFormat("en-GB", { timeZone: timezone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date());
+}
+
+export const confirmClientRequestSchedule = mutation({
+  args: {
+    userId: v.optional(v.id("users")), sessionToken: v.string(), requestId: v.id("clientRequests"),
+    scheduledDate: v.string(), startTime: v.string(), durationMinutes: v.number(), type: requestJobTypeValidator,
+    clientSchedulingNote: v.optional(v.string()), idempotencyKey: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const actor = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
+    if (actor.role === "manager" && actor.canManageSchedule !== true) throw new Error("Schedule management permission required");
+    const request = await ctx.db.get(args.requestId);
+    if (!request) throw new Error("Request not found");
+    if (request.companyId !== actor.companyId) throw new Error("Access denied");
+    const existing = await ctx.db.query("jobs").withIndex("by_sourceClientRequestId", q => q.eq("sourceClientRequestId", request._id)).first();
+    if (existing) return { jobId: existing._id, scheduledDate: existing.scheduledDate, startTime: existing.startTime, durationMinutes: existing.durationMinutes, replayed: true };
+    if (!request.clientRelationshipId) throw new Error("Active client relationship required");
+    const relationship = await ctx.db.get(request.clientRelationshipId);
+    if (!relationship || relationship.companyId !== actor.companyId || relationship.status !== "active") throw new Error("Active client relationship required");
+    if (["declined", "archived"].includes(request.status)) throw new Error("Request cannot be scheduled in its current state");
+    if (!/^[A-Za-z0-9_-]{16,128}$/.test(args.idempotencyKey)) throw new Error("Invalid scheduling key");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(args.scheduledDate) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(args.startTime)) throw new Error("Invalid final schedule");
+    const company = await ctx.db.get(actor.companyId);
+    const timezone = company?.timezone || "UTC"; const today = dateInTimeZone(timezone);
+    if (!company || args.scheduledDate < today || (args.scheduledDate === today && args.startTime < timeInTimeZone(timezone))) throw new Error("Final schedule cannot be in the past");
+    if (!Number.isInteger(args.durationMinutes) || args.durationMinutes < 30 || args.durationMinutes > 1440) throw new Error("Invalid service duration");
+    const clientSchedulingNote = args.clientSchedulingNote?.trim();
+    if (clientSchedulingNote && clientSchedulingNote.length > 500) throw new Error("Scheduling note must be 500 characters or fewer");
+    let propertyId: any = undefined; let commercialAccountId: any = undefined;
+    if (request.propertyId) {
+      const property = await ctx.db.get(request.propertyId);
+      if (!property || property.companyId !== actor.companyId || property.clientRelationshipId !== relationship._id || !property.active) throw new Error("Service location is unavailable");
+      propertyId = property._id;
+    } else if (request.commercialAccountId) {
+      const account = await ctx.db.get(request.commercialAccountId);
+      if (!account || account.companyId !== actor.companyId || account.clientRelationshipId !== relationship._id || account.status !== "active") throw new Error("Service location is unavailable");
+      commercialAccountId = account._id;
+    } else throw new Error("Service location is unavailable");
+    const jobId = await ctx.db.insert("jobs", {
+      companyId: actor.companyId, clientRelationshipId: relationship._id, propertyId, commercialAccountId,
+      cleanerIds: [], type: args.type, status: "confirmed", scheduledDate: args.scheduledDate,
+      startTime: args.startTime, durationMinutes: args.durationMinutes, sourceClientRequestId: request._id,
+      clientSchedulingNote: clientSchedulingNote || undefined, requireConfirmation: false, acceptanceStatus: "accepted", reworkCount: 0,
+      requiredAddOnSnapshots: request.requestedAddOnSnapshots?.map((item: any, index: number) => ({ snapshotId: `request:${request._id}:${index}`, name: item.name, quantity: item.quantity, unitLabel: item.unitLabel })),
+    });
+    await ctx.db.patch(request._id, { status: "converted", leadStage: "converted", lastStageChangedAt: Date.now() });
+    await logAudit(ctx, { companyId: actor.companyId, userId: actor._id, action: "schedule_client_request", entityType: "job", entityId: jobId, details: JSON.stringify({ requestId: request._id, idempotencyKey: args.idempotencyKey }) });
+    return { jobId, scheduledDate: args.scheduledDate, startTime: args.startTime, durationMinutes: args.durationMinutes, replayed: false };
+  },
+});
+
 const pauseReasonValidator = v.union(
   v.literal("break"),
   v.literal("waiting_for_access"),

@@ -683,6 +683,8 @@ export default defineSchema({
     durationMinutes: v.number(),
     notes: v.optional(v.string()),
     sourceProposalId: v.optional(v.id("proposals")),
+    sourceClientRequestId: v.optional(v.id("clientRequests")),
+    clientSchedulingNote: v.optional(v.string()),
     acceptedProposalAddOnSnapshots: v.optional(v.array(v.object({
       snapshotId: v.string(),
       sourceProposalId: v.id("proposals"),
@@ -817,6 +819,7 @@ export default defineSchema({
     .index("by_companyId_scheduledDate", ["companyId", "scheduledDate"])
     .index("by_companyId_clientRelationshipId_scheduledDate", ["companyId", "clientRelationshipId", "scheduledDate"])
     .index("by_propertyId", ["propertyId"])
+    .index("by_sourceClientRequestId", ["sourceClientRequestId"])
     .index("by_commercialAccount", ["commercialAccountId"])
     .index("by_commercialSchedule", ["commercialScheduleId"]),
 
