@@ -1845,8 +1845,16 @@
   "clientPortal": {
     "title": "Client Portal",
     "homeLabel": "Go to client portal home",
-    "sectionNavigation": "Client portal sections"
+    "sectionNavigation": "Client portal sections",
+    "navigationLabel": "Client portal pages",
+    "menu": "Portal menu",
+    "navigation": { "home": "Home", "services": "My Services", "documents": "Documents", "billing": "Billing", "locations": "Locations", "account": "Account" }
   },
+  "clientServices": { "title": "My Services", "description": "View your current, upcoming, and recently completed cleaning services.", "current": "Current service", "upcoming": "Upcoming services", "recent": "Recent services", "noCurrent": "No service is currently in progress.", "noUpcoming": "No upcoming service is currently scheduled.", "noRecent": "Completed services will appear here." },
+  "clientDocuments": { "title": "Documents", "description": "Review proposals and service agreements shared by your cleaning companies.", "perMonth": "per month" },
+  "clientBilling": { "title": "Billing", "description": "Review invoice status, due dates, totals, and available online payment actions.", "payInvoice": "Pay invoice {{invoice}} online" },
+  "clientLocations": { "title": "Locations", "description": "Review the residential and commercial locations connected to your services.", "residential": "Residential locations", "commercial": "Commercial service locations", "noResidential": "No residential service locations are on file.", "noCommercial": "No commercial service locations are on file.", "statuses": { "active": "Active", "inactive": "Inactive", "paused": "Paused", "ended": "Ended" } },
+  "clientAccount": { "title": "Account", "description": "Review your contact information, language, and connected cleaning companies.", "language": "Language" },
   "clientHome": {
     "title": "Home",
     "profile": "Profile",
@@ -1855,7 +1863,10 @@
     "needsAttention": "Needs Your Attention",
     "welcome": "Welcome, {{name}}",
     "overviewTitle": "Your service overview",
-    "overviewDescription": "Review your current services, documents, billing, locations, and account information.",
+    "overviewDescription": "Review what is happening now and what may need your attention.",
+    "connectedProviders": "Connected with: {{providers}}",
+    "explorePortal": "Explore the client portal",
+    "viewPages": { "services": "View all services", "documents": "Review documents", "billing": "Review billing", "locations": "View locations" },
     "navigation": {
       "overview": "Overview",
       "documents": "Documents",

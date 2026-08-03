@@ -1845,13 +1845,24 @@
   "clientPortal": {
     "title": "Portal del cliente",
     "homeLabel": "Ir al inicio del portal del cliente",
-    "sectionNavigation": "Secciones del portal del cliente"
+    "sectionNavigation": "Secciones del portal del cliente",
+    "navigationLabel": "Páginas del portal del cliente",
+    "menu": "Menú del portal",
+    "navigation": { "home": "Inicio", "services": "Mis servicios", "documents": "Documentos", "billing": "Facturación", "locations": "Ubicaciones", "account": "Cuenta" }
   },
+  "clientServices": { "title": "Mis servicios", "description": "Consulta tus servicios de limpieza actuales, próximos y completados recientemente.", "current": "Servicio actual", "upcoming": "Próximos servicios", "recent": "Servicios recientes", "noCurrent": "No hay ningún servicio en curso.", "noUpcoming": "No hay ningún servicio próximo programado.", "noRecent": "Los servicios completados aparecerán aquí." },
+  "clientDocuments": { "title": "Documentos", "description": "Consulta las propuestas y los acuerdos de servicio compartidos por tus empresas de limpieza.", "perMonth": "por mes" },
+  "clientBilling": { "title": "Facturación", "description": "Consulta el estado, las fechas de vencimiento, los totales y las opciones de pago en línea de tus facturas.", "payInvoice": "Pagar la factura {{invoice}} en línea" },
+  "clientLocations": { "title": "Ubicaciones", "description": "Consulta las ubicaciones residenciales y comerciales vinculadas a tus servicios.", "residential": "Ubicaciones residenciales", "commercial": "Ubicaciones de servicio comercial", "noResidential": "No hay ubicaciones residenciales registradas.", "noCommercial": "No hay ubicaciones comerciales registradas.", "statuses": { "active": "Activa", "inactive": "Inactiva", "paused": "Pausada", "ended": "Finalizada" } },
+  "clientAccount": { "title": "Cuenta", "description": "Consulta tu información de contacto, idioma y empresas de limpieza vinculadas.", "language": "Idioma" },
   "clientHome": {
     "title": "Inicio",
     "welcome": "Bienvenido, {{name}}",
     "overviewTitle": "Resumen de tus servicios",
-    "overviewDescription": "Consulta tus servicios actuales, documentos, facturación, ubicaciones e información de cuenta.",
+    "overviewDescription": "Consulta qué está sucediendo ahora y qué puede requerir tu atención.",
+    "connectedProviders": "Conectado con: {{providers}}",
+    "explorePortal": "Explorar el portal del cliente",
+    "viewPages": { "services": "Ver todos los servicios", "documents": "Revisar documentos", "billing": "Revisar facturación", "locations": "Ver ubicaciones" },
     "navigation": {
       "overview": "Resumen",
       "documents": "Documentos",
