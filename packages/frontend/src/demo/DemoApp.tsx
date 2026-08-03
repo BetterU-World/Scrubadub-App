@@ -1,10 +1,15 @@
 import { DemoOwnerPage } from "@/pages/demo/DemoOwnerPage";
 import { DemoWorkerPage } from "@/pages/demo/DemoWorkerPage";
+import {
+  DemoWorkerChecklistPage,
+  DemoWorkerJobDetailPage,
+  DemoWorkerJobsPage,
+} from "@/pages/demo/DemoWorkerJourneyPages";
 import { Route, Router, Switch, useLocation } from "wouter";
 import { getDemoPersona, isDemoPresentationMode } from "./demoRoute";
 import { ShowcaseNotFoundPage } from "./ShowcaseNotFoundPage";
 import { ShowcasePlaceholderPage } from "./ShowcasePlaceholderPage";
-import { buildShowcasePath, getShowcasePages } from "./showcaseRegistry";
+import { buildShowcasePath, getShowcasePages, workerShowcaseJourneyRoutes } from "./showcaseRegistry";
 
 export function DemoApp() {
   return (
@@ -22,10 +27,18 @@ function ShowcaseRoutes() {
 
   return (
     <Switch location={location}>
+      {persona === "worker" && <Route path={buildShowcasePath("worker", workerShowcaseJourneyRoutes.checklist)}>
+        {(params) => <DemoWorkerChecklistPage showcaseJobId={(params as Record<string, string>).showcaseJobId} presentation={presentation} currentPath={location} />}
+      </Route>}
+      {persona === "worker" && <Route path={buildShowcasePath("worker", workerShowcaseJourneyRoutes.jobDetail)}>
+        {(params) => <DemoWorkerJobDetailPage showcaseJobId={(params as Record<string, string>).showcaseJobId} presentation={presentation} currentPath={location} />}
+      </Route>}
       {pages.map((page) => (
         <Route key={page.id} path={buildShowcasePath(persona, page.relativePath)}>
-          {page.availability === "implemented" && page.relativePath === "/" ? (
-            persona === "worker" ? (
+          {page.availability === "implemented" ? (
+            persona === "worker" && page.relativePath === workerShowcaseJourneyRoutes.jobs ? (
+              <DemoWorkerJobsPage presentation={presentation} currentPath={location} />
+            ) : persona === "worker" ? (
               <DemoWorkerPage presentation={presentation} currentPath={location} />
             ) : (
               <DemoOwnerPage presentation={presentation} currentPath={location} />

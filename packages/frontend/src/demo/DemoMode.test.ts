@@ -20,11 +20,22 @@ vi.mock("wouter", () => ({
 
 import { DemoOwnerPage } from "../pages/demo/DemoOwnerPage";
 import { DemoWorkerPage } from "../pages/demo/DemoWorkerPage";
+import {
+  DemoWorkerChecklistPage,
+  DemoWorkerJobDetailPage,
+  DemoWorkerJobsPage,
+} from "../pages/demo/DemoWorkerJourneyPages";
 import { ownerSections, workerSections } from "../components/layout/navigation";
 import { ShowcaseNotFoundPage } from "./ShowcaseNotFoundPage";
 import { ShowcasePlaceholderPage } from "./ShowcasePlaceholderPage";
 import { ownerDashboardFixtures } from "./fixtures/ownerDashboardFixtures";
-import { brightSideWorkerHomeFixture } from "./fixtures/workerShowcaseFixtures";
+import {
+  brightSideWorkerHomeFixture,
+  brightSideWorkerJobPreviewFixture,
+  brightSideWorkerJobs,
+  getBrightSideWorkerJob,
+  RIVERSTONE_SHOWCASE_JOB_ID,
+} from "./fixtures/workerShowcaseFixtures";
 import {
   getDemoPersona,
   isDemoModeEnabled,
@@ -36,6 +47,7 @@ import {
   buildShowcasePath,
   getShowcasePage,
   getShowcasePages,
+  workerShowcaseJourneyRoutes,
 } from "./showcaseRegistry";
 
 describe("Demo Mode routing", () => {
@@ -72,9 +84,10 @@ describe("Worker Showcase", () => {
 
     expect(html).toContain("BrightSide Cleaning Co.");
     expect(html).toContain("Riverstone Retreat");
-    expect(html).toContain("Current assignment");
-    expect(html).toContain("Completed-cleaning photos");
-    expect(html).toContain("9 of 12");
+    expect(html).toContain("Do this now");
+    expect(html).toContain("Today’s schedule");
+    expect(html).not.toContain("Completed-cleaning photos");
+    expect(html).not.toContain("Performance");
     expect(html).toContain('href="/internal/demo/worker/jobs"');
     expect(html).not.toContain('href="/jobs"');
     expect(html).not.toContain("<input");
@@ -103,6 +116,57 @@ describe("Worker Showcase", () => {
     expect(brightSideWorkerHomeFixture.todayJobs[0].propertyName).toBe(ownerDashboardFixtures.canonical.upcomingJobs[0].propertyName);
     expect(brightSideWorkerHomeFixture.todayJobs[0].status).toBe(ownerDashboardFixtures.canonical.upcomingJobs[0].status);
     expect(JSON.stringify(brightSideWorkerHomeFixture)).not.toMatch(/@|\d{3}[-.)]\s*\d{3}/);
+  });
+
+  it("renders the complete read-only Home to Jobs to Detail to Checklist journey", () => {
+    const jobsHtml = renderToStaticMarkup(createElement(DemoWorkerJobsPage, {
+      presentation: true,
+      currentPath: "/internal/demo/worker/jobs",
+    }));
+    const detailHtml = renderToStaticMarkup(createElement(DemoWorkerJobDetailPage, {
+      showcaseJobId: RIVERSTONE_SHOWCASE_JOB_ID,
+      presentation: true,
+      currentPath: `/internal/demo/worker/jobs/${RIVERSTONE_SHOWCASE_JOB_ID}`,
+    }));
+    const checklistHtml = renderToStaticMarkup(createElement(DemoWorkerChecklistPage, {
+      showcaseJobId: RIVERSTONE_SHOWCASE_JOB_ID,
+      presentation: true,
+      currentPath: `/internal/demo/worker/jobs/${RIVERSTONE_SHOWCASE_JOB_ID}/checklist`,
+    }));
+
+    expect(jobsHtml).toContain("Active job");
+    expect(jobsHtml).toContain("Upcoming jobs");
+    expect(jobsHtml).toContain("Completed jobs");
+    expect(jobsHtml).toContain(`href="/internal/demo/worker/jobs/${RIVERSTONE_SHOWCASE_JOB_ID}?presentation=1"`);
+    expect(detailHtml).toContain("Access instructions");
+    expect(detailHtml).toContain("Required add-ons");
+    expect(detailHtml).toContain(`href="/internal/demo/worker/jobs/${RIVERSTONE_SHOWCASE_JOB_ID}/checklist?presentation=1"`);
+    expect(checklistHtml).toContain("Cleaning workspace");
+    expect(checklistHtml).toContain("Completed-cleaning photos");
+    expect(checklistHtml).toContain("9 of 12");
+    expect(`${jobsHtml}${detailHtml}${checklistHtml}`).not.toMatch(/<input|<form|type="file"/);
+    expect([...`${jobsHtml}${detailHtml}${checklistHtml}`.matchAll(/href="([^"]+)"/g)].every((match) => match[1].startsWith("/internal/demo/worker"))).toBe(true);
+  });
+
+  it("derives every Riverstone view from the same canonical Showcase job", () => {
+    const riverstone = getBrightSideWorkerJob(RIVERSTONE_SHOWCASE_JOB_ID)!;
+    const homeRiverstone = brightSideWorkerHomeFixture.todayJobs.find((job) => job.id === RIVERSTONE_SHOWCASE_JOB_ID)!;
+
+    expect(homeRiverstone.propertyName).toBe(riverstone.propertyName);
+    expect(homeRiverstone.propertyAddress).toBe(riverstone.address);
+    expect(homeRiverstone.status).toBe(riverstone.status);
+    expect(brightSideWorkerJobPreviewFixture.propertyName).toBe(riverstone.propertyName);
+    expect(brightSideWorkerJobPreviewFixture.status).toBe(riverstone.status);
+  });
+
+  it("renders an isolated Worker job not-found state for unknown Showcase ids", () => {
+    const html = renderToStaticMarkup(createElement(DemoWorkerJobDetailPage, {
+      showcaseJobId: "unknown-job",
+      presentation: true,
+      currentPath: "/internal/demo/worker/jobs/unknown-job",
+    }));
+    expect(html).toContain("Job not found");
+    expect(html).toContain('href="/internal/demo/worker/jobs?presentation=1"');
   });
 });
 
@@ -183,7 +247,9 @@ describe("Owner Dashboard demo", () => {
       "packages/frontend/src/demo/DemoShell.tsx",
       "packages/frontend/src/pages/demo/DemoOwnerPage.tsx",
       "packages/frontend/src/pages/demo/DemoWorkerPage.tsx",
+      "packages/frontend/src/pages/demo/DemoWorkerJourneyPages.tsx",
       "packages/frontend/src/demo/ShowcaseWorkerJobPreview.tsx",
+      "packages/frontend/src/demo/ShowcaseWorkerJourney.tsx",
       "packages/frontend/src/demo/ShowcasePlaceholderPage.tsx",
       "packages/frontend/src/demo/ShowcaseNotFoundPage.tsx",
       "packages/frontend/src/demo/showcaseRegistry.ts",
@@ -215,12 +281,15 @@ describe("SCRUB Showcase registry", () => {
     expect(getShowcasePages("worker")).toHaveLength(workerSections.flatMap((section) => section.items).length);
   });
 
-  it("implements only the existing persona roots and classifies all other pages as placeholders", () => {
-    for (const persona of ["owner", "worker"] as const) {
-      const pages = getShowcasePages(persona);
-      expect(pages.filter((page) => page.availability === "implemented").map((page) => page.relativePath)).toEqual(["/"]);
-      expect(pages.filter((page) => page.relativePath !== "/").every((page) => page.availability === "placeholder")).toBe(true);
-    }
+  it("implements the Owner root and Worker core destinations while preserving other placeholders", () => {
+    const ownerPages = getShowcasePages("owner");
+    const workerPages = getShowcasePages("worker");
+    expect(ownerPages.filter((page) => page.availability === "implemented").map((page) => page.relativePath)).toEqual(["/"]);
+    expect(ownerPages.filter((page) => page.relativePath !== "/").every((page) => page.availability === "placeholder")).toBe(true);
+    expect(workerPages.filter((page) => page.availability === "implemented").map((page) => page.relativePath)).toEqual(["/", "/jobs"]);
+    expect(workerPages.filter((page) => !["/", "/jobs"].includes(page.relativePath)).every((page) => page.availability === "placeholder")).toBe(true);
+    expect(workerShowcaseJourneyRoutes.jobDetail).toBe("/jobs/:showcaseJobId");
+    expect(workerShowcaseJourneyRoutes.checklist).toBe("/jobs/:showcaseJobId/checklist");
   });
 
   it("builds only persona-scoped Showcase destinations and preserves presentation mode", () => {

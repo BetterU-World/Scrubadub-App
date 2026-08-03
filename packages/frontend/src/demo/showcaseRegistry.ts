@@ -68,7 +68,7 @@ const ownerDispositions: Record<string, ShowcaseDisposition> = {
 
 const workerDispositions: Record<string, ShowcaseDisposition> = {
   "/": implemented("/"),
-  "/jobs": placeholder("/jobs", "organize assigned cleaning work", ["Review today's assignments", "See upcoming and completed jobs", "Open the details needed for each visit"]),
+  "/jobs": implemented("/jobs"),
   "/calendar": placeholder("/calendar", "see assignments across the schedule", ["Review work by date", "Understand upcoming commitments", "Keep assigned jobs organized"]),
   "/availability": placeholder("/availability", "communicate working availability", ["Review the regular availability schedule", "Record date-specific exceptions", "Help owners plan reliable coverage"]),
   "/payments": placeholder("/payments", "understand payment activity", ["Review planned job payments", "View completed payment history", "Understand payment status"]),
@@ -76,6 +76,12 @@ const workerDispositions: Record<string, ShowcaseDisposition> = {
   "/manuals": placeholder("/manuals", "access the standards needed on the job", ["Read company operating guidance", "Review property-specific instructions", "Keep service expectations close at hand"]),
   "/settings": placeholder("/settings", "review the worker profile and setup", ["Maintain profile preferences", "Review onboarding requirements", "Understand document and payment setup"]),
 };
+
+export const workerShowcaseJourneyRoutes = {
+  jobs: "/jobs",
+  jobDetail: "/jobs/:showcaseJobId",
+  checklist: "/jobs/:showcaseJobId/checklist",
+} as const;
 
 function implemented(relativePath: string): ShowcaseDisposition {
   return { relativePath, availability: "implemented" };
