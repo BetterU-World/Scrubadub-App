@@ -15,4 +15,8 @@ export const brightSideProperties = {
     name: "Harborview Cottage",
     address: "9 Harborview Drive, Wilmington, NC",
   },
+  sunroomBungalow: {
+    name: "The Sunroom Bungalow",
+    address: "76 Garden Walk, Asheville, NC",
+  },
 } as const;

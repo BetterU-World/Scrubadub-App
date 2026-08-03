@@ -1,7 +1,6 @@
 import { DemoShell } from "../../demo/DemoShell";
-import { ShowcaseWorkerJobPreview } from "../../demo/ShowcaseWorkerJobPreview";
-import { brightSideWorkerHomeFixture, brightSideWorkerJobPreviewFixture } from "../../demo/fixtures/workerShowcaseFixtures";
-import { WorkerHomePresentation } from "../../features/worker-home/WorkerHomePresentation";
+import { ShowcaseWorkerHomePresentation } from "../../demo/ShowcaseWorkerJourney";
+import { brightSideWorkerHomeFixture, getBrightSideWorkerJob, RIVERSTONE_SHOWCASE_JOB_ID } from "../../demo/fixtures/workerShowcaseFixtures";
 
 export function DemoWorkerPage({
   presentation = false,
@@ -11,10 +10,10 @@ export function DemoWorkerPage({
   currentPath?: string;
 }) {
   return <DemoShell presentation={presentation} persona="worker" currentPath={currentPath}>
-    <WorkerHomePresentation
+    <ShowcaseWorkerHomePresentation
       model={brightSideWorkerHomeFixture}
-      interactionMode="static"
-      afterWelcome={<ShowcaseWorkerJobPreview model={brightSideWorkerJobPreviewFixture} />}
+      primaryJob={getBrightSideWorkerJob(RIVERSTONE_SHOWCASE_JOB_ID)!}
+      presentation={presentation}
     />
   </DemoShell>;
 }
