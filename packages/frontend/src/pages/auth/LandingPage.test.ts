@@ -79,6 +79,7 @@ describe("SCRUB landing page messaging contracts", () => {
 
     expect(html).toContain("One job. Three connected experiences. One source of truth.");
     expect(html).toContain("product-proof-owner-dashboard-1200.avif");
+    expect(html).toContain("product-proof-owner-jobs-1200.avif");
     expect(html).toContain("product-proof-worker-job-375.webp");
     expect(html).toContain("product-proof-client-request-timeline-753.avif");
     expect(html).toContain('fetchPriority="high"');
