@@ -13,16 +13,11 @@ import {
   Globe2,
   Home,
   Inbox,
-  Laptop,
   Menu,
-  MessageSquareText,
-  MonitorSmartphone,
   ShieldCheck,
-  Smartphone,
   Sparkles,
   UserCheck,
   Users,
-  Wrench,
 } from "lucide-react";
 import { isOperationsAssessmentEnabled } from "../../lib/assessmentFeature";
 
@@ -219,42 +214,26 @@ export function LandingPage() {
                 <Link href="/get-started" className="btn-primary touch-target inline-flex w-full items-center justify-center gap-2 px-6 sm:w-auto">
                   Start 14 days free <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
-                <a href="#platform" className="btn-secondary touch-target inline-flex w-full items-center justify-center gap-2 px-6 sm:w-auto">
+                <a href="#product-proof" className="btn-secondary touch-target inline-flex w-full items-center justify-center gap-2 px-6 sm:w-auto">
                   See how SCRUB works <ChevronRight className="h-4 w-4" aria-hidden="true" />
                 </a>
-                {isOperationsAssessmentEnabled && <Link href="/assessment" className="touch-target inline-flex w-full items-center justify-center px-4 font-medium text-primary-700 hover:text-primary-800 sm:w-auto">Get Your Operations Assessment</Link>}
               </div>
-              {isOperationsAssessmentEnabled && <p className="mt-3 max-w-xl text-sm leading-6 text-gray-500">See what is working, where operations may be holding you back, and what to improve next. No account required.</p>}
               <p className="mt-3 text-sm text-gray-500">No charge today. Choose the plan that fits your operation.</p>
             </div>
 
-            <div aria-label="SCRUB connects your cleaning business from first request through reporting" className="rounded-3xl border border-gray-200 bg-gray-50 p-4 shadow-xl shadow-gray-200/60 sm:p-6">
-              <div className="rounded-2xl bg-gray-900 p-5 text-white sm:p-6">
-                <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-4">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary-300">Your operation</p>
-                    <p className="mt-1 text-lg font-semibold">One connected business</p>
-                  </div>
-                  <MonitorSmartphone className="h-8 w-8 text-primary-300" aria-hidden="true" />
-                </div>
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  {[
-                    [Inbox, "New work", "Leads & requests"],
-                    [FileCheck2, "Sales", "Proposals & agreements"],
-                    [Users, "Service", "Teams & recurring jobs"],
-                    [BarChart3, "Control", "Payments & reporting"],
-                  ].map(([Icon, title, detail]) => {
-                    const TileIcon = Icon as typeof Inbox;
-                    return (
-                      <div key={String(title)} className="rounded-xl border border-white/10 bg-white/5 p-3 sm:p-4">
-                        <TileIcon className="h-5 w-5 text-primary-300" aria-hidden="true" />
-                        <p className="mt-3 text-sm font-semibold">{String(title)}</p>
-                        <p className="mt-1 text-xs leading-5 text-gray-300">{String(detail)}</p>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+            <div className="relative rounded-3xl border border-gray-200 bg-gray-900 p-2 shadow-2xl shadow-gray-300/70 sm:p-3">
+              <div className="flex items-center gap-1.5 px-3 py-2" aria-hidden="true"><span className="h-2.5 w-2.5 rounded-full bg-red-300" /><span className="h-2.5 w-2.5 rounded-full bg-amber-300" /><span className="h-2.5 w-2.5 rounded-full bg-green-300" /><span className="ml-2 text-xs text-gray-400">Example SCRUB workspace</span></div>
+              <ProductVisual
+                alt="Example SCRUB owner dashboard showing jobs, requests, and operational alerts."
+                avif="/images/product-proof/product-proof-owner-dashboard-1200.avif"
+                webp="/images/product-proof/product-proof-owner-dashboard-1200.webp"
+                mobileAvif="/images/product-proof/product-proof-owner-dashboard-mobile-415.avif"
+                mobileWebp="/images/product-proof/product-proof-owner-dashboard-mobile-415.webp"
+                width={1200}
+                height={860}
+                eager
+                className="aspect-[1200/860] rounded-2xl object-cover object-top"
+              />
             </div>
           </div>
         </section>
@@ -269,73 +248,62 @@ export function LandingPage() {
           </div>
         </section>
 
+        <section id="product-proof" className="scroll-mt-20 bg-gray-50 px-4 py-20 sm:px-6 sm:py-24">
+          <ProductProofSection
+            eyebrow="For owners"
+            title="See the whole operation—and what needs attention next"
+            copy="Requests, active work, approvals, schedules, teams, red flags, and maintenance stay visible in one operational workspace."
+            bullets={["See today’s operational picture", "Track jobs, approvals, and red flags", "Coordinate properties, workers, and schedules", "Keep the business organized from one workspace"]}
+          >
+            <FramedVisual label="Example SCRUB workspace">
+              <ProductVisual alt="Example SCRUB owner dashboard showing upcoming jobs and operational alerts." avif="/images/product-proof/product-proof-owner-operations-1200.avif" webp="/images/product-proof/product-proof-owner-operations-1200.webp" width={1200} height={500} className="aspect-[12/5] object-cover object-top" />
+            </FramedVisual>
+          </ProductProofSection>
+        </section>
+
+        <ConnectedOperationBridge />
+
+        <section id="worker-product-proof" className="scroll-mt-20 px-4 py-20 sm:px-6 sm:py-24">
+          <ProductProofSection
+            eyebrow="For workers"
+            title="Everything the team needs where the work happens"
+            copy="Workers can see assigned work, understand property and schedule details, follow the cleaning plan, add completed-cleaning photos, and submit work for review."
+            bullets={["Open the assigned Riverstone job", "Review access instructions and required add-ons", "Follow checklists and cleaning guidance", "Document and submit completed work"]}
+            reverse
+          >
+            <div className="mx-auto grid max-w-xs grid-cols-1 items-start gap-5 sm:max-w-xl sm:grid-cols-2" aria-label="Example Worker Showcase screens">
+              <PhoneVisual><ProductVisual alt="Example worker workspace showing today’s assigned Riverstone cleaning job." avif="/images/product-proof/product-proof-worker-home-375.avif" webp="/images/product-proof/product-proof-worker-home-375.webp" width={375} height={812} className="aspect-[375/812] object-cover object-top" /></PhoneVisual>
+              <PhoneVisual className="sm:mt-8"><ProductVisual alt="Example worker job detail showing Riverstone property and schedule information." avif="/images/product-proof/product-proof-worker-job-375.avif" webp="/images/product-proof/product-proof-worker-job-375.webp" width={375} height={812} className="aspect-[375/812] object-cover object-top" /></PhoneVisual>
+            </div>
+          </ProductProofSection>
+        </section>
+
+        <section id="client-product-proof" className="scroll-mt-20 bg-gray-50 px-4 py-20 sm:px-6 sm:py-24">
+          <ProductProofSection
+            eyebrow="For clients"
+            title="Your clients always know what is happening and what comes next"
+            copy="A dedicated client portal brings current service, requests, confirmed schedules, documents, billing, and locations into one professional relationship."
+            bullets={["See current and upcoming service", "Follow each request from submission to scheduling", "Understand requested versus confirmed timing", "Keep documents, billing, and service locations close"]}
+          >
+            <div className="grid gap-4">
+              <FramedVisual label="Example SCRUB client workspace"><ProductVisual alt="Example client portal showing current service, recent activity, and items needing attention." avif="/images/product-proof/product-proof-client-home-1024.avif" webp="/images/product-proof/product-proof-client-home-1024.webp" width={1024} height={768} className="aspect-[4/3] object-cover object-top" /></FramedVisual>
+              <div className="ml-auto w-full max-w-md rounded-2xl border border-gray-200 bg-white p-2 shadow-xl sm:w-3/4"><ProductVisual alt="Example client portal showing a confirmed cleaning-request timeline." avif="/images/product-proof/product-proof-client-request-timeline-753.avif" webp="/images/product-proof/product-proof-client-request-timeline-753.webp" width={753} height={1004} className="aspect-[753/1004] rounded-xl object-cover object-top" /></div>
+            </div>
+          </ProductProofSection>
+        </section>
+
         <section id="platform" className="scroll-mt-20 px-4 py-20 sm:px-6 sm:py-24">
           <div className="mx-auto max-w-6xl">
             <SectionHeading centered eyebrow="The connected lifecycle" title="From first request to repeatable service" copy="SCRUB keeps the business context moving as your team turns an opportunity into ongoing work. Each stage stays clear without pretending the important decisions happen automatically." />
             <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-7">
               {lifecycle.map((step, index) => (
                 <li key={step.label} className="relative rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-100 text-primary-700"><step.icon className="h-5 w-5" aria-hidden="true" /></span>
-                    <span className="text-xs font-bold text-gray-300">{String(index + 1).padStart(2, "0")}</span>
-                  </div>
-                  <h3 className="mt-4 font-semibold text-gray-900">{step.label}</h3>
-                  <p className="mt-1 text-sm leading-5 text-gray-500">{step.detail}</p>
+                  <div className="flex items-center justify-between gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-100 text-primary-700"><step.icon className="h-5 w-5" aria-hidden="true" /></span><span className="text-xs font-bold text-gray-300">{String(index + 1).padStart(2, "0")}</span></div>
+                  <h3 className="mt-4 font-semibold text-gray-900">{step.label}</h3><p className="mt-1 text-sm leading-5 text-gray-500">{step.detail}</p>
                 </li>
               ))}
             </ol>
-            <p className="mx-auto mt-8 max-w-3xl text-center text-base leading-7 text-gray-600">
-              Capture leads and requests, scope the work through walkthroughs, send proposals and agreements, build recurring schedules, equip the team, keep clients informed, and review the results.
-            </p>
-          </div>
-        </section>
-
-        <section className="bg-gray-50 px-4 py-20 sm:px-6 sm:py-24">
-          <div className="mx-auto max-w-6xl space-y-16 lg:space-y-24">
-            <div className="grid items-center gap-10 lg:grid-cols-2">
-              <div>
-                <SectionHeading eyebrow="For owners" title="Control without carrying every detail yourself" copy="See new requests, active work, recurring operations, clients, teams, issues, payments, and performance from the same system. Respond to what needs attention without rebuilding the story from messages and spreadsheets." />
-                <ul className="mt-6 space-y-3 text-sm text-gray-700">
-                  {["Manage leads, clients, commercial accounts, and active work", "Coordinate schedules, teams, maintenance, and exceptions", "Review performance and keep the business moving from your phone"].map((item) => <li key={item} className="flex gap-3"><CheckCircle className="mt-0.5 h-5 w-5 flex-none text-primary-600" aria-hidden="true" /><span>{item}</span></li>)}
-                </ul>
-                {isOperationsAssessmentEnabled && <Link href="/assessment" className="mt-6 inline-flex min-h-11 items-center gap-2 font-semibold text-primary-700 hover:text-primary-800">Get Your Operations Assessment <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>}
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2" aria-label="Owner platform capabilities">
-                <RoleCard icon={Inbox} title="Know what is new" copy="Requests, walkthroughs, proposals, and client activity stay visible." />
-                <RoleCard icon={Wrench} title="Catch what needs attention" copy="Red flags, maintenance, and operational status help owners act earlier." />
-                <RoleCard icon={Users} title="Coordinate the team" copy="Jobs, availability, assignments, documents, and guidance stay connected." />
-                <RoleCard icon={BarChart3} title="Review the operation" copy="Performance, analytics, payments, and records support better decisions." />
-              </div>
-            </div>
-
-            <div className="grid items-center gap-10 lg:grid-cols-2">
-              <div className="order-2 grid gap-4 sm:grid-cols-2 lg:order-1" aria-label="Client portal capabilities">
-                <RoleCard icon={FileCheck2} title="Review and approve" copy="Professional proposals and service agreements move decisions forward." />
-                <RoleCard icon={Sparkles} title="See ongoing service" copy="Upcoming and recurring work remains easy for clients to understand." />
-                <RoleCard icon={MessageSquareText} title="Make a request" copy="Clients have a clear place to manage service needs and communication." />
-                <RoleCard icon={CircleDollarSign} title="Track payments" copy="Payment and invoice visibility keeps the relationship clear." />
-              </div>
-              <div className="order-1 lg:order-2">
-                <SectionHeading eyebrow="For clients" title="A professional experience before and after the sale" copy="Give every client the confidence and clarity of a larger operation without creating more administrative work. Proposals, agreements, requests, recurring services, and payment visibility live in a dedicated client experience." />
-              </div>
-            </div>
-
-            <div className="grid items-center gap-10 lg:grid-cols-2">
-              <div>
-                <SectionHeading eyebrow="For workers" title="Clear work before arrival, on the job, and when something changes" copy="Workers are more than checklist users. Their mobile experience brings together today's work, job details, availability, documents, onboarding, manuals, payments, and maintenance context." />
-                <ul className="mt-6 space-y-3 text-sm text-gray-700">
-                  {["See assigned work and the details needed to complete it", "Manage availability and required onboarding information", "Use manuals, documents, maintenance workflows, and issue visibility in the field"].map((item) => <li key={item} className="flex gap-3"><CheckCircle className="mt-0.5 h-5 w-5 flex-none text-primary-600" aria-hidden="true" /><span>{item}</span></li>)}
-                </ul>
-              </div>
-              <div className="mx-auto w-full max-w-sm rounded-[2rem] border-8 border-gray-900 bg-white p-3 shadow-xl" aria-label="Worker mobile experience">
-                <div className="rounded-[1.35rem] bg-gray-50 p-4">
-                  <div className="flex items-center justify-between"><div><p className="text-xs text-gray-500">Worker workspace</p><p className="font-semibold text-gray-900">Today&apos;s work</p></div><Smartphone className="h-6 w-6 text-primary-600" aria-hidden="true" /></div>
-                  <div className="mt-4 space-y-3">
-                    {["Job details and instructions", "Availability and schedule", "Documents and onboarding", "Manuals and maintenance"].map((item, index) => <div key={item} className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white p-3"><span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-100 text-xs font-bold text-primary-700">{index + 1}</span><span className="text-sm font-medium text-gray-700">{item}</span></div>)}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <p className="mx-auto mt-8 max-w-3xl text-center text-base leading-7 text-gray-600">Capture leads and requests, scope the work through walkthroughs, send proposals and agreements, build recurring schedules, equip the team, keep clients informed, and review the results.</p>
           </div>
         </section>
 
@@ -359,16 +327,19 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section className="px-4 py-20 sm:px-6 sm:py-24">
-          <div className="mx-auto grid max-w-6xl items-center gap-10 rounded-3xl bg-gray-900 px-6 py-10 text-white sm:px-10 sm:py-14 lg:grid-cols-[.8fr_1.2fr]">
-            <div className="flex justify-center"><div className="flex h-40 w-40 items-center justify-center rounded-full border border-primary-400/30 bg-primary-400/10"><Laptop className="h-16 w-16 text-primary-300" aria-hidden="true" /><Smartphone className="-ml-3 mt-16 h-12 w-12 text-white" aria-hidden="true" /></div></div>
+        {isOperationsAssessmentEnabled && <section className="px-4 py-20 sm:px-6 sm:py-24" aria-labelledby="assessment-heading">
+          <div className="mx-auto grid max-w-6xl gap-8 overflow-hidden rounded-3xl bg-gray-900 px-6 py-10 text-white sm:px-10 sm:py-14 lg:grid-cols-[1.1fr_.9fr] lg:items-center">
             <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary-300">Mobile operation</p>
-              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Built for the desk, the truck, and the job site</h2>
-              <p className="mt-4 text-base leading-7 text-gray-300 sm:text-lg">Owners can manage the business from a phone. Workers can use field workflows where the work happens. Clients can access their relationship from a responsive portal. No one has to wait to get back to a desk.</p>
+              <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary-300">A useful place to start</p>
+              <h2 id="assessment-heading" className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Not ready for the platform yet? Find the next operational priority.</h2>
+              <p className="mt-4 max-w-2xl text-base leading-7 text-gray-300 sm:text-lg">Complete the free Operations Assessment for an Operations Score, Confidence Score, and personalized roadmap. No account or commitment required.</p>
+              <Link href="/assessment" className="btn-primary touch-target mt-7 inline-flex w-full items-center justify-center gap-2 px-6 sm:w-auto">Get your free Operations Assessment <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
             </div>
+            <ul className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1" aria-label="Operations Assessment results">
+              {["Operations Score", "Confidence Score", "Personalized roadmap"].map((item) => <li key={item} className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-4 text-sm font-semibold"><CheckCircle className="h-5 w-5 flex-none text-primary-300" aria-hidden="true" />{item}</li>)}
+            </ul>
           </div>
-        </section>
+        </section>}
 
         <section aria-labelledby="trust-heading" className="bg-primary-50 px-4 py-16 sm:px-6">
           <div className="mx-auto max-w-6xl">
@@ -424,7 +395,7 @@ export function LandingPage() {
           <div className="mx-auto max-w-3xl">
             <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">One connected business. More room to grow.</h2>
             <p className="mt-4 text-base leading-7 text-gray-600 sm:text-lg">Replace scattered coordination with clearer work, more professional client relationships, and a team that knows what comes next.</p>
-            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row sm:flex-wrap"><Link href="/get-started" className="btn-primary touch-target inline-flex w-full items-center justify-center gap-2 px-6 sm:w-auto">Start 14 days free <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link><a href="#platform" className="btn-secondary touch-target inline-flex w-full items-center justify-center px-6 sm:w-auto">Explore the platform</a>{isOperationsAssessmentEnabled && <Link href="/assessment" className="touch-target inline-flex w-full items-center justify-center px-4 font-medium text-primary-700 hover:text-primary-800 sm:w-auto">Get Your Operations Assessment</Link>}</div>
+            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row sm:flex-wrap"><Link href="/get-started" className="btn-primary touch-target inline-flex w-full items-center justify-center gap-2 px-6 sm:w-auto">Start 14 days free <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link><a href="#product-proof" className="btn-secondary touch-target inline-flex w-full items-center justify-center px-6 sm:w-auto">See how SCRUB works</a></div>
           </div>
         </section>
       </main>
@@ -442,8 +413,46 @@ export function LandingPage() {
   );
 }
 
-function RoleCard({ icon: Icon, title, copy }: { icon: typeof Inbox; title: string; copy: string }) {
-  return <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-100 text-primary-700"><Icon className="h-5 w-5" aria-hidden="true" /></span><h3 className="mt-4 font-semibold text-gray-900">{title}</h3><p className="mt-2 text-sm leading-6 text-gray-600">{copy}</p></div>;
+function ProductVisual({ alt, avif, webp, mobileAvif, mobileWebp, width, height, eager = false, className = "" }: { alt: string; avif: string; webp: string; mobileAvif?: string; mobileWebp?: string; width: number; height: number; eager?: boolean; className?: string }) {
+  return <picture>
+    {mobileAvif && <source media="(max-width: 639px)" type="image/avif" srcSet={mobileAvif} />}
+    {mobileWebp && <source media="(max-width: 639px)" type="image/webp" srcSet={mobileWebp} />}
+    <source type="image/avif" srcSet={avif} />
+    <source type="image/webp" srcSet={webp} />
+    <img src={webp} alt={alt} width={width} height={height} loading={eager ? "eager" : "lazy"} decoding="async" fetchPriority={eager ? "high" : "auto"} className={`block h-auto w-full ${className}`} />
+  </picture>;
+}
+
+function ProductProofSection({ eyebrow, title, copy, bullets, reverse = false, children }: { eyebrow: string; title: string; copy: string; bullets: string[]; reverse?: boolean; children: React.ReactNode }) {
+  return <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-2 lg:gap-14">
+    <div className={reverse ? "lg:order-2" : ""}>
+      <SectionHeading eyebrow={eyebrow} title={title} copy={copy} />
+      <ul className="mt-6 space-y-3 text-sm text-gray-700">{bullets.map((item) => <li key={item} className="flex gap-3"><CheckCircle className="mt-0.5 h-5 w-5 flex-none text-primary-600" aria-hidden="true" /><span>{item}</span></li>)}</ul>
+    </div>
+    <div className={reverse ? "lg:order-1" : ""}>{children}</div>
+  </div>;
+}
+
+function FramedVisual({ label, children }: { label: string; children: React.ReactNode }) {
+  return <figure className="overflow-hidden rounded-2xl border border-gray-200 bg-gray-900 p-2 shadow-xl">
+    <figcaption className="px-2 py-1.5 text-xs font-medium text-gray-300">{label}</figcaption>
+    <div className="overflow-hidden rounded-xl bg-white">{children}</div>
+  </figure>;
+}
+
+function PhoneVisual({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return <div className={`overflow-hidden rounded-[1.75rem] border-[6px] border-gray-900 bg-gray-900 shadow-xl ${className}`}><div className="mx-auto my-1 h-1.5 w-12 rounded-full bg-gray-600" aria-hidden="true" /><div className="overflow-hidden rounded-[1.25rem] bg-white">{children}</div></div>;
+}
+
+function ConnectedOperationBridge() {
+  const roles = [["Owner", "Runs the operation"], ["Worker", "Completes the work"], ["Client", "Experiences the service"]];
+  return <section className="border-y border-primary-200 bg-primary-50 px-4 py-16 sm:px-6" aria-labelledby="connected-operation-heading">
+    <div className="mx-auto max-w-5xl text-center">
+      <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary-700">One connected operation</p>
+      <h2 id="connected-operation-heading" className="mt-3 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">One job. Three connected experiences. One source of truth.</h2>
+      <ol className="mt-10 grid gap-4 md:grid-cols-3">{roles.map(([role, outcome], index) => <li key={role} className="relative rounded-2xl border border-primary-200 bg-white p-5 shadow-sm"><span className="text-xs font-bold text-primary-600">0{index + 1}</span><h3 className="mt-2 text-xl font-semibold text-gray-900">{role}</h3><p className="mt-1 text-sm text-gray-600">{outcome}</p>{index < roles.length - 1 && <ArrowRight className="absolute -right-7 top-1/2 z-10 hidden h-5 w-5 -translate-y-1/2 text-primary-500 md:block" aria-hidden="true" />}</li>)}</ol>
+    </div>
+  </section>;
 }
 
 function SolutionCard({ icon: Icon, title, copy, items }: { icon: typeof Home; title: string; copy: string; items: string[] }) {

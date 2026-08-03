@@ -45,7 +45,7 @@ describe("SCRUB landing page messaging contracts", () => {
     expect(html).not.toContain("<video");
     expect(html).not.toContain("Scrub_Owner_Dashboard_User_Guide.mp4");
     expect(html).toContain('href="/get-started"');
-    expect(html).toContain('href="#platform"');
+    expect(html).toContain('href="#product-proof"');
   });
 
   it("preserves current prices and plan-specific checkout targets", () => {
@@ -72,5 +72,29 @@ describe("SCRUB landing page messaging contracts", () => {
     expect(html).toContain("hidden items-center gap-6 md:flex");
     expect(html).toContain("touch-target");
     expect(html).not.toMatch(/testimonial|trusted by|customers served|jobs completed/i);
+  });
+
+  it("uses authentic static product proof without exposing Showcase runtime routes", () => {
+    const html = renderPage();
+
+    expect(html).toContain("One job. Three connected experiences. One source of truth.");
+    expect(html).toContain("product-proof-owner-dashboard-1200.avif");
+    expect(html).toContain("product-proof-worker-job-375.webp");
+    expect(html).toContain("product-proof-client-request-timeline-753.avif");
+    expect(html).toContain('fetchPriority="high"');
+    expect(html).toContain('loading="lazy"');
+    expect(html).not.toContain("/internal/demo/");
+    expect(html).not.toContain("<iframe");
+  });
+
+  it("keeps the Assessment supporting the paid-product story", () => {
+    const html = renderPage();
+    const heroEnd = html.indexOf('aria-label="Product credibility"');
+
+    expect(html.slice(0, heroEnd)).not.toContain("Operations Assessment");
+    expect(html).toContain("Get your free Operations Assessment");
+    expect(html).toContain("Operations Score");
+    expect(html).toContain("Confidence Score");
+    expect(html).toContain("Personalized roadmap");
   });
 });
