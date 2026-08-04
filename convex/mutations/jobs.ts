@@ -2,75 +2,82 @@ import { mutation } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { logAudit, createNotification } from "../lib/helpers";
-import { requireOwnerManagerSession, requireOwnerSession, requireWorkerSession } from "../lib/sessionAuth";
+import {
+  requireOwnerManagerSession,
+  requireOwnerSession,
+  requireWorkerSession,
+} from "../lib/sessionAuth";
 import { requireActiveSubscription } from "../lib/subscriptionGating";
-import { assertTeamInCompany, canSubmitFinalJob, getJobRecipientUserIds, isUserAssignedToJob } from "../lib/teams";
+import {
+  assertTeamInCompany,
+  canSubmitFinalJob,
+  getJobRecipientUserIds,
+  isUserAssignedToJob,
+} from "../lib/teams";
 import { resolveOperationalEmailIdentity } from "../lib/operationalEmailIdentity";
 import { MAX_JOB_PAUSE_CYCLES, normalizePauseNote } from "../lib/jobTiming";
 import { copyAcceptedProposalAddOnSnapshots } from "../lib/acceptedProposalAddOnSnapshots";
-import { isExistingClientServiceRequest } from "../lib/requestContext";
+import { createJobFromClientRequest } from "../lib/clientRequestScheduling";
 
 const requestJobTypeValidator = v.union(
-  v.literal("standard"), v.literal("deep_clean"), v.literal("turnover"),
-  v.literal("move_in_out"), v.literal("maintenance"), v.literal("post_construction")
+  v.literal("standard"),
+  v.literal("deep_clean"),
+  v.literal("turnover"),
+  v.literal("move_in_out"),
+  v.literal("maintenance"),
+  v.literal("post_construction"),
 );
-
-function dateInTimeZone(timezone: string) {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" })
-    .format(new Date());
-}
-
-function timeInTimeZone(timezone: string) {
-  return new Intl.DateTimeFormat("en-GB", { timeZone: timezone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date());
-}
 
 export const confirmClientRequestSchedule = mutation({
   args: {
-    userId: v.optional(v.id("users")), sessionToken: v.string(), requestId: v.id("clientRequests"),
-    scheduledDate: v.string(), startTime: v.string(), durationMinutes: v.number(), type: requestJobTypeValidator,
-    clientSchedulingNote: v.optional(v.string()), idempotencyKey: v.string(),
+    userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
+    requestId: v.id("clientRequests"),
+    scheduledDate: v.string(),
+    startTime: v.string(),
+    durationMinutes: v.number(),
+    type: requestJobTypeValidator,
+    clientSchedulingNote: v.optional(v.string()),
+    idempotencyKey: v.string(),
   },
   handler: async (ctx, args) => {
-    const actor = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
-    if (actor.role === "manager" && actor.canManageSchedule !== true) throw new Error("Schedule management permission required");
+    const actor = await requireOwnerManagerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
+    if (actor.role === "manager" && actor.canManageSchedule !== true)
+      throw new Error("Schedule management permission required");
     const request = await ctx.db.get(args.requestId);
     if (!request) throw new Error("Request not found");
     if (request.companyId !== actor.companyId) throw new Error("Access denied");
-    const existing = await ctx.db.query("jobs").withIndex("by_sourceClientRequestId", q => q.eq("sourceClientRequestId", request._id)).first();
-    if (existing) return { jobId: existing._id, scheduledDate: existing.scheduledDate, startTime: existing.startTime, durationMinutes: existing.durationMinutes, replayed: true };
-    if (!request.clientRelationshipId) throw new Error("Active client relationship required");
-    const relationship = await ctx.db.get(request.clientRelationshipId);
-    if (!relationship || relationship.companyId !== actor.companyId || relationship.status !== "active") throw new Error("Active client relationship required");
-    if (["declined", "archived"].includes(request.status)) throw new Error("Request cannot be scheduled in its current state");
-    if (!/^[A-Za-z0-9_-]{16,128}$/.test(args.idempotencyKey)) throw new Error("Invalid scheduling key");
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(args.scheduledDate) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(args.startTime)) throw new Error("Invalid final schedule");
-    const company = await ctx.db.get(actor.companyId);
-    const timezone = company?.timezone || "UTC"; const today = dateInTimeZone(timezone);
-    if (!company || args.scheduledDate < today || (args.scheduledDate === today && args.startTime < timeInTimeZone(timezone))) throw new Error("Final schedule cannot be in the past");
-    if (!Number.isInteger(args.durationMinutes) || args.durationMinutes < 30 || args.durationMinutes > 1440) throw new Error("Invalid service duration");
-    const clientSchedulingNote = args.clientSchedulingNote?.trim();
-    if (clientSchedulingNote && clientSchedulingNote.length > 500) throw new Error("Scheduling note must be 500 characters or fewer");
-    let propertyId: any = undefined; let commercialAccountId: any = undefined;
-    if (request.propertyId) {
-      const property = await ctx.db.get(request.propertyId);
-      if (!property || property.companyId !== actor.companyId || property.clientRelationshipId !== relationship._id || !property.active) throw new Error("Service location is unavailable");
-      propertyId = property._id;
-    } else if (request.commercialAccountId) {
-      const account = await ctx.db.get(request.commercialAccountId);
-      if (!account || account.companyId !== actor.companyId || account.clientRelationshipId !== relationship._id || account.status !== "active") throw new Error("Service location is unavailable");
-      commercialAccountId = account._id;
-    } else throw new Error("Service location is unavailable");
-    if (!(await isExistingClientServiceRequest(ctx, request))) throw new Error("Request is not an existing-client job request");
-    const jobId = await ctx.db.insert("jobs", {
-      companyId: actor.companyId, clientRelationshipId: relationship._id, propertyId, commercialAccountId,
-      cleanerIds: [], type: args.type, status: "confirmed", scheduledDate: args.scheduledDate,
-      startTime: args.startTime, durationMinutes: args.durationMinutes, sourceClientRequestId: request._id,
-      clientSchedulingNote: clientSchedulingNote || undefined, requireConfirmation: false, acceptanceStatus: "accepted", reworkCount: 0,
-      requiredAddOnSnapshots: request.requestedAddOnSnapshots?.map((item: any, index: number) => ({ snapshotId: `request:${request._id}:${index}`, name: item.name, quantity: item.quantity, unitLabel: item.unitLabel })),
+    if (!/^[A-Za-z0-9_-]{16,128}$/.test(args.idempotencyKey))
+      throw new Error("Invalid scheduling key");
+    const result = await createJobFromClientRequest(ctx, request, args, {
+      userId: actor._id,
+      action: "schedule_client_request",
+      details: { idempotencyKey: args.idempotencyKey },
     });
-    await ctx.db.patch(request._id, { status: "converted", leadStage: "converted", lastStageChangedAt: Date.now() });
-    await logAudit(ctx, { companyId: actor.companyId, userId: actor._id, action: "schedule_client_request", entityType: "job", entityId: jobId, details: JSON.stringify({ requestId: request._id, idempotencyKey: args.idempotencyKey }) });
-    return { jobId, scheduledDate: args.scheduledDate, startTime: args.startTime, durationMinutes: args.durationMinutes, replayed: false };
+    const pending = await ctx.db
+      .query("clientRequestScheduleProposals")
+      .withIndex("by_clientRequestId_status", (q) =>
+        q.eq("clientRequestId", request._id).eq("status", "pending"),
+      )
+      .collect();
+    const now = Date.now();
+    for (const proposal of pending)
+      await ctx.db.patch(proposal._id, {
+        status: "withdrawn",
+        withdrawnAt: now,
+        respondedAt: now,
+      });
+    return {
+      jobId: result.job!._id,
+      scheduledDate: result.job!.scheduledDate,
+      startTime: result.job!.startTime,
+      durationMinutes: result.job!.durationMinutes,
+      replayed: result.replayed,
+    };
   },
 });
 
@@ -81,7 +88,7 @@ const pauseReasonValidator = v.union(
   v.literal("client_interruption"),
   v.literal("travel_between_service_areas"),
   v.literal("equipment_issue"),
-  v.literal("other")
+  v.literal("other"),
 );
 
 const cancelReasonValidator = v.union(
@@ -93,7 +100,7 @@ const cancelReasonValidator = v.union(
   v.literal("scheduling_conflict"),
   v.literal("pricing_disagreement"),
   v.literal("safety_concern"),
-  v.literal("other")
+  v.literal("other"),
 );
 
 function findOpenPauseIndex(history: Array<{ resumedAt?: number }>) {
@@ -117,7 +124,7 @@ export const create = mutation({
       v.literal("turnover"),
       v.literal("move_in_out"),
       v.literal("maintenance"),
-      v.literal("post_construction")
+      v.literal("post_construction"),
     ),
     scheduledDate: v.string(),
     startTime: v.optional(v.string()),
@@ -129,43 +136,76 @@ export const create = mutation({
     clientRequestId: v.optional(v.id("clientRequests")),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
     if (owner.companyId !== args.companyId) throw new Error("Not your company");
     await requireActiveSubscription(ctx, args.companyId);
     if (args.assignedTeamId) {
-      await assertTeamInCompany(ctx, args.assignedTeamId, args.companyId, { requireActive: true });
-      if (args.cleanerIds.length > 0) throw new Error("Choose either individual cleaners or a team");
+      await assertTeamInCompany(ctx, args.assignedTeamId, args.companyId, {
+        requireActive: true,
+      });
+      if (args.cleanerIds.length > 0)
+        throw new Error("Choose either individual cleaners or a team");
     }
 
-    const initialStatus = args.requireConfirmation === false ? "confirmed" : "scheduled";
-    const initialAcceptance = args.requireConfirmation === false ? "accepted" as const : "pending" as const;
+    const initialStatus =
+      args.requireConfirmation === false ? "confirmed" : "scheduled";
+    const initialAcceptance =
+      args.requireConfirmation === false
+        ? ("accepted" as const)
+        : ("pending" as const);
 
     const property = await ctx.db.get(args.propertyId);
     if (!property || property.companyId !== args.companyId) {
       throw new Error("Property not found");
     }
-    const emailIdentity = await resolveOperationalEmailIdentity(ctx, args.companyId);
+    const emailIdentity = await resolveOperationalEmailIdentity(
+      ctx,
+      args.companyId,
+    );
 
     let sourceProposalId: typeof args.proposalId | undefined;
     let acceptedProposalAddOnSnapshots: any[] | undefined;
     if (args.proposalId) {
-      const copied = await copyAcceptedProposalAddOnSnapshots(ctx, args.proposalId, args.companyId);
-      if (!args.clientRequestId || copied.proposal.clientRequestId !== args.clientRequestId) {
+      const copied = await copyAcceptedProposalAddOnSnapshots(
+        ctx,
+        args.proposalId,
+        args.companyId,
+      );
+      if (
+        !args.clientRequestId ||
+        copied.proposal.clientRequestId !== args.clientRequestId
+      ) {
         throw new Error("Accepted proposal must match the source request");
       }
       const request = await ctx.db.get(args.clientRequestId);
-      if (!request || request.companyId !== args.companyId) throw new Error("Source request not found");
+      if (!request || request.companyId !== args.companyId)
+        throw new Error("Source request not found");
       if (request.propertyId && request.propertyId !== args.propertyId) {
-        throw new Error("Job property must match the accepted proposal request");
+        throw new Error(
+          "Job property must match the accepted proposal request",
+        );
       }
-      if (copied.proposal.clientRelationshipId && copied.proposal.clientRelationshipId !== property.clientRelationshipId) {
+      if (
+        copied.proposal.clientRelationshipId &&
+        copied.proposal.clientRelationshipId !== property.clientRelationshipId
+      ) {
         throw new Error("Job client must match the accepted proposal");
       }
       sourceProposalId = copied.proposal._id;
       acceptedProposalAddOnSnapshots = copied.snapshots;
     }
 
-    const { userId: _uid, sessionToken: _sessionToken, proposalId: _proposalId, clientRequestId: _requestId, ...jobData } = args;
+    const {
+      userId: _uid,
+      sessionToken: _sessionToken,
+      proposalId: _proposalId,
+      clientRequestId: _requestId,
+      ...jobData
+    } = args;
     const jobId = await ctx.db.insert("jobs", {
       ...jobData,
       sourceProposalId,
@@ -177,7 +217,11 @@ export const create = mutation({
     });
 
     const recipientIds = args.assignedTeamId
-      ? await getJobRecipientUserIds(ctx, { companyId: args.companyId, cleanerIds: args.cleanerIds, assignedTeamId: args.assignedTeamId })
+      ? await getJobRecipientUserIds(ctx, {
+          companyId: args.companyId,
+          cleanerIds: args.cleanerIds,
+          assignedTeamId: args.assignedTeamId,
+        })
       : args.cleanerIds;
 
     // Notify assigned cleaners/team members
@@ -194,13 +238,17 @@ export const create = mutation({
       // Send job assigned email
       const cleaner = await ctx.db.get(cleanerId);
       if (cleaner?.email) {
-        await ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendJobAssigned, {
-          email: cleaner.email,
-          propertyName: property?.name ?? "a property",
-          scheduledDate: args.scheduledDate,
-          startTime: args.startTime,
-          ...emailIdentity,
-        });
+        await ctx.scheduler.runAfter(
+          0,
+          internal.actions.emailNotifications.sendJobAssigned,
+          {
+            email: cleaner.email,
+            propertyName: property?.name ?? "a property",
+            scheduledDate: args.scheduledDate,
+            startTime: args.startTime,
+            ...emailIdentity,
+          },
+        );
       }
     }
 
@@ -232,8 +280,8 @@ export const update = mutation({
         v.literal("turnover"),
         v.literal("move_in_out"),
         v.literal("maintenance"),
-        v.literal("post_construction")
-      )
+        v.literal("post_construction"),
+      ),
     ),
     scheduledDate: v.optional(v.string()),
     startTime: v.optional(v.string()),
@@ -243,17 +291,31 @@ export const update = mutation({
     clearAssignedManager: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
 
     if (args.assignedTeamId) {
-      await assertTeamInCompany(ctx, args.assignedTeamId, owner.companyId, { requireActive: true });
-      if (args.cleanerIds && args.cleanerIds.length > 0) throw new Error("Choose either individual cleaners or a team");
+      await assertTeamInCompany(ctx, args.assignedTeamId, owner.companyId, {
+        requireActive: true,
+      });
+      if (args.cleanerIds && args.cleanerIds.length > 0)
+        throw new Error("Choose either individual cleaners or a team");
     }
 
-    const { jobId, userId: _uid, sessionToken: _sessionToken, clearAssignedManager, clearAssignedTeam, ...updates } = args;
+    const {
+      jobId,
+      userId: _uid,
+      sessionToken: _sessionToken,
+      clearAssignedManager,
+      clearAssignedTeam,
+      ...updates
+    } = args;
     // Remove undefined values
     const cleanUpdates: Record<string, any> = {};
     for (const [key, val] of Object.entries(updates)) {
@@ -263,7 +325,10 @@ export const update = mutation({
     if (clearAssignedManager) {
       cleanUpdates.assignedManagerId = undefined;
     }
-    if (clearAssignedTeam || (updates.cleanerIds && updates.cleanerIds.length > 0)) {
+    if (
+      clearAssignedTeam ||
+      (updates.cleanerIds && updates.cleanerIds.length > 0)
+    ) {
       cleanUpdates.assignedTeamId = undefined;
     }
     if (updates.propertyId) {
@@ -294,7 +359,11 @@ export const cancel = mutation({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const actor = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
+    const actor = await requireOwnerManagerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== actor.companyId) throw new Error("Access denied");
@@ -303,7 +372,8 @@ export const cancel = mutation({
       throw new Error("Completed jobs cannot be cancelled");
     }
     const notes = args.notes?.trim();
-    if (args.reason === "other" && !notes) throw new Error("Notes are required when reason is Other");
+    if (args.reason === "other" && !notes)
+      throw new Error("Notes are required when reason is Other");
     const cancelledAt = Date.now();
     let pauseHistory = job.pauseHistory;
     if (job.currentPauseStartedAt !== undefined) {
@@ -331,8 +401,12 @@ export const cancel = mutation({
 
     const recipientIds = new Set(await getJobRecipientUserIds(ctx, job));
     if (actor.role === "manager") {
-      const companyUsers = await ctx.db.query("users").withIndex("by_companyId", (q) => q.eq("companyId", job.companyId)).collect();
-      for (const owner of companyUsers.filter((user) => user.role === "owner")) recipientIds.add(owner._id);
+      const companyUsers = await ctx.db
+        .query("users")
+        .withIndex("by_companyId", (q) => q.eq("companyId", job.companyId))
+        .collect();
+      for (const owner of companyUsers.filter((user) => user.role === "owner"))
+        recipientIds.add(owner._id);
     }
     recipientIds.delete(actor._id);
     for (const recipientId of recipientIds) {
@@ -358,13 +432,23 @@ export const cancel = mutation({
 });
 
 export const acceptJob = mutation({
-  args: { jobId: v.id("jobs"), userId: v.optional(v.id("users")), sessionToken: v.string() },
+  args: {
+    jobId: v.id("jobs"),
+    userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
+  },
   handler: async (ctx, args) => {
-    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
+    const user = await requireWorkerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
-    if (!(await isUserAssignedToJob(ctx, job, user._id))) throw new Error("Not assigned to this job");
-    if (job.status !== "scheduled") throw new Error("Job cannot be accepted in current status");
+    if (!(await isUserAssignedToJob(ctx, job, user._id)))
+      throw new Error("Not assigned to this job");
+    if (job.status !== "scheduled")
+      throw new Error("Job cannot be accepted in current status");
 
     await ctx.db.patch(args.jobId, {
       status: "confirmed",
@@ -400,13 +484,24 @@ export const acceptJob = mutation({
 });
 
 export const denyJob = mutation({
-  args: { jobId: v.id("jobs"), reason: v.optional(v.string()), userId: v.optional(v.id("users")), sessionToken: v.string() },
+  args: {
+    jobId: v.id("jobs"),
+    reason: v.optional(v.string()),
+    userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
+  },
   handler: async (ctx, args) => {
-    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
+    const user = await requireWorkerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
-    if (!(await isUserAssignedToJob(ctx, job, user._id))) throw new Error("Not assigned to this job");
-    if (job.status !== "scheduled") throw new Error("Job cannot be denied in current status");
+    if (!(await isUserAssignedToJob(ctx, job, user._id)))
+      throw new Error("Not assigned to this job");
+    if (job.status !== "scheduled")
+      throw new Error("Job cannot be denied in current status");
 
     await ctx.db.patch(args.jobId, {
       status: "denied",
@@ -447,15 +542,29 @@ export const denyJob = mutation({
  * Resets the job so the owner can reassign.
  */
 export const cleanerCancelJob = mutation({
-  args: { jobId: v.id("jobs"), reason: v.optional(v.string()), userId: v.optional(v.id("users")), sessionToken: v.string() },
+  args: {
+    jobId: v.id("jobs"),
+    reason: v.optional(v.string()),
+    userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
+  },
   handler: async (ctx, args) => {
-    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
+    const user = await requireWorkerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
-    if (!(await isUserAssignedToJob(ctx, job, user._id))) throw new Error("Not assigned to this job");
+    if (!(await isUserAssignedToJob(ctx, job, user._id)))
+      throw new Error("Not assigned to this job");
 
     // Only allow cancellation before work has started
-    if (job.status === "in_progress" || job.status === "submitted" || job.status === "approved") {
+    if (
+      job.status === "in_progress" ||
+      job.status === "submitted" ||
+      job.status === "approved"
+    ) {
       throw new Error("Cannot cancel a job that has already started");
     }
     if (job.status === "cancelled" || job.status === "denied") {
@@ -505,11 +614,16 @@ export const reassignJob = mutation({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
-    if (job.status === "cancelled") throw new Error("Cancelled jobs cannot be reassigned");
+    if (job.status === "cancelled")
+      throw new Error("Cancelled jobs cannot be reassigned");
 
     const newCleaner = await ctx.db.get(args.newCleanerId);
     if (!newCleaner || newCleaner.companyId !== owner.companyId)
@@ -526,8 +640,12 @@ export const reassignJob = mutation({
 
     // Notify the new cleaner
     const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
-    const propertyName = property?.name ?? job.propertySnapshot?.name ?? "a property";
-    const emailIdentity = await resolveOperationalEmailIdentity(ctx, job.companyId);
+    const propertyName =
+      property?.name ?? job.propertySnapshot?.name ?? "a property";
+    const emailIdentity = await resolveOperationalEmailIdentity(
+      ctx,
+      job.companyId,
+    );
     await createNotification(ctx, {
       companyId: job.companyId,
       userId: args.newCleanerId,
@@ -539,13 +657,17 @@ export const reassignJob = mutation({
 
     // Send job assigned email to new cleaner
     if (newCleaner.email) {
-      await ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendJobAssigned, {
-        email: newCleaner.email,
-        propertyName,
-        scheduledDate: job.scheduledDate,
-        startTime: job.startTime,
-        ...emailIdentity,
-      });
+      await ctx.scheduler.runAfter(
+        0,
+        internal.actions.emailNotifications.sendJobAssigned,
+        {
+          email: newCleaner.email,
+          propertyName,
+          scheduledDate: job.scheduledDate,
+          startTime: job.startTime,
+          ...emailIdentity,
+        },
+      );
     }
 
     await logAudit(ctx, {
@@ -560,12 +682,21 @@ export const reassignJob = mutation({
 });
 
 export const arriveJob = mutation({
-  args: { jobId: v.id("jobs"), userId: v.optional(v.id("users")), sessionToken: v.string() },
+  args: {
+    jobId: v.id("jobs"),
+    userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
+  },
   handler: async (ctx, args) => {
-    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
+    const user = await requireWorkerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
-    if (!(await isUserAssignedToJob(ctx, job, user._id))) throw new Error("Not assigned to this job");
+    if (!(await isUserAssignedToJob(ctx, job, user._id)))
+      throw new Error("Not assigned to this job");
     if (job.status !== "confirmed" && job.status !== "scheduled")
       throw new Error("Cannot mark arrived in current status");
 
@@ -574,12 +705,21 @@ export const arriveJob = mutation({
 });
 
 export const startJob = mutation({
-  args: { jobId: v.id("jobs"), userId: v.optional(v.id("users")), sessionToken: v.string() },
+  args: {
+    jobId: v.id("jobs"),
+    userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
+  },
   handler: async (ctx, args) => {
-    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
+    const user = await requireWorkerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
-    if (!(await isUserAssignedToJob(ctx, job, user._id))) throw new Error("Not assigned to this job");
+    if (!(await isUserAssignedToJob(ctx, job, user._id)))
+      throw new Error("Not assigned to this job");
     if (job.status !== "confirmed" && job.status !== "rework_requested")
       throw new Error("Job cannot be started in current status");
 
@@ -638,40 +778,85 @@ export const pauseJob = mutation({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
+    const user = await requireWorkerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
     const job = await ctx.db.get(args.jobId);
-    if (!job || job.companyId !== user.companyId) throw new Error("Job not found");
-    if (!(await isUserAssignedToJob(ctx, job, user._id))) throw new Error("Not assigned to this job");
-    if (job.status !== "in_progress") throw new Error("Only an in-progress job can be paused");
-    if (job.currentPauseStartedAt !== undefined) throw new Error("Job is already paused");
+    if (!job || job.companyId !== user.companyId)
+      throw new Error("Job not found");
+    if (!(await isUserAssignedToJob(ctx, job, user._id)))
+      throw new Error("Not assigned to this job");
+    if (job.status !== "in_progress")
+      throw new Error("Only an in-progress job can be paused");
+    if (job.currentPauseStartedAt !== undefined)
+      throw new Error("Job is already paused");
     const history = job.pauseHistory ?? [];
-    if (history.length >= MAX_JOB_PAUSE_CYCLES) throw new Error("This job has reached the pause limit");
+    if (history.length >= MAX_JOB_PAUSE_CYCLES)
+      throw new Error("This job has reached the pause limit");
     const now = Date.now();
     const note = normalizePauseNote(args.reason, args.note);
     await ctx.db.patch(args.jobId, {
       currentPauseStartedAt: now,
-      pauseHistory: [...history, { pausedAt: now, reason: args.reason, note, pausedByUserId: user._id }],
+      pauseHistory: [
+        ...history,
+        { pausedAt: now, reason: args.reason, note, pausedByUserId: user._id },
+      ],
     });
-    await logAudit(ctx, { companyId: job.companyId, userId: user._id, action: "pause_job", entityType: "job", entityId: args.jobId, details: args.reason });
+    await logAudit(ctx, {
+      companyId: job.companyId,
+      userId: user._id,
+      action: "pause_job",
+      entityType: "job",
+      entityId: args.jobId,
+      details: args.reason,
+    });
   },
 });
 
 export const resumeJob = mutation({
-  args: { jobId: v.id("jobs"), userId: v.optional(v.id("users")), sessionToken: v.string() },
+  args: {
+    jobId: v.id("jobs"),
+    userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
+  },
   handler: async (ctx, args) => {
-    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
+    const user = await requireWorkerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
     const job = await ctx.db.get(args.jobId);
-    if (!job || job.companyId !== user.companyId) throw new Error("Job not found");
-    if (!(await isUserAssignedToJob(ctx, job, user._id))) throw new Error("Not assigned to this job");
-    if (job.status !== "in_progress") throw new Error("Only an in-progress job can be resumed");
-    if (job.currentPauseStartedAt === undefined) throw new Error("Job is not paused");
+    if (!job || job.companyId !== user.companyId)
+      throw new Error("Job not found");
+    if (!(await isUserAssignedToJob(ctx, job, user._id)))
+      throw new Error("Not assigned to this job");
+    if (job.status !== "in_progress")
+      throw new Error("Only an in-progress job can be resumed");
+    if (job.currentPauseStartedAt === undefined)
+      throw new Error("Job is not paused");
     const history = [...(job.pauseHistory ?? [])];
     const openIndex = findOpenPauseIndex(history);
     if (openIndex < 0) throw new Error("Pause history is inconsistent");
     const now = Date.now();
-    history[openIndex] = { ...history[openIndex], resumedAt: now, durationMs: Math.max(0, now - history[openIndex].pausedAt), resumedByUserId: user._id };
-    await ctx.db.patch(args.jobId, { currentPauseStartedAt: undefined, pauseHistory: history });
-    await logAudit(ctx, { companyId: job.companyId, userId: user._id, action: "resume_job", entityType: "job", entityId: args.jobId });
+    history[openIndex] = {
+      ...history[openIndex],
+      resumedAt: now,
+      durationMs: Math.max(0, now - history[openIndex].pausedAt),
+      resumedByUserId: user._id,
+    };
+    await ctx.db.patch(args.jobId, {
+      currentPauseStartedAt: undefined,
+      pauseHistory: history,
+    });
+    await logAudit(ctx, {
+      companyId: job.companyId,
+      userId: user._id,
+      action: "resume_job",
+      entityType: "job",
+      entityId: args.jobId,
+    });
   },
 });
 
@@ -683,21 +868,29 @@ export const completeJob = mutation({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
+    const user = await requireWorkerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
-    if (!(await canSubmitFinalJob(ctx, job, user))) throw new Error("Only a team lead, assigned manager, or owner can submit this job");
+    if (!(await canSubmitFinalJob(ctx, job, user)))
+      throw new Error(
+        "Only a team lead, assigned manager, or owner can submit this job",
+      );
     if (job.status !== "in_progress") throw new Error("Job not in progress");
-    if (job.currentPauseStartedAt !== undefined) throw new Error("Resume the job before completing it");
+    if (job.currentPauseStartedAt !== undefined)
+      throw new Error("Resume the job before completing it");
 
     // Gate: all required inventory items must have a status reported
     if (job.inventoryChecklist && job.inventoryChecklist.length > 0) {
       const unreported = job.inventoryChecklist.filter(
-        (item) => item.required && !item.status
+        (item) => item.required && !item.status,
       );
       if (unreported.length > 0) {
         throw new Error(
-          `Cannot submit: ${unreported.length} required inventory item(s) not reported. Please check all required items.`
+          `Cannot submit: ${unreported.length} required inventory item(s) not reported. Please check all required items.`,
         );
       }
     }
@@ -705,7 +898,9 @@ export const completeJob = mutation({
     await ctx.db.patch(args.jobId, {
       status: "submitted",
       completedAt: Date.now(),
-      notes: args.notes ? `${job.notes ? job.notes + "\n" : ""}Completion notes: ${args.notes}` : job.notes,
+      notes: args.notes
+        ? `${job.notes ? job.notes + "\n" : ""}Completion notes: ${args.notes}`
+        : job.notes,
     });
 
     // Keep form status in sync to prevent drift
@@ -714,12 +909,19 @@ export const completeJob = mutation({
       .withIndex("by_jobId", (q) => q.eq("jobId", args.jobId))
       .first();
     if (form && form.status === "in_progress") {
-      await ctx.db.patch(form._id, { status: "submitted", submittedAt: Date.now() });
+      await ctx.db.patch(form._id, {
+        status: "submitted",
+        submittedAt: Date.now(),
+      });
     }
 
     const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
-    const propName = property?.name ?? job.propertySnapshot?.name ?? "a property";
-    const emailIdentity = await resolveOperationalEmailIdentity(ctx, job.companyId);
+    const propName =
+      property?.name ?? job.propertySnapshot?.name ?? "a property";
+    const emailIdentity = await resolveOperationalEmailIdentity(
+      ctx,
+      job.companyId,
+    );
     const owners = await ctx.db
       .query("users")
       .withIndex("by_companyId", (q) => q.eq("companyId", job.companyId))
@@ -737,13 +939,17 @@ export const completeJob = mutation({
 
       // Send job completed email to owner
       if (owner.email) {
-        await ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendJobCompleted, {
-          email: owner.email,
-          propertyName: propName,
-          cleanerName: user.name,
-          completedAt: now,
-          ...emailIdentity,
-        });
+        await ctx.scheduler.runAfter(
+          0,
+          internal.actions.emailNotifications.sendJobCompleted,
+          {
+            email: owner.email,
+            propertyName: propName,
+            cleanerName: user.name,
+            completedAt: now,
+            ...emailIdentity,
+          },
+        );
       }
     }
 
@@ -797,14 +1003,27 @@ export const completeJob = mutation({
  * Lighter-weight alternative to the cleaner startJob flow.
  */
 export const ownerStartJob = mutation({
-  args: { jobId: v.id("jobs"), userId: v.id("users"), sessionToken: v.string() },
+  args: {
+    jobId: v.id("jobs"),
+    userId: v.id("users"),
+    sessionToken: v.string(),
+  },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
-    if (job.assignedManagerId !== owner._id) throw new Error("You are not self-assigned to this job");
-    if (job.status !== "scheduled" && job.status !== "confirmed" && job.status !== "rework_requested")
+    if (job.assignedManagerId !== owner._id)
+      throw new Error("You are not self-assigned to this job");
+    if (
+      job.status !== "scheduled" &&
+      job.status !== "confirmed" &&
+      job.status !== "rework_requested"
+    )
       throw new Error("Job cannot be started in current status");
 
     await ctx.db.patch(args.jobId, {
@@ -823,39 +1042,93 @@ export const ownerStartJob = mutation({
 });
 
 export const ownerPauseJob = mutation({
-  args: { jobId: v.id("jobs"), reason: pauseReasonValidator, note: v.optional(v.string()), userId: v.id("users"), sessionToken: v.string() },
+  args: {
+    jobId: v.id("jobs"),
+    reason: pauseReasonValidator,
+    note: v.optional(v.string()),
+    userId: v.id("users"),
+    sessionToken: v.string(),
+  },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
     const job = await ctx.db.get(args.jobId);
-    if (!job || job.companyId !== owner.companyId) throw new Error("Job not found");
-    if (job.assignedManagerId !== owner._id) throw new Error("You are not self-assigned to this job");
-    if (job.status !== "in_progress") throw new Error("Only an in-progress job can be paused");
-    if (job.currentPauseStartedAt !== undefined) throw new Error("Job is already paused");
+    if (!job || job.companyId !== owner.companyId)
+      throw new Error("Job not found");
+    if (job.assignedManagerId !== owner._id)
+      throw new Error("You are not self-assigned to this job");
+    if (job.status !== "in_progress")
+      throw new Error("Only an in-progress job can be paused");
+    if (job.currentPauseStartedAt !== undefined)
+      throw new Error("Job is already paused");
     const history = job.pauseHistory ?? [];
-    if (history.length >= MAX_JOB_PAUSE_CYCLES) throw new Error("This job has reached the pause limit");
+    if (history.length >= MAX_JOB_PAUSE_CYCLES)
+      throw new Error("This job has reached the pause limit");
     const now = Date.now();
     const note = normalizePauseNote(args.reason, args.note);
-    await ctx.db.patch(args.jobId, { currentPauseStartedAt: now, pauseHistory: [...history, { pausedAt: now, reason: args.reason, note, pausedByUserId: owner._id }] });
-    await logAudit(ctx, { companyId: job.companyId, userId: owner._id, action: "pause_job", entityType: "job", entityId: args.jobId, details: args.reason });
+    await ctx.db.patch(args.jobId, {
+      currentPauseStartedAt: now,
+      pauseHistory: [
+        ...history,
+        { pausedAt: now, reason: args.reason, note, pausedByUserId: owner._id },
+      ],
+    });
+    await logAudit(ctx, {
+      companyId: job.companyId,
+      userId: owner._id,
+      action: "pause_job",
+      entityType: "job",
+      entityId: args.jobId,
+      details: args.reason,
+    });
   },
 });
 
 export const ownerResumeJob = mutation({
-  args: { jobId: v.id("jobs"), userId: v.id("users"), sessionToken: v.string() },
+  args: {
+    jobId: v.id("jobs"),
+    userId: v.id("users"),
+    sessionToken: v.string(),
+  },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
     const job = await ctx.db.get(args.jobId);
-    if (!job || job.companyId !== owner.companyId) throw new Error("Job not found");
-    if (job.assignedManagerId !== owner._id) throw new Error("You are not self-assigned to this job");
-    if (job.status !== "in_progress") throw new Error("Only an in-progress job can be resumed");
-    if (job.currentPauseStartedAt === undefined) throw new Error("Job is not paused");
+    if (!job || job.companyId !== owner.companyId)
+      throw new Error("Job not found");
+    if (job.assignedManagerId !== owner._id)
+      throw new Error("You are not self-assigned to this job");
+    if (job.status !== "in_progress")
+      throw new Error("Only an in-progress job can be resumed");
+    if (job.currentPauseStartedAt === undefined)
+      throw new Error("Job is not paused");
     const history = [...(job.pauseHistory ?? [])];
     const openIndex = findOpenPauseIndex(history);
     if (openIndex < 0) throw new Error("Pause history is inconsistent");
     const now = Date.now();
-    history[openIndex] = { ...history[openIndex], resumedAt: now, durationMs: Math.max(0, now - history[openIndex].pausedAt), resumedByUserId: owner._id };
-    await ctx.db.patch(args.jobId, { currentPauseStartedAt: undefined, pauseHistory: history });
-    await logAudit(ctx, { companyId: job.companyId, userId: owner._id, action: "resume_job", entityType: "job", entityId: args.jobId });
+    history[openIndex] = {
+      ...history[openIndex],
+      resumedAt: now,
+      durationMs: Math.max(0, now - history[openIndex].pausedAt),
+      resumedByUserId: owner._id,
+    };
+    await ctx.db.patch(args.jobId, {
+      currentPauseStartedAt: undefined,
+      pauseHistory: history,
+    });
+    await logAudit(ctx, {
+      companyId: job.companyId,
+      userId: owner._id,
+      action: "resume_job",
+      entityType: "job",
+      entityId: args.jobId,
+    });
   },
 });
 
@@ -871,19 +1144,27 @@ export const ownerCompleteJob = mutation({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
-    if (job.assignedManagerId !== owner._id) throw new Error("You are not self-assigned to this job");
+    if (job.assignedManagerId !== owner._id)
+      throw new Error("You are not self-assigned to this job");
     if (job.status !== "in_progress") throw new Error("Job not in progress");
-    if (job.currentPauseStartedAt !== undefined) throw new Error("Resume the job before completing it");
+    if (job.currentPauseStartedAt !== undefined)
+      throw new Error("Resume the job before completing it");
 
     await ctx.db.patch(args.jobId, {
       status: "approved",
       completedAt: Date.now(),
       approvedAt: Date.now(),
-      notes: args.notes ? `${job.notes ? job.notes + "\n" : ""}Owner completion: ${args.notes}` : job.notes,
+      notes: args.notes
+        ? `${job.notes ? job.notes + "\n" : ""}Owner completion: ${args.notes}`
+        : job.notes,
     });
 
     // Keep form status in sync if one exists
@@ -891,8 +1172,14 @@ export const ownerCompleteJob = mutation({
       .query("forms")
       .withIndex("by_jobId", (q) => q.eq("jobId", args.jobId))
       .first();
-    if (form && (form.status === "in_progress" || form.status === "submitted")) {
-      await ctx.db.patch(form._id, { status: "approved", submittedAt: Date.now() });
+    if (
+      form &&
+      (form.status === "in_progress" || form.status === "submitted")
+    ) {
+      await ctx.db.patch(form._id, {
+        status: "approved",
+        submittedAt: Date.now(),
+      });
     }
 
     await logAudit(ctx, {
@@ -920,19 +1207,28 @@ export const ownerSubmitInspection = mutation({
       v.literal("low"),
       v.literal("medium"),
       v.literal("high"),
-      v.literal("critical")
+      v.literal("critical"),
     ),
     notes: v.optional(v.string()),
     issues: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
-    if (job.assignedManagerId !== owner._id) throw new Error("You are not self-assigned to this job");
+    if (job.assignedManagerId !== owner._id)
+      throw new Error("You are not self-assigned to this job");
 
-    if (args.readinessScore < 1 || args.readinessScore > 10 || !Number.isInteger(args.readinessScore)) {
+    if (
+      args.readinessScore < 1 ||
+      args.readinessScore > 10 ||
+      !Number.isInteger(args.readinessScore)
+    ) {
       throw new Error("Readiness score must be an integer between 1 and 10");
     }
 
@@ -955,9 +1251,10 @@ export const ownerSubmitInspection = mutation({
         jobId: args.jobId,
         category: "inspection",
         severity: args.severity,
-        note: (args.notes && args.notes.trim())
-          ? `Owner inspection: ${args.notes.trim()}`
-          : `Owner inspection red flag (score ${args.readinessScore}/10)`,
+        note:
+          args.notes && args.notes.trim()
+            ? `Owner inspection: ${args.notes.trim()}`
+            : `Owner inspection red flag (score ${args.readinessScore}/10)`,
         status: "open",
         inspectionId,
       });
@@ -986,7 +1283,11 @@ export const updatePlannedCleanerPay = mutation({
     amountCents: v.number(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
 
     if (args.amountCents < 100) {
       throw new Error("Minimum planned pay is $1.00");
@@ -1003,7 +1304,9 @@ export const updatePlannedCleanerPay = mutation({
       throw new Error("No cleaner assigned to this job");
     }
 
-    await ctx.db.patch(args.jobId, { plannedCleanerPayCents: args.amountCents });
+    await ctx.db.patch(args.jobId, {
+      plannedCleanerPayCents: args.amountCents,
+    });
   },
 });
 
@@ -1020,26 +1323,34 @@ export const updateInventoryChecklistItem = mutation({
       v.literal("ok"),
       v.literal("low"),
       v.literal("out"),
-      v.literal("restocked")
+      v.literal("restocked"),
     ),
     reportedQty: v.optional(v.number()),
     note: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
+    const user = await requireWorkerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
-    if (!(await isUserAssignedToJob(ctx, job, user._id))) throw new Error("Not assigned to this job");
+    if (!(await isUserAssignedToJob(ctx, job, user._id)))
+      throw new Error("Not assigned to this job");
     if (job.status !== "in_progress" && job.status !== "rework_requested")
       throw new Error("Job is not in progress");
-    if (!job.inventoryChecklist) throw new Error("No inventory checklist on this job");
+    if (!job.inventoryChecklist)
+      throw new Error("No inventory checklist on this job");
 
     const checklist = job.inventoryChecklist.map((item) => {
       if (item.name === args.itemName) {
         return {
           ...item,
           status: args.status,
-          ...(args.reportedQty !== undefined ? { reportedQty: args.reportedQty } : {}),
+          ...(args.reportedQty !== undefined
+            ? { reportedQty: args.reportedQty }
+            : {}),
           ...(args.note !== undefined ? { note: args.note } : {}),
         };
       }
