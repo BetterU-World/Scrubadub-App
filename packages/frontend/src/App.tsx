@@ -38,6 +38,8 @@ import { BillingCancelPage } from "@/pages/owner/BillingCancelPage";
 import { PartnersPage } from "@/pages/owner/PartnersPage";
 import { RequestListPage } from "@/pages/owner/RequestListPage";
 import { RequestDetailPage } from "@/pages/owner/RequestDetailPage";
+import { JobRequestListPage } from "@/pages/owner/JobRequestListPage";
+import { JobRequestDetailPage } from "@/pages/owner/JobRequestDetailPage";
 import { ClientRelationshipListPage } from "@/pages/owner/ClientRelationshipListPage";
 import { ClientRelationshipDetailPage } from "@/pages/owner/ClientRelationshipDetailPage";
 import { CommercialAccountListPage } from "@/pages/owner/CommercialAccountListPage";
@@ -387,6 +389,8 @@ export default function App() {
                 <Route path="/employees/:id" component={WorkerDetailPage} />
                 <Route path="/employees" component={EmployeeListPage} />
                 <Route path="/jobs" component={JobListPage} />
+                <Route path="/jobs/requests/:requestId" component={JobRequestDetailPage} />
+                <Route path="/jobs/requests" component={JobRequestListPage} />
                 <Route path="/jobs/new" component={JobFormPage} />
                 <Route path="/jobs/:id/edit" component={JobFormPage} />
                 <Route path="/jobs/:id" component={JobDetailPage} />
@@ -436,6 +440,8 @@ export default function App() {
             accessOk ? (
               <>
                 <Route path="/" component={ManagerHomePage} />
+                {user?.canManageSchedule && <Route path="/jobs/requests/:requestId" component={JobRequestDetailPage} />}
+                {user?.canManageSchedule && <Route path="/jobs/requests" component={JobRequestListPage} />}
                 <Route path="/jobs/:id" component={ManagerJobDetailPage} />
                 <Route path="/jobs" component={ManagerJobListPage} />
                 <Route path="/red-flags" component={ManagerRedFlagsPage} />

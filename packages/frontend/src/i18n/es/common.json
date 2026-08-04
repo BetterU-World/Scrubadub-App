@@ -55,6 +55,7 @@
     "analytics": "Analíticas",
     "partners": "Socios",
     "requests": "Solicitudes",
+    "jobRequests": "Solicitudes de trabajo",
     "clients": "Clientes",
     "commercialAccounts": "Cuentas comerciales",
     "commercialInvoices": "Facturas comerciales",
@@ -1851,6 +1852,10 @@
     "navigationLabel": "Páginas del portal del cliente",
     "menu": "Menú del portal",
     "navigation": { "home": "Inicio", "services": "Mis servicios", "requests": "Solicitudes", "documents": "Documentos", "billing": "Facturación", "locations": "Ubicaciones", "account": "Cuenta" }
+  },
+  "jobRequestsActions": { "acceptAndSchedule": "Aceptar y programar" },
+  "jobRequests": {
+    "title": "Solicitudes de trabajo", "description": "Revisa y programa el servicio solicitado por clientes existentes.", "backToJobs": "Volver a trabajos", "backToQueue": "Volver a Solicitudes de trabajo", "controls": "Controles de solicitudes de trabajo", "filtersLabel": "Filtrar solicitudes de trabajo", "search": "Buscar solicitudes de trabajo", "searchPlaceholder": "Buscar cliente, ubicación o servicio", "sortLabel": "Ordenar solicitudes de trabajo", "sorts": { "newest": "Enviadas más recientemente", "oldest": "Enviadas primero", "preferred": "Fecha de servicio preferida" }, "filters": { "action_required": "Requiere acción", "scheduled": "Programadas", "declined": "Rechazadas", "all": "Todas" }, "statuses": { "action_required": "Requiere acción", "scheduled": "Programada", "in_progress": "En curso", "completed": "Completada", "declined": "Rechazada", "closed": "Cerrada" }, "existingClient": "Cliente existente", "authenticatedSource": "Cliente autenticado", "preferred": "Preferencia del cliente", "preferredSchedule": "Horario preferido", "preferenceNotice": "Esta es la franja preferida del cliente, no una cita confirmada. Revisa y confirma la hora de inicio final exacta de la empresa.", "finalSchedule": "Horario final", "addOns": "Complementos solicitados", "clientNotes": "Notas del cliente", "submitted": "Enviada el {{date}}", "openDetails": "Abrir detalles", "detailDescription": "Toma una decisión directa de programación para esta solicitud de un cliente existente.", "empty": "No se encontraron solicitudes de trabajo", "emptyDescription": "No hay solicitudes que coincidan con esta vista.", "notFound": "Esta solicitud de trabajo no está disponible.", "viewJob": "Ver trabajo vinculado", "decline": "Rechazar solicitud", "declineTitle": "¿Rechazar esta solicitud?", "declineConfirm": "El cliente verá inmediatamente que esta solicitud fue rechazada.", "declineConfirmAction": "Confirmar rechazo", "declineError": "No se pudo rechazar la solicitud.", "clientExplanation": "Explicación para el cliente (opcional)", "clientExplanationHelp": "Solo esta explicación se muestra al cliente. Las notas internas permanecen privadas.", "advancedTools": "Herramientas avanzadas de solicitud", "advancedDescription": "Abre el espacio de solicitud completo solo cuando se necesiten intencionalmente herramientas de recorrido, propuesta, acuerdo o conversión comercial.", "openAdvanced": "Abrir herramientas avanzadas"
   },
   "clientRequests": {
     "title": "Solicitudes", "description": "Solicita servicios adicionales y consulta las solicitudes enviadas a tu empresa de limpieza.", "requestService": "Solicitar servicio", "serviceRequest": "Solicitud de servicio", "newTitle": "Solicitar servicio", "newDescription": "Comparte tus preferencias. La empresa de limpieza revisará y confirmará la disponibilidad.", "detailTitle": "Detalles de la solicitud", "detailDescription": "Consulta lo que solicitaste y su estado actual.", "empty": "Aún no has enviado solicitudes de servicio.", "notFound": "Esta solicitud no está disponible.", "backToRequests": "Volver a solicitudes",

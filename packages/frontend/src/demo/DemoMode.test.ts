@@ -188,6 +188,7 @@ describe("Owner Dashboard demo", () => {
     for (const section of ownerSections) {
       expect(html).toContain(section.titleKey);
       for (const item of section.items) {
+        if (item.href === "/jobs/requests") continue;
         expect(html).toContain(item.labelKey);
       }
     }
@@ -288,7 +289,7 @@ describe("Owner Dashboard demo", () => {
 describe("SCRUB Showcase registry", () => {
   it("classifies every production Owner and Worker navigation item exactly once", () => {
     expect(() => assertShowcaseRegistryComplete()).not.toThrow();
-    expect(getShowcasePages("owner")).toHaveLength(ownerSections.flatMap((section) => section.items).length);
+    expect(getShowcasePages("owner")).toHaveLength(ownerSections.flatMap((section) => section.items).filter((item) => item.href !== "/jobs/requests").length);
     expect(getShowcasePages("worker")).toHaveLength(workerSections.flatMap((section) => section.items).length);
   });
 

@@ -127,6 +127,11 @@ export function RequestDetailPage() {
       ? { id: params.id as Id<"clientRequests">, userId: user._id, sessionToken }
       : "skip"
   );
+  useEffect(() => {
+    if (request?.requestContext === "existing_client_service_request" && !new URLSearchParams(window.location.search).has("advanced")) {
+      setLocation(`/jobs/requests/${request._id}`);
+    }
+  }, [request, setLocation]);
 
   const updateStatus = useMutation(
     api.mutations.clientRequests.updateRequestStatus
@@ -464,6 +469,7 @@ export function RequestDetailPage() {
   }
 
   const canAct = request.status === "new" || request.status === "accepted" || request.status === "contacted";
+  const isJobRequest = (request as any).requestContext === "existing_client_service_request";
   const canMarkContacted = request.status === "new";
   const canArchive = request.status !== "archived";
   const clientPortalRecipientEmail =
@@ -839,7 +845,7 @@ export function RequestDetailPage() {
         back={{ href: "/requests", label: t("navigation.backToRequests") }}
         action={
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-            {canMarkContacted && (
+            {!isJobRequest && canMarkContacted && (
               <button
                 onClick={handleMarkContacted}
                 disabled={contactingLoading}
@@ -848,7 +854,7 @@ export function RequestDetailPage() {
                 <PhoneOutgoing className="w-4 h-4" /> {contactingLoading ? t("requests.contacting") : t("requests.markContacted")}
               </button>
             )}
-            {canAct && (
+            {!isJobRequest && canAct && (
               <>
                 <button
                   onClick={handleConvert}
@@ -877,7 +883,7 @@ export function RequestDetailPage() {
         }
       />
 
-      <RequestScheduleConfirmation request={request} />
+      {!isJobRequest && <RequestScheduleConfirmation request={request} />}
 
       {(request as any).pipeline && (
         <section className="card mb-4 border-l-4 border-l-primary-500" aria-labelledby="request-pipeline-summary">

@@ -46,6 +46,7 @@ const ownerDispositions: Record<string, ShowcaseDisposition> = {
   "/inventory-templates": placeholder("/inventory-templates", "standardize property inventory", ["Create reusable inventory templates", "Set expected supplies and quantities", "Apply consistent standards across properties"]),
   "/employees": placeholder("/employees", "coordinate the people who deliver the work", ["Manage worker profiles and roles", "Review onboarding and compliance status", "Connect workers to operational assignments"]),
   "/jobs": implemented("/jobs"),
+  "/jobs/requests": { relativePath: "/jobs/requests", availability: "hidden" },
   "/calendar": placeholder("/calendar", "see scheduled work across the operation", ["Review jobs by date", "Understand team coverage", "Coordinate changes to the schedule"]),
   "/red-flags": placeholder("/red-flags", "surface issues that need operational attention", ["Review property and job concerns", "Track resolution status", "Keep follow-up work visible"]),
   "/performance": placeholder("/performance", "understand team performance", ["Review completion and quality signals", "Compare operational trends", "Recognize coaching opportunities"]),

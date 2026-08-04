@@ -55,6 +55,7 @@
     "analytics": "Analytics",
     "partners": "Partners",
     "requests": "Requests",
+    "jobRequests": "Job Requests",
     "clients": "Clients",
     "commercialAccounts": "Commercial Accounts",
     "commercialInvoices": "Commercial Invoices",
@@ -1851,6 +1852,10 @@
     "navigationLabel": "Client portal pages",
     "menu": "Portal menu",
     "navigation": { "home": "Home", "services": "My Services", "requests": "Requests", "documents": "Documents", "billing": "Billing", "locations": "Locations", "account": "Account" }
+  },
+  "jobRequestsActions": { "acceptAndSchedule": "Accept and schedule" },
+  "jobRequests": {
+    "title": "Job Requests", "description": "Review and schedule service requested by existing clients.", "backToJobs": "Back to jobs", "backToQueue": "Back to Job Requests", "controls": "Job Request controls", "filtersLabel": "Filter Job Requests", "search": "Search Job Requests", "searchPlaceholder": "Search client, location, or service", "sortLabel": "Sort Job Requests", "sorts": { "newest": "Newest submitted", "oldest": "Oldest submitted", "preferred": "Preferred service date" }, "filters": { "action_required": "Action required", "scheduled": "Scheduled", "declined": "Declined", "all": "All" }, "statuses": { "action_required": "Action required", "scheduled": "Scheduled", "in_progress": "In progress", "completed": "Completed", "declined": "Declined", "closed": "Closed" }, "existingClient": "Existing client", "authenticatedSource": "Authenticated client", "preferred": "Client preference", "preferredSchedule": "Preferred schedule", "preferenceNotice": "This is the client’s preferred window, not a confirmed appointment. Review and confirm the business’s exact final start time.", "finalSchedule": "Final schedule", "addOns": "Requested add-ons", "clientNotes": "Client notes", "submitted": "Submitted {{date}}", "openDetails": "Open details", "detailDescription": "Make a direct scheduling decision for this existing-client request.", "empty": "No Job Requests found", "emptyDescription": "There are no requests matching this view.", "notFound": "This Job Request is unavailable.", "viewJob": "View linked job", "decline": "Decline request", "declineTitle": "Decline this request?", "declineConfirm": "The client will immediately see that this request was declined.", "declineConfirmAction": "Confirm decline", "declineError": "The request could not be declined.", "clientExplanation": "Client-facing explanation (optional)", "clientExplanationHelp": "Only this explanation is shown to the client. Internal notes remain private.", "advancedTools": "Advanced request tools", "advancedDescription": "Open the full request workspace only when walkthrough, proposal, agreement, or commercial conversion tools are intentionally needed.", "openAdvanced": "Open advanced request tools"
   },
   "clientRequests": {
     "title": "Requests", "description": "Request additional service and track requests sent to your cleaning company.", "requestService": "Request service", "serviceRequest": "Service request", "newTitle": "Request service", "newDescription": "Share your preferred service details. Your cleaning company will review and confirm availability.", "detailTitle": "Request details", "detailDescription": "Review what you requested and its current status.", "empty": "You have not submitted any service requests yet.", "notFound": "This request is unavailable.", "backToRequests": "Back to requests",

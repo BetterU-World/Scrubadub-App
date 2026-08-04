@@ -227,7 +227,7 @@ function projectClientRequest(context: any, request: any, linked: any) {
     ?? linked.jobs.find((job: any) => !["cancelled", "approved"].includes(job.status) && job.scheduledDate >= today)
     ?? linked.jobs.find((job: any) => job.status === "approved" || job.completedAt);
   const timelineFacts = {
-    request: { status: request.status, submittedAt: request.createdAt, contactedAt: request.contactedAt },
+    request: { status: request.status, submittedAt: request.createdAt, contactedAt: request.contactedAt, declinedAt: request.declinedAt },
     proposals: linked.proposals.map((item: any) => ({ status: item.status, sentAt: item.sentAt, acceptedAt: item.acceptedAt, declinedAt: item.declinedAt })),
     agreements: linked.agreements.map((item: any) => ({ _id: item._id, status: item.status, sentAt: item.sentAt, signedAt: item.signedAt, clientRespondedAt: item.clientRespondedAt, declinedAt: item.declinedAt })),
     jobs: linked.jobs.map((item: any) => ({ status: item.status, scheduledDate: item.scheduledDate, startTime: item.startTime, startedAt: item.startedAt, completedAt: item.completedAt, approvedAt: item.approvedAt })),
@@ -239,6 +239,8 @@ function projectClientRequest(context: any, request: any, linked: any) {
     locationName: request.propertySnapshot?.name,
     locationAddress: request.propertySnapshot?.address,
     submittedAt: request.createdAt,
+    declinedAt: request.declinedAt,
+    clientFacingDecisionNote: request.clientFacingDecisionNote,
     requestedDate: request.requestedDate,
     timeWindow: request.timeWindow,
     status: deriveClientRequestStatus({ requestStatus: request.status, ...linked, today }),

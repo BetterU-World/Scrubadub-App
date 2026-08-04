@@ -34,7 +34,7 @@ export function deriveClientRequestTimeline(request: any): ClientRequestTimeline
   if (job) events.push(complete("scheduled", "scheduled", undefined, { labelKey: "clientRequests.timeline.actions.services", href: "/client/services" }));
   if (job?.status === "in_progress") events.push(complete("in-progress", "in_progress", job.startedAt, { labelKey: "clientRequests.timeline.actions.services", href: "/client/services" }));
   if (job && (job.status === "approved" || job.completedAt)) events.push(complete("completed", "completed", job.completedAt ?? job.approvedAt, { labelKey: "clientRequests.timeline.actions.services", href: "/client/services" }));
-  if (facts.request.status === "declined") events.push({ id: "declined", kind: "declined", state: "terminal" });
+  if (facts.request.status === "declined") events.push({ id: "declined", kind: "declined", state: "terminal", ...(facts.request.declinedAt !== undefined ? { occurredAt: facts.request.declinedAt } : {}) });
   const lastEvent = events[events.length - 1];
   const currentKind = request.status === "processing" ? undefined : request.status;
   const current = request.status === "processing"
