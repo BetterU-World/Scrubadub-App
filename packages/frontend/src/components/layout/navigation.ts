@@ -53,6 +53,7 @@ export const ownerSections: NavSection[] = [
       { href: "/inventory-templates", labelKey: "nav.inventoryTemplates", icon: Package },
       { href: "/employees", labelKey: "nav.employees", icon: Users },
       { href: "/jobs", labelKey: "nav.jobs", icon: ClipboardCheck, mobile: true, mobileOrder: 2 },
+      { href: "/jobs/requests", labelKey: "nav.jobRequests", icon: ClipboardList },
       { href: "/calendar", labelKey: "nav.calendar", icon: Calendar },
       { href: "/red-flags", labelKey: "nav.redFlags", icon: Flag },
       { href: "/performance", labelKey: "nav.performance", icon: BarChart3 },
@@ -97,6 +98,7 @@ export const managerSections: NavSection[] = [
     items: [
       { href: "/", labelKey: "nav.overview", icon: LayoutDashboard, mobile: true, mobileOrder: 1 },
       { href: "/jobs", labelKey: "nav.jobs", icon: ClipboardCheck, mobile: true, mobileOrder: 2 },
+      { href: "/jobs/requests", labelKey: "nav.jobRequests", icon: ClipboardList },
       { href: "/red-flags", labelKey: "nav.redFlags", icon: Flag, mobile: true, mobileOrder: 4 },
       { href: "/calendar", labelKey: "nav.calendar", icon: Calendar, mobile: true, mobileOrder: 3 },
     ],
@@ -161,7 +163,7 @@ export const adminSection: NavSection = {
   ],
 };
 
-export function getNavSectionsForRole(role?: string, canManageConfiguration = false): NavSection[] {
+export function getNavSectionsForRole(role?: string, canManageConfiguration = false, canManageSchedule = false): NavSection[] {
   let sections: NavSection[];
   switch (role as NavigationRole | undefined) {
     case "owner":
@@ -176,18 +178,18 @@ export function getNavSectionsForRole(role?: string, canManageConfiguration = fa
     default:
       sections = workerSections;
   }
-  if (role !== "manager" || canManageConfiguration) return sections;
-  return sections.map((section) => ({ ...section, items: section.items.filter((item) => item.href !== "/owner/settings/add-ons") }));
+  if (role !== "manager") return sections;
+  return sections.map((section) => ({ ...section, items: section.items.filter((item) => (canManageConfiguration || item.href !== "/owner/settings/add-ons") && (canManageSchedule || item.href !== "/jobs/requests")) }));
 }
 
-export function getMobileNavItemsForRole(role?: string, canManageConfiguration = false): NavItem[] {
-  return getNavSectionsForRole(role, canManageConfiguration).flatMap((section) =>
+export function getMobileNavItemsForRole(role?: string, canManageConfiguration = false, canManageSchedule = false): NavItem[] {
+  return getNavSectionsForRole(role, canManageConfiguration, canManageSchedule).flatMap((section) =>
     section.items.filter((item) => item.mobile)
   ).sort((a, b) => (a.mobileOrder ?? 0) - (b.mobileOrder ?? 0));
 }
 
-export function getMoreNavItemsForRole(role?: string, canManageConfiguration = false): NavItem[] {
-  return getNavSectionsForRole(role, canManageConfiguration).flatMap((section) =>
+export function getMoreNavItemsForRole(role?: string, canManageConfiguration = false, canManageSchedule = false): NavItem[] {
+  return getNavSectionsForRole(role, canManageConfiguration, canManageSchedule).flatMap((section) =>
     section.items.filter((item) => !item.mobile)
   );
 }
@@ -198,6 +200,7 @@ function matchesPathPrefix(pathname: string, prefix: string): boolean {
 }
 
 export function isNavItemActive(item: NavItem, pathname: string): boolean {
+  if (item.href === "/jobs" && pathname.startsWith("/jobs/requests")) return false;
   return [item.href, ...(item.activePrefixes ?? [])].some((prefix) =>
     matchesPathPrefix(pathname, prefix)
   );

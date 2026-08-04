@@ -5,6 +5,8 @@ import { checkRateLimit } from "../lib/rateLimit";
 import { propertyTypeFromRequestLeadType } from "../lib/commercialEligibility";
 import { createRequestedAddOnSnapshots } from "../lib/companyAddOnSelection";
 import { AUTHENTICATED_REQUEST_SERVICES, AUTHENTICATED_REQUEST_TIME_WINDOWS } from "../lib/clientRequestPortal";
+import { isExistingClientServiceRequest } from "../lib/requestContext";
+import { logAudit } from "../lib/helpers";
 
 const authenticatedLocationValidator = v.union(
   v.object({ type: v.literal("property"), id: v.id("properties") }),
@@ -280,6 +282,27 @@ export const archiveClientRequest = mutation({
       status: "archived",
       archivedAt: Date.now(),
     });
+  },
+});
+
+export const declineJobRequest = mutation({
+  args: { requestId: v.id("clientRequests"), userId: v.optional(v.id("users")), sessionToken: v.string(), clientFacingDecisionNote: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const actor = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
+    if (actor.role === "manager" && actor.canManageSchedule !== true) throw new Error("Schedule management permission required");
+    const request = await ctx.db.get(args.requestId);
+    if (!request || request.companyId !== actor.companyId) throw new Error("Access denied");
+    if (!(await isExistingClientServiceRequest(ctx, request))) throw new Error("Request is not an existing-client job request");
+    const existingJob = await ctx.db.query("jobs").withIndex("by_sourceClientRequestId", q => q.eq("sourceClientRequestId", request._id)).first();
+    if (existingJob) throw new Error("A linked job already exists");
+    if (request.status === "declined") return { declinedAt: request.declinedAt, replayed: true };
+    if (request.status === "archived") throw new Error("Archived requests cannot be declined");
+    const note = args.clientFacingDecisionNote?.trim();
+    if (note && note.length > 500) throw new Error("Client-facing explanation must be 500 characters or fewer");
+    const declinedAt = Date.now();
+    await ctx.db.patch(request._id, { status: "declined", leadStage: "declined", lastStageChangedAt: declinedAt, declinedAt, declinedByUserId: actor._id, clientFacingDecisionNote: note || undefined });
+    await logAudit(ctx, { companyId: actor.companyId, userId: actor._id, action: "decline_client_job_request", entityType: "clientRequest", entityId: request._id, details: JSON.stringify({ clientFacingDecisionNoteSupplied: Boolean(note) }) });
+    return { declinedAt, replayed: false };
   },
 });
 

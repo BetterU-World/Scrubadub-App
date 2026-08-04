@@ -8,6 +8,7 @@ import { assertTeamInCompany, canSubmitFinalJob, getJobRecipientUserIds, isUserA
 import { resolveOperationalEmailIdentity } from "../lib/operationalEmailIdentity";
 import { MAX_JOB_PAUSE_CYCLES, normalizePauseNote } from "../lib/jobTiming";
 import { copyAcceptedProposalAddOnSnapshots } from "../lib/acceptedProposalAddOnSnapshots";
+import { isExistingClientServiceRequest } from "../lib/requestContext";
 
 const requestJobTypeValidator = v.union(
   v.literal("standard"), v.literal("deep_clean"), v.literal("turnover"),
@@ -59,6 +60,7 @@ export const confirmClientRequestSchedule = mutation({
       if (!account || account.companyId !== actor.companyId || account.clientRelationshipId !== relationship._id || account.status !== "active") throw new Error("Service location is unavailable");
       commercialAccountId = account._id;
     } else throw new Error("Service location is unavailable");
+    if (!(await isExistingClientServiceRequest(ctx, request))) throw new Error("Request is not an existing-client job request");
     const jobId = await ctx.db.insert("jobs", {
       companyId: actor.companyId, clientRelationshipId: relationship._id, propertyId, commercialAccountId,
       cleanerIds: [], type: args.type, status: "confirmed", scheduledDate: args.scheduledDate,

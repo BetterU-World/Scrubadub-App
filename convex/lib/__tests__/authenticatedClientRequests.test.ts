@@ -14,6 +14,8 @@ async function setup() {
     const company = await ctx.db.insert("companies", { name: "Clean Co", timezone: "America/New_York" });
     const otherCompany = await ctx.db.insert("companies", { name: "Other Co", timezone: "America/Chicago" });
     const owner = await ctx.db.insert("users", { email: "owner@requests.test", passwordHash, name: "Owner", companyId: company, role: "owner", status: "active" });
+    const manager = await ctx.db.insert("users", { email: "manager@requests.test", passwordHash, name: "Manager", companyId: company, role: "manager", status: "active", canManageSchedule: true });
+    const blockedManager = await ctx.db.insert("users", { email: "blocked-manager@requests.test", passwordHash, name: "Blocked", companyId: company, role: "manager", status: "active", canManageSchedule: false });
     const otherOwner = await ctx.db.insert("users", { email: "other-owner@requests.test", passwordHash, name: "Other Owner", companyId: otherCompany, role: "owner", status: "active" });
     const client = await ctx.db.insert("clientUsers", { email: "client@requests.test", passwordHash, displayName: "Client", phone: "555-0100", status: "active", createdAt: 1, updatedAt: 1 });
     const otherClient = await ctx.db.insert("clientUsers", { email: "other-client@requests.test", passwordHash, displayName: "Other Client", status: "active", createdAt: 1, updatedAt: 1 });
@@ -29,11 +31,13 @@ async function setup() {
     const privateAddOn = await ctx.db.insert("companyAddOns", { companyId: company, name: "Private", pricingMethod: "flat", priceCents: 100, isActive: true, isPublic: false, displayOrder: 2, createdByUserId: owner, createdAt: 1, updatedAt: 10 });
     const archivedAddOn = await ctx.db.insert("companyAddOns", { companyId: company, name: "Archived", pricingMethod: "flat", priceCents: 100, isActive: true, isPublic: true, displayOrder: 3, createdByUserId: owner, createdAt: 1, updatedAt: 10, archivedAt: 11 });
     const historical = await ctx.db.insert("clientRequests", { companyId: company, clientRelationshipId: relationship, createdAt: 2, status: "contacted", requesterName: "Historical", requesterEmail: "old@test.dev", propertySnapshot: { name: "Home", address: "1 Main St" }, requestedService: "Standard Clean", source: "manual" });
-    return { company, otherCompany, owner, otherOwner, client, otherClient, relationship, inactiveRelationship, otherRelationship, foreignRelationship, property, otherProperty, foreignProperty, account, addOn, privateAddOn, archivedAddOn, historical };
+    return { company, otherCompany, owner, manager, blockedManager, otherOwner, client, otherClient, relationship, inactiveRelationship, otherRelationship, foreignRelationship, property, otherProperty, foreignProperty, account, addOn, privateAddOn, archivedAddOn, historical };
   });
   const clientAuth = await t.action(api.clientAuthActions.signIn, { email: "client@requests.test", password: PASSWORD });
   const ownerAuth = await t.action(api.authActions.signIn, { email: "owner@requests.test", password: PASSWORD });
-  return { t, ...ids, clientAuth, ownerAuth, portal: (api as any).queries.clientPortal, create: (api as any).mutations.clientRequests.createAuthenticatedClientRequest };
+  const managerAuth = await t.action(api.authActions.signIn, { email: "manager@requests.test", password: PASSWORD });
+  const blockedManagerAuth = await t.action(api.authActions.signIn, { email: "blocked-manager@requests.test", password: PASSWORD });
+  return { t, ...ids, clientAuth, ownerAuth, managerAuth, blockedManagerAuth, portal: (api as any).queries.clientPortal, create: (api as any).mutations.clientRequests.createAuthenticatedClientRequest };
 }
 
 function valid(s: any, overrides: Record<string, any> = {}) {
@@ -64,7 +68,7 @@ describe("authenticated client service requests", () => {
     expect(detail.request._id).toBe(created.requestId);
     expect(detail.request.timelineFacts).toMatchObject({ request: { status: "new" }, proposals: [], agreements: [], jobs: [] });
     const ownerList = await s.t.query(api.queries.clientRequests.getCompanyRequests, { companyId: s.company, userId: s.owner, sessionToken: s.ownerAuth.sessionToken });
-    expect(ownerList.some((item: any) => item._id === created.requestId && item.source === "authenticated_client")).toBe(true);
+    expect(ownerList.some((item: any) => item._id === created.requestId)).toBe(false);
     const notifications = await s.t.run((ctx) => ctx.db.query("notifications").collect());
     expect(notifications).toContainEqual(expect.objectContaining({ userId: s.owner, relatedClientRequestId: created.requestId, type: "new_client_request" }));
   });
@@ -104,5 +108,24 @@ describe("authenticated client service requests", () => {
     await s.t.run((ctx) => ctx.db.patch(created.requestId, { status: "declined" }));
     const withJob = await s.t.query(s.portal.listClientRequests, { clientUserId: s.client, sessionToken: s.clientAuth.sessionToken });
     expect(withJob.requests.find((item: any) => item._id === created.requestId).status).toBe("scheduled");
+  });
+  it("isolates classified Job Requests and records a replay-safe client-visible decline", async () => {
+    const s = await setup(); const created = await s.t.mutation(s.create, valid(s));
+    const queue = await s.t.query((api as any).queries.clientRequests.listJobRequests, { userId: s.owner, sessionToken: s.ownerAuth.sessionToken });
+    expect(queue.map((item: any) => item._id)).toContain(created.requestId);
+    const prospects = await s.t.query(api.queries.clientRequests.getCompanyRequests, { companyId: s.company, userId: s.owner, sessionToken: s.ownerAuth.sessionToken });
+    expect(prospects.map((item: any) => item._id)).not.toContain(created.requestId);
+    const pipeline = await s.t.query((api as any).queries.clientRequests.listRequestsForPipeline, { userId: s.owner, sessionToken: s.ownerAuth.sessionToken });
+    expect(pipeline.map((item: any) => item._id)).not.toContain(created.requestId);
+    expect(prospects.map((item: any) => item._id)).toContain(s.historical);
+    await expect(s.t.query((api as any).queries.clientRequests.listJobRequests, { userId: s.manager, sessionToken: s.managerAuth.sessionToken })).resolves.toHaveLength(1);
+    await expect(s.t.query((api as any).queries.clientRequests.listJobRequests, { userId: s.blockedManager, sessionToken: s.blockedManagerAuth.sessionToken })).rejects.toThrow("permission");
+    const first = await s.t.mutation((api as any).mutations.clientRequests.declineJobRequest, { userId: s.manager, sessionToken: s.managerAuth.sessionToken, requestId: created.requestId, clientFacingDecisionNote: "We cannot serve this date." });
+    const replay = await s.t.mutation((api as any).mutations.clientRequests.declineJobRequest, { userId: s.manager, sessionToken: s.managerAuth.sessionToken, requestId: created.requestId });
+    expect(replay).toMatchObject({ declinedAt: first.declinedAt, replayed: true });
+    const stored: any = await s.t.run(ctx => ctx.db.get(created.requestId));
+    expect(stored).toMatchObject({ status: "declined", declinedByUserId: s.manager, clientFacingDecisionNote: "We cannot serve this date." });
+    const detail: any = await s.t.query(s.portal.getClientRequestDetail, { clientUserId: s.client, sessionToken: s.clientAuth.sessionToken, requestId: created.requestId });
+    expect(detail.request).toMatchObject({ status: "declined", clientFacingDecisionNote: "We cannot serve this date." });
   });
 });

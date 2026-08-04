@@ -20,7 +20,8 @@ export function AppLayout({ children }: AppLayoutProps) {
   const menuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const hasMobileNavigation = getMobileNavItemsForRole(
     user?.role,
-    user?.canManageBusinessConfiguration === true
+    user?.canManageBusinessConfiguration === true,
+    user?.canManageSchedule === true
   ).length > 0;
 
   const toggleSidebar = useCallback((trigger: HTMLButtonElement) => {
