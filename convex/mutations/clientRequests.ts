@@ -1,21 +1,38 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwnerManagerSession, requireOwnerSession, requireVerifiedClientSession, requireActiveClientRelationship } from "../lib/sessionAuth";
+import {
+  requireOwnerManagerSession,
+  requireOwnerSession,
+  requireVerifiedClientSession,
+  requireActiveClientRelationship,
+} from "../lib/sessionAuth";
 import { checkRateLimit } from "../lib/rateLimit";
 import { propertyTypeFromRequestLeadType } from "../lib/commercialEligibility";
 import { createRequestedAddOnSnapshots } from "../lib/companyAddOnSelection";
-import { AUTHENTICATED_REQUEST_SERVICES, AUTHENTICATED_REQUEST_TIME_WINDOWS } from "../lib/clientRequestPortal";
+import {
+  AUTHENTICATED_REQUEST_SERVICES,
+  AUTHENTICATED_REQUEST_TIME_WINDOWS,
+} from "../lib/clientRequestPortal";
 import { isExistingClientServiceRequest } from "../lib/requestContext";
 import { logAudit } from "../lib/helpers";
 
 const authenticatedLocationValidator = v.union(
   v.object({ type: v.literal("property"), id: v.id("properties") }),
-  v.object({ type: v.literal("commercial_account"), id: v.id("commercialAccounts") })
+  v.object({
+    type: v.literal("commercial_account"),
+    id: v.id("commercialAccounts"),
+  }),
 );
 
 function dateInTimeZone(timeZone: string, date = new Date()) {
-  const parts = new Intl.DateTimeFormat("en-US", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
-  const value = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const value = (type: string) =>
+    parts.find((part) => part.type === type)?.value ?? "";
   return `${value("year")}-${value("month")}-${value("day")}`;
 }
 
@@ -29,53 +46,101 @@ export const createAuthenticatedClientRequest = mutation({
     requestedDate: v.string(),
     timeWindow: v.string(),
     notes: v.optional(v.string()),
-    requestedAddOns: v.optional(v.array(v.object({
-      companyAddOnId: v.id("companyAddOns"),
-      selectionVersion: v.string(),
-      quantity: v.optional(v.number()),
-    }))),
+    requestedAddOns: v.optional(
+      v.array(
+        v.object({
+          companyAddOnId: v.id("companyAddOns"),
+          selectionVersion: v.string(),
+          quantity: v.optional(v.number()),
+        }),
+      ),
+    ),
     idempotencyKey: v.string(),
   },
   handler: async (ctx, args) => {
-    const clientUser = await requireVerifiedClientSession(ctx, args.sessionToken, args.clientUserId);
-    const relationship = await requireActiveClientRelationship(ctx, clientUser, args.clientRelationshipId);
+    const clientUser = await requireVerifiedClientSession(
+      ctx,
+      args.sessionToken,
+      args.clientUserId,
+    );
+    const relationship = await requireActiveClientRelationship(
+      ctx,
+      clientUser,
+      args.clientRelationshipId,
+    );
     const company = await ctx.db.get(relationship.companyId);
     if (!company) throw new Error("Cleaning company is unavailable");
     const key = args.idempotencyKey.trim();
-    if (!/^[A-Za-z0-9_-]{16,128}$/.test(key)) throw new Error("Invalid submission key");
+    if (!/^[A-Za-z0-9_-]{16,128}$/.test(key))
+      throw new Error("Invalid submission key");
 
     const existing = await ctx.db
       .query("clientRequests")
-      .withIndex("by_originClientUserId_idempotencyKey", (q) => q.eq("originClientUserId", clientUser._id).eq("idempotencyKey", key))
+      .withIndex("by_originClientUserId_idempotencyKey", (q) =>
+        q.eq("originClientUserId", clientUser._id).eq("idempotencyKey", key),
+      )
       .unique();
     if (existing) return { requestId: existing._id, replayed: true };
 
-    await checkRateLimit(ctx, { key: `client:${clientUser._id}:createAuthenticatedRequest`, limit: 5, windowMs: 600_000 });
-    if (!AUTHENTICATED_REQUEST_SERVICES.includes(args.requestedService as any)) throw new Error("Select a supported service");
-    if (!AUTHENTICATED_REQUEST_TIME_WINDOWS.includes(args.timeWindow as any)) throw new Error("Select a supported time window");
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(args.requestedDate) || Number.isNaN(Date.parse(`${args.requestedDate}T00:00:00Z`))) throw new Error("Enter a valid preferred date");
-    if (args.requestedDate < dateInTimeZone(company.timezone || "UTC")) throw new Error("Preferred date cannot be in the past");
-    const maxDate = new Date(); maxDate.setUTCFullYear(maxDate.getUTCFullYear() + 2);
-    if (args.requestedDate > maxDate.toISOString().slice(0, 10)) throw new Error("Preferred date is too far in the future");
+    await checkRateLimit(ctx, {
+      key: `client:${clientUser._id}:createAuthenticatedRequest`,
+      limit: 5,
+      windowMs: 600_000,
+    });
+    if (!AUTHENTICATED_REQUEST_SERVICES.includes(args.requestedService as any))
+      throw new Error("Select a supported service");
+    if (!AUTHENTICATED_REQUEST_TIME_WINDOWS.includes(args.timeWindow as any))
+      throw new Error("Select a supported time window");
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(args.requestedDate) ||
+      Number.isNaN(Date.parse(`${args.requestedDate}T00:00:00Z`))
+    )
+      throw new Error("Enter a valid preferred date");
+    if (args.requestedDate < dateInTimeZone(company.timezone || "UTC"))
+      throw new Error("Preferred date cannot be in the past");
+    const maxDate = new Date();
+    maxDate.setUTCFullYear(maxDate.getUTCFullYear() + 2);
+    if (args.requestedDate > maxDate.toISOString().slice(0, 10))
+      throw new Error("Preferred date is too far in the future");
     const notes = args.notes?.trim();
-    if (notes && notes.length > 2000) throw new Error("Notes must be 2,000 characters or fewer");
+    if (notes && notes.length > 2000)
+      throw new Error("Notes must be 2,000 characters or fewer");
 
     let propertyId: any;
     let commercialAccountId: any;
     let propertySnapshot: { name?: string; address?: string };
     if (args.location.type === "property") {
       const property = await ctx.db.get(args.location.id);
-      if (!property || property.companyId !== relationship.companyId || property.clientRelationshipId !== relationship._id || !property.active) throw new Error("Selected location is unavailable");
+      if (
+        !property ||
+        property.companyId !== relationship.companyId ||
+        property.clientRelationshipId !== relationship._id ||
+        !property.active
+      )
+        throw new Error("Selected location is unavailable");
       propertyId = property._id;
       propertySnapshot = { name: property.name, address: property.address };
     } else {
       const account = await ctx.db.get(args.location.id);
-      if (!account || account.companyId !== relationship.companyId || account.clientRelationshipId !== relationship._id || account.status !== "active") throw new Error("Selected location is unavailable");
+      if (
+        !account ||
+        account.companyId !== relationship.companyId ||
+        account.clientRelationshipId !== relationship._id ||
+        account.status !== "active"
+      )
+        throw new Error("Selected location is unavailable");
       commercialAccountId = account._id;
-      propertySnapshot = { name: account.clientName, address: account.serviceAddress };
+      propertySnapshot = {
+        name: account.clientName,
+        address: account.serviceAddress,
+      };
     }
 
-    const requestedAddOnSnapshots = await createRequestedAddOnSnapshots(ctx, relationship.companyId, args.requestedAddOns ?? []);
+    const requestedAddOnSnapshots = await createRequestedAddOnSnapshots(
+      ctx,
+      relationship.companyId,
+      args.requestedAddOns ?? [],
+    );
     const requestId = await ctx.db.insert("clientRequests", {
       companyId: relationship.companyId,
       clientRelationshipId: relationship._id,
@@ -84,7 +149,10 @@ export const createAuthenticatedClientRequest = mutation({
       createdAt: Date.now(),
       status: "new",
       leadStage: "new",
-      requesterName: relationship.primaryContactName || relationship.displayName || clientUser.displayName,
+      requesterName:
+        relationship.primaryContactName ||
+        relationship.displayName ||
+        clientUser.displayName,
       requesterEmail: clientUser.email,
       requesterPhone: clientUser.phone,
       propertySnapshot,
@@ -93,14 +161,23 @@ export const createAuthenticatedClientRequest = mutation({
       requestedDate: args.requestedDate,
       timeWindow: args.timeWindow,
       requestedService: args.requestedService,
-      requestedAddOnSnapshots: requestedAddOnSnapshots.length ? requestedAddOnSnapshots : undefined,
+      requestedAddOnSnapshots: requestedAddOnSnapshots.length
+        ? requestedAddOnSnapshots
+        : undefined,
       notes: notes || undefined,
       source: "authenticated_client",
       leadType: "booking_request",
     });
 
-    const users = await ctx.db.query("users").withIndex("by_companyId", (q) => q.eq("companyId", relationship.companyId)).collect();
-    for (const owner of users.filter((user) => user.role === "owner" && user.status === "active")) {
+    const users = await ctx.db
+      .query("users")
+      .withIndex("by_companyId", (q) =>
+        q.eq("companyId", relationship.companyId),
+      )
+      .collect();
+    for (const owner of users.filter(
+      (user) => user.role === "owner" && user.status === "active",
+    )) {
       await ctx.db.insert("notifications", {
         companyId: relationship.companyId,
         userId: owner._id,
@@ -132,7 +209,7 @@ export const createClientRequestByToken = mutation({
         name: v.optional(v.string()),
         address: v.optional(v.string()),
         notes: v.optional(v.string()),
-      })
+      }),
     ),
     requestedDate: v.optional(v.string()),
     requestedStart: v.optional(v.string()),
@@ -140,11 +217,15 @@ export const createClientRequestByToken = mutation({
     timeWindow: v.optional(v.string()),
     notes: v.optional(v.string()),
     requestedService: v.optional(v.string()),
-    requestedAddOns: v.optional(v.array(v.object({
-      companyAddOnId: v.id("companyAddOns"),
-      selectionVersion: v.string(),
-      quantity: v.optional(v.number()),
-    }))),
+    requestedAddOns: v.optional(
+      v.array(
+        v.object({
+          companyAddOnId: v.id("companyAddOns"),
+          selectionVersion: v.string(),
+          quantity: v.optional(v.number()),
+        }),
+      ),
+    ),
     clientNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -164,7 +245,7 @@ export const createClientRequestByToken = mutation({
     const company = await ctx.db
       .query("companies")
       .withIndex("by_publicRequestToken", (q) =>
-        q.eq("publicRequestToken", args.token)
+        q.eq("publicRequestToken", args.token),
       )
       .first();
 
@@ -175,7 +256,7 @@ export const createClientRequestByToken = mutation({
     const requestedAddOnSnapshots = await createRequestedAddOnSnapshots(
       ctx,
       company._id,
-      args.requestedAddOns ?? []
+      args.requestedAddOns ?? [],
     );
 
     const requestId = await ctx.db.insert("clientRequests", {
@@ -192,7 +273,9 @@ export const createClientRequestByToken = mutation({
       timeWindow: args.timeWindow,
       notes: args.notes,
       requestedService: args.requestedService || undefined,
-      requestedAddOnSnapshots: requestedAddOnSnapshots.length ? requestedAddOnSnapshots : undefined,
+      requestedAddOnSnapshots: requestedAddOnSnapshots.length
+        ? requestedAddOnSnapshots
+        : undefined,
       leadType: "booking_request",
       clientNotes: args.clientNotes
         ? args.clientNotes.trim().slice(0, 2000)
@@ -207,7 +290,7 @@ export const createClientRequestByToken = mutation({
       .collect();
 
     const activeOwners = owners.filter(
-      (u) => u.role === "owner" && u.status === "active"
+      (u) => u.role === "owner" && u.status === "active",
     );
 
     for (const owner of activeOwners) {
@@ -238,11 +321,15 @@ export const updateRequestStatus = mutation({
     status: v.union(
       v.literal("declined"),
       v.literal("converted"),
-      v.literal("contacted")
+      v.literal("contacted"),
     ),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
 
     const request = await ctx.db.get(args.requestId);
     if (!request) {
@@ -272,7 +359,11 @@ export const archiveClientRequest = mutation({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
 
     const request = await ctx.db.get(args.requestId);
     if (!request) throw new Error("Request not found");
@@ -286,22 +377,72 @@ export const archiveClientRequest = mutation({
 });
 
 export const declineJobRequest = mutation({
-  args: { requestId: v.id("clientRequests"), userId: v.optional(v.id("users")), sessionToken: v.string(), clientFacingDecisionNote: v.optional(v.string()) },
+  args: {
+    requestId: v.id("clientRequests"),
+    userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
+    clientFacingDecisionNote: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
-    const actor = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
-    if (actor.role === "manager" && actor.canManageSchedule !== true) throw new Error("Schedule management permission required");
+    const actor = await requireOwnerManagerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
+    if (actor.role === "manager" && actor.canManageSchedule !== true)
+      throw new Error("Schedule management permission required");
     const request = await ctx.db.get(args.requestId);
-    if (!request || request.companyId !== actor.companyId) throw new Error("Access denied");
-    if (!(await isExistingClientServiceRequest(ctx, request))) throw new Error("Request is not an existing-client job request");
-    const existingJob = await ctx.db.query("jobs").withIndex("by_sourceClientRequestId", q => q.eq("sourceClientRequestId", request._id)).first();
+    if (!request || request.companyId !== actor.companyId)
+      throw new Error("Access denied");
+    if (!(await isExistingClientServiceRequest(ctx, request)))
+      throw new Error("Request is not an existing-client job request");
+    const existingJob = await ctx.db
+      .query("jobs")
+      .withIndex("by_sourceClientRequestId", (q) =>
+        q.eq("sourceClientRequestId", request._id),
+      )
+      .first();
     if (existingJob) throw new Error("A linked job already exists");
-    if (request.status === "declined") return { declinedAt: request.declinedAt, replayed: true };
-    if (request.status === "archived") throw new Error("Archived requests cannot be declined");
+    if (request.status === "declined")
+      return { declinedAt: request.declinedAt, replayed: true };
+    if (request.status === "archived")
+      throw new Error("Archived requests cannot be declined");
     const note = args.clientFacingDecisionNote?.trim();
-    if (note && note.length > 500) throw new Error("Client-facing explanation must be 500 characters or fewer");
+    if (note && note.length > 500)
+      throw new Error(
+        "Client-facing explanation must be 500 characters or fewer",
+      );
     const declinedAt = Date.now();
-    await ctx.db.patch(request._id, { status: "declined", leadStage: "declined", lastStageChangedAt: declinedAt, declinedAt, declinedByUserId: actor._id, clientFacingDecisionNote: note || undefined });
-    await logAudit(ctx, { companyId: actor.companyId, userId: actor._id, action: "decline_client_job_request", entityType: "clientRequest", entityId: request._id, details: JSON.stringify({ clientFacingDecisionNoteSupplied: Boolean(note) }) });
+    const pendingProposals = await ctx.db
+      .query("clientRequestScheduleProposals")
+      .withIndex("by_clientRequestId_status", (q) =>
+        q.eq("clientRequestId", request._id).eq("status", "pending"),
+      )
+      .collect();
+    for (const proposal of pendingProposals)
+      await ctx.db.patch(proposal._id, {
+        status: "withdrawn",
+        withdrawnAt: declinedAt,
+        respondedAt: declinedAt,
+      });
+    await ctx.db.patch(request._id, {
+      status: "declined",
+      leadStage: "declined",
+      lastStageChangedAt: declinedAt,
+      declinedAt,
+      declinedByUserId: actor._id,
+      clientFacingDecisionNote: note || undefined,
+    });
+    await logAudit(ctx, {
+      companyId: actor.companyId,
+      userId: actor._id,
+      action: "decline_client_job_request",
+      entityType: "clientRequest",
+      entityId: request._id,
+      details: JSON.stringify({
+        clientFacingDecisionNoteSupplied: Boolean(note),
+      }),
+    });
     return { declinedAt, replayed: false };
   },
 });
@@ -318,7 +459,11 @@ export const createPropertyFromRequest = mutation({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerManagerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
 
     const request = await ctx.db.get(args.requestId);
     if (!request) throw new Error("Request not found");
@@ -337,14 +482,16 @@ export const createPropertyFromRequest = mutation({
     const propertyType = propertyTypeFromRequestLeadType(request.leadType);
     if (!propertyType) {
       throw new Error(
-        "Classify this request as Residential, Commercial, or STR before creating a property"
+        "Classify this request as Residential, Commercial, or STR before creating a property",
       );
     }
 
     if (request.clientRelationshipId) {
       const relationship = await ctx.db.get(request.clientRelationshipId);
       if (!relationship || relationship.companyId !== request.companyId) {
-        throw new Error("Client relationship must belong to the request company");
+        throw new Error(
+          "Client relationship must belong to the request company",
+        );
       }
     }
 
@@ -379,7 +526,7 @@ const leadStageValidator = v.union(
   v.literal("converted"),
   v.literal("quoted"),
   v.literal("won"),
-  v.literal("lost")
+  v.literal("lost"),
 );
 
 const leadTypeValidator = v.union(
@@ -389,7 +536,7 @@ const leadTypeValidator = v.union(
   v.literal("commercial"),
   v.literal("move_out"),
   v.literal("post_construction"),
-  v.literal("other")
+  v.literal("other"),
 );
 
 const estimatedFrequencyValidator = v.union(
@@ -398,7 +545,7 @@ const estimatedFrequencyValidator = v.union(
   v.literal("biweekly"),
   v.literal("monthly"),
   v.literal("quarterly"),
-  v.literal("custom")
+  v.literal("custom"),
 );
 
 function cleanOptional(value: string | undefined, max = 500) {
@@ -417,7 +564,10 @@ function patchForStage(leadStage: string, request: any) {
     patch.contactedAt = now;
     patch.status = "contacted";
   }
-  if ((leadStage === "declined" || leadStage === "lost") && request.status !== "converted") {
+  if (
+    (leadStage === "declined" || leadStage === "lost") &&
+    request.status !== "converted"
+  ) {
     patch.status = "declined";
   }
   if (leadStage === "converted" && request.status !== "converted") {
@@ -453,7 +603,11 @@ export const createManualClientRequest = mutation({
     clientRelationshipId: v.optional(v.id("clientRelationships")),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
     const now = Date.now();
     const relationship = args.clientRelationshipId
       ? await ctx.db.get(args.clientRelationshipId)
@@ -486,7 +640,10 @@ export const createManualClientRequest = mutation({
       businessWebsite: cleanOptional(args.businessWebsite, 500),
       estimatedContractValueCents: args.estimatedContractValueCents,
       estimatedFrequency: args.estimatedFrequency,
-      estimatedFrequencyNotes: cleanOptional(args.estimatedFrequencyNotes, 1000),
+      estimatedFrequencyNotes: cleanOptional(
+        args.estimatedFrequencyNotes,
+        1000,
+      ),
       createdByUserId: owner._id,
     });
 
@@ -512,7 +669,11 @@ export const updateLeadDetails = mutation({
     estimatedFrequencyNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerManagerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
 
     const request = await ctx.db.get(args.requestId);
     if (!request) throw new Error("Request not found");
@@ -525,7 +686,10 @@ export const updateLeadDetails = mutation({
       businessWebsite: cleanOptional(args.businessWebsite, 500),
       estimatedContractValueCents: args.estimatedContractValueCents,
       estimatedFrequency: args.estimatedFrequency,
-      estimatedFrequencyNotes: cleanOptional(args.estimatedFrequencyNotes, 1000),
+      estimatedFrequencyNotes: cleanOptional(
+        args.estimatedFrequencyNotes,
+        1000,
+      ),
     });
 
     return { leadType: args.leadType };
@@ -544,7 +708,11 @@ export const updateLeadStage = mutation({
     leadStage: leadStageValidator,
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
 
     const request = await ctx.db.get(args.requestId);
     if (!request) throw new Error("Request not found");
@@ -566,7 +734,11 @@ export const updateLeadNotes = mutation({
     leadNotes: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
 
     const request = await ctx.db.get(args.requestId);
     if (!request) throw new Error("Request not found");
@@ -590,7 +762,11 @@ export const updateNextFollowUp = mutation({
     nextFollowUpAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
 
     const request = await ctx.db.get(args.requestId);
     if (!request) throw new Error("Request not found");
@@ -621,7 +797,11 @@ export const generateClientPortalLink = mutation({
     clientRequestId: v.id("clientRequests"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
 
     const request = await ctx.db.get(args.clientRequestId);
     if (!request) throw new Error("Request not found");

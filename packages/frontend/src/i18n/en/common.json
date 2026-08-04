@@ -246,7 +246,29 @@
   },
   "requests": {
     "authenticatedClientSource": "Authenticated Client Portal",
-    "scheduling": { "title": "Confirm Service Schedule", "description": "Review the client's preference, then confirm the final operational schedule. This creates a real job.", "requestedDate": "Requested date", "requestedTime": "Requested time", "finalDate": "Final date", "finalTime": "Final start time", "duration": "Estimated duration (minutes)", "serviceType": "Service type", "note": "Client-facing scheduling note (optional)", "review": "Review final schedule", "confirmTitle": "Confirm service schedule?", "confirmDescription": "Create and link a job for {{date}} at {{time}}. The client will see this as confirmed.", "confirmAction": "Create scheduled job", "scheduled": "Service is scheduled and linked to a real job.", "viewJob": "View scheduled job", "errors": { "relationship": "The active client relationship is no longer available.", "location": "The service location is no longer available.", "schedule": "Choose a valid final date and time that is not in the past.", "generic": "The schedule could not be confirmed. Refresh and try again." } },
+    "scheduling": {
+      "title": "Confirm Service Schedule",
+      "description": "Review the client's preference, then confirm the final operational schedule. This creates a real job.",
+      "requestedDate": "Requested date",
+      "requestedTime": "Requested time",
+      "finalDate": "Final date",
+      "finalTime": "Final start time",
+      "duration": "Estimated duration (minutes)",
+      "serviceType": "Service type",
+      "note": "Client-facing scheduling note (optional)",
+      "review": "Review final schedule",
+      "confirmTitle": "Confirm service schedule?",
+      "confirmDescription": "Create and link a job for {{date}} at {{time}}. The client will see this as confirmed.",
+      "confirmAction": "Create scheduled job",
+      "scheduled": "Service is scheduled and linked to a real job.",
+      "viewJob": "View scheduled job",
+      "errors": {
+        "relationship": "The active client relationship is no longer available.",
+        "location": "The service location is no longer available.",
+        "schedule": "Choose a valid final date and time that is not in the past.",
+        "generic": "The schedule could not be confirmed. Refresh and try again."
+      }
+    },
     "leads": "Leads",
     "leadsDescription": "Manage incoming requests and your sales pipeline",
     "listView": "List View",
@@ -708,12 +730,56 @@
     "nextAction": "Next action",
     "lastActivity": "Last activity {{value}}",
     "linkedRecords": "Linked records",
-    "filters": { "all": "All leads", "needs_attention": "Needs attention", "overdue": "Overdue", "blocked": "Blocked", "stale": "Stale", "allTypes": "All lead types" },
-    "sorts": { "attention": "Attention first", "newest": "Newest first", "oldest": "Oldest first" },
-    "stages": { "new": "New", "qualification": "Qualification", "walkthrough": "Walkthrough", "proposal": "Proposal", "decision": "Decision", "agreement": "Agreement", "onboarding": "Onboarding", "converted": "Converted", "closed": "Closed" },
-    "attention": { "overdue": "Follow-up overdue", "blocked": "Blocked", "stale": "Stale" },
-    "actions": { "view_request": "View request", "add_contact_details": "Add contact details", "qualify_lead": "Qualify lead", "schedule_walkthrough": "Schedule walkthrough", "create_proposal": "Create proposal", "send_proposal": "Send proposal", "follow_up_proposal": "Follow up on proposal", "send_agreement": "Send agreement", "invite_client": "Invite client", "complete_service_setup": "Complete service setup" },
-    "links": { "property": "Property", "clientRelationship": "Client relationship", "walkthrough": "Walkthrough", "proposal": "Proposal", "agreement": "Service agreement", "commercialAccount": "Commercial account", "clientPortal": "Client Portal active" }
+    "filters": {
+      "all": "All leads",
+      "needs_attention": "Needs attention",
+      "overdue": "Overdue",
+      "blocked": "Blocked",
+      "stale": "Stale",
+      "allTypes": "All lead types"
+    },
+    "sorts": {
+      "attention": "Attention first",
+      "newest": "Newest first",
+      "oldest": "Oldest first"
+    },
+    "stages": {
+      "new": "New",
+      "qualification": "Qualification",
+      "walkthrough": "Walkthrough",
+      "proposal": "Proposal",
+      "decision": "Decision",
+      "agreement": "Agreement",
+      "onboarding": "Onboarding",
+      "converted": "Converted",
+      "closed": "Closed"
+    },
+    "attention": {
+      "overdue": "Follow-up overdue",
+      "blocked": "Blocked",
+      "stale": "Stale"
+    },
+    "actions": {
+      "view_request": "View request",
+      "add_contact_details": "Add contact details",
+      "qualify_lead": "Qualify lead",
+      "schedule_walkthrough": "Schedule walkthrough",
+      "create_proposal": "Create proposal",
+      "send_proposal": "Send proposal",
+      "follow_up_proposal": "Follow up on proposal",
+      "send_agreement": "Send agreement",
+      "invite_client": "Invite client",
+      "complete_service_setup": "Complete service setup"
+    },
+    "links": {
+      "property": "Property",
+      "clientRelationship": "Client relationship",
+      "walkthrough": "Walkthrough",
+      "proposal": "Proposal",
+      "agreement": "Service agreement",
+      "commercialAccount": "Commercial account",
+      "clientPortal": "Client Portal active"
+    }
   },
   "properties": {
     "title": "Properties",
@@ -735,8 +801,27 @@
       "duplicateBed": "Duplicate",
       "removeBed": "Remove",
       "removeBedroom": "Remove bedroom",
-      "types": { "standard_bed": "Standard bed", "bunk_bed": "Bunk bed", "sofa_bed": "Sofa bed", "futon": "Futon", "daybed": "Daybed", "crib": "Crib", "rollaway": "Rollaway", "other": "Other" },
-      "sizes": { "twin": "Twin", "twin_xl": "Twin XL", "full": "Full", "queen": "Queen", "king": "King", "california_king": "California king", "crib": "Crib", "custom": "Custom", "not_applicable": "Not applicable" }
+      "types": {
+        "standard_bed": "Standard bed",
+        "bunk_bed": "Bunk bed",
+        "sofa_bed": "Sofa bed",
+        "futon": "Futon",
+        "daybed": "Daybed",
+        "crib": "Crib",
+        "rollaway": "Rollaway",
+        "other": "Other"
+      },
+      "sizes": {
+        "twin": "Twin",
+        "twin_xl": "Twin XL",
+        "full": "Full",
+        "queen": "Queen",
+        "king": "King",
+        "california_king": "California king",
+        "crib": "Crib",
+        "custom": "Custom",
+        "not_applicable": "Not applicable"
+      }
     },
     "description": "Manage your cleaning properties",
     "detailDescription": "Physical service location and operational cleaning details.",
@@ -1135,9 +1220,25 @@
     "moveUp": "Move up",
     "moveDown": "Move down",
     "noPermission": "You do not have permission to manage business configuration.",
-    "methods": { "flat": "Flat price", "starting_at": "Starting at", "per_unit": "Per unit" },
-    "fields": { "name": "Name", "description": "Description", "method": "Pricing method", "price": "Price", "unitLabel": "Unit label", "duration": "Estimated duration (minutes)", "notes": "Internal notes" },
-    "validation": { "wholeCents": "Enter a price with no more than two decimal places.", "presetPrice": "Enter a positive price with no more than two decimal places.", "saveFailed": "Unable to save the add-on." }
+    "methods": {
+      "flat": "Flat price",
+      "starting_at": "Starting at",
+      "per_unit": "Per unit"
+    },
+    "fields": {
+      "name": "Name",
+      "description": "Description",
+      "method": "Pricing method",
+      "price": "Price",
+      "unitLabel": "Unit label",
+      "duration": "Estimated duration (minutes)",
+      "notes": "Internal notes"
+    },
+    "validation": {
+      "wholeCents": "Enter a price with no more than two decimal places.",
+      "presetPrice": "Enter a positive price with no more than two decimal places.",
+      "saveFailed": "Unable to save the add-on."
+    }
   },
   "companyProfile": {
     "title": "Company Profile",
@@ -1814,10 +1915,22 @@
     "signIn": "Sign In",
     "acceptFailedSafe": "We couldn't accept this invitation. Please refresh the page and try again.",
     "states": {
-      "expired": { "title": "Invitation Expired", "body": "This invitation link has expired for your security. Please ask your company owner to send a new invitation." },
-      "accepted": { "title": "Invitation Already Used", "body": "This invitation has already been accepted. Please sign in using your email and password." },
-      "revoked": { "title": "Invitation No Longer Available", "body": "This invitation has been revoked by your company." },
-      "invalid": { "title": "Invitation Not Found", "body": "This invitation link is invalid or no longer exists." }
+      "expired": {
+        "title": "Invitation Expired",
+        "body": "This invitation link has expired for your security. Please ask your company owner to send a new invitation."
+      },
+      "accepted": {
+        "title": "Invitation Already Used",
+        "body": "This invitation has already been accepted. Please sign in using your email and password."
+      },
+      "revoked": {
+        "title": "Invitation No Longer Available",
+        "body": "This invitation has been revoked by your company."
+      },
+      "invalid": {
+        "title": "Invitation Not Found",
+        "body": "This invitation link is invalid or no longer exists."
+      }
     }
   },
   "clientAuth": {
@@ -1851,31 +1964,359 @@
     "sectionNavigation": "Client portal sections",
     "navigationLabel": "Client portal pages",
     "menu": "Portal menu",
-    "navigation": { "home": "Home", "services": "My Services", "requests": "Requests", "documents": "Documents", "billing": "Billing", "locations": "Locations", "account": "Account" }
+    "navigation": {
+      "home": "Home",
+      "services": "My Services",
+      "requests": "Requests",
+      "documents": "Documents",
+      "billing": "Billing",
+      "locations": "Locations",
+      "account": "Account"
+    }
   },
   "jobRequestsActions": { "acceptAndSchedule": "Accept and schedule" },
   "jobRequests": {
-    "title": "Job Requests", "description": "Review and schedule service requested by existing clients.", "backToJobs": "Back to jobs", "backToQueue": "Back to Job Requests", "controls": "Job Request controls", "filtersLabel": "Filter Job Requests", "search": "Search Job Requests", "searchPlaceholder": "Search client, location, or service", "sortLabel": "Sort Job Requests", "sorts": { "newest": "Newest submitted", "oldest": "Oldest submitted", "preferred": "Preferred service date" }, "filters": { "action_required": "Action required", "scheduled": "Scheduled", "declined": "Declined", "all": "All" }, "statuses": { "action_required": "Action required", "scheduled": "Scheduled", "in_progress": "In progress", "completed": "Completed", "declined": "Declined", "closed": "Closed" }, "existingClient": "Existing client", "authenticatedSource": "Authenticated client", "preferred": "Client preference", "preferredSchedule": "Preferred schedule", "preferenceNotice": "This is the client’s preferred window, not a confirmed appointment. Review and confirm the business’s exact final start time.", "finalSchedule": "Final schedule", "addOns": "Requested add-ons", "clientNotes": "Client notes", "submitted": "Submitted {{date}}", "openDetails": "Open details", "detailDescription": "Make a direct scheduling decision for this existing-client request.", "empty": "No Job Requests found", "emptyDescription": "There are no requests matching this view.", "notFound": "This Job Request is unavailable.", "viewJob": "View linked job", "decline": "Decline request", "declineTitle": "Decline this request?", "declineConfirm": "The client will immediately see that this request was declined.", "declineConfirmAction": "Confirm decline", "declineError": "The request could not be declined.", "clientExplanation": "Client-facing explanation (optional)", "clientExplanationHelp": "Only this explanation is shown to the client. Internal notes remain private.", "advancedTools": "Advanced request tools", "advancedDescription": "Open the full request workspace only when walkthrough, proposal, agreement, or commercial conversion tools are intentionally needed.", "openAdvanced": "Open advanced request tools"
+    "title": "Job Requests",
+    "description": "Review and schedule service requested by existing clients.",
+    "backToJobs": "Back to jobs",
+    "backToQueue": "Back to Job Requests",
+    "controls": "Job Request controls",
+    "filtersLabel": "Filter Job Requests",
+    "search": "Search Job Requests",
+    "searchPlaceholder": "Search client, location, or service",
+    "sortLabel": "Sort Job Requests",
+    "sorts": {
+      "newest": "Newest submitted",
+      "oldest": "Oldest submitted",
+      "preferred": "Preferred service date"
+    },
+    "filters": {
+      "action_required": "Action required",
+      "awaiting_client": "Awaiting client",
+      "scheduled": "Scheduled",
+      "declined": "Declined",
+      "all": "All"
+    },
+    "statuses": {
+      "action_required": "Action required",
+      "awaiting_client": "Awaiting client response",
+      "proposal_declined": "Client declined proposed time",
+      "scheduled": "Scheduled",
+      "in_progress": "In progress",
+      "completed": "Completed",
+      "declined": "Declined",
+      "closed": "Closed"
+    },
+    "existingClient": "Existing client",
+    "authenticatedSource": "Authenticated client",
+    "preferred": "Client preference",
+    "preferredSchedule": "Preferred schedule",
+    "preferenceNotice": "This is the client’s preferred window, not a confirmed appointment. Review and confirm the business’s exact final start time.",
+    "finalSchedule": "Final schedule",
+    "addOns": "Requested add-ons",
+    "clientNotes": "Client notes",
+    "submitted": "Submitted {{date}}",
+    "openDetails": "Open details",
+    "detailDescription": "Make a direct scheduling decision for this existing-client request.",
+    "empty": "No Job Requests found",
+    "emptyDescription": "There are no requests matching this view.",
+    "notFound": "This Job Request is unavailable.",
+    "viewJob": "View linked job",
+    "decline": "Decline request",
+    "declineTitle": "Decline this request?",
+    "declineConfirm": "The client will immediately see that this request was declined.",
+    "declineConfirmAction": "Confirm decline",
+    "declineError": "The request could not be declined.",
+    "clientExplanation": "Client-facing explanation (optional)",
+    "clientExplanationHelp": "Only this explanation is shown to the client. Internal notes remain private.",
+    "advancedTools": "Advanced request tools",
+    "advancedDescription": "Open the full request workspace only when walkthrough, proposal, agreement, or commercial conversion tools are intentionally needed.",
+    "openAdvanced": "Open advanced request tools",
+    "proposeAnotherTime": "Propose another time",
+    "replaceProposal": "Replace proposal",
+    "withdrawProposal": "Withdraw proposal",
+    "awaitingClient": "Awaiting client response",
+    "proposedSchedule": "Proposed schedule",
+    "proposedDate": "Proposed date",
+    "proposedTime": "Proposed start time",
+    "duration": "Duration in minutes",
+    "jobType": "Service type",
+    "companyNote": "Client-facing note (optional)",
+    "sendProposal": "Send proposed time",
+    "minutes": "{{count}} minutes",
+    "proposalError": "The proposed time could not be sent.",
+    "jobTypes": {
+      "standard": "Standard clean",
+      "deep_clean": "Deep clean",
+      "turnover": "Turnover",
+      "move_in_out": "Move in / out",
+      "maintenance": "Maintenance",
+      "post_construction": "Post-construction"
+    }
   },
   "clientRequests": {
-    "title": "Requests", "description": "Request additional service and track requests sent to your cleaning company.", "requestService": "Request service", "serviceRequest": "Service request", "newTitle": "Request service", "newDescription": "Share your preferred service details. Your cleaning company will review and confirm availability.", "detailTitle": "Request details", "detailDescription": "Review what you requested and its current status.", "empty": "You have not submitted any service requests yet.", "notFound": "This request is unavailable.", "backToRequests": "Back to requests",
-    "provider": "Cleaning company", "providerLabel": "Choose a cleaning company", "selectProvider": "Select a cleaning company", "location": "Service location", "locationLabel": "Choose a service location", "selectLocation": "Select a location", "noLocations": "No eligible service locations are available for this cleaning company.", "service": "Requested service", "serviceLabel": "Choose a service", "selectService": "Select a service", "preferredDate": "Preferred date", "preferredTime": "Preferred time", "selectTime": "Select a preferred time", "preferenceNotice": "Your preferred date and time are not guaranteed until the cleaning company confirms them.",
-    "addOns": "Add-ons", "quantity": "Quantity", "notes": "Notes", "notesLabel": "Service notes (optional)", "notesHelp": "Share access needs, priorities, or other helpful context. Do not include passwords or payment details.", "reviewRequest": "Review request", "reviewTitle": "Review your request", "reviewNotice": "Confirm these details before sending your request.", "editRequest": "Edit request", "submitRequest": "Submit request", "submitting": "Submitting…", "none": "None", "awaitingNotice": "This is a service request, not a confirmed appointment. The cleaning company will review your preferred date and time.",
-    "confirmationTitle": "Your request has been received.", "confirmationMessage": "This is not yet a confirmed appointment. The cleaning company will review your preferred date and time and confirm the service.", "submitted": "Submitted", "submittedOn": "Submitted {{date}}", "preferredDateValue": "Preferred {{date}}", "actionRequired": "Action required", "confirmedService": "Confirmed service", "startingAt": "Starting at {{price}}", "perUnit": "{{price}} per {{unit}}",
-    "confirmedDateValue": "Confirmed {{date}} at {{time}}", "serviceConfirmed": "Your service is confirmed.", "durationValue": "Estimated duration: {{minutes}} minutes", "schedulingNote": "Scheduling note from your provider",
-    "currentStatus": "Current status", "whatHappensNext": "What happens next", "preferredSchedule": "Preferred schedule", "confirmedSchedule": "Confirmed schedule", "originallyRequested": "Originally requested", "finalDate": "Final date", "finalTime": "Final time", "serviceStatus": "Service status", "awaitingConfirmation": "Awaiting confirmation from your cleaning company.",
-    "statusSummary": { "submitted": { "meaning": "{{provider}} received your request and will review your preferred service details.", "next": "The cleaning company will review your request." }, "under_review": { "meaning": "{{provider}} is reviewing your location, service, and preferred schedule.", "next": "You will see any proposal, agreement, or confirmed schedule here." }, "proposal_available": { "meaning": "A proposal is available with service scope and pricing.", "next": "Review the proposal in Documents.", "action": "Review proposal" }, "agreement_available": { "meaning": "A service agreement is ready for your review.", "next": "Review and respond to the agreement.", "action": "Review agreement" }, "processing": { "meaning": "{{provider}} is preparing the next confirmed service step.", "next": "No action is required unless a document appears for review." }, "scheduled": { "meaning": "Your service is confirmed for the date and time shown below.", "next": "View the scheduled service in My Services." }, "in_progress": { "meaning": "The scheduled service is currently underway.", "next": "Service progress will appear in My Services." }, "completed": { "meaning": "The service connected to this request has been completed.", "next": "View service history or available billing records." }, "declined": { "meaning": "{{provider}} was unable to move forward with this request.", "next": "No action is required. You may submit a new request when ready." } },
-    "timeline": { "title": "Request timeline", "accessibleLabel": "Request lifecycle in chronological order", "current": "Current status", "actions": { "documents": "View Documents", "agreement": "View Agreement", "services": "View My Services", "billing": "View Billing" }, "events": { "submitted": { "label": "Request submitted", "description": "Your service request was received." }, "under_review": { "label": "Under review", "description": "The cleaning company began reviewing your request." }, "proposal_available": { "label": "Proposal available", "description": "A proposal was shared for your review." }, "proposal_accepted": { "label": "Proposal accepted", "description": "The service proposal was accepted." }, "agreement_available": { "label": "Agreement available", "description": "A service agreement was shared for review." }, "agreement_acknowledged": { "label": "Agreement acknowledged", "description": "The service agreement was acknowledged." }, "scheduled": { "label": "Service scheduled", "description": "A real service job is linked to this request." }, "in_progress": { "label": "Service in progress", "description": "Work on the scheduled service has started." }, "completed": { "label": "Service completed", "description": "The linked service was completed." }, "declined": { "label": "Request declined", "description": "The cleaning company could not move forward with this request." } } },
-    "timeWindows": { "morning": "Morning (8 AM–12 PM)", "afternoon": "Afternoon (12–5 PM)", "evening": "Evening (5–8 PM)" },
-    "services": { "Standard Clean": "Standard clean", "Deep Clean": "Deep clean", "Turnover": "Turnover", "Move In/Out": "Move in / move out", "Maintenance": "Maintenance", "Other": "Other" },
-    "statuses": { "submitted": "Submitted", "under_review": "Under review", "proposal_available": "Proposal available", "agreement_available": "Agreement available", "processing": "Processing", "scheduled": "Scheduled", "in_progress": "In progress", "completed": "Completed", "declined": "Declined" },
-    "validation": { "summary": "Please correct the following:", "provider": "Select a cleaning company.", "location": "Select a service location.", "service": "Select a requested service.", "date": "Select a preferred date.", "datePast": "Preferred date cannot be in the past.", "time": "Select a preferred time.", "notes": "Notes must be 2,000 characters or fewer.", "quantity": "Enter a valid quantity for {{name}}.", "submitFailed": "Unable to submit the request. Please try again." }
+    "title": "Requests",
+    "description": "Request additional service and track requests sent to your cleaning company.",
+    "requestService": "Request service",
+    "serviceRequest": "Service request",
+    "newTitle": "Request service",
+    "newDescription": "Share your preferred service details. Your cleaning company will review and confirm availability.",
+    "detailTitle": "Request details",
+    "detailDescription": "Review what you requested and its current status.",
+    "empty": "You have not submitted any service requests yet.",
+    "notFound": "This request is unavailable.",
+    "backToRequests": "Back to requests",
+    "provider": "Cleaning company",
+    "providerLabel": "Choose a cleaning company",
+    "selectProvider": "Select a cleaning company",
+    "location": "Service location",
+    "locationLabel": "Choose a service location",
+    "selectLocation": "Select a location",
+    "noLocations": "No eligible service locations are available for this cleaning company.",
+    "service": "Requested service",
+    "serviceLabel": "Choose a service",
+    "selectService": "Select a service",
+    "preferredDate": "Preferred date",
+    "preferredTime": "Preferred time",
+    "selectTime": "Select a preferred time",
+    "preferenceNotice": "Your preferred date and time are not guaranteed until the cleaning company confirms them.",
+    "addOns": "Add-ons",
+    "quantity": "Quantity",
+    "notes": "Notes",
+    "notesLabel": "Service notes (optional)",
+    "notesHelp": "Share access needs, priorities, or other helpful context. Do not include passwords or payment details.",
+    "reviewRequest": "Review request",
+    "reviewTitle": "Review your request",
+    "reviewNotice": "Confirm these details before sending your request.",
+    "editRequest": "Edit request",
+    "submitRequest": "Submit request",
+    "submitting": "Submitting…",
+    "none": "None",
+    "awaitingNotice": "This is a service request, not a confirmed appointment. The cleaning company will review your preferred date and time.",
+    "confirmationTitle": "Your request has been received.",
+    "confirmationMessage": "This is not yet a confirmed appointment. The cleaning company will review your preferred date and time and confirm the service.",
+    "submitted": "Submitted",
+    "submittedOn": "Submitted {{date}}",
+    "preferredDateValue": "Preferred {{date}}",
+    "actionRequired": "Action required",
+    "confirmedService": "Confirmed service",
+    "startingAt": "Starting at {{price}}",
+    "perUnit": "{{price}} per {{unit}}",
+    "confirmedDateValue": "Confirmed {{date}} at {{time}}",
+    "serviceConfirmed": "Your service is confirmed.",
+    "newTimeProposed": "New time proposed",
+    "proposedSchedule": "Proposed schedule",
+    "duration": "Duration",
+    "acceptProposedTime": "Accept proposed time",
+    "declineProposedTime": "Decline proposed time",
+    "declineDoesNotCancel": "Declining this time does not cancel your service request.",
+    "acceptConfirmation": "Accept this proposed time?",
+    "acceptConfirmationBody": "A confirmed job will be created for this date and time.",
+    "declineConfirmation": "Decline this proposed time?",
+    "declineConfirmationBody": "Your request will remain open for the cleaning company to review.",
+    "proposalUnavailable": "This proposed time is no longer available.",
+    "durationValue": "Estimated duration: {{minutes}} minutes",
+    "schedulingNote": "Scheduling note from your provider",
+    "currentStatus": "Current status",
+    "whatHappensNext": "What happens next",
+    "preferredSchedule": "Preferred schedule",
+    "confirmedSchedule": "Confirmed schedule",
+    "originallyRequested": "Originally requested",
+    "finalDate": "Final date",
+    "finalTime": "Final time",
+    "serviceStatus": "Service status",
+    "awaitingConfirmation": "Awaiting confirmation from your cleaning company.",
+    "statusSummary": {
+      "new_time_proposed": {
+        "meaning": "{{provider}} proposed a different service time.",
+        "next": "Accept or decline the proposed time above."
+      },
+      "awaiting_business_response": {
+        "meaning": "You declined the proposed time and your request remains open.",
+        "next": "{{provider}} will review the request again."
+      },
+      "submitted": {
+        "meaning": "{{provider}} received your request and will review your preferred service details.",
+        "next": "The cleaning company will review your request."
+      },
+      "under_review": {
+        "meaning": "{{provider}} is reviewing your location, service, and preferred schedule.",
+        "next": "You will see any proposal, agreement, or confirmed schedule here."
+      },
+      "proposal_available": {
+        "meaning": "A proposal is available with service scope and pricing.",
+        "next": "Review the proposal in Documents.",
+        "action": "Review proposal"
+      },
+      "agreement_available": {
+        "meaning": "A service agreement is ready for your review.",
+        "next": "Review and respond to the agreement.",
+        "action": "Review agreement"
+      },
+      "processing": {
+        "meaning": "{{provider}} is preparing the next confirmed service step.",
+        "next": "No action is required unless a document appears for review."
+      },
+      "scheduled": {
+        "meaning": "Your service is confirmed for the date and time shown below.",
+        "next": "View the scheduled service in My Services."
+      },
+      "in_progress": {
+        "meaning": "The scheduled service is currently underway.",
+        "next": "Service progress will appear in My Services."
+      },
+      "completed": {
+        "meaning": "The service connected to this request has been completed.",
+        "next": "View service history or available billing records."
+      },
+      "declined": {
+        "meaning": "{{provider}} was unable to move forward with this request.",
+        "next": "No action is required. You may submit a new request when ready."
+      }
+    },
+    "timeline": {
+      "title": "Request timeline",
+      "accessibleLabel": "Request lifecycle in chronological order",
+      "current": "Current status",
+      "actions": {
+        "documents": "View Documents",
+        "agreement": "View Agreement",
+        "services": "View My Services",
+        "billing": "View Billing"
+      },
+      "events": {
+        "schedule_proposed": {
+          "label": "New time proposed",
+          "description": "The cleaning company proposed a different service date and time."
+        },
+        "schedule_proposal_accepted": {
+          "label": "Proposed time accepted",
+          "description": "You accepted the proposed service time."
+        },
+        "schedule_proposal_declined": {
+          "label": "Proposed time declined",
+          "description": "You declined the proposed time; the service request remains open."
+        },
+        "submitted": {
+          "label": "Request submitted",
+          "description": "Your service request was received."
+        },
+        "under_review": {
+          "label": "Under review",
+          "description": "The cleaning company began reviewing your request."
+        },
+        "proposal_available": {
+          "label": "Proposal available",
+          "description": "A proposal was shared for your review."
+        },
+        "proposal_accepted": {
+          "label": "Proposal accepted",
+          "description": "The service proposal was accepted."
+        },
+        "agreement_available": {
+          "label": "Agreement available",
+          "description": "A service agreement was shared for review."
+        },
+        "agreement_acknowledged": {
+          "label": "Agreement acknowledged",
+          "description": "The service agreement was acknowledged."
+        },
+        "scheduled": {
+          "label": "Service scheduled",
+          "description": "A real service job is linked to this request."
+        },
+        "in_progress": {
+          "label": "Service in progress",
+          "description": "Work on the scheduled service has started."
+        },
+        "completed": {
+          "label": "Service completed",
+          "description": "The linked service was completed."
+        },
+        "declined": {
+          "label": "Request declined",
+          "description": "The cleaning company could not move forward with this request."
+        }
+      }
+    },
+    "timeWindows": {
+      "morning": "Morning (8 AM–12 PM)",
+      "afternoon": "Afternoon (12–5 PM)",
+      "evening": "Evening (5–8 PM)"
+    },
+    "services": {
+      "Standard Clean": "Standard clean",
+      "Deep Clean": "Deep clean",
+      "Turnover": "Turnover",
+      "Move In/Out": "Move in / move out",
+      "Maintenance": "Maintenance",
+      "Other": "Other"
+    },
+    "statuses": {
+      "new_time_proposed": "New time proposed",
+      "awaiting_business_response": "Awaiting business response",
+      "submitted": "Submitted",
+      "under_review": "Under review",
+      "proposal_available": "Proposal available",
+      "agreement_available": "Agreement available",
+      "processing": "Processing",
+      "scheduled": "Scheduled",
+      "in_progress": "In progress",
+      "completed": "Completed",
+      "declined": "Declined"
+    },
+    "validation": {
+      "summary": "Please correct the following:",
+      "provider": "Select a cleaning company.",
+      "location": "Select a service location.",
+      "service": "Select a requested service.",
+      "date": "Select a preferred date.",
+      "datePast": "Preferred date cannot be in the past.",
+      "time": "Select a preferred time.",
+      "notes": "Notes must be 2,000 characters or fewer.",
+      "quantity": "Enter a valid quantity for {{name}}.",
+      "submitFailed": "Unable to submit the request. Please try again."
+    }
   },
-  "clientServices": { "title": "My Services", "description": "View your current, upcoming, and recently completed cleaning services.", "current": "Current service", "upcoming": "Upcoming services", "recent": "Recent services", "noCurrent": "No service is currently in progress.", "noUpcoming": "No upcoming service is currently scheduled.", "noRecent": "Completed services will appear here." },
-  "clientDocuments": { "title": "Documents", "description": "Review proposals and service agreements shared by your cleaning companies.", "perMonth": "per month" },
-  "clientBilling": { "title": "Billing", "description": "Review invoice status, due dates, totals, and available online payment actions.", "payInvoice": "Pay invoice {{invoice}} online" },
-  "clientLocations": { "title": "Locations", "description": "Review the residential and commercial locations connected to your services.", "residential": "Residential locations", "commercial": "Commercial service locations", "noResidential": "No residential service locations are on file.", "noCommercial": "No commercial service locations are on file.", "statuses": { "active": "Active", "inactive": "Inactive", "paused": "Paused", "ended": "Ended" } },
-  "clientAccount": { "title": "Account", "description": "Review your contact information, language, and connected cleaning companies.", "language": "Language" },
+  "clientServices": {
+    "title": "My Services",
+    "description": "View your current, upcoming, and recently completed cleaning services.",
+    "current": "Current service",
+    "upcoming": "Upcoming services",
+    "recent": "Recent services",
+    "noCurrent": "No service is currently in progress.",
+    "noUpcoming": "No upcoming service is currently scheduled.",
+    "noRecent": "Completed services will appear here."
+  },
+  "clientDocuments": {
+    "title": "Documents",
+    "description": "Review proposals and service agreements shared by your cleaning companies.",
+    "perMonth": "per month"
+  },
+  "clientBilling": {
+    "title": "Billing",
+    "description": "Review invoice status, due dates, totals, and available online payment actions.",
+    "payInvoice": "Pay invoice {{invoice}} online"
+  },
+  "clientLocations": {
+    "title": "Locations",
+    "description": "Review the residential and commercial locations connected to your services.",
+    "residential": "Residential locations",
+    "commercial": "Commercial service locations",
+    "noResidential": "No residential service locations are on file.",
+    "noCommercial": "No commercial service locations are on file.",
+    "statuses": {
+      "active": "Active",
+      "inactive": "Inactive",
+      "paused": "Paused",
+      "ended": "Ended"
+    }
+  },
+  "clientAccount": {
+    "title": "Account",
+    "description": "Review your contact information, language, and connected cleaning companies.",
+    "language": "Language"
+  },
   "clientHome": {
     "title": "Home",
     "profile": "Profile",
@@ -1887,7 +2328,12 @@
     "overviewDescription": "Review what is happening now and what may need your attention.",
     "connectedProviders": "Connected with: {{providers}}",
     "explorePortal": "Explore the client portal",
-    "viewPages": { "services": "View all services", "documents": "Review documents", "billing": "Review billing", "locations": "View locations" },
+    "viewPages": {
+      "services": "View all services",
+      "documents": "Review documents",
+      "billing": "Review billing",
+      "locations": "View locations"
+    },
     "navigation": {
       "overview": "Overview",
       "documents": "Documents",
@@ -2042,13 +2488,50 @@
       "futureJobs_other": "{{count}} future active jobs remain scheduled.",
       "futureJobsUnchanged": "They will not be cancelled automatically and must be reviewed separately.",
       "error": "The lifecycle change could not be completed.",
-      "validation": { "reason": "Select a reason.", "otherNotes": "Enter notes when the reason is Other." },
-      "pause": { "action": "Pause", "title": "Pause Commercial Account", "description": "Pausing takes effect immediately. Existing future jobs will not be cancelled automatically. New recurring jobs will not be created until service is resumed.", "confirm": "Pause account", "success": "Commercial account paused.", "historyTitle": "Service paused" },
-      "resume": { "action": "Resume", "title": "Resume Commercial Account", "description": "Future recurring job creation will resume based on the existing schedule. Missed jobs are not backfilled.", "confirm": "Resume account", "success": "Commercial account resumed.", "historyTitle": "Service resumed" },
-      "end": { "action": "End", "title": "End Commercial Account", "description": "Ending service takes effect immediately and is permanent. Existing future jobs will not be cancelled automatically. No new recurring jobs will be created.", "confirm": "End account", "success": "Commercial account ended.", "historyTitle": "Service ended" },
+      "validation": {
+        "reason": "Select a reason.",
+        "otherNotes": "Enter notes when the reason is Other."
+      },
+      "pause": {
+        "action": "Pause",
+        "title": "Pause Commercial Account",
+        "description": "Pausing takes effect immediately. Existing future jobs will not be cancelled automatically. New recurring jobs will not be created until service is resumed.",
+        "confirm": "Pause account",
+        "success": "Commercial account paused.",
+        "historyTitle": "Service paused"
+      },
+      "resume": {
+        "action": "Resume",
+        "title": "Resume Commercial Account",
+        "description": "Future recurring job creation will resume based on the existing schedule. Missed jobs are not backfilled.",
+        "confirm": "Resume account",
+        "success": "Commercial account resumed.",
+        "historyTitle": "Service resumed"
+      },
+      "end": {
+        "action": "End",
+        "title": "End Commercial Account",
+        "description": "Ending service takes effect immediately and is permanent. Existing future jobs will not be cancelled automatically. No new recurring jobs will be created.",
+        "confirm": "End account",
+        "success": "Commercial account ended.",
+        "historyTitle": "Service ended"
+      },
       "reasons": {
-        "client_request": "Client request", "seasonal_pause": "Seasonal pause", "property_unavailable": "Property unavailable", "payment_issue": "Payment issue", "staffing_issue": "Staffing issue", "contract_review": "Contract review", "safety_concern": "Safety concern", "other": "Other",
-        "client_terminated": "Client terminated", "company_terminated": "Company terminated", "contract_completed": "Contract completed", "nonpayment": "Nonpayment", "pricing_disagreement": "Pricing disagreement", "service_quality_issue": "Service quality issue", "property_closed": "Property closed"
+        "client_request": "Client request",
+        "seasonal_pause": "Seasonal pause",
+        "property_unavailable": "Property unavailable",
+        "payment_issue": "Payment issue",
+        "staffing_issue": "Staffing issue",
+        "contract_review": "Contract review",
+        "safety_concern": "Safety concern",
+        "other": "Other",
+        "client_terminated": "Client terminated",
+        "company_terminated": "Company terminated",
+        "contract_completed": "Contract completed",
+        "nonpayment": "Nonpayment",
+        "pricing_disagreement": "Pricing disagreement",
+        "service_quality_issue": "Service quality issue",
+        "property_closed": "Property closed"
       }
     }
   },
@@ -2680,8 +3163,19 @@
     "restored": "Welcome back. Your progress has been restored.",
     "qualitativePrivacy": "Please do not include private information about employees or clients.",
     "characterCount": "{{current}} of {{max}} characters",
-    "progress": { "section": "Section {{current}} of {{total}}", "question": "Question {{current}} of {{total}} in this section" },
-    "actions": { "begin": "Start My Free Assessment", "continueAssessment": "Continue My Assessment", "startOver": "Start Over", "complete": "Complete Assessment", "continue": "Continue", "dismiss": "Dismiss", "pause": "Save and Exit" },
+    "progress": {
+      "section": "Section {{current}} of {{total}}",
+      "question": "Question {{current}} of {{total}} in this section"
+    },
+    "actions": {
+      "begin": "Start My Free Assessment",
+      "continueAssessment": "Continue My Assessment",
+      "startOver": "Start Over",
+      "complete": "Complete Assessment",
+      "continue": "Continue",
+      "dismiss": "Dismiss",
+      "pause": "Save and Exit"
+    },
     "confirm": {
       "startOver": "Start over and remove the assessment progress saved on this device?",
       "branchChange": "This change makes some later questions inapplicable and will remove those answers. Continue?"
@@ -2713,13 +3207,33 @@
       "ready_to_scale": "Ready to Scale",
       "operationally_advanced": "Operationally Advanced"
     },
-    "confidence": { "high": "High", "moderate": "Moderate", "limited": "Limited" },
+    "confidence": {
+      "high": "High",
+      "moderate": "Moderate",
+      "limited": "Limited"
+    },
     "trust": "Answer based on how the business operates today—there are no perfect answers. Your result appears after completion, and purchasing SCRUB is not required. This is operational guidance, not legal, tax, accounting, employment, or safety advice.",
     "continuity": {
-      "title": "Preserve this assessment", "copy": "Optionally receive a secure link so you can return to this complete report and roadmap for 60 days.", "email": "Email address", "firstName": "First name (optional)", "businessName": "Business name (optional)",
-      "marketingConsent": "I would also like occasional product updates or helpful operational resources.", "deliveryConsent": "Submitting authorizes SCRUB to send the requested transactional report link. Marketing consent is separate and optional.", "submit": "Email me a secure link", "sending": "Sending…", "success": "Your secure link has been sent.", "failure": "We could not send the link. Your report remains available in this browser.",
-      "supportTitle": "Where SCRUB fits", "supportCopy": "You can implement these priorities with the tools that fit your business. If you want scheduling, job information, quality records, client workflows, and financial visibility in one cleaning-operations workspace, SCRUB is designed to support that work.", "interested": "Show me how SCRUB supports these priorities", "notNow": "Not right now", "interestSaved": "Your preference has been saved.", "interestNeedsEmail": "Request a secure link first so this preference can be associated safely.",
-      "returnedTitle": "Secure assessment access", "returnedCopy": "You are viewing your frozen report and Growth Roadmap through a read-only secure link.", "invalidLink": "This assessment link is invalid or expired."
+      "title": "Preserve this assessment",
+      "copy": "Optionally receive a secure link so you can return to this complete report and roadmap for 60 days.",
+      "email": "Email address",
+      "firstName": "First name (optional)",
+      "businessName": "Business name (optional)",
+      "marketingConsent": "I would also like occasional product updates or helpful operational resources.",
+      "deliveryConsent": "Submitting authorizes SCRUB to send the requested transactional report link. Marketing consent is separate and optional.",
+      "submit": "Email me a secure link",
+      "sending": "Sending…",
+      "success": "Your secure link has been sent.",
+      "failure": "We could not send the link. Your report remains available in this browser.",
+      "supportTitle": "Where SCRUB fits",
+      "supportCopy": "You can implement these priorities with the tools that fit your business. If you want scheduling, job information, quality records, client workflows, and financial visibility in one cleaning-operations workspace, SCRUB is designed to support that work.",
+      "interested": "Show me how SCRUB supports these priorities",
+      "notNow": "Not right now",
+      "interestSaved": "Your preference has been saved.",
+      "interestNeedsEmail": "Request a secure link first so this preference can be associated safely.",
+      "returnedTitle": "Secure assessment access",
+      "returnedCopy": "You are viewing your frozen report and Growth Roadmap through a read-only secure link.",
+      "invalidLink": "This assessment link is invalid or expired."
     },
     "report": {
       "identity": "SCRUB Operations Assessment",
@@ -2751,7 +3265,12 @@
         "moderate": "Your responses show a useful pattern, with some conclusions kept appropriately measured.",
         "limited": "The available evidence is narrower or less certain, so this review presents fewer conclusions."
       },
-      "bands": { "strong_foundation": "Strong Foundation", "generally_reliable": "Generally Reliable", "developing_consistency": "Developing Consistency", "priority_opportunity": "Priority Opportunity" },
+      "bands": {
+        "strong_foundation": "Strong Foundation",
+        "generally_reliable": "Generally Reliable",
+        "developing_consistency": "Developing Consistency",
+        "priority_opportunity": "Priority Opportunity"
+      },
       "emptyStrengths": "The available evidence does not support a distinct strength finding yet.",
       "emptyOpportunities": "No priority improvement opportunity is supported strongly enough to present here.",
       "roadmapReserved": "Prioritized action planning will be introduced in the Growth Roadmap.",
@@ -2767,91 +3286,302 @@
       "success": "What Success Looks Like",
       "sparse": "No additional recommendation is supported strongly enough for this stage.",
       "stages": {
-        "now": { "title": "Now", "description": "Start with these highest-leverage foundations." },
-        "next": { "title": "Next", "description": "Address these priorities after the immediate foundations are stable." },
-        "later": { "title": "Later", "description": "Keep these worthwhile improvements in view without distracting from current priorities." },
-        "maintain": { "title": "Maintain", "description": "Protect these supported strengths as the operation changes." }
+        "now": {
+          "title": "Now",
+          "description": "Start with these highest-leverage foundations."
+        },
+        "next": {
+          "title": "Next",
+          "description": "Address these priorities after the immediate foundations are stable."
+        },
+        "later": {
+          "title": "Later",
+          "description": "Keep these worthwhile improvements in view without distracting from current priorities."
+        },
+        "maintain": {
+          "title": "Maintain",
+          "description": "Protect these supported strengths as the operation changes."
+        }
       }
     },
     "sections": {
-      "business": { "title": "Your Business", "intro": "First, help us understand the shape and current stage of your cleaning operation." },
-      "scheduling": { "title": "Scheduling and Organization", "intro": "Now let’s look at how recurring work, assignments, and schedule changes stay organized." },
-      "team": { "title": "Team Communication", "intro": "Next, we’ll examine how assignments, changes, and job information reach your team." },
-      "quality": { "title": "Quality and Consistency", "intro": "Let’s review the systems that help service quality remain dependable from job to job." },
-      "client": { "title": "Client Experience", "intro": "This section looks at how expectations, updates, requests, and issues are handled." },
-      "financial": { "title": "Financial Visibility", "intro": "We’ll focus on the consistency of financial processes rather than requesting exact financial figures." },
-      "growth": { "title": "Growth and Operational Goals", "intro": "Now consider where the business is heading and which constraints matter most." },
-      "perspective": { "title": "Your Perspective", "intro": "Numbers and processes do not tell the whole story. These final questions are optional and help capture what matters most to you." }
+      "business": {
+        "title": "Your Business",
+        "intro": "First, help us understand the shape and current stage of your cleaning operation."
+      },
+      "scheduling": {
+        "title": "Scheduling and Organization",
+        "intro": "Now let’s look at how recurring work, assignments, and schedule changes stay organized."
+      },
+      "team": {
+        "title": "Team Communication",
+        "intro": "Next, we’ll examine how assignments, changes, and job information reach your team."
+      },
+      "quality": {
+        "title": "Quality and Consistency",
+        "intro": "Let’s review the systems that help service quality remain dependable from job to job."
+      },
+      "client": {
+        "title": "Client Experience",
+        "intro": "This section looks at how expectations, updates, requests, and issues are handled."
+      },
+      "financial": {
+        "title": "Financial Visibility",
+        "intro": "We’ll focus on the consistency of financial processes rather than requesting exact financial figures."
+      },
+      "growth": {
+        "title": "Growth and Operational Goals",
+        "intro": "Now consider where the business is heading and which constraints matter most."
+      },
+      "perspective": {
+        "title": "Your Perspective",
+        "intro": "Numbers and processes do not tell the whole story. These final questions are optional and help capture what matters most to you."
+      }
     },
     "questions": {
       "business": {
-        "primary_model": { "prompt": "Which business model best describes your operation?" },
-        "service_mix": { "prompt": "Which service mix best represents most of your current work?" },
-        "team_size": { "prompt": "How many cleaners regularly work in your operation?", "help": "Team size helps keep later questions relevant to the way your business operates." },
-        "years_operating": { "prompt": "How long has the business been operating?" },
-        "growth_stage": { "prompt": "Which stage best describes the business today?" }
+        "primary_model": {
+          "prompt": "Which business model best describes your operation?"
+        },
+        "service_mix": {
+          "prompt": "Which service mix best represents most of your current work?"
+        },
+        "team_size": {
+          "prompt": "How many cleaners regularly work in your operation?",
+          "help": "Team size helps keep later questions relevant to the way your business operates."
+        },
+        "years_operating": {
+          "prompt": "How long has the business been operating?"
+        },
+        "growth_stage": {
+          "prompt": "Which stage best describes the business today?"
+        }
       },
       "scheduling": {
-        "primary_method": { "prompt": "What is the primary way jobs are scheduled?" },
-        "recurring_work": { "prompt": "How consistently is recurring work organized?" },
-        "assignment_clarity": { "prompt": "How clear is it who is responsible for each scheduled job?" },
-        "change_handling": { "prompt": "How consistently are schedule changes recorded and communicated?" }
+        "primary_method": {
+          "prompt": "What is the primary way jobs are scheduled?"
+        },
+        "recurring_work": {
+          "prompt": "How consistently is recurring work organized?"
+        },
+        "assignment_clarity": {
+          "prompt": "How clear is it who is responsible for each scheduled job?"
+        },
+        "change_handling": {
+          "prompt": "How consistently are schedule changes recorded and communicated?"
+        }
       },
       "team": {
-        "assignment_delivery": { "prompt": "How do workers usually receive job assignments?" },
-        "material_changes": { "prompt": "How are important job or schedule changes usually communicated?" },
-        "confirmation": { "prompt": "How consistently do workers confirm assignments or important changes?" },
-        "instructions_access": { "prompt": "How reliably can workers find current job instructions when they need them?" }
+        "assignment_delivery": {
+          "prompt": "How do workers usually receive job assignments?"
+        },
+        "material_changes": {
+          "prompt": "How are important job or schedule changes usually communicated?"
+        },
+        "confirmation": {
+          "prompt": "How consistently do workers confirm assignments or important changes?"
+        },
+        "instructions_access": {
+          "prompt": "How reliably can workers find current job instructions when they need them?"
+        }
       },
       "quality": {
-        "standard_procedures": { "prompt": "How consistently are cleaning procedures or checklists documented?" },
+        "standard_procedures": {
+          "prompt": "How consistently are cleaning procedures or checklists documented?"
+        },
         "verification": { "prompt": "How is completed work usually verified?" },
-        "issue_handling": { "prompt": "How consistently are quality issues documented and followed through?" },
-        "rework_pattern": { "prompt": "How often does work require a return visit or significant correction?" }
+        "issue_handling": {
+          "prompt": "How consistently are quality issues documented and followed through?"
+        },
+        "rework_pattern": {
+          "prompt": "How often does work require a return visit or significant correction?"
+        }
       },
       "client": {
-        "inquiry_followup": { "prompt": "How consistently are new inquiries followed up?" },
-        "expectations": { "prompt": "How are service scope and client expectations documented?" },
-        "updates": { "prompt": "How consistently do clients receive important service updates?" },
-        "request_handling": { "prompt": "How consistently are client requests or concerns tracked through resolution?" }
+        "inquiry_followup": {
+          "prompt": "How consistently are new inquiries followed up?"
+        },
+        "expectations": {
+          "prompt": "How are service scope and client expectations documented?"
+        },
+        "updates": {
+          "prompt": "How consistently do clients receive important service updates?"
+        },
+        "request_handling": {
+          "prompt": "How consistently are client requests or concerns tracked through resolution?"
+        }
       },
       "financial": {
-        "pricing": { "prompt": "How consistently is pricing determined and documented?" },
-        "invoicing": { "prompt": "How consistently are invoices created and sent?" },
-        "payment_visibility": { "prompt": "How clearly can you see which client payments are outstanding?" },
-        "job_profitability": { "prompt": "How clearly can you tell whether individual jobs or accounts are profitable?", "help": "We are asking about process visibility—not requesting revenue, profit, or account balances." }
+        "pricing": {
+          "prompt": "How consistently is pricing determined and documented?"
+        },
+        "invoicing": {
+          "prompt": "How consistently are invoices created and sent?"
+        },
+        "payment_visibility": {
+          "prompt": "How clearly can you see which client payments are outstanding?"
+        },
+        "job_profitability": {
+          "prompt": "How clearly can you tell whether individual jobs or accounts are profitable?",
+          "help": "We are asking about process visibility—not requesting revenue, profit, or account balances."
+        }
       },
       "growth": {
-        "primary_objective": { "prompt": "What is the business’s primary goal right now?" },
-        "bottleneck": { "prompt": "Which operational constraint currently has the greatest impact?" },
-        "capacity": { "prompt": "How much additional work could the current operation absorb reliably?" },
-        "fragmentation": { "prompt": "How many places do you rely on to manage core operational information?" },
-        "automation_readiness": { "prompt": "How ready is the business to automate repeatable operational work?" }
+        "primary_objective": {
+          "prompt": "What is the business’s primary goal right now?"
+        },
+        "bottleneck": {
+          "prompt": "Which operational constraint currently has the greatest impact?"
+        },
+        "capacity": {
+          "prompt": "How much additional work could the current operation absorb reliably?"
+        },
+        "fragmentation": {
+          "prompt": "How many places do you rely on to manage core operational information?"
+        },
+        "automation_readiness": {
+          "prompt": "How ready is the business to automate repeatable operational work?"
+        }
       },
       "perspective": {
-        "pride": { "prompt": "What are you most proud of about the way your business operates today?", "help": "Your perspective helps recognize what you have already built successfully." },
-        "improve": { "prompt": "If you could instantly improve one part of running your cleaning business, what would it be?", "help": "This may later help place practical priorities in the right order. It does not change a numerical score." }
+        "pride": {
+          "prompt": "What are you most proud of about the way your business operates today?",
+          "help": "Your perspective helps recognize what you have already built successfully."
+        },
+        "improve": {
+          "prompt": "If you could instantly improve one part of running your cleaning business, what would it be?",
+          "help": "This may later help place practical priorities in the right order. It does not change a numerical score."
+        }
       }
     },
     "options": {
-      "businessModel": { "residential": "Residential cleaning", "commercial": "Commercial or janitorial", "str": "Short-term rental or turnover", "mixed": "A mixed operation" },
-      "serviceMix": { "recurring_residential": "Mostly recurring residential", "one_time_residential": "Mostly one-time residential", "commercial_janitorial": "Mostly commercial or janitorial", "str_turnovers": "Mostly short-term-rental turnovers", "specialty": "Mostly specialty cleaning", "mixed": "A balanced mix" },
-      "teamSize": { "solo": "Just me", "2_4": "2–4", "5_10": "5–10", "11_25": "11–25", "26_plus": "26 or more" },
-      "yearsOperating": { "under_1": "Less than 1 year", "1_3": "1–3 years", "4_7": "4–7 years", "8_plus": "8 years or more" },
-      "growthStage": { "establishing": "Establishing the business", "stabilizing": "Building consistency", "growing": "Actively growing", "scaling": "Expanding the team or service capacity", "optimizing": "Improving an established operation" },
-      "schedulingMethod": { "memory_messages": "Memory, calls, or message threads", "paper": "Paper calendar or planner", "spreadsheet_calendar": "Spreadsheet or shared calendar", "scheduling_software": "Dedicated scheduling software", "integrated_platform": "An integrated operations platform" },
-      "processMaturity": { "ad_hoc": "Handled differently each time", "partly_documented": "Some steps are documented", "mostly_consistent": "Usually follows a consistent process", "standardized": "A documented standard process", "automated_visible": "Standardized with automation or shared visibility" },
-      "consistency": { "rarely_clear": "Rarely", "sometimes_clear": "Sometimes", "usually_clear": "Usually", "always_clear": "Consistently" },
-      "communicationMethod": { "verbal": "Mostly verbal or by phone", "text_threads": "Text messages or group chats", "email": "Email", "shared_calendar": "A shared calendar or schedule", "workforce_app": "A workforce or operations app" },
-      "qualityVerification": { "none": "No regular verification", "complaints_only": "Mainly when a client reports a problem", "spot_checks": "Occasional spot checks", "every_job": "A review process for most or all jobs", "documented_evidence": "Documented checklists, photos, or approval evidence" },
-      "frequency": { "frequent": "Frequently", "monthly": "Several times a month", "occasional": "Occasionally", "rare": "Rarely", "tracked_improving": "Rarely, and patterns are tracked" },
-      "documentation": { "verbal_only": "Mostly verbal", "basic_message": "A basic message or estimate", "written_scope": "A written scope of work", "proposal_agreement": "A proposal or service agreement", "standardized_workflow": "A standardized proposal and agreement process" },
-      "visibility": { "unclear": "Difficult to determine", "manual_check": "Available after manual review", "usually_current": "Usually current and visible", "real_time": "Current and readily visible" },
-      "growthObjective": { "stability": "Create more stability and consistency", "more_clients": "Win more clients", "larger_contracts": "Win larger contracts", "build_team": "Build or strengthen the team", "improve_margin": "Improve margins", "reduce_owner_load": "Reduce the owner’s daily administrative load" },
-      "bottleneck": { "lead_flow": "Lead flow", "scheduling": "Scheduling and coordination", "hiring_retention": "Hiring or retention", "communication": "Team communication", "quality": "Quality consistency", "client_admin": "Client administration", "financial_visibility": "Financial visibility", "owner_capacity": "Owner capacity" },
-      "capacity": { "significant_room": "Significant room for more work", "some_room": "Some room for more work", "near_capacity": "Near current capacity", "over_capacity": "Already beyond comfortable capacity", "uncertain": "Not sure" },
-      "fragmentation": { "one_system": "One primary system", "two_systems": "Two main systems", "several_tools": "Several separate tools", "mostly_messages_paper": "Mostly messages, paper, or memory", "uncertain": "Not sure" },
-      "readiness": { "not_priority": "Not a current priority", "exploring": "Exploring possibilities", "ready_for_one_area": "Ready to automate one area", "ready_for_multiple": "Ready to connect several areas", "already_automating": "Already automating repeatable work" }
+      "businessModel": {
+        "residential": "Residential cleaning",
+        "commercial": "Commercial or janitorial",
+        "str": "Short-term rental or turnover",
+        "mixed": "A mixed operation"
+      },
+      "serviceMix": {
+        "recurring_residential": "Mostly recurring residential",
+        "one_time_residential": "Mostly one-time residential",
+        "commercial_janitorial": "Mostly commercial or janitorial",
+        "str_turnovers": "Mostly short-term-rental turnovers",
+        "specialty": "Mostly specialty cleaning",
+        "mixed": "A balanced mix"
+      },
+      "teamSize": {
+        "solo": "Just me",
+        "2_4": "2–4",
+        "5_10": "5–10",
+        "11_25": "11–25",
+        "26_plus": "26 or more"
+      },
+      "yearsOperating": {
+        "under_1": "Less than 1 year",
+        "1_3": "1–3 years",
+        "4_7": "4–7 years",
+        "8_plus": "8 years or more"
+      },
+      "growthStage": {
+        "establishing": "Establishing the business",
+        "stabilizing": "Building consistency",
+        "growing": "Actively growing",
+        "scaling": "Expanding the team or service capacity",
+        "optimizing": "Improving an established operation"
+      },
+      "schedulingMethod": {
+        "memory_messages": "Memory, calls, or message threads",
+        "paper": "Paper calendar or planner",
+        "spreadsheet_calendar": "Spreadsheet or shared calendar",
+        "scheduling_software": "Dedicated scheduling software",
+        "integrated_platform": "An integrated operations platform"
+      },
+      "processMaturity": {
+        "ad_hoc": "Handled differently each time",
+        "partly_documented": "Some steps are documented",
+        "mostly_consistent": "Usually follows a consistent process",
+        "standardized": "A documented standard process",
+        "automated_visible": "Standardized with automation or shared visibility"
+      },
+      "consistency": {
+        "rarely_clear": "Rarely",
+        "sometimes_clear": "Sometimes",
+        "usually_clear": "Usually",
+        "always_clear": "Consistently"
+      },
+      "communicationMethod": {
+        "verbal": "Mostly verbal or by phone",
+        "text_threads": "Text messages or group chats",
+        "email": "Email",
+        "shared_calendar": "A shared calendar or schedule",
+        "workforce_app": "A workforce or operations app"
+      },
+      "qualityVerification": {
+        "none": "No regular verification",
+        "complaints_only": "Mainly when a client reports a problem",
+        "spot_checks": "Occasional spot checks",
+        "every_job": "A review process for most or all jobs",
+        "documented_evidence": "Documented checklists, photos, or approval evidence"
+      },
+      "frequency": {
+        "frequent": "Frequently",
+        "monthly": "Several times a month",
+        "occasional": "Occasionally",
+        "rare": "Rarely",
+        "tracked_improving": "Rarely, and patterns are tracked"
+      },
+      "documentation": {
+        "verbal_only": "Mostly verbal",
+        "basic_message": "A basic message or estimate",
+        "written_scope": "A written scope of work",
+        "proposal_agreement": "A proposal or service agreement",
+        "standardized_workflow": "A standardized proposal and agreement process"
+      },
+      "visibility": {
+        "unclear": "Difficult to determine",
+        "manual_check": "Available after manual review",
+        "usually_current": "Usually current and visible",
+        "real_time": "Current and readily visible"
+      },
+      "growthObjective": {
+        "stability": "Create more stability and consistency",
+        "more_clients": "Win more clients",
+        "larger_contracts": "Win larger contracts",
+        "build_team": "Build or strengthen the team",
+        "improve_margin": "Improve margins",
+        "reduce_owner_load": "Reduce the owner’s daily administrative load"
+      },
+      "bottleneck": {
+        "lead_flow": "Lead flow",
+        "scheduling": "Scheduling and coordination",
+        "hiring_retention": "Hiring or retention",
+        "communication": "Team communication",
+        "quality": "Quality consistency",
+        "client_admin": "Client administration",
+        "financial_visibility": "Financial visibility",
+        "owner_capacity": "Owner capacity"
+      },
+      "capacity": {
+        "significant_room": "Significant room for more work",
+        "some_room": "Some room for more work",
+        "near_capacity": "Near current capacity",
+        "over_capacity": "Already beyond comfortable capacity",
+        "uncertain": "Not sure"
+      },
+      "fragmentation": {
+        "one_system": "One primary system",
+        "two_systems": "Two main systems",
+        "several_tools": "Several separate tools",
+        "mostly_messages_paper": "Mostly messages, paper, or memory",
+        "uncertain": "Not sure"
+      },
+      "readiness": {
+        "not_priority": "Not a current priority",
+        "exploring": "Exploring possibilities",
+        "ready_for_one_area": "Ready to automate one area",
+        "ready_for_multiple": "Ready to connect several areas",
+        "already_automating": "Already automating repeatable work"
+      }
     }
   }
 }

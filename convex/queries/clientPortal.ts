@@ -2,22 +2,44 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { requireVerifiedClientSession } from "../lib/sessionAuth";
 import { companyAddOnSelectionVersion } from "../lib/companyAddOnSelection";
-import { AUTHENTICATED_REQUEST_SERVICES, AUTHENTICATED_REQUEST_TIME_WINDOWS, deriveClientRequestStatus } from "../lib/clientRequestPortal";
+import {
+  AUTHENTICATED_REQUEST_SERVICES,
+  AUTHENTICATED_REQUEST_TIME_WINDOWS,
+  deriveClientRequestStatus,
+} from "../lib/clientRequestPortal";
 
 const CAP = 500;
-const authArgs = { clientUserId: v.id("clientUsers"), sessionToken: v.string() };
+const authArgs = {
+  clientUserId: v.id("clientUsers"),
+  sessionToken: v.string(),
+};
 
-async function clientContext(ctx: any, args: { clientUserId: any; sessionToken: string }) {
-  const clientUser = await requireVerifiedClientSession(ctx, args.sessionToken, args.clientUserId);
+async function clientContext(
+  ctx: any,
+  args: { clientUserId: any; sessionToken: string },
+) {
+  const clientUser = await requireVerifiedClientSession(
+    ctx,
+    args.sessionToken,
+    args.clientUserId,
+  );
   const relationships = (
     await ctx.db
       .query("clientRelationships")
-      .withIndex("by_clientUserId", (q: any) => q.eq("clientUserId", clientUser._id))
+      .withIndex("by_clientUserId", (q: any) =>
+        q.eq("clientUserId", clientUser._id),
+      )
       .take(CAP)
   ).filter((relationship: any) => relationship.status === "active");
-  const companies = await Promise.all(relationships.map((relationship: any) => ctx.db.get(relationship.companyId)));
+  const companies = await Promise.all(
+    relationships.map((relationship: any) =>
+      ctx.db.get(relationship.companyId),
+    ),
+  );
   const companyNameById = new Map(
-    companies.filter(Boolean).map((company: any) => [String(company._id), company.name])
+    companies
+      .filter(Boolean)
+      .map((company: any) => [String(company._id), company.name]),
   );
   const relationshipIdsByCompany = new Map<string, Set<string>>();
   for (const relationship of relationships) {
@@ -29,32 +51,57 @@ async function clientContext(ctx: any, args: { clientUserId: any; sessionToken: 
   const relationshipSummaries = relationships.map((relationship: any) => ({
     _id: relationship._id,
     companyId: relationship.companyId,
-    companyName: companyNameById.get(String(relationship.companyId)) ?? "Provider",
+    companyName:
+      companyNameById.get(String(relationship.companyId)) ?? "Provider",
     displayName: relationship.displayName,
     businessName: relationship.businessName,
     clientType: relationship.clientType,
     status: relationship.status,
   }));
   const companyNameByRelationshipId = new Map(
-    relationshipSummaries.map((relationship: any) => [String(relationship._id), relationship.companyName])
+    relationshipSummaries.map((relationship: any) => [
+      String(relationship._id),
+      relationship.companyName,
+    ]),
   );
-  return { clientUser, relationshipIdsByCompany, relationshipSummaries, companyNameByRelationshipId };
+  return {
+    clientUser,
+    relationshipIdsByCompany,
+    relationshipSummaries,
+    companyNameByRelationshipId,
+  };
 }
 
-async function relatedRecords(ctx: any, context: any, table: string, index: string) {
+async function relatedRecords(
+  ctx: any,
+  context: any,
+  table: string,
+  index: string,
+) {
   const records: any[] = [];
-  for (const [companyId, relationshipIds] of context.relationshipIdsByCompany.entries()) {
+  for (const [
+    companyId,
+    relationshipIds,
+  ] of context.relationshipIdsByCompany.entries()) {
     const companyRecords = await ctx.db
       .query(table)
       .withIndex(index, (q: any) => q.eq("companyId", companyId))
       .take(CAP);
-    records.push(...companyRecords.filter((record: any) => relationshipIds.has(String(record.clientRelationshipId))));
+    records.push(
+      ...companyRecords.filter((record: any) =>
+        relationshipIds.has(String(record.clientRelationshipId)),
+      ),
+    );
   }
   return records;
 }
 
 function providerName(context: any, record: any) {
-  return context.companyNameByRelationshipId.get(String(record.clientRelationshipId)) ?? "Provider";
+  return (
+    context.companyNameByRelationshipId.get(
+      String(record.clientRelationshipId),
+    ) ?? "Provider"
+  );
 }
 
 export const getClientServices = query({
@@ -66,11 +113,19 @@ export const getClientServices = query({
       relatedRecords(ctx, context, "properties", "by_companyId"),
       relatedRecords(ctx, context, "commercialAccounts", "by_companyId"),
     ]);
-    const propertyById = new Map(properties.map((item: any) => [String(item._id), item]));
-    const accountById = new Map(commercialAccounts.map((item: any) => [String(item._id), item]));
+    const propertyById = new Map(
+      properties.map((item: any) => [String(item._id), item]),
+    );
+    const accountById = new Map(
+      commercialAccounts.map((item: any) => [String(item._id), item]),
+    );
     const project = (job: any) => {
-      const property: any = job.propertyId ? propertyById.get(String(job.propertyId)) : null;
-      const account: any = job.commercialAccountId ? accountById.get(String(job.commercialAccountId)) : null;
+      const property: any = job.propertyId
+        ? propertyById.get(String(job.propertyId))
+        : null;
+      const account: any = job.commercialAccountId
+        ? accountById.get(String(job.commercialAccountId))
+        : null;
       return {
         _id: job._id,
         type: job.type,
@@ -86,10 +141,18 @@ export const getClientServices = query({
     const today = new Date().toISOString().slice(0, 10);
     return {
       clientName: context.clientUser.displayName,
-      current: jobs.filter((job: any) => job.status === "in_progress").map(project),
+      current: jobs
+        .filter((job: any) => job.status === "in_progress")
+        .map(project),
       upcoming: jobs
-        .filter((job: any) => job.scheduledDate >= today && !["in_progress", "cancelled", "approved"].includes(job.status))
-        .sort((a: any, b: any) => a.scheduledDate.localeCompare(b.scheduledDate))
+        .filter(
+          (job: any) =>
+            job.scheduledDate >= today &&
+            !["in_progress", "cancelled", "approved"].includes(job.status),
+        )
+        .sort((a: any, b: any) =>
+          a.scheduledDate.localeCompare(b.scheduledDate),
+        )
         .map(project),
       recent: jobs
         .filter((job: any) => job.completedAt || job.status === "approved")
@@ -110,19 +173,23 @@ export const getClientDocuments = query({
     ]);
     return {
       clientName: context.clientUser.displayName,
-      proposals: proposals.sort((a, b) => b.updatedAt - a.updatedAt).map((proposal: any) => ({
-        _id: proposal._id,
-        title: proposal.title,
-        businessName: proposal.businessName,
-        propertyAddress: proposal.propertyAddress,
-        serviceFrequency: proposal.serviceFrequency,
-        monthlyPriceCents: proposal.monthlyPriceCents,
-        oneTimePriceCents: proposal.oneTimePriceCents,
-        status: proposal.status,
-        providerName: providerName(context, proposal),
-      })),
+      proposals: proposals
+        .sort((a, b) => b.updatedAt - a.updatedAt)
+        .map((proposal: any) => ({
+          _id: proposal._id,
+          title: proposal.title,
+          businessName: proposal.businessName,
+          propertyAddress: proposal.propertyAddress,
+          serviceFrequency: proposal.serviceFrequency,
+          monthlyPriceCents: proposal.monthlyPriceCents,
+          oneTimePriceCents: proposal.oneTimePriceCents,
+          status: proposal.status,
+          providerName: providerName(context, proposal),
+        })),
       agreements: agreements
-        .filter((agreement: any) => ["sent", "signed", "cancelled"].includes(agreement.status))
+        .filter((agreement: any) =>
+          ["sent", "signed", "cancelled"].includes(agreement.status),
+        )
         .sort((a: any, b: any) => b.updatedAt - a.updatedAt)
         .map((agreement: any) => ({
           _id: agreement._id,
@@ -143,22 +210,29 @@ export const getClientBilling = query({
   args: authArgs,
   handler: async (ctx, args) => {
     const context = await clientContext(ctx, args);
-    const invoices = await relatedRecords(ctx, context, "invoices", "by_company");
+    const invoices = await relatedRecords(
+      ctx,
+      context,
+      "invoices",
+      "by_company",
+    );
     return {
       clientName: context.clientUser.displayName,
-      invoices: invoices.sort((a, b) => b.updatedAt - a.updatedAt).map((invoice: any) => ({
-        _id: invoice._id,
-        invoiceNumber: invoice.invoiceNumber,
-        title: invoice.title,
-        status: invoice.status,
-        issueDate: invoice.issueDate,
-        dueDate: invoice.dueDate,
-        totalCents: invoice.totalCents,
-        baseSubtotalCents: invoice.baseSubtotalCents ?? invoice.subtotalCents,
-        addOnSubtotalCents: invoice.addOnSubtotalCents ?? 0,
-        addOnLineItems: invoice.addOnLineItems ?? [],
-        providerName: providerName(context, invoice),
-      })),
+      invoices: invoices
+        .sort((a, b) => b.updatedAt - a.updatedAt)
+        .map((invoice: any) => ({
+          _id: invoice._id,
+          invoiceNumber: invoice.invoiceNumber,
+          title: invoice.title,
+          status: invoice.status,
+          issueDate: invoice.issueDate,
+          dueDate: invoice.dueDate,
+          totalCents: invoice.totalCents,
+          baseSubtotalCents: invoice.baseSubtotalCents ?? invoice.subtotalCents,
+          addOnSubtotalCents: invoice.addOnSubtotalCents ?? 0,
+          addOnLineItems: invoice.addOnLineItems ?? [],
+          providerName: providerName(context, invoice),
+        })),
     };
   },
 });
@@ -210,27 +284,108 @@ export const getClientAccount = query({
 });
 
 async function requestLinkedRecords(ctx: any, request: any) {
-  const [proposals, agreements] = await Promise.all([
-    ctx.db.query("proposals").withIndex("by_clientRequestId", (q: any) => q.eq("clientRequestId", request._id)).collect(),
-    ctx.db.query("serviceAgreements").withIndex("by_clientRequest", (q: any) => q.eq("clientRequestId", request._id)).collect(),
+  const [proposals, agreements, scheduleProposals] = await Promise.all([
+    ctx.db
+      .query("proposals")
+      .withIndex("by_clientRequestId", (q: any) =>
+        q.eq("clientRequestId", request._id),
+      )
+      .collect(),
+    ctx.db
+      .query("serviceAgreements")
+      .withIndex("by_clientRequest", (q: any) =>
+        q.eq("clientRequestId", request._id),
+      )
+      .collect(),
+    ctx.db
+      .query("clientRequestScheduleProposals")
+      .withIndex("by_clientRequestId_createdAt", (q: any) =>
+        q.eq("clientRequestId", request._id),
+      )
+      .collect(),
   ]);
-  const proposalIds = new Set(proposals.map((proposal: any) => String(proposal._id)));
-  const directJobs = await ctx.db.query("jobs").withIndex("by_sourceClientRequestId", (q: any) => q.eq("sourceClientRequestId", request._id)).collect();
-  const companyJobs = await ctx.db.query("jobs").withIndex("by_companyId_scheduledDate", (q: any) => q.eq("companyId", request.companyId)).take(CAP);
-  const jobs = [...directJobs, ...companyJobs.filter((job: any) => job.sourceProposalId && proposalIds.has(String(job.sourceProposalId)))].filter((job, index, all) => all.findIndex(item => item._id === job._id) === index);
-  return { proposals, agreements, jobs };
+  const proposalIds = new Set(
+    proposals.map((proposal: any) => String(proposal._id)),
+  );
+  const directJobs = await ctx.db
+    .query("jobs")
+    .withIndex("by_sourceClientRequestId", (q: any) =>
+      q.eq("sourceClientRequestId", request._id),
+    )
+    .collect();
+  const companyJobs = await ctx.db
+    .query("jobs")
+    .withIndex("by_companyId_scheduledDate", (q: any) =>
+      q.eq("companyId", request.companyId),
+    )
+    .take(CAP);
+  const jobs = [
+    ...directJobs,
+    ...companyJobs.filter(
+      (job: any) =>
+        job.sourceProposalId && proposalIds.has(String(job.sourceProposalId)),
+    ),
+  ].filter(
+    (job, index, all) =>
+      all.findIndex((item) => item._id === job._id) === index,
+  );
+  return { proposals, agreements, jobs, scheduleProposals };
 }
 
 function projectClientRequest(context: any, request: any, linked: any) {
   const today = new Date().toISOString().slice(0, 10);
-  const activeJob = linked.jobs.find((job: any) => job.status === "in_progress")
-    ?? linked.jobs.find((job: any) => !["cancelled", "approved"].includes(job.status) && job.scheduledDate >= today)
-    ?? linked.jobs.find((job: any) => job.status === "approved" || job.completedAt);
+  const activeJob =
+    linked.jobs.find((job: any) => job.status === "in_progress") ??
+    linked.jobs.find(
+      (job: any) =>
+        !["cancelled", "approved"].includes(job.status) &&
+        job.scheduledDate >= today,
+    ) ??
+    linked.jobs.find(
+      (job: any) => job.status === "approved" || job.completedAt,
+    );
+  const currentScheduleProposal =
+    linked.scheduleProposals.find((item: any) => item.status === "pending") ??
+    null;
+  const latestScheduleProposal =
+    [...linked.scheduleProposals].sort(
+      (a: any, b: any) => b.createdAt - a.createdAt,
+    )[0] ?? null;
   const timelineFacts = {
-    request: { status: request.status, submittedAt: request.createdAt, contactedAt: request.contactedAt, declinedAt: request.declinedAt },
-    proposals: linked.proposals.map((item: any) => ({ status: item.status, sentAt: item.sentAt, acceptedAt: item.acceptedAt, declinedAt: item.declinedAt })),
-    agreements: linked.agreements.map((item: any) => ({ _id: item._id, status: item.status, sentAt: item.sentAt, signedAt: item.signedAt, clientRespondedAt: item.clientRespondedAt, declinedAt: item.declinedAt })),
-    jobs: linked.jobs.map((item: any) => ({ status: item.status, scheduledDate: item.scheduledDate, startTime: item.startTime, startedAt: item.startedAt, completedAt: item.completedAt, approvedAt: item.approvedAt })),
+    request: {
+      status: request.status,
+      submittedAt: request.createdAt,
+      contactedAt: request.contactedAt,
+      declinedAt: request.declinedAt,
+    },
+    proposals: linked.proposals.map((item: any) => ({
+      status: item.status,
+      sentAt: item.sentAt,
+      acceptedAt: item.acceptedAt,
+      declinedAt: item.declinedAt,
+    })),
+    agreements: linked.agreements.map((item: any) => ({
+      _id: item._id,
+      status: item.status,
+      sentAt: item.sentAt,
+      signedAt: item.signedAt,
+      clientRespondedAt: item.clientRespondedAt,
+      declinedAt: item.declinedAt,
+    })),
+    jobs: linked.jobs.map((item: any) => ({
+      status: item.status,
+      scheduledDate: item.scheduledDate,
+      startTime: item.startTime,
+      startedAt: item.startedAt,
+      completedAt: item.completedAt,
+      approvedAt: item.approvedAt,
+    })),
+    scheduleProposals: linked.scheduleProposals.map((item: any) => ({
+      status: item.status,
+      createdAt: item.createdAt,
+      acceptedAt: item.acceptedAt,
+      declinedAt: item.declinedAt,
+    })),
   };
   return {
     _id: request._id,
@@ -243,9 +398,47 @@ function projectClientRequest(context: any, request: any, linked: any) {
     clientFacingDecisionNote: request.clientFacingDecisionNote,
     requestedDate: request.requestedDate,
     timeWindow: request.timeWindow,
-    status: deriveClientRequestStatus({ requestStatus: request.status, ...linked, today }),
-    actionRequired: linked.agreements.some((item: any) => item.status === "sent") || linked.proposals.some((item: any) => item.status === "sent"),
-    scheduledService: activeJob ? { _id: activeJob._id, scheduledDate: activeJob.scheduledDate, startTime: activeJob.startTime, durationMinutes: activeJob.durationMinutes, status: activeJob.status, clientSchedulingNote: activeJob.clientSchedulingNote } : null,
+    status:
+      activeJob || request.status === "declined"
+        ? deriveClientRequestStatus({
+            requestStatus: request.status,
+            ...linked,
+            today,
+          })
+        : currentScheduleProposal
+          ? "new_time_proposed"
+          : latestScheduleProposal?.status === "declined"
+            ? "awaiting_business_response"
+            : deriveClientRequestStatus({
+                requestStatus: request.status,
+                ...linked,
+                today,
+              }),
+    actionRequired:
+      Boolean(currentScheduleProposal) ||
+      linked.agreements.some((item: any) => item.status === "sent") ||
+      linked.proposals.some((item: any) => item.status === "sent"),
+    currentScheduleProposal: currentScheduleProposal
+      ? {
+          _id: currentScheduleProposal._id,
+          proposedDate: currentScheduleProposal.proposedDate,
+          proposedStartTime: currentScheduleProposal.proposedStartTime,
+          durationMinutes: currentScheduleProposal.durationMinutes,
+          jobType: currentScheduleProposal.jobType,
+          clientNote: currentScheduleProposal.clientNote,
+          createdAt: currentScheduleProposal.createdAt,
+        }
+      : null,
+    scheduledService: activeJob
+      ? {
+          _id: activeJob._id,
+          scheduledDate: activeJob.scheduledDate,
+          startTime: activeJob.startTime,
+          durationMinutes: activeJob.durationMinutes,
+          status: activeJob.status,
+          clientSchedulingNote: activeJob.clientSchedulingNote,
+        }
+      : null,
     timelineFacts,
   };
 }
@@ -257,23 +450,68 @@ export const getClientRequestOptions = query({
     const providers = [];
     for (const relationship of context.relationshipSummaries) {
       const [properties, accounts, addOns] = await Promise.all([
-        ctx.db.query("properties").withIndex("by_companyId_clientRelationshipId", (q: any) => q.eq("companyId", relationship.companyId).eq("clientRelationshipId", relationship._id)).collect(),
-        ctx.db.query("commercialAccounts").withIndex("by_companyId_clientRelationshipId_updatedAt", (q: any) => q.eq("companyId", relationship.companyId).eq("clientRelationshipId", relationship._id)).collect(),
-        ctx.db.query("companyAddOns").withIndex("by_companyId_active_displayOrder", (q: any) => q.eq("companyId", relationship.companyId).eq("isActive", true)).collect(),
+        ctx.db
+          .query("properties")
+          .withIndex("by_companyId_clientRelationshipId", (q: any) =>
+            q
+              .eq("companyId", relationship.companyId)
+              .eq("clientRelationshipId", relationship._id),
+          )
+          .collect(),
+        ctx.db
+          .query("commercialAccounts")
+          .withIndex("by_companyId_clientRelationshipId_updatedAt", (q: any) =>
+            q
+              .eq("companyId", relationship.companyId)
+              .eq("clientRelationshipId", relationship._id),
+          )
+          .collect(),
+        ctx.db
+          .query("companyAddOns")
+          .withIndex("by_companyId_active_displayOrder", (q: any) =>
+            q.eq("companyId", relationship.companyId).eq("isActive", true),
+          )
+          .collect(),
       ]);
       providers.push({
         ...relationship,
         locations: [
-          ...properties.filter((item: any) => item.active).map((item: any) => ({ type: "property", id: item._id, name: item.name, address: item.address })),
-          ...accounts.filter((item: any) => item.status === "active").map((item: any) => ({ type: "commercial_account", id: item._id, name: item.clientName, address: item.serviceAddress })),
+          ...properties
+            .filter((item: any) => item.active)
+            .map((item: any) => ({
+              type: "property",
+              id: item._id,
+              name: item.name,
+              address: item.address,
+            })),
+          ...accounts
+            .filter((item: any) => item.status === "active")
+            .map((item: any) => ({
+              type: "commercial_account",
+              id: item._id,
+              name: item.clientName,
+              address: item.serviceAddress,
+            })),
         ],
-        addOns: addOns.filter((item: any) => item.isPublic && item.archivedAt === undefined).map((item: any) => ({
-          id: item._id, name: item.name, description: item.description, pricingMethod: item.pricingMethod,
-          priceCents: item.priceCents, unitLabel: item.unitLabel, selectionVersion: companyAddOnSelectionVersion(item),
-        })),
+        addOns: addOns
+          .filter((item: any) => item.isPublic && item.archivedAt === undefined)
+          .map((item: any) => ({
+            id: item._id,
+            name: item.name,
+            description: item.description,
+            pricingMethod: item.pricingMethod,
+            priceCents: item.priceCents,
+            unitLabel: item.unitLabel,
+            selectionVersion: companyAddOnSelectionVersion(item),
+          })),
       });
     }
-    return { clientName: context.clientUser.displayName, providers, services: AUTHENTICATED_REQUEST_SERVICES, timeWindows: AUTHENTICATED_REQUEST_TIME_WINDOWS };
+    return {
+      clientName: context.clientUser.displayName,
+      providers,
+      services: AUTHENTICATED_REQUEST_SERVICES,
+      timeWindows: AUTHENTICATED_REQUEST_TIME_WINDOWS,
+    };
   },
 });
 
@@ -283,13 +521,32 @@ export const listClientRequests = query({
     const context = await clientContext(ctx, args);
     const requests: any[] = [];
     for (const relationship of context.relationshipSummaries) {
-      const related = await ctx.db.query("clientRequests")
-        .withIndex("by_companyId_clientRelationshipId_createdAt", (q: any) => q.eq("companyId", relationship.companyId).eq("clientRelationshipId", relationship._id))
-        .order("desc").take(100);
-      requests.push(...related.filter((request: any) => request.status !== "archived"));
+      const related = await ctx.db
+        .query("clientRequests")
+        .withIndex("by_companyId_clientRelationshipId_createdAt", (q: any) =>
+          q
+            .eq("companyId", relationship.companyId)
+            .eq("clientRelationshipId", relationship._id),
+        )
+        .order("desc")
+        .take(100);
+      requests.push(
+        ...related.filter((request: any) => request.status !== "archived"),
+      );
     }
-    const projected = await Promise.all(requests.map(async (request) => projectClientRequest(context, request, await requestLinkedRecords(ctx, request))));
-    return { clientName: context.clientUser.displayName, requests: projected.sort((a, b) => b.submittedAt - a.submittedAt) };
+    const projected = await Promise.all(
+      requests.map(async (request) =>
+        projectClientRequest(
+          context,
+          request,
+          await requestLinkedRecords(ctx, request),
+        ),
+      ),
+    );
+    return {
+      clientName: context.clientUser.displayName,
+      requests: projected.sort((a, b) => b.submittedAt - a.submittedAt),
+    };
   },
 });
 
@@ -298,9 +555,15 @@ export const getClientRequestDetail = query({
   handler: async (ctx, args) => {
     const context = await clientContext(ctx, args);
     const request = await ctx.db.get(args.requestId);
-    if (!request?.clientRelationshipId) return { clientName: context.clientUser.displayName, request: null };
-    const relationship = context.relationshipSummaries.find((item: any) => item._id === request.clientRelationshipId && item.companyId === request.companyId);
-    if (!relationship || request.status === "archived") return { clientName: context.clientUser.displayName, request: null };
+    if (!request?.clientRelationshipId)
+      return { clientName: context.clientUser.displayName, request: null };
+    const relationship = context.relationshipSummaries.find(
+      (item: any) =>
+        item._id === request.clientRelationshipId &&
+        item.companyId === request.companyId,
+    );
+    if (!relationship || request.status === "archived")
+      return { clientName: context.clientUser.displayName, request: null };
     const linked = await requestLinkedRecords(ctx, request);
     const summary = projectClientRequest(context, request, linked);
     return {
@@ -309,8 +572,21 @@ export const getClientRequestDetail = query({
         ...summary,
         notes: request.notes,
         requestedAddOns: request.requestedAddOnSnapshots ?? [],
-        proposals: linked.proposals.map((item: any) => ({ _id: item._id, title: item.title, status: item.status })),
-        agreements: linked.agreements.filter((item: any) => ["sent", "signed", "cancelled"].includes(item.status)).map((item: any) => ({ _id: item._id, title: item.title, status: item.status, declinedAt: item.declinedAt })),
+        proposals: linked.proposals.map((item: any) => ({
+          _id: item._id,
+          title: item.title,
+          status: item.status,
+        })),
+        agreements: linked.agreements
+          .filter((item: any) =>
+            ["sent", "signed", "cancelled"].includes(item.status),
+          )
+          .map((item: any) => ({
+            _id: item._id,
+            title: item.title,
+            status: item.status,
+            declinedAt: item.declinedAt,
+          })),
       },
     };
   },
