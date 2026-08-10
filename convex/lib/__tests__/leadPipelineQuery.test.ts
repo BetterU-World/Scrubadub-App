@@ -17,7 +17,7 @@ describe("lead pipeline query", () => {
     process.env.APP_URL = "http://localhost:5173";
   });
 
-  it("allows owners and managers, rejects workers, and scopes canonical projections to the company", async () => {
+  it("keeps the lead pipeline owner-only and scopes canonical projections to the company", async () => {
     const t = convexTest(schema, modules);
     const seeded = await t.run(async (ctx) => {
       const companyId = await ctx.db.insert("companies", { name: "Pipeline Co", timezone: "America/New_York" });
@@ -37,7 +37,7 @@ describe("lead pipeline query", () => {
     const cleaner = await login("cleaner@pipeline.test");
 
     await expect(t.query(api.queries.clientRequests.listRequestsForPipeline, { userId: seeded.ownerId, sessionToken: owner.sessionToken })).resolves.toMatchObject([{ requesterName: "Pipeline Lead", pipeline: { stage: "decision" } }]);
-    await expect(t.query(api.queries.clientRequests.listRequestsForPipeline, { userId: seeded.managerId, sessionToken: manager.sessionToken })).resolves.toHaveLength(1);
-    await expect(t.query(api.queries.clientRequests.listRequestsForPipeline, { userId: seeded.cleanerId, sessionToken: cleaner.sessionToken })).rejects.toThrow("Owner or manager");
+    await expect(t.query(api.queries.clientRequests.listRequestsForPipeline, { userId: seeded.managerId, sessionToken: manager.sessionToken })).rejects.toThrow("Owner session required");
+    await expect(t.query(api.queries.clientRequests.listRequestsForPipeline, { userId: seeded.cleanerId, sessionToken: cleaner.sessionToken })).rejects.toThrow("Owner session required");
   });
 });

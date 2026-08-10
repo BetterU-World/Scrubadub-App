@@ -1,6 +1,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwnerManagerCompany, requireVerifiedStaffSession } from "../lib/sessionAuth";
+import { hasOwnerOrManagerPermission } from "../lib/auth";
 
 async function withMembers(ctx: any, team: any) {
   const memberships = await ctx.db
@@ -38,7 +39,8 @@ export const list = query({
     includeArchived: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    await requireOwnerManagerCompany(ctx, args.sessionToken, args.companyId, args.userId);
+    const user = await requireOwnerManagerCompany(ctx, args.sessionToken, args.companyId, args.userId);
+    if (!hasOwnerOrManagerPermission(user, "canAssignCleaners")) throw new Error("Worker assignment permission required");
     const teams = await ctx.db
       .query("teams")
       .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
@@ -52,7 +54,8 @@ export const list = query({
 export const listActiveForAssignment = query({
   args: { companyId: v.id("companies"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    await requireOwnerManagerCompany(ctx, args.sessionToken, args.companyId, args.userId);
+    const user = await requireOwnerManagerCompany(ctx, args.sessionToken, args.companyId, args.userId);
+    if (!hasOwnerOrManagerPermission(user, "canAssignCleaners")) throw new Error("Worker assignment permission required");
     const teams = await ctx.db
       .query("teams")
       .withIndex("by_companyId_active", (q) => q.eq("companyId", args.companyId).eq("active", true))

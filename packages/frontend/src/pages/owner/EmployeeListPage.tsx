@@ -32,6 +32,23 @@ function defaultWorkerTypeForRole(
   return "contractor_1099";
 }
 
+const managerPermissionGroups = [
+  { title: "Jobs & Scheduling", permissions: [
+    ["canSeeAllJobs", "View all jobs and perform company-wide inspections"],
+    ["canCreateJobs", "Create, edit, and cancel jobs"],
+    ["canAssignCleaners", "Assign workers and teams to jobs"],
+    ["canManageSchedule", "Manage schedules and Job Requests"],
+    ["canRequestRework", "Request rework"],
+  ] },
+  { title: "Quality", permissions: [
+    ["canApproveForms", "Review and approve completed work"],
+    ["canResolveRedFlags", "Resolve red flags"],
+  ] },
+  { title: "Business", permissions: [
+    ["canManageBusinessConfiguration", "Manage operational add-on settings"],
+  ] },
+] as const;
+
 export function EmployeeListPage() {
   const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
@@ -700,18 +717,9 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                   </select>
                 </div>
                 {inviteRole === "manager" && (
-                  <div className="p-3 bg-gray-50 rounded-lg space-y-2">
+                  <div className="p-3 bg-gray-50 rounded-lg space-y-4">
                     <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Manager Permissions</p>
-                    {([
-                      ["canSeeAllJobs", "Can see all jobs"],
-                      ["canCreateJobs", "Can create jobs"],
-                      ["canAssignCleaners", "Can assign cleaners"],
-                      ["canRequestRework", "Can request rework"],
-                      ["canApproveForms", "Can approve forms"],
-                      ["canManageSchedule", "Can manage schedule"],
-                      ["canResolveRedFlags", "Can resolve red flags"],
-                      ["canManageBusinessConfiguration", "Can manage business configuration"],
-                    ] as const).map(([key, label]) => (
+                    {managerPermissionGroups.map((group) => <div key={group.title} className="space-y-2"><p className="text-sm font-semibold text-gray-800">{group.title}</p>{group.permissions.map(([key, label]) => (
                       <label key={key} className="flex items-center gap-2 text-sm text-gray-700">
                         <input
                           type="checkbox"
@@ -721,7 +729,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                         />
                         {label}
                       </label>
-                    ))}
+                    ))}</div>)}
                   </div>
                 )}
                 <p className="text-xs text-gray-400">{t("employees.inviteWillEmail")}</p>
@@ -762,17 +770,8 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                 <X className="w-5 h-5" />
               </Dialog.Close>
             </div>
-            <div className="space-y-3">
-              {([
-                ["canSeeAllJobs", "Can see all jobs"],
-                ["canCreateJobs", "Can create jobs"],
-                ["canAssignCleaners", "Can assign cleaners"],
-                ["canRequestRework", "Can request rework"],
-                ["canApproveForms", "Can approve forms"],
-                ["canManageSchedule", "Can manage schedule"],
-                ["canResolveRedFlags", "Can resolve red flags"],
-                ["canManageBusinessConfiguration", "Can manage business configuration"],
-              ] as const).map(([key, label]) => (
+            <div className="space-y-4">
+              {managerPermissionGroups.map((group) => <div key={group.title} className="space-y-2"><p className="text-sm font-semibold text-gray-900">{group.title}</p>{group.permissions.map(([key, label]) => (
                 <label key={key} className="flex items-center gap-2 text-sm text-gray-700">
                   <input
                     type="checkbox"
@@ -782,7 +781,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                   />
                   {label}
                 </label>
-              ))}
+              ))}</div>)}
             </div>
             <button
               onClick={async () => {

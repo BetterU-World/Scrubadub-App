@@ -23,9 +23,9 @@ describe("role mobile navigation", () => {
     expect(hrefs(getMobileNavItemsForRole("manager"))).toEqual([
       "/",
       "/jobs",
-      "/calendar",
       "/red-flags",
     ]);
+    expect(hrefs(getMobileNavItemsForRole("manager", false, true))).toContain("/calendar");
     expect(hrefs(getMobileNavItemsForRole("cleaner"))).toEqual([
       "/",
       "/jobs",

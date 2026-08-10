@@ -13,7 +13,7 @@ async function seed(t: ReturnType<typeof convexTest>) {
     const companyA = await ctx.db.insert("companies", { name: "Authorization A", timezone: "America/New_York" });
     const companyB = await ctx.db.insert("companies", { name: "Authorization B", timezone: "America/New_York" });
     const owner = await ctx.db.insert("users", { email: "owner@auth.test", passwordHash, name: "Owner", companyId: companyA, role: "owner", status: "active" });
-    const manager = await ctx.db.insert("users", { email: "manager@auth.test", passwordHash, name: "Manager", companyId: companyA, role: "manager", status: "active" });
+    const manager = await ctx.db.insert("users", { email: "manager@auth.test", passwordHash, name: "Manager", companyId: companyA, role: "manager", status: "active", canManageSchedule: true });
     const cleaner = await ctx.db.insert("users", { email: "cleaner@auth.test", passwordHash, name: "Cleaner", companyId: companyA, role: "cleaner", status: "active" });
     const unassignedCleaner = await ctx.db.insert("users", { email: "unassigned-cleaner@auth.test", passwordHash, name: "Unassigned Cleaner", companyId: companyA, role: "cleaner", status: "active" });
     const unassignedManager = await ctx.db.insert("users", { email: "unassigned-manager@auth.test", passwordHash, name: "Unassigned Manager", companyId: companyA, role: "manager", status: "active" });
@@ -56,6 +56,8 @@ describe("manager critical authorization hotfix", () => {
     await t.mutation(api.mutations.commercialSchedules.pause, { userId: s.owner, sessionToken: ownerAuth.sessionToken, scheduleId: s.schedule });
     await t.mutation(api.mutations.commercialSchedules.reactivate, { userId: s.manager, sessionToken: managerAuth.sessionToken, scheduleId: s.schedule });
     await expect(t.query(api.queries.commercialSchedules.getById, { userId: s.manager, sessionToken: managerAuth.sessionToken, scheduleId: s.schedule })).resolves.toMatchObject({ status: "active" });
+    await t.run((ctx) => ctx.db.patch(s.manager, { canManageSchedule: false }));
+    await expect(t.query(api.queries.commercialSchedules.getById, { userId: s.manager, sessionToken: managerAuth.sessionToken, scheduleId: s.schedule })).rejects.toThrow("Schedule management permission required");
   });
 
   it.each([

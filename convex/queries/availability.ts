@@ -1,6 +1,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwnerSession, requireWorkerSession } from "../lib/sessionAuth";
+import { requireOwnerManagerSession, requireOwnerSession, requireWorkerSession } from "../lib/sessionAuth";
+import { hasOwnerOrManagerPermission } from "../lib/auth";
 import { withPerfLog } from "../lib/perfLog";
 
 /** Cleaner reads their own weekly availability */
@@ -87,7 +88,8 @@ export const listCleanersWithAvailability = query({
   },
   handler: async (ctx, args) => {
     return await withPerfLog(ctx, "availability:listCleaners", async () => {
-      const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+      const owner = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
+      if (!hasOwnerOrManagerPermission(owner, "canAssignCleaners")) throw new Error("Worker assignment permission required");
 
       // Get all active cleaners in company
       const users = await ctx.db

@@ -16,6 +16,13 @@ export function canManageBusinessConfiguration(user: {
   );
 }
 
+export function hasOwnerOrManagerPermission(
+  user: Parameters<typeof hasManagerPermission>[0],
+  permission: Parameters<typeof hasManagerPermission>[1],
+): boolean {
+  return user.role === "owner" || hasManagerPermission(user, permission);
+}
+
 /** Returns true if the user role is a worker type (cleaner or maintenance). */
 export function isWorkerRole(role: string): boolean {
   return role === "cleaner" || role === "maintenance";

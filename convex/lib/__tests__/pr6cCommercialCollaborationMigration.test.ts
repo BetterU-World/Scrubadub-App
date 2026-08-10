@@ -22,7 +22,7 @@ async function seed(t: ReturnType<typeof backend>) {
     const companyB = await ctx.db.insert("companies", { name: "PR 6C B", timezone: "America/New_York" });
     const ownerA = await ctx.db.insert("users", { email: "owner-a@pr6c.test", passwordHash, name: "Owner A", companyId: companyA, role: "owner", status: "active" });
     const ownerB = await ctx.db.insert("users", { email: "owner-b@pr6c.test", passwordHash, name: "Owner B", companyId: companyB, role: "owner", status: "active" });
-    const managerA = await ctx.db.insert("users", { email: "manager-a@pr6c.test", passwordHash, name: "Manager A", companyId: companyA, role: "manager", status: "active" });
+    const managerA = await ctx.db.insert("users", { email: "manager-a@pr6c.test", passwordHash, name: "Manager A", companyId: companyA, role: "manager", status: "active", canManageSchedule: true });
     const cleanerA = await ctx.db.insert("users", { email: "cleaner-a@pr6c.test", passwordHash, name: "Cleaner A", companyId: companyA, role: "cleaner", status: "active" });
     const maintenanceA = await ctx.db.insert("users", { email: "maintenance-a@pr6c.test", passwordHash, name: "Maintenance A", companyId: companyA, role: "maintenance", status: "active" });
     const affiliate = await ctx.db.insert("users", { email: "affiliate@pr6c.test", passwordHash, name: "Affiliate", role: "affiliate", status: "active" });

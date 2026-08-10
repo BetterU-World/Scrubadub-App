@@ -66,7 +66,8 @@ export function ManagerJobListPage() {
     <div>
       <PageHeader
         title="Jobs"
-        description="Read-only job oversight"
+        description={user.canCreateJobs ? "Job oversight and scheduling" : "Assigned and permitted job oversight"}
+        action={user.canCreateJobs ? <Link href="/jobs/new" className="btn-primary">Create Job</Link> : undefined}
       />
 
       {/* Filters */}

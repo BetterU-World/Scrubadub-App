@@ -54,6 +54,7 @@ describe("authorization utilities", () => {
     expect(Object.keys(auth).sort()).toEqual([
       "canManageBusinessConfiguration",
       "hasManagerPermission",
+      "hasOwnerOrManagerPermission",
       "isWorkerRole",
     ]);
   });

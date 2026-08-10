@@ -90,13 +90,13 @@ describe("request client portal invitations", () => {
   it("reuses an existing relationship and pending user when resending", async () => {
     const t = backend();
     const s = await seed(t);
-    const auth = await login(t, "manager@invite.test");
+    const auth = await login(t, "owner@invite.test");
     const relationshipId = await t.run((ctx) => ctx.db.insert("clientRelationships", { companyId: s.companyA, displayName: "Jamie", email: "jamie@client.test", clientType: "residential", status: "active", createdAt: 1, updatedAt: 1 }));
     const requestId = await createRequest(t, s.companyA, { clientRelationshipId: relationshipId });
 
-    const first = await t.action(api.clientAuthActions.inviteClientFromRequest, { userId: s.manager, sessionToken: auth.sessionToken, requestId });
+    const first = await t.action(api.clientAuthActions.inviteClientFromRequest, { userId: s.owner, sessionToken: auth.sessionToken, requestId });
     const firstState: any = await t.run((ctx) => ctx.db.get(relationshipId));
-    const second = await t.action(api.clientAuthActions.inviteClientFromRequest, { userId: s.manager, sessionToken: auth.sessionToken, requestId });
+    const second = await t.action(api.clientAuthActions.inviteClientFromRequest, { userId: s.owner, sessionToken: auth.sessionToken, requestId });
     const secondState: any = await t.run((ctx) => ctx.db.get(relationshipId));
 
     expect(first.status).toBe("pending");
@@ -130,7 +130,7 @@ describe("request client portal invitations", () => {
     const missingEmailId = await createRequest(t, s.companyA, { requesterEmail: "" });
 
     await expect(t.action(api.clientAuthActions.inviteClientFromRequest, { userId: s.otherOwner, sessionToken: otherAuth.sessionToken, requestId })).rejects.toThrow("Access denied");
-    await expect(t.action(api.clientAuthActions.inviteClientFromRequest, { userId: s.cleaner, sessionToken: cleanerAuth.sessionToken, requestId })).rejects.toThrow("Owner or manager");
+    await expect(t.action(api.clientAuthActions.inviteClientFromRequest, { userId: s.cleaner, sessionToken: cleanerAuth.sessionToken, requestId })).rejects.toThrow("Owner session required");
     await expect(t.action(api.clientAuthActions.inviteClientFromRequest, { userId: s.owner, sessionToken: "invalid", requestId })).rejects.toThrow();
     await expect(t.action(api.clientAuthActions.inviteClientFromRequest, { userId: s.owner, sessionToken: ownerAuth.sessionToken, requestId: missingEmailId })).rejects.toThrow("Client email is required");
   });
