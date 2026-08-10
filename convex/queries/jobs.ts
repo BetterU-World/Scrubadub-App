@@ -6,6 +6,7 @@ import { withPerfLog } from "../lib/perfLog";
 import { getActiveTeamIdsForUser, isUserAssignedToJob } from "../lib/teams";
 import { operationalAddOnSnapshots } from "../lib/acceptedProposalAddOnSnapshots";
 import { isRoleCompatibleWithJobExecution } from "../lib/jobExecutionAuth";
+import { deriveJobInspectionStatus } from "../lib/jobInspectionStatus";
 
 function workerSafeJob(job: any) {
   const { acceptedProposalAddOnSnapshots, requiredAddOnSnapshots, sourceProposalId: _sourceProposalId, ...safe } = job;
@@ -28,7 +29,7 @@ export const list = query({
       const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
       if (user.companyId !== args.companyId) throw new Error("Access denied");
 
-      const sort = args.sort || "soonest";
+      const sort = args.sort || "created_desc";
 
       let jobs;
       if (args.status) {
@@ -157,10 +158,7 @@ export const list = query({
             .query("managerInspections")
             .withIndex("by_jobId", (q) => q.eq("jobId", job._id))
             .collect();
-          let inspectionStatus: "none" | "submitted" | "reinspection_requested" = "none";
-          if (inspections.length > 0) {
-            inspectionStatus = job.inspectionCycleOpen === true ? "reinspection_requested" : "submitted";
-          }
+          const inspectionStatus = deriveJobInspectionStatus(job, inspections.length);
 
           const assignedManager = job.assignedManagerId
             ? userMap.get(job.assignedManagerId) ?? null
@@ -299,7 +297,6 @@ export const getForCleaner = query({
       const activeTeamIds = await getActiveTeamIdsForUser(ctx, args.cleanerId, args.companyId);
       const myJobs = jobs.filter(
         (j) =>
-          j.status !== "cancelled" &&
           isRoleCompatibleWithJobExecution(user.role, j.type) &&
           (j.cleanerIds.includes(args.cleanerId) ||
             (j.assignedTeamId && activeTeamIds.has(j.assignedTeamId)))
@@ -344,17 +341,16 @@ export const getForManager = query({
       const canSeeAll = hasManagerPermission(user, "canSeeAllJobs");
       const managerTeamIds = canSeeAll ? new Set() : await getActiveTeamIdsForUser(ctx, user._id, args.companyId);
       const visibleJobs = canSeeAll
-        ? allJobs.filter((j) => j.status !== "cancelled")
+        ? allJobs
         : allJobs.filter(
             (j) =>
-              j.status !== "cancelled" &&
               (j.cleanerIds.includes(user._id) ||
                 j.assignedManagerId === user._id ||
                 (j.assignedTeamId && managerTeamIds.has(j.assignedTeamId)))
           );
 
-      // Sort soonest first
-      visibleJobs.sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate));
+      // Default projection order: newest canonical records first.
+      visibleJobs.sort((a, b) => b._creationTime - a._creationTime);
 
       return Promise.all(
         visibleJobs.map(async (job) => {
@@ -374,10 +370,7 @@ export const getForManager = query({
             .query("managerInspections")
             .withIndex("by_jobId", (q) => q.eq("jobId", job._id))
             .collect();
-          let inspectionStatus: "none" | "submitted" | "reinspection_requested" = "none";
-          if (inspections.length > 0) {
-            inspectionStatus = job.inspectionCycleOpen === true ? "reinspection_requested" : "submitted";
-          }
+          const inspectionStatus = deriveJobInspectionStatus(job, inspections.length);
           return workerSafeJob({
             ...job,
             propertyName: property?.name ?? job.propertySnapshot?.name ?? "Unknown",

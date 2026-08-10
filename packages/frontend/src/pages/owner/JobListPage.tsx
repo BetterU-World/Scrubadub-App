@@ -74,7 +74,7 @@ export function JobListPage() {
   });
   const [dateRange, setDateRange] = useState<"all" | "today" | "week">("all");
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState("soonest");
+  const [sort, setSort] = useState("created_desc");
   const [assignmentFilter, setAssignmentFilter] = useState("");
   const jobs = useQuery(
     api.queries.jobs.list,

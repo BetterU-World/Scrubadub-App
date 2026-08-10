@@ -230,7 +230,7 @@ export function JobDetailPage() {
             )}
             <span className="text-sm text-gray-500 capitalize">{t(`jobTypes.${job.type}`, { defaultValue: job.type.replace(/_/g, " ") })}</span>
             {/* Inspection state badge */}
-            {inspectionSummary && inspectionSummary.count > 0 && (
+            {inspectionSummary && inspectionSummary.count > 0 && job.status !== "approved" && job.status !== "cancelled" && (
               <span className={`badge text-[10px] ${
                 inspectionSummary.inspectionCycleOpen
                   ? "bg-amber-100 text-amber-700"

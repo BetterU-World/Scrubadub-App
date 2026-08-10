@@ -476,6 +476,8 @@
     "recentlyUpdated": "Actualizado recientemente",
     "recentlyCreated": "Creado recientemente",
     "oldestCreated": "Más antiguo",
+    "sortBy": "Ordenar trabajos",
+    "statusFilter": "Filtrar por estado",
     "thisWeek": "Esta semana",
     "rework": "Corrección",
     "sharedFrom": "Compartido de {{name}}",
