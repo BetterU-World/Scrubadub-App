@@ -73,19 +73,23 @@ describe("PR 6B ordinary operational data migration", () => {
     process.env.APP_URL = "http://localhost:5173";
   });
 
-  it("allows verified same-company staff reads across every shared operational family", async () => {
+  it("keeps shared operational reads while restricting requests and analytics to owners", async () => {
     const t = backend();
     const s = await seed(t);
     const manager = await login(t, "manager-a@pr6b.test");
+    const owner = await login(t, "owner-a@pr6b.test");
     const common = { companyId: s.companyA, userId: s.managerA, sessionToken: manager.sessionToken };
+    const ownerCommon = { companyId: s.companyA, userId: s.ownerA, sessionToken: owner.sessionToken };
 
     await expect(t.query(api.queries.employees.list, common)).resolves.toHaveLength(4);
-    await expect(t.query(api.queries.clientRequests.getCompanyRequests, common)).resolves.toHaveLength(1);
+    await expect(t.query(api.queries.clientRequests.getCompanyRequests, common)).rejects.toThrow("Owner session required");
+    await expect(t.query(api.queries.clientRequests.getCompanyRequests, ownerCommon)).resolves.toHaveLength(1);
     await expect(t.query(api.queries.calendarConnections.listByProperty, { ...common, propertyId: s.propertyA })).resolves.toHaveLength(1);
     await expect(t.query(api.queries.calendarReservations.listByProperty, { ...common, propertyId: s.propertyA })).resolves.toHaveLength(1);
     await expect(t.query(api.queries.jobAutomationRules.getByProperty, { ...common, propertyId: s.propertyA })).resolves.toMatchObject({ propertyId: s.propertyA });
     await expect(t.query(api.queries.inventoryTemplates.list, common)).resolves.toHaveLength(1);
-    await expect(t.query(api.queries.performance.getLeaderboard, common)).resolves.toEqual([{ cleanerId: s.cleanerA, cleanerName: "Cleaner A", totalJobs: 0, averageScore: 0, averageTimeMinutes: 0, redFlagCount: 0, consistencyScore: 0 }]);
+    await expect(t.query(api.queries.performance.getLeaderboard, common)).rejects.toThrow("Owner session required");
+    await expect(t.query(api.queries.performance.getLeaderboard, ownerCommon)).resolves.toEqual([{ cleanerId: s.cleanerA, cleanerName: "Cleaner A", totalJobs: 0, averageScore: 0, averageTimeMinutes: 0, redFlagCount: 0, consistencyScore: 0 }]);
   });
 
   it("derives owner identity for owner-only families and rejects mismatches and lower roles", async () => {

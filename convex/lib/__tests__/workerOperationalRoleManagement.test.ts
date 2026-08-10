@@ -75,8 +75,13 @@ describe("worker operational role management", () => {
       expect(state.availability.cleanerId).toBe(s.workerId);
       expect(state.document.workerProfileId).toBe(s.profileId);
       expect(state.membership).toMatchObject({ userId: s.workerId, active: true });
-      if (role === "manager") expect(state.user.canSeeAllJobs).toBe(false);
-      else expect(state.user.canSeeAllJobs).toBeUndefined();
+      for (const permission of [
+        "canSeeAllJobs", "canManageClients", "canManageSalesAndCommercial", "canManageTeam",
+        "canViewFinancials", "canManageInvoices", "canManageDocuments", "canViewAnalytics",
+      ]) {
+        if (role === "manager") expect(state.user[permission]).toBe(false);
+        else expect(state.user[permission]).toBeUndefined();
+      }
     }
 
     const audits = await t.run((ctx) => ctx.db.query("auditLog").collect());

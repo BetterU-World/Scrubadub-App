@@ -45,7 +45,14 @@ const managerPermissionGroups = [
     ["canResolveRedFlags", "Resolve red flags"],
   ] },
   { title: "Business", permissions: [
-    ["canManageBusinessConfiguration", "Manage operational add-on settings"],
+    ["canManageClients", "Manage clients"],
+    ["canManageSalesAndCommercial", "Manage sales and commercial operations"],
+    ["canManageTeam", "Manage team operations"],
+    ["canViewFinancials", "View financials"],
+    ["canManageInvoices", "Manage invoices"],
+    ["canManageDocuments", "Manage documents"],
+    ["canViewAnalytics", "View analytics"],
+    ["canManageBusinessConfiguration", "Manage Operational Settings"],
   ] },
 ] as const;
 
@@ -114,6 +121,13 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
     canManageSchedule: false,
     canResolveRedFlags: false,
     canManageBusinessConfiguration: false,
+    canManageClients: false,
+    canManageSalesAndCommercial: false,
+    canManageTeam: false,
+    canViewFinancials: false,
+    canManageInvoices: false,
+    canManageDocuments: false,
+    canViewAnalytics: false,
   });
   // Manager permissions dialog
   const [editPermsFor, setEditPermsFor] = useState<string | null>(null);
@@ -126,6 +140,13 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
     canManageSchedule: false,
     canResolveRedFlags: false,
     canManageBusinessConfiguration: false,
+    canManageClients: false,
+    canManageSalesAndCommercial: false,
+    canManageTeam: false,
+    canViewFinancials: false,
+    canManageInvoices: false,
+    canManageDocuments: false,
+    canViewAnalytics: false,
   });
   const [editPermsLoading, setEditPermsLoading] = useState(false);
   const [confirmEmployeeAction, setConfirmEmployeeAction] = useState<{
@@ -236,6 +257,9 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
       canRequestRework: false, canApproveForms: false, canManageSchedule: false,
       canResolveRedFlags: false,
       canManageBusinessConfiguration: false,
+      canManageClients: false, canManageSalesAndCommercial: false, canManageTeam: false,
+      canViewFinancials: false, canManageInvoices: false, canManageDocuments: false,
+      canViewAnalytics: false,
     });
   };
 
@@ -529,6 +553,13 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                             canManageSchedule: !!(emp as any).canManageSchedule,
                             canResolveRedFlags: !!(emp as any).canResolveRedFlags,
                             canManageBusinessConfiguration: !!(emp as any).canManageBusinessConfiguration,
+                            canManageClients: !!(emp as any).canManageClients,
+                            canManageSalesAndCommercial: !!(emp as any).canManageSalesAndCommercial,
+                            canManageTeam: !!(emp as any).canManageTeam,
+                            canViewFinancials: !!(emp as any).canViewFinancials,
+                            canManageInvoices: !!(emp as any).canManageInvoices,
+                            canManageDocuments: !!(emp as any).canManageDocuments,
+                            canViewAnalytics: !!(emp as any).canViewAnalytics,
                           });
                         }}
                         className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-blue-600 hover:bg-blue-50 hover:text-blue-700 sm:min-h-0 sm:p-0"

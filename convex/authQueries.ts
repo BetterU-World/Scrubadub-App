@@ -54,6 +54,13 @@ export const getCurrentUser = query({
       canManageSchedule: user.canManageSchedule,
       canResolveRedFlags: user.canResolveRedFlags,
       canManageBusinessConfiguration: user.canManageBusinessConfiguration,
+      canManageClients: user.canManageClients,
+      canManageSalesAndCommercial: user.canManageSalesAndCommercial,
+      canManageTeam: user.canManageTeam,
+      canViewFinancials: user.canViewFinancials,
+      canManageInvoices: user.canManageInvoices,
+      canManageDocuments: user.canManageDocuments,
+      canViewAnalytics: user.canViewAnalytics,
     };
   },
 });

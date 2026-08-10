@@ -449,7 +449,7 @@ export const declineJobRequest = mutation({
 
 /**
  * Create a property from a client request's propertySnapshot.
- * Auth-gated: caller must be an owner or manager in the same company as the request.
+ * Owner-only until the V2 sales capability is intentionally delegated.
  * No-op if the request already has a propertyId.
  */
 export const createPropertyFromRequest = mutation({
@@ -459,7 +459,7 @@ export const createPropertyFromRequest = mutation({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerManagerSession(
+    const owner = await requireOwnerSession(
       ctx,
       args.sessionToken,
       args.userId,
@@ -653,7 +653,7 @@ export const createManualClientRequest = mutation({
 
 /**
  * Update universal lead details for a request.
- * Owner/Manager; scoped to company.
+ * Owner-only until the V2 sales capability is intentionally delegated.
  */
 export const updateLeadDetails = mutation({
   args: {
@@ -669,7 +669,7 @@ export const updateLeadDetails = mutation({
     estimatedFrequencyNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerManagerSession(
+    const owner = await requireOwnerSession(
       ctx,
       args.sessionToken,
       args.userId,

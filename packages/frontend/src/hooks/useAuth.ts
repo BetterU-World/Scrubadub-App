@@ -34,6 +34,13 @@ interface AuthUser {
   canManageSchedule?: boolean;
   canResolveRedFlags?: boolean;
   canManageBusinessConfiguration?: boolean;
+  canManageClients?: boolean;
+  canManageSalesAndCommercial?: boolean;
+  canManageTeam?: boolean;
+  canViewFinancials?: boolean;
+  canManageInvoices?: boolean;
+  canManageDocuments?: boolean;
+  canViewAnalytics?: boolean;
 }
 
 export function useAuth() {

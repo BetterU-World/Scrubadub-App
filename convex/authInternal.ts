@@ -105,6 +105,15 @@ export const createUser = internalMutation({
     canRequestRework: v.optional(v.boolean()),
     canApproveForms: v.optional(v.boolean()),
     canManageSchedule: v.optional(v.boolean()),
+    canResolveRedFlags: v.optional(v.boolean()),
+    canManageBusinessConfiguration: v.optional(v.boolean()),
+    canManageClients: v.optional(v.boolean()),
+    canManageSalesAndCommercial: v.optional(v.boolean()),
+    canManageTeam: v.optional(v.boolean()),
+    canViewFinancials: v.optional(v.boolean()),
+    canManageInvoices: v.optional(v.boolean()),
+    canManageDocuments: v.optional(v.boolean()),
+    canViewAnalytics: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("users", args);

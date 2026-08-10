@@ -104,6 +104,13 @@ const managerPermissionFields = {
   canManageSchedule: undefined,
   canResolveRedFlags: undefined,
   canManageBusinessConfiguration: undefined,
+  canManageClients: undefined,
+  canManageSalesAndCommercial: undefined,
+  canManageTeam: undefined,
+  canViewFinancials: undefined,
+  canManageInvoices: undefined,
+  canManageDocuments: undefined,
+  canViewAnalytics: undefined,
 };
 
 async function enforceCleanerLimitForRoleChange(ctx: any, companyId: any, target: any, nextRole: ExistingWorkerRole) {

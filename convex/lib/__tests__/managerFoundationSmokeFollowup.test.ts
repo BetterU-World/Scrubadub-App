@@ -42,6 +42,13 @@ describe("manager foundation smoke follow-up", () => {
       canManageSchedule: false,
       canResolveRedFlags: true,
       canManageBusinessConfiguration: false,
+      canManageClients: true,
+      canManageSalesAndCommercial: false,
+      canManageTeam: true,
+      canViewFinancials: false,
+      canManageInvoices: true,
+      canManageDocuments: false,
+      canViewAnalytics: true,
     });
 
     expect((await t.query(api.queries.employees.list, queryArgs)).find((employee) => employee._id === seeded.manager)).toMatchObject({
@@ -53,6 +60,13 @@ describe("manager foundation smoke follow-up", () => {
       canManageSchedule: false,
       canResolveRedFlags: true,
       canManageBusinessConfiguration: false,
+      canManageClients: true,
+      canManageSalesAndCommercial: false,
+      canManageTeam: true,
+      canViewFinancials: false,
+      canManageInvoices: true,
+      canManageDocuments: false,
+      canViewAnalytics: true,
     });
     expect(await t.query(api.authQueries.getCurrentUser, { sessionToken: (await t.action(api.authActions.signIn, { email: "manager@permissions.test", password: PASSWORD })).sessionToken })).toMatchObject({
       canManageBusinessConfiguration: false,
