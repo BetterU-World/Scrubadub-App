@@ -1,6 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { requireVerifiedStaffSession } from "../lib/sessionAuth";
+import { requireOwnerManagerSession } from "../lib/sessionAuth";
 import { copyScheduleAddOnSnapshots } from "../lib/acceptedProposalAddOnSnapshots";
 import { resolvePropertyConditionRequirement } from "../lib/propertyConditionRequirements";
 
@@ -34,9 +34,7 @@ const addOnSelectionsValidator = v.optional(v.array(v.object({
 })));
 
 async function requireCompanyUser(ctx: any, sessionToken: string, userId: any) {
-  const user = await requireVerifiedStaffSession(ctx, sessionToken, userId);
-  if (!user.companyId) throw new Error("Company access required");
-  return user;
+  return await requireOwnerManagerSession(ctx, sessionToken, userId);
 }
 
 function cleanOptional(value: string | undefined, max = 1000) {
