@@ -25,6 +25,7 @@ import {
   subDays,
 } from "date-fns";
 import { useTranslation } from "react-i18next";
+import { filterByManagerJobScope, getEffectiveManagerJobScope, type ManagerJobScope } from "@/lib/managerJobScope";
 
 type ViewMode = "month" | "week" | "day";
 
@@ -35,6 +36,7 @@ export function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [propertyFilter, setPropertyFilter] = useState<string>("all");
   const [cleanerFilter, setCleanerFilter] = useState<string>("all");
+  const [requestedScope, setRequestedScope] = useState<ManagerJobScope>("all");
   const canManageCalendar = user?.role === "owner" || user?.role === "manager";
 
   const viewModeLabels: Record<ViewMode, string> = {
@@ -144,6 +146,8 @@ export function CalendarPage() {
     // Cleaners only see their own jobs
     if (user?.role === "cleaner" || user?.role === "maintenance") {
       result = result.filter((job) => (job as any).isAssignedToCurrentUser !== false);
+    } else if (user?.role === "manager") {
+      result = filterByManagerJobScope(result, requestedScope, user.canSeeAllJobs === true);
     }
 
     // Property filter
@@ -159,7 +163,7 @@ export function CalendarPage() {
     }
 
     return result;
-  }, [calendarItems, user, propertyFilter, cleanerFilter]);
+  }, [calendarItems, user, requestedScope, propertyFilter, cleanerFilter]);
 
   // Group jobs by date string
   const jobsByDate = useMemo(() => {
@@ -212,6 +216,8 @@ export function CalendarPage() {
 
   if (!user) return <PageLoader />;
 
+  const scope = getEffectiveManagerJobScope(requestedScope, user.canSeeAllJobs === true);
+
   const today = new Date();
 
   const formatJobType = (type: string) => t(`jobTypes.${type}`, type.replace(/_/g, " "));
@@ -241,6 +247,21 @@ export function CalendarPage() {
   return (
     <div>
       <PageHeader title={t("calendar.title")} description={t("guidance.owner.calendar")} />
+
+      {user.role === "manager" && user.canSeeAllJobs && (
+        <div className="mb-4 flex w-fit items-center gap-1 rounded-lg bg-gray-100 p-1" aria-label="Calendar scope">
+          {(["all", "my"] as ManagerJobScope[]).map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => setRequestedScope(option)}
+              className={`rounded-md px-4 py-2 text-sm font-medium ${scope === option ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"}`}
+            >
+              {option === "all" ? "All Jobs" : "My Jobs"}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* View Mode Tabs */}
       <div className="flex items-center gap-1 mb-4 bg-gray-100 rounded-lg p-1 w-fit">

@@ -32,6 +32,7 @@ function toEmployeeDirectoryEntry(user: Doc<"users">) {
     canApproveForms: user.canApproveForms,
     canManageSchedule: user.canManageSchedule,
     canResolveRedFlags: user.canResolveRedFlags,
+    canManageBusinessConfiguration: user.canManageBusinessConfiguration,
   };
 }
 

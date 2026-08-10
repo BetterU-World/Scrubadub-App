@@ -11,6 +11,7 @@ import { MapPin, Clock, Users, Search, Eye, ArrowUpDown } from "lucide-react";
 import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
 import { matchesDateRange, sortJobs, type JobDateRange, type JobSort } from "@/lib/jobBrowsing";
+import { filterByManagerJobScope, getEffectiveManagerJobScope, type ManagerJobScope } from "@/lib/managerJobScope";
 
 type StatusFilter = "all" | "scheduled" | "confirmed" | "in_progress" | "submitted" | "approved" | "cancelled";
 
@@ -21,6 +22,7 @@ export function ManagerJobListPage() {
   const [search, setSearch] = useState("");
   const [dateRange, setDateRange] = useState<JobDateRange>("all");
   const [sort, setSort] = useState<JobSort>("created_desc");
+  const [requestedScope, setRequestedScope] = useState<ManagerJobScope>("all");
 
   const jobs = useQuery(
     api.queries.jobs.getForManager,
@@ -33,7 +35,7 @@ export function ManagerJobListPage() {
 
   const filtered = useMemo(() => {
     if (!jobs) return [];
-    let result = [...jobs];
+    let result = filterByManagerJobScope([...jobs], requestedScope, user?.canSeeAllJobs === true);
     if (statusFilter !== "all") {
       result = result.filter((j) => j.status === statusFilter);
     }
@@ -47,7 +49,7 @@ export function ManagerJobListPage() {
       );
     }
     return sortJobs(result, sort);
-  }, [jobs, statusFilter, search, dateRange, sort]);
+  }, [jobs, requestedScope, user?.canSeeAllJobs, statusFilter, search, dateRange, sort]);
 
   if (!user) return <PageLoader />;
   if (jobs === undefined) return <PageLoader />;
@@ -61,6 +63,7 @@ export function ManagerJobListPage() {
     { value: "submitted", label: t("status.submitted") },
     { value: "approved", label: t("status.approved") },
   ];
+  const scope = getEffectiveManagerJobScope(requestedScope, user.canSeeAllJobs === true);
 
   return (
     <div>
@@ -69,6 +72,21 @@ export function ManagerJobListPage() {
         description={user.canCreateJobs ? "Job oversight and scheduling" : "Assigned and permitted job oversight"}
         action={user.canCreateJobs ? <Link href="/jobs/new" className="btn-primary">Create Job</Link> : undefined}
       />
+
+      {user.canSeeAllJobs && (
+        <div className="mb-4 flex w-fit items-center gap-1 rounded-lg bg-gray-100 p-1" aria-label="Job scope">
+          {(["all", "my"] as ManagerJobScope[]).map((option) => (
+            <button
+              key={option}
+              type="button"
+              onClick={() => setRequestedScope(option)}
+              className={`rounded-md px-4 py-2 text-sm font-medium ${scope === option ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"}`}
+            >
+              {option === "all" ? "All Jobs" : "My Jobs"}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-col gap-3 mb-4">

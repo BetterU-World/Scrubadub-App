@@ -13,6 +13,10 @@ function workerSafeJob(job: any) {
   return { ...safe, requiredAddOns: requiredAddOnSnapshots ?? operationalAddOnSnapshots(acceptedProposalAddOnSnapshots) };
 }
 
+async function isManagerPersonallyAssigned(ctx: any, job: any, userId: any) {
+  return job.assignedManagerId === userId || await isUserAssignedToJob(ctx, job, userId);
+}
+
 // Hard cap for company-scoped job queries
 const JOB_LIST_CAP = 2_000;
 
@@ -380,6 +384,7 @@ export const getForManager = query({
             inspectionStatus,
             assignedTeamName: job.assignedTeamId ? (await ctx.db.get(job.assignedTeamId))?.name ?? null : null,
             assignmentType: job.assignedTeamId ? "team" : "individual",
+            isAssignedToCurrentUser: await isManagerPersonallyAssigned(ctx, job, user._id),
             canCurrentUserExecute:
               job.timerStoppedAt === undefined &&
               isRoleCompatibleWithJobExecution(user.role, job.type) &&
@@ -466,6 +471,9 @@ export const getCalendarJobs = query({
             assignedTeamName: team?.name ?? null,
             assignmentType: job.assignedTeamId ? "team" : "individual",
             partnerResponseStatus,
+            isAssignedToCurrentUser: user.role === "manager"
+              ? await isManagerPersonallyAssigned(ctx, job, user._id)
+              : undefined,
           };
           return user.role === "owner" ? decorated : workerSafeJob(decorated);
         })
