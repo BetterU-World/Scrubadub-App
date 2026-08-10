@@ -55,4 +55,29 @@ describe("one-time stale job timer cleanup", () => {
     await t.mutation(api.mutations.jobs.pauseJob, { jobId: seeded.current, reason: "break", userId: seeded.worker, sessionToken: auth.sessionToken });
     await t.mutation(api.mutations.jobs.resumeJob, { jobId: seeded.current, userId: seeded.worker, sessionToken: auth.sessionToken });
   });
+
+  it("closes every open timer across companies with one timestamp and is idempotent", async () => {
+    const t = convexTest(schema, modules);
+    const now = Date.now();
+    const seeded = await t.run(async (ctx) => {
+      const companyA = await ctx.db.insert("companies", { name: "A", timezone: "America/New_York" });
+      const companyB = await ctx.db.insert("companies", { name: "B", timezone: "America/New_York" });
+      const worker = await ctx.db.insert("users", { email: "all@timers.test", passwordHash: "unused", name: "Worker", companyId: companyA, role: "cleaner", status: "active" });
+      const running = await ctx.db.insert("jobs", { companyId: companyA, cleanerIds: [worker], type: "standard", status: "scheduled", scheduledDate: "2026-08-10", durationMinutes: 60, reworkCount: 0, startedAt: now - 10_000 });
+      const pausedAt = now - 5_000;
+      const paused = await ctx.db.insert("jobs", { companyId: companyB, cleanerIds: [], type: "standard", status: "in_progress", scheduledDate: "2026-08-10", durationMinutes: 60, reworkCount: 0, startedAt: now - 20_000, currentPauseStartedAt: pausedAt, pauseHistory: [{ pausedAt, reason: "break", pausedByUserId: worker }] });
+      const completed = await ctx.db.insert("jobs", { companyId: companyA, cleanerIds: [worker], type: "standard", status: "approved", scheduledDate: "2026-08-10", durationMinutes: 60, reworkCount: 0, startedAt: now - 30_000, completedAt: now - 1_000 });
+      return { running, paused, completed };
+    });
+    const cleanupApi = (internal as any).staleJobTimersInternal;
+    const result = await t.mutation(cleanupApi.closeAllOpenTimers, {});
+    expect(result.count).toBe(2);
+    expect(result.closed.sort()).toEqual([seeded.running, seeded.paused].sort());
+    const state = await t.run(async (ctx) => ({ running: await ctx.db.get(seeded.running), paused: await ctx.db.get(seeded.paused), completed: await ctx.db.get(seeded.completed) }));
+    expect(state.running).toMatchObject({ status: "scheduled", startedAt: now - 10_000, timerStoppedAt: result.closedAt });
+    expect(state.paused?.currentPauseStartedAt).toBeUndefined();
+    expect(state.paused?.pauseHistory?.[0]).toMatchObject({ resumedAt: result.closedAt, durationMs: expect.any(Number) });
+    expect(state.completed?.timerStoppedAt).toBeUndefined();
+    await expect(t.mutation(cleanupApi.closeAllOpenTimers, {})).resolves.toMatchObject({ closed: [], count: 0 });
+  });
 });

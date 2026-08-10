@@ -22,6 +22,18 @@ function isStaleOpenTimer(
     job.timerStoppedAt === undefined;
 }
 
+function isOpenTimer(job: {
+  startedAt?: number;
+  completedAt?: number;
+  cancelledAt?: number;
+  timerStoppedAt?: number;
+}) {
+  return job.startedAt !== undefined &&
+    job.completedAt === undefined &&
+    job.cancelledAt === undefined &&
+    job.timerStoppedAt === undefined;
+}
+
 function assertSafeCutoff(cutoffBefore: number) {
   if (!Number.isFinite(cutoffBefore) || cutoffBefore > Date.now() - MINIMUM_STALE_AGE_MS) {
     throw new Error("Stale timer cutoff must be at least 24 hours old");
@@ -99,5 +111,42 @@ export const closeConfirmed = internalMutation({
       closed.push(jobId);
     }
     return { closedAt, closed, skipped };
+  },
+});
+
+/** Temporary one-time maintenance: stop every currently open test/demo timer. */
+export const closeAllOpenTimers = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const closedAt = Date.now();
+    const jobs = await ctx.db.query("jobs").collect();
+    const closed = [];
+
+    for (const job of jobs) {
+      if (!isOpenTimer(job)) continue;
+
+      let pauseHistory = job.pauseHistory;
+      if (job.currentPauseStartedAt !== undefined) {
+        pauseHistory = [...(job.pauseHistory ?? [])];
+        const openIndex = pauseHistory.findIndex((pause) => pause.resumedAt === undefined);
+        if (openIndex >= 0) {
+          const pause = pauseHistory[openIndex];
+          pauseHistory[openIndex] = {
+            ...pause,
+            resumedAt: closedAt,
+            durationMs: Math.max(0, closedAt - pause.pausedAt),
+          };
+        }
+      }
+
+      await ctx.db.patch(job._id, {
+        timerStoppedAt: closedAt,
+        currentPauseStartedAt: undefined,
+        pauseHistory,
+      });
+      closed.push(job._id);
+    }
+
+    return { closedAt, closed, count: closed.length };
   },
 });
