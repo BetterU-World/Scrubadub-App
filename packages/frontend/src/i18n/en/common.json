@@ -454,6 +454,12 @@
     "daysAgo": "{{count}}d ago"
   },
   "jobs": {
+    "openChecklist": "Open checklist",
+    "workThisJob": "Work this job",
+    "youAreAssigned": "You are assigned to this job",
+    "notAssignedToPerform": "You are not assigned to perform this job",
+    "executionUnavailable": "Job execution is unavailable",
+    "completeChecklistBeforeSubmitting": "Complete the checklist before submitting",
     "title": "Jobs",
     "description": "Manage cleaning jobs",
     "scheduleJob": "Schedule Job",
@@ -674,6 +680,8 @@
     "post_construction": "Post-Construction"
   },
   "jobForm": {
+    "assignedWorkers": "Assigned workers",
+    "individualWorkers": "Individual workers",
     "propertyShared": "Property (shared)",
     "property": "Property",
     "selectProperty": "Select a property",

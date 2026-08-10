@@ -190,6 +190,11 @@ export function JobDetailPage() {
         back={{ href: "/jobs", label: t("navigation.backToJobs") }}
         action={
           <div className="flex gap-2">
+            {(job as any).canCurrentUserExecute && !["cancelled", "submitted", "approved"].includes(job.status) && (
+              <Link href={`/jobs/${job._id}/work`} className="btn-primary flex items-center gap-2">
+                <CheckCircle className="h-4 w-4" /> {t("jobs.openChecklist")}
+              </Link>
+            )}
             {!job.sharedFromJobId && canCancel && (
               <button onClick={() => setShowShare(true)} className="btn-secondary flex items-center gap-2">
                 <Share2 className="w-4 h-4" /> {t("jobs.shareJob")}

@@ -3,10 +3,11 @@ import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
 import { logAudit, createNotification } from "../lib/helpers";
-import { requireOwnerSession, requireWorkerSession } from "../lib/sessionAuth";
+import { requireOwnerSession } from "../lib/sessionAuth";
 import { getFormTemplate } from "../lib/constants";
-import { getJobRecipientUserIds, isUserAssignedToJob } from "../lib/teams";
+import { getJobRecipientUserIds } from "../lib/teams";
 import { resolveOperationalEmailIdentity } from "../lib/operationalEmailIdentity";
+import { requireAssignedJobExecutor } from "../lib/jobExecutionAuth";
 
 export const createFromTemplate = mutation({
   args: {
@@ -16,16 +17,8 @@ export const createFromTemplate = mutation({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await requireWorkerSession(ctx, args.sessionToken, args.cleanerId);
-    // Verify company access
+    const { user, job } = await requireAssignedJobExecutor(ctx, args.sessionToken, args.jobId, args.cleanerId);
     if (user.companyId !== args.companyId) throw new Error("Access denied");
-    // Verify cleaner is assigned to this job
-    const job = await ctx.db.get(args.jobId);
-    if (!job) throw new Error("Job not found");
-    if (job.companyId !== user.companyId) throw new Error("Access denied");
-    if (!(await isUserAssignedToJob(ctx, job, user._id)) && !(user.role === "manager" && job.assignedManagerId === user._id)) {
-      throw new Error("Not assigned to this job");
-    }
 
     const existing = await ctx.db
       .query("forms")
@@ -71,20 +64,6 @@ async function requireEditable(ctx: MutationCtx, formId: Id<"forms">) {
   return form;
 }
 
-async function requireFormWorkspaceAccess(
-  ctx: MutationCtx,
-  form: any,
-  user: { _id: Id<"users">; role: string; companyId?: Id<"companies"> },
-) {
-  if (form.companyId !== user.companyId) throw new Error("Access denied");
-  const job: any = await ctx.db.get(form.jobId);
-  if (!job) throw new Error("Job not found");
-  if (user.role === "owner") return job;
-  if (user.role === "manager" && job.assignedManagerId === user._id) return job;
-  if (await isUserAssignedToJob(ctx, job, user._id)) return job;
-  throw new Error("Not assigned to this job");
-}
-
 export const updateItem = mutation({
   args: {
     itemId: v.id("formItems"),
@@ -96,12 +75,11 @@ export const updateItem = mutation({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
     const item = await ctx.db.get(args.itemId);
     if (!item) throw new Error("Item not found");
 
     const form = await requireEditable(ctx, item.formId);
-    await requireFormWorkspaceAccess(ctx, form as any, user);
+    await requireAssignedJobExecutor(ctx, args.sessionToken, form.jobId, args.userId);
 
     const { itemId, userId: _uid, sessionToken: _sessionToken, ...updates } = args;
     const cleanUpdates: Record<string, any> = {};
@@ -120,9 +98,8 @@ export const updateScore = mutation({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
     const form = await requireEditable(ctx, args.formId);
-    await requireFormWorkspaceAccess(ctx, form as any, user);
+    await requireAssignedJobExecutor(ctx, args.sessionToken, form.jobId, args.userId);
 
     await ctx.db.patch(args.formId, { cleanerScore: args.cleanerScore });
   },
@@ -131,9 +108,8 @@ export const updateScore = mutation({
 export const markAllComplete = mutation({
   args: { formId: v.id("forms"), userId: v.optional(v.id("users")), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
     const form = await requireEditable(ctx, args.formId);
-    await requireFormWorkspaceAccess(ctx, form as any, user);
+    await requireAssignedJobExecutor(ctx, args.sessionToken, form.jobId, args.userId);
 
     const items = await ctx.db
       .query("formItems")
@@ -155,9 +131,8 @@ export const addPhoto = mutation({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
     const form = await requireEditable(ctx, args.formId);
-    await requireFormWorkspaceAccess(ctx, form as any, user);
+    await requireAssignedJobExecutor(ctx, args.sessionToken, form.jobId, args.userId);
 
     const existing = form.photoStorageIds ?? [];
     await ctx.db.patch(args.formId, {
@@ -313,16 +288,9 @@ export const submit = mutation({
     maintenanceVendor: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
     const form = await ctx.db.get(args.formId);
     if (!form) throw new Error("Form not found");
-    if (form.cleanerId !== user._id) {
-      // Fall back: allow if user is assigned to the job (handles auth identity mismatch)
-      const job = await ctx.db.get(form.jobId);
-      if (!job || !(await isUserAssignedToJob(ctx, job, user._id))) {
-        throw new Error("Not your form");
-      }
-    }
+    const { user } = await requireAssignedJobExecutor(ctx, args.sessionToken, form.jobId, args.userId);
     if (form.companyId !== user.companyId) throw new Error("Access denied");
     if (form.status === "submitted" || form.status === "approved") {
       throw new Error("Form already submitted");

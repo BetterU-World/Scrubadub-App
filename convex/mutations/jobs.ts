@@ -5,19 +5,21 @@ import { logAudit, createNotification } from "../lib/helpers";
 import {
   requireOwnerManagerSession,
   requireOwnerSession,
-  requireWorkerSession,
 } from "../lib/sessionAuth";
 import { requireActiveSubscription } from "../lib/subscriptionGating";
 import {
   assertTeamInCompany,
   canSubmitFinalJob,
   getJobRecipientUserIds,
-  isUserAssignedToJob,
 } from "../lib/teams";
 import { resolveOperationalEmailIdentity } from "../lib/operationalEmailIdentity";
 import { MAX_JOB_PAUSE_CYCLES, normalizePauseNote } from "../lib/jobTiming";
 import { copyAcceptedProposalAddOnSnapshots } from "../lib/acceptedProposalAddOnSnapshots";
 import { createJobFromClientRequest } from "../lib/clientRequestScheduling";
+import {
+  assertValidJobExecutionAssignees,
+  requireAssignedJobExecutor,
+} from "../lib/jobExecutionAuth";
 
 const requestJobTypeValidator = v.union(
   v.literal("standard"),
@@ -150,6 +152,7 @@ export const create = mutation({
       if (args.cleanerIds.length > 0)
         throw new Error("Choose either individual cleaners or a team");
     }
+    await assertValidJobExecutionAssignees(ctx, args.companyId, args.type, args.cleanerIds);
 
     const initialStatus =
       args.requireConfirmation === false ? "confirmed" : "scheduled";
@@ -307,6 +310,14 @@ export const update = mutation({
       if (args.cleanerIds && args.cleanerIds.length > 0)
         throw new Error("Choose either individual cleaners or a team");
     }
+    if (args.cleanerIds) {
+      await assertValidJobExecutionAssignees(
+        ctx,
+        owner.companyId,
+        args.type ?? job.type,
+        args.cleanerIds,
+      );
+    }
 
     const {
       jobId,
@@ -438,15 +449,7 @@ export const acceptJob = mutation({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await requireWorkerSession(
-      ctx,
-      args.sessionToken,
-      args.userId,
-    );
-    const job = await ctx.db.get(args.jobId);
-    if (!job) throw new Error("Job not found");
-    if (!(await isUserAssignedToJob(ctx, job, user._id)))
-      throw new Error("Not assigned to this job");
+    const { user, job } = await requireAssignedJobExecutor(ctx, args.sessionToken, args.jobId, args.userId);
     if (job.status !== "scheduled")
       throw new Error("Job cannot be accepted in current status");
 
@@ -491,15 +494,7 @@ export const denyJob = mutation({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await requireWorkerSession(
-      ctx,
-      args.sessionToken,
-      args.userId,
-    );
-    const job = await ctx.db.get(args.jobId);
-    if (!job) throw new Error("Job not found");
-    if (!(await isUserAssignedToJob(ctx, job, user._id)))
-      throw new Error("Not assigned to this job");
+    const { user, job } = await requireAssignedJobExecutor(ctx, args.sessionToken, args.jobId, args.userId);
     if (job.status !== "scheduled")
       throw new Error("Job cannot be denied in current status");
 
@@ -549,15 +544,7 @@ export const cleanerCancelJob = mutation({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await requireWorkerSession(
-      ctx,
-      args.sessionToken,
-      args.userId,
-    );
-    const job = await ctx.db.get(args.jobId);
-    if (!job) throw new Error("Job not found");
-    if (!(await isUserAssignedToJob(ctx, job, user._id)))
-      throw new Error("Not assigned to this job");
+    const { user, job } = await requireAssignedJobExecutor(ctx, args.sessionToken, args.jobId, args.userId);
 
     // Only allow cancellation before work has started
     if (
@@ -628,6 +615,7 @@ export const reassignJob = mutation({
     const newCleaner = await ctx.db.get(args.newCleanerId);
     if (!newCleaner || newCleaner.companyId !== owner.companyId)
       throw new Error("Cleaner not found in your company");
+    await assertValidJobExecutionAssignees(ctx, owner.companyId, job.type, [args.newCleanerId]);
 
     await ctx.db.patch(args.jobId, {
       cleanerIds: [args.newCleanerId],
@@ -688,15 +676,7 @@ export const arriveJob = mutation({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await requireWorkerSession(
-      ctx,
-      args.sessionToken,
-      args.userId,
-    );
-    const job = await ctx.db.get(args.jobId);
-    if (!job) throw new Error("Job not found");
-    if (!(await isUserAssignedToJob(ctx, job, user._id)))
-      throw new Error("Not assigned to this job");
+    const { user, job } = await requireAssignedJobExecutor(ctx, args.sessionToken, args.jobId, args.userId);
     if (job.status !== "confirmed" && job.status !== "scheduled")
       throw new Error("Cannot mark arrived in current status");
 
@@ -711,15 +691,7 @@ export const startJob = mutation({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await requireWorkerSession(
-      ctx,
-      args.sessionToken,
-      args.userId,
-    );
-    const job = await ctx.db.get(args.jobId);
-    if (!job) throw new Error("Job not found");
-    if (!(await isUserAssignedToJob(ctx, job, user._id)))
-      throw new Error("Not assigned to this job");
+    const { user, job } = await requireAssignedJobExecutor(ctx, args.sessionToken, args.jobId, args.userId);
     if (job.status !== "confirmed" && job.status !== "rework_requested")
       throw new Error("Job cannot be started in current status");
 
@@ -778,16 +750,7 @@ export const pauseJob = mutation({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await requireWorkerSession(
-      ctx,
-      args.sessionToken,
-      args.userId,
-    );
-    const job = await ctx.db.get(args.jobId);
-    if (!job || job.companyId !== user.companyId)
-      throw new Error("Job not found");
-    if (!(await isUserAssignedToJob(ctx, job, user._id)))
-      throw new Error("Not assigned to this job");
+    const { user, job } = await requireAssignedJobExecutor(ctx, args.sessionToken, args.jobId, args.userId);
     if (job.status !== "in_progress")
       throw new Error("Only an in-progress job can be paused");
     if (job.currentPauseStartedAt !== undefined)
@@ -822,16 +785,7 @@ export const resumeJob = mutation({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await requireWorkerSession(
-      ctx,
-      args.sessionToken,
-      args.userId,
-    );
-    const job = await ctx.db.get(args.jobId);
-    if (!job || job.companyId !== user.companyId)
-      throw new Error("Job not found");
-    if (!(await isUserAssignedToJob(ctx, job, user._id)))
-      throw new Error("Not assigned to this job");
+    const { user, job } = await requireAssignedJobExecutor(ctx, args.sessionToken, args.jobId, args.userId);
     if (job.status !== "in_progress")
       throw new Error("Only an in-progress job can be resumed");
     if (job.currentPauseStartedAt === undefined)
@@ -868,13 +822,7 @@ export const completeJob = mutation({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await requireWorkerSession(
-      ctx,
-      args.sessionToken,
-      args.userId,
-    );
-    const job = await ctx.db.get(args.jobId);
-    if (!job) throw new Error("Job not found");
+    const { user, job } = await requireAssignedJobExecutor(ctx, args.sessionToken, args.jobId, args.userId);
     if (!(await canSubmitFinalJob(ctx, job, user)))
       throw new Error(
         "Only a team lead, assigned manager, or owner can submit this job",
@@ -972,7 +920,8 @@ export const completeJob = mutation({
       .first();
     if (!existingPayment) {
       const cleanerId = job.cleanerIds[0];
-      if (cleanerId) {
+      const cleaner = cleanerId ? await ctx.db.get(cleanerId) : null;
+      if (cleanerId && (cleaner?.role === "cleaner" || cleaner?.role === "maintenance")) {
         const paymentId = await ctx.db.insert("cleanerPayments", {
           companyId: job.companyId,
           jobId: args.jobId,
@@ -1303,6 +1252,13 @@ export const updatePlannedCleanerPay = mutation({
     if (job.cleanerIds.length === 0) {
       throw new Error("No cleaner assigned to this job");
     }
+    const payableWorker = await ctx.db.get(job.cleanerIds[0]);
+    if (
+      payableWorker?.role !== "cleaner" &&
+      payableWorker?.role !== "maintenance"
+    ) {
+      throw new Error("The assigned job executor is not eligible for cleaner pay");
+    }
 
     await ctx.db.patch(args.jobId, {
       plannedCleanerPayCents: args.amountCents,
@@ -1329,15 +1285,7 @@ export const updateInventoryChecklistItem = mutation({
     note: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await requireWorkerSession(
-      ctx,
-      args.sessionToken,
-      args.userId,
-    );
-    const job = await ctx.db.get(args.jobId);
-    if (!job) throw new Error("Job not found");
-    if (!(await isUserAssignedToJob(ctx, job, user._id)))
-      throw new Error("Not assigned to this job");
+    const { user, job } = await requireAssignedJobExecutor(ctx, args.sessionToken, args.jobId, args.userId);
     if (job.status !== "in_progress" && job.status !== "rework_requested")
       throw new Error("Job is not in progress");
     if (!job.inventoryChecklist)

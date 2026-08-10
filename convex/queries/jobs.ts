@@ -1,10 +1,11 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { hasManagerPermission } from "../lib/auth";
-import { requireOwnerManagerCompany, requireVerifiedStaffSession, requireWorkerCompany } from "../lib/sessionAuth";
+import { requireOwnerManagerCompany, requireStaffCompany, requireVerifiedStaffSession } from "../lib/sessionAuth";
 import { withPerfLog } from "../lib/perfLog";
-import { getActiveTeamIdsForUser } from "../lib/teams";
+import { getActiveTeamIdsForUser, isUserAssignedToJob } from "../lib/teams";
 import { operationalAddOnSnapshots } from "../lib/acceptedProposalAddOnSnapshots";
+import { isRoleCompatibleWithJobExecution } from "../lib/jobExecutionAuth";
 
 function workerSafeJob(job: any) {
   const { acceptedProposalAddOnSnapshots, requiredAddOnSnapshots, sourceProposalId: _sourceProposalId, ...safe } = job;
@@ -248,6 +249,9 @@ export const get = query({
     const assignedManager = job.assignedManagerId
       ? await ctx.db.get(job.assignedManagerId)
       : null;
+    const canCurrentUserExecute =
+      isRoleCompatibleWithJobExecution(user.role, job.type) &&
+      await isUserAssignedToJob(ctx, job, user._id);
 
     const decorated = {
       ...job,
@@ -260,6 +264,7 @@ export const get = query({
       assignedTeam: assignedTeam ? { _id: assignedTeam._id, name: assignedTeam.name, active: assignedTeam.active } : null,
       assignedTeamMembers,
       assignmentType: job.assignedTeamId ? "team" : "individual",
+      canCurrentUserExecute,
     };
     return user.role === "owner" ? decorated : workerSafeJob(decorated);
   },
@@ -274,9 +279,12 @@ export const getForCleaner = query({
   },
   handler: async (ctx, args) => {
     return await withPerfLog(ctx, "jobs:getForCleaner", async () => {
-      const user = await requireWorkerCompany(ctx, args.sessionToken, args.companyId, args.userId);
-      if ((user.role === "cleaner" || user.role === "maintenance") && user._id !== args.cleanerId) {
+      const user = await requireStaffCompany(ctx, args.sessionToken, args.companyId, args.userId);
+      if (user._id !== args.cleanerId) {
         throw new Error("Access denied");
+      }
+      if (!isRoleCompatibleWithJobExecution(user.role, "standard") && user.role !== "maintenance") {
+        throw new Error("Assigned job execution access required");
       }
 
       const jobs = await ctx.db
@@ -290,6 +298,7 @@ export const getForCleaner = query({
       const myJobs = jobs.filter(
         (j) =>
           j.status !== "cancelled" &&
+          isRoleCompatibleWithJobExecution(user.role, j.type) &&
           (j.cleanerIds.includes(args.cleanerId) ||
             (j.assignedTeamId && activeTeamIds.has(j.assignedTeamId)))
       );

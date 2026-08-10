@@ -60,7 +60,7 @@ describe("job pause lifecycle", () => {
     const otherAuth = await login(t, "other@example.com");
     await expect(t.mutation(api.mutations.jobs.pauseJob, { jobId: activeJob, reason: "break", userId: other, sessionToken: otherAuth.sessionToken })).rejects.toThrow("Not assigned");
     const foreignAuth = await login(t, "foreign@example.com");
-    await expect(t.mutation(api.mutations.jobs.pauseJob, { jobId: activeJob, reason: "break", userId: foreign, sessionToken: foreignAuth.sessionToken })).rejects.toThrow("Job not found");
+    await expect(t.mutation(api.mutations.jobs.pauseJob, { jobId: activeJob, reason: "break", userId: foreign, sessionToken: foreignAuth.sessionToken })).rejects.toThrow("Access denied");
     await expect(t.mutation(api.mutations.jobs.pauseJob, { jobId: activeJob, reason: "break", userId: other, sessionToken: "" })).rejects.toThrow("verified session");
   });
 

@@ -12,7 +12,7 @@ import { JobTimingPanel } from "@/components/JobTimingPanel";
 import { AddOnSnapshotList } from "@/components/AddOnSnapshotList";
 import { CancelJobDialog } from "@/components/CancelJobDialog";
 import { useTranslation } from "react-i18next";
-import { useParams } from "wouter";
+import { Link, useParams } from "wouter";
 import {
   Calendar,
   Clock,
@@ -153,11 +153,18 @@ export function ManagerJobDetailPage() {
       <PageHeader
         title={property?.name ?? t("jobs.jobDetails")}
         back={{ href: "/jobs", label: t("navigation.backToJobs") }}
-        action={!['cancelled', 'submitted', 'approved'].includes(job.status) ? (
-          <button className="btn-danger flex items-center gap-2" onClick={() => setShowCancel(true)}>
-            <XCircle className="w-4 h-4" /> {t("jobs.cancelJob")}
-          </button>
-        ) : undefined}
+        action={<div className="flex flex-wrap gap-2">
+          {(job as any).canCurrentUserExecute && !["cancelled", "submitted", "approved"].includes(job.status) && (
+            <Link href={`/jobs/${job._id}/work`} className="btn-primary flex items-center gap-2">
+              <ClipboardCheck className="h-4 w-4" /> {t("jobs.openChecklist")}
+            </Link>
+          )}
+          {!['cancelled', 'submitted', 'approved'].includes(job.status) && (
+            <button className="btn-danger flex items-center gap-2" onClick={() => setShowCancel(true)}>
+              <XCircle className="w-4 h-4" /> {t("jobs.cancelJob")}
+            </button>
+          )}
+        </div>}
       />
 
       <div className="space-y-4">
