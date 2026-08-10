@@ -1,11 +1,9 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireVerifiedStaffSession } from "../lib/sessionAuth";
+import { requireOwnerManagerSession } from "../lib/sessionAuth";
 
 async function requireCompanyUser(ctx: any, sessionToken: string, userId: any) {
-  const user = await requireVerifiedStaffSession(ctx, sessionToken, userId);
-  if (!user.companyId) throw new Error("Company access required");
-  return user;
+  return await requireOwnerManagerSession(ctx, sessionToken, userId);
 }
 
 async function decorateSchedule(ctx: any, schedule: any) {

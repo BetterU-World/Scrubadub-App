@@ -4,6 +4,7 @@ import { logAudit, createNotification } from "../lib/helpers";
 import { hasManagerPermission } from "../lib/auth";
 import { requireOwnerManagerSession, requireOwnerSession, requireWorkerSession } from "../lib/sessionAuth";
 import { resolvePropertyConditionRequirement } from "../lib/propertyConditionRequirements";
+import { isUserAssignedToJob } from "../lib/teams";
 
 export const create = mutation({
   args: {
@@ -36,6 +37,9 @@ export const create = mutation({
     // Verify job belongs to this company
     const job = await ctx.db.get(args.jobId);
     if (!job || job.companyId !== user.companyId) throw new Error("Access denied");
+    if (!(await isUserAssignedToJob(ctx, job, user._id))) {
+      throw new Error("Not assigned to perform this job");
+    }
 
     const { userId: _uid, sessionToken: _sessionToken, ...flagData } = args;
     const flagId = await ctx.db.insert("redFlags", {
