@@ -27,6 +27,7 @@ type SettingsForm = {
   defaultFont: string;
   defaultDateFormat: string;
   defaultCurrency: string;
+  requirePropertyConditionChecksByDefault: boolean;
 };
 
 const EMPTY_FORM: SettingsForm = {
@@ -47,6 +48,7 @@ const EMPTY_FORM: SettingsForm = {
   defaultFont: "",
   defaultDateFormat: "MM/dd/yyyy",
   defaultCurrency: "USD",
+  requirePropertyConditionChecksByDefault: true,
 };
 
 function Field({
@@ -98,12 +100,13 @@ export function CompanyProfilePage() {
       defaultFont: settings.defaultFont ?? "",
       defaultDateFormat: settings.defaultDateFormat ?? "MM/dd/yyyy",
       defaultCurrency: settings.defaultCurrency ?? "USD",
+      requirePropertyConditionChecksByDefault: settings.requirePropertyConditionChecksByDefault ?? true,
     });
   }, [settings]);
 
   if (!user || settings === undefined) return <PageLoader />;
 
-  const set = (key: keyof SettingsForm, value: string) => {
+  const set = (key: keyof SettingsForm, value: string | boolean) => {
     setForm((current) => ({ ...current, [key]: value }));
   };
 
@@ -114,9 +117,10 @@ export function CompanyProfilePage() {
       await updateSettings({
         sessionToken,
         userId: user._id,
-        ...Object.fromEntries(
-          Object.entries(form).map(([key, value]) => [key, value.trim() || undefined])
-        ),
+        ...Object.fromEntries(Object.entries(form).map(([key, value]) => [
+          key,
+          typeof value === "string" ? value.trim() || undefined : value,
+        ])),
       });
       feedback.success("Company identity saved");
     } catch (err: any) {
@@ -258,6 +262,22 @@ export function CompanyProfilePage() {
               />
             </Field>
           </div>
+        </section>
+
+        <section className="card space-y-4">
+          <h2 className="text-base font-semibold text-gray-900">{t("companySettings.jobQualityDefaults")}</h2>
+          <label className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600"
+              checked={form.requirePropertyConditionChecksByDefault}
+              onChange={(event) => set("requirePropertyConditionChecksByDefault", event.target.checked)}
+            />
+            <span>
+              <span className="block text-sm font-medium text-gray-900">{t("companySettings.propertyConditionChecks")}</span>
+              <span className="block text-sm text-gray-500">{t("companySettings.propertyConditionChecksHelp")}</span>
+            </span>
+          </label>
         </section>
 
         <section className="card space-y-4">

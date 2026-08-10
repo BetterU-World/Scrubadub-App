@@ -45,6 +45,7 @@ const EMPTY_FORM = {
   assignedTeamId: "",
   status: "active" as AccountStatus,
   notes: "",
+  propertyConditionCheckOverride: "company_default",
 };
 
 function formatPrice(cents: number | undefined, fallback: string) {
@@ -162,6 +163,7 @@ export function CommercialAccountDetailPage() {
       assignedTeamId: account.assignedTeamId ?? "",
       status: account.status ?? "active",
       notes: account.notes ?? "",
+      propertyConditionCheckOverride: account.propertyConditionCheckOverride ?? "company_default",
     });
   }, [account?._id]);
 
@@ -206,6 +208,7 @@ export function CommercialAccountDetailPage() {
         assignedTeamId: (form.assignedTeamId || undefined) as any,
         status: form.status,
         notes: form.notes || undefined,
+        propertyConditionCheckOverride: form.propertyConditionCheckOverride as any,
       });
       setEditing(false);
       showToast(t("commercialAccounts.updated"), "success");
@@ -373,6 +376,14 @@ export function CommercialAccountDetailPage() {
                   <span className="text-xs font-medium text-gray-600">{t("commercialAccounts.renewalDate")}</span>
                   <input type="date" className="input-field mt-1" value={form.renewalDate} onChange={(e) => setForm({ ...form, renewalDate: e.target.value })} />
                 </label>
+                <label className="block sm:col-span-2">
+                  <span className="text-xs font-medium text-gray-600">{t("properties.propertyConditionCheck")}</span>
+                  <select className="input-field mt-1" value={form.propertyConditionCheckOverride} onChange={(e) => setForm({ ...form, propertyConditionCheckOverride: e.target.value })}>
+                    <option value="company_default">{t("properties.useCompanyDefault")}</option>
+                    <option value="required">{t("properties.requireConditionCheck")}</option>
+                    <option value="not_required">{t("properties.doNotRequireConditionCheck")}</option>
+                  </select>
+                </label>
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -381,6 +392,7 @@ export function CommercialAccountDetailPage() {
                 <DetailItem label={t("commercialAccounts.frequency")} value={account.serviceFrequency ? t(`leadFrequencies.${account.serviceFrequency}`) : t("common.unassigned")} />
                 <DetailItem label={t("commercialAccounts.startDate")} value={formatDate(account.startDate, notSet)} />
                 <DetailItem label={t("commercialAccounts.renewalDate")} value={formatDate(account.renewalDate, notSet)} />
+                <DetailItem label={t("properties.propertyConditionCheck")} value={t(`properties.${account.propertyConditionCheckOverride === "required" ? "requireConditionCheck" : account.propertyConditionCheckOverride === "not_required" ? "doNotRequireConditionCheck" : "useCompanyDefault"}`)} />
               </div>
             )}
           </section>

@@ -5,6 +5,7 @@ import { Doc, Id } from "../_generated/dataModel";
 import { MutationCtx } from "../_generated/server";
 import { logAudit } from "../lib/helpers";
 import { requireOwnerSession } from "../lib/sessionAuth";
+import { resolvePropertyConditionRequirement } from "../lib/propertyConditionRequirements";
 
 /** Sync interval: connections are eligible for sync after this many ms. */
 const SYNC_INTERVAL_MS = 60 * 60 * 1000; // 60 minutes
@@ -161,6 +162,10 @@ async function maybeCreateJobForReservation(
 
   const property = await ctx.db.get(reservation.propertyId);
   const propertyName = property?.name ?? "a property";
+  const requiresPropertyConditionCheck = await resolvePropertyConditionRequirement(ctx, {
+    companyId: reservation.companyId,
+    propertyId: reservation.propertyId,
+  });
 
   const jobId = await ctx.db.insert("jobs", {
     companyId: reservation.companyId,
@@ -180,6 +185,7 @@ async function maybeCreateJobForReservation(
     sourceConnectionId: connection._id,
     sourcePlatform: connection.platform,
     sourceReservationId: reservationId,
+    requiresPropertyConditionCheck,
   });
 
   // ── Link reservation back to job and clear any temporary skip flags ─

@@ -9,7 +9,6 @@ import {
 import { requireActiveSubscription } from "../lib/subscriptionGating";
 import {
   assertTeamInCompany,
-  canSubmitFinalJob,
   getJobRecipientUserIds,
 } from "../lib/teams";
 import { resolveOperationalEmailIdentity } from "../lib/operationalEmailIdentity";
@@ -21,6 +20,8 @@ import {
   requireAssignedJobExecutor,
 } from "../lib/jobExecutionAuth";
 import { ensureJobExecutionForm } from "../lib/jobExecutionForm";
+import { submitJobExecution } from "../lib/jobSubmission";
+import { resolvePropertyConditionRequirement } from "../lib/propertyConditionRequirements";
 
 const requestJobTypeValidator = v.union(
   v.literal("standard"),
@@ -170,6 +171,10 @@ export const create = mutation({
       ctx,
       args.companyId,
     );
+    const requiresPropertyConditionCheck = await resolvePropertyConditionRequirement(ctx, {
+      companyId: args.companyId,
+      propertyId: args.propertyId,
+    });
 
     let sourceProposalId: typeof args.proposalId | undefined;
     let acceptedProposalAddOnSnapshots: any[] | undefined;
@@ -215,6 +220,7 @@ export const create = mutation({
       sourceProposalId,
       acceptedProposalAddOnSnapshots,
       clientRelationshipId: property.clientRelationshipId,
+      requiresPropertyConditionCheck,
       status: initialStatus,
       acceptanceStatus: initialAcceptance,
       reworkCount: 0,
@@ -832,120 +838,10 @@ export const completeJob = mutation({
   },
   handler: async (ctx, args) => {
     const { user, job } = await requireAssignedJobExecutor(ctx, args.sessionToken, args.jobId, args.userId);
-    if (!(await canSubmitFinalJob(ctx, job, user)))
-      throw new Error(
-        "Only a team lead, assigned manager, or owner can submit this job",
-      );
-    if (job.status !== "in_progress") throw new Error("Job not in progress");
-    if (job.timerStoppedAt !== undefined)
-      throw new Error("This job timer was administratively closed");
-    if (job.currentPauseStartedAt !== undefined)
-      throw new Error("Resume the job before completing it");
-
-    // Gate: all required inventory items must have a status reported
-    if (job.inventoryChecklist && job.inventoryChecklist.length > 0) {
-      const unreported = job.inventoryChecklist.filter(
-        (item) => item.required && !item.status,
-      );
-      if (unreported.length > 0) {
-        throw new Error(
-          `Cannot submit: ${unreported.length} required inventory item(s) not reported. Please check all required items.`,
-        );
-      }
-    }
-
-    const form = await ctx.db
-      .query("forms")
-      .withIndex("by_jobId", (q) => q.eq("jobId", args.jobId))
-      .first();
-    if (!form || (form.status !== "submitted" && form.status !== "approved")) {
-      throw new Error("Complete the required cleaning form before submitting the job");
-    }
-
-    await ctx.db.patch(args.jobId, {
-      status: "submitted",
-      completedAt: Date.now(),
-      notes: args.notes
-        ? `${job.notes ? job.notes + "\n" : ""}Completion notes: ${args.notes}`
-        : job.notes,
-    });
-
-    const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
-    const propName =
-      property?.name ?? job.propertySnapshot?.name ?? "a property";
-    const emailIdentity = await resolveOperationalEmailIdentity(
-      ctx,
-      job.companyId,
-    );
-    const owners = await ctx.db
-      .query("users")
-      .withIndex("by_companyId", (q) => q.eq("companyId", job.companyId))
-      .collect();
-    const now = Date.now();
-    for (const owner of owners.filter((u) => u.role === "owner")) {
-      await createNotification(ctx, {
-        companyId: job.companyId,
-        userId: owner._id,
-        type: "job_submitted",
-        title: "Job Completed",
-        message: `${user.name} completed cleaning ${propName} on ${job.scheduledDate}`,
-        relatedJobId: args.jobId,
-      });
-
-      // Send job completed email to owner
-      if (owner.email) {
-        await ctx.scheduler.runAfter(
-          0,
-          internal.actions.emailNotifications.sendJobCompleted,
-          {
-            email: owner.email,
-            propertyName: propName,
-            cleanerName: user.name,
-            completedAt: now,
-            ...emailIdentity,
-          },
-        );
-      }
-    }
-
-    // Auto-create OPEN cleaner payment for individual jobs only. Team payment splitting is out of scope for V1.
-    if (job.assignedTeamId) {
-      await logAudit(ctx, {
-        companyId: job.companyId,
-        userId: user._id,
-        action: "complete_job",
-        entityType: "job",
-        entityId: args.jobId,
-      });
-      return;
-    }
-
-    // Auto-create OPEN cleaner payment if none exists (idempotent)
-    const existingPayment = await ctx.db
-      .query("cleanerPayments")
-      .withIndex("by_jobId", (q) => q.eq("jobId", args.jobId))
-      .first();
-    if (!existingPayment) {
-      const cleanerId = job.cleanerIds[0];
-      const cleaner = cleanerId ? await ctx.db.get(cleanerId) : null;
-      if (cleanerId && (cleaner?.role === "cleaner" || cleaner?.role === "maintenance")) {
-        const paymentId = await ctx.db.insert("cleanerPayments", {
-          companyId: job.companyId,
-          jobId: args.jobId,
-          cleanerUserId: cleanerId,
-          status: "OPEN",
-          createdAt: Date.now(),
-        });
-        await ctx.db.patch(args.jobId, { cleanerPaymentId: paymentId });
-      }
-    }
-
-    await logAudit(ctx, {
-      companyId: job.companyId,
-      userId: user._id,
-      action: "complete_job",
-      entityType: "job",
-      entityId: args.jobId,
+    return await submitJobExecution(ctx, {
+      job,
+      user,
+      notes: args.notes,
     });
   },
 });

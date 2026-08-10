@@ -491,6 +491,7 @@ export const shareJob = mutation({
       sharedFromCompanyName: fromCompany?.name ?? "Partner",
       requiredAddOnSnapshots: operationalAddOns.length ? sanitizedSharedJobAddOns(operationalAddOns) : undefined,
       propertySnapshot,
+      requiresPropertyConditionCheck: job.requiresPropertyConditionCheck ?? true,
     });
 
     // Create the sharedJobs record

@@ -430,7 +430,8 @@ export function JobFormPage() {
               </div>
             ) : (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">{isMaintenance ? t("jobForm.assignMaintenanceWorkers") : t("jobForm.assignedWorkers")}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{isMaintenance ? t("jobForm.assignMaintenanceWorkers") : t("jobForm.assignedWorkers")}</label>
+                <p className="mb-2 text-xs text-gray-500">{t("jobForm.assignedWorkersHelp")}</p>
                 {workers.length === 0 ? (
                   <p className="text-sm text-gray-500">{emptyWorkerMsg}</p>
                 ) : (
@@ -489,7 +490,7 @@ export function JobFormPage() {
 
         {/* Assign Manager / Owner */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.assignManager")}</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.managerOversight")}</label>
           <select className="input-field" value={managerId} onChange={(e) => { managerTouched.current = true; setManagerId(e.target.value); }}>
             <option value="">{t("jobForm.noManager")}</option>
             <option value={user._id}>{user.name} ({t("jobForm.selfAssign")})</option>
@@ -497,7 +498,7 @@ export function JobFormPage() {
               <option key={m._id} value={m._id}>{m.name}</option>
             ))}
           </select>
-          <p className="text-xs text-gray-400 mt-1">{t("jobForm.selfAssignHint")}</p>
+          <p className="text-xs text-gray-400 mt-1">{t("jobForm.managerOversightHelp")}</p>
         </div>
 
         <div>
