@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwnerManagerSession } from "../lib/sessionAuth";
+import { hasOwnerOrManagerPermission } from "../lib/auth";
 import { copyScheduleAddOnSnapshots } from "../lib/acceptedProposalAddOnSnapshots";
 import { resolvePropertyConditionRequirement } from "../lib/propertyConditionRequirements";
 
@@ -34,7 +35,9 @@ const addOnSelectionsValidator = v.optional(v.array(v.object({
 })));
 
 async function requireCompanyUser(ctx: any, sessionToken: string, userId: any) {
-  return await requireOwnerManagerSession(ctx, sessionToken, userId);
+  const user = await requireOwnerManagerSession(ctx, sessionToken, userId);
+  if (!hasOwnerOrManagerPermission(user, "canManageSchedule")) throw new Error("Schedule management permission required");
+  return user;
 }
 
 function cleanOptional(value: string | undefined, max = 1000) {

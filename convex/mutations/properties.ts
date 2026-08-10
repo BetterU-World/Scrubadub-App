@@ -1,7 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { logAudit } from "../lib/helpers";
-import { requireOwnerManagerSession, requireOwnerSession } from "../lib/sessionAuth";
+import { requireOwnerSession } from "../lib/sessionAuth";
 import { requireActiveSubscription } from "../lib/subscriptionGating";
 import { bedroomsValidator, deriveBedroomAggregates, normalizeBedrooms } from "../lib/propertyBedrooms";
 
@@ -182,7 +182,7 @@ export const update = mutation({
     propertyConditionCheckOverride: v.optional(propertyConditionOverrideValidator),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
     if (property.companyId !== owner.companyId) throw new Error("Not your company");
@@ -230,7 +230,7 @@ export const updateWalkthroughFacts = mutation({
     trashCanCount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
     if (property.companyId !== owner.companyId) throw new Error("Not your company");

@@ -1,7 +1,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { hasManagerPermission } from "../lib/auth";
-import { requireOwnerManagerCompany, requireOwnerManagerSession } from "../lib/sessionAuth";
+import { requireOwnerManagerSession, requireOwnerSession } from "../lib/sessionAuth";
 import { withPerfLog } from "../lib/perfLog";
 
 const RED_FLAG_CAP = 2_000;
@@ -15,7 +15,8 @@ export const listByCompany = query({
   },
   handler: async (ctx, args) => {
     return await withPerfLog(ctx, "redFlags:listByCompany", async () => {
-      await requireOwnerManagerCompany(ctx, args.sessionToken, args.companyId, args.userId);
+      const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+      if (owner.companyId !== args.companyId) throw new Error("Access denied");
 
       let flags;
       if (args.status) {

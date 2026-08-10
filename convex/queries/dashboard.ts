@@ -1,13 +1,14 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwnerManagerCompany } from "../lib/sessionAuth";
+import { requireOwnerSession } from "../lib/sessionAuth";
 import { withPerfLog } from "../lib/perfLog";
 
 export const getStats = query({
   args: { companyId: v.id("companies"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
     return await withPerfLog(ctx, "dashboard:getStats", async () => {
-    await requireOwnerManagerCompany(ctx, args.sessionToken, args.companyId, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    if (owner.companyId !== args.companyId) throw new Error("Access denied");
 
     const properties = await ctx.db
       .query("properties")

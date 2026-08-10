@@ -62,7 +62,7 @@ describe("manager execution lifecycle hotfix", () => {
     await t.mutation(api.mutations.jobs.completeJob, { jobId: seeded.job, notes: "Done", userId: seeded.manager, sessionToken: managerAuth.sessionToken });
 
     await t.mutation(api.mutations.inspections.submit, { jobId: seeded.job, readinessScore: 9, severity: "none", userId: seeded.manager, sessionToken: managerAuth.sessionToken });
-    await expect(t.mutation(api.mutations.forms.approve, { formId: form!._id, userId: seeded.manager, sessionToken: managerAuth.sessionToken })).rejects.toThrow("Owner session required");
+    await expect(t.mutation(api.mutations.forms.approve, { formId: form!._id, userId: seeded.manager, sessionToken: managerAuth.sessionToken })).rejects.toThrow("Completed work review permission required");
     await t.mutation(api.mutations.forms.approve, { formId: form!._id, userId: seeded.owner, sessionToken: ownerAuth.sessionToken });
     await expect(t.mutation(api.mutations.forms.approve, { formId: form!._id, userId: seeded.owner, sessionToken: ownerAuth.sessionToken })).resolves.toBeNull();
 

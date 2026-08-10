@@ -2,6 +2,7 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwnerManagerCompany, requireOwnerManagerSession } from "../lib/sessionAuth";
 import { withPerfLog } from "../lib/perfLog";
+import { hasOwnerOrManagerPermission } from "../lib/auth";
 
 async function decorateProperty(ctx: any, property: any) {
   const relationship = property.clientRelationshipId
@@ -30,7 +31,8 @@ export const list = query({
     activeOnly: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    await requireOwnerManagerCompany(ctx, args.sessionToken, args.companyId, args.userId);
+    const user = await requireOwnerManagerCompany(ctx, args.sessionToken, args.companyId, args.userId);
+    if (user.role === "manager" && !user.canCreateJobs && !user.canManageSchedule) throw new Error("Property directory permission required");
 
     const all = await ctx.db
       .query("properties")
@@ -47,7 +49,8 @@ export const list = query({
 export const listArchived = query({
   args: { companyId: v.id("companies"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    await requireOwnerManagerCompany(ctx, args.sessionToken, args.companyId, args.userId);
+    const user = await requireOwnerManagerCompany(ctx, args.sessionToken, args.companyId, args.userId);
+    if (!hasOwnerOrManagerPermission(user, "canManageBusinessConfiguration")) throw new Error("Business configuration permission required");
 
     const all = await ctx.db
       .query("properties")
@@ -63,6 +66,7 @@ export const get = query({
   args: { propertyId: v.id("properties"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
     const user = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
+    if (user.role === "manager" && !user.canCreateJobs && !user.canSeeAllJobs) throw new Error("Property access permission required");
     const property = await ctx.db.get(args.propertyId);
     if (!property) return null;
     if (property.companyId !== user.companyId) throw new Error("Access denied");
@@ -75,6 +79,7 @@ export const getHistory = query({
   handler: async (ctx, args) => {
     return await withPerfLog(ctx, "properties:getHistory", async () => {
       const user = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
+      if (!hasOwnerOrManagerPermission(user, "canSeeAllJobs")) throw new Error("All-jobs visibility permission required");
       const property = await ctx.db.get(args.propertyId);
       if (!property) return { timeline: [], totalJobs: 0, totalRedFlags: 0, openRedFlags: 0 };
       if (property.companyId !== user.companyId) throw new Error("Access denied");

@@ -427,7 +427,7 @@ export const listRequestsForPipeline = query({
     ),
   },
   handler: async (ctx, args) => {
-    const user = await requireOwnerManagerSession(
+    const user = await requireOwnerSession(
       ctx,
       args.sessionToken,
       args.userId,

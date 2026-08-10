@@ -179,7 +179,7 @@ export function getNavSectionsForRole(role?: string, canManageConfiguration = fa
       sections = workerSections;
   }
   if (role !== "manager") return sections;
-  return sections.map((section) => ({ ...section, items: section.items.filter((item) => (canManageConfiguration || item.href !== "/owner/settings/add-ons") && (canManageSchedule || item.href !== "/jobs/requests")) }));
+  return sections.map((section) => ({ ...section, items: section.items.filter((item) => (canManageConfiguration || item.href !== "/owner/settings/add-ons") && (canManageSchedule || (item.href !== "/jobs/requests" && item.href !== "/calendar"))) }));
 }
 
 export function getMobileNavItemsForRole(role?: string, canManageConfiguration = false, canManageSchedule = false): NavItem[] {

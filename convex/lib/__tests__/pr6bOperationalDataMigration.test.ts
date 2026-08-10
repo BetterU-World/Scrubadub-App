@@ -30,7 +30,7 @@ async function seed(t: ReturnType<typeof backend>) {
     });
     const ownerA = await ctx.db.insert("users", { email: "owner-a@pr6b.test", passwordHash, name: "Owner A", companyId: companyA, role: "owner", status: "active" });
     const ownerB = await ctx.db.insert("users", { email: "owner-b@pr6b.test", passwordHash, name: "Owner B", companyId: companyB, role: "owner", status: "active" });
-    const managerA = await ctx.db.insert("users", { email: "manager-a@pr6b.test", passwordHash, name: "Manager A", companyId: companyA, role: "manager", status: "active" });
+    const managerA = await ctx.db.insert("users", { email: "manager-a@pr6b.test", passwordHash, name: "Manager A", companyId: companyA, role: "manager", status: "active", canAssignCleaners: true });
     const cleanerA = await ctx.db.insert("users", { email: "cleaner-a@pr6b.test", passwordHash, name: "Cleaner A", companyId: companyA, role: "cleaner", status: "active" });
     const maintenanceA = await ctx.db.insert("users", { email: "maintenance-a@pr6b.test", passwordHash, name: "Maintenance A", companyId: companyA, role: "maintenance", status: "active" });
     const propertyA = await ctx.db.insert("properties", { companyId: companyA, name: "A Property", type: "residential", address: "1 Main", amenities: [], active: true });

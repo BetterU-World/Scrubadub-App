@@ -1,7 +1,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { hasManagerPermission } from "../lib/auth";
-import { requireOwnerManagerCompany, requireOwnerManagerSession } from "../lib/sessionAuth";
+import { requireOwnerManagerSession, requireOwnerSession } from "../lib/sessionAuth";
 import { isUserAssignedToJob } from "../lib/teams";
 
 /** Get all inspections for a specific job. */
@@ -60,7 +60,8 @@ export const getInspectionRedFlags = query({
     status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    await requireOwnerManagerCompany(ctx, args.sessionToken, args.companyId, args.userId);
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    if (owner.companyId !== args.companyId) throw new Error("Access denied");
 
     const inspections = await ctx.db
       .query("managerInspections")

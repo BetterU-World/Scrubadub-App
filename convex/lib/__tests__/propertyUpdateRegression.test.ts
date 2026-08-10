@@ -83,14 +83,11 @@ describe("property update regression", () => {
     process.env.APP_URL = "http://localhost:5173";
   });
 
-  it.each([
-    ["owner", "owner-a@property.test", "ownerA"],
-    ["manager", "manager-a@property.test", "managerA"],
-  ] as const)("accepts the former production payload for a verified %s", async (_role, email, userKey) => {
+  it("accepts the former production payload for a verified owner", async () => {
     const t = makeTest();
     const s = await seed(t);
-    const auth = await login(t, email);
-    await expect(t.mutation(api.mutations.properties.update, updateArgs(s, s[userKey], auth.sessionToken))).resolves.toBeNull();
+    const auth = await login(t, "owner-a@property.test");
+    await expect(t.mutation(api.mutations.properties.update, updateArgs(s, s.ownerA, auth.sessionToken))).resolves.toBeNull();
     const property = await t.run((ctx) => ctx.db.get(s.propertyA));
     expect(property).toMatchObject({
       name: "Updated Property",
@@ -102,6 +99,13 @@ describe("property update regression", () => {
     expect(property).not.toHaveProperty("sessionToken");
   });
 
+  it("does not treat Manager role alone as property administration authority", async () => {
+    const t = makeTest();
+    const s = await seed(t);
+    const auth = await login(t, "manager-a@property.test");
+    await expect(t.mutation(api.mutations.properties.update, updateArgs(s, s.managerA, auth.sessionToken))).rejects.toThrow("Owner session required");
+  });
+
   it("preserves verified-session identity and same-company authorization", async () => {
     const t = makeTest();
     const s = await seed(t);
@@ -110,7 +114,7 @@ describe("property update regression", () => {
 
     await expect(t.mutation(api.mutations.properties.update, updateArgs(s, s.ownerA, ""))).rejects.toThrow("verified session is required");
     await expect(t.mutation(api.mutations.properties.update, updateArgs(s, s.ownerB, ownerAuth.sessionToken))).rejects.toThrow("does not match");
-    await expect(t.mutation(api.mutations.properties.update, updateArgs(s, s.workerA, workerAuth.sessionToken))).rejects.toThrow("Owner or manager session required");
+    await expect(t.mutation(api.mutations.properties.update, updateArgs(s, s.workerA, workerAuth.sessionToken))).rejects.toThrow("Owner session required");
     await expect(t.mutation(api.mutations.properties.update, updateArgs(s, s.ownerA, ownerAuth.sessionToken, s.propertyB))).rejects.toThrow("Not your company");
   });
 

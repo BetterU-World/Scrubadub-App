@@ -304,7 +304,7 @@ function cleanLifecycleNotes(notes: string | undefined) {
 }
 
 async function lifecycleContext(ctx: any, args: any) {
-  const actor = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
+  const actor = await requireOwnerSession(ctx, args.sessionToken, args.userId);
   const account = await ctx.db.get(args.commercialAccountId) as any;
   if (!account) throw new Error("Commercial account not found");
   if (account.companyId !== actor.companyId) throw new Error("Access denied");

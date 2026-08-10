@@ -27,6 +27,7 @@ export function JobFormPage() {
   const [, setLocation] = useLocation();
   const params = useParams<{ id?: string }>();
   const isEditing = !!params.id;
+  const canAssignWorkers = user?.role === "owner" || user?.canAssignCleaners === true;
   const requestOriginParam = isEditing
     ? null
     : new URLSearchParams(window.location.search).get("requestId");
@@ -56,29 +57,29 @@ export function JobFormPage() {
   );
   const jobAssignees = useQuery(
     api.queries.employees.getJobAssignees,
-    user?.companyId && sessionToken ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
+    user?.companyId && sessionToken && canAssignWorkers ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
   const maintenanceWorkers = useQuery(
     api.queries.employees.getMaintenanceWorkers,
-    user?.companyId && sessionToken ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
+    user?.companyId && sessionToken && canAssignWorkers ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
 
   const managers = useQuery(
     api.queries.employees.getManagers,
-    user?.companyId && sessionToken ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
+    user?.companyId && sessionToken && canAssignWorkers ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
   const teams = useQuery(
     (api as any).queries.teams.listActiveForAssignment,
-    user?.companyId ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
+    user?.companyId && canAssignWorkers ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
   const companyProfile = useQuery(
     api.queries.companies.getCompanyProfile,
-    user ? { userId: user._id, sessionToken } : "skip"
+    user?.role === "owner" ? { userId: user._id, sessionToken } : "skip"
   );
 
   const connections = useQuery(
     api.queries.partners.listConnections,
-    !isEditing && user && sessionToken ? { userId: user._id, sessionToken } : "skip"
+    !isEditing && user?.role === "owner" && sessionToken ? { userId: user._id, sessionToken } : "skip"
   );
 
   const createJob = useMutation(api.mutations.jobs.create);
@@ -108,7 +109,7 @@ export function JobFormPage() {
   // Availability lookup for the selected date
   const cleanerAvailability = useQuery(
     api.queries.availability.listCleanersWithAvailability,
-    user && scheduledDate ? { userId: user._id, sessionToken: getStaffSessionToken(), date: scheduledDate } : "skip"
+    user && scheduledDate && canAssignWorkers ? { userId: user._id, sessionToken: getStaffSessionToken(), date: scheduledDate } : "skip"
   );
   const unavailableSet = new Set(
     (cleanerAvailability ?? [])
@@ -161,10 +162,10 @@ export function JobFormPage() {
     }
   }, [isEditing, companyProfile]);
 
-  if (!user || (!isSharedJob && properties === undefined) || jobAssignees === undefined || maintenanceWorkers === undefined || teams === undefined) return <PageLoader />;
+  if (!user || (!isSharedJob && properties === undefined) || (canAssignWorkers && (jobAssignees === undefined || maintenanceWorkers === undefined || teams === undefined))) return <PageLoader />;
 
   const isMaintenance = type === "maintenance";
-  const workers = isMaintenance ? maintenanceWorkers : jobAssignees;
+  const workers = (isMaintenance ? maintenanceWorkers : jobAssignees) ?? [];
   const workerLabel = isMaintenance ? t("jobForm.myMaintenanceWorkers") : t("jobForm.assignedWorkers");
   const emptyWorkerMsg = isMaintenance
     ? <>{t("jobForm.noMaintenanceWorkers")} <a href="/employees" className="text-primary-600">{t("jobForm.inviteFirst")}</a>.</>
@@ -194,14 +195,14 @@ export function JobFormPage() {
     try {
       const data = {
         ...(!isSharedJob && propertyId ? { propertyId: propertyId as Id<"properties"> } : {}),
-        cleanerIds: (isPartnerMode || assignmentType === "team" ? [] : selectedCleaners) as Id<"users">[],
-        ...(!isPartnerMode && assignmentType === "team" && selectedTeamId ? { assignedTeamId: selectedTeamId as Id<"teams"> } : {}),
+        ...(!isEditing || canAssignWorkers ? { cleanerIds: (isPartnerMode || assignmentType === "team" ? [] : selectedCleaners) as Id<"users">[] } : {}),
+        ...(canAssignWorkers && !isPartnerMode && assignmentType === "team" && selectedTeamId ? { assignedTeamId: selectedTeamId as Id<"teams"> } : {}),
         type: type as any,
         scheduledDate,
         startTime: startTime || undefined,
         durationMinutes,
         notes: notes || undefined,
-        ...(managerId ? { assignedManagerId: managerId as Id<"users"> } : {}),
+        ...(canAssignWorkers && managerId ? { assignedManagerId: managerId as Id<"users"> } : {}),
       };
       if (isEditing) {
         await updateJob({
@@ -210,8 +211,8 @@ export function JobFormPage() {
           userId: uid,
           ...data,
           // Clear manager if user explicitly unset it (was previously assigned)
-          ...(!managerId && (existing as any)?.assignedManagerId ? { clearAssignedManager: true } : {}),
-          ...(assignmentType === "individual" && (existing as any)?.assignedTeamId ? { clearAssignedTeam: true } : {}),
+          ...(canAssignWorkers && !managerId && (existing as any)?.assignedManagerId ? { clearAssignedManager: true } : {}),
+          ...(canAssignWorkers && assignmentType === "individual" && (existing as any)?.assignedTeamId ? { clearAssignedTeam: true } : {}),
         });
         feedback.success(t("jobs.jobUpdated"));
         setLocation(`/jobs/${params.id}`);
@@ -222,6 +223,7 @@ export function JobFormPage() {
           userId: uid,
           propertyId: propertyId as Id<"properties">,
           ...data,
+          cleanerIds: data.cleanerIds ?? [],
           requireConfirmation: isPartnerMode ? false : requireConfirmation,
           ...(sourceProposalId ? { proposalId: sourceProposalId as Id<"proposals">, clientRequestId: sourceRequestId as Id<"clientRequests"> } : {}),
         });
@@ -398,7 +400,7 @@ export function JobFormPage() {
         )}
 
         {/* Cleaner/team assignment (my_cleaner mode or editing) */}
-        {!isPartnerMode && (
+        {!isPartnerMode && canAssignWorkers && (
           <div className="space-y-3">
             <label className="block text-sm font-medium text-gray-700">Assignment</label>
             <div className="flex rounded-lg border border-gray-200 overflow-hidden">
@@ -489,7 +491,7 @@ export function JobFormPage() {
         )}
 
         {/* Assign Manager / Owner */}
-        <div>
+        {canAssignWorkers && <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.managerOversight")}</label>
           <select className="input-field" value={managerId} onChange={(e) => { managerTouched.current = true; setManagerId(e.target.value); }}>
             <option value="">{t("jobForm.noManager")}</option>
@@ -499,7 +501,7 @@ export function JobFormPage() {
             ))}
           </select>
           <p className="text-xs text-gray-400 mt-1">{t("jobForm.managerOversightHelp")}</p>
-        </div>
+        </div>}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.notes")}</label>

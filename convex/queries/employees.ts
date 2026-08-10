@@ -2,6 +2,7 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
 import { requireStaffCompany } from "../lib/sessionAuth";
+import { hasOwnerOrManagerPermission } from "../lib/auth";
 import { hashTokenForLookup } from "../lib/tokenHash";
 
 function toEmployeeDirectoryEntry(user: Doc<"users">) {
@@ -34,10 +35,16 @@ function toEmployeeDirectoryEntry(user: Doc<"users">) {
   };
 }
 
+async function requireAssignmentDirectory(ctx: any, args: { sessionToken: string; companyId: any; userId: any }) {
+  const user = await requireStaffCompany(ctx, args.sessionToken, args.companyId, args.userId);
+  if (!hasOwnerOrManagerPermission(user, "canAssignCleaners")) throw new Error("Worker assignment permission required");
+  return user;
+}
+
 export const list = query({
   args: { companyId: v.id("companies"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    await requireStaffCompany(ctx, args.sessionToken, args.companyId, args.userId);
+    await requireAssignmentDirectory(ctx, args);
 
     const users = await ctx.db
       .query("users")
@@ -102,7 +109,7 @@ export const getCleaners = query({
 export const getJobAssignees = query({
   args: { companyId: v.id("companies"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    await requireStaffCompany(ctx, args.sessionToken, args.companyId, args.userId);
+    await requireAssignmentDirectory(ctx, args);
     const users = await ctx.db
       .query("users")
       .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
@@ -116,7 +123,7 @@ export const getJobAssignees = query({
 export const getManagers = query({
   args: { companyId: v.id("companies"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    await requireStaffCompany(ctx, args.sessionToken, args.companyId, args.userId);
+    await requireAssignmentDirectory(ctx, args);
 
     const users = await ctx.db
       .query("users")
@@ -148,7 +155,7 @@ export const getWalkthroughAssignees = query({
 export const getMaintenanceWorkers = query({
   args: { companyId: v.id("companies"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    await requireStaffCompany(ctx, args.sessionToken, args.companyId, args.userId);
+    await requireAssignmentDirectory(ctx, args);
 
     const users = await ctx.db
       .query("users")

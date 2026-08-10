@@ -14,7 +14,7 @@ async function seed(t: ReturnType<typeof convexTest>) {
     const companyId = await ctx.db.insert("companies", { name: "Cancel Co", timezone: "America/New_York" });
     const otherCompanyId = await ctx.db.insert("companies", { name: "Other Co", timezone: "America/New_York" });
     const owner = await ctx.db.insert("users", { email: "cancel-owner@test.dev", passwordHash, name: "Olivia Owner", companyId, role: "owner", status: "active" });
-    const manager = await ctx.db.insert("users", { email: "cancel-manager@test.dev", passwordHash, name: "Manny Manager", companyId, role: "manager", status: "active", canSeeAllJobs: true });
+    const manager = await ctx.db.insert("users", { email: "cancel-manager@test.dev", passwordHash, name: "Manny Manager", companyId, role: "manager", status: "active", canSeeAllJobs: true, canCreateJobs: true });
     const worker = await ctx.db.insert("users", { email: "cancel-worker@test.dev", passwordHash, name: "Wendy Worker", companyId, role: "cleaner", status: "active" });
     const foreignOwner = await ctx.db.insert("users", { email: "foreign-owner@test.dev", passwordHash, name: "Foreign Owner", companyId: otherCompanyId, role: "owner", status: "active" });
     const scheduled = await ctx.db.insert("jobs", { companyId, cleanerIds: [worker], type: "standard", status: "scheduled", scheduledDate: "2026-07-22", durationMinutes: 60, reworkCount: 0 });
@@ -66,6 +66,14 @@ describe("job cancellation lifecycle", () => {
     await t.mutation(api.mutations.jobs.cancel, { jobId: s.scheduled, reason: "staff_unavailable", userId: s.manager, sessionToken: auth.sessionToken });
     const notifications = await t.run((ctx) => ctx.db.query("notifications").collect());
     expect(new Set(notifications.map((notification) => notification.userId))).toEqual(new Set([s.worker, s.owner]));
+  });
+
+  it("enforces manager job authority immediately after grant and revocation", async () => {
+    const t = convexTest(schema, modules); const s = await seed(t); const auth = await login(t, "cancel-manager@test.dev");
+    await t.run((ctx) => ctx.db.patch(s.manager, { canCreateJobs: false }));
+    await expect(t.mutation(api.mutations.jobs.cancel, { jobId: s.scheduled, reason: "weather", userId: s.manager, sessionToken: auth.sessionToken })).rejects.toThrow("Job cancellation permission required");
+    await t.run((ctx) => ctx.db.patch(s.manager, { canCreateJobs: true }));
+    await expect(t.mutation(api.mutations.jobs.cancel, { jobId: s.scheduled, reason: "weather", userId: s.manager, sessionToken: auth.sessionToken })).resolves.toBeNull();
   });
 
   it("atomically closes an active pause at cancellation and freezes historical timing", async () => {

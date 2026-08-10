@@ -22,6 +22,7 @@ import {
 import { ensureJobExecutionForm } from "../lib/jobExecutionForm";
 import { submitJobExecution } from "../lib/jobSubmission";
 import { resolvePropertyConditionRequirement } from "../lib/propertyConditionRequirements";
+import { hasOwnerOrManagerPermission } from "../lib/auth";
 
 const requestJobTypeValidator = v.union(
   v.literal("standard"),
@@ -140,11 +141,15 @@ export const create = mutation({
     clientRequestId: v.optional(v.id("clientRequests")),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(
+    const owner = await requireOwnerManagerSession(
       ctx,
       args.sessionToken,
       args.userId,
     );
+    if (!hasOwnerOrManagerPermission(owner, "canCreateJobs")) throw new Error("Job creation permission required");
+    if (owner.role === "manager" && (args.cleanerIds.length > 0 || args.assignedTeamId || args.assignedManagerId) && !owner.canAssignCleaners) {
+      throw new Error("Worker assignment permission required");
+    }
     if (owner.companyId !== args.companyId) throw new Error("Not your company");
     await requireActiveSubscription(ctx, args.companyId);
     if (args.assignedTeamId) {
@@ -301,11 +306,15 @@ export const update = mutation({
     clearAssignedManager: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(
+    const owner = await requireOwnerManagerSession(
       ctx,
       args.sessionToken,
       args.userId,
     );
+    if (!hasOwnerOrManagerPermission(owner, "canCreateJobs")) throw new Error("Job editing permission required");
+    if (owner.role === "manager" && (args.cleanerIds !== undefined || args.assignedTeamId || args.clearAssignedTeam || args.assignedManagerId || args.clearAssignedManager) && !owner.canAssignCleaners) {
+      throw new Error("Worker assignment permission required");
+    }
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
@@ -382,6 +391,7 @@ export const cancel = mutation({
       args.sessionToken,
       args.userId,
     );
+    if (!hasOwnerOrManagerPermission(actor, "canCreateJobs")) throw new Error("Job cancellation permission required");
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== actor.companyId) throw new Error("Access denied");

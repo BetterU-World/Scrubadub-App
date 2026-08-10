@@ -445,13 +445,15 @@ export default function App() {
                 <Route path="/" component={ManagerHomePage} />
                 {user?.canManageSchedule && <Route path="/jobs/requests/:requestId" component={JobRequestDetailPage} />}
                 {user?.canManageSchedule && <Route path="/jobs/requests" component={JobRequestListPage} />}
+                {user?.canCreateJobs && <Route path="/jobs/new" component={JobFormPage} />}
+                {user?.canCreateJobs && <Route path="/jobs/:id/edit" component={JobFormPage} />}
                 <Route path="/jobs/:id/work/form" component={WorkerJobFormPage} />
                 <Route path="/jobs/:id/work" component={WorkerJobDetailPage} />
                 <Route path="/jobs/:id/form" component={WorkerJobFormPage} />
                 <Route path="/jobs/:id" component={ManagerJobDetailPage} />
                 <Route path="/jobs" component={ManagerJobListPage} />
                 <Route path="/red-flags" component={ManagerRedFlagsPage} />
-                <Route path="/calendar" component={CalendarPage} />
+                {user?.canManageSchedule && <Route path="/calendar" component={CalendarPage} />}
                 {user?.canManageBusinessConfiguration && <Route path="/owner/settings/add-ons" component={CompanyAddOnsPage} />}
               </>
             ) : (

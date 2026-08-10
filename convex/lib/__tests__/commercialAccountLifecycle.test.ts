@@ -51,9 +51,9 @@ describe("commercial account lifecycle", () => {
     expect(paused).toEqual({ status: "paused", changed: true, futureActiveJobCount: 1 });
     await expect(s.t.mutation(api.mutations.commercialSchedules.generateCommercialJobsFromSchedule, { ...s.auth.owner, commercialScheduleId: s.schedule, startDate: "2099-01-12", endDate: "2099-01-12" })).rejects.toThrow("active commercial accounts");
     await expect(s.t.mutation(api.mutations.commercialAccounts.pauseCommercialAccount, { ...s.auth.owner, commercialAccountId: s.account, reason: "seasonal_pause" })).rejects.toThrow("cannot be paused");
-    await s.t.mutation(api.mutations.commercialAccounts.resumeCommercialAccount, { ...s.auth.manager, commercialAccountId: s.account, notes: " ready " });
+    await s.t.mutation(api.mutations.commercialAccounts.resumeCommercialAccount, { ...s.auth.owner, commercialAccountId: s.account, notes: " ready " });
     await s.t.mutation(api.mutations.commercialSchedules.generateCommercialJobsFromSchedule, { ...s.auth.owner, commercialScheduleId: s.schedule, startDate: "2099-01-12", endDate: "2099-01-12" });
-    await s.t.mutation(api.mutations.commercialAccounts.endCommercialAccount, { ...s.auth.manager, commercialAccountId: s.account, reason: "contract_completed" });
+    await s.t.mutation(api.mutations.commercialAccounts.endCommercialAccount, { ...s.auth.owner, commercialAccountId: s.account, reason: "contract_completed" });
     await expect(s.t.mutation(api.mutations.commercialAccounts.resumeCommercialAccount, { ...s.auth.owner, commercialAccountId: s.account })).rejects.toThrow("cannot be resumed");
     const snapshot: any = await s.t.run(async (ctx) => ({ account: await ctx.db.get(s.account), jobs: await ctx.db.query("jobs").collect(), audits: await ctx.db.query("auditLog").collect(), notifications: await ctx.db.query("notifications").collect() }));
     expect(snapshot.account.lifecycleHistory.map((event: any) => event.type)).toEqual(["paused", "resumed", "ended"]);
@@ -63,7 +63,8 @@ describe("commercial account lifecycle", () => {
     expect(snapshot.account.status).toBe("ended");
     expect(snapshot.jobs.find((job: any) => job._id === s.job).status).toBe("scheduled");
     expect(snapshot.audits.map((event: any) => event.action)).toEqual(["pause_commercial_account", "resume_commercial_account", "end_commercial_account"]);
-    expect(snapshot.notifications.filter((n: any) => n.userId === s.owner || n.userId === s.secondOwner)).toHaveLength(4);
+    expect(snapshot.notifications.filter((n: any) => n.userId === s.owner || n.userId === s.secondOwner)).toHaveLength(0);
+    expect(snapshot.notifications.filter((n: any) => n.userId === s.manager)).toHaveLength(3);
     expect(snapshot.notifications.some((n: any) => n.userId === s.manager && n.type === "commercial_account_paused")).toBe(true);
   });
 
@@ -71,7 +72,8 @@ describe("commercial account lifecycle", () => {
     const s = await setup();
     const args = { commercialAccountId: s.account, reason: "other" as const };
     await expect(s.t.mutation(api.mutations.commercialAccounts.pauseCommercialAccount, { ...s.auth.owner, ...args })).rejects.toThrow("Notes are required");
-    await expect(s.t.mutation(api.mutations.commercialAccounts.pauseCommercialAccount, { ...s.auth.worker, ...args, notes: "x" })).rejects.toThrow("Owner or manager");
+    await expect(s.t.mutation(api.mutations.commercialAccounts.pauseCommercialAccount, { ...s.auth.manager, ...args, notes: "x" })).rejects.toThrow("Owner session required");
+    await expect(s.t.mutation(api.mutations.commercialAccounts.pauseCommercialAccount, { ...s.auth.worker, ...args, notes: "x" })).rejects.toThrow("Owner session required");
     await expect(s.t.mutation(api.mutations.commercialAccounts.pauseCommercialAccount, { ...s.auth.outsider, ...args, notes: "x" })).rejects.toThrow("Access denied");
     await expect(s.t.mutation(api.mutations.commercialAccounts.pauseCommercialAccount, { userId: s.owner, sessionToken: "invalid", ...args, notes: "x" })).rejects.toThrow("session");
   });

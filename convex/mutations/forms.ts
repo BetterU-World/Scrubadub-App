@@ -3,7 +3,8 @@ import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
 import { logAudit, createNotification } from "../lib/helpers";
-import { requireOwnerSession } from "../lib/sessionAuth";
+import { requireOwnerManagerSession } from "../lib/sessionAuth";
+import { hasOwnerOrManagerPermission } from "../lib/auth";
 import { getJobRecipientUserIds } from "../lib/teams";
 import { resolveOperationalEmailIdentity } from "../lib/operationalEmailIdentity";
 import { requireAssignedJobExecutor } from "../lib/jobExecutionAuth";
@@ -119,7 +120,8 @@ export const approve = mutation({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
+    if (!hasOwnerOrManagerPermission(owner, "canApproveForms")) throw new Error("Completed work review permission required");
     const form = await ctx.db.get(args.formId);
     if (!form) throw new Error("Form not found");
     if (form.companyId !== owner.companyId) throw new Error("Access denied");
@@ -211,7 +213,8 @@ export const requestRework = mutation({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
+    if (!hasOwnerOrManagerPermission(owner, "canRequestRework")) throw new Error("Rework permission required");
     const form = await ctx.db.get(args.formId);
     if (!form) throw new Error("Form not found");
     if (form.companyId !== owner.companyId) throw new Error("Access denied");
