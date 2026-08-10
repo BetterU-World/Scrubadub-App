@@ -2,6 +2,7 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { hasManagerPermission } from "../lib/auth";
 import { requireOwnerManagerCompany, requireOwnerManagerSession } from "../lib/sessionAuth";
+import { isUserAssignedToJob } from "../lib/teams";
 
 /** Get all inspections for a specific job. */
 export const getByJob = query({
@@ -18,7 +19,7 @@ export const getByJob = query({
 
     // Manager visibility: must be able to see this job
     if (user.role === "manager" && !hasManagerPermission(user, "canSeeAllJobs")) {
-      if (job.assignedManagerId !== user._id) return [];
+      if (job.assignedManagerId !== user._id && !(await isUserAssignedToJob(ctx, job, user._id))) return [];
     }
 
     const inspections = await ctx.db
@@ -111,7 +112,7 @@ export const getSummary = query({
 
     // Manager visibility
     if (user.role === "manager" && !hasManagerPermission(user, "canSeeAllJobs")) {
-      if (job.assignedManagerId !== user._id) return null;
+      if (job.assignedManagerId !== user._id && !(await isUserAssignedToJob(ctx, job, user._id))) return null;
     }
 
     const inspections = await ctx.db

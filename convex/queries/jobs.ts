@@ -59,6 +59,7 @@ export const list = query({
         const managerTeamIds = await getActiveTeamIdsForUser(ctx, user._id, args.companyId);
         jobs = jobs.filter(
           (j) =>
+            j.cleanerIds.includes(user._id) ||
             j.assignedManagerId === user._id ||
             (j.assignedTeamId && managerTeamIds.has(j.assignedTeamId))
         );
@@ -201,7 +202,7 @@ export const get = query({
     }
     if (user.role === "manager" && !hasManagerPermission(user, "canSeeAllJobs")) {
       const managerTeamIds = await getActiveTeamIdsForUser(ctx, user._id, user.companyId);
-      if (job.assignedManagerId !== user._id && !(job.assignedTeamId && managerTeamIds.has(job.assignedTeamId))) return null;
+      if (!job.cleanerIds.includes(user._id) && job.assignedManagerId !== user._id && !(job.assignedTeamId && managerTeamIds.has(job.assignedTeamId))) return null;
     }
 
     const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
@@ -250,6 +251,7 @@ export const get = query({
       ? await ctx.db.get(job.assignedManagerId)
       : null;
     const canCurrentUserExecute =
+      job.timerStoppedAt === undefined &&
       isRoleCompatibleWithJobExecution(user.role, job.type) &&
       await isUserAssignedToJob(ctx, job, user._id);
 
@@ -346,7 +348,8 @@ export const getForManager = query({
         : allJobs.filter(
             (j) =>
               j.status !== "cancelled" &&
-              (j.assignedManagerId === user._id ||
+              (j.cleanerIds.includes(user._id) ||
+                j.assignedManagerId === user._id ||
                 (j.assignedTeamId && managerTeamIds.has(j.assignedTeamId)))
           );
 
@@ -384,6 +387,10 @@ export const getForManager = query({
             inspectionStatus,
             assignedTeamName: job.assignedTeamId ? (await ctx.db.get(job.assignedTeamId))?.name ?? null : null,
             assignmentType: job.assignedTeamId ? "team" : "individual",
+            canCurrentUserExecute:
+              job.timerStoppedAt === undefined &&
+              isRoleCompatibleWithJobExecution(user.role, job.type) &&
+              await isUserAssignedToJob(ctx, job, user._id),
           });
         })
       );
@@ -428,7 +435,7 @@ export const getCalendarJobs = query({
       } else if (user.role === "manager" && !hasManagerPermission(user, "canSeeAllJobs")) {
         const managerTeamIds = await getActiveTeamIdsForUser(ctx, user._id, args.companyId);
         filtered = filtered.filter(
-          (j) => j.assignedManagerId === user._id || (j.assignedTeamId && managerTeamIds.has(j.assignedTeamId))
+          (j) => j.cleanerIds.includes(user._id) || j.assignedManagerId === user._id || (j.assignedTeamId && managerTeamIds.has(j.assignedTeamId))
         );
       }
 

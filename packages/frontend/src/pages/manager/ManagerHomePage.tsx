@@ -33,7 +33,7 @@ export function ManagerHomePage() {
     if (!jobs) return null;
     const todayJobs = jobs.filter((j) => j.scheduledDate === today);
     const upcoming = jobs.filter((j) => j.scheduledDate > today);
-    const inProgress = jobs.filter((j) => j.status === "in_progress");
+    const inProgress = jobs.filter((j) => j.status === "in_progress" && !j.timerStoppedAt);
     const recentCompleted = jobs.filter(
       (j) => j.status === "approved" || j.status === "submitted"
     );

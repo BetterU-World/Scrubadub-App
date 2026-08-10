@@ -21,6 +21,10 @@ describe("job timing", () => {
     expect(getJobTiming(job, 3_600_000)).toEqual({ elapsedMs: 60_000, totalPausedMs: 10_000, activeMs: 50_000, currentPauseMs: 0 });
   });
 
+  it("uses an administrative stop as a non-lifecycle timing boundary", () => {
+    expect(getJobTiming({ startedAt: 1_000, timerStoppedAt: 61_000 }, 120_000)).toEqual({ elapsedMs: 60_000, totalPausedMs: 0, activeMs: 60_000, currentPauseMs: 0 });
+  });
+
   it("requires and trims Other notes", () => {
     expect(() => normalizePauseNote("other", "   ")).toThrow("required");
     expect(normalizePauseNote("other", "  Door code issue  ")).toBe("Door code issue");

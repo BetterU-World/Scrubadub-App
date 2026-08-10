@@ -23,6 +23,7 @@ export type JobTiming = {
   startedAt?: number;
   completedAt?: number;
   cancelledAt?: number;
+  timerStoppedAt?: number;
   currentPauseStartedAt?: number;
   pauseHistory?: PauseRecord[];
 };
@@ -32,7 +33,7 @@ export function getJobTiming(job: JobTiming, now = Date.now()) {
     return { elapsedMs: 0, totalPausedMs: 0, activeMs: 0, currentPauseMs: 0 };
   }
 
-  const end = job.completedAt ?? job.cancelledAt ?? now;
+  const end = job.completedAt ?? job.cancelledAt ?? job.timerStoppedAt ?? now;
   const elapsedMs = Math.max(0, end - job.startedAt);
   const totalPausedMs = (job.pauseHistory ?? []).reduce((total, pause) => {
     const duration = pause.durationMs ??

@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { hasManagerPermission } from "../lib/auth";
 import { createNotification, logAudit } from "../lib/helpers";
 import { requireOwnerManagerSession, requireOwnerSession } from "../lib/sessionAuth";
+import { isUserAssignedToJob } from "../lib/teams";
 
 export const submit = mutation({
   args: {
@@ -31,7 +32,9 @@ export const submit = mutation({
 
     // Enforce manager visibility scope
     if (!hasManagerPermission(user, "canSeeAllJobs")) {
-      if (job.assignedManagerId !== user._id) throw new Error("Access denied");
+      if (job.assignedManagerId !== user._id && !(await isUserAssignedToJob(ctx, job, user._id))) {
+        throw new Error("Access denied");
+      }
     }
 
     // Enforce single inspection cycle: reject if cycle is closed

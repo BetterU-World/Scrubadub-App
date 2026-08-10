@@ -888,6 +888,8 @@ export default defineSchema({
     ),
     cancelNotes: v.optional(v.string()),
     approvedAt: v.optional(v.number()),
+    // Administrative closure for historical timers, distinct from lifecycle completion.
+    timerStoppedAt: v.optional(v.number()),
     currentPauseStartedAt: v.optional(v.number()),
     pauseHistory: v.optional(
       v.array(
