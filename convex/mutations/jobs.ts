@@ -20,6 +20,7 @@ import {
   assertValidJobExecutionAssignees,
   requireAssignedJobExecutor,
 } from "../lib/jobExecutionAuth";
+import { ensureJobExecutionForm } from "../lib/jobExecutionForm";
 
 const requestJobTypeValidator = v.union(
   v.literal("standard"),
@@ -695,6 +696,10 @@ export const startJob = mutation({
     if (job.status !== "confirmed" && job.status !== "rework_requested")
       throw new Error("Job cannot be started in current status");
 
+    // Form initialization is part of the same transaction as starting the job,
+    // so every executor receives one canonical checklist without a partial state.
+    await ensureJobExecutionForm(ctx, job, user._id);
+
     // Snapshot property inventory onto job as checklist
     const updates: Record<string, unknown> = {
       status: "in_progress",
@@ -753,6 +758,8 @@ export const pauseJob = mutation({
     const { user, job } = await requireAssignedJobExecutor(ctx, args.sessionToken, args.jobId, args.userId);
     if (job.status !== "in_progress")
       throw new Error("Only an in-progress job can be paused");
+    if (job.timerStoppedAt !== undefined)
+      throw new Error("This job timer was administratively closed");
     if (job.currentPauseStartedAt !== undefined)
       throw new Error("Job is already paused");
     const history = job.pauseHistory ?? [];
@@ -788,6 +795,8 @@ export const resumeJob = mutation({
     const { user, job } = await requireAssignedJobExecutor(ctx, args.sessionToken, args.jobId, args.userId);
     if (job.status !== "in_progress")
       throw new Error("Only an in-progress job can be resumed");
+    if (job.timerStoppedAt !== undefined)
+      throw new Error("This job timer was administratively closed");
     if (job.currentPauseStartedAt === undefined)
       throw new Error("Job is not paused");
     const history = [...(job.pauseHistory ?? [])];
@@ -828,6 +837,8 @@ export const completeJob = mutation({
         "Only a team lead, assigned manager, or owner can submit this job",
       );
     if (job.status !== "in_progress") throw new Error("Job not in progress");
+    if (job.timerStoppedAt !== undefined)
+      throw new Error("This job timer was administratively closed");
     if (job.currentPauseStartedAt !== undefined)
       throw new Error("Resume the job before completing it");
 
@@ -843,6 +854,14 @@ export const completeJob = mutation({
       }
     }
 
+    const form = await ctx.db
+      .query("forms")
+      .withIndex("by_jobId", (q) => q.eq("jobId", args.jobId))
+      .first();
+    if (!form || (form.status !== "submitted" && form.status !== "approved")) {
+      throw new Error("Complete the required cleaning form before submitting the job");
+    }
+
     await ctx.db.patch(args.jobId, {
       status: "submitted",
       completedAt: Date.now(),
@@ -850,18 +869,6 @@ export const completeJob = mutation({
         ? `${job.notes ? job.notes + "\n" : ""}Completion notes: ${args.notes}`
         : job.notes,
     });
-
-    // Keep form status in sync to prevent drift
-    const form = await ctx.db
-      .query("forms")
-      .withIndex("by_jobId", (q) => q.eq("jobId", args.jobId))
-      .first();
-    if (form && form.status === "in_progress") {
-      await ctx.db.patch(form._id, {
-        status: "submitted",
-        submittedAt: Date.now(),
-      });
-    }
 
     const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
     const propName =
@@ -1011,6 +1018,8 @@ export const ownerPauseJob = mutation({
       throw new Error("You are not self-assigned to this job");
     if (job.status !== "in_progress")
       throw new Error("Only an in-progress job can be paused");
+    if (job.timerStoppedAt !== undefined)
+      throw new Error("This job timer was administratively closed");
     if (job.currentPauseStartedAt !== undefined)
       throw new Error("Job is already paused");
     const history = job.pauseHistory ?? [];
@@ -1055,6 +1064,8 @@ export const ownerResumeJob = mutation({
       throw new Error("You are not self-assigned to this job");
     if (job.status !== "in_progress")
       throw new Error("Only an in-progress job can be resumed");
+    if (job.timerStoppedAt !== undefined)
+      throw new Error("This job timer was administratively closed");
     if (job.currentPauseStartedAt === undefined)
       throw new Error("Job is not paused");
     const history = [...(job.pauseHistory ?? [])];
@@ -1104,6 +1115,8 @@ export const ownerCompleteJob = mutation({
     if (job.assignedManagerId !== owner._id)
       throw new Error("You are not self-assigned to this job");
     if (job.status !== "in_progress") throw new Error("Job not in progress");
+    if (job.timerStoppedAt !== undefined)
+      throw new Error("This job timer was administratively closed");
     if (job.currentPauseStartedAt !== undefined)
       throw new Error("Resume the job before completing it");
 

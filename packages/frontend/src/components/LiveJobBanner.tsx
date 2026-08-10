@@ -70,6 +70,7 @@ export function LiveJobBanner() {
 
   const activeJobs = jobs.filter((job) => {
     if (job.scheduledDate !== today) return false;
+    if (job.status === "in_progress" && job.timerStoppedAt) return false;
     if (!ACTIVE_STATUSES.includes(job.status as (typeof ACTIVE_STATUSES)[number])) return false;
     if (user.role === "cleaner" && !job.cleanerIds.includes(user._id)) return false;
     return true;

@@ -177,7 +177,7 @@ export function JobDetailPage() {
   if (job === undefined) return <PageLoader />;
   if (job === null) return <div className="text-center py-12 text-gray-500">{t("jobs.jobNotFound")}</div>;
 
-  const canReview = job.status === "submitted";
+  const canReview = job.status === "submitted" && job.form?.status === "submitted";
   const canCancel = !["cancelled", "submitted", "approved"].includes(job.status);
   const detailPartnerStatus = incomingShared?.status
     ?? getPartnerResponseStatus((sharedStatus ?? []).map((status) => status.status));

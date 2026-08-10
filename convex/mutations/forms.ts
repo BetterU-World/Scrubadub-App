@@ -4,10 +4,10 @@ import { v } from "convex/values";
 import { Id } from "../_generated/dataModel";
 import { logAudit, createNotification } from "../lib/helpers";
 import { requireOwnerSession } from "../lib/sessionAuth";
-import { getFormTemplate } from "../lib/constants";
 import { getJobRecipientUserIds } from "../lib/teams";
 import { resolveOperationalEmailIdentity } from "../lib/operationalEmailIdentity";
 import { requireAssignedJobExecutor } from "../lib/jobExecutionAuth";
+import { ensureJobExecutionForm } from "../lib/jobExecutionForm";
 
 export const createFromTemplate = mutation({
   args: {
@@ -20,38 +20,7 @@ export const createFromTemplate = mutation({
     const { user, job } = await requireAssignedJobExecutor(ctx, args.sessionToken, args.jobId, args.cleanerId);
     if (user.companyId !== args.companyId) throw new Error("Access denied");
 
-    const existing = await ctx.db
-      .query("forms")
-      .withIndex("by_jobId", (q) => q.eq("jobId", args.jobId))
-      .first();
-    if (existing) return existing._id;
-
-    const formId = await ctx.db.insert("forms", {
-      jobId: args.jobId,
-      companyId: args.companyId,
-      cleanerId: args.cleanerId,
-      status: "in_progress",
-    });
-
-    // Resolve property type so commercial/office jobs can get the right template
-    const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
-    const template = getFormTemplate(job.type, property?.type);
-
-    let order = 0;
-    for (const section of template) {
-      for (const itemName of section.items) {
-        await ctx.db.insert("formItems", {
-          formId,
-          section: section.section,
-          itemName,
-          completed: false,
-          isRedFlag: false,
-          order: order++,
-        });
-      }
-    }
-
-    return formId;
+    return await ensureJobExecutionForm(ctx, job, user._id);
   },
 });
 
@@ -157,7 +126,9 @@ export const approve = mutation({
     // Check job status (authoritative) — works for both forms.submit and jobs.completeJob paths
     const job = await ctx.db.get(form.jobId);
     if (!job) throw new Error("Job not found");
+    if (job.status === "approved" && form.status === "approved") return;
     if (job.status !== "submitted") throw new Error("Job not submitted for review");
+    if (form.status !== "submitted") throw new Error("Required cleaning form is not submitted");
 
     await ctx.db.patch(args.formId, {
       status: "approved",
