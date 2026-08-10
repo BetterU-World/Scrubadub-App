@@ -54,8 +54,8 @@ export function JobFormPage() {
     api.queries.properties.list,
     user?.companyId && !isSharedJob ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
-  const cleaners = useQuery(
-    api.queries.employees.getCleaners,
+  const jobAssignees = useQuery(
+    api.queries.employees.getJobAssignees,
     user?.companyId && sessionToken ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
   const maintenanceWorkers = useQuery(
@@ -161,11 +161,11 @@ export function JobFormPage() {
     }
   }, [isEditing, companyProfile]);
 
-  if (!user || (!isSharedJob && properties === undefined) || cleaners === undefined || maintenanceWorkers === undefined || teams === undefined) return <PageLoader />;
+  if (!user || (!isSharedJob && properties === undefined) || jobAssignees === undefined || maintenanceWorkers === undefined || teams === undefined) return <PageLoader />;
 
   const isMaintenance = type === "maintenance";
-  const workers = isMaintenance ? maintenanceWorkers : cleaners;
-  const workerLabel = isMaintenance ? t("jobForm.myMaintenanceWorkers") : t("jobForm.myCleaners");
+  const workers = isMaintenance ? maintenanceWorkers : jobAssignees;
+  const workerLabel = isMaintenance ? t("jobForm.myMaintenanceWorkers") : t("jobForm.assignedWorkers");
   const emptyWorkerMsg = isMaintenance
     ? <>{t("jobForm.noMaintenanceWorkers")} <a href="/employees" className="text-primary-600">{t("jobForm.inviteFirst")}</a>.</>
     : <>{t("jobForm.noCleaners")} <a href="/employees" className="text-primary-600">{t("jobForm.inviteFirst")}</a>.</>;
@@ -407,7 +407,7 @@ export function JobFormPage() {
                 onClick={() => { setAssignmentType("individual"); setSelectedTeamId(""); }}
                 className={`flex-1 px-4 py-2 text-sm font-medium ${assignmentType === "individual" ? "bg-primary-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
               >
-                Individual cleaner
+                {t("jobForm.individualWorkers")}
               </button>
               <button
                 type="button"
@@ -430,7 +430,7 @@ export function JobFormPage() {
               </div>
             ) : (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">{isMaintenance ? t("jobForm.assignMaintenanceWorkers") : t("jobForm.assignCleaners")}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{isMaintenance ? t("jobForm.assignMaintenanceWorkers") : t("jobForm.assignedWorkers")}</label>
                 {workers.length === 0 ? (
                   <p className="text-sm text-gray-500">{emptyWorkerMsg}</p>
                 ) : (

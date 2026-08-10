@@ -393,6 +393,9 @@ export default function App() {
                 <Route path="/jobs/requests" component={JobRequestListPage} />
                 <Route path="/jobs/new" component={JobFormPage} />
                 <Route path="/jobs/:id/edit" component={JobFormPage} />
+                <Route path="/jobs/:id/work/form" component={WorkerJobFormPage} />
+                <Route path="/jobs/:id/work" component={WorkerJobDetailPage} />
+                <Route path="/jobs/:id/form" component={WorkerJobFormPage} />
                 <Route path="/jobs/:id" component={JobDetailPage} />
                 <Route path="/calendar" component={CalendarPage} />
                 <Route path="/red-flags" component={RedFlagsDashboard} />
@@ -442,6 +445,9 @@ export default function App() {
                 <Route path="/" component={ManagerHomePage} />
                 {user?.canManageSchedule && <Route path="/jobs/requests/:requestId" component={JobRequestDetailPage} />}
                 {user?.canManageSchedule && <Route path="/jobs/requests" component={JobRequestListPage} />}
+                <Route path="/jobs/:id/work/form" component={WorkerJobFormPage} />
+                <Route path="/jobs/:id/work" component={WorkerJobDetailPage} />
+                <Route path="/jobs/:id/form" component={WorkerJobFormPage} />
                 <Route path="/jobs/:id" component={ManagerJobDetailPage} />
                 <Route path="/jobs" component={ManagerJobListPage} />
                 <Route path="/red-flags" component={ManagerRedFlagsPage} />

@@ -24,6 +24,9 @@ export const getCleanerPaymentForJob = query({
     if (!cleanerId) return null;
 
     const cleaner = await ctx.db.get(cleanerId);
+    if (cleaner?.role !== "cleaner" && cleaner?.role !== "maintenance") {
+      return null;
+    }
 
     // Look up existing payment (direct record or via batch join table)
     let payment = await ctx.db
@@ -223,6 +226,9 @@ export const listUnpaidJobsForCompany = query({
         }
 
         const cleaner = await ctx.db.get(job.cleanerIds[0]);
+        if (cleaner?.role !== "cleaner" && cleaner?.role !== "maintenance") {
+          continue;
+        }
         const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
         const propName =
           property?.name ??

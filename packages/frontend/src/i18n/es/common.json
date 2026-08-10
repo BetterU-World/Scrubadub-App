@@ -454,6 +454,12 @@
     "daysAgo": "hace {{count}}d"
   },
   "jobs": {
+    "openChecklist": "Abrir lista de verificaciÃ³n",
+    "workThisJob": "Realizar este trabajo",
+    "youAreAssigned": "EstÃ¡s asignado a este trabajo",
+    "notAssignedToPerform": "No estÃ¡s asignado para realizar este trabajo",
+    "executionUnavailable": "La ejecuciÃ³n del trabajo no estÃ¡ disponible",
+    "completeChecklistBeforeSubmitting": "Completa la lista de verificaciÃ³n antes de enviar",
     "title": "Trabajos",
     "description": "Gestiona trabajos de limpieza",
     "scheduleJob": "Programar trabajo",
@@ -674,6 +680,8 @@
     "post_construction": "Post-Construcción"
   },
   "jobForm": {
+    "assignedWorkers": "Trabajadores asignados",
+    "individualWorkers": "Trabajadores individuales",
     "propertyShared": "Propiedad (compartida)",
     "property": "Propiedad",
     "selectProperty": "Selecciona una propiedad",

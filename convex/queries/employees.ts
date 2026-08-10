@@ -98,6 +98,21 @@ export const getCleaners = query({
   },
 });
 
+/** Active staff who may be explicitly assigned to perform a cleaning job. */
+export const getJobAssignees = query({
+  args: { companyId: v.id("companies"), userId: v.id("users"), sessionToken: v.string() },
+  handler: async (ctx, args) => {
+    await requireStaffCompany(ctx, args.sessionToken, args.companyId, args.userId);
+    const users = await ctx.db
+      .query("users")
+      .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
+      .collect();
+    return users
+      .filter((user) => user.status === "active" && ["cleaner", "manager", "owner"].includes(user.role))
+      .map(toEmployeeDirectoryEntry);
+  },
+});
+
 export const getManagers = query({
   args: { companyId: v.id("companies"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {

@@ -5,6 +5,7 @@ import { Id } from "../../../../../convex/_generated/dataModel";
 import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useParams, useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import {
   ChevronLeft,
   Flag,
@@ -95,6 +96,7 @@ export function CleaningFormPage() {
   const params = useParams<{ id: string }>();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const { t } = useTranslation();
 
   const job = useQuery(api.queries.jobs.get,
     user ? { jobId: params.id as Id<"jobs">, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
@@ -257,7 +259,22 @@ export function CleaningFormPage() {
     }
   }, [params.id]);
 
-  if (!user || job === undefined || form === undefined || formItems === undefined) {
+  if (!user || job === undefined) {
+    return <PageLoader />;
+  }
+
+  if (job === null || !job.canCurrentUserExecute) {
+    return (
+      <div className="mx-auto max-w-2xl py-12 text-center text-gray-600">
+        <h1 className="text-xl font-semibold text-gray-900">
+          {t("jobs.executionUnavailable")}
+        </h1>
+        <p className="mt-2">{t("jobs.notAssignedToPerform")}</p>
+      </div>
+    );
+  }
+
+  if (form === undefined || formItems === undefined) {
     return <PageLoader />;
   }
 

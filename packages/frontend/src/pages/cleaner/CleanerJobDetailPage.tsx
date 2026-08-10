@@ -65,6 +65,19 @@ export function CleanerJobDetailPage() {
 
   if (job === undefined) return <PageLoader />;
   if (job === null) return <div className="text-center py-12 text-gray-500">{t("jobs.jobNotFound")}</div>;
+  if (!job.canCurrentUserExecute) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <PageHeader
+          title={t("jobs.executionUnavailable")}
+          back={{ href: "/jobs", label: t("navigation.backToJobs") }}
+        />
+        <div className="card text-sm text-gray-600">
+          {t("jobs.notAssignedToPerform")}
+        </div>
+      </div>
+    );
+  }
 
   const acceptance = job.acceptanceStatus ?? "pending";
   const canAccept = job.status === "scheduled" && acceptance === "pending";
