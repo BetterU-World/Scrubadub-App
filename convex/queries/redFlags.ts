@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { hasManagerPermission } from "../lib/auth";
 import { requireOwnerManagerSession, requireOwnerSession } from "../lib/sessionAuth";
 import { withPerfLog } from "../lib/perfLog";
+import { isUserAssignedToJob } from "../lib/teams";
 
 const RED_FLAG_CAP = 2_000;
 
@@ -85,7 +86,7 @@ export const listForManager = query({
       const visibleJobIds = new Set<string>();
       for (const flag of flags) {
         const job = await ctx.db.get(flag.jobId);
-        if (job && job.assignedManagerId === user._id) {
+        if (job && (job.assignedManagerId === user._id || await isUserAssignedToJob(ctx, job, user._id))) {
           visibleJobIds.add(flag.jobId);
         }
       }
@@ -116,7 +117,7 @@ export const listByJob = query({
 
     // Manager visibility: if manager can't see all jobs, only allow assigned jobs
     if (user.role === "manager" && !hasManagerPermission(user, "canSeeAllJobs")) {
-      if (job.assignedManagerId !== user._id) throw new Error("Access denied");
+      if (job.assignedManagerId !== user._id && !(await isUserAssignedToJob(ctx, job, user._id))) throw new Error("Access denied");
     }
 
     return await ctx.db

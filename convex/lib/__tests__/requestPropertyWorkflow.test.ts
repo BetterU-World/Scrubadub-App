@@ -61,15 +61,14 @@ describe("request-to-property workflow", () => {
     process.env.APP_URL = "http://localhost:5173";
   });
 
-  it("allows owners and managers and links the expected company, type, and client", async () => {
+  it("allows owners and links the expected company, type, and client", async () => {
     const t = backend();
     const s = await seed(t);
     const ownerAuth = await login(t, "owner-a@property.test");
-    const managerAuth = await login(t, "manager-a@property.test");
 
     for (const [userId, sessionToken, leadType, expectedType] of [
       [s.ownerA, ownerAuth.sessionToken, "residential", "residential"],
-      [s.managerA, managerAuth.sessionToken, "commercial", "commercial"],
+      [s.ownerA, ownerAuth.sessionToken, "commercial", "commercial"],
       [s.ownerA, ownerAuth.sessionToken, "str_airbnb", "vacation_rental"],
     ] as const) {
       const requestId = await request(t, s.companyA, leadType, undefined, s.relationshipA);
@@ -87,15 +86,14 @@ describe("request-to-property workflow", () => {
     }
   });
 
-  it("persists classification and supports immediate save-to-create for owners and managers", async () => {
+  it("persists classification and supports immediate owner save-to-create", async () => {
     const t = backend();
     const s = await seed(t);
     const ownerAuth = await login(t, "owner-a@property.test");
-    const managerAuth = await login(t, "manager-a@property.test");
 
     for (const [userId, sessionToken, leadType, expectedType] of [
       [s.ownerA, ownerAuth.sessionToken, "residential", "residential"],
-      [s.managerA, managerAuth.sessionToken, "commercial", "commercial"],
+      [s.ownerA, ownerAuth.sessionToken, "commercial", "commercial"],
       [s.ownerA, ownerAuth.sessionToken, "str_airbnb", "vacation_rental"],
     ] as const) {
       const requestId = await request(t, s.companyA, "booking_request");
@@ -194,12 +192,15 @@ describe("request-to-property workflow", () => {
     const t = backend();
     const s = await seed(t);
     const ownerAuth = await login(t, "owner-a@property.test");
+    const managerAuth = await login(t, "manager-a@property.test");
     const cleanerAuth = await login(t, "cleaner-a@property.test");
     const ownedRequest = await request(t, s.companyA, "residential");
     const foreignRequest = await request(t, s.companyB, "residential");
     const invalidRelationshipRequest = await request(t, s.companyA, "residential", undefined, s.relationshipB);
 
-    await expect(t.mutation(api.mutations.clientRequests.createPropertyFromRequest, { requestId: ownedRequest, userId: s.cleanerA, sessionToken: cleanerAuth.sessionToken })).rejects.toThrow("Owner or manager session required");
+    await expect(t.mutation(api.mutations.clientRequests.createPropertyFromRequest, { requestId: ownedRequest, userId: s.cleanerA, sessionToken: cleanerAuth.sessionToken })).rejects.toThrow("Owner session required");
+    await expect(t.mutation(api.mutations.clientRequests.createPropertyFromRequest, { requestId: ownedRequest, userId: s.managerA, sessionToken: managerAuth.sessionToken })).rejects.toThrow("Owner session required");
+    await expect(t.mutation(api.mutations.clientRequests.updateLeadDetails, { requestId: ownedRequest, userId: s.managerA, sessionToken: managerAuth.sessionToken, leadType: "residential" })).rejects.toThrow("Owner session required");
     await expect(t.mutation(api.mutations.clientRequests.createPropertyFromRequest, { requestId: foreignRequest, userId: s.ownerA, sessionToken: ownerAuth.sessionToken })).rejects.toThrow("Access denied");
     await expect(t.mutation(api.mutations.clientRequests.createPropertyFromRequest, { requestId: ownedRequest, userId: s.ownerB, sessionToken: ownerAuth.sessionToken })).rejects.toThrow("does not match");
     await expect(t.mutation(api.mutations.clientRequests.createPropertyFromRequest, { requestId: invalidRelationshipRequest, userId: s.ownerA, sessionToken: ownerAuth.sessionToken })).rejects.toThrow("Client relationship must belong");

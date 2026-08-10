@@ -2,6 +2,7 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwnerManagerCompany, requireVerifiedStaffSession } from "../lib/sessionAuth";
 import { hasOwnerOrManagerPermission } from "../lib/auth";
+import { isActiveTeamMember } from "../lib/teams";
 
 async function withMembers(ctx: any, team: any) {
   const memberships = await ctx.db
@@ -88,6 +89,10 @@ export const get = query({
     const team = await ctx.db.get(args.teamId);
     if (!team) return null;
     if (!user.companyId || team.companyId !== user.companyId) throw new Error("Access denied");
+    const canViewTeam = user.role === "owner" ||
+      (user.role === "manager" && user.canAssignCleaners === true) ||
+      await isActiveTeamMember(ctx, team._id, user._id);
+    if (!canViewTeam) throw new Error("Access denied");
     return await withMembers(ctx, team);
   },
 });

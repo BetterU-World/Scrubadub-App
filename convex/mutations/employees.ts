@@ -55,6 +55,13 @@ export const updateManagerPermissions = mutation({
     canManageSchedule: v.boolean(),
     canResolveRedFlags: v.boolean(),
     canManageBusinessConfiguration: v.boolean(),
+    canManageClients: v.boolean(),
+    canManageSalesAndCommercial: v.boolean(),
+    canManageTeam: v.boolean(),
+    canViewFinancials: v.boolean(),
+    canManageInvoices: v.boolean(),
+    canManageDocuments: v.boolean(),
+    canViewAnalytics: v.boolean(),
   },
   handler: async (ctx, args) => {
     const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
@@ -72,6 +79,13 @@ export const updateManagerPermissions = mutation({
       canManageSchedule: args.canManageSchedule,
       canResolveRedFlags: args.canResolveRedFlags,
       canManageBusinessConfiguration: args.canManageBusinessConfiguration,
+      canManageClients: args.canManageClients,
+      canManageSalesAndCommercial: args.canManageSalesAndCommercial,
+      canManageTeam: args.canManageTeam,
+      canViewFinancials: args.canViewFinancials,
+      canManageInvoices: args.canManageInvoices,
+      canManageDocuments: args.canManageDocuments,
+      canViewAnalytics: args.canViewAnalytics,
     });
 
     await logAudit(ctx, {
@@ -89,6 +103,13 @@ export const updateManagerPermissions = mutation({
         canManageSchedule: args.canManageSchedule,
         canResolveRedFlags: args.canResolveRedFlags,
         canManageBusinessConfiguration: args.canManageBusinessConfiguration,
+        canManageClients: args.canManageClients,
+        canManageSalesAndCommercial: args.canManageSalesAndCommercial,
+        canManageTeam: args.canManageTeam,
+        canViewFinancials: args.canViewFinancials,
+        canManageInvoices: args.canManageInvoices,
+        canManageDocuments: args.canManageDocuments,
+        canViewAnalytics: args.canViewAnalytics,
       }),
     });
   },

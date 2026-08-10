@@ -3,8 +3,6 @@ import { v } from "convex/values";
 import {
   requireOwnerManagerSession,
   requireOwnerSession,
-  requireStaffCompany,
-  requireVerifiedStaffSession,
 } from "../lib/sessionAuth";
 import { deriveLeadPipelineState } from "../lib/leadPipelineState";
 import {
@@ -38,7 +36,7 @@ export const getCompanyByRequestToken = query({
 
 /**
  * List all client requests for a company.
- * Requires authenticated user who belongs to the company.
+ * Owner-only until the V2 sales capability is intentionally delegated.
  */
 export const getCompanyRequests = query({
   args: {
@@ -57,12 +55,8 @@ export const getCompanyRequests = query({
     ),
   },
   handler: async (ctx, args) => {
-    await requireStaffCompany(
-      ctx,
-      args.sessionToken,
-      args.companyId,
-      args.userId,
-    );
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    if (owner.companyId !== args.companyId) throw new Error("Access denied");
 
     if (args.status) {
       const requests = await ctx.db
@@ -100,7 +94,7 @@ export const getCompanyRequests = query({
 
 /**
  * Get a single client request by ID.
- * Requires authenticated user who belongs to the request's company.
+ * Owner-only until the V2 sales capability is intentionally delegated.
  */
 export const getRequestById = query({
   args: {
@@ -109,11 +103,7 @@ export const getRequestById = query({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await requireVerifiedStaffSession(
-      ctx,
-      args.sessionToken,
-      args.userId,
-    );
+    const user = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     const request = await ctx.db.get(args.id);
     if (!request) return null;

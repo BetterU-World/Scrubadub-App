@@ -37,7 +37,15 @@ export const inviteCleaner = action({
     canRequestRework: v.optional(v.boolean()),
     canApproveForms: v.optional(v.boolean()),
     canManageSchedule: v.optional(v.boolean()),
+    canResolveRedFlags: v.optional(v.boolean()),
     canManageBusinessConfiguration: v.optional(v.boolean()),
+    canManageClients: v.optional(v.boolean()),
+    canManageSalesAndCommercial: v.optional(v.boolean()),
+    canManageTeam: v.optional(v.boolean()),
+    canViewFinancials: v.optional(v.boolean()),
+    canManageInvoices: v.optional(v.boolean()),
+    canManageDocuments: v.optional(v.boolean()),
+    canViewAnalytics: v.optional(v.boolean()),
   },
   handler: async (ctx, args): Promise<{ token: string; userId: Id<"users">; emailSent: boolean }> => {
     const principal = await requireOwnerSession(ctx, args.sessionToken, args.userId);
@@ -102,7 +110,15 @@ export const inviteCleaner = action({
       createArgs.canRequestRework = args.canRequestRework ?? false;
       createArgs.canApproveForms = args.canApproveForms ?? false;
       createArgs.canManageSchedule = args.canManageSchedule ?? false;
+      createArgs.canResolveRedFlags = args.canResolveRedFlags ?? false;
       createArgs.canManageBusinessConfiguration = args.canManageBusinessConfiguration ?? false;
+      createArgs.canManageClients = args.canManageClients ?? false;
+      createArgs.canManageSalesAndCommercial = args.canManageSalesAndCommercial ?? false;
+      createArgs.canManageTeam = args.canManageTeam ?? false;
+      createArgs.canViewFinancials = args.canViewFinancials ?? false;
+      createArgs.canManageInvoices = args.canManageInvoices ?? false;
+      createArgs.canManageDocuments = args.canManageDocuments ?? false;
+      createArgs.canViewAnalytics = args.canViewAnalytics ?? false;
     }
 
     const newUserId: Id<"users"> = await ctx.runMutation(

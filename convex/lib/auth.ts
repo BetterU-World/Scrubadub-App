@@ -1,7 +1,7 @@
 /** Check if a user has a specific manager permission flag. */
 export function hasManagerPermission(
-  user: { role: string; canSeeAllJobs?: boolean; canCreateJobs?: boolean; canAssignCleaners?: boolean; canRequestRework?: boolean; canApproveForms?: boolean; canManageSchedule?: boolean; canResolveRedFlags?: boolean; canManageBusinessConfiguration?: boolean },
-  permission: "canSeeAllJobs" | "canCreateJobs" | "canAssignCleaners" | "canRequestRework" | "canApproveForms" | "canManageSchedule" | "canResolveRedFlags" | "canManageBusinessConfiguration"
+  user: { role: string; canSeeAllJobs?: boolean; canCreateJobs?: boolean; canAssignCleaners?: boolean; canRequestRework?: boolean; canApproveForms?: boolean; canManageSchedule?: boolean; canResolveRedFlags?: boolean; canManageBusinessConfiguration?: boolean; canManageClients?: boolean; canManageSalesAndCommercial?: boolean; canManageTeam?: boolean; canViewFinancials?: boolean; canManageInvoices?: boolean; canManageDocuments?: boolean; canViewAnalytics?: boolean },
+  permission: "canSeeAllJobs" | "canCreateJobs" | "canAssignCleaners" | "canRequestRework" | "canApproveForms" | "canManageSchedule" | "canResolveRedFlags" | "canManageBusinessConfiguration" | "canManageClients" | "canManageSalesAndCommercial" | "canManageTeam" | "canViewFinancials" | "canManageInvoices" | "canManageDocuments" | "canViewAnalytics"
 ): boolean {
   if (user.role !== "manager") return false;
   return user[permission] === true;
