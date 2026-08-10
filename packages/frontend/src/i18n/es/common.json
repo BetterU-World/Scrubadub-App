@@ -680,7 +680,10 @@
     "post_construction": "Post-Construcción"
   },
   "jobForm": {
-    "assignedWorkers": "Trabajadores asignados",
+    "assignedWorkers": "Personas asignadas al trabajo",
+    "assignedWorkersHelp": "Personas que realizan el servicio.",
+    "managerOversight": "Supervisión del gerente",
+    "managerOversightHelp": "Gerente opcional responsable de la inspección o supervisión. Los gerentes asignados al trabajo ya conservan sus capacidades y no necesitan seleccionarse de nuevo.",
     "individualWorkers": "Trabajadores individuales",
     "propertyShared": "Propiedad (compartida)",
     "property": "Propiedad",
@@ -789,6 +792,11 @@
       "clientPortal": "Portal del cliente activo"
     }
   },
+  "companySettings": {
+    "jobQualityDefaults": "Valores predeterminados de trabajo y calidad",
+    "propertyConditionChecks": "Revisiones del estado de la propiedad",
+    "propertyConditionChecksHelp": "Exigir de forma predeterminada una revisión del estado de la propiedad en los trabajos de limpieza."
+  },
   "properties": {
     "title": "Propiedades",
     "bedroomProfile": {
@@ -885,6 +893,11 @@
     "towels": "Toallas",
     "pillows": "Almohadas",
     "maintenanceNotes": "Notas de mantenimiento",
+    "jobRequirements": "Requisitos del trabajo",
+    "propertyConditionCheck": "Revisión del estado de la propiedad",
+    "useCompanyDefault": "Usar valor predeterminado de la empresa",
+    "requireConditionCheck": "Exigir",
+    "doNotRequireConditionCheck": "No exigir",
     "ownerNotes": "Notas del propietario",
     "totalJobs": "Total de trabajos",
     "totalRedFlags": "Total de alertas",

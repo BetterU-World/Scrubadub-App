@@ -23,6 +23,9 @@ const statusValidator = v.union(
   v.literal("paused"),
   v.literal("ended")
 );
+const propertyConditionOverrideValidator = v.union(
+  v.literal("company_default"), v.literal("required"), v.literal("not_required")
+);
 
 const accountFields = {
   clientRelationshipId: v.optional(v.id("clientRelationships")),
@@ -40,6 +43,7 @@ const accountFields = {
   assignedTeamId: v.optional(v.id("teams")),
   status: statusValidator,
   notes: v.optional(v.string()),
+  propertyConditionCheckOverride: v.optional(propertyConditionOverrideValidator),
 };
 
 async function requireOwnerCompany(ctx: any, sessionToken: string, userId: any) {
@@ -126,6 +130,7 @@ async function buildAccountPatch(ctx: any, companyId: any, args: any) {
     assignedTeamId: await assertTeamAssignment(ctx, args.assignedTeamId, companyId),
     status: args.status,
     notes: cleanOptional(args.notes, 4000),
+    propertyConditionCheckOverride: args.propertyConditionCheckOverride ?? "company_default",
   };
 }
 

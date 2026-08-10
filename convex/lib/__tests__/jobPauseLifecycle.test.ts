@@ -74,11 +74,21 @@ describe("job pause lifecycle", () => {
     await expect(t.mutation(api.mutations.jobs.pauseJob, { jobId: activeJob, reason: "other", userId: cleaner, sessionToken: auth.sessionToken })).rejects.toThrow("note is required");
   });
 
-  it("blocks final completion while paused", async () => {
+  it("atomically submits while paused and closes the open pause at the timer boundary", async () => {
     const t = makeTest();
     const { cleaner, activeJob } = await seed(t);
     const auth = await login(t, "cleaner@example.com");
+    const form = await t.run(async (ctx) => {
+      const formId = await ctx.db.insert("forms", { jobId: activeJob, companyId: (await ctx.db.get(activeJob))!.companyId, cleanerId: cleaner, status: "in_progress" });
+      await ctx.db.insert("formItems", { formId, section: "Checklist", itemName: "Done", completed: true, isRedFlag: false, order: 0 });
+      return formId;
+    });
     await t.mutation(api.mutations.jobs.pauseJob, { jobId: activeJob, reason: "break", userId: cleaner, sessionToken: auth.sessionToken });
-    await expect(t.mutation(api.mutations.jobs.completeJob, { jobId: activeJob, userId: cleaner, sessionToken: auth.sessionToken })).rejects.toThrow("Resume the job");
+    await t.mutation(api.mutations.forms.submit, { formId: form, userId: cleaner, sessionToken: auth.sessionToken });
+    const submitted = await t.run((ctx) => ctx.db.get(activeJob));
+    expect(submitted).toMatchObject({ status: "submitted", completedAt: expect.any(Number) });
+    expect(submitted?.currentPauseStartedAt).toBeUndefined();
+    expect(submitted?.pauseHistory?.[0]).toMatchObject({ resumedAt: submitted?.completedAt, durationMs: expect.any(Number), resumedByUserId: cleaner });
+    await expect(t.mutation(api.mutations.forms.submit, { formId: form, userId: cleaner, sessionToken: auth.sessionToken })).resolves.toMatchObject({ alreadySubmitted: true });
   });
 });

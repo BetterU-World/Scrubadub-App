@@ -8,6 +8,7 @@ import { getJobRecipientUserIds } from "../lib/teams";
 import { resolveOperationalEmailIdentity } from "../lib/operationalEmailIdentity";
 import { requireAssignedJobExecutor } from "../lib/jobExecutionAuth";
 import { ensureJobExecutionForm } from "../lib/jobExecutionForm";
+import { submitJobExecution } from "../lib/jobSubmission";
 
 export const createFromTemplate = mutation({
   args: {
@@ -261,40 +262,14 @@ export const submit = mutation({
   handler: async (ctx, args) => {
     const form = await ctx.db.get(args.formId);
     if (!form) throw new Error("Form not found");
-    const { user } = await requireAssignedJobExecutor(ctx, args.sessionToken, form.jobId, args.userId);
+    const { user, job } = await requireAssignedJobExecutor(ctx, args.sessionToken, form.jobId, args.userId);
     if (form.companyId !== user.companyId) throw new Error("Access denied");
-    if (form.status === "submitted" || form.status === "approved") {
-      throw new Error("Form already submitted");
-    }
-
-    const items = await ctx.db
-      .query("formItems")
-      .withIndex("by_formId", (q) => q.eq("formId", args.formId))
-      .collect();
-    const incomplete = items.filter((item) => !item.completed);
-    if (incomplete.length > 0) {
-      throw new Error(
-        `Cannot submit: ${incomplete.length} item(s) not completed. All checklist items must be marked before submission.`
-      );
-    }
-
-    await ctx.db.patch(args.formId, {
-      status: "submitted",
-      submittedAt: Date.now(),
-      ...(args.maintenanceCost != null ? { maintenanceCost: args.maintenanceCost } : {}),
-      ...(args.maintenanceVendor ? { maintenanceVendor: args.maintenanceVendor } : {}),
-    });
-
-    // NOTE: Form submission marks the cleaning checklist as complete but does NOT
-    // submit the job. Final job submission happens separately via jobs.completeJob
-    // from the job workspace page, which also handles owner notifications and emails.
-
-    await logAudit(ctx, {
-      companyId: form.companyId,
-      userId: user._id,
-      action: "submit_form",
-      entityType: "form",
-      entityId: args.formId,
+    return await submitJobExecution(ctx, {
+      job,
+      user,
+      formId: args.formId,
+      maintenanceCost: args.maintenanceCost,
+      maintenanceVendor: args.maintenanceVendor,
     });
   },
 });

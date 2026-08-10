@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { logAudit, createNotification } from "../lib/helpers";
 import { hasManagerPermission } from "../lib/auth";
 import { requireOwnerManagerSession, requireOwnerSession, requireWorkerSession } from "../lib/sessionAuth";
+import { resolvePropertyConditionRequirement } from "../lib/propertyConditionRequirements";
 
 export const create = mutation({
   args: {
@@ -201,6 +202,10 @@ export const createMaintenanceJob = mutation({
     if (flag.companyId !== owner.companyId) throw new Error("Access denied");
 
     const property = await ctx.db.get(flag.propertyId);
+    const requiresPropertyConditionCheck = await resolvePropertyConditionRequirement(ctx, {
+      companyId: flag.companyId,
+      propertyId: flag.propertyId,
+    });
 
     const jobId = await ctx.db.insert("jobs", {
       companyId: flag.companyId,
@@ -214,6 +219,7 @@ export const createMaintenanceJob = mutation({
       notes: args.notes ?? `Maintenance from Red Flag: ${flag.note.slice(0, 200)}`,
       reworkCount: 0,
       sourceRedFlagId: args.flagId,
+      requiresPropertyConditionCheck,
     });
 
     await ctx.db.patch(args.flagId, { maintenanceJobId: jobId });

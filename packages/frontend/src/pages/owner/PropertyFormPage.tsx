@@ -92,6 +92,7 @@ export function PropertyFormPage() {
   const [restroomCount, setRestroomCount] = useState<number | undefined>(undefined);
   const [maintenanceNotes, setMaintenanceNotes] = useState("");
   const [ownerNotes, setOwnerNotes] = useState("");
+  const [propertyConditionCheckOverride, setPropertyConditionCheckOverride] = useState("company_default");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -117,6 +118,7 @@ export function PropertyFormPage() {
       setRestroomCount((existing as any).restroomCount ?? undefined);
       setMaintenanceNotes(existing.maintenanceNotes ?? "");
       setOwnerNotes(existing.ownerNotes ?? "");
+      setPropertyConditionCheckOverride((existing as any).propertyConditionCheckOverride ?? "company_default");
     }
   }, [existing]);
 
@@ -167,6 +169,7 @@ export function PropertyFormPage() {
         restroomCount: restroomCount ?? undefined,
         maintenanceNotes: maintenanceNotes || undefined,
         ownerNotes: ownerNotes || undefined,
+        propertyConditionCheckOverride: propertyConditionCheckOverride as any,
       };
       if (isEditing) {
         await runPropertySave(
@@ -482,6 +485,16 @@ export function PropertyFormPage() {
           </div>
         </div>
         )}
+
+        <div className="rounded-lg border border-gray-200 p-4">
+          <h2 className="text-sm font-semibold text-gray-900">{t("properties.jobRequirements")}</h2>
+          <label className="mt-3 block text-sm font-medium text-gray-700">{t("properties.propertyConditionCheck")}</label>
+          <select className="input-field mt-1" value={propertyConditionCheckOverride} onChange={(event) => setPropertyConditionCheckOverride(event.target.value)}>
+            <option value="company_default">{t("properties.useCompanyDefault")}</option>
+            <option value="required">{t("properties.requireConditionCheck")}</option>
+            <option value="not_required">{t("properties.doNotRequireConditionCheck")}</option>
+          </select>
+        </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">{t("properties.maintenanceNotes")}</label>

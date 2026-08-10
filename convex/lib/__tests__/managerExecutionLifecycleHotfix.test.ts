@@ -58,6 +58,7 @@ describe("manager execution lifecycle hotfix", () => {
     await t.mutation(api.mutations.forms.addPhoto, { formId: form!._id, photoStorageId: storageId, userId: seeded.manager, sessionToken: managerAuth.sessionToken });
     await t.mutation(api.mutations.forms.markAllComplete, { formId: form!._id, userId: seeded.manager, sessionToken: managerAuth.sessionToken });
     await t.mutation(api.mutations.forms.submit, { formId: form!._id, userId: seeded.manager, sessionToken: managerAuth.sessionToken });
+    await expect(t.run((ctx) => ctx.db.get(seeded.job))).resolves.toMatchObject({ status: "submitted", completedAt: expect.any(Number) });
     await t.mutation(api.mutations.jobs.completeJob, { jobId: seeded.job, notes: "Done", userId: seeded.manager, sessionToken: managerAuth.sessionToken });
 
     await t.mutation(api.mutations.inspections.submit, { jobId: seeded.job, readinessScore: 9, severity: "none", userId: seeded.manager, sessionToken: managerAuth.sessionToken });

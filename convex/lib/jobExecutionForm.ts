@@ -1,6 +1,7 @@
 import type { MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { getFormTemplate } from "./constants";
+import { isPropertyConditionSection, jobRequiresPropertyConditionCheck } from "./propertyConditionRequirements";
 
 /** Ensures every execution path shares one canonical job form and checklist. */
 export async function ensureJobExecutionForm(
@@ -21,7 +22,9 @@ export async function ensureJobExecutionForm(
     status: "in_progress",
   });
   const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
-  const template = getFormTemplate(job.type, property?.type);
+  const template = getFormTemplate(job.type, property?.type).filter(
+    (section) => jobRequiresPropertyConditionCheck(job) || !isPropertyConditionSection(section.section),
+  );
   let order = 0;
   for (const section of template) {
     for (const itemName of section.items) {

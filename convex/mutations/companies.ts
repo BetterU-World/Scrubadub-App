@@ -73,6 +73,7 @@ export const upsertCompanySettings = mutation({
     defaultFont: v.optional(v.string()),
     defaultDateFormat: v.optional(v.string()),
     defaultCurrency: v.optional(v.string()),
+    requirePropertyConditionChecksByDefault: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const user = await requireOwnerSession(ctx, args.sessionToken, args.userId);
@@ -95,6 +96,7 @@ export const upsertCompanySettings = mutation({
       defaultFont: cleanOptional(args.defaultFont, 100),
       defaultDateFormat: cleanOptional(args.defaultDateFormat, 50),
       defaultCurrency: cleanOptional(args.defaultCurrency, 10),
+      requirePropertyConditionChecksByDefault: args.requirePropertyConditionChecksByDefault,
       updatedAt: now,
     };
 

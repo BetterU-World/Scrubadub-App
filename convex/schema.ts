@@ -355,6 +355,7 @@ export default defineSchema({
     defaultFont: v.optional(v.string()),
     defaultDateFormat: v.optional(v.string()),
     defaultCurrency: v.optional(v.string()),
+    requirePropertyConditionChecksByDefault: v.optional(v.boolean()),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_companyId", ["companyId"]),
@@ -775,6 +776,9 @@ export default defineSchema({
       ),
     ),
     inventoryTemplateId: v.optional(v.id("inventoryTemplates")),
+    propertyConditionCheckOverride: v.optional(v.union(
+      v.literal("company_default"), v.literal("required"), v.literal("not_required")
+    )),
   })
     .index("by_companyId", ["companyId"])
     .index("by_companyId_clientRelationshipId", [
@@ -787,6 +791,7 @@ export default defineSchema({
     clientRelationshipId: v.optional(v.id("clientRelationships")),
     propertyId: v.optional(v.id("properties")),
     cleanerIds: v.array(v.id("users")),
+    requiresPropertyConditionCheck: v.optional(v.boolean()),
     type: v.union(
       v.literal("standard"),
       v.literal("deep_clean"),
@@ -1675,6 +1680,9 @@ export default defineSchema({
     assignedManagerId: v.optional(v.id("users")),
     assignedCleanerId: v.optional(v.id("users")),
     assignedTeamId: v.optional(v.id("teams")),
+    propertyConditionCheckOverride: v.optional(v.union(
+      v.literal("company_default"), v.literal("required"), v.literal("not_required")
+    )),
     status: v.union(
       v.literal("active"),
       v.literal("paused"),

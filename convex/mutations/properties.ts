@@ -5,6 +5,10 @@ import { requireOwnerManagerSession, requireOwnerSession } from "../lib/sessionA
 import { requireActiveSubscription } from "../lib/subscriptionGating";
 import { bedroomsValidator, deriveBedroomAggregates, normalizeBedrooms } from "../lib/propertyBedrooms";
 
+const propertyConditionOverrideValidator = v.union(
+  v.literal("company_default"), v.literal("required"), v.literal("not_required")
+);
+
 export const create = mutation({
   args: {
     userId: v.optional(v.id("users")),
@@ -37,6 +41,7 @@ export const create = mutation({
     squareFootage: v.optional(v.number()),
     trashCanCount: v.optional(v.number()),
     restroomCount: v.optional(v.number()),
+    propertyConditionCheckOverride: v.optional(propertyConditionOverrideValidator),
   },
   handler: async (ctx, args) => {
     const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
@@ -174,6 +179,7 @@ export const update = mutation({
     squareFootage: v.optional(v.number()),
     trashCanCount: v.optional(v.number()),
     restroomCount: v.optional(v.number()),
+    propertyConditionCheckOverride: v.optional(propertyConditionOverrideValidator),
   },
   handler: async (ctx, args) => {
     const owner = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);

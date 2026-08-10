@@ -1,4 +1,5 @@
 import { logAudit } from "./helpers";
+import { resolvePropertyConditionRequirement } from "./propertyConditionRequirements";
 import { isExistingClientServiceRequest } from "./requestContext";
 
 export const REQUEST_JOB_TYPES = [
@@ -117,11 +118,17 @@ export async function createJobFromClientRequest(
     .first();
   if (existing) return { job: existing, replayed: true };
   const validated = await validateClientRequestSchedule(ctx, request, schedule);
+  const requiresPropertyConditionCheck = await resolvePropertyConditionRequirement(ctx, {
+    companyId: request.companyId,
+    propertyId: validated.propertyId,
+    commercialAccountId: validated.commercialAccountId,
+  });
   const jobId = await ctx.db.insert("jobs", {
     companyId: request.companyId,
     clientRelationshipId: validated.relationship._id,
     propertyId: validated.propertyId,
     commercialAccountId: validated.commercialAccountId,
+    requiresPropertyConditionCheck,
     cleanerIds: [],
     type: schedule.type,
     status: "confirmed",

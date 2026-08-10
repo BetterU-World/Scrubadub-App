@@ -2,6 +2,7 @@ import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireVerifiedStaffSession } from "../lib/sessionAuth";
 import { copyScheduleAddOnSnapshots } from "../lib/acceptedProposalAddOnSnapshots";
+import { resolvePropertyConditionRequirement } from "../lib/propertyConditionRequirements";
 
 const frequencyValidator = v.union(
   v.literal("daily"),
@@ -396,6 +397,11 @@ export const generateCommercialJobsFromSchedule = mutation({
 
     let createdCount = 0;
     let skippedDuplicateCount = 0;
+    const requiresPropertyConditionCheck = await resolvePropertyConditionRequirement(ctx, {
+      companyId: schedule.companyId,
+      propertyId: schedule.propertyId,
+      commercialAccountId: account._id,
+    });
     for (const scheduledDate of serviceDates) {
       if (existingDates.has(scheduledDate)) {
         skippedDuplicateCount += 1;
@@ -423,6 +429,7 @@ export const generateCommercialJobsFromSchedule = mutation({
         commercialAccountId: account._id,
         commercialScheduleId: schedule._id,
         generatedFromCommercialSchedule: true,
+        requiresPropertyConditionCheck,
         sourceProposalId: jobAddOns.length ? schedule.sourceProposalId : undefined,
         acceptedProposalAddOnSnapshots: jobAddOns.length ? jobAddOns : undefined,
         reworkCount: 0,
