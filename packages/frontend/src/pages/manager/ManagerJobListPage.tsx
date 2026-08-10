@@ -7,9 +7,10 @@ import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Link } from "wouter";
-import { MapPin, Clock, Users, Search, Eye } from "lucide-react";
+import { MapPin, Clock, Users, Search, Eye, ArrowUpDown } from "lucide-react";
 import { format } from "date-fns";
 import { useTranslation } from "react-i18next";
+import { matchesDateRange, sortJobs, type JobDateRange, type JobSort } from "@/lib/jobBrowsing";
 
 type StatusFilter = "all" | "scheduled" | "confirmed" | "in_progress" | "submitted" | "approved" | "cancelled";
 
@@ -18,6 +19,8 @@ export function ManagerJobListPage() {
   const { t } = useTranslation();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
+  const [dateRange, setDateRange] = useState<JobDateRange>("all");
+  const [sort, setSort] = useState<JobSort>("created_desc");
 
   const jobs = useQuery(
     api.queries.jobs.getForManager,
@@ -34,6 +37,7 @@ export function ManagerJobListPage() {
     if (statusFilter !== "all") {
       result = result.filter((j) => j.status === statusFilter);
     }
+    result = result.filter((job) => matchesDateRange(job.scheduledDate, dateRange));
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter(
@@ -42,20 +46,20 @@ export function ManagerJobListPage() {
           j.cleaners.some((c: any) => c.name.toLowerCase().includes(q))
       );
     }
-    return result;
-  }, [jobs, statusFilter, search]);
+    return sortJobs(result, sort);
+  }, [jobs, statusFilter, search, dateRange, sort]);
 
   if (!user) return <PageLoader />;
   if (jobs === undefined) return <PageLoader />;
 
   const statusOptions: { value: StatusFilter; label: string }[] = [
-    { value: "all", label: "All" },
-    { value: "scheduled", label: "Scheduled" },
+    { value: "all", label: t("requests.all") },
+    { value: "scheduled", label: t("status.scheduled") },
     { value: "cancelled", label: t("status.cancelled") },
-    { value: "confirmed", label: "Confirmed" },
-    { value: "in_progress", label: "In Progress" },
-    { value: "submitted", label: "Submitted" },
-    { value: "approved", label: "Approved" },
+    { value: "confirmed", label: t("status.confirmed") },
+    { value: "in_progress", label: t("status.inProgress") },
+    { value: "submitted", label: t("status.submitted") },
+    { value: "approved", label: t("status.approved") },
   ];
 
   return (
@@ -66,7 +70,11 @@ export function ManagerJobListPage() {
       />
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+      <div className="flex flex-col gap-3 mb-4">
+        <div className="flex flex-wrap gap-2">
+          {(["all", "today", "week"] as const).map((range) => <button key={range} onClick={() => setDateRange(range)} className={`rounded-lg px-3 py-1.5 text-sm font-medium ${dateRange === range ? "bg-primary-600 text-white" : "bg-gray-100 text-gray-600"}`}>{t(range === "all" ? "requests.all" : range === "today" ? "calendar.today" : "jobs.thisWeek")}</button>)}
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
@@ -77,6 +85,7 @@ export function ManagerJobListPage() {
             className="input-field pl-9 py-2 text-sm w-full"
           />
         </div>
+        <div className="relative sm:w-48"><ArrowUpDown className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" /><select aria-label={t("jobs.sortBy")} value={sort} onChange={(e) => setSort(e.target.value as JobSort)} className="input-field w-full py-2 pl-8 text-sm"><option value="created_desc">{t("jobs.recentlyCreated")}</option><option value="soonest">{t("jobs.soonestScheduled")}</option><option value="updated_desc">{t("jobs.recentlyUpdated")}</option><option value="created_asc">{t("jobs.oldestCreated")}</option></select></div>
         <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1 w-fit overflow-x-auto">
           {statusOptions.map((opt) => (
             <button
@@ -91,6 +100,7 @@ export function ManagerJobListPage() {
               {opt.label}
             </button>
           ))}
+        </div>
         </div>
       </div>
 

@@ -16,8 +16,10 @@ import {
   Star,
   Zap,
   Search,
+  ArrowUpDown,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { matchesDateRange, sortJobs, type JobSort } from "@/lib/jobBrowsing";
 
 const DATE_RANGES = [
   { value: "all", labelKey: "requests.all" },
@@ -25,28 +27,13 @@ const DATE_RANGES = [
   { value: "week", labelKey: "jobs.thisWeek" },
 ] as const;
 
-function getToday() {
-  const d = new Date();
-  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
-}
-
-function getWeekRange(): [string, string] {
-  const now = new Date();
-  const day = now.getDay();
-  const mon = new Date(now);
-  mon.setDate(now.getDate() - ((day + 6) % 7));
-  const sun = new Date(mon);
-  sun.setDate(mon.getDate() + 6);
-  const fmt = (d: Date) =>
-    d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
-  return [fmt(mon), fmt(sun)];
-}
-
 export function CleanerJobListPage() {
   const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const [dateRange, setDateRange] = useState<"all" | "today" | "week">("all");
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [sort, setSort] = useState<JobSort>("created_desc");
   const jobs = useQuery(
     api.queries.jobs.getForCleaner,
     user?.companyId ? { cleanerId: user._id, companyId: user.companyId, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
@@ -59,22 +46,18 @@ export function CleanerJobListPage() {
   if (!user || jobs === undefined) return <PageLoader />;
 
   const searchLower = search.toLowerCase();
-  const filtered = jobs.filter((job) => {
-    if (dateRange === "today") {
-      if (job.scheduledDate !== getToday()) return false;
-    } else if (dateRange === "week") {
-      const [mon, sun] = getWeekRange();
-      if (job.scheduledDate < mon || job.scheduledDate > sun) return false;
-    }
+  const filtered = sortJobs(jobs.filter((job) => {
+    if (!matchesDateRange(job.scheduledDate, dateRange)) return false;
+    if (statusFilter !== "all" && job.status !== statusFilter) return false;
     if (searchLower) {
       if (!job.propertyName?.toLowerCase().includes(searchLower)) return false;
     }
     return true;
-  });
+  }), sort);
 
   const activeJobs = filtered.filter((j) => !["cancelled", "approved"].includes(j.status));
-  const pastJobs = filtered.filter((j) => ["approved"].includes(j.status));
-  const hasFilters = dateRange !== "all" || search;
+  const pastJobs = filtered.filter((j) => ["approved", "cancelled"].includes(j.status));
+  const hasFilters = dateRange !== "all" || statusFilter !== "all" || search;
 
   return (
     <div>
@@ -106,6 +89,16 @@ export function CleanerJobListPage() {
             placeholder={t("jobs.searchPlaceholder")}
             className="input-field pl-8 py-1.5 text-sm w-full"
           />
+        </div>
+        <select aria-label={t("jobs.statusFilter")} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input-field py-1.5 text-sm sm:w-40">
+          <option value="all">{t("requests.all")}</option>
+          {(["scheduled", "confirmed", "in_progress", "submitted", "approved", "rework_requested", "cancelled"] as const).map((status) => <option key={status} value={status}>{t(`status.${status === "in_progress" ? "inProgress" : status === "rework_requested" ? "reworkRequested" : status}`)}</option>)}
+        </select>
+        <div className="relative sm:w-48">
+          <ArrowUpDown className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <select aria-label={t("jobs.sortBy")} value={sort} onChange={(e) => setSort(e.target.value as JobSort)} className="input-field w-full py-1.5 pl-8 text-sm">
+            <option value="created_desc">{t("jobs.recentlyCreated")}</option><option value="soonest">{t("jobs.soonestScheduled")}</option><option value="updated_desc">{t("jobs.recentlyUpdated")}</option><option value="created_asc">{t("jobs.oldestCreated")}</option>
+          </select>
         </div>
       </div>
 

@@ -476,6 +476,8 @@
     "recentlyUpdated": "Recently updated",
     "recentlyCreated": "Recently created",
     "oldestCreated": "Oldest created",
+    "sortBy": "Sort jobs",
+    "statusFilter": "Filter by status",
     "thisWeek": "This Week",
     "rework": "Rework",
     "sharedFrom": "Shared from {{name}}",

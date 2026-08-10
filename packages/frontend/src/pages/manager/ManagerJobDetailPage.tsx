@@ -321,7 +321,7 @@ export function ManagerJobDetailPage() {
         )}
 
         {/* ── Inspection Action ──────────────────────────────────── */}
-        {inspectionSummary && inspectionSummary.count > 0 && !inspectionSummary.inspectionCycleOpen && (
+        {inspectionSummary && inspectionSummary.count > 0 && !inspectionSummary.inspectionCycleOpen && job.status !== "approved" && job.status !== "cancelled" && (
           <div className="p-3 bg-gray-50 rounded-lg border border-gray-200 text-center">
             <p className="text-sm text-gray-600 flex items-center justify-center gap-2">
               <ClipboardCheck className="w-4 h-4 text-gray-400" />
