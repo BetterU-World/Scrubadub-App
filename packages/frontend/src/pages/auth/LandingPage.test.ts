@@ -83,9 +83,26 @@ describe("SCRUB landing page messaging contracts", () => {
     expect(html).not.toContain("Getting Started");
     expect(html).not.toContain("/images/product-proof/");
     expect(html).not.toContain("<picture");
-    expect(html).not.toContain("<button");
+    expect(html).toContain('role="radiogroup"');
     expect(html).not.toContain("/internal/demo/");
     expect(html).not.toContain("<iframe");
+  });
+
+  it("presents responsibility-based delegation with accurate ownership boundaries", () => {
+    const html = renderPage();
+
+    expect(html).toContain("Built for growing teams.");
+    expect(html).toContain("without giving away ownership");
+    for (const profile of ["Field Manager", "Scheduler", "Office Manager", "Operations Manager", "Custom"]) {
+      expect(html).toContain(profile);
+    }
+    for (const responsibility of ["Clients", "Sales &amp; Commercial", "Team", "Documents", "Invoices", "Operational Settings"]) {
+      expect(html).toContain(responsibility);
+    }
+    expect(html).toContain("Financial visibility");
+    expect(html).toContain("Company ownership");
+    expect(html).toContain("Owner only");
+    expect(html).not.toContain("Role-based permissions");
   });
 
   it("keeps the Assessment supporting the paid-product story", () => {
