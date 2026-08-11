@@ -1,6 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwnerSession } from "../lib/sessionAuth";
+import { requireOwnerOrManagerCapability } from "../lib/sessionAuth";
 
 const documentTypeValidator = v.union(
   v.literal("service_agreement"),
@@ -12,10 +12,8 @@ const documentTypeValidator = v.union(
 );
 
 async function requireOwnerCompany(ctx: any, sessionToken: string, userId: any) {
-  const user = await requireOwnerSession(ctx, sessionToken, userId);
-  if (user.role !== "owner" || !user.companyId) {
-    throw new Error("Owner access required");
-  }
+  const user = await requireOwnerOrManagerCapability(ctx, sessionToken, userId, "canManageDocuments");
+  if (!user.companyId) throw new Error("Company access required");
   return user;
 }
 

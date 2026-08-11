@@ -115,7 +115,9 @@ describe("PR 6C commercial and collaboration session migration", () => {
       ["maintenance-a@pr6c.test", s.maintenanceA], ["affiliate@pr6c.test", s.affiliate],
     ] as const) {
       const auth = await login(t, email);
-      await expect(t.query(api.queries.companyOnboardingDocuments.listForOwner, { userId, sessionToken: auth.sessionToken })).rejects.toThrow("Owner session required");
+      await expect(t.query(api.queries.companyOnboardingDocuments.listForOwner, { userId, sessionToken: auth.sessionToken })).rejects.toThrow(
+        email.startsWith("manager") ? "canManageDocuments permission required" : "Owner or manager session required"
+      );
     }
     const client = await t.action(api.clientAuthActions.signIn, { email: "client@pr6c.test", password: PASSWORD });
     await expect(t.query(api.queries.invoices.listByCompany, { userId: s.ownerA, sessionToken: client.sessionToken })).rejects.toThrow(SESSION_ERROR);
@@ -156,7 +158,7 @@ describe("PR 6C commercial and collaboration session migration", () => {
     const owner = await login(t, "owner-a@pr6c.test");
     const manager = await login(t, "manager-a@pr6c.test");
     await expect(t.action(api.proposalDeliveryActions.sendProposal, { userId: s.ownerB, sessionToken: owner.sessionToken, proposalId: s.proposalA })).rejects.toThrow("does not match");
-    await expect(t.action(api.serviceAgreementDeliveryActions.sendServiceAgreement, { userId: s.managerA, sessionToken: manager.sessionToken, agreementId: s.agreementA })).rejects.toThrow("Owner session required");
+    await expect(t.action(api.serviceAgreementDeliveryActions.sendServiceAgreement, { userId: s.managerA, sessionToken: manager.sessionToken, agreementId: s.agreementA })).rejects.toThrow("canManageSalesAndCommercial permission required");
   });
 
   it("preserves owned delivery responses and public proposal-token access", async () => {

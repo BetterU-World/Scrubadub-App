@@ -1,11 +1,12 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwnerSession } from "../lib/sessionAuth";
+import { requireOwnerOrManagerCapability, requireOwnerManagerSession } from "../lib/sessionAuth";
+import { hasOwnerOrManagerPermission } from "../lib/auth";
 
 const RELATIONSHIP_LIST_CAP = 2_000;
 
 async function requireOwnedRelationship(ctx: any, sessionToken: string, userId: any, relationshipId: any) {
-  const owner = await requireOwnerSession(ctx, sessionToken, userId);
+  const owner = await requireOwnerOrManagerCapability(ctx, sessionToken, userId, "canManageClients");
   const relationship = await ctx.db.get(relationshipId);
   if (!relationship) return { owner, relationship: null };
   if (relationship.companyId !== owner.companyId) throw new Error("Access denied");
@@ -57,7 +58,7 @@ export const list = query({
     ),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageClients");
     const relationships = await ctx.db
       .query("clientRelationships")
       .withIndex("by_companyId", (q) => q.eq("companyId", owner.companyId))
@@ -78,7 +79,11 @@ export const listForSelect = query({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
+    if (!hasOwnerOrManagerPermission(owner, "canManageClients") &&
+        !hasOwnerOrManagerPermission(owner, "canManageSalesAndCommercial")) {
+      throw new Error("Client or sales management permission required");
+    }
     const relationships = await ctx.db
       .query("clientRelationships")
       .withIndex("by_companyId_status", (q) =>
@@ -127,7 +132,7 @@ export const getClientRelationshipDetail = query({
     relationshipId: v.id("clientRelationships"),
   },
   handler: async (ctx, args) => {
-    const { relationship } = await requireOwnedRelationship(
+    const { owner, relationship } = await requireOwnedRelationship(
       ctx,
       args.sessionToken,
       args.userId,
@@ -213,14 +218,14 @@ export const getClientRelationshipDetail = query({
         inviteStatus,
         hasClientUser: Boolean(relationship.clientUserId),
       },
-      leads,
+      leads: hasOwnerOrManagerPermission(owner, "canManageSalesAndCommercial") ? leads : [],
       properties: properties.sort((a: any, b: any) => a.name.localeCompare(b.name)),
-      commercialAccounts,
-      walkthroughs,
-      proposals,
-      serviceAgreements,
-      invoices,
-      jobs,
+      commercialAccounts: hasOwnerOrManagerPermission(owner, "canManageSalesAndCommercial") ? commercialAccounts : [],
+      walkthroughs: hasOwnerOrManagerPermission(owner, "canManageSalesAndCommercial") ? walkthroughs : [],
+      proposals: hasOwnerOrManagerPermission(owner, "canManageSalesAndCommercial") ? proposals : [],
+      serviceAgreements: hasOwnerOrManagerPermission(owner, "canManageSalesAndCommercial") ? serviceAgreements : [],
+      invoices: hasOwnerOrManagerPermission(owner, "canViewFinancials") || hasOwnerOrManagerPermission(owner, "canManageInvoices") ? invoices : [],
+      jobs: hasOwnerOrManagerPermission(owner, "canSeeAllJobs") ? jobs : [],
     };
   },
 });

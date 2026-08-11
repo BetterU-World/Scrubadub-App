@@ -1,13 +1,11 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwnerSession } from "../lib/sessionAuth";
+import { requireOwnerOrManagerCapability } from "../lib/sessionAuth";
 
 async function requireOwnerCompany(ctx: any, sessionToken: string, userId: any) {
-  const user = await requireOwnerSession(ctx, sessionToken, userId);
-  if (user.role !== "owner" || !user.companyId) {
-    throw new Error("Owner access required");
-  }
-  return user;
+  return await requireOwnerOrManagerCapability(
+    ctx, sessionToken, userId, "canManageSalesAndCommercial"
+  );
 }
 
 function sortNewestFirst(items: any[]) {

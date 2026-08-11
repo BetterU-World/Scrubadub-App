@@ -1,7 +1,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { isWorkerRole } from "../lib/auth";
-import { requireOwnerSession, requireWorkerSession } from "../lib/sessionAuth";
+import { requireOwnerOrManagerCapability, requireWorkerSession } from "../lib/sessionAuth";
 import {
   STANDARD_COMPANY_ONBOARDING_DOCUMENTS,
   isVisibleToWorkerRole,
@@ -51,7 +51,7 @@ async function withUrls(ctx: any, documents: any[]) {
 export const listForOwner = query({
   args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageDocuments");
     const db: any = ctx.db;
     const documents = await db
       .query("companyOnboardingDocuments")

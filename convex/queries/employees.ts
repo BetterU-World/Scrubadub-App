@@ -5,7 +5,7 @@ import { requireStaffCompany } from "../lib/sessionAuth";
 import { hasOwnerOrManagerPermission } from "../lib/auth";
 import { hashTokenForLookup } from "../lib/tokenHash";
 
-function toEmployeeDirectoryEntry(user: Doc<"users">) {
+function toEmployeeDirectoryEntry(user: Doc<"users">, includeManagerPermissions = true) {
   const invitationStatus = user.invitationStatus === "revoked"
     ? "revoked"
     : user.invitationStatus === "accepted" || user.status === "active"
@@ -25,40 +25,45 @@ function toEmployeeDirectoryEntry(user: Doc<"users">) {
     status: user.status,
     invitationStatus,
     phone: user.phone,
-    canSeeAllJobs: user.canSeeAllJobs,
-    canCreateJobs: user.canCreateJobs,
-    canAssignCleaners: user.canAssignCleaners,
-    canRequestRework: user.canRequestRework,
-    canApproveForms: user.canApproveForms,
-    canManageSchedule: user.canManageSchedule,
-    canResolveRedFlags: user.canResolveRedFlags,
-    canManageBusinessConfiguration: user.canManageBusinessConfiguration,
-    canManageClients: user.canManageClients,
-    canManageSalesAndCommercial: user.canManageSalesAndCommercial,
-    canManageTeam: user.canManageTeam,
-    canViewFinancials: user.canViewFinancials,
-    canManageInvoices: user.canManageInvoices,
-    canManageDocuments: user.canManageDocuments,
-    canViewAnalytics: user.canViewAnalytics,
+    ...(includeManagerPermissions ? {
+      canSeeAllJobs: user.canSeeAllJobs,
+      canCreateJobs: user.canCreateJobs,
+      canAssignCleaners: user.canAssignCleaners,
+      canRequestRework: user.canRequestRework,
+      canApproveForms: user.canApproveForms,
+      canManageSchedule: user.canManageSchedule,
+      canResolveRedFlags: user.canResolveRedFlags,
+      canManageBusinessConfiguration: user.canManageBusinessConfiguration,
+      canManageClients: user.canManageClients,
+      canManageSalesAndCommercial: user.canManageSalesAndCommercial,
+      canManageTeam: user.canManageTeam,
+      canViewFinancials: user.canViewFinancials,
+      canManageInvoices: user.canManageInvoices,
+      canManageDocuments: user.canManageDocuments,
+      canViewAnalytics: user.canViewAnalytics,
+    } : {}),
   };
 }
 
 async function requireAssignmentDirectory(ctx: any, args: { sessionToken: string; companyId: any; userId: any }) {
   const user = await requireStaffCompany(ctx, args.sessionToken, args.companyId, args.userId);
-  if (!hasOwnerOrManagerPermission(user, "canAssignCleaners")) throw new Error("Worker assignment permission required");
+  if (!hasOwnerOrManagerPermission(user, "canAssignCleaners") &&
+      !hasOwnerOrManagerPermission(user, "canManageTeam")) {
+    throw new Error("Worker assignment or team management permission required");
+  }
   return user;
 }
 
 export const list = query({
   args: { companyId: v.id("companies"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    await requireAssignmentDirectory(ctx, args);
+    const actor = await requireAssignmentDirectory(ctx, args);
 
     const users = await ctx.db
       .query("users")
       .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
       .collect();
-    return users.map(toEmployeeDirectoryEntry);
+    return users.map((user) => toEmployeeDirectoryEntry(user, actor.role === "owner"));
   },
 });
 
@@ -109,7 +114,7 @@ export const getCleaners = query({
       .collect();
     return users
       .filter((u) => u.role === "cleaner" && u.status === "active")
-      .map(toEmployeeDirectoryEntry);
+      .map((user) => toEmployeeDirectoryEntry(user));
   },
 });
 
@@ -124,7 +129,7 @@ export const getJobAssignees = query({
       .collect();
     return users
       .filter((user) => user.status === "active" && ["cleaner", "manager", "owner"].includes(user.role))
-      .map(toEmployeeDirectoryEntry);
+      .map((user) => toEmployeeDirectoryEntry(user));
   },
 });
 
@@ -139,7 +144,7 @@ export const getManagers = query({
       .collect();
     return users
       .filter((u) => u.role === "manager" && u.status === "active")
-      .map(toEmployeeDirectoryEntry);
+      .map((user) => toEmployeeDirectoryEntry(user));
   },
 });
 
@@ -156,7 +161,7 @@ export const getWalkthroughAssignees = query({
       .filter((u) =>
         u.status === "active" && (u.role === "owner" || u.role === "manager")
       )
-      .map(toEmployeeDirectoryEntry);
+      .map((user) => toEmployeeDirectoryEntry(user));
   },
 });
 
@@ -171,6 +176,6 @@ export const getMaintenanceWorkers = query({
       .collect();
     return users
       .filter((u) => u.role === "maintenance" && u.status === "active")
-      .map(toEmployeeDirectoryEntry);
+      .map((user) => toEmployeeDirectoryEntry(user));
   },
 });

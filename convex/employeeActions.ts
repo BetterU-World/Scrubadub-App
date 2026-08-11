@@ -9,7 +9,7 @@ import { generateSecureToken, hashToken, INVITE_TOKEN_EXPIRY_MS } from "./lib/to
 import { validatePassword, validateEmail, validateName } from "./lib/validation";
 import { validateRequiredEnv } from "./lib/validateEnv";
 import { issueSession } from "./lib/sessions";
-import { requireOwnerSession } from "./lib/sessions";
+import { requireOwnerOrManagerCapability } from "./lib/sessions";
 import { recordSecurityEventFromAction } from "./lib/securityEventActions";
 
 validateRequiredEnv();
@@ -48,16 +48,8 @@ export const inviteCleaner = action({
     canViewAnalytics: v.optional(v.boolean()),
   },
   handler: async (ctx, args): Promise<{ token: string; userId: Id<"users">; emailSent: boolean }> => {
-    const principal = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const principal = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageTeam");
     if (principal.companyId !== args.companyId) throw new Error("Access denied");
-    // Verify the caller is an active owner of the target company
-    const isOwner: boolean = await ctx.runQuery(
-      internal.clientPortalInternal.verifyOwner,
-      { userId: principal.userId, companyId: principal.companyId }
-    );
-    if (!isOwner) {
-      throw new Error("Owner access required");
-    }
 
     validateEmail(args.email);
     validateName(args.name);
@@ -68,6 +60,9 @@ export const inviteCleaner = action({
 
     // Enforce cleaner cap — only when adding a cleaner role
     const role = args.role ?? "cleaner";
+    if (principal.role === "manager" && role === "manager") {
+      throw new Error("Only owners can invite managers");
+    }
     if (role === "cleaner") {
       const capResult: any = await ctx.runQuery(
         internal.queries.billing.getCleanerUsage,
@@ -163,13 +158,8 @@ export const resendInviteEmail = action({
     employeeEmail: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<{ emailSent: boolean; token: string }> => {
-    const principal = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const principal = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageTeam");
     if (principal.companyId !== args.companyId) throw new Error("Access denied");
-    const isOwner: boolean = await ctx.runQuery(
-      internal.clientPortalInternal.verifyOwner,
-      { userId: principal.userId, companyId: principal.companyId }
-    );
-    if (!isOwner) throw new Error("Owner access required");
 
     const requested = args.employeeId
       ? await ctx.runQuery(internal.authInternal.getUserById, { userId: args.employeeId })
@@ -179,6 +169,7 @@ export const resendInviteEmail = action({
     const user = requested;
     if (!user) throw new Error("Employee not found");
     if (user.companyId !== args.companyId) throw new Error("Employee not in your company");
+    if (principal.role === "manager" && (user.role === "manager" || user.role === "owner")) throw new Error("Only owners can manage privileged invitations");
     if (user.invitationStatus === "revoked") throw new Error("Revoked invitations cannot be resent");
     if (user.status !== "pending") throw new Error("Employee already accepted invite");
     const email = user.email;
@@ -213,10 +204,11 @@ export const revokeInvite = action({
     employeeId: v.id("users"),
   },
   handler: async (ctx, args): Promise<{ revoked: true }> => {
-    const principal = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const principal = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageTeam");
     if (principal.companyId !== args.companyId) throw new Error("Access denied");
     const target = await ctx.runQuery(internal.authInternal.getUserById, { userId: args.employeeId });
     if (!target || target.companyId !== args.companyId) throw new Error("Employee not found");
+    if (principal.role === "manager" && (target.role === "manager" || target.role === "owner")) throw new Error("Only owners can manage privileged invitations");
     if (target.status !== "pending") throw new Error("Only pending invitations can be revoked");
     await ctx.runMutation(internal.authInternal.revokeInviteToken, { userId: target._id });
     await ctx.runMutation(internal.authInternal.logAuditEntry, {

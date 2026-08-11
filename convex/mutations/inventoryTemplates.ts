@@ -1,7 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { logAudit } from "../lib/helpers";
-import { requireOwnerSession } from "../lib/sessionAuth";
+import { requireOwnerOrManagerCapability } from "../lib/sessionAuth";
 import { requireActiveSubscription } from "../lib/subscriptionGating";
 
 const inventoryItemValidator = v.object({
@@ -23,7 +23,7 @@ export const create = mutation({
     isDefault: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageBusinessConfiguration");
     if (owner.companyId !== args.companyId) throw new Error("Not your company");
     await requireActiveSubscription(ctx, args.companyId);
 
@@ -73,7 +73,7 @@ export const update = mutation({
     isDefault: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageBusinessConfiguration");
     const template = await ctx.db.get(args.templateId);
     if (!template) throw new Error("Template not found");
     if (template.companyId !== owner.companyId) throw new Error("Not your company");
@@ -122,7 +122,7 @@ export const remove = mutation({
     templateId: v.id("inventoryTemplates"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageBusinessConfiguration");
     const template = await ctx.db.get(args.templateId);
     if (!template) throw new Error("Template not found");
     if (template.companyId !== owner.companyId) throw new Error("Not your company");
@@ -147,7 +147,7 @@ export const applyToProperty = mutation({
     propertyId: v.id("properties"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageBusinessConfiguration");
     const template = await ctx.db.get(args.templateId);
     if (!template) throw new Error("Template not found");
     if (template.companyId !== owner.companyId) throw new Error("Not your company");

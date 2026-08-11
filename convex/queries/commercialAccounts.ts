@@ -1,14 +1,14 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwnerSession } from "../lib/sessionAuth";
+import { requireOwnerOrManagerCapability } from "../lib/sessionAuth";
 import { resolveCommercialEligibility } from "../lib/commercialEligibility";
 import { currentDateForTimezone, isFutureActiveCommercialJob } from "../lib/commercialAccountLifecycle";
 
 async function requireOwnerCompany(ctx: any, sessionToken: string, userId: any) {
-  const user = await requireOwnerSession(ctx, sessionToken, userId);
-  if (user.role !== "owner" || !user.companyId) {
-    throw new Error("Owner access required");
-  }
+  const user = await requireOwnerOrManagerCapability(
+    ctx, sessionToken, userId, "canManageSalesAndCommercial"
+  );
+  if (!user.companyId) throw new Error("Company access required");
   return user;
 }
 

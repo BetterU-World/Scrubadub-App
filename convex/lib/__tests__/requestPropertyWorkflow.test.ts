@@ -198,9 +198,9 @@ describe("request-to-property workflow", () => {
     const foreignRequest = await request(t, s.companyB, "residential");
     const invalidRelationshipRequest = await request(t, s.companyA, "residential", undefined, s.relationshipB);
 
-    await expect(t.mutation(api.mutations.clientRequests.createPropertyFromRequest, { requestId: ownedRequest, userId: s.cleanerA, sessionToken: cleanerAuth.sessionToken })).rejects.toThrow("Owner session required");
-    await expect(t.mutation(api.mutations.clientRequests.createPropertyFromRequest, { requestId: ownedRequest, userId: s.managerA, sessionToken: managerAuth.sessionToken })).rejects.toThrow("Owner session required");
-    await expect(t.mutation(api.mutations.clientRequests.updateLeadDetails, { requestId: ownedRequest, userId: s.managerA, sessionToken: managerAuth.sessionToken, leadType: "residential" })).rejects.toThrow("Owner session required");
+    await expect(t.mutation(api.mutations.clientRequests.createPropertyFromRequest, { requestId: ownedRequest, userId: s.cleanerA, sessionToken: cleanerAuth.sessionToken })).rejects.toThrow("Owner or manager session required");
+    await expect(t.mutation(api.mutations.clientRequests.createPropertyFromRequest, { requestId: ownedRequest, userId: s.managerA, sessionToken: managerAuth.sessionToken })).rejects.toThrow("canManageSalesAndCommercial permission required");
+    await expect(t.mutation(api.mutations.clientRequests.updateLeadDetails, { requestId: ownedRequest, userId: s.managerA, sessionToken: managerAuth.sessionToken, leadType: "residential" })).rejects.toThrow("canManageSalesAndCommercial permission required");
     await expect(t.mutation(api.mutations.clientRequests.createPropertyFromRequest, { requestId: foreignRequest, userId: s.ownerA, sessionToken: ownerAuth.sessionToken })).rejects.toThrow("Access denied");
     await expect(t.mutation(api.mutations.clientRequests.createPropertyFromRequest, { requestId: ownedRequest, userId: s.ownerB, sessionToken: ownerAuth.sessionToken })).rejects.toThrow("does not match");
     await expect(t.mutation(api.mutations.clientRequests.createPropertyFromRequest, { requestId: invalidRelationshipRequest, userId: s.ownerA, sessionToken: ownerAuth.sessionToken })).rejects.toThrow("Client relationship must belong");

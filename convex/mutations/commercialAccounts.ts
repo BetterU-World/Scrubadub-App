@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwnerManagerSession, requireOwnerSession } from "../lib/sessionAuth";
+import { requireOwnerManagerSession, requireOwnerOrManagerCapability } from "../lib/sessionAuth";
+import { hasOwnerOrManagerPermission } from "../lib/auth";
 import { createNotification, logAudit } from "../lib/helpers";
 import { currentDateForTimezone, isFutureActiveCommercialJob } from "../lib/commercialAccountLifecycle";
 import { ensureClientRelationshipForLead } from "../lib/clientRelationships";
@@ -47,10 +48,10 @@ const accountFields = {
 };
 
 async function requireOwnerCompany(ctx: any, sessionToken: string, userId: any) {
-  const user = await requireOwnerSession(ctx, sessionToken, userId);
-  if (user.role !== "owner" || !user.companyId) {
-    throw new Error("Owner access required");
-  }
+  const user = await requireOwnerOrManagerCapability(
+    ctx, sessionToken, userId, "canManageSalesAndCommercial"
+  );
+  if (!user.companyId) throw new Error("Company access required");
   return user;
 }
 
@@ -147,6 +148,10 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const owner = await requireOwnerCompany(ctx, args.sessionToken, args.userId);
     const companyId = owner.companyId!;
+    if ((args.assignedManagerId || args.assignedCleanerId || args.assignedTeamId) &&
+        !hasOwnerOrManagerPermission(owner, "canAssignCleaners")) {
+      throw new Error("Worker assignment permission required");
+    }
 
     if (!args.sourceProposalId) {
       throw new Error("An accepted proposal is required to create a commercial account");
@@ -267,6 +272,12 @@ export const update = mutation({
     if (account.companyId !== owner.companyId) throw new Error("Access denied");
     if (account.status === "ended") throw new Error("Ended commercial accounts cannot be edited");
     if (args.status !== account.status) throw new Error("Use a commercial account lifecycle action to change status");
+    const assignmentChanged = args.assignedManagerId !== account.assignedManagerId ||
+      args.assignedCleanerId !== account.assignedCleanerId ||
+      args.assignedTeamId !== account.assignedTeamId;
+    if (assignmentChanged && !hasOwnerOrManagerPermission(owner, "canAssignCleaners")) {
+      throw new Error("Worker assignment permission required");
+    }
 
     const patch = await buildAccountPatch(ctx, owner.companyId, args);
     await ctx.db.patch(args.accountId, {
@@ -304,7 +315,9 @@ function cleanLifecycleNotes(notes: string | undefined) {
 }
 
 async function lifecycleContext(ctx: any, args: any) {
-  const actor = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+  const actor = await requireOwnerOrManagerCapability(
+    ctx, args.sessionToken, args.userId, "canManageSalesAndCommercial"
+  );
   const account = await ctx.db.get(args.commercialAccountId) as any;
   if (!account) throw new Error("Commercial account not found");
   if (account.companyId !== actor.companyId) throw new Error("Access denied");

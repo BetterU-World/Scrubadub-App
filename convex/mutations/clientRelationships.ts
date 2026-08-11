@@ -1,7 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { logAudit } from "../lib/helpers";
-import { requireOwnerSession } from "../lib/sessionAuth";
+import { requireOwnerOrManagerCapability } from "../lib/sessionAuth";
 import { ensureClientRelationshipForLead } from "../lib/clientRelationships";
 
 const clientTypeValidator = v.union(
@@ -56,7 +56,7 @@ function patchFromArgs(args: any) {
 }
 
 async function requireOwnedRelationship(ctx: any, sessionToken: string, userId: any, relationshipId: any) {
-  const owner = await requireOwnerSession(ctx, sessionToken, userId);
+  const owner = await requireOwnerOrManagerCapability(ctx, sessionToken, userId, "canManageClients");
   const relationship = await ctx.db.get(relationshipId);
   if (!relationship) throw new Error("Client relationship not found");
   if (relationship.companyId !== owner.companyId) throw new Error("Access denied");
@@ -81,7 +81,7 @@ export const create = mutation({
     ...relationshipFields,
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageClients");
     const now = Date.now();
     const relationshipId = await ctx.db.insert("clientRelationships", {
       companyId: owner.companyId!,
@@ -133,7 +133,7 @@ export const createFromClientRequest = mutation({
     clientRequestId: v.id("clientRequests"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageSalesAndCommercial");
     const request = await ctx.db.get(args.clientRequestId);
     if (!request) throw new Error("Lead not found");
     if (request.companyId !== owner.companyId) throw new Error("Access denied");
@@ -161,7 +161,7 @@ export const linkClientRequest = mutation({
     clientRelationshipId: v.optional(v.id("clientRelationships")),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageSalesAndCommercial");
     const request = await ctx.db.get(args.clientRequestId);
     if (!request) throw new Error("Lead not found");
     if (request.companyId !== owner.companyId) throw new Error("Access denied");
@@ -185,7 +185,7 @@ export const linkCommercialAccount = mutation({
     clientRelationshipId: v.optional(v.id("clientRelationships")),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageSalesAndCommercial");
     const account = await ctx.db.get(args.commercialAccountId);
     if (!account) throw new Error("Commercial account not found");
     if (account.companyId !== owner.companyId) throw new Error("Access denied");
@@ -210,7 +210,7 @@ export const linkProperty = mutation({
     clientRelationshipId: v.optional(v.id("clientRelationships")),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageClients");
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
     if (property.companyId !== owner.companyId) throw new Error("Access denied");

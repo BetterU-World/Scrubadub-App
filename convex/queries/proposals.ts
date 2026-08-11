@@ -1,6 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwnerSession } from "../lib/sessionAuth";
+import { requireOwnerOrManagerCapability } from "../lib/sessionAuth";
 import { calculateProposalTotals } from "../lib/proposalAddOnLineItems";
 
 async function decorateProposal(ctx: any, proposal: any) {
@@ -34,7 +34,9 @@ export const getProposalByClientRequest = query({
     clientRequestId: v.id("clientRequests"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerOrManagerCapability(
+      ctx, args.sessionToken, args.userId, "canManageSalesAndCommercial"
+    );
 
     const request = await ctx.db.get(args.clientRequestId);
     if (!request) return null;

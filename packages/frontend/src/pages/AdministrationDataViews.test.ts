@@ -17,6 +17,7 @@ vi.mock("@/hooks/useAuth", () => ({
     user: {
       _id: "owner-1",
       companyId: "company-1",
+      role: "owner",
       isSuperadmin: true,
     },
     sessionToken: "session-token",

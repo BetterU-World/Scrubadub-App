@@ -2,6 +2,7 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import {
   requireOwnerManagerSession,
+  requireOwnerOrManagerCapability,
   requireOwnerSession,
 } from "../lib/sessionAuth";
 import { deriveLeadPipelineState } from "../lib/leadPipelineState";
@@ -55,7 +56,7 @@ export const getCompanyRequests = query({
     ),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageSalesAndCommercial");
     if (owner.companyId !== args.companyId) throw new Error("Access denied");
 
     if (args.status) {
@@ -103,7 +104,7 @@ export const getRequestById = query({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const user = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageSalesAndCommercial");
 
     const request = await ctx.db.get(args.id);
     if (!request) return null;
@@ -417,10 +418,11 @@ export const listRequestsForPipeline = query({
     ),
   },
   handler: async (ctx, args) => {
-    const user = await requireOwnerSession(
+    const user = await requireOwnerOrManagerCapability(
       ctx,
       args.sessionToken,
       args.userId,
+      "canManageSalesAndCommercial",
     );
     const companyId = user.companyId;
 
@@ -526,7 +528,7 @@ export const listFollowUps = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const user = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const user = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageSalesAndCommercial");
     const companyId = user.companyId;
 
     const requests = await ctx.db

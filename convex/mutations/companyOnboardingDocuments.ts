@@ -1,6 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwnerSession } from "../lib/sessionAuth";
+import { requireOwnerOrManagerCapability } from "../lib/sessionAuth";
 import { standardCompanyOnboardingDocumentForKey } from "../lib/companyOnboardingDocuments";
 
 const roleVisibilityValidator = v.union(
@@ -46,7 +46,7 @@ export const upsertMetadata = mutation({
     status: statusValidator,
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageDocuments");
     const db: any = ctx.db;
     const now = Date.now();
     const documentKey = cleanString(args.documentKey, 120);
@@ -90,7 +90,7 @@ export const attachPdf = mutation({
     status: v.optional(statusValidator),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageDocuments");
     const db: any = ctx.db;
     const now = Date.now();
     const documentKey = cleanString(args.documentKey, 120);
@@ -128,7 +128,7 @@ export const removePdf = mutation({
     documentKey: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageDocuments");
     const db: any = ctx.db;
     const existing = await getExisting({ ...ctx, db }, owner.companyId, cleanString(args.documentKey, 120));
     if (!existing) return null;
