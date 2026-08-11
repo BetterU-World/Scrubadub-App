@@ -58,6 +58,7 @@ export const ownerSections: NavSection[] = [
       { href: "/red-flags", labelKey: "nav.redFlags", icon: Flag },
       { href: "/performance", labelKey: "nav.performance", icon: BarChart3 },
       { href: "/analytics", labelKey: "nav.analytics", icon: TrendingUp },
+      { href: "/financials", labelKey: "nav.financials", icon: Banknote },
       { href: "/partners", labelKey: "nav.partners", icon: Handshake },
     ],
   },
@@ -101,6 +102,8 @@ export const managerSections: NavSection[] = [
       { href: "/jobs/requests", labelKey: "nav.jobRequests", icon: ClipboardList },
       { href: "/red-flags", labelKey: "nav.redFlags", icon: Flag, mobile: true, mobileOrder: 4 },
       { href: "/calendar", labelKey: "nav.calendar", icon: Calendar, mobile: true, mobileOrder: 3 },
+      { href: "/performance", labelKey: "nav.performance", icon: BarChart3 },
+      { href: "/analytics", labelKey: "nav.analytics", icon: TrendingUp },
     ],
   },
   {
@@ -112,6 +115,8 @@ export const managerSections: NavSection[] = [
       { href: "/clients", labelKey: "nav.clients", icon: Users },
       { href: "/commercial-accounts", labelKey: "nav.commercialAccounts", icon: Briefcase },
       { href: "/employees", labelKey: "nav.employees", icon: Users },
+      { href: "/commercial-invoices", labelKey: "nav.commercialInvoices", icon: Receipt },
+      { href: "/financials", labelKey: "nav.financials", icon: Banknote },
     ],
   },
   {
@@ -178,6 +183,9 @@ export function getNavSectionsForRole(
   canManageSalesAndCommercial = false,
   canManageTeam = false,
   canManageDocuments = false,
+  canViewFinancials = false,
+  canManageInvoices = false,
+  canViewAnalytics = false,
 ): NavSection[] {
   let sections: NavSection[];
   switch (role as NavigationRole | undefined) {
@@ -200,18 +208,21 @@ export function getNavSectionsForRole(
     (canManageClients || item.href !== "/clients") &&
     (canManageSalesAndCommercial || (item.href !== "/requests" && item.href !== "/commercial-accounts")) &&
     (canManageTeam || item.href !== "/employees") &&
-    (canManageDocuments || (item.href !== "/owner/settings/documents" && item.href !== "/owner/settings/onboarding"))
+    (canManageDocuments || (item.href !== "/owner/settings/documents" && item.href !== "/owner/settings/onboarding")) &&
+    (canViewFinancials || item.href !== "/financials") &&
+    (canManageInvoices || item.href !== "/commercial-invoices") &&
+    (canViewAnalytics || (item.href !== "/performance" && item.href !== "/analytics"))
   ) }));
 }
 
-export function getMobileNavItemsForRole(role?: string, canManageConfiguration = false, canManageSchedule = false, canManageClients = false, canManageSalesAndCommercial = false, canManageTeam = false, canManageDocuments = false): NavItem[] {
-  return getNavSectionsForRole(role, canManageConfiguration, canManageSchedule, canManageClients, canManageSalesAndCommercial, canManageTeam, canManageDocuments).flatMap((section) =>
+export function getMobileNavItemsForRole(role?: string, canManageConfiguration = false, canManageSchedule = false, canManageClients = false, canManageSalesAndCommercial = false, canManageTeam = false, canManageDocuments = false, canViewFinancials = false, canManageInvoices = false, canViewAnalytics = false): NavItem[] {
+  return getNavSectionsForRole(role, canManageConfiguration, canManageSchedule, canManageClients, canManageSalesAndCommercial, canManageTeam, canManageDocuments, canViewFinancials, canManageInvoices, canViewAnalytics).flatMap((section) =>
     section.items.filter((item) => item.mobile)
   ).sort((a, b) => (a.mobileOrder ?? 0) - (b.mobileOrder ?? 0));
 }
 
-export function getMoreNavItemsForRole(role?: string, canManageConfiguration = false, canManageSchedule = false, canManageClients = false, canManageSalesAndCommercial = false, canManageTeam = false, canManageDocuments = false): NavItem[] {
-  return getNavSectionsForRole(role, canManageConfiguration, canManageSchedule, canManageClients, canManageSalesAndCommercial, canManageTeam, canManageDocuments).flatMap((section) =>
+export function getMoreNavItemsForRole(role?: string, canManageConfiguration = false, canManageSchedule = false, canManageClients = false, canManageSalesAndCommercial = false, canManageTeam = false, canManageDocuments = false, canViewFinancials = false, canManageInvoices = false, canViewAnalytics = false): NavItem[] {
+  return getNavSectionsForRole(role, canManageConfiguration, canManageSchedule, canManageClients, canManageSalesAndCommercial, canManageTeam, canManageDocuments, canViewFinancials, canManageInvoices, canViewAnalytics).flatMap((section) =>
     section.items.filter((item) => !item.mobile)
   );
 }
@@ -238,11 +249,14 @@ export function isMoreNavActive(
   canManageSalesAndCommercial = false,
   canManageTeam = false,
   canManageDocuments = false,
+  canViewFinancials = false,
+  canManageInvoices = false,
+  canViewAnalytics = false,
 ): boolean {
-  const mobileItems = getMobileNavItemsForRole(role, canManageConfiguration, canManageSchedule, canManageClients, canManageSalesAndCommercial, canManageTeam, canManageDocuments);
+  const mobileItems = getMobileNavItemsForRole(role, canManageConfiguration, canManageSchedule, canManageClients, canManageSalesAndCommercial, canManageTeam, canManageDocuments, canViewFinancials, canManageInvoices, canViewAnalytics);
   if (mobileItems.some((item) => isNavItemActive(item, pathname))) return false;
 
-  const moreItems = getMoreNavItemsForRole(role, canManageConfiguration, canManageSchedule, canManageClients, canManageSalesAndCommercial, canManageTeam, canManageDocuments);
+  const moreItems = getMoreNavItemsForRole(role, canManageConfiguration, canManageSchedule, canManageClients, canManageSalesAndCommercial, canManageTeam, canManageDocuments, canViewFinancials, canManageInvoices, canViewAnalytics);
   if (moreItems.some((item) => isNavItemActive(item, pathname))) return true;
 
   return isSuperadmin && adminSection.items.some((item) => isNavItemActive(item, pathname));

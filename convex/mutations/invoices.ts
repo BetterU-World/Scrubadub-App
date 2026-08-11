@@ -1,6 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwnerSession } from "../lib/sessionAuth";
+import { requireOwnerOrManagerCapability } from "../lib/sessionAuth";
 import { buildInvoiceAddOnSnapshot, calculateInvoiceTotals } from "../lib/invoiceAddOnLineItems";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -44,7 +44,7 @@ function assertDateRange(startDate: string, endDate: string) {
 }
 
 async function getOwnedAccount(ctx: any, sessionToken: string, userId: any, commercialAccountId: any) {
-  const owner = await requireOwnerSession(ctx, sessionToken, userId);
+  const owner = await requireOwnerOrManagerCapability(ctx, sessionToken, userId, "canManageInvoices");
   const account = await ctx.db.get(commercialAccountId);
   if (!account) throw new Error("Commercial account not found");
   if (account.companyId !== owner.companyId) throw new Error("Access denied");
@@ -52,7 +52,7 @@ async function getOwnedAccount(ctx: any, sessionToken: string, userId: any, comm
 }
 
 async function getOwnedInvoice(ctx: any, sessionToken: string, userId: any, invoiceId: any) {
-  const owner = await requireOwnerSession(ctx, sessionToken, userId);
+  const owner = await requireOwnerOrManagerCapability(ctx, sessionToken, userId, "canManageInvoices");
   const invoice = await ctx.db.get(invoiceId);
   if (!invoice) throw new Error("Invoice not found");
   if (invoice.companyId !== owner.companyId) throw new Error("Access denied");

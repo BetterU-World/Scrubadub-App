@@ -102,6 +102,9 @@ export function Sidebar({ mobileOpen = false, onMobileClose, triggerRef }: Sideb
     user?.canManageSalesAndCommercial === true,
     user?.canManageTeam === true,
     user?.canManageDocuments === true,
+    user?.canViewFinancials === true,
+    user?.canManageInvoices === true,
+    user?.canViewAnalytics === true,
   );
 
   const toggleSection = (titleKey: string) => {

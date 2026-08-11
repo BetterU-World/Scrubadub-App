@@ -1,6 +1,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwnerSession } from "../lib/sessionAuth";
+import { requireOwnerManagerSession } from "../lib/sessionAuth";
+import { hasOwnerOrManagerPermission } from "../lib/auth";
 import { calculateInvoiceTotals } from "../lib/invoiceAddOnLineItems";
 
 async function decorateInvoice(ctx: any, invoice: any) {
@@ -37,6 +38,15 @@ async function decorateInvoice(ctx: any, invoice: any) {
   };
 }
 
+async function requireInvoiceReader(ctx: any, sessionToken: string, userId: any) {
+  const actor = await requireOwnerManagerSession(ctx, sessionToken, userId);
+  if (!hasOwnerOrManagerPermission(actor, "canManageInvoices") &&
+      !hasOwnerOrManagerPermission(actor, "canViewFinancials")) {
+    throw new Error("Invoice access required");
+  }
+  return actor;
+}
+
 export const getById = query({
   args: {
     userId: v.id("users"),
@@ -44,7 +54,7 @@ export const getById = query({
     invoiceId: v.id("invoices"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireInvoiceReader(ctx, args.sessionToken, args.userId);
     const invoice = await ctx.db.get(args.invoiceId);
     if (!invoice) return null;
     if (invoice.companyId !== owner.companyId) throw new Error("Access denied");
@@ -59,7 +69,7 @@ export const listByCommercialAccount = query({
     commercialAccountId: v.id("commercialAccounts"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireInvoiceReader(ctx, args.sessionToken, args.userId);
     const account = await ctx.db.get(args.commercialAccountId);
     if (!account) return [];
     if (account.companyId !== owner.companyId) throw new Error("Access denied");
@@ -91,7 +101,7 @@ export const listByCompany = query({
     ),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireInvoiceReader(ctx, args.sessionToken, args.userId);
     const invoices = await ctx.db
       .query("invoices")
       .withIndex("by_company", (q: any) => q.eq("companyId", owner.companyId))

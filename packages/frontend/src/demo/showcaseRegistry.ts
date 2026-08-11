@@ -51,6 +51,7 @@ const ownerDispositions: Record<string, ShowcaseDisposition> = {
   "/red-flags": placeholder("/red-flags", "surface issues that need operational attention", ["Review property and job concerns", "Track resolution status", "Keep follow-up work visible"]),
   "/performance": placeholder("/performance", "understand team performance", ["Review completion and quality signals", "Compare operational trends", "Recognize coaching opportunities"]),
   "/analytics": placeholder("/analytics", "measure business and operational activity", ["Review performance trends", "Understand workload and outcomes", "Support informed operating decisions"]),
+  "/financials": placeholder("/financials", "review company financial reporting", ["Review invoice totals", "Track paid and outstanding revenue", "Understand billing status"]),
   "/partners": placeholder("/partners", "coordinate trusted business partners", ["Maintain partner relationships", "Share relevant job context", "Track collaborative work"]),
   "/requests": placeholder("/requests", "manage incoming service opportunities", ["Review new service requests", "Organize request details and status", "Move qualified work into the operating workflow"]),
   "/clients": placeholder("/clients", "maintain client relationships", ["Review client and contact details", "Connect clients to service locations", "Understand relationship history"]),

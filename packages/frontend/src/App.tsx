@@ -32,6 +32,7 @@ import { RedFlagsDashboard } from "@/pages/owner/RedFlagsDashboard";
 import { AuditLogPage } from "@/pages/owner/AuditLogPage";
 import { PerformancePage } from "@/pages/owner/PerformancePage";
 import { AnalyticsPage } from "@/pages/owner/AnalyticsPage";
+import { FinancialOverviewPage } from "@/pages/owner/FinancialOverviewPage";
 import { SubscribePage } from "@/pages/owner/SubscribePage";
 import { BillingSuccessPage } from "@/pages/owner/BillingSuccessPage";
 import { BillingCancelPage } from "@/pages/owner/BillingCancelPage";
@@ -401,6 +402,7 @@ export default function App() {
                 <Route path="/red-flags" component={RedFlagsDashboard} />
                 <Route path="/performance" component={PerformancePage} />
                 <Route path="/analytics" component={AnalyticsPage} />
+                <Route path="/financials" component={FinancialOverviewPage} />
                 <Route path="/partners" component={PartnersPage} />
                 <Route path="/requests/pipeline" component={PipelinePage} />
                 <Route path="/requests/:id" component={RequestDetailPage} />
@@ -454,6 +456,11 @@ export default function App() {
                 <Route path="/jobs" component={ManagerJobListPage} />
                 <Route path="/red-flags" component={ManagerRedFlagsPage} />
                 {user?.canManageSchedule && <Route path="/calendar" component={CalendarPage} />}
+                {user?.canViewAnalytics && <Route path="/performance" component={PerformancePage} />}
+                {user?.canViewAnalytics && <Route path="/analytics" component={AnalyticsPage} />}
+                {user?.canViewFinancials && <Route path="/financials" component={FinancialOverviewPage} />}
+                {(user?.canManageInvoices || user?.canViewFinancials) && <Route path="/commercial-invoices/:id" component={CommercialInvoiceDetailPage} />}
+                {(user?.canManageInvoices || user?.canViewFinancials) && <Route path="/commercial-invoices" component={CommercialInvoiceListPage} />}
                 {user?.canManageClients && <Route path="/clients/:id" component={ClientRelationshipDetailPage} />}
                 {user?.canManageClients && <Route path="/clients" component={ClientRelationshipListPage} />}
                 {user?.canManageSalesAndCommercial && <Route path="/requests/pipeline" component={PipelinePage} />}

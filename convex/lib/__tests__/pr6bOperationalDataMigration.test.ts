@@ -88,7 +88,7 @@ describe("PR 6B ordinary operational data migration", () => {
     await expect(t.query(api.queries.calendarReservations.listByProperty, { ...common, propertyId: s.propertyA })).resolves.toHaveLength(1);
     await expect(t.query(api.queries.jobAutomationRules.getByProperty, { ...common, propertyId: s.propertyA })).resolves.toMatchObject({ propertyId: s.propertyA });
     await expect(t.query(api.queries.inventoryTemplates.list, common)).rejects.toThrow("canManageBusinessConfiguration permission required");
-    await expect(t.query(api.queries.performance.getLeaderboard, common)).rejects.toThrow("Owner session required");
+    await expect(t.query(api.queries.performance.getLeaderboard, common)).rejects.toThrow("canViewAnalytics permission required");
     await expect(t.query(api.queries.performance.getLeaderboard, ownerCommon)).resolves.toEqual([{ cleanerId: s.cleanerA, cleanerName: "Cleaner A", totalJobs: 0, averageScore: 0, averageTimeMinutes: 0, redFlagCount: 0, consistencyScore: 0 }]);
   });
 
