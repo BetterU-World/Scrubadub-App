@@ -223,7 +223,9 @@ export function ClientRelationshipListPage() {
         </div>
       )}
 
-      <RelationshipDiagnostics userId={user._id} sessionToken={sessionToken} />
+      {user.role === "owner" && (
+        <RelationshipDiagnostics userId={user._id} sessionToken={sessionToken} />
+      )}
 
     </div>
   );
