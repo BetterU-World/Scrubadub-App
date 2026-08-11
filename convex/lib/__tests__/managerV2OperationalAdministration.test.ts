@@ -47,6 +47,15 @@ describe("Manager Experience V2 delegated operational administration", () => {
     await expect(t.mutation(api.mutations.clientRelationships.create, {
       userId: seeded.clients, sessionToken: clientsAuth.sessionToken, displayName: "Client", clientType: "commercial", status: "active",
     })).resolves.toBeTruthy();
+    await expect(t.query(api.queries.clientRelationships.list, {
+      userId: seeded.clients, sessionToken: clientsAuth.sessionToken,
+    })).resolves.toHaveLength(1);
+    await expect(t.query(api.queries.relationshipDiagnostics.getSummary, {
+      userId: seeded.owner, sessionToken: ownerAuth.sessionToken,
+    })).resolves.toMatchObject({ bounded: false });
+    await expect(t.query(api.queries.relationshipDiagnostics.getSummary, {
+      userId: seeded.clients, sessionToken: clientsAuth.sessionToken,
+    })).rejects.toThrow("Owner session required");
     await expect(t.mutation(api.mutations.clientRequests.createManualClientRequest, {
       userId: seeded.sales, sessionToken: salesAuth.sessionToken, requesterName: "Lead", requesterEmail: "lead@pr2.test", leadType: "commercial",
     })).resolves.toBeTruthy();
