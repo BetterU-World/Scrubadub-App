@@ -1114,6 +1114,29 @@
     "defaultManager": "Default Manager",
     "noDefaultManager": "No default manager",
     "defaultManagerHint": "Auto-assigned to new jobs",
+    "managerProfiles": {
+      "title": "Manager profile",
+      "fieldManager": {
+        "label": "Field Manager",
+        "description": "Quality oversight, inspections, rework, and completed-work review."
+      },
+      "scheduler": {
+        "label": "Scheduler",
+        "description": "Create and schedule jobs, manage Job Requests, and assign workers."
+      },
+      "officeManager": {
+        "label": "Office Manager",
+        "description": "Clients, sales, team administration, documents, invoices, and day-to-day office operations."
+      },
+      "operationsManager": {
+        "label": "Operations Manager",
+        "description": "Run day-to-day operations across jobs, quality, clients, team, sales, settings, and reporting."
+      },
+      "custom": {
+        "label": "Custom",
+        "description": "The current permissions do not exactly match a predefined profile."
+      }
+    },
     "operationalRole": {
       "title": "Operational Role",
       "helper": "Change this worker's application role without recreating their account or history.",

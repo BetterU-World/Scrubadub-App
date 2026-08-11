@@ -14,6 +14,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Link } from "wouter";
+import { deriveManagerProfile, managerPermissionPresets } from "../../lib/managerPermissionPresets";
 
 function formatLabel(value?: string | null) {
   if (!value) return "Not set";
@@ -150,6 +151,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
     canViewAnalytics: false,
   });
   const [editPermsLoading, setEditPermsLoading] = useState(false);
+  const editManagerProfile = deriveManagerProfile(editPerms);
   const [confirmEmployeeAction, setConfirmEmployeeAction] = useState<{
     type: "deactivate" | "revoke";
     employeeId: any;
@@ -795,7 +797,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
       <Dialog.Root open={!!editPermsFor} onOpenChange={(open) => { if (!open) setEditPermsFor(null); }}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/40 z-50" />
-          <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-lg p-6 w-full max-w-md z-50">
+          <Dialog.Content className="fixed top-1/2 left-1/2 max-h-[90dvh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto bg-white rounded-xl shadow-lg p-6 w-[calc(100%_-_2rem)] max-w-2xl z-50">
             <div className="flex items-center justify-between mb-4">
               <Dialog.Title className="text-lg font-semibold">Manager Permissions</Dialog.Title>
               <Dialog.Close className="p-1 text-gray-400 hover:text-gray-600 rounded">
@@ -803,6 +805,30 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
               </Dialog.Close>
             </div>
             <div className="space-y-4">
+              <fieldset>
+                <legend className="mb-2 text-sm font-semibold text-gray-900">{t("employees.managerProfiles.title")}</legend>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {managerPermissionPresets.map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      aria-pressed={editManagerProfile === preset.id}
+                      onClick={() => setEditPerms({ ...preset.permissions })}
+                      className={`rounded-lg border p-3 text-left transition-colors ${editManagerProfile === preset.id ? "border-primary-500 bg-primary-50 ring-1 ring-primary-500" : "border-gray-200 hover:border-primary-300 hover:bg-gray-50"}`}
+                    >
+                      <span className="block text-sm font-semibold text-gray-900">{t(preset.labelKey)}</span>
+                      <span className="mt-1 block text-xs leading-5 text-gray-600">{t(preset.descriptionKey)}</span>
+                    </button>
+                  ))}
+                  <div
+                    aria-current={editManagerProfile === "custom" ? "true" : undefined}
+                    className={`rounded-lg border p-3 sm:col-span-2 ${editManagerProfile === "custom" ? "border-primary-500 bg-primary-50 ring-1 ring-primary-500" : "border-gray-200 bg-gray-50"}`}
+                  >
+                    <span className="block text-sm font-semibold text-gray-900">{t("employees.managerProfiles.custom.label")}</span>
+                    <span className="mt-1 block text-xs leading-5 text-gray-600">{t("employees.managerProfiles.custom.description")}</span>
+                  </div>
+                </div>
+              </fieldset>
               {managerPermissionGroups.map((group) => <div key={group.title} className="space-y-2"><p className="text-sm font-semibold text-gray-900">{group.title}</p>{group.permissions.map(([key, label]) => (
                 <label key={key} className="flex items-center gap-2 text-sm text-gray-700">
                   <input

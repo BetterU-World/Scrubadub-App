@@ -1114,6 +1114,29 @@
     "defaultManager": "Manager Predeterminado",
     "noDefaultManager": "Sin manager predeterminado",
     "defaultManagerHint": "Asignado automáticamente a nuevos trabajos",
+    "managerProfiles": {
+      "title": "Perfil de manager",
+      "fieldManager": {
+        "label": "Manager de campo",
+        "description": "Supervisión de calidad, inspecciones, retrabajo y revisión del trabajo completado."
+      },
+      "scheduler": {
+        "label": "Planificador",
+        "description": "Crea y programa trabajos, gestiona solicitudes de trabajo y asigna trabajadores."
+      },
+      "officeManager": {
+        "label": "Manager de oficina",
+        "description": "Clientes, ventas, administración del equipo, documentos, facturas y operaciones diarias de oficina."
+      },
+      "operationsManager": {
+        "label": "Manager de operaciones",
+        "description": "Dirige las operaciones diarias de trabajos, calidad, clientes, equipo, ventas, configuración e informes."
+      },
+      "custom": {
+        "label": "Personalizado",
+        "description": "Los permisos actuales no coinciden exactamente con un perfil predefinido."
+      }
+    },
     "operationalRole": {
       "title": "Rol operativo",
       "helper": "Cambia el rol de este trabajador en la aplicación sin recrear su cuenta ni su historial.",
