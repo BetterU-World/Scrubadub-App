@@ -65,6 +65,7 @@ describe("Manager Experience V2 financial, invoice, and analytics delegation", (
     const navigation = readFileSync("packages/frontend/src/components/layout/navigation.ts", "utf8");
     expect(app).toContain('user?.canViewAnalytics && <Route path="/analytics"');
     expect(app).toContain('user?.canViewFinancials && <Route path="/financials"');
+    expect(app).toContain('"/analytics", "/financials"');
     expect(app).toContain('(user?.canManageInvoices || user?.canViewFinancials) && <Route path="/commercial-invoices"');
     expect(detail).toContain('const canManageInvoices = user.role === "owner" || user.canManageInvoices === true');
     expect(detail).toContain("{canManageInvoices && <section");

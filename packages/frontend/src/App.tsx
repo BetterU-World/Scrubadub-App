@@ -293,7 +293,7 @@ export default function App() {
     "/login", "/signup", "/forgot-password", "/reset-password",
     "/invite", "/subscribe", "/billing", "/properties", "/employees",
     "/client",
-    "/jobs", "/calendar", "/red-flags", "/performance", "/analytics",
+    "/jobs", "/calendar", "/red-flags", "/performance", "/analytics", "/financials",
     "/partners", "/requests", "/clients", "/commercial-accounts", "/commercial-invoices", "/feedback", "/cleaner-leads", "/audit-log", "/notifications", "/manuals", "/proposal",
     "/admin", "/site", "/affiliate", "/availability", "/owner", "/settings", "/payments", "/internal",
     "/terms", "/privacy", "/contact", "/get-started", "/setup", "/assessment",

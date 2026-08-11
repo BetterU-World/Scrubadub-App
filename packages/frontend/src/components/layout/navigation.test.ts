@@ -71,6 +71,22 @@ describe("role mobile navigation", () => {
     expect(configurationOnly).not.toContain("/clients");
   });
 
+  it("uses the canonical Financials route only for financial visibility", () => {
+    const financialOnly = hrefs(getMoreNavItemsForRole(
+      "manager", false, false, false, false, false, false, true, false, false
+    ));
+    const invoicesOnly = hrefs(getMoreNavItemsForRole(
+      "manager", false, false, false, false, false, false, false, true, false
+    ));
+    const withoutFinancials = hrefs(getMoreNavItemsForRole("manager"));
+
+    expect(financialOnly).toContain("/financials");
+    expect(invoicesOnly).toContain("/commercial-invoices");
+    expect(invoicesOnly).not.toContain("/financials");
+    expect(withoutFinancials).not.toContain("/financials");
+    expect(hrefs(ownerSections.flatMap((section) => section.items))).toContain("/financials");
+  });
+
   it("matches route families on path boundaries", () => {
     const jobs = ownerSections[0].items.find((item) => item.href === "/jobs")!;
     const root = ownerSections[0].items.find((item) => item.href === "/")!;
