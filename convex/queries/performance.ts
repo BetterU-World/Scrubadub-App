@@ -1,7 +1,7 @@
 import { query } from "../_generated/server";
 import { getJobTiming } from "../lib/jobTiming";
 import { v } from "convex/values";
-import { requireOwnerSession, requireVerifiedStaffSession } from "../lib/sessionAuth";
+import { requireOwnerOrManagerCapability, requireVerifiedStaffSession } from "../lib/sessionAuth";
 import { withPerfLog } from "../lib/perfLog";
 import { getActiveTeamIdsForUser } from "../lib/teams";
 
@@ -131,7 +131,7 @@ export const getLeaderboard = query({
   },
   handler: async (ctx, args) => {
     return await withPerfLog(ctx, "performance:leaderboard", async () => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canViewAnalytics");
     if (owner.companyId !== args.companyId) throw new Error("Access denied");
 
     const allUsers = await ctx.db
@@ -249,7 +249,7 @@ export const getWorkerSummary = query({
   },
   handler: async (ctx, args) => {
     return await withPerfLog(ctx, "performance:workerSummary", async () => {
-      const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+      const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canViewAnalytics");
       if (owner.companyId !== args.companyId) throw new Error("Access denied");
 
       const worker = await ctx.db.get(args.workerUserId);

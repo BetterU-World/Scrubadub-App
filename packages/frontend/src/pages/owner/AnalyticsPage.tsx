@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
@@ -14,121 +13,15 @@ import {
   TrendingUp,
 } from "lucide-react";
 
-function daysAgo(n: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
-}
-
-const today = daysAgo(0);
-const sevenAgo = daysAgo(7);
-const thirtyAgo = daysAgo(30);
-
-function completionDate(j: { completedAt?: number; scheduledDate: string }): string {
-  if (j.completedAt) return new Date(j.completedAt).toISOString().slice(0, 10);
-  return j.scheduledDate;
-}
-
 export function AnalyticsPage() {
   const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
 
-  const allJobs = useQuery(
-    api.queries.jobs.list,
+  const metrics = useQuery(
+    (api as any).queries.analytics.getOperationalSummary,
     user?.companyId ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
-
-  const allFlags = useQuery(
-    api.queries.redFlags.listByCompany,
-    user?.companyId
-      ? { companyId: user.companyId, userId: user._id, sessionToken }
-      : "skip"
-  );
-
-  const metrics = useMemo(() => {
-    if (!allJobs || !allFlags) return null;
-
-    const completed = allJobs.filter((j) => j.status === "approved");
-    const completedToday = completed.filter((j) => completionDate(j) === today).length;
-    const completed7 = completed.filter((j) => completionDate(j) >= sevenAgo).length;
-    const completed30 = completed.filter((j) => completionDate(j) >= thirtyAgo).length;
-
-    // Rework rate (last 30 days): jobs that ever had rework requested
-    const jobs30 = allJobs.filter(
-      (j) => j.scheduledDate >= thirtyAgo && j.status !== "cancelled"
-    );
-    const reworked30 = jobs30.filter((j) => j.reworkCount > 0).length;
-    const reworkRate = jobs30.length > 0 ? Math.round((reworked30 / jobs30.length) * 100) : 0;
-
-    // Red flags opened last 30 days
-    const flags30 = allFlags.filter((f) => {
-      // Use _creationTime as proxy since we don't have a date field
-      const created = new Date(f._creationTime).toISOString().slice(0, 10);
-      return created >= thirtyAgo;
-    });
-
-    // Top 5 properties by red flags (last 30 days)
-    const propFlagCounts: Record<string, { name: string; count: number }> = {};
-    for (const f of flags30) {
-      const key = f.propertyId;
-      if (!propFlagCounts[key]) {
-        propFlagCounts[key] = { name: f.propertyName ?? "Unknown", count: 0 };
-      }
-      propFlagCounts[key].count++;
-    }
-    const topProperties = Object.values(propFlagCounts)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-
-    // Top cleaners by completed jobs (last 30 days)
-    const cleanerCompleted: Record<string, { name: string; count: number }> = {};
-    for (const j of completed.filter((j) => completionDate(j) >= thirtyAgo)) {
-      for (const c of j.cleaners as { _id: string; name: string }[]) {
-        if (!cleanerCompleted[c._id]) {
-          cleanerCompleted[c._id] = { name: c.name, count: 0 };
-        }
-        cleanerCompleted[c._id].count++;
-      }
-    }
-    const topCleaners = Object.values(cleanerCompleted)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-
-    // Best quality: cleaners with most jobs but lowest rework rate (last 30 days)
-    const cleanerQuality: Record<string, { name: string; total: number; reworks: number }> = {};
-    for (const j of jobs30) {
-      for (const c of j.cleaners as { _id: string; name: string }[]) {
-        if (!cleanerQuality[c._id]) {
-          cleanerQuality[c._id] = { name: c.name, total: 0, reworks: 0 };
-        }
-        cleanerQuality[c._id].total++;
-        if (j.reworkCount > 0) cleanerQuality[c._id].reworks++;
-      }
-    }
-    const bestQuality = Object.values(cleanerQuality)
-      .filter((c) => c.total >= 2) // need at least 2 jobs to rank
-      .sort((a, b) => {
-        const rateA = a.reworks / a.total;
-        const rateB = b.reworks / b.total;
-        return rateA - rateB || b.total - a.total;
-      })
-      .slice(0, 5);
-
-    return {
-      completedToday,
-      completed7,
-      completed30,
-      reworkRate,
-      reworked30,
-      jobs30Count: jobs30.length,
-      flagsOpened30: flags30.length,
-      topProperties,
-      topCleaners,
-      bestQuality,
-    };
-  }, [allJobs, allFlags]);
-
-  if (!user || allJobs === undefined || allFlags === undefined) return <PageLoader />;
+  if (!user || metrics === undefined) return <PageLoader />;
 
   if (!metrics) return <PageLoader />;
 
@@ -185,7 +78,7 @@ export function AnalyticsPage() {
             <p className="text-sm text-gray-500">{t("analytics.noRedFlags30")}</p>
           ) : (
             <div className="space-y-2">
-              {metrics.topProperties.map((p, i) => (
+              {metrics.topProperties.map((p: { name: string; count: number }, i: number) => (
                 <div key={i} className="flex items-center justify-between text-sm">
                   <span className="text-gray-700 truncate">{p.name}</span>
                   <span className="font-medium text-red-600 flex-shrink-0 ml-2">{p.count}</span>
@@ -204,7 +97,7 @@ export function AnalyticsPage() {
             <p className="text-sm text-gray-500">{t("analytics.noCompletedJobs30")}</p>
           ) : (
             <div className="space-y-2">
-              {metrics.topCleaners.map((c, i) => (
+              {metrics.topCleaners.map((c: { name: string; count: number }, i: number) => (
                 <div key={i} className="flex items-center justify-between text-sm">
                   <span className="text-gray-700 truncate">{c.name}</span>
                   <span className="font-medium text-primary-600 flex-shrink-0 ml-2">{t("analytics.jobsCount", { count: c.count })}</span>
@@ -223,7 +116,7 @@ export function AnalyticsPage() {
             <p className="text-sm text-gray-500">{t("analytics.notEnoughData")}</p>
           ) : (
             <div className="space-y-2">
-              {metrics.bestQuality.map((c, i) => (
+              {metrics.bestQuality.map((c: { name: string; total: number; reworks: number }, i: number) => (
                 <div key={i} className="flex items-center justify-between text-sm">
                   <span className="text-gray-700 truncate">{c.name}</span>
                   <span className="flex-shrink-0 ml-2">

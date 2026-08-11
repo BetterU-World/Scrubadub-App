@@ -26,6 +26,9 @@ export function AppLayout({ children }: AppLayoutProps) {
     user?.canManageSalesAndCommercial === true,
     user?.canManageTeam === true,
     user?.canManageDocuments === true,
+    user?.canViewFinancials === true,
+    user?.canManageInvoices === true,
+    user?.canViewAnalytics === true,
   ).length > 0;
 
   const toggleSidebar = useCallback((trigger: HTMLButtonElement) => {

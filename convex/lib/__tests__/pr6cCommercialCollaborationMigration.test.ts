@@ -80,7 +80,7 @@ describe("PR 6C commercial and collaboration session migration", () => {
     await expect(t.query(api.queries.companyOnboardingDocuments.listForOwner, { userId: s.ownerA, sessionToken: owner.sessionToken })).resolves.toHaveLength(8);
     await expect(t.query(api.queries.partners.listContacts, { userId: s.ownerA, sessionToken: owner.sessionToken })).resolves.toHaveLength(1);
 
-    await expect(t.query(api.queries.invoices.getById, { userId: s.managerA, sessionToken: manager.sessionToken, invoiceId: s.invoiceA })).rejects.toThrow("Owner session required");
+    await expect(t.query(api.queries.invoices.getById, { userId: s.managerA, sessionToken: manager.sessionToken, invoiceId: s.invoiceA })).rejects.toThrow("Invoice access required");
     await expect(t.query(api.queries.partners.listContacts, { userId: s.managerA, sessionToken: manager.sessionToken })).rejects.toThrow("Owner session required");
   });
 

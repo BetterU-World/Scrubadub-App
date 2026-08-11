@@ -58,6 +58,7 @@ export function CommercialInvoiceDetailPage() {
   if (!invoice) {
     return <div className="py-12 text-center text-gray-500">{t("invoices.notFound")}</div>;
   }
+  const canManageInvoices = user.role === "owner" || user.canManageInvoices === true;
 
   const showToast = (message: string, type: "success" | "error") => {
     setToast({ message, type });
@@ -183,7 +184,7 @@ export function CommercialInvoiceDetailPage() {
 
           <section className="card">
             <h2 className="mb-4 text-lg font-semibold text-gray-900">{t("common.notes")}</h2>
-            {invoice.status === "draft" ? (
+            {invoice.status === "draft" && canManageInvoices ? (
               <div className="space-y-3">
                 <textarea
                   className="input-field"
@@ -237,7 +238,7 @@ export function CommercialInvoiceDetailPage() {
             </div>
           </section>
 
-          <section className="card space-y-2">
+          {canManageInvoices && <section className="card space-y-2">
             <h2 className="text-lg font-semibold text-gray-900">{t("invoices.actions")}</h2>
             {invoice.status === "draft" && (
               <button
@@ -278,7 +279,7 @@ export function CommercialInvoiceDetailPage() {
             {invoice.status === "paid" && (
               <p className="text-sm text-gray-500">{t("invoices.paidInternalNote")}</p>
             )}
-          </section>
+          </section>}
         </aside>
       </div>
 
