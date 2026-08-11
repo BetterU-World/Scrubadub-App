@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { convexTest } from "convex-test";
 import schema from "../../schema";
 import { api } from "../../_generated/api";
@@ -37,10 +37,19 @@ describe("Manager Experience V2 capability foundation", () => {
       return { companyId, owner };
     });
     const ownerAuth = await t.action(api.authActions.signIn, { email: "owner@v2.test", password: PASSWORD });
-    const invited = await t.action(api.employeeActions.inviteCleaner, {
-      companyId: seeded.companyId, email: "manager@v2.test", name: "Manager", role: "manager",
-      userId: seeded.owner, sessionToken: ownerAuth.sessionToken,
-    });
+    const invited = await (async () => {
+      vi.useFakeTimers();
+      try {
+        const result = await t.action(api.employeeActions.inviteCleaner, {
+          companyId: seeded.companyId, email: "manager@v2.test", name: "Manager", role: "manager",
+          userId: seeded.owner, sessionToken: ownerAuth.sessionToken,
+        });
+        await t.finishAllScheduledFunctions(vi.runAllTimers);
+        return result;
+      } finally {
+        vi.useRealTimers();
+      }
+    })();
     const initial = await t.run((ctx) => ctx.db.get(invited.userId));
     for (const key of Object.keys(newCapabilities) as Array<keyof typeof newCapabilities>) expect(initial?.[key]).toBe(false);
 

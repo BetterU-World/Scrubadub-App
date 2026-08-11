@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { convexTest } from "convex-test";
 import schema from "../../schema";
 import { api } from "../../_generated/api";
@@ -53,10 +53,16 @@ describe("Manager Experience V2 delegated operational administration", () => {
     await expect(t.mutation(api.mutations.teams.create, {
       userId: seeded.team, sessionToken: teamAuth.sessionToken, companyId: seeded.companyId, name: "Ops Team",
     })).resolves.toBeTruthy();
-    await expect(t.action(api.employeeActions.inviteCleaner, {
-      userId: seeded.team, sessionToken: teamAuth.sessionToken, companyId: seeded.companyId,
-      email: "cleaner-invite@pr2.test", name: "Cleaner Invite", role: "cleaner",
-    })).resolves.toMatchObject({ emailSent: true });
+    vi.useFakeTimers();
+    try {
+      await expect(t.action(api.employeeActions.inviteCleaner, {
+        userId: seeded.team, sessionToken: teamAuth.sessionToken, companyId: seeded.companyId,
+        email: "cleaner-invite@pr2.test", name: "Cleaner Invite", role: "cleaner",
+      })).resolves.toMatchObject({ emailSent: true });
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+    } finally {
+      vi.useRealTimers();
+    }
     await expect(t.action(api.employeeActions.inviteCleaner, {
       userId: seeded.team, sessionToken: teamAuth.sessionToken, companyId: seeded.companyId,
       email: "manager-invite@pr2.test", name: "Manager Invite", role: "manager",
