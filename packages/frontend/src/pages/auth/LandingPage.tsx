@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { useState } from "react";
 import {
   ArrowRight,
   BarChart3,
@@ -18,6 +19,7 @@ import {
   Sparkles,
   UserCheck,
   Users,
+  LockKeyhole,
 } from "lucide-react";
 import { isOperationsAssessmentEnabled } from "../../lib/assessmentFeature";
 import {
@@ -277,6 +279,8 @@ export function LandingPage() {
           </ProductProofSection>
         </section>
 
+        <ResponsibilityDelegationSection />
+
         <section id="platform" className="scroll-mt-20 px-4 py-20 sm:px-6 sm:py-24">
           <div className="mx-auto max-w-6xl">
             <SectionHeading centered eyebrow="The connected lifecycle" title="From first request to repeatable service" copy="SCRUB keeps the business context moving as your team turns an opportunity into ongoing work. Each stage stays clear without pretending the important decisions happen automatically." />
@@ -415,6 +419,87 @@ function ConnectedOperationBridge() {
       <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary-700">One connected operation</p>
       <h2 id="connected-operation-heading" className="mt-3 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">One job. Three connected experiences. One source of truth.</h2>
       <ol className="mt-10 grid gap-4 md:grid-cols-3">{roles.map(([role, outcome], index) => <li key={role} className="relative rounded-2xl border border-primary-200 bg-white p-5 shadow-sm"><span className="text-xs font-bold text-primary-600">0{index + 1}</span><h3 className="mt-2 text-xl font-semibold text-gray-900">{role}</h3><p className="mt-1 text-sm text-gray-600">{outcome}</p>{index < roles.length - 1 && <ArrowRight className="absolute -right-7 top-1/2 z-10 hidden h-5 w-5 -translate-y-1/2 text-primary-500 md:block" aria-hidden="true" />}</li>)}</ol>
+    </div>
+  </section>;
+}
+
+const delegationProfiles = {
+  field: {
+    label: "Field Manager",
+    summary: "Quality oversight and completed-work review",
+    permissions: ["All jobs", "Request rework", "Approve completed work", "Resolve red flags"],
+  },
+  scheduler: {
+    label: "Scheduler",
+    summary: "Job planning, scheduling, and staffing",
+    permissions: ["All jobs", "Create jobs", "Assign workers", "Manage schedules"],
+  },
+  office: {
+    label: "Office Manager",
+    summary: "Customers, documents, and billing operations",
+    permissions: ["Clients", "Sales & Commercial", "Team", "Documents", "Invoices", "Operational Settings"],
+  },
+  operations: {
+    label: "Operations Manager",
+    summary: "Day-to-day nonfinancial operational leadership",
+    permissions: ["Jobs & scheduling", "Quality oversight", "Clients", "Sales & Commercial", "Team", "Documents", "Operational Settings", "Analytics"],
+  },
+} as const;
+
+type DelegationProfileId = keyof typeof delegationProfiles;
+
+function ResponsibilityDelegationSection() {
+  const [selectedProfile, setSelectedProfile] = useState<DelegationProfileId>("office");
+  const selected = delegationProfiles[selectedProfile];
+
+  return <section className="border-y border-gray-200 bg-white px-4 py-20 sm:px-6 sm:py-24" aria-labelledby="delegation-heading">
+    <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[.82fr_1.18fr] lg:gap-16">
+      <div>
+        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary-600">Responsibility-based delegation</p>
+        <h2 id="delegation-heading" className="mt-3 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">Built for growing teams.</h2>
+        <p className="mt-4 text-base leading-7 text-gray-600 sm:text-lg">Give every manager exactly the responsibility they need—without giving away ownership.</p>
+        <p className="mt-5 max-w-xl text-sm leading-6 text-gray-600">Schedulers organize work. Field Managers oversee quality. Office Managers handle customers and documents. Operations Managers keep the business running.</p>
+        <div className="mt-7 rounded-2xl border border-primary-200 bg-primary-50 p-5">
+          <p className="font-semibold text-gray-900">Start with a responsibility. Customize everything.</p>
+          <p className="mt-1 text-sm leading-6 text-gray-600">One click sets the foundation. Fine-tune every permission whenever you need.</p>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-3xl border border-gray-200 bg-gray-50 shadow-xl shadow-gray-900/5">
+        <div className="border-b border-gray-200 bg-white px-5 py-4 sm:px-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Manager profiles</p>
+          <p className="mt-1 text-lg font-semibold text-gray-900">Choose a starting point</p>
+        </div>
+        <div className="grid gap-5 p-4 sm:p-6 lg:grid-cols-[.9fr_1.1fr]">
+          <div className="space-y-2" role="radiogroup" aria-label="Manager profiles">
+            {(Object.entries(delegationProfiles) as [DelegationProfileId, typeof delegationProfiles[DelegationProfileId]][]).map(([id, profile]) => {
+              const active = selectedProfile === id;
+              return <button key={id} type="button" role="radio" aria-checked={active} onClick={() => setSelectedProfile(id)} className={`w-full rounded-xl border p-3 text-left transition-all ${active ? "border-primary-500 bg-white shadow-sm ring-1 ring-primary-500" : "border-gray-200 bg-white/70 hover:border-primary-300 hover:bg-white"}`}>
+                <span className="flex items-center gap-2 text-sm font-semibold text-gray-900"><span className={`h-3 w-3 rounded-full border-2 ${active ? "border-primary-600 bg-primary-600 ring-2 ring-primary-100" : "border-gray-300"}`} />{profile.label}</span>
+                <span className="mt-1 block pl-5 text-xs leading-5 text-gray-500">{profile.summary}</span>
+              </button>;
+            })}
+            <div className="rounded-xl border border-dashed border-gray-300 bg-gray-100/80 p-3">
+              <span className="flex items-center gap-2 text-sm font-semibold text-gray-700"><span className="h-3 w-3 rounded-full border-2 border-gray-300" />Custom</span>
+              <span className="mt-1 block pl-5 text-xs leading-5 text-gray-500">Fine-tune any responsibility below.</span>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5" aria-live="polite">
+            <div className="flex items-start justify-between gap-3 border-b border-gray-100 pb-4">
+              <div><p className="text-sm font-semibold text-gray-900">{selected.label}</p><p className="mt-1 text-xs text-gray-500">Included responsibilities</p></div>
+              <span className="rounded-full bg-primary-100 px-2.5 py-1 text-xs font-semibold text-primary-700">Selected</span>
+            </div>
+            <ul className="mt-4 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+              {selected.permissions.map((permission) => <li key={permission} className="flex items-start gap-2 text-sm text-gray-700"><CheckCircle className="mt-0.5 h-4 w-4 flex-none text-primary-600" aria-hidden="true" /><span>{permission}</span></li>)}
+            </ul>
+            <div className="mt-5 space-y-2 border-t border-gray-100 pt-4">
+              <div className="flex items-center justify-between gap-3 text-sm"><span className="text-gray-500">Financial visibility</span><span className="font-medium text-gray-400">Not included</span></div>
+              <div className="flex items-center justify-between gap-3 rounded-lg bg-gray-900 px-3 py-2.5 text-sm text-white"><span className="flex items-center gap-2"><LockKeyhole className="h-4 w-4 text-primary-300" aria-hidden="true" />Company ownership</span><span className="text-xs font-semibold text-primary-200">Owner only</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>;
 }
