@@ -1,6 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { requireOwnerSession } from "../lib/sessionAuth";
+import { requireOwnerOrManagerCapability } from "../lib/sessionAuth";
 import { ensureClientRelationshipForLead } from "../lib/clientRelationships";
 import { logAudit } from "../lib/helpers";
 
@@ -111,11 +111,9 @@ type StructuredResponse = {
 };
 
 async function requireOwnerCompany(ctx: any, sessionToken: string, userId: any) {
-  const user = await requireOwnerSession(ctx, sessionToken, userId);
-  if (user.role !== "owner" || !user.companyId) {
-    throw new Error("Owner access required");
-  }
-  return user;
+  return await requireOwnerOrManagerCapability(
+    ctx, sessionToken, userId, "canManageSalesAndCommercial"
+  );
 }
 
 function cleanOptional(value: string | undefined, max = 1000) {

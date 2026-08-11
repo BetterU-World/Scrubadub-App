@@ -2,6 +2,7 @@ import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import {
   requireOwnerManagerSession,
+  requireOwnerOrManagerCapability,
   requireOwnerSession,
   requireVerifiedClientSession,
   requireActiveClientRelationship,
@@ -325,10 +326,11 @@ export const updateRequestStatus = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(
+    const owner = await requireOwnerOrManagerCapability(
       ctx,
       args.sessionToken,
       args.userId,
+      "canManageSalesAndCommercial",
     );
 
     const request = await ctx.db.get(args.requestId);
@@ -359,10 +361,11 @@ export const archiveClientRequest = mutation({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(
+    const owner = await requireOwnerOrManagerCapability(
       ctx,
       args.sessionToken,
       args.userId,
+      "canManageSalesAndCommercial",
     );
 
     const request = await ctx.db.get(args.requestId);
@@ -459,10 +462,11 @@ export const createPropertyFromRequest = mutation({
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(
+    const owner = await requireOwnerOrManagerCapability(
       ctx,
       args.sessionToken,
       args.userId,
+      "canManageSalesAndCommercial",
     );
 
     const request = await ctx.db.get(args.requestId);
@@ -603,10 +607,11 @@ export const createManualClientRequest = mutation({
     clientRelationshipId: v.optional(v.id("clientRelationships")),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(
+    const owner = await requireOwnerOrManagerCapability(
       ctx,
       args.sessionToken,
       args.userId,
+      "canManageSalesAndCommercial",
     );
     const now = Date.now();
     const relationship = args.clientRelationshipId
@@ -669,10 +674,11 @@ export const updateLeadDetails = mutation({
     estimatedFrequencyNotes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(
+    const owner = await requireOwnerOrManagerCapability(
       ctx,
       args.sessionToken,
       args.userId,
+      "canManageSalesAndCommercial",
     );
 
     const request = await ctx.db.get(args.requestId);
@@ -708,10 +714,11 @@ export const updateLeadStage = mutation({
     leadStage: leadStageValidator,
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(
+    const owner = await requireOwnerOrManagerCapability(
       ctx,
       args.sessionToken,
       args.userId,
+      "canManageSalesAndCommercial",
     );
 
     const request = await ctx.db.get(args.requestId);
@@ -734,10 +741,11 @@ export const updateLeadNotes = mutation({
     leadNotes: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(
+    const owner = await requireOwnerOrManagerCapability(
       ctx,
       args.sessionToken,
       args.userId,
+      "canManageSalesAndCommercial",
     );
 
     const request = await ctx.db.get(args.requestId);
@@ -762,10 +770,11 @@ export const updateNextFollowUp = mutation({
     nextFollowUpAt: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(
+    const owner = await requireOwnerOrManagerCapability(
       ctx,
       args.sessionToken,
       args.userId,
+      "canManageSalesAndCommercial",
     );
 
     const request = await ctx.db.get(args.requestId);
@@ -797,10 +806,11 @@ export const generateClientPortalLink = mutation({
     clientRequestId: v.id("clientRequests"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(
+    const owner = await requireOwnerOrManagerCapability(
       ctx,
       args.sessionToken,
       args.userId,
+      "canManageSalesAndCommercial",
     );
 
     const request = await ctx.db.get(args.clientRequestId);

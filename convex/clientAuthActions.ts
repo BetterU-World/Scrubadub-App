@@ -8,7 +8,7 @@ import { hashPassword, verifyBcryptPassword } from "./lib/password";
 import { generateSecureToken, hashToken, INVITE_TOKEN_EXPIRY_MS, RESET_TOKEN_EXPIRY_MS } from "./lib/tokens";
 import { validateEmail, validatePassword } from "./lib/validation";
 import { validateRequiredEnv } from "./lib/validateEnv";
-import { issueSession, requireOwnerSession } from "./lib/sessions";
+import { issueSession, requireOwnerOrManagerCapability } from "./lib/sessions";
 import { recordSecurityEventFromAction } from "./lib/securityEventActions";
 
 validateRequiredEnv();
@@ -89,7 +89,7 @@ export const inviteClient = action({
     emailSent: boolean;
     status: "pending" | "active";
   }> => {
-    const principal = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const principal = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageClients");
     return await sendClientInvitation(ctx, principal.userId, args.relationshipId);
   },
 });
@@ -101,7 +101,7 @@ export const inviteClientFromRequest = action({
     requestId: v.id("clientRequests"),
   },
   handler: async (ctx, args): Promise<{ inviteUrl: string; emailSent: boolean; status: "pending" | "active" }> => {
-    const principal = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const principal = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageClients");
     const relationshipId = await ctx.runMutation(internal.clientAuthInternal.resolveRelationshipForRequest, {
       userId: principal.userId,
       requestId: args.requestId,

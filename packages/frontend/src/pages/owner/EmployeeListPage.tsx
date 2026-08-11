@@ -59,13 +59,14 @@ const managerPermissionGroups = [
 export function EmployeeListPage() {
   const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
+  const isOwner = user?.role === "owner";
   const employees = useQuery(
     api.queries.employees.list,
     user?.companyId && sessionToken ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
   const workerProfiles = useQuery(
     (api as any).queries.workers.listWorkersForCompany,
-    user?.companyId ? { companyId: user.companyId, userId: user._id, sessionToken, includeArchived: true } : "skip"
+    isOwner && user?.companyId ? { companyId: user.companyId, userId: user._id, sessionToken, includeArchived: true } : "skip"
   );
   const inviteCleaner = useAction(api.employeeActions.inviteCleaner);
   const resendInviteEmail = useAction(api.employeeActions.resendInviteEmail);
@@ -159,7 +160,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
   // Cleaner usage for cap enforcement
   const cleanerUsage = useQuery(
     api.queries.billing.getCleanerUsageForUI,
-    user?.companyId && sessionToken
+    isOwner && user?.companyId && sessionToken
       ? { companyId: user.companyId, sessionToken }
       : "skip"
   );
@@ -167,11 +168,11 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
   // Default manager
   const companyProfile = useQuery(
     api.queries.companies.getCompanyProfile,
-    user ? { userId: user._id, sessionToken } : "skip"
+    isOwner && user ? { userId: user._id, sessionToken } : "skip"
   );
   const setDefaultManager = useMutation(api.mutations.companies.setDefaultManager);
 
-  if (!user || employees === undefined || teams === undefined || workerProfiles === undefined) return <PageLoader />;
+  if (!user || employees === undefined || teams === undefined || (isOwner && workerProfiles === undefined)) return <PageLoader />;
 
   const workerProfileByUserId = new Map(
     (workerProfiles ?? []).map((profile: any) => [profile.userId, profile])
@@ -431,8 +432,8 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
         </div>
       </div>
 
-      {/* Default manager selector */}
-      {(() => {
+      {/* Default manager and manager-permission administration remain Owner-only. */}
+      {isOwner && (() => {
         const activeManagers = employees.filter((e) => e.role === "manager" && e.status === "active");
         if (activeManagers.length === 0) return null;
         return (
@@ -494,7 +495,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                   className="block rounded-lg border border-gray-200 p-4 sm:table-row sm:rounded-none sm:border-0 sm:border-b sm:border-gray-100 sm:p-0 sm:last:border-0"
                 >
                   <td className="block min-w-0 p-0 text-sm font-medium text-gray-900 sm:table-cell sm:px-4 sm:py-3">
-                    {emp.role === "owner" ? (
+                    {!isOwner || emp.role === "owner" ? (
                       emp.name
                     ) : (
                       <Link href={`/employees/${emp._id}`} className="text-primary-700 hover:text-primary-800">
@@ -535,12 +536,12 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                   </td>
                   <td className="mt-3 block border-t border-gray-100 p-0 pt-3 text-left sm:table-cell sm:border-0 sm:px-4 sm:py-3 sm:text-right sm:mt-0">
                     <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                    {emp.role !== "owner" && (
+                    {isOwner && emp.role !== "owner" && (
                       <Link href={`/employees/${emp._id}`} className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-800 sm:min-h-0 sm:p-0">
                         {t("employees.view")}
                       </Link>
                     )}
-                    {emp.role === "manager" && emp.status === "active" && (
+                    {isOwner && emp.role === "manager" && emp.status === "active" && (
                       <button
                         onClick={() => {
                           setEditPermsFor(emp._id);
@@ -567,7 +568,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                         {t("employees.permissions")}
                       </button>
                     )}
-                    {emp.role !== "owner" && emp.status !== "pending" && (
+                    {isOwner && emp.role !== "owner" && emp.status !== "pending" && (
                       <button
                         onClick={() => {
                           if (emp.status === "active") {
@@ -590,7 +591,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                         {emp.status === "active" ? t("employees.deactivate") : t("employees.activate")}
                       </button>
                     )}
-                    {emp.status === "pending" && (
+                    {emp.status === "pending" && (isOwner || (emp.role !== "manager" && emp.role !== "owner")) && (
                       <>
                         <button
                           className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-primary-600 hover:bg-primary-50 hover:text-primary-700 sm:min-h-0 sm:p-0"
@@ -732,7 +733,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                   >
                     <option value="cleaner">{t("employees.roleCleaner")}</option>
                     <option value="maintenance">{t("employees.roleMaintenance")}</option>
-                    <option value="manager">Manager</option>
+                    {isOwner && <option value="manager">Manager</option>}
                   </select>
                 </div>
                 <div>
@@ -747,7 +748,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                     <option value="maintenance_contractor">Maintenance Contractor</option>
                   </select>
                 </div>
-                {inviteRole === "manager" && (
+                {isOwner && inviteRole === "manager" && (
                   <div className="p-3 bg-gray-50 rounded-lg space-y-4">
                     <p className="text-xs font-medium text-gray-600 uppercase tracking-wide">Manager Permissions</p>
                     {managerPermissionGroups.map((group) => <div key={group.title} className="space-y-2"><p className="text-sm font-semibold text-gray-800">{group.title}</p>{group.permissions.map(([key, label]) => (

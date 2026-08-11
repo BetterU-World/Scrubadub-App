@@ -20,18 +20,27 @@ export function MobileNav({ menuOpen, onMoreOpen }: MobileNavProps) {
   const { user } = useAuth();
   const { t } = useTranslation();
 
-  const nav = getMobileNavItemsForRole(user?.role, user?.canManageBusinessConfiguration === true, user?.canManageSchedule === true);
+  const capabilities = [
+    user?.canManageClients === true,
+    user?.canManageSalesAndCommercial === true,
+    user?.canManageTeam === true,
+    user?.canManageDocuments === true,
+  ] as const;
+  const nav = getMobileNavItemsForRole(user?.role, user?.canManageBusinessConfiguration === true, user?.canManageSchedule === true, ...capabilities);
   const hasMoreItems =
     getMoreNavItemsForRole(
       user?.role,
       user?.canManageBusinessConfiguration === true,
-      user?.canManageSchedule === true
+      user?.canManageSchedule === true,
+      ...capabilities,
     ).length > 0 || user?.isSuperadmin === true;
   const moreIsActive = isMoreNavActive(
     location,
     user?.role,
     user?.canManageBusinessConfiguration === true,
-    user?.isSuperadmin === true
+    user?.isSuperadmin === true,
+    user?.canManageSchedule === true,
+    ...capabilities,
   );
 
   return (

@@ -5,6 +5,7 @@ import type { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { generateSecureToken, hashToken } from "./tokens";
 import { isFounderEmail } from "./founderEmails";
+import { hasOwnerOrManagerPermission } from "./auth";
 import {
   SESSION_ABSOLUTE_EXPIRY_MS,
   SESSION_IDLE_EXPIRY_MS,
@@ -150,6 +151,18 @@ export async function requireOwnerManagerSession(
     role: "owner" | "manager";
     companyId: Id<"companies">;
   };
+}
+
+export async function requireOwnerOrManagerCapability(
+  ctx: ActionCtx,
+  token: string,
+  claimedUserId: Id<"users"> | undefined,
+  permission: Parameters<typeof hasOwnerOrManagerPermission>[1],
+) {
+  const principal = await requireOwnerManagerSession(ctx, token, claimedUserId);
+  const user = await ctx.runQuery(sessionApi.getStaffPrincipal, { userId: principal.userId });
+  if (!user || !hasOwnerOrManagerPermission(user, permission)) throw new Error(`${permission} permission required`);
+  return { ...principal, ...user, userId: principal.userId };
 }
 
 export async function requireAffiliateSession(

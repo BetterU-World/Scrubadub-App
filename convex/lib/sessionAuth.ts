@@ -1,6 +1,7 @@
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { isFounderEmail } from "./founderEmails";
+import { hasOwnerOrManagerPermission } from "./auth";
 import {
   SESSION_IDLE_EXPIRY_MS,
   SESSION_REQUIRED_ERROR,
@@ -214,6 +215,17 @@ export async function requireOwnerManagerCompany(
 ): Promise<ActiveOwnerManager> {
   const user = await requireOwnerManagerSession(ctx, sessionToken, claimedUserId);
   if (user.companyId !== companyId) throw new Error("Access denied");
+  return user;
+}
+
+export async function requireOwnerOrManagerCapability(
+  ctx: DbCtx,
+  sessionToken: string,
+  claimedUserId: Id<"users"> | undefined,
+  permission: Parameters<typeof hasOwnerOrManagerPermission>[1],
+): Promise<ActiveOwnerManager> {
+  const user = await requireOwnerManagerSession(ctx, sessionToken, claimedUserId);
+  if (!hasOwnerOrManagerPermission(user, permission)) throw new Error(`${permission} permission required`);
   return user;
 }
 

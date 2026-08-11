@@ -120,6 +120,8 @@ export function RequestDetailPage() {
   const { t } = useTranslation();
   const params = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
+  const canAssign = user?.role === "owner" || user?.canAssignCleaners === true;
+  const canManageClients = user?.role === "owner" || user?.canManageClients === true;
 
   const request = useQuery(
     api.queries.clientRequests.getRequestById,
@@ -231,26 +233,26 @@ export function RequestDetailPage() {
   );
   const managers = useQuery(
     api.queries.employees.getManagers,
-    proposal?.status === "accepted" && user?.companyId && sessionToken
+    canAssign && proposal?.status === "accepted" && user?.companyId && sessionToken
       ? { companyId: user.companyId, userId: user._id, sessionToken }
       : "skip"
   );
   const cleaners = useQuery(
     api.queries.employees.getCleaners,
-    proposal?.status === "accepted" && user?.companyId && sessionToken
+    canAssign && proposal?.status === "accepted" && user?.companyId && sessionToken
       ? { companyId: user.companyId, userId: user._id, sessionToken }
       : "skip"
   );
   const teams = useQuery(
     api.queries.teams.listActiveForAssignment,
-    proposal?.status === "accepted" && user?.companyId
+    canAssign && proposal?.status === "accepted" && user?.companyId
       ? { companyId: user.companyId, userId: user._id, sessionToken }
       : "skip"
   );
 
   const latestFeedback = useQuery(
     api.queries.clientRequests.getLatestFeedbackForRequest,
-    params.id && user && sessionToken
+    user?.role === "owner" && params.id && user && sessionToken
       ? {
           userId: user._id,
           sessionToken,
@@ -1893,7 +1895,7 @@ export function RequestDetailPage() {
                 {t(`requests.clientPortal.statuses.${(request as any).clientPortalStatus}`)}
               </span>
             </div>
-            {(request as any).clientPortalStatus !== "active" && request.status !== "archived" && (
+            {canManageClients && (request as any).clientPortalStatus !== "active" && request.status !== "archived" && (
               <button
                 type="button"
                 onClick={() => setShowClientInvite(true)}
@@ -1907,7 +1909,7 @@ export function RequestDetailPage() {
                   : t("requests.clientPortal.inviteClient")}
               </button>
             )}
-            {!request.requesterEmail?.trim() && request.status !== "archived" && (
+            {canManageClients && !request.requesterEmail?.trim() && request.status !== "archived" && (
               <p className="max-w-sm text-xs text-amber-700">{t("requests.clientPortal.missingEmail")}</p>
             )}
             {(request as any).clientPortalStatus === "active" && (

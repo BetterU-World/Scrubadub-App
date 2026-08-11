@@ -72,8 +72,8 @@ describe("commercial account lifecycle", () => {
     const s = await setup();
     const args = { commercialAccountId: s.account, reason: "other" as const };
     await expect(s.t.mutation(api.mutations.commercialAccounts.pauseCommercialAccount, { ...s.auth.owner, ...args })).rejects.toThrow("Notes are required");
-    await expect(s.t.mutation(api.mutations.commercialAccounts.pauseCommercialAccount, { ...s.auth.manager, ...args, notes: "x" })).rejects.toThrow("Owner session required");
-    await expect(s.t.mutation(api.mutations.commercialAccounts.pauseCommercialAccount, { ...s.auth.worker, ...args, notes: "x" })).rejects.toThrow("Owner session required");
+    await expect(s.t.mutation(api.mutations.commercialAccounts.pauseCommercialAccount, { ...s.auth.manager, ...args, notes: "x" })).rejects.toThrow("canManageSalesAndCommercial permission required");
+    await expect(s.t.mutation(api.mutations.commercialAccounts.pauseCommercialAccount, { ...s.auth.worker, ...args, notes: "x" })).rejects.toThrow("Owner or manager session required");
     await expect(s.t.mutation(api.mutations.commercialAccounts.pauseCommercialAccount, { ...s.auth.outsider, ...args, notes: "x" })).rejects.toThrow("Access denied");
     await expect(s.t.mutation(api.mutations.commercialAccounts.pauseCommercialAccount, { userId: s.owner, sessionToken: "invalid", ...args, notes: "x" })).rejects.toThrow("session");
   });

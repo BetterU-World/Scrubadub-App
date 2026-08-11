@@ -21,7 +21,11 @@ export function AppLayout({ children }: AppLayoutProps) {
   const hasMobileNavigation = getMobileNavItemsForRole(
     user?.role,
     user?.canManageBusinessConfiguration === true,
-    user?.canManageSchedule === true
+    user?.canManageSchedule === true,
+    user?.canManageClients === true,
+    user?.canManageSalesAndCommercial === true,
+    user?.canManageTeam === true,
+    user?.canManageDocuments === true,
   ).length > 0;
 
   const toggleSidebar = useCallback((trigger: HTMLButtonElement) => {

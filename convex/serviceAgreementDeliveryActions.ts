@@ -4,7 +4,7 @@ import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { sendServiceAgreementEmail } from "./lib/email";
-import { requireOwnerSession } from "./lib/sessions";
+import { requireOwnerOrManagerCapability } from "./lib/sessions";
 
 function appUrl() {
   return (process.env.APP_URL || "http://localhost:5173").replace(/\/+$/, "");
@@ -17,7 +17,9 @@ export const sendServiceAgreement = action({
     agreementId: v.id("serviceAgreements"),
   },
   handler: async (ctx, args): Promise<{ success: true; sentAt: number }> => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerOrManagerCapability(
+      ctx, args.sessionToken, args.userId, "canManageSalesAndCommercial"
+    );
     const ownerArgs = { companyId: owner.companyId, agreementId: args.agreementId };
     const payload = await ctx.runQuery(
       (internal as any).serviceAgreementDeliveryInternal.getAgreementForOwnerDelivery,

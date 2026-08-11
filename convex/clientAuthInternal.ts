@@ -2,6 +2,7 @@ import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { ensureClientRelationshipForLead } from "./lib/clientRelationships";
 import { logAudit } from "./lib/helpers";
+import { hasOwnerOrManagerPermission } from "./lib/auth";
 
 export const getClientUserByEmail = internalQuery({
   args: { email: v.string() },
@@ -58,8 +59,9 @@ export const getRelationshipForOwner = internalQuery({
   },
   handler: async (ctx, args) => {
     const owner = await ctx.db.get(args.userId);
-    if (!owner || owner.role !== "owner" || owner.status !== "active" || !owner.companyId) {
-      throw new Error("Owner access required");
+    if (!owner || owner.status !== "active" || !owner.companyId ||
+        !hasOwnerOrManagerPermission(owner, "canManageClients")) {
+      throw new Error("Client management permission required");
     }
     const relationship = await ctx.db.get(args.relationshipId);
     if (!relationship) throw new Error("Client relationship not found");
@@ -75,8 +77,9 @@ export const resolveRelationshipForRequest = internalMutation({
   },
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId);
-    if (!user || user.role !== "owner" || user.status !== "active" || !user.companyId) {
-      throw new Error("Owner access required");
+    if (!user || user.status !== "active" || !user.companyId ||
+        !hasOwnerOrManagerPermission(user, "canManageClients")) {
+      throw new Error("Client management permission required");
     }
     const request = await ctx.db.get(args.requestId);
     if (!request) throw new Error("Request not found");

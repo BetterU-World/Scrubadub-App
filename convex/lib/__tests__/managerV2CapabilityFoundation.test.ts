@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { convexTest } from "convex-test";
 import schema from "../../schema";
 import { api } from "../../_generated/api";
@@ -37,10 +37,19 @@ describe("Manager Experience V2 capability foundation", () => {
       return { companyId, owner };
     });
     const ownerAuth = await t.action(api.authActions.signIn, { email: "owner@v2.test", password: PASSWORD });
-    const invited = await t.action(api.employeeActions.inviteCleaner, {
-      companyId: seeded.companyId, email: "manager@v2.test", name: "Manager", role: "manager",
-      userId: seeded.owner, sessionToken: ownerAuth.sessionToken,
-    });
+    const invited = await (async () => {
+      vi.useFakeTimers();
+      try {
+        const result = await t.action(api.employeeActions.inviteCleaner, {
+          companyId: seeded.companyId, email: "manager@v2.test", name: "Manager", role: "manager",
+          userId: seeded.owner, sessionToken: ownerAuth.sessionToken,
+        });
+        await t.finishAllScheduledFunctions(vi.runAllTimers);
+        return result;
+      } finally {
+        vi.useRealTimers();
+      }
+    })();
     const initial = await t.run((ctx) => ctx.db.get(invited.userId));
     for (const key of Object.keys(newCapabilities) as Array<keyof typeof newCapabilities>) expect(initial?.[key]).toBe(false);
 
@@ -74,15 +83,20 @@ describe("Manager Experience V2 capability foundation", () => {
     expect(hasOwnerOrManagerPermission({ role: "owner" }, "canManageClients")).toBe(true);
   });
 
-  it("keeps every V2 field in the invite and edit permission-editor round trip without unlocking routes", () => {
+  it("keeps every V2 field in the invite and edit permission-editor round trip", () => {
     const editor = readFileSync("packages/frontend/src/pages/owner/EmployeeListPage.tsx", "utf8");
     const app = readFileSync("packages/frontend/src/App.tsx", "utf8");
     for (const key of Object.keys(newCapabilities)) {
       expect(editor).toContain(`["${key}"`);
       expect(editor).toContain(`${key}: false`);
       expect(editor).toContain(`${key}: !!(emp as any).${key}`);
-      expect(app).not.toContain(`user?.${key} && <Route`);
     }
+    for (const key of ["canManageClients", "canManageSalesAndCommercial", "canManageTeam", "canManageDocuments"]) {
+      expect(app).toContain(`user?.${key} && <Route`);
+    }
+    expect(app).not.toContain("user?.canViewFinancials && <Route");
+    expect(app).not.toContain("user?.canManageInvoices && <Route");
+    expect(app).not.toContain("user?.canViewAnalytics && <Route");
     expect(editor).toContain("...editPerms");
     expect(editor).toContain("Manage Operational Settings");
   });
@@ -111,10 +125,10 @@ describe("Manager Experience V2 capability foundation", () => {
     const outsiderAuth = await t.action(api.authActions.signIn, { email: "outsider@cleanup.test", password: PASSWORD });
     const managerSession = { userId: s.manager, sessionToken: managerAuth.sessionToken };
 
-    await expect(t.query(api.queries.clientRequests.getCompanyRequests, { ...managerSession, companyId: s.companyId })).rejects.toThrow("Owner session required");
-    await expect(t.query(api.queries.clientRequests.getRequestById, { ...managerSession, id: s.requestId })).rejects.toThrow("Owner session required");
-    await expect(t.mutation(api.mutations.clientRequests.updateLeadDetails, { ...managerSession, requestId: s.requestId, leadType: "residential" })).rejects.toThrow("Owner session required");
-    await expect(t.mutation(api.mutations.clientRequests.createPropertyFromRequest, { ...managerSession, requestId: s.requestId })).rejects.toThrow("Owner session required");
+    await expect(t.query(api.queries.clientRequests.getCompanyRequests, { ...managerSession, companyId: s.companyId })).rejects.toThrow("canManageSalesAndCommercial permission required");
+    await expect(t.query(api.queries.clientRequests.getRequestById, { ...managerSession, id: s.requestId })).rejects.toThrow("canManageSalesAndCommercial permission required");
+    await expect(t.mutation(api.mutations.clientRequests.updateLeadDetails, { ...managerSession, requestId: s.requestId, leadType: "residential" })).rejects.toThrow("canManageSalesAndCommercial permission required");
+    await expect(t.mutation(api.mutations.clientRequests.createPropertyFromRequest, { ...managerSession, requestId: s.requestId })).rejects.toThrow("canManageSalesAndCommercial permission required");
     await expect(t.query(api.queries.performance.getLeaderboard, { ...managerSession, companyId: s.companyId })).rejects.toThrow("Owner session required");
     await expect(t.query(api.queries.performance.getWorkerSummary, { ...managerSession, companyId: s.companyId, workerUserId: s.cleaner })).rejects.toThrow("Owner session required");
     await expect(t.query(api.queries.performance.getCleanerStats, { userId: s.cleaner, sessionToken: cleanerAuth.sessionToken, companyId: s.companyId, cleanerId: s.cleaner })).resolves.toBeTruthy();

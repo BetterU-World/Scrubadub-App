@@ -41,7 +41,7 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     const user = await requireOwnerManagerCompany(ctx, args.sessionToken, args.companyId, args.userId);
-    if (!hasOwnerOrManagerPermission(user, "canAssignCleaners")) throw new Error("Worker assignment permission required");
+    if (!hasOwnerOrManagerPermission(user, "canAssignCleaners") && !hasOwnerOrManagerPermission(user, "canManageTeam")) throw new Error("Team management permission required");
     const teams = await ctx.db
       .query("teams")
       .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
@@ -90,7 +90,7 @@ export const get = query({
     if (!team) return null;
     if (!user.companyId || team.companyId !== user.companyId) throw new Error("Access denied");
     const canViewTeam = user.role === "owner" ||
-      (user.role === "manager" && user.canAssignCleaners === true) ||
+      (user.role === "manager" && (user.canAssignCleaners === true || user.canManageTeam === true)) ||
       await isActiveTeamMember(ctx, team._id, user._id);
     if (!canViewTeam) throw new Error("Access denied");
     return await withMembers(ctx, team);

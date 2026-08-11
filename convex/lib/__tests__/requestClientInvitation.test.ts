@@ -130,7 +130,7 @@ describe("request client portal invitations", () => {
     const missingEmailId = await createRequest(t, s.companyA, { requesterEmail: "" });
 
     await expect(t.action(api.clientAuthActions.inviteClientFromRequest, { userId: s.otherOwner, sessionToken: otherAuth.sessionToken, requestId })).rejects.toThrow("Access denied");
-    await expect(t.action(api.clientAuthActions.inviteClientFromRequest, { userId: s.cleaner, sessionToken: cleanerAuth.sessionToken, requestId })).rejects.toThrow("Owner session required");
+    await expect(t.action(api.clientAuthActions.inviteClientFromRequest, { userId: s.cleaner, sessionToken: cleanerAuth.sessionToken, requestId })).rejects.toThrow("Owner or manager session required");
     await expect(t.action(api.clientAuthActions.inviteClientFromRequest, { userId: s.owner, sessionToken: "invalid", requestId })).rejects.toThrow();
     await expect(t.action(api.clientAuthActions.inviteClientFromRequest, { userId: s.owner, sessionToken: ownerAuth.sessionToken, requestId: missingEmailId })).rejects.toThrow("Client email is required");
   });

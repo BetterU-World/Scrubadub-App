@@ -454,6 +454,17 @@ export default function App() {
                 <Route path="/jobs" component={ManagerJobListPage} />
                 <Route path="/red-flags" component={ManagerRedFlagsPage} />
                 {user?.canManageSchedule && <Route path="/calendar" component={CalendarPage} />}
+                {user?.canManageClients && <Route path="/clients/:id" component={ClientRelationshipDetailPage} />}
+                {user?.canManageClients && <Route path="/clients" component={ClientRelationshipListPage} />}
+                {user?.canManageSalesAndCommercial && <Route path="/requests/pipeline" component={PipelinePage} />}
+                {user?.canManageSalesAndCommercial && <Route path="/requests/:id" component={RequestDetailPage} />}
+                {user?.canManageSalesAndCommercial && <Route path="/requests" component={RequestListPage} />}
+                {user?.canManageSalesAndCommercial && <Route path="/commercial-accounts/:id" component={CommercialAccountDetailPage} />}
+                {user?.canManageSalesAndCommercial && <Route path="/commercial-accounts" component={CommercialAccountListPage} />}
+                {user?.canManageTeam && <Route path="/employees" component={EmployeeListPage} />}
+                {user?.canManageBusinessConfiguration && <Route path="/inventory-templates" component={InventoryTemplatesPage} />}
+                {user?.canManageDocuments && <Route path="/owner/settings/onboarding" component={CompanyOnboardingDocumentsPage} />}
+                {user?.canManageDocuments && <Route path="/owner/settings/documents" component={CompanyDocumentsPage} />}
                 {user?.canManageBusinessConfiguration && <Route path="/owner/settings/add-ons" component={CompanyAddOnsPage} />}
               </>
             ) : (

@@ -55,6 +55,22 @@ describe("role mobile navigation", () => {
     expect(withCapability).toContain("/owner/settings/add-ons");
   });
 
+  it("maps delegated Manager administration independently", () => {
+    const delegated = hrefs(getMoreNavItemsForRole("manager", false, false, true, true, true, true));
+    expect(delegated).toEqual(expect.arrayContaining([
+      "/clients", "/requests", "/commercial-accounts", "/employees",
+      "/owner/settings/documents", "/owner/settings/onboarding",
+    ]));
+    expect(delegated).not.toContain("/inventory-templates");
+    expect(delegated).not.toContain("/owner/settings/add-ons");
+
+    const configurationOnly = hrefs(getMoreNavItemsForRole("manager", true));
+    expect(configurationOnly).toEqual(expect.arrayContaining([
+      "/inventory-templates", "/owner/settings/add-ons",
+    ]));
+    expect(configurationOnly).not.toContain("/clients");
+  });
+
   it("matches route families on path boundaries", () => {
     const jobs = ownerSections[0].items.find((item) => item.href === "/jobs")!;
     const root = ownerSections[0].items.find((item) => item.href === "/")!;

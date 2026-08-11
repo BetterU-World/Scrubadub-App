@@ -37,7 +37,7 @@ describe("lead pipeline query", () => {
     const cleaner = await login("cleaner@pipeline.test");
 
     await expect(t.query(api.queries.clientRequests.listRequestsForPipeline, { userId: seeded.ownerId, sessionToken: owner.sessionToken })).resolves.toMatchObject([{ requesterName: "Pipeline Lead", pipeline: { stage: "decision" } }]);
-    await expect(t.query(api.queries.clientRequests.listRequestsForPipeline, { userId: seeded.managerId, sessionToken: manager.sessionToken })).rejects.toThrow("Owner session required");
-    await expect(t.query(api.queries.clientRequests.listRequestsForPipeline, { userId: seeded.cleanerId, sessionToken: cleaner.sessionToken })).rejects.toThrow("Owner session required");
+    await expect(t.query(api.queries.clientRequests.listRequestsForPipeline, { userId: seeded.managerId, sessionToken: manager.sessionToken })).rejects.toThrow("canManageSalesAndCommercial permission required");
+    await expect(t.query(api.queries.clientRequests.listRequestsForPipeline, { userId: seeded.cleanerId, sessionToken: cleaner.sessionToken })).rejects.toThrow("Owner or manager session required");
   });
 });

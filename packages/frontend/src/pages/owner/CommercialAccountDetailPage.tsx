@@ -111,6 +111,9 @@ export function CommercialAccountDetailPage() {
   const [toast, setToast] = useFeedbackState<{ message: string; type: "success" | "error" }>();
   const [form, setForm] = useState(EMPTY_FORM);
   const [lifecycleAction, setLifecycleAction] = useState<"pause" | "resume" | "end" | null>(null);
+  const canAssign = user?.role === "owner" || user?.canAssignCleaners === true;
+  const canManageSchedule = user?.role === "owner" || user?.canManageSchedule === true;
+  const canManageInvoices = user?.role === "owner" || user?.canManageInvoices === true;
 
   const account = useQuery(
     (api as any).queries.commercialAccounts.getById,
@@ -120,15 +123,15 @@ export function CommercialAccountDetailPage() {
   );
   const managers = useQuery(
     api.queries.employees.getManagers,
-    user?.companyId && sessionToken ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
+    canAssign && user?.companyId && sessionToken ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
   const cleaners = useQuery(
     api.queries.employees.getCleaners,
-    user?.companyId && sessionToken ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
+    canAssign && user?.companyId && sessionToken ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
   const teams = useQuery(
     api.queries.teams.listActiveForAssignment,
-    user?.companyId ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
+    canAssign && user?.companyId ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
   const clientRelationships = useQuery(
     (api as any).queries.clientRelationships.listForSelect,
@@ -136,7 +139,7 @@ export function CommercialAccountDetailPage() {
   );
   const commercialSchedules = useQuery(
     (api as any).queries.commercialSchedules.getByCommercialAccount,
-    params.id && user && sessionToken
+    canManageSchedule && params.id && user && sessionToken
       ? { userId: user._id, sessionToken, commercialAccountId: params.id as Id<"commercialAccounts"> }
       : "skip"
   );
@@ -167,7 +170,7 @@ export function CommercialAccountDetailPage() {
     });
   }, [account?._id]);
 
-  if (!user || account === undefined || commercialSchedules === undefined) return <PageLoader />;
+  if (!user || account === undefined || (canManageSchedule && commercialSchedules === undefined)) return <PageLoader />;
   if (!account) {
     return <div className="py-12 text-center text-gray-500">{t("commercialAccounts.notFound")}</div>;
   }
@@ -177,7 +180,7 @@ export function CommercialAccountDetailPage() {
   };
   const scheduledServiceLocations = Array.from(
     new Map(
-      commercialSchedules
+      (commercialSchedules ?? [])
         .filter((schedule: any) => schedule.propertyId && schedule.propertyName)
         .map((schedule: any) => [
           schedule.propertyId,
@@ -227,7 +230,7 @@ export function CommercialAccountDetailPage() {
         back={{ href: "/commercial-accounts", label: t("navigation.backToCommercialAccounts") }}
         action={
           <div className="flex gap-2">
-            {editing ? (
+            {editing && canAssign ? (
               <>
                 <button
                   type="button"
@@ -541,7 +544,7 @@ export function CommercialAccountDetailPage() {
               }}
               onToast={showToast}
             />
-            <CollapsibleSection title="Schedule">
+            {canManageSchedule && <CollapsibleSection title="Schedule">
             <CommercialScheduleCard
               commercialAccountId={account._id}
               accountName={account.clientName}
@@ -553,13 +556,13 @@ export function CommercialAccountDetailPage() {
               proposalAddOnLines={account.sourceProposal?.addOnLineItems}
               onToast={showToast}
             />
-            </CollapsibleSection>
-            <CollapsibleSection title="Invoices">
+            </CollapsibleSection>}
+            {canManageInvoices && <CollapsibleSection title="Invoices">
             <CommercialInvoiceCard
               commercialAccountId={account._id}
               onToast={showToast}
             />
-            </CollapsibleSection>
+            </CollapsibleSection>}
             <ComingSoonCard icon={User} title={t("commercialAccounts.clientPortal")} label={comingSoon} />
           </div>
         </aside>

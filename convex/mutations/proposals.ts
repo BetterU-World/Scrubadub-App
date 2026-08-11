@@ -1,7 +1,7 @@
 import { mutation, type MutationCtx } from "../_generated/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
-import { requireOwnerSession } from "../lib/sessionAuth";
+import { requireOwnerOrManagerCapability } from "../lib/sessionAuth";
 import { ensureClientRelationshipForLead } from "../lib/clientRelationships";
 import { assertProposalReadyForDelivery, newProposalLineItemId, normalizeProposalAddOnLine, validateProposalAddOnLines } from "../lib/proposalAddOnLineItems";
 
@@ -38,7 +38,9 @@ async function getOwnedProposal(
   userId: Id<"users">,
   proposalId: Id<"proposals">
 ) {
-  const owner = await requireOwnerSession(ctx, sessionToken, userId);
+  const owner = await requireOwnerOrManagerCapability(
+    ctx, sessionToken, userId, "canManageSalesAndCommercial"
+  );
   const proposal = await ctx.db.get(proposalId);
   if (!proposal) throw new Error("Proposal not found");
   if (proposal.companyId !== owner.companyId) throw new Error("Access denied");
@@ -57,7 +59,9 @@ export const createProposalFromLead = mutation({
     clientRequestId: v.id("clientRequests"),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerOrManagerCapability(
+      ctx, args.sessionToken, args.userId, "canManageSalesAndCommercial"
+    );
 
     const request = await ctx.db.get(args.clientRequestId);
     if (!request) throw new Error("Request not found");

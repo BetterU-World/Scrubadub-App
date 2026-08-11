@@ -189,6 +189,7 @@ export function ClientRelationshipDetailPage() {
   const inviteClient = useAction(api.clientAuthActions.inviteClient);
 
   const relationship = detail?.relationship;
+  const canManageSales = user?.role === "owner" || user?.canManageSalesAndCommercial === true;
   const notSet = t("clientRelationships.notSet");
 
   useEffect(() => {
@@ -329,10 +330,12 @@ export function ClientRelationshipDetailPage() {
         back={{ href: "/clients", label: t("navigation.backToClients") }}
         action={
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => setShowLeadForm((current) => !current)} className="btn-primary flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              {t("clientRelationships.createLead")}
-            </button>
+            {canManageSales && (
+              <button type="button" onClick={() => setShowLeadForm((current) => !current)} className="btn-primary flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                {t("clientRelationships.createLead")}
+              </button>
+            )}
             <button type="button" onClick={handleInviteClient} disabled={inviting || !relationship.email} className="btn-secondary text-sm">
               {inviting ? t("common.saving") : t("clientRelationships.inviteClient")}
             </button>
@@ -340,7 +343,7 @@ export function ClientRelationshipDetailPage() {
         }
       />
 
-      {showLeadForm && (
+      {canManageSales && showLeadForm && (
         <form onSubmit={handleCreateLead} className="card space-y-4">
           <div>
             <h2 className="text-base font-semibold text-gray-900">{t("clientRelationships.createLead")}</h2>
