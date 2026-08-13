@@ -42,11 +42,11 @@ export function AppLayout({ children }: AppLayoutProps) {
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
 
   return (
-    <div className="flex min-h-screen min-h-[100dvh] pt-[var(--safe-area-top)]">
+    <div className="flex min-h-screen min-h-[100dvh] w-full min-w-0 max-w-full pt-[var(--safe-area-top)]">
       <Sidebar mobileOpen={sidebarOpen} onMobileClose={closeSidebar} triggerRef={menuTriggerRef} />
       <div
         className={clsx(
-          "flex min-h-0 flex-1 flex-col md:pb-0",
+          "flex min-h-0 min-w-0 max-w-full flex-1 flex-col md:pb-0",
           hasMobileNavigation && "pb-[var(--mobile-bottom-occlusion)]"
         )}
       >
@@ -55,7 +55,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           onMenuToggle={toggleSidebar}
           menuOpen={sidebarOpen}
         />
-        <main className="flex-1 p-4 md:p-6">
+        <main className="min-w-0 max-w-full flex-1 p-4 md:p-6">
           <AddToHomeScreenTip />
           <PageTransition>{children}</PageTransition>
         </main>

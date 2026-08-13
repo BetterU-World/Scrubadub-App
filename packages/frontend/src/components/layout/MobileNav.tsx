@@ -62,7 +62,7 @@ export function MobileNav({ menuOpen, onMoreOpen }: MobileNavProps) {
               )}
             >
               <item.icon aria-hidden="true" className="w-5 h-5" />
-              <span className="whitespace-nowrap">{t(item.labelKey)}</span>
+              <span className="max-w-full truncate">{t(item.labelKey)}</span>
             </Link>
           );
         })}
@@ -79,7 +79,7 @@ export function MobileNav({ menuOpen, onMoreOpen }: MobileNavProps) {
             )}
           >
             <Ellipsis aria-hidden="true" className="h-5 w-5" />
-            <span className="whitespace-nowrap">{t("nav.more")}</span>
+            <span className="max-w-full truncate">{t("nav.more")}</span>
           </button>
         )}
       </div>

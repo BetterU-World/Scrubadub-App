@@ -22,6 +22,26 @@ describe("mobile foundation contracts", () => {
     expect(css).toMatch(/\.touch-target\s*\{[^}]*min-h-11 min-w-11/s);
   });
 
+  it("contains the document and authenticated shell at the viewport width", () => {
+    const css = read("packages/frontend/src/index.css");
+    const layout = read("packages/frontend/src/components/layout/AppLayout.tsx");
+    const transition = read("packages/frontend/src/components/layout/PageTransition.tsx");
+
+    expect(css).toMatch(/html,\s*body,\s*#root\s*\{[^}]*max-width: 100%[^}]*min-width: 0/s);
+    expect(css).toMatch(/html,\s*body\s*\{[^}]*overflow-x: clip/s);
+    expect(layout).toContain("w-full min-w-0 max-w-full");
+    expect(layout).toContain("min-h-0 min-w-0 max-w-full flex-1");
+    expect(layout).toContain("min-w-0 max-w-full flex-1 p-4");
+    expect(transition).toContain("min-w-0 max-w-full animate-page-in");
+  });
+
+  it("keeps mobile navigation labels inside their allocated item width", () => {
+    const nav = read("packages/frontend/src/components/layout/MobileNav.tsx");
+
+    expect(nav).toContain('<span className="max-w-full truncate">');
+    expect(nav).not.toContain('<span className="whitespace-nowrap">');
+  });
+
   it("reserves the shared mobile occlusion in the authenticated shell", () => {
     const layout = read("packages/frontend/src/components/layout/AppLayout.tsx");
 

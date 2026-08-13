@@ -15,8 +15,8 @@ export function Header({ onMenuToggle, menuOpen = false }: HeaderProps) {
   const { t } = useTranslation();
 
   return (
-    <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between md:px-6">
-      <div className="flex items-center gap-3">
+    <header className="flex min-w-0 max-w-full items-center justify-between gap-2 border-b border-gray-200 bg-white px-4 py-3 md:px-6">
+      <div className="flex min-w-0 items-center gap-3">
         <button
           type="button"
           onClick={(event) => onMenuToggle?.(event.currentTarget)}
@@ -27,13 +27,13 @@ export function Header({ onMenuToggle, menuOpen = false }: HeaderProps) {
         >
           <Menu aria-hidden="true" className="w-5 h-5" />
         </button>
-        <Link href="/" className="flex items-center gap-2 md:hidden transition-opacity hover:opacity-80">
+        <Link href="/" className="flex min-w-0 items-center gap-2 transition-opacity hover:opacity-80 md:hidden">
           <img src="/logo-icon.png" alt="SCRUB" className="w-8 h-8" />
-          <img src="/logo-word.png" alt="SCRUB" className="h-9 w-auto" />
+          <img src="/logo-word.png" alt="SCRUB" className="h-9 min-w-0 w-auto max-w-full" />
         </Link>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-shrink-0 items-center gap-2">
         <LanguageSwitcher />
         <NotificationBell />
         <button
