@@ -1,5 +1,7 @@
 import { DemoOwnerPage } from "@/pages/demo/DemoOwnerPage";
+import { DemoOwnerDetailPage, DemoOwnerOperationsPage } from "@/pages/demo/DemoOwnerOperationsPages";
 import { DemoWorkerPage } from "@/pages/demo/DemoWorkerPage";
+import { DemoWorkerOperationsPage } from "@/pages/demo/DemoWorkerOperationsPages";
 import { DemoClientPage, DemoClientRequestDetailPage } from "@/pages/demo/DemoClientPage";
 import {
   DemoWorkerChecklistPage,
@@ -28,6 +30,11 @@ function ShowcaseRoutes() {
 
   return (
     <Switch location={location}>
+      {persona === "owner" && <Route path={buildShowcasePath("owner", "/properties/:id")}>{(params) => <DemoOwnerDetailPage kind="property" id={(params as Record<string, string>).id} presentation={presentation} currentPath={location} />}</Route>}
+      {persona === "owner" && <Route path={buildShowcasePath("owner", "/employees/:id")}>{(params) => <DemoOwnerDetailPage kind="employee" id={(params as Record<string, string>).id} presentation={presentation} currentPath={location} />}</Route>}
+      {persona === "owner" && <Route path={buildShowcasePath("owner", "/requests/:id")}>{(params) => <DemoOwnerDetailPage kind="request" id={(params as Record<string, string>).id} presentation={presentation} currentPath={location} />}</Route>}
+      {persona === "owner" && <Route path={buildShowcasePath("owner", "/clients/:id")}>{(params) => <DemoOwnerDetailPage kind="client" id={(params as Record<string, string>).id} presentation={presentation} currentPath={location} />}</Route>}
+      {persona === "owner" && <Route path={buildShowcasePath("owner", "/commercial-accounts/:id")}>{(params) => <DemoOwnerDetailPage kind="commercial" id={(params as Record<string, string>).id} presentation={presentation} currentPath={location} />}</Route>}
       {persona === "worker" && <Route path={buildShowcasePath("worker", workerShowcaseJourneyRoutes.checklist)}>
         {(params) => <DemoWorkerChecklistPage showcaseJobId={(params as Record<string, string>).showcaseJobId} presentation={presentation} currentPath={location} />}
       </Route>}
@@ -45,9 +52,9 @@ function ShowcaseRoutes() {
             ) : persona === "worker" && page.relativePath === workerShowcaseJourneyRoutes.jobs ? (
               <DemoWorkerJobsPage presentation={presentation} currentPath={location} />
             ) : persona === "worker" ? (
-              <DemoWorkerPage presentation={presentation} currentPath={location} />
+              page.relativePath === "/" ? <DemoWorkerPage presentation={presentation} currentPath={location} /> : <DemoWorkerOperationsPage page={page.relativePath} presentation={presentation} currentPath={location} />
             ) : (
-              <DemoOwnerPage presentation={presentation} currentPath={location} />
+              ["/", "/jobs"].includes(page.relativePath) ? <DemoOwnerPage presentation={presentation} currentPath={location} /> : <DemoOwnerOperationsPage page={page.relativePath} presentation={presentation} currentPath={location} />
             )
           ) : (
             <ShowcasePlaceholderPage
