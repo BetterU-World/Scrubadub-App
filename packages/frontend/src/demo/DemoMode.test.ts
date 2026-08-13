@@ -293,13 +293,13 @@ describe("SCRUB Showcase registry", () => {
     expect(getShowcasePages("worker")).toHaveLength(workerSections.flatMap((section) => section.items).length);
   });
 
-  it("implements the Owner and Worker core destinations while preserving other placeholders", () => {
+  it("implements the expanded Owner and Worker destinations while preserving selected placeholders", () => {
     const ownerPages = getShowcasePages("owner");
     const workerPages = getShowcasePages("worker");
-    expect(ownerPages.filter((page) => page.availability === "implemented").map((page) => page.relativePath)).toEqual(["/", "/jobs"]);
-    expect(ownerPages.filter((page) => !["/", "/jobs"].includes(page.relativePath)).every((page) => page.availability === "placeholder")).toBe(true);
-    expect(workerPages.filter((page) => page.availability === "implemented").map((page) => page.relativePath)).toEqual(["/", "/jobs"]);
-    expect(workerPages.filter((page) => !["/", "/jobs"].includes(page.relativePath)).every((page) => page.availability === "placeholder")).toBe(true);
+    expect(ownerPages.filter((page) => page.availability === "implemented").map((page) => page.relativePath)).toEqual(expect.arrayContaining(["/", "/jobs", "/properties", "/employees", "/calendar", "/requests", "/clients", "/commercial-accounts", "/commercial-invoices", "/financials", "/analytics", "/settings"]));
+    expect(ownerPages.find((page) => page.relativePath === "/partners")?.availability).toBe("placeholder");
+    expect(workerPages.filter((page) => page.availability === "implemented").map((page) => page.relativePath)).toEqual(expect.arrayContaining(["/", "/jobs", "/calendar", "/availability", "/payments", "/settings"]));
+    expect(workerPages.find((page) => page.relativePath === "/manuals")?.availability).toBe("placeholder");
     expect(workerShowcaseJourneyRoutes.jobDetail).toBe("/jobs/:showcaseJobId");
     expect(workerShowcaseJourneyRoutes.checklist).toBe("/jobs/:showcaseJobId/checklist");
   });
@@ -310,10 +310,10 @@ describe("SCRUB Showcase registry", () => {
   });
 
   it("renders polished placeholder and not-found states without production destinations", () => {
-    const workerPayments = getShowcasePage("worker", "/payments")!;
+    const workerPayments = getShowcasePage("worker", "/manuals")!;
     const placeholderHtml = renderToStaticMarkup(createElement(ShowcasePlaceholderPage, {
       page: workerPayments,
-      currentPath: "/internal/demo/worker/payments",
+      currentPath: "/internal/demo/worker/manuals",
       presentation: true,
     }));
     const notFoundHtml = renderToStaticMarkup(createElement(ShowcaseNotFoundPage, {
@@ -324,9 +324,9 @@ describe("SCRUB Showcase registry", () => {
 
     expect(placeholderHtml).toContain("SCRUB Showcase");
     expect(placeholderHtml).toContain("not included in SCRUB Showcase yet");
-    expect(placeholderHtml).toContain("Review planned job payments");
+    expect(placeholderHtml).toContain("Read company operating guidance");
     expect(placeholderHtml).toContain('href="/internal/demo/worker?presentation=1"');
-    expect(placeholderHtml).not.toContain('href="/payments"');
+    expect(placeholderHtml).not.toContain('href="/manuals"');
     expect(notFoundHtml).toContain("Showcase page not found");
     expect(notFoundHtml).toContain("safely inside SCRUB Showcase");
   });

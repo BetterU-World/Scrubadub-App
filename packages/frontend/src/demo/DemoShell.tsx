@@ -42,7 +42,7 @@ export function DemoShell({
   }
 
   return (
-    <div className="flex min-h-screen min-h-[100dvh] bg-gray-50">
+    <div className="flex min-h-screen min-h-[100dvh] w-full min-w-0 max-w-full bg-gray-50">
       <aside className="hidden w-64 flex-shrink-0 flex-col border-r border-gray-200 bg-white md:flex">
         <div className="border-b border-gray-200 p-6">
           <div className="flex items-center gap-2">
@@ -98,8 +98,8 @@ export function DemoShell({
             Fictional workspace
           </span>
         </header>
-        <main className="flex-1 p-4 md:p-6">
-          <div className="mx-auto max-w-[1180px]">{children}</div>
+        <main className="min-w-0 max-w-full flex-1 p-4 md:p-6">
+          <div className="mx-auto min-w-0 max-w-[1180px]">{children}</div>
         </main>
       </div>
 
@@ -115,7 +115,7 @@ export function DemoShell({
                 className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded px-1 py-1 text-xs outline-none ring-inset ring-primary-500 focus-visible:ring-2 ${active ? "text-primary-600" : "text-gray-500"}`}
               >
                 <page.icon aria-hidden="true" className="h-5 w-5" />
-                <span className="whitespace-nowrap">{t(page.labelKey)}</span>
+                <span className="max-w-full truncate">{t(page.labelKey)}</span>
               </Link>
             );
           })}
@@ -129,7 +129,7 @@ export function DemoShell({
               className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded px-1 py-1 text-xs outline-none ring-inset ring-primary-500 focus-visible:ring-2 ${moreIsActive ? "text-primary-600" : "text-gray-500"}`}
             >
               <Ellipsis aria-hidden="true" className="h-5 w-5" />
-              <span className="whitespace-nowrap">{t("nav.more")}</span>
+              <span className="max-w-full truncate">{t("nav.more")}</span>
             </button>
           )}
         </div>
