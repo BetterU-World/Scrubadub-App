@@ -8,6 +8,46 @@ import {
 
 export const showcaseWorkers = [
   {
+    id: "olivia",
+    name: "Olivia Grant",
+    role: "Operations Manager",
+    status: "Active",
+    team: "Operations",
+    jobsThisWeek: 8,
+    nextJobId: "riverstone-turnover",
+    managerProfile: "Operations Manager",
+    permissions: [
+      [
+        "Jobs & Scheduling",
+        [
+          "View all jobs",
+          "Create, edit, and cancel jobs",
+          "Assign workers and teams",
+          "Manage schedules and Job Requests",
+        ],
+      ],
+      [
+        "Quality",
+        [
+          "Request rework",
+          "Review and approve completed work",
+          "Resolve red flags",
+        ],
+      ],
+      [
+        "Business",
+        [
+          "Manage clients",
+          "Manage sales and commercial operations",
+          "Manage team operations",
+          "Manage documents",
+          "View analytics",
+          "Manage Operational Settings",
+        ],
+      ],
+    ],
+  },
+  {
     id: "elena",
     name: "Elena Ruiz",
     role: "Lead cleaner",

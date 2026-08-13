@@ -13,6 +13,7 @@ import {
   DemoClientPage,
   DemoClientRequestDetailPage,
 } from "@/pages/demo/DemoClientPage";
+import { DemoClientRequestNewPage } from "@/pages/demo/DemoClientRequestNewPage";
 import {
   DemoWorkerChecklistPage,
   DemoWorkerJobDetailPage,
@@ -129,6 +130,14 @@ function ShowcaseRoutes() {
               currentPath={location}
             />
           )}
+        </Route>
+      )}
+      {persona === "client" && (
+        <Route path={buildShowcasePath("client", "/requests/new")}>
+          <DemoClientRequestNewPage
+            presentation={presentation}
+            currentPath={location}
+          />
         </Route>
       )}
       {persona === "client" && (

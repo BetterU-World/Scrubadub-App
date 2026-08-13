@@ -1502,7 +1502,78 @@ export function DemoOwnerDetailPage({
       </Frame>
     );
   } else if (kind === "employee") {
-    const worker = item as ReturnType<typeof getShowcaseWorker> & {};
+    const worker = item as any;
+    if (worker.permissions) {
+      content = (
+        <Frame
+          title={worker.name}
+          description={`${worker.role} · ${worker.team}`}
+        >
+          <div className="grid gap-4 lg:grid-cols-3">
+            <section className="card">
+              <StatusBadge status="active" />
+              <p className="mt-4 text-sm font-medium">
+                {worker.managerProfile}
+              </p>
+              <p className="mt-2 text-sm text-gray-600">
+                Delegated operational access for BrightSide Cleaning Co.
+              </p>
+              <dl className="mt-5 space-y-3 text-sm">
+                <div>
+                  <dt className="text-gray-500">Team</dt>
+                  <dd className="font-medium">{worker.team}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500">Authority</dt>
+                  <dd className="font-medium">Manager · Owner-controlled</dd>
+                </div>
+              </dl>
+            </section>
+            <section className="card lg:col-span-2">
+              <h2 className="text-lg font-semibold">Manager permissions</h2>
+              <p className="mt-2 text-sm text-gray-600">
+                Owners decide exactly which operational areas each Manager can
+                access. Access contracts automatically when permissions are
+                removed.
+              </p>
+              <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                {worker.permissions.map(
+                  ([group, permissions]: [string, string[]]) => (
+                    <div
+                      key={group}
+                      className="rounded-xl border border-gray-200 p-4"
+                    >
+                      <h3 className="font-semibold">{group}</h3>
+                      <ul className="mt-3 space-y-2">
+                        {permissions.map((permission) => (
+                          <li
+                            key={permission}
+                            className="flex gap-2 text-sm text-gray-700"
+                          >
+                            <CheckCircle2 className="mt-0.5 h-4 w-4 flex-none text-green-600" />
+                            {permission}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ),
+                )}
+              </div>
+              <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                <strong>Owner authority remains separate.</strong> This Manager
+                cannot manage subscription ownership, company ownership,
+                invoices, or financial visibility through this profile.
+              </div>
+            </section>
+          </div>
+        </Frame>
+      );
+      return (
+        <DemoShell presentation={presentation} currentPath={currentPath}>
+          {content}
+        </DemoShell>
+      );
+    }
     const job = brightSideWorkerJobs.find((x) => x.id === worker.nextJobId);
     content = (
       <Frame
