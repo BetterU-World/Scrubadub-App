@@ -351,13 +351,13 @@ export function LandingPage() {
                   See how SCRUB works{" "}
                   <ChevronRight className="h-4 w-4" aria-hidden="true" />
                 </a>
-                <Link
+                <a
                   href="/showcase"
                   className="touch-target inline-flex w-full items-center justify-center gap-2 rounded-lg px-5 font-semibold text-primary-700 hover:bg-primary-50 sm:w-auto"
                 >
                   Explore SCRUB Showcase{" "}
                   <Sparkles className="h-4 w-4" aria-hidden="true" />
-                </Link>
+                </a>
               </div>
               <p className="mt-3 text-sm text-gray-500">
                 No charge today. Choose the plan that fits your operation.
