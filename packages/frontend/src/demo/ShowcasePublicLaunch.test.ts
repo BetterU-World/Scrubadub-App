@@ -95,7 +95,8 @@ describe("Showcase Public Launch V1", () => {
       "utf8",
     );
     expect(source).toContain("Start 14 days free");
-    expect(source).toContain('href="/showcase"');
+    expect(source).toMatch(/<a\s+href="\/showcase"/);
+    expect(source).not.toMatch(/<Link\s+href="\/showcase"/);
     expect(source.match(/Explore SCRUB Showcase/g)).toHaveLength(1);
   });
 });
