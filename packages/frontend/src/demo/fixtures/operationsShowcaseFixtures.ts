@@ -9,16 +9,16 @@ export const showcaseWorkers = [
 ] as const;
 
 export const showcaseProperties = [
-  { id: "riverstone", ...brightSideProperties.riverstoneRetreat, client: "Oak & Pine Stays", type: "Vacation rental", cadence: "Turnover as booked", nextService: "Aug 2 · 9:00 AM", jobId: "riverstone-turnover", bedrooms: 4, notes: "Guest arrival at 4:00 PM; linen reset included." },
-  { id: "linden", ...brightSideProperties.lindenHouse, client: showcaseClient.displayName, type: "Residential", cadence: "Every other Monday", nextService: "Aug 2 · 11:30 AM", jobId: "linden-standard", bedrooms: 3, notes: "Use fragrance-free products in the primary suite." },
-  { id: "harborview", ...brightSideProperties.harborviewCottage, client: "Harborview Hosts", type: "Vacation rental", cadence: "Weekly in season", nextService: "Aug 3 · 8:00 AM", jobId: "harbor-deep-clean", bedrooms: 3, notes: "Deep clean before the August owner stay." },
-  { id: "sunroom", ...brightSideProperties.sunroomBungalow, client: "Nora Ellis", type: "Residential", cadence: "Monthly", nextService: "Aug 29 · 10:00 AM", jobId: "sunroom-approved", bedrooms: 2, notes: "Completed service is ready for owner review." },
+  { id: "riverstone", ...brightSideProperties.riverstoneRetreat, client: "Oak & Pine Stays", type: "vacation_rental", cadence: "Turnover as booked", nextService: "Aug 2 · 9:00 AM", jobId: "riverstone-turnover", bedrooms: 4, baths: 3, active: true, amenities: ["Hot tub", "Game room", "Mountain view", "Fireplace"], notes: "Guest arrival at 4:00 PM; linen reset included." },
+  { id: "linden", ...brightSideProperties.lindenHouse, client: showcaseClient.displayName, type: "residential", cadence: "Every other Monday", nextService: "Aug 2 · 11:30 AM", jobId: "linden-standard", bedrooms: 3, baths: 2, active: true, amenities: ["Pets", "Home office", "Interior windows"], notes: "Use fragrance-free products in the primary suite." },
+  { id: "harborview", ...brightSideProperties.harborviewCottage, client: "Harborview Hosts", type: "vacation_rental", cadence: "Weekly in season", nextService: "Aug 3 · 8:00 AM", jobId: "harbor-deep-clean", bedrooms: 3, baths: 2, active: true, amenities: ["Beach access", "Outdoor shower", "Linen service"], notes: "Deep clean before the August owner stay." },
+  { id: "sunroom", ...brightSideProperties.sunroomBungalow, client: "Nora Ellis", type: "residential", cadence: "Monthly", nextService: "Aug 29 · 10:00 AM", jobId: "sunroom-approved", bedrooms: 2, baths: 1, active: true, amenities: ["Plants", "Fragrance free"], notes: "Completed service is ready for owner review." },
 ] as const;
 
 export const showcaseClients = [
-  { id: "sarah-johnson", name: showcaseClient.displayName, business: "Johnson Studio", status: "Active", locations: 2, services: "Residential + studio", propertyId: "linden", requestId: "request-scheduled" },
-  { id: "oak-pine", name: "Morgan Lee", business: "Oak & Pine Stays", status: "Active", locations: 2, services: "Vacation rental turnovers", propertyId: "riverstone", requestId: "request-submitted" },
-  { id: "harborview-hosts", name: "Avery Chen", business: "Harborview Hosts", status: "Active", locations: 1, services: "Seasonal rental care", propertyId: "harborview", requestId: "request-completed" },
+  { id: "sarah-johnson", name: showcaseClient.displayName, business: "Johnson Studio", email: showcaseClient.email, phone: showcaseClient.phone, type: "residential", status: "active", locations: 2, services: "Residential + studio", propertyId: "linden", requestId: "request-scheduled", updated: "Aug 2, 2026" },
+  { id: "oak-pine", name: "Morgan Lee", business: "Oak & Pine Stays", email: "morgan@oakandpine.example", phone: "(555) 010-2122", type: "property_manager", status: "active", locations: 2, services: "Vacation rental turnovers", propertyId: "riverstone", requestId: "request-submitted", updated: "Aug 1, 2026" },
+  { id: "harborview-hosts", name: "Avery Chen", business: "Harborview Hosts", email: "avery@harborview.example", phone: "(555) 010-2088", type: "str", status: "active", locations: 1, services: "Seasonal rental care", propertyId: "harborview", requestId: "request-completed", updated: "Jul 29, 2026" },
 ] as const;
 
 export const showcaseCommercialAccounts = [

@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { createElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -15,7 +17,7 @@ describe("Showcase Expansion V1", () => {
     const pages = ["/properties", "/employees", "/calendar", "/requests", "/clients", "/commercial-accounts", "/commercial-invoices", "/financials", "/analytics", "/settings"];
     for (const page of pages) {
       const html = renderToStaticMarkup(createElement(DemoOwnerOperationsPage, { page, presentation: true, currentPath: `/internal/demo/owner${page}` }));
-      expect(html).toContain("BrightSide Cleaning Co.");
+      expect(html).toMatch(/Properties|Team|Calendar|Leads|Clients|Commercial Accounts|Financial overview|Analytics|Workspace settings/);
       expect([...html.matchAll(/href="([^"]+)"/g)].every((match) => match[1].startsWith("/internal/demo/owner"))).toBe(true);
       expect(html).not.toMatch(/<form|type="submit"|convex/);
     }
@@ -54,5 +56,23 @@ describe("Showcase Expansion V1", () => {
     expect(presentation).not.toContain("Fictional workspace");
     expect(shell).toContain("w-full min-w-0 max-w-full");
     expect(shell).toContain("max-w-full truncate");
+  });
+
+  it("mirrors production list, filter, table, and calendar compositions", () => {
+    const source = readFileSync(resolve(process.cwd(), "packages/frontend/src/pages/demo/DemoOwnerOperationsPages.tsx"), "utf8");
+    expect(source).toContain("Select all");
+    expect(source).toContain("Search clients");
+    expect(source).toContain("Track prospect requests separately");
+    expect(source).toContain('setView(mode)');
+    expect(source).toContain('grid grid-cols-7');
+    expect(source).toContain('block w-full sm:table');
+    expect(source).toContain("Workers & Access");
+  });
+
+  it("keeps all fidelity interactions local and production-data isolated", () => {
+    const sources = ["packages/frontend/src/pages/demo/DemoOwnerOperationsPages.tsx", "packages/frontend/src/pages/demo/DemoWorkerOperationsPages.tsx"]
+      .map(path => readFileSync(resolve(process.cwd(), path), "utf8")).join("\n");
+    expect(sources).toContain("useState");
+    expect(sources).not.toMatch(/convex\/react|useQuery|useMutation|useAction|api\.mutations/);
   });
 });
