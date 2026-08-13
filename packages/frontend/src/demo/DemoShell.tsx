@@ -31,7 +31,9 @@ export function DemoShell({
     .sort((a, b) => (a.mobile.priority ?? 0) - (b.mobile.priority ?? 0));
   const moreItems = pages.filter((page) => !page.mobile.visible);
   const relativePath = getShowcaseRelativePath(currentPath, persona) ?? "/";
-  const moreIsActive = moreItems.some((page) => isPageActive(page, relativePath));
+  const moreIsActive = moreItems.some((page) =>
+    isPageActive(page, relativePath),
+  );
 
   if (presentation) {
     return (
@@ -50,10 +52,23 @@ export function DemoShell({
             <img src="/logo-word.png" alt="SCRUB" className="h-12 w-auto" />
           </div>
           <p className="mt-1 text-sm text-gray-500">BrightSide Cleaning Co.</p>
+          <button
+            type="button"
+            onClick={() => window.location.assign("/showcase")}
+            className="mt-3 inline-flex text-xs font-semibold text-primary-700"
+          >
+            Change experience
+          </button>
         </div>
-        <nav className="flex-1 space-y-2 overflow-y-auto p-4" aria-label="Showcase navigation">
+        <nav
+          className="flex-1 space-y-2 overflow-y-auto p-4"
+          aria-label="Showcase navigation"
+        >
           {sections.map((section) => (
-            <section key={section.titleKey} aria-labelledby={`showcase-${section.titleKey}`}>
+            <section
+              key={section.titleKey}
+              aria-labelledby={`showcase-${section.titleKey}`}
+            >
               <h2
                 id={`showcase-${section.titleKey}`}
                 className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-gray-400"
@@ -74,7 +89,10 @@ export function DemoShell({
                           : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                       }`}
                     >
-                      <page.icon aria-hidden="true" className="h-4.5 w-4.5 flex-shrink-0" />
+                      <page.icon
+                        aria-hidden="true"
+                        className="h-4.5 w-4.5 flex-shrink-0"
+                      />
                       <span>{t(page.labelKey)}</span>
                     </Link>
                   );
@@ -97,13 +115,23 @@ export function DemoShell({
           <span className="rounded-full bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700">
             Fictional workspace
           </span>
+          <button
+            type="button"
+            onClick={() => window.location.assign("/showcase")}
+            className="ml-2 text-xs font-semibold text-primary-700 md:hidden"
+          >
+            Change
+          </button>
         </header>
         <main className="min-w-0 max-w-full flex-1 p-4 md:p-6">
           <div className="mx-auto min-w-0 max-w-[1180px]">{children}</div>
         </main>
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white pb-[var(--safe-area-bottom)] md:hidden" aria-label="Showcase mobile navigation">
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white pb-[var(--safe-area-bottom)] md:hidden"
+        aria-label="Showcase mobile navigation"
+      >
         <div className="flex h-[var(--mobile-nav-height)] gap-1 px-2 py-2">
           {mobileItems.map((page) => {
             const active = isPageActive(page, relativePath);
@@ -151,7 +179,12 @@ export function DemoShell({
             className="absolute bottom-0 left-0 right-0 max-h-[78dvh] overflow-y-auto rounded-t-2xl bg-white p-4 pb-[calc(var(--safe-area-bottom)+1rem)] shadow-2xl"
           >
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-              <h2 id="showcase-mobile-more-title" className="font-semibold text-gray-900">More</h2>
+              <h2
+                id="showcase-mobile-more-title"
+                className="font-semibold text-gray-900"
+              >
+                More
+              </h2>
               <button
                 type="button"
                 onClick={() => setMoreOpen(false)}
@@ -172,7 +205,10 @@ export function DemoShell({
                     onClick={() => setMoreOpen(false)}
                     className={`flex items-center gap-3 rounded-xl px-3 py-3 font-medium outline-none ring-primary-500 focus-visible:ring-2 ${active ? "bg-primary-50 text-primary-700" : "text-gray-700 hover:bg-gray-50"}`}
                   >
-                    <page.icon aria-hidden="true" className="h-5 w-5 flex-none" />
+                    <page.icon
+                      aria-hidden="true"
+                      className="h-5 w-5 flex-none"
+                    />
                     {t(page.labelKey)}
                   </Link>
                 );
@@ -185,7 +221,13 @@ export function DemoShell({
   );
 }
 
-function isPageActive(page: ShowcasePageDefinition, relativePath: string): boolean {
+function isPageActive(
+  page: ShowcasePageDefinition,
+  relativePath: string,
+): boolean {
   if (page.relativePath === "/") return relativePath === "/";
-  return relativePath === page.relativePath || relativePath.startsWith(`${page.relativePath}/`);
+  return (
+    relativePath === page.relativePath ||
+    relativePath.startsWith(`${page.relativePath}/`)
+  );
 }

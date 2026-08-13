@@ -9,17 +9,25 @@ import "./i18n";
 import { FeedbackProvider } from "./components/ui/FeedbackProvider";
 import { DemoApp } from "./demo/DemoApp";
 import { shouldRenderDemoApp } from "./demo/demoRoute";
+import { ShowcaseEntryPage } from "./pages/demo/ShowcaseEntryPage";
 
+const showcaseEntry = window.location.pathname === "/showcase";
 const demoMode = shouldRenderDemoApp(
   window.location.pathname,
-  import.meta.env.VITE_ENABLE_DEMO_MODE
+  import.meta.env.VITE_ENABLE_DEMO_MODE,
 );
 
-if (demoMode) {
+if (showcaseEntry) {
+  ReactDOM.createRoot(document.getElementById("root")!).render(
+    <React.StrictMode>
+      <ShowcaseEntryPage />
+    </React.StrictMode>,
+  );
+} else if (demoMode) {
   ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
       <DemoApp />
-    </React.StrictMode>
+    </React.StrictMode>,
   );
 } else {
   const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
@@ -49,7 +57,7 @@ if (demoMode) {
             <App />
           </FeedbackProvider>
         </ConvexProvider>
-      </React.StrictMode>
+      </React.StrictMode>,
     );
   }
 }
