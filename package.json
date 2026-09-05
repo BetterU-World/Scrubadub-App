@@ -13,7 +13,11 @@
     "typecheck:frontend": "npm exec tsc -- -p packages/frontend/tsconfig.json --noEmit",
     "typecheck:convex": "npm exec tsc -- -p convex/tsconfig.json --noEmit",
     "build:frontend": "npm run build -w packages/frontend",
-    "test": "vitest run"
+    "test": "vitest run",
+    "qa:status": "convex run internal.qaFixtures.status",
+    "qa:seed": "convex run internal.qaFixtures.seed",
+    "qa:reset": "convex run internal.qaFixtures.reset",
+    "qa:reseed": "convex run internal.qaFixtures.reseed"
   },
   "devDependencies": {
     "@types/node": "^25.3.0",
