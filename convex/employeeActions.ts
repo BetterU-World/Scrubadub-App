@@ -7,12 +7,13 @@ import type { Id } from "./_generated/dataModel";
 import { hashPassword } from "./lib/password";
 import { generateSecureToken, hashToken, INVITE_TOKEN_EXPIRY_MS } from "./lib/tokens";
 import { validatePassword, validateEmail, validateName } from "./lib/validation";
-import { validateRequiredEnv } from "./lib/validateEnv";
+import { validateAuthEnv } from "./lib/validateEnv";
+import { areExternalSideEffectsDisabled } from "./lib/environment";
 import { issueSession } from "./lib/sessions";
 import { requireOwnerOrManagerCapability } from "./lib/sessions";
 import { recordSecurityEventFromAction } from "./lib/securityEventActions";
 
-validateRequiredEnv();
+validateAuthEnv();
 
 export const inviteCleaner = action({
   args: {
@@ -136,12 +137,15 @@ export const inviteCleaner = action({
     });
 
     // Schedule invite email async — does not block the response
-    await ctx.runMutation(internal.mutations.scheduleEmail.scheduleInviteEmail, {
-      email,
-      inviteToken: token,
-    });
+    const emailSent = !areExternalSideEffectsDisabled();
+    if (emailSent) {
+      await ctx.runMutation(internal.mutations.scheduleEmail.scheduleInviteEmail, {
+        email,
+        inviteToken: token,
+      });
+    }
 
-    return { token, userId: newUserId, emailSent: true };
+    return { token, userId: newUserId, emailSent };
   },
 });
 

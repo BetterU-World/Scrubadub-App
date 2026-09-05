@@ -7,6 +7,7 @@ import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { getStripeClientOrNull } from "../lib/stripe";
 import { requireOwnerSession } from "../lib/sessions";
+import { requireAppUrl } from "../lib/environment";
 
 const CHECKOUT_LIMIT = 3;
 const CHECKOUT_WINDOW_MS = 60_000; // 60 seconds
@@ -72,7 +73,7 @@ export const createSettlementPayCheckout = action({
     // Cap fee so we never charge more fee than the payment amount
     const feeCents = Math.min(PLATFORM_FEE_CENTS, amountCents);
 
-    const appUrl = process.env.APP_URL ?? "http://localhost:5173";
+    const appUrl = requireAppUrl();
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -165,7 +166,7 @@ export const createSettlementBatchCheckout = action({
 
     const amountCents = data.totalAmountCents;
     const feeCents = Math.min(PLATFORM_FEE_CENTS, amountCents);
-    const appUrl = process.env.APP_URL ?? "http://localhost:5173";
+    const appUrl = requireAppUrl();
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",

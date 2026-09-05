@@ -51,7 +51,7 @@ describe("request client portal invitations", () => {
     process.env.STRIPE_WEBHOOK_ACCOUNT_SECRET = "test-webhook-secret";
     process.env.RESEND_API_KEY = "test-resend-key";
     process.env.RESEND_FROM_EMAIL = "test@example.com";
-    process.env.APP_URL = "http://localhost:5173";
+    process.env.APP_URL = "https://app.scrub.test";
   });
 
   afterEach(() => vi.useRealTimers());

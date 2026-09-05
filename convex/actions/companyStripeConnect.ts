@@ -10,6 +10,7 @@ import Stripe from "stripe";
 import { ActionCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
 import { requireOwnerSession } from "../lib/sessions";
+import { requireAppUrl } from "../lib/environment";
 
 /**
  * Shared helper: load owner+company and ensure a Connect account exists.
@@ -81,8 +82,7 @@ export const createCompanyStripeAccountLink = action({
     const principal = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const { stripe, accountId } = await ensureConnectAccount(ctx, principal.userId);
 
-    const appUrl =
-      process.env.APP_URL ?? "http://localhost:5173";
+    const appUrl = requireAppUrl();
 
     const accountLink = await stripe.accountLinks.create({
       account: accountId,
@@ -114,8 +114,7 @@ export const createCompanyStripeTestCheckout = action({
       throw new Error("Connect Stripe first");
     }
 
-    const appUrl =
-      process.env.APP_URL ?? "http://localhost:5173";
+    const appUrl = requireAppUrl();
 
     const session: any = await stripe.checkout.sessions.create({
       mode: "payment",

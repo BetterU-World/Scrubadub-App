@@ -6,9 +6,10 @@ import { v } from "convex/values";
 import { generateSecureToken, hashToken } from "./lib/tokens";
 import { sendProposalEmail } from "./lib/email";
 import { requireOwnerOrManagerCapability } from "./lib/sessions";
+import { requireAppUrl } from "./lib/environment";
 
 function appUrl() {
-  return (process.env.APP_URL || "http://localhost:5173").replace(/\/+$/, "");
+  return requireAppUrl();
 }
 
 function cleanToken(token: string) {

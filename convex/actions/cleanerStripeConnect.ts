@@ -7,6 +7,7 @@ import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { getStripeClientOrNull } from "../lib/stripe";
 import { requireStaffSession } from "../lib/sessions";
+import { requireAppUrl } from "../lib/environment";
 
 /**
  * Create a Stripe Account Link for cleaner Express onboarding.
@@ -54,7 +55,7 @@ export const createCleanerStripeAccountLink = action({
       );
     }
 
-    const appUrl = process.env.APP_URL ?? "http://localhost:5173";
+    const appUrl = requireAppUrl();
 
     const accountLink = await stripe.accountLinks.create({
       account: accountId,
