@@ -1,11 +1,13 @@
 export const QA_FIXTURE_KEY = "bright-harbor-autonomous-qa-v1";
 export const QA_COMPANY_NAME = "Bright Harbor Cleaning Co. - QA Fixture";
 export const QA_DEPLOYMENT = "majestic-turtle-198";
+export const QA_PUBLIC_PROPOSAL_TOKEN = "bright-harbor-avery-proposal-v1";
 
 export const QA_PERSONAS = {
   owner: { name: "Maya Chen", email: "owner@brightharbor.example.test", password: "BrightHarbor-QA-Owner-2026!", role: "owner" },
   manager: { name: "Jordan Brooks", email: "manager@brightharbor.example.test", password: "BrightHarbor-QA-Manager-2026!", role: "manager" },
   worker: { name: "Elena Ruiz", email: "worker@brightharbor.example.test", password: "BrightHarbor-QA-Worker-2026!", role: "cleaner" },
+  worker2: { name: "Marcus Reed", email: "worker2@brightharbor.example.test", password: "BrightHarbor-QA-Worker2-2026!", role: "cleaner" },
   client: { name: "Rowan Ellis", email: "client@brightharbor.example.test", password: "BrightHarbor-QA-Client-2026!", role: "client" },
 } as const;
 
