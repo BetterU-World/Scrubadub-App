@@ -297,6 +297,8 @@ export default defineSchema({
     .index("by_attemptId", ["attemptId"]),
 
   companies: defineTable({
+    // Durable ownership marker for the guarded development-only QA fixture.
+    qaFixtureKey: v.optional(v.string()),
     name: v.string(),
     timezone: v.string(),
     // Billing
@@ -332,6 +334,7 @@ export default defineSchema({
     // Default manager for new jobs
     defaultManagerId: v.optional(v.id("users")),
   })
+    .index("by_qaFixtureKey", ["qaFixtureKey"])
     .index("by_stripeCustomerId", ["stripeCustomerId"])
     .index("by_publicRequestToken", ["publicRequestToken"]),
 
@@ -492,6 +495,7 @@ export default defineSchema({
       v.literal("financial_365d"),
     ),
   })
+    .index("by_companyId", ["companyId"])
     .index("by_eventType_createdAt", ["eventType", "createdAt"])
     .index("by_expiresAt", ["expiresAt"]),
 
@@ -1021,6 +1025,7 @@ export default defineSchema({
     maintenanceCost: v.optional(v.number()),
     maintenanceVendor: v.optional(v.string()),
   })
+    .index("by_companyId", ["companyId"])
     .index("by_jobId", ["jobId"])
     .index("by_cleanerId", ["cleanerId"]),
 
@@ -1109,7 +1114,9 @@ export default defineSchema({
     relatedJobId: v.optional(v.id("jobs")),
     relatedClientRequestId: v.optional(v.id("clientRequests")),
     relatedCommercialAccountId: v.optional(v.id("commercialAccounts")),
-  }).index("by_userId_read", ["userId", "read"]),
+  })
+    .index("by_userId_read", ["userId", "read"])
+    .index("by_companyId", ["companyId"]),
 
   auditLog: defineTable({
     companyId: v.id("companies"),
@@ -2015,6 +2022,7 @@ export default defineSchema({
     expiresAt: v.optional(v.number()),
     resultingJobId: v.optional(v.id("jobs")),
   })
+    .index("by_companyId", ["companyId"])
     .index("by_clientRequestId_createdAt", ["clientRequestId", "createdAt"])
     .index("by_clientRequestId_status", ["clientRequestId", "status"])
     .index("by_companyId_status", ["companyId", "status"]),
@@ -2143,7 +2151,9 @@ export default defineSchema({
     paidMethod: v.optional(v.string()),
     stripeCheckoutSessionId: v.optional(v.string()),
     stripePaymentIntentId: v.optional(v.string()),
-  }).index("by_fromCompanyId", ["fromCompanyId"]),
+  })
+    .index("by_fromCompanyId", ["fromCompanyId"])
+    .index("by_toCompanyId", ["toCompanyId"]),
 
   // Settlement Batch / Settlement join table
   settlementBatchItems: defineTable({
@@ -2209,6 +2219,7 @@ export default defineSchema({
     ownerUserId: v.id("users"),
     completedAt: v.number(),
   })
+    .index("by_companyId", ["companyId"])
     .index("by_stripeCheckoutSessionId", ["stripeCheckoutSessionId"])
     .index("by_stripeCustomerId", ["stripeCustomerId"]),
 
