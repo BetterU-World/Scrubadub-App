@@ -1,13 +1,10 @@
 import Stripe from "stripe";
-
-declare const process: { env: Record<string, string | undefined> };
+import { assertExternalSideEffectsAllowed, requireStripeSecretKey } from "./environment";
 
 /**
- * Returns a Stripe client if STRIPE_SECRET_KEY is set, otherwise null.
- * Safe to call in any context — never throws on missing config.
+ * Returns a configured Stripe client after enforcing the environment gate.
  */
-export function getStripeClientOrNull(): Stripe | null {
-  const key = process.env.STRIPE_SECRET_KEY;
-  if (!key) return null;
-  return new Stripe(key);
+export function getStripeClientOrNull(): Stripe {
+  assertExternalSideEffectsAllowed("Stripe");
+  return new Stripe(requireStripeSecretKey());
 }

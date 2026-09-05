@@ -12,11 +12,11 @@ import {
 } from "./lib/password";
 import { generateSecureToken, hashToken, RESET_TOKEN_EXPIRY_MS } from "./lib/tokens";
 import { validatePassword, validateEmail, validateName } from "./lib/validation";
-import { validateRequiredEnv } from "./lib/validateEnv";
+import { validateAuthEnv } from "./lib/validateEnv";
 import { issueSession } from "./lib/sessions";
 import { recordSecurityEventFromAction } from "./lib/securityEventActions";
 
-validateRequiredEnv();
+validateAuthEnv();
 
 /**
  * Actions

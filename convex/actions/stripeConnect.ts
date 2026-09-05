@@ -7,6 +7,7 @@ import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { getStripeClientOrNull } from "../lib/stripe";
 import { requireStaffSession } from "../lib/sessions";
+import { areExternalSideEffectsDisabled, requireAppUrl } from "../lib/environment";
 
 /**
  * Quick check whether STRIPE_SECRET_KEY is configured.
@@ -15,7 +16,7 @@ import { requireStaffSession } from "../lib/sessions";
 export const isStripeConfigured = action({
   args: {},
   handler: async () => {
-    return !!process.env.STRIPE_SECRET_KEY;
+    return !areExternalSideEffectsDisabled() && !!process.env.STRIPE_SECRET_KEY;
   },
 });
 
@@ -45,10 +46,7 @@ export const startStripeConnectOnboarding = action({
       return { ok: false as const, reason: "user_not_found" };
     }
 
-    const appUrl =
-      args.returnTo ||
-      process.env.APP_URL ||
-      "https://scrubadub-app-frontend.vercel.app";
+    const appUrl = args.returnTo || requireAppUrl();
 
     let accountId = user.stripeConnectAccountId;
 

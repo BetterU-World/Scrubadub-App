@@ -13,7 +13,7 @@ describe("Manager Experience V2 delegated operational administration", () => {
     process.env.TOKEN_PEPPER = "manager-v2-pr2-pepper";
     process.env.RESEND_API_KEY = "test-resend-key";
     process.env.RESEND_FROM_EMAIL = "test@example.com";
-    process.env.APP_URL = "http://localhost:5173";
+    process.env.APP_URL = "https://app.scrub.test";
     process.env.STRIPE_SECRET_KEY = "test-stripe-key";
     process.env.STRIPE_WEBHOOK_ACCOUNT_SECRET = "test-webhook-secret";
   });

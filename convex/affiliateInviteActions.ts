@@ -6,10 +6,11 @@ import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { generateSecureToken, hashToken } from "./lib/tokens";
 import { validateEmail, validateName } from "./lib/validation";
-import { validateRequiredEnv } from "./lib/validateEnv";
+import { validateAuthEnv } from "./lib/validateEnv";
+import { areExternalSideEffectsDisabled, requireAppUrl } from "./lib/environment";
 import { requireSuperadminSession } from "./lib/sessions";
 
-validateRequiredEnv();
+validateAuthEnv();
 
 /** Affiliate invite expiry: 7 days */
 const AFFILIATE_INVITE_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
@@ -71,11 +72,11 @@ export const inviteAffiliate = action({
     );
 
     // 7. Build invite URL
-    const appUrl = (process.env.APP_URL ?? "").replace(/\/+$/, "");
+    const appUrl = requireAppUrl();
     const inviteUrl = `${appUrl}/invite/${token}`;
 
     // 8. Optionally send invite email via Resend
-    if (args.sendEmail) {
+    if (args.sendEmail && !areExternalSideEffectsDisabled()) {
       await ctx.runMutation(
         internal.mutations.scheduleEmail.scheduleAffiliateInviteEmail,
         { email, inviteToken: token, name: args.name }
@@ -133,14 +134,16 @@ export const resendAffiliateInvite = action({
     );
 
     // 5. Build invite URL
-    const appUrl = (process.env.APP_URL ?? "").replace(/\/+$/, "");
+    const appUrl = requireAppUrl();
     const inviteUrl = `${appUrl}/invite/${token}`;
 
     // 6. Send invite email via Resend
-    await ctx.runMutation(
-      internal.mutations.scheduleEmail.scheduleAffiliateInviteEmail,
-      { email: target.email, inviteToken: token, name: target.name }
-    );
+    if (!areExternalSideEffectsDisabled()) {
+      await ctx.runMutation(
+        internal.mutations.scheduleEmail.scheduleAffiliateInviteEmail,
+        { email: target.email, inviteToken: token, name: target.name }
+      );
+    }
 
     return { token, inviteUrl };
   },

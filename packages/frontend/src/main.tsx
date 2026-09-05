@@ -10,6 +10,7 @@ import { FeedbackProvider } from "./components/ui/FeedbackProvider";
 import { DemoApp } from "./demo/DemoApp";
 import { shouldRenderDemoApp } from "./demo/demoRoute";
 import { ShowcaseEntryPage } from "./pages/demo/ShowcaseEntryPage";
+import { EnvironmentBanner } from "./components/shared/EnvironmentBanner";
 
 const showcaseEntry = window.location.pathname === "/showcase";
 const demoMode = shouldRenderDemoApp(
@@ -52,6 +53,7 @@ if (showcaseEntry) {
 
     ReactDOM.createRoot(document.getElementById("root")!).render(
       <React.StrictMode>
+        <EnvironmentBanner />
         <ConvexProvider client={convex}>
           <FeedbackProvider>
             <App />

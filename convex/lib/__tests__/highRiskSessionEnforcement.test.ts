@@ -212,7 +212,7 @@ describe("high-risk session enforcement", () => {
     await expect(t.action(api.actions.companyStripeConnect.ensureCompanyStripeConnectAccount, {
       userId: ownerA,
       sessionToken: auth.sessionToken,
-    })).rejects.toThrow("Stripe is not configured");
+    })).rejects.toThrow("Stripe is disabled in this environment");
     await expect(t.action(api.actions.companyStripeConnect.ensureCompanyStripeConnectAccount, {
       userId: ownerB,
       sessionToken: auth.sessionToken,

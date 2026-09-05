@@ -6,6 +6,8 @@ import { action } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { get } from "@vercel/blob";
+import { assertExternalSideEffectsAllowed } from "../lib/environment";
+import { requireBlobToken } from "../lib/validateEnv";
 
 export const getManualSignedUrl = action({
   args: { userId: v.id("users"), sessionToken: v.string(), manualId: v.id("manuals") },
@@ -15,13 +17,8 @@ export const getManualSignedUrl = action({
       { userId: args.userId, sessionToken: args.sessionToken, manualId: args.manualId }
     );
 
-    const token = process.env.BLOB_READ_WRITE_TOKEN;
-    if (!token) {
-      throw new Error(
-        "BLOB_READ_WRITE_TOKEN is not configured. " +
-          "Set it in the Convex dashboard under Environment Variables."
-      );
-    }
+    assertExternalSideEffectsAllowed("Vercel Blob access");
+    const token = requireBlobToken();
 
     // Normalize blobKey: get() accepts a full URL or pathname.
     // If stored as a full URL, extract the pathname for the SDK.

@@ -17,6 +17,8 @@ import {
 
 import { planToEnvVar, planToTier, type ScrubPlan } from "../lib/plans";
 import { issueSession } from "../lib/sessions";
+import { getStripeClientOrNull } from "../lib/stripe";
+import { requireAppUrl } from "../lib/environment";
 
 function getPriceIdForPlan(plan: ScrubPlan): string {
   const envVar = planToEnvVar(plan);
@@ -28,7 +30,7 @@ function getPriceIdForPlan(plan: ScrubPlan): string {
 }
 
 function getStripe() {
-  return new Stripe(process.env.STRIPE_SECRET_KEY!);
+  return getStripeClientOrNull();
 }
 
 /**
@@ -72,8 +74,7 @@ export const createPublicCheckoutSession = action({
       metadata: { source: "public_checkout" },
     }, { idempotencyKey: `public-checkout:${checkoutAttemptId}:customer` });
 
-    const APP_URL =
-      process.env.APP_URL ?? "https://scrubadub-app-frontend.vercel.app";
+    const APP_URL = requireAppUrl();
 
     const priceId = getPriceIdForPlan(selectedPlan);
     const session = await stripe.checkout.sessions.create({

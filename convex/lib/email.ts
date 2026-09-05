@@ -1,23 +1,16 @@
 "use node";
 
 import { Resend } from "resend";
-
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL;
-const APP_URL = process.env.APP_URL;
+import { assertExternalSideEffectsAllowed, requireAppUrl } from "./environment";
+import { requireResendEnv } from "./validateEnv";
 
 function getResendClient(): Resend {
-  if (!RESEND_API_KEY) {
-    throw new Error("RESEND_API_KEY environment variable is required");
-  }
-  return new Resend(RESEND_API_KEY);
+  assertExternalSideEffectsAllowed("Email delivery");
+  return new Resend(requireResendEnv().apiKey);
 }
 
 function getFromEmail(): string {
-  if (!RESEND_FROM_EMAIL) {
-    throw new Error("RESEND_FROM_EMAIL environment variable is required");
-  }
-  return RESEND_FROM_EMAIL;
+  return requireResendEnv().fromEmail;
 }
 
 export type OperationalEmailIdentity = {
@@ -61,11 +54,7 @@ export async function sendAssessmentReportEmail(args: { email: string; language:
 }
 
 function getAppUrl(): string {
-  if (!APP_URL) {
-    throw new Error("APP_URL environment variable is required");
-  }
-  // Strip trailing slash
-  return APP_URL.replace(/\/+$/, "");
+  return requireAppUrl();
 }
 
 function escapeHtml(value: unknown): string {

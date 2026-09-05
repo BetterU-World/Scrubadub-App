@@ -2,12 +2,16 @@ import Stripe from "stripe";
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { areExternalSideEffectsDisabled, requireStripeSecretKey } from "./lib/environment";
 
 declare const process: { env: Record<string, string | undefined> };
 
 const http = httpRouter();
 
 const stripeWebhook = httpAction(async (ctx, request) => {
+  if (areExternalSideEffectsDisabled()) {
+    return new Response("External side effects disabled", { status: 503 });
+  }
   const payload = await request.text();
   let event: Stripe.Event;
 
@@ -30,7 +34,7 @@ const stripeWebhook = httpAction(async (ctx, request) => {
     return new Response("Webhook secret not configured", { status: 500 });
   }
 
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+  const stripe = new Stripe(requireStripeSecretKey());
   let matchedSecret: string | null = null;
 
   for (const candidate of secretCandidates) {

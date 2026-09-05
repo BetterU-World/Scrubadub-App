@@ -7,14 +7,15 @@ import type { Id } from "./_generated/dataModel";
 import { hashPassword, verifyBcryptPassword } from "./lib/password";
 import { generateSecureToken, hashToken, INVITE_TOKEN_EXPIRY_MS, RESET_TOKEN_EXPIRY_MS } from "./lib/tokens";
 import { validateEmail, validatePassword } from "./lib/validation";
-import { validateRequiredEnv } from "./lib/validateEnv";
+import { validateAuthEnv } from "./lib/validateEnv";
+import { areExternalSideEffectsDisabled, requireAppUrl } from "./lib/environment";
 import { issueSession, requireOwnerOrManagerCapability } from "./lib/sessions";
 import { recordSecurityEventFromAction } from "./lib/securityEventActions";
 
-validateRequiredEnv();
+validateAuthEnv();
 
 function appUrl() {
-  return (process.env.APP_URL || "http://localhost:5173").replace(/\/+$/, "");
+  return requireAppUrl();
 }
 
 function cleanEmail(email: string) {
@@ -69,13 +70,16 @@ async function sendClientInvitation(ctx: any, userId: Id<"users">, relationshipI
       inviteTokenExpiry: now + INVITE_TOKEN_EXPIRY_MS,
       inviteSentAt: now,
     });
-    await ctx.runMutation(internal.mutations.scheduleEmail.scheduleClientInviteEmail, {
-      email,
-      token,
-      name: displayNameForRelationship(relationship),
-      companyId: relationship.companyId,
-    });
-    return { inviteUrl, emailSent: true, status: "pending" as const };
+    const emailSent = !areExternalSideEffectsDisabled();
+    if (emailSent) {
+      await ctx.runMutation(internal.mutations.scheduleEmail.scheduleClientInviteEmail, {
+        email,
+        token,
+        name: displayNameForRelationship(relationship),
+        companyId: relationship.companyId,
+      });
+    }
+    return { inviteUrl, emailSent, status: "pending" as const };
 }
 
 export const inviteClient = action({

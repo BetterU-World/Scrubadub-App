@@ -5,9 +5,10 @@ import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { sendServiceAgreementEmail } from "./lib/email";
 import { requireOwnerOrManagerCapability } from "./lib/sessions";
+import { requireAppUrl } from "./lib/environment";
 
 function appUrl() {
-  return (process.env.APP_URL || "http://localhost:5173").replace(/\/+$/, "");
+  return requireAppUrl();
 }
 
 export const sendServiceAgreement = action({

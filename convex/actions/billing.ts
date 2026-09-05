@@ -3,13 +3,14 @@
 // Node types for process.env in Convex "use node" runtime
 declare const process: { env: Record<string, string | undefined> };
 
-import Stripe from "stripe";
 import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 
 import { planToEnvVar, planToTier, type ScrubPlan } from "../lib/plans";
 import { requireOwnerSession } from "../lib/sessions";
+import { getStripeClientOrNull } from "../lib/stripe";
+import { requireAppUrl } from "../lib/environment";
 
 /**
  * Resolve the Stripe price ID for a given plan.
@@ -25,7 +26,7 @@ function getPriceIdForPlan(plan: ScrubPlan): string {
 }
 
 function getStripe() {
-  return new Stripe(process.env.STRIPE_SECRET_KEY!);
+  return getStripeClientOrNull();
 }
 
 export const createCheckoutSession = action({
@@ -64,8 +65,7 @@ export const createCheckoutSession = action({
       });
     }
 
-    const APP_URL =
-      process.env.APP_URL ?? "https://scrubadub-app-frontend.vercel.app";
+    const APP_URL = requireAppUrl();
 
     // Use new plan arg if provided, fallback to "pro" for legacy callers
     const selectedPlan: ScrubPlan = args.plan ?? "pro";
@@ -113,8 +113,7 @@ export const createBillingPortalSession = action({
     if (!data.stripeCustomerId) throw new Error("No billing account found");
 
     const stripe: any = getStripe();
-    const APP_URL =
-      process.env.APP_URL ?? "https://scrubadub-app-frontend.vercel.app";
+    const APP_URL = requireAppUrl();
 
     const session: any = await stripe.billingPortal.sessions.create({
       customer: data.stripeCustomerId,

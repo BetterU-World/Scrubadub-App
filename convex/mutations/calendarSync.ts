@@ -1,4 +1,5 @@
 import { internalMutation, mutation } from "../_generated/server";
+import { areExternalSideEffectsDisabled } from "../lib/environment";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { Doc, Id } from "../_generated/dataModel";
@@ -26,6 +27,7 @@ type JobType = "standard" | "deep_clean" | "turnover" | "move_in_out" | "mainten
 export const cronTick = internalMutation({
   args: {},
   handler: async (ctx) => {
+    if (areExternalSideEffectsDisabled()) return;
     const connections = await ctx.db
       .query("calendarConnections")
       .withIndex("by_enabled", (q) => q.eq("enabled", true))
