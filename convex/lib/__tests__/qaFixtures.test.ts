@@ -3,11 +3,13 @@ import { convexTest } from "convex-test";
 import { makeFunctionReference } from "convex/server";
 import schema from "../../schema";
 import { api } from "../../_generated/api";
-import { assertQaFixtureEnvironment, QA_FIXTURE_KEY, QA_PERSONAS } from "../qaFixture";
+import { assertQaFixtureEnvironment, QA_FIXTURE_KEY, QA_PERSONAS, QA_PUBLIC_PROPOSAL_TOKEN } from "../qaFixture";
 
 const modules = import.meta.glob("../../**/*.ts");
 const seed = makeFunctionReference<"action">("qaFixtures:seed");
 const reset = makeFunctionReference<"action">("qaFixtures:reset");
+const reseed = makeFunctionReference<"action">("qaFixtures:reseed");
+const status = makeFunctionReference<"action">("qaFixtures:status");
 const ORIGINAL_ENV = { ...process.env };
 
 function safeEnv() {
@@ -49,7 +51,7 @@ describe("guarded QA fixtures", () => {
     expect(second.personaIds).toEqual(first.personaIds);
     expect(fetchSpy).not.toHaveBeenCalled();
 
-    for (const key of ["owner", "manager", "worker"] as const) {
+    for (const key of ["owner", "manager", "worker", "worker2"] as const) {
       const login = await t.action(api.authActions.signIn, { email: QA_PERSONAS[key].email, password: QA_PERSONAS[key].password });
       expect(login.userId).toBe(first.personaIds[key]);
     }
@@ -65,16 +67,31 @@ describe("guarded QA fixtures", () => {
       const requests = await ctx.db.query("clientRequests").withIndex("by_companyId", (q) => q.eq("companyId", first.companyId)).collect();
       const proposals = await ctx.db.query("proposals").withIndex("by_companyId", (q) => q.eq("companyId", first.companyId)).collect();
       const forms = await ctx.db.query("forms").withIndex("by_companyId", (q) => q.eq("companyId", first.companyId)).collect();
-      return { company, properties, jobs, relationships, manager, requests, proposals, forms };
+      const scheduleProposals = await ctx.db.query("clientRequestScheduleProposals").withIndex("by_companyId", (q) => q.eq("companyId", first.companyId)).collect();
+      const agreements = await ctx.db.query("serviceAgreements").withIndex("by_company", (q) => q.eq("companyId", first.companyId)).collect();
+      const workers = await ctx.db.query("workerProfiles").withIndex("by_companyId", (q) => q.eq("companyId", first.companyId)).collect();
+      return { company, properties, jobs, relationships, manager, requests, proposals, forms, scheduleProposals, agreements, workers };
     });
     expect(consistency.company?.qaFixtureKey).toBe(QA_FIXTURE_KEY);
     expect(consistency.properties).toHaveLength(4);
+    expect(consistency.jobs).toHaveLength(7);
     expect(new Set(consistency.jobs.map((job) => job.status))).toEqual(new Set(["approved", "submitted", "in_progress", "scheduled", "rework_requested", "confirmed"]));
+    expect(consistency.jobs.filter((job) => job.cleanerIds.length === 0)).toHaveLength(1);
     expect(consistency.relationships).toHaveLength(3);
-    expect(consistency.requests.map((request) => request.status).sort()).toEqual(["converted", "new"]);
-    expect(consistency.proposals.map((proposal) => proposal.status).sort()).toEqual(["accepted", "draft"]);
+    expect(consistency.requests.map((request) => request.status).sort()).toEqual(["contacted", "converted", "converted", "new"]);
+    expect(consistency.proposals.map((proposal) => proposal.status).sort()).toEqual(["accepted", "accepted", "sent"]);
+    expect(consistency.scheduleProposals.filter((proposal) => proposal.status === "pending")).toHaveLength(1);
+    expect(consistency.agreements.map((agreement) => agreement.status).sort()).toEqual(["sent", "signed"]);
+    expect(consistency.workers).toHaveLength(2);
     expect(new Set(consistency.forms.map((form) => form.status))).toEqual(new Set(["approved", "submitted", "in_progress", "rework_requested"]));
     expect(consistency.manager).toMatchObject({ canAssignCleaners: true, canManageClients: true, canViewFinancials: false, canManageTeam: false });
+
+    const fixtureStatus: any = await t.action(status, {});
+    expect(fixtureStatus).toMatchObject({ exists: true, companyId: first.companyId, personaIds: { worker2: first.personaIds.worker2 } });
+    const publicProposal = await t.action(api.proposalDeliveryActions.getProposalByToken, { token: QA_PUBLIC_PROPOSAL_TOKEN });
+    expect(publicProposal).toMatchObject({ proposal: { title: "Avery seasonal deep clean", status: "sent" } });
+    const agreement = await t.query((api as any).queries.serviceAgreements.getForClient, { clientUserId: clientLogin.clientUserId, sessionToken: clientLogin.sessionToken, agreementId: first.fixtureIds.pendingAgreement });
+    expect(agreement).toMatchObject({ title: "Pelican Loft monthly deep-clean agreement", status: "sent" });
   }, 30_000);
 
   it("reset removes only the marked workspace and preserves unrelated development data", async () => {
@@ -90,7 +107,52 @@ describe("guarded QA fixtures", () => {
     await expect(t.run((ctx) => ctx.db.get(fixture.companyId))).resolves.toBeNull();
     await expect(t.run((ctx) => ctx.db.get(unrelated.companyId))).resolves.toMatchObject({ name: "Unrelated Dev Co" });
     await expect(t.run((ctx) => ctx.db.get(unrelated.propertyId))).resolves.toMatchObject({ name: "Unrelated Property" });
+    const leftovers = await t.run(async (ctx) => ({
+      redFlags: await ctx.db.query("redFlags").collect(),
+      availability: await ctx.db.query("cleanerAvailability").collect(),
+      overrides: await ctx.db.query("cleanerAvailabilityOverrides").collect(),
+    }));
+    expect(leftovers).toEqual({ redFlags: [], availability: [], overrides: [] });
   }, 30_000);
+
+  it("reseed upgrades the old fixture and reconstructs deterministic business state without touching unrelated data", async () => {
+    const t = convexTest(schema, modules);
+    const initial: any = await t.action(seed, {});
+    await t.run(async (ctx) => {
+      const worker2 = await ctx.db.get(initial.personaIds.worker2);
+      const profile = await ctx.db.query("workerProfiles").withIndex("by_userId", (q) => q.eq("userId", initial.personaIds.worker2)).unique();
+      const availability = await ctx.db.query("cleanerAvailability").withIndex("by_cleanerId_dayOfWeek", (q) => q.eq("cleanerId", initial.personaIds.worker2)).collect();
+      for (const row of availability) await ctx.db.delete(row._id);
+      if (profile) await ctx.db.delete(profile._id);
+      if (worker2) await ctx.db.delete(worker2._id);
+      await ctx.db.insert("companies", { name: "Persistent Unrelated Co", timezone: "UTC" });
+    });
+    const upgraded: any = await t.action(reseed, {});
+    await expect(t.run((ctx) => ctx.db.get(initial.companyId))).resolves.toBeNull();
+    const businessState = () => t.run(async (ctx) => {
+      const company = await ctx.db.query("companies").withIndex("by_qaFixtureKey", (q) => q.eq("qaFixtureKey", QA_FIXTURE_KEY)).unique();
+      if (!company) throw new Error("Fixture missing");
+      const users = await ctx.db.query("users").withIndex("by_companyId", (q) => q.eq("companyId", company._id)).collect();
+      const jobs = await ctx.db.query("jobs").withIndex("by_companyId_scheduledDate", (q) => q.eq("companyId", company._id)).collect();
+      const requests = await ctx.db.query("clientRequests").withIndex("by_companyId", (q) => q.eq("companyId", company._id)).collect();
+      const proposals = await ctx.db.query("proposals").withIndex("by_companyId", (q) => q.eq("companyId", company._id)).collect();
+      const agreements = await ctx.db.query("serviceAgreements").withIndex("by_company", (q) => q.eq("companyId", company._id)).collect();
+      return {
+        users: users.map((item) => `${item.role}:${item.name}`).sort(),
+        jobs: jobs.map((item) => `${item.status}:${item.type}:${item.cleanerIds.length}:${item.notes}`).sort(),
+        requests: requests.map((item) => `${item.status}:${item.requestedService}`).sort(),
+        proposals: proposals.map((item) => `${item.status}:${item.title}`).sort(),
+        agreements: agreements.map((item) => `${item.status}:${item.title}`).sort(),
+      };
+    });
+    const firstBusinessState = await businessState();
+    const again: any = await t.action(reseed, {});
+    expect(upgraded.summary).toEqual(again.summary);
+    expect(await businessState()).toEqual(firstBusinessState);
+    expect(again.summary).toMatchObject({ workers: 2, jobs: 7, unassignedJobs: 1, pendingScheduleProposals: 1, sentProposals: 1, sentServiceAgreements: 1 });
+    const unrelated = await t.run((ctx) => ctx.db.query("companies").filter((q) => q.eq(q.field("name"), "Persistent Unrelated Co")).collect());
+    expect(unrelated).toHaveLength(1);
+  }, 45_000);
 
   it("refuses reset atomically when a foreign company relationship exists", async () => {
     const t = convexTest(schema, modules);
