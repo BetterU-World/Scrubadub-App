@@ -1245,6 +1245,8 @@
     "description": "Crea un catálogo reutilizable de servicios opcionales para tu empresa.",
     "back": "Volver a configuración",
     "create": "Crear servicio adicional",
+    "created": "Servicio adicional creado.",
+    "updated": "Servicio adicional actualizado.",
     "browsePresets": "Explorar opciones de SCRUB",
     "presetTitle": "Opciones predefinidas de SCRUB",
     "searchPresets": "Buscar opciones",
