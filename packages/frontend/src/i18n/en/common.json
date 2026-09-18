@@ -1245,6 +1245,8 @@
     "description": "Build a reusable catalog of optional services for your company.",
     "back": "Back to settings",
     "create": "Create add-on",
+    "created": "Add-on created.",
+    "updated": "Add-on updated.",
     "browsePresets": "Browse SCRUB presets",
     "presetTitle": "SCRUB add-on presets",
     "searchPresets": "Search presets",
