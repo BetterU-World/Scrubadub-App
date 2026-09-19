@@ -3141,6 +3141,24 @@
     }
   },
   "assessment": {
+    "giveaway": {
+      "title": "Finaliza tu participación en el sorteo",
+      "emailHelp": "Necesitamos tu correo para contactarte si ganas. Los correos de marketing son opcionales.",
+      "email": "Correo de contacto",
+      "invalidEmail": "Ingresa un correo electrónico válido.",
+      "eligibility": "Soy propietario u operador de un negocio de limpieza en EE. UU., tengo al menos 18 años y acepto las Reglas Oficiales.",
+      "rules": "Leer Reglas Oficiales en inglés (se abre en otra pestaña)",
+      "marketing": "Opcional: también quiero recibir novedades, recursos y ofertas ocasionales de SCRUB.",
+      "limit": "Una participación válida por persona/correo. No es necesario comprar. Tus respuestas y puntuación no afectan tus probabilidades.",
+      "privacy": "Política de Privacidad en inglés (se abre en otra pestaña)",
+      "submit": "Completar evaluación y participar",
+      "closed": "Este sorteo no está abierto. Puedes finalizar tu evaluación, pero completarla ahora no genera una participación.",
+      "qualified": "Tu participación fue registrada, sujeta a verificación de elegibilidad. Te contactaremos por correo si eres seleccionado.",
+      "duplicate": "Este correo ya tiene una participación en el sorteo. Tu evaluación está guardada; no se creó otra participación.",
+      "outside_period": "Tu evaluación está completa. No se creó una participación porque el sorteo no estaba abierto al finalizar.",
+      "previous_completion": "Esta es tu evaluación completada anteriormente. Abrir un enlace del sorteo no agrega una participación a una evaluación anterior.",
+      "attribution": "Llegaste desde un sorteo. Para participar debes completar la evaluación durante el período activo, proporcionar un correo válido y confirmar tu elegibilidad. Una participación por persona/correo."
+    },
     "eyebrow": "Evaluación gratuita de operaciones para negocios de limpieza",
     "title": "Descubre cómo funciona realmente tu negocio de limpieza.",
     "headerLabel": "Evaluación de Operaciones",
