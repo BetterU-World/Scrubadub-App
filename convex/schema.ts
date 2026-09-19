@@ -87,6 +87,7 @@ export default defineSchema({
     .index("by_key_status", ["key", "status"]),
 
   assessmentAttempts: defineTable({
+    giveawayOutcome: v.optional(v.union(v.literal("qualified"), v.literal("duplicate"), v.literal("outside_period"))),
     definitionId: v.id("assessmentDefinitions"),
     definitionVersion: v.number(),
     scoringVersion: v.optional(v.number()),
@@ -225,6 +226,20 @@ export default defineSchema({
     .index("by_attemptId_questionKey", ["attemptId", "questionKey"])
     .index("by_attemptId", ["attemptId"]),
 
+  giveawayEntries: defineTable({
+    campaignId: v.string(),
+    attemptId: v.id("assessmentAttempts"),
+    normalizedEmail: v.string(),
+    originalEmail: v.string(),
+    qualifiedAt: v.number(),
+    status: v.literal("qualified"),
+    rulesVersion: v.string(),
+    eligibilityConfirmedAt: v.number(),
+    marketingConsent: v.boolean(),
+    marketingConsentAt: v.optional(v.number()),
+    consentVersion: v.optional(v.string()),
+  }).index("by_campaign_email", ["campaignId", "normalizedEmail"]),
+
   assessmentProspects: defineTable({
     attemptId: v.id("assessmentAttempts"),
     normalizedEmail: v.string(),
@@ -275,6 +290,7 @@ export default defineSchema({
     language: v.union(v.literal("en"), v.literal("es")),
     metadata: v.optional(
       v.object({
+        campaignId: v.optional(v.string()),
         definitionVersion: v.optional(v.number()),
         scoringVersion: v.optional(v.number()),
         reportVersion: v.optional(v.number()),

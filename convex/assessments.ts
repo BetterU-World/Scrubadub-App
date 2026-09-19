@@ -1,4 +1,6 @@
 import { mutation, query } from "./_generated/server";
+import { giveawayCampaigns } from "./lib/giveawayCampaigns";
+import { qualifyGiveaway } from "./lib/giveawayEntries";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { checkRateLimit } from "./lib/rateLimit";
@@ -149,12 +151,14 @@ export const start = mutation({
     responseLanguage: languageValidator,
     deviceCategory: v.optional(v.union(v.literal("mobile"), v.literal("desktop"))),
     sessionId: v.optional(v.string()),
+    campaignId: v.optional(v.string()),
     priorResponses: v.optional(v.array(responseInputValidator)),
     firstResponse: responseInputValidator,
   },
   handler: async (ctx, args) => {
     requireSafeToken(args.capability, "assessment capability");
     requireSafeToken(args.browserKey, "browser key");
+    if (args.campaignId && !Object.prototype.hasOwnProperty.call(giveawayCampaigns, args.campaignId)) throw new Error("Unknown giveaway campaign");
     const definition = await ensureDefinition(ctx);
     const answers: AnswerMap = {};
     const normalizedResponses: Array<{ question: AssessmentQuestion; normalized: ReturnType<typeof normalizeResponse> }> = [];
@@ -174,7 +178,13 @@ export const start = mutation({
     const browserKeyHash = await hashTokenForLookup(args.browserKey);
     const capabilityHash = await hashTokenForLookup(args.capability);
     const duplicate = await ctx.db.query("assessmentAttempts").withIndex("by_capabilityHash", (q) => q.eq("capabilityHash", capabilityHash)).unique();
-    if (duplicate) return { attemptId: duplicate._id };
+    if (duplicate) {
+      if (args.campaignId && duplicate.status === "in_progress" && !duplicate.sourceSnapshot?.utmCampaign) {
+        await ctx.db.patch(duplicate._id, { sourceSnapshot: { ...duplicate.sourceSnapshot, utmSource: "giveaway", utmCampaign: args.campaignId } });
+        await recordMilestone(ctx, duplicate, "giveaway_assessment_started", { campaignId: args.campaignId });
+      }
+      return { attemptId: duplicate._id };
+    }
     await checkRateLimit(ctx, { key: `assessment:creation:${browserKeyHash}`, ...ASSESSMENT_LIMITS.creation });
     const now = Date.now();
     const attemptId = await ctx.db.insert("assessmentAttempts", {
@@ -183,6 +193,7 @@ export const start = mutation({
       benchmarkCompatibilityKey: definition.benchmarkCompatibilityKey,
       status: "in_progress",
       audience: "public",
+      sourceSnapshot: args.campaignId ? { utmSource: "giveaway", utmCampaign: args.campaignId } : undefined,
       responseLanguage: args.responseLanguage,
       capabilityHash,
       browserKeyHash,
@@ -198,6 +209,7 @@ export const start = mutation({
     await ctx.db.patch(attemptId, counts);
     const sessionId = args.sessionId && /^[a-f0-9]{16,64}$/i.test(args.sessionId) ? args.sessionId : undefined;
     await recordMilestone(ctx, (await ctx.db.get(attemptId))!, "assessment_started", { definitionVersion: definition.definitionVersion, branchType: answers["business.team_size"] === "solo" ? "solo" : answers["business.team_size"] ? "team" : undefined, deviceCategory: args.deviceCategory, sessionId });
+    if (args.campaignId) await recordMilestone(ctx, (await ctx.db.get(attemptId))!, "giveaway_assessment_started", { campaignId: args.campaignId });
     return { attemptId };
   },
 });
@@ -210,6 +222,19 @@ export const load = query({
     if (!definition) throw new Error("Assessment definition is unavailable");
     const responses = await ctx.db.query("assessmentResponses").withIndex("by_attemptId", (q) => q.eq("attemptId", attempt._id)).collect();
     return { attempt, definition, responses };
+  },
+});
+
+/** Explicit giveaway CTA may attribute an existing unfinished assessment, never a completed one. */
+export const attributeGiveaway = mutation({
+  args: { attemptId: v.id("assessmentAttempts"), capability: v.string(), campaignId: v.string() },
+  handler: async (ctx, args) => {
+    const attempt = await requireAttempt(ctx, args.attemptId, args.capability);
+    if (!Object.prototype.hasOwnProperty.call(giveawayCampaigns, args.campaignId)) throw new Error("Unknown giveaway campaign");
+    if (attempt.status !== "in_progress" || attempt.sourceSnapshot?.utmCampaign) return attempt.sourceSnapshot?.utmCampaign;
+    await ctx.db.patch(attempt._id, { sourceSnapshot: { ...attempt.sourceSnapshot, utmSource: "giveaway", utmCampaign: args.campaignId } });
+    await recordMilestone(ctx, attempt, "giveaway_assessment_started", { campaignId: args.campaignId });
+    return args.campaignId;
   },
 });
 
@@ -259,7 +284,7 @@ export const saveResponse = mutation({
 });
 
 export const complete = mutation({
-  args: { attemptId: v.id("assessmentAttempts"), capability: v.string() },
+  args: { attemptId: v.id("assessmentAttempts"), capability: v.string(), giveawayContact: v.optional(v.object({ email: v.string(), eligibilityConfirmed: v.boolean(), marketingConsent: v.boolean() })) },
   handler: async (ctx, args) => {
     const attempt = await requireAttempt(ctx, args.attemptId, args.capability);
     if (attempt.status === "completed") {
@@ -281,6 +306,8 @@ export const complete = mutation({
     }
     const scoring = scoreAssessment(definition as any, answers);
     const now = Date.now();
+    await qualifyGiveaway(ctx, attempt, now, args.giveawayContact);
+    if (attempt.sourceSnapshot?.utmSource === "giveaway") await recordMilestone(ctx, attempt, "giveaway_assessment_completed", { campaignId: attempt.sourceSnapshot.utmCampaign });
     const completionSnapshot = {
       definitionId: definition._id,
       definitionVersion: definition.definitionVersion,

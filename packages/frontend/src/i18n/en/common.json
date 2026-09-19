@@ -3141,6 +3141,24 @@
     }
   },
   "assessment": {
+    "giveaway": {
+      "title": "Finish your giveaway entry",
+      "emailHelp": "We need your email so we can contact you if you win. Marketing emails are optional.",
+      "email": "Contact email",
+      "invalidEmail": "Enter a valid email address.",
+      "eligibility": "I am a U.S. cleaning-business owner/operator, age 18 or older, and I agree to the Official Rules.",
+      "rules": "Read Official Rules (opens in a new tab)",
+      "marketing": "Optional: I would also like occasional SCRUB updates, resources, and offers.",
+      "limit": "One qualifying entry per person/email. No purchase necessary. Your answers and score do not affect your odds.",
+      "privacy": "Privacy Policy (opens in a new tab)",
+      "submit": "Complete assessment and enter",
+      "closed": "Entries are not open for this giveaway. You can finish your assessment, but completing it now does not create an entry.",
+      "qualified": "Your giveaway entry has been recorded, subject to eligibility verification. We will contact you by email if you are selected.",
+      "duplicate": "This email already has an entry for this giveaway. Your assessment is saved; no additional entry was created.",
+      "outside_period": "Your assessment is complete. No giveaway entry was created because entries were not open at completion.",
+      "previous_completion": "This is your previously completed assessment. Opening a giveaway link does not add an entry to an earlier completion.",
+      "attribution": "You arrived through a giveaway. Entry requires completion while the promotion is open, a valid contact email, and eligibility confirmation. One entry per person/email."
+    },
     "eyebrow": "Free cleaning business operations assessment",
     "title": "See how your cleaning business is really operating.",
     "headerLabel": "Operations Assessment",

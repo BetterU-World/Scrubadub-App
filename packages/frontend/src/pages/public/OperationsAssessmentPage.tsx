@@ -9,6 +9,9 @@ import { clearProgress, getBrowserKey, loadProgress, randomHex, saveProgress, ty
 import { OperationsAssessmentReport, type AssessmentReport } from "./OperationsAssessmentReport";
 import type { AssessmentRoadmap } from "./OperationsAssessmentRoadmap";
 import { isQuestionApplicable } from "../../../../../convex/lib/assessmentApplicability";
+import { giveawayCampaigns } from "../../../../../convex/lib/giveawayCampaigns";
+import type { GiveawayContact } from "../../../../../convex/lib/giveawayEntries";
+import { GiveawayAssessmentContact } from "./GiveawayAssessmentContact";
 
 type Answer = string | string[];
 type Question = {
@@ -29,6 +32,10 @@ type AssessmentHistoryState = {
 };
 const assessmentApi = (api as any).assessments;
 const continuityApi = (api as any).assessmentContinuity;
+function requestedGiveaway() {
+  const id = new URLSearchParams(window.location.search).get("campaign");
+  return id && Object.prototype.hasOwnProperty.call(giveawayCampaigns, id) ? id : undefined;
+}
 const clarityHelperKeys: Record<string, string> = {
   "business.primary_model": "assessment.clarity.closest",
   "scheduling.primary_method": "assessment.clarity.mostOften",
@@ -64,6 +71,7 @@ export function OperationsAssessmentPage() {
   const prepare = useMutation(assessmentApi.prepare);
   const start = useMutation(assessmentApi.start);
   const recover = useMutation(assessmentApi.recover);
+  const attributeGiveaway = useMutation(assessmentApi.attributeGiveaway);
   const saveResponse = useMutation(assessmentApi.saveResponse);
   const complete = useMutation(assessmentApi.complete);
   const generateReport = useMutation(assessmentApi.generateReport);
@@ -72,8 +80,9 @@ export function OperationsAssessmentPage() {
   const recordEvent = useMutation(continuityApi.recordEvent);
   const abandon = useMutation(assessmentApi.abandon);
   const [definition, setDefinition] = useState<Definition | null>(null);
-  const [progress, setProgress] = useState<LocalAssessmentProgress>(() => loadProgress() ?? { answers: {}, language: i18n.resolvedLanguage === "es" ? "es" : "en", lastActivityAt: Date.now() });
-  const [view, setView] = useState<"intro" | "section" | "question" | "completing" | "report">("intro");
+  const [progress, setProgress] = useState<LocalAssessmentProgress>(() => { const saved = loadProgress(); return saved ? { ...saved, campaignId: saved.campaignId ?? requestedGiveaway() } : { campaignId: requestedGiveaway(), answers: {}, language: i18n.resolvedLanguage === "es" ? "es" : "en", lastActivityAt: Date.now() }; });
+  const [view, setView] = useState<"intro" | "section" | "question" | "contact" | "completing" | "report">("intro");
+  const [giveawayOutcome, setGiveawayOutcome] = useState<string | undefined>();
   const [index, setIndex] = useState(0);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -140,8 +149,13 @@ export function OperationsAssessmentPage() {
             if (row.responseKind === "multi" && row.answerValues) answers[row.questionKey] = row.answerValues;
             if (row.responseKind === "qualitative" && row.qualitativeText) answers[row.questionKey] = row.qualitativeText;
           }
-          const next = { ...saved, answers: validatedAnswers(result.definition as Definition, { ...answers, ...saved.answers }), language: result.attempt.responseLanguage, lastActivityAt: result.attempt.lastActivityAt };
+          let campaignId = result.attempt.sourceSnapshot?.utmSource === "giveaway" ? result.attempt.sourceSnapshot.utmCampaign : undefined;
+          const requested = requestedGiveaway();
+          if (requested && !campaignId && result.attempt.status === "in_progress") campaignId = await attributeGiveaway({ attemptId: saved.attemptId as Id<"assessmentAttempts">, capability: saved.capability, campaignId: requested });
+          const next = { ...saved, campaignId, answers: validatedAnswers(result.definition as Definition, { ...answers, ...saved.answers }), language: result.attempt.responseLanguage, lastActivityAt: result.attempt.lastActivityAt };
           setProgress(next);
+          saveProgress(next);
+          setGiveawayOutcome(result.attempt.giveawayOutcome ?? (requested && result.attempt.status === "completed" ? "previous_completion" : undefined));
           await i18n.changeLanguage(next.language);
           setRestored(true);
           if (result.attempt.status === "completed" && result.attempt.completionSnapshot) {
@@ -175,7 +189,7 @@ export function OperationsAssessmentPage() {
           }
         } else {
           clearProgress();
-          setProgress({ answers: {}, language: i18n.resolvedLanguage === "es" ? "es" : "en", lastActivityAt: Date.now() });
+          setProgress({ campaignId: requestedGiveaway(), answers: {}, language: i18n.resolvedLanguage === "es" ? "es" : "en", lastActivityAt: Date.now() });
         }
       }
     }).catch(() => setError(t("assessment.errors.unavailable")));
@@ -183,7 +197,7 @@ export function OperationsAssessmentPage() {
       window.history.replaceState({ scrubAssessment: true, view: "intro" } satisfies AssessmentHistoryState, "", window.location.href);
     }
     return () => { active = false; };
-  }, [prepare, recover, generateReport, generateRoadmap, openReturnLink, recordEvent, i18n, t]);
+  }, [prepare, recover, attributeGiveaway, generateReport, generateRoadmap, openReturnLink, recordEvent, i18n, t]);
 
   const questions = useMemo(() => definition ? definition.questions.filter((question) => isQuestionApplicable(question, progress.answers)).sort((a, b) => {
     const sectionA = definition.sections.find((section) => section.key === a.sectionKey)?.order ?? 0;
@@ -286,7 +300,7 @@ export function OperationsAssessmentPage() {
         const accepted = validatedAnswers(definition, latest.answers);
         const currentPosition = definition.questions.findIndex((item) => item.key === question.key);
         const priorResponses = definition.questions.slice(0, currentPosition).filter((item) => accepted[item.key] !== undefined && isQuestionApplicable(item, accepted)).map((item) => responseArgs(item, accepted[item.key]));
-        const created = await start({ capability, browserKey: getBrowserKey(), responseLanguage: latest.language, deviceCategory: window.innerWidth < 768 ? "mobile" : "desktop", sessionId: sessionIdRef.current, priorResponses, firstResponse: responseArgs(question, answer) });
+        const created = await start({ capability, campaignId: latest.campaignId, browserKey: getBrowserKey(), responseLanguage: latest.language, deviceCategory: window.innerWidth < 768 ? "mobile" : "desktop", sessionId: sessionIdRef.current, priorResponses, firstResponse: responseArgs(question, answer) });
         attemptId = created.attemptId;
       } else {
         const response = responseArgs(question, answer);
@@ -319,14 +333,19 @@ export function OperationsAssessmentPage() {
     return pending;
   }
 
-  async function goNext() {
+  async function goNext(giveawayContact?: GiveawayContact) {
     if (!await persistCurrent()) return;
     if (index === questions.length - 1) {
+      if (progressRef.current.campaignId && view !== "contact") { setView("contact"); return; }
       setBusy(true);
       setView("completing");
       try {
         const latest = progressRef.current;
-        await complete({ attemptId: latest.attemptId as Id<"assessmentAttempts">, capability: latest.capability });
+        await complete({ attemptId: latest.attemptId as Id<"assessmentAttempts">, capability: latest.capability, giveawayContact });
+        if (latest.campaignId) {
+          const completed = await recover({ attemptId: latest.attemptId as Id<"assessmentAttempts">, capability: latest.capability });
+          setGiveawayOutcome(completed?.attempt.giveawayOutcome);
+        }
         const frozen = await generateReport({ attemptId: latest.attemptId as Id<"assessmentAttempts">, capability: latest.capability });
         setReport(frozen.payload as AssessmentReport);
         const plan = await generateRoadmap({ attemptId: latest.attemptId as Id<"assessmentAttempts">, capability: latest.capability });
@@ -334,7 +353,7 @@ export function OperationsAssessmentPage() {
         setView("report");
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : t("assessment.errors.complete"));
-        setView("question");
+        setView(progressRef.current.campaignId ? "contact" : "question");
       } finally { setBusy(false); }
       return;
     }
@@ -361,14 +380,16 @@ export function OperationsAssessmentPage() {
     if (!window.confirm(t("assessment.confirm.startOver"))) return;
     if (progress.attemptId && progress.capability) await abandon({ attemptId: progress.attemptId as Id<"assessmentAttempts">, capability: progress.capability }).catch(() => {});
     clearProgress();
-    setProgress({ answers: {}, language: i18n.resolvedLanguage === "es" ? "es" : "en", lastActivityAt: Date.now() });
+    setProgress({ campaignId: progress.campaignId ?? requestedGiveaway(), answers: {}, language: i18n.resolvedLanguage === "es" ? "es" : "en", lastActivityAt: Date.now() });
+    setGiveawayOutcome(undefined);
     setIndex(0);
     setView("intro");
     setRestored(false);
     setError("");
   }
 
-  if (view === "report" && report && roadmap) return <AssessmentShell><OperationsAssessmentReport report={report} roadmap={roadmap} attemptId={progress.attemptId} capability={progress.capability} /></AssessmentShell>;
+  if (view === "report" && report && roadmap) return <AssessmentShell>{giveawayOutcome && <p role="status" className="mb-6 rounded-2xl border border-primary-200 bg-primary-50 p-4 text-primary-900">{t(`assessment.giveaway.${giveawayOutcome}`)}</p>}<OperationsAssessmentReport report={report} roadmap={roadmap} attemptId={progress.attemptId} capability={progress.capability} /></AssessmentShell>;
+  if (view === "contact" && progress.campaignId && Object.prototype.hasOwnProperty.call(giveawayCampaigns, progress.campaignId)) return <AssessmentShell><GiveawayAssessmentContact campaignId={progress.campaignId} busy={busy} error={error} onComplete={contact => void goNext(contact)} onBack={() => setView("question")} /></AssessmentShell>;
   if (!definition && error) return <AssessmentShell><div role="alert" className="mx-auto max-w-xl rounded-2xl bg-white p-6 text-center text-gray-700">{error}</div></AssessmentShell>;
   if (!definition) return <AssessmentShell><p className="text-center text-gray-600">{t("common.loading")}</p></AssessmentShell>;
 
@@ -397,6 +418,7 @@ export function OperationsAssessmentPage() {
           <p className="text-sm font-semibold uppercase tracking-[0.16em] text-primary-700">{t("assessment.eyebrow")}</p>
           <h1 id="assessment-intro-title" className="mt-4 text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">{t("assessment.title")}</h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-gray-600 sm:text-xl">{t("assessment.introduction")}</p>
+          {progress.campaignId && <p className="mt-5 rounded-2xl border border-primary-200 bg-primary-50 p-4 text-primary-900">{t("assessment.giveaway.attribution")} <a href={`/giveaway?campaign=${encodeURIComponent(progress.campaignId)}#official-rules`} target="_blank" rel="noopener noreferrer" className="underline">{t("assessment.giveaway.rules")}</a></p>}
           <p className="mx-auto mt-5 max-w-2xl rounded-2xl border border-primary-200 bg-primary-50 px-4 py-3 text-sm font-medium leading-6 text-primary-900">{t("assessment.clarity.globalGuidance")}</p>
           <div className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm font-medium text-gray-700">
             {["free", "duration", "noAccount"].map((key) => <span key={key} className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-primary-600" aria-hidden="true"/>{t(`assessment.meta.${key}`)}</span>)}
@@ -482,7 +504,7 @@ export function OperationsAssessmentPage() {
         </main>
         <p className="mt-4 flex items-center gap-2 text-sm text-gray-500"><ShieldCheck className="h-4 w-4"/>{t("assessment.localSave")}</p>
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-gray-200 bg-white/95 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+0.75rem)] pt-3 backdrop-blur">
-          <div className="mx-auto flex max-w-2xl items-center gap-3"><button type="button" className="btn-secondary flex-1 gap-2" onClick={goBack} disabled={busy}><ArrowLeft className="h-4 w-4"/>{t("common.back")}</button><button type="button" className="btn-primary flex-[1.4] gap-2" onClick={goNext} disabled={busy}>{index === questions.length - 1 ? t("assessment.actions.complete") : t("common.next")}<ArrowRight className="h-4 w-4"/></button></div>
+          <div className="mx-auto flex max-w-2xl items-center gap-3"><button type="button" className="btn-secondary flex-1 gap-2" onClick={goBack} disabled={busy}><ArrowLeft className="h-4 w-4"/>{t("common.back")}</button><button type="button" className="btn-primary flex-[1.4] gap-2" onClick={() => void goNext()} disabled={busy}>{index === questions.length - 1 ? t("assessment.actions.complete") : t("common.next")}<ArrowRight className="h-4 w-4"/></button></div>
         </div>
       </div>
     </AssessmentShell>

@@ -2,6 +2,7 @@ export const ASSESSMENT_PROGRESS_KEY = "scrub_operations_assessment_v1";
 export const ASSESSMENT_BROWSER_KEY = "scrub_assessment_browser_key";
 
 export interface LocalAssessmentProgress {
+  campaignId?: string;
   attemptId?: string;
   capability?: string;
   answers: Record<string, string | string[]>;
@@ -30,7 +31,7 @@ export function loadProgress(storage: Storage = localStorage): LocalAssessmentPr
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<LocalAssessmentProgress>;
     if (!parsed.answers || typeof parsed.answers !== "object" || (parsed.language !== "en" && parsed.language !== "es")) return null;
-    return { answers: parsed.answers, language: parsed.language, attemptId: parsed.attemptId, capability: parsed.capability, currentQuestionKey: parsed.currentQuestionKey, lastActivityAt: Number(parsed.lastActivityAt) || 0 };
+    return { campaignId: typeof parsed.campaignId === "string" ? parsed.campaignId : undefined, answers: parsed.answers, language: parsed.language, attemptId: parsed.attemptId, capability: parsed.capability, currentQuestionKey: parsed.currentQuestionKey, lastActivityAt: Number(parsed.lastActivityAt) || 0 };
   } catch {
     return null;
   }

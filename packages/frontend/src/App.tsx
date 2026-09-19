@@ -105,6 +105,7 @@ import { ContactPage } from "@/pages/public/ContactPage";
 import { GetStartedPage } from "@/pages/public/GetStartedPage";
 import { PostCheckoutSetupPage } from "@/pages/public/PostCheckoutSetupPage";
 import { OperationsAssessmentPage } from "@/pages/public/OperationsAssessmentPage";
+import { GiveawayPage } from "@/pages/public/GiveawayPage";
 import { ClientLoginPage } from "@/pages/client/ClientLoginPage";
 import { ClientForgotPasswordPage } from "@/pages/client/ClientForgotPasswordPage";
 import { ClientResetPasswordPage } from "@/pages/client/ClientResetPasswordPage";
@@ -214,6 +215,8 @@ export default function App() {
   ) : null;
 
   // --- PUBLIC ROUTES: bypass all auth guards, no layout ---
+  if (pathname === "/giveaway") return <><Analytics /><ErrorBoundary><GiveawayPage /></ErrorBoundary></>;
+
   if (pathname === "/assessment" && (isOperationsAssessmentEnabled || new URLSearchParams(window.location.search).has("return"))) {
     return (
       <>
@@ -296,7 +299,7 @@ export default function App() {
     "/jobs", "/calendar", "/red-flags", "/performance", "/analytics", "/financials",
     "/partners", "/requests", "/clients", "/commercial-accounts", "/commercial-invoices", "/feedback", "/cleaner-leads", "/audit-log", "/notifications", "/manuals", "/proposal",
     "/admin", "/site", "/affiliate", "/availability", "/owner", "/settings", "/payments", "/internal",
-    "/terms", "/privacy", "/contact", "/get-started", "/setup", "/assessment",
+    "/terms", "/privacy", "/contact", "/get-started", "/setup", "/assessment", "/giveaway",
     "/inventory-templates",
     "/owner/settings/add-ons",
     "/cleaning-business-software", "/airbnb-cleaning-software", "/cleaning-company-management-software",

@@ -23,6 +23,16 @@ export function PrivacyPage() {
         <h3>Information you provide</h3>
         <ul>
           <li>
+            <strong>Assessments and giveaways</strong> — assessment responses and
+            completion records; for giveaway entry, your contact email, campaign,
+            completion reference, entry time, eligibility confirmation, and
+            optional marketing consent. We use giveaway contact information to
+            administer entries, check duplicates, and contact selected entrants.
+            Providing an entry email does not by itself authorize marketing
+            emails. We do not publicly disclose identifying winner information
+            without permission.
+          </li>
+          <li>
             <strong>Account information</strong> — name, email address, phone
             number, and role (owner, cleaner, or maintenance) when you create an
             account.
