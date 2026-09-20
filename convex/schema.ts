@@ -228,13 +228,18 @@ export default defineSchema({
 
   giveawayEntries: defineTable({
     campaignId: v.string(),
-    attemptId: v.id("assessmentAttempts"),
+    // Optional for backwards compatibility; existing V1 rows are assessment entries.
+    entryMethod: v.optional(v.union(v.literal("assessment"), v.literal("alternate"))),
+    attemptId: v.optional(v.id("assessmentAttempts")),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
     normalizedEmail: v.string(),
     originalEmail: v.string(),
     qualifiedAt: v.number(),
     status: v.literal("qualified"),
     rulesVersion: v.string(),
     eligibilityConfirmedAt: v.number(),
+    rulesAcknowledgedAt: v.optional(v.number()),
     marketingConsent: v.boolean(),
     marketingConsentAt: v.optional(v.number()),
     consentVersion: v.optional(v.string()),

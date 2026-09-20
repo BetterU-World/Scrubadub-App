@@ -1,50 +1,79 @@
-# SCRUB Giveaway V1 — implementation and launch runbook
+# SCRUB Giveaway V1 — Assessment + free alternate entry runbook
 
-## Repository audit (before implementation)
+## Architecture audit: PR #199 reused
 
-- Frontend: Vite/React SPA, Wouter routes in `packages/frontend/src/App.tsx`. Public routes bypass authentication/subscription guards; reserved paths avoid customer mini-site slug routing. Vercel rewrites normally serve the common index.
-- Public styling: existing SCRUB logo, gray/white backgrounds, primary green, rounded cards, `btn-primary`, `btn-secondary`, `input-field`, responsive utility classes. The Assessment has its own compact public header; Terms/Privacy are standalone English pages. Giveaway follows those patterns without redesigning the landing page.
-- Assessment: `OperationsAssessmentPage.tsx` uses one frozen definition, intro → section introductions → applicable questions → server completion → report → roadmap. Definition includes 30 required and two optional reflection questions; solo branching reduces applicable required answers.
-- Persistence: local progress stores answers, capability, attempt ID, current question and language. `assessments.start` creates an attempt only after a substantive answer. `recover`, `saveResponse`, `complete`, `generateReport`, and `generateRoadmap` verify the hashed capability. Attempt IDs uniquely identify submissions.
-- Canonical completion: `assessments.complete` verifies applicable required answers, computes the score, freezes `completionSnapshot`, and sets server `completedAt` and `status: completed` in one Convex mutation. Retries return the original snapshot.
-- Contact collection: the normal assessment is anonymous. After report/roadmap generation, optional `AssessmentContinuity` captures email, optional first/business names, and separate unchecked marketing consent for report delivery. `assessmentProspects` stores contact and consent audit data. Email is not required to complete the normal assessment. Giveaway contact must therefore be collected earlier; it does not create a delivery prospect or trigger a report email.
-- Attribution: `assessmentAttempts.sourceSnapshot` already supports `utmSource`, `utmMedium`, `utmCampaign`, and referrer, but the Assessment did not populate it. This is reused rather than adding a second campaign attribution system.
-- Idempotency: attempt creation uses a capability hash; responses use attempt/question indexes; milestone events use deduplication keys; completion snapshots are immutable. Existing email normalization trims and lowercases, with a 254-character cap and basic email syntax check.
-- Analytics: Vercel Analytics already supplies page analytics; Convex `assessmentEvents` stores idempotent milestones and metadata. No new vendor is needed.
-- Internal access: existing Assessment results/cleanup pages use `requireSuperadminSession`, which verifies an active session and founder allowlist. A small paginated query provides entrant access; no giveaway admin application is added. Existing duplicate cleanup absolutely protects completed attempts, completion snapshots and timestamps.
-- Legal: Terms and Privacy say “SCRUB (powered by Scrubadub Solutions).” Terms reference Florida law. Neither establishes a confirmed full sponsor legal identity and mailing address for this promotion. Do not infer an LLC identity from a support email address.
-- SEO: common index has canonical, Open Graph, Twitter metadata and `scrub-social-preview.png`; public mini-sites update head tags in React. Giveaway updates/restores its own metadata and emits a route-specific HTML head so social crawlers also receive it.
-- Language/accessibility: Assessment uses matched English/Spanish i18next catalogs; existing legal pages are English. Giveaway and draft rules are explicitly English, and the Assessment entry/consent/outcome step is bilingual. No shared browser viewport test harness was found in the public/Showcase tests; those tests use Vitest rendering and source assertions.
+PR #199 is merged in `main` (merge commit `48f1f7e`). The AMOE follow-up uses a new branch and does not change PR #199's branch.
 
-## Architecture and files
+- The frontend is a Vite/React SPA with Wouter. `/giveaway` is a permanent public route before authentication/subscription guards and is reserved from customer mini-site slug routing. Its existing logo, green/gray styling, cards, buttons, header, rules, and footer are retained.
+- `convex/lib/giveawayCampaigns.ts` is the single shared public/server campaign registry. It controls copy, prize/ARV, dates, eligibility, entry methods, sponsor, rules/version, state gates, and post-close messages. Keep historical campaigns in the registry; `/giveaway?campaign=...#official-rules` preserves their details.
+- The original Assessment is capability-protected and anonymous: intro → sections/questions → canonical server completion → report/roadmap. It validates applicable required answers and freezes a completion snapshot. `sourceSnapshot` stores `utmSource=giveaway` and `utmCampaign`. Local progress/recovery preserves this; unfinished attempts may be attributed with their capability. Completed attempts cannot be retroactively entered.
+- Normal Assessment email remains optional, collected after the report by `AssessmentContinuity` for report delivery. Its `assessmentProspects` consent/delivery conventions are separate. Giveaway contact is collected before completion. Neither entry method creates a prospect, sends an email, or automatically enrolls someone in marketing.
+- The original `giveawayEntries` campaign/normalized-email index and Convex transaction protect idempotent qualification. Repeated Assessment submissions remain valid Assessments but do not add entries. The follow-up routes AMOE through the same index and transactional helper, not a new table or pool.
+- `giveaways.entrants` retains verified superadmin-session authorization and pagination. Existing cleanup protects completed Assessment records. There is no automated winner-management surface.
+- Vercel Analytics and Convex `assessmentEvents` are reused. The latter already permitted events without an Assessment reference. No new analytics vendor or authorization framework is introduced.
+- Existing Assessment entry/disclosure copy is bilingual (English/Spanish); Giveaway page, rules, and AMOE remain English, consistent with the original public/legal page architecture. Spanish Assessment links explicitly identify the English alternate form/rules.
+- Static social metadata from the existing Vite helper/Vercel rewrite and the reusable public page remain intact. Existing public/Showcase tests use Vitest rendering/source assertions rather than a shared live viewport harness.
+- Original Terms/Privacy referenced Scrubadub Solutions and Florida law. The owner has now confirmed **Scrubadub Solutions LLC, operator of SCRUB** as this promotion's Sponsor. Sponsor-address disclosure remains a legal-review item. No separate SCRUB entity, d/b/a, or residential address is invented.
 
-`convex/lib/giveawayCampaigns.ts` is the single campaign registry used by both the server and frontend. It contains copy, prize/ARV, eligibility, entry method, dates/timezone, enabled and rules-review gates, CTA, rules/version, ended and optional winner messaging, and optional sponsor name/logo/URL/disclosure. For Giveaway #002, add a new registry entry and change `currentGiveawayId`; retain #001 unchanged. Prior details/rules remain accessible at `/giveaway?campaign=scrub-giveaway-2026-001#official-rules`.
+## Confirmed campaign decisions and state
 
-`GiveawayPage.tsx` renders permanent `/giveaway`. `GiveawayAssessmentContact.tsx` supplies the pre-completion contact step. Assessment page/persistence and both language catalogs carry attribution and outcomes. `App.tsx` adds the public route before auth guards and reserves its slug. Privacy adds an assessment/giveaway data-use explanation. `build/giveawayMetadata.ts`, Vite configuration and the explicit Vercel rewrite emit/serve `dist/giveaway/index.html`; the main landing page metadata remains unchanged.
+Campaign ID: `scrub-giveaway-2026-001`.
 
-Schema additions:
+- Opening: **September 21, 2026 at 12:00 AM ET**, stored as `2026-09-21T04:00:00.000Z`.
+- Closing displayed: **October 30, 2026 at 11:59 PM ET**. The entire 11:59 PM minute is included; exclusive close remains `2026-10-31T04:00:00.000Z` (midnight EDT).
+- Drawing: **on or about November 2, 2026**.
+- Prize: **one $100 Digital Visa Gift Card**, ARV **$100 USD**. Sponsor intends to purchase and fulfill that prize. Visa is the advertised prize brand, not the Sponsor, endorser, administrator, or affiliate of this Giveaway. Issuer-specific terms have not been invented.
+- Sponsor: **Scrubadub Solutions LLC, operator of SCRUB**.
 
-- `assessmentAttempts.giveawayOutcome`: qualified / duplicate / outside_period; optional for existing and ordinary attempts.
-- `giveawayEntries`: campaign ID, assessment ID, original/normalized email, server qualification time, qualified status, rules version, eligibility confirmation time, optional consent audit. It contains no answers, score, name, business name, capability, or token. Index: `by_campaign_email`.
-- `assessmentEvents.metadata.campaignId`.
+**`enabled` and `rulesApproved` both remain false.** Knowing the opening time, merging the follow-up, or reaching September 21 does not activate entries. The shared state function returns upcoming while either gate is false or before opening; active at/after opening and before exclusive close; ended thereafter; optional winner messaging appears only after close with explicit publicity approval. Frontend state refreshes each second, but server time determines qualification for both methods.
 
-Backend additions/extensions: `assessments.start`, `attributeGiveaway`, `complete`; internal helper `qualifyGiveaway`; authenticated `giveaways.entrants` query. No winner-selection mutation, public list, CMS, sponsor accounts, or marketing-list automation.
+## Eligibility: consistent across methods
 
-## Campaign timing and attribution
+Entrants must be legal residents of the 50 United States or District of Columbia, age 18+ at entry, and currently own or operate a qualifying professional cleaning-services business. Sole proprietors may qualify. A formal LLC/corporation, EIN, website, employees, or business license is not inherently required by this campaign definition.
 
-The opening time is deliberately `null`, `enabled` is false, and `rulesApproved` is false. All three must be finalized before entries open. State is upcoming before opening or while disabled/unapproved; active at/after opening and before the exclusive close; ended at/after close; winner messaging appears only after close with `winnerPublicityApproved` explicitly true.
+Qualifying services include residential, commercial, janitorial, housekeeping, vacation-rental/short-term-rental, move-in/out, post-construction, carpet, upholstery, window cleaning, pressure washing, and other substantially similar professional cleaning services. Automotive-detailing-only and car-wash-only businesses are outside this campaign's eligibility.
 
-Public deadline: **October 30, 2026 at 11:59 PM ET**. The entire displayed minute is included. The exclusive server boundary is `2026-10-31T04:00:00.000Z` (midnight EDT in `America/New_York`). A completion at the boundary does not qualify; one millisecond before does. No countdown is displayed. Frontend state refreshes every second; server time is authoritative.
+The narrow insider exclusion covers Sponsor personnel directly administering the Giveaway or selecting/validating the winner, their immediate family, and household members. Other workers, cleaners, or contractors are not excluded merely because they worked with Sponsor. Exact family/household definitions and final wording remain for owner/legal review.
 
-Active CTA: `/assessment?campaign=scrub-giveaway-2026-001`. The recognized campaign is saved with local progress and written as `{utmSource: "giveaway", utmCampaign: campaignId}` on the attempt. Reload recovery uses server attribution. An explicit giveaway visit may attach attribution to an unfinished ordinary attempt with its capability. Existing campaign attribution is not overwritten. Completed attempts cannot be retroactively attributed/qualified. Lost start-response retries reuse the capability and can safely attach missing attribution.
+Entrants attest to eligibility. The selected entrant may be verified before fulfillment, without consulting Assessment answers or score. V1 does not automatically prove age, residence, inbox ownership, or that one person is not using multiple emails. Apply any verification and one-person exclusion consistently across both methods and record reasons privately.
 
-The final Assessment question leads to a contact step for attributed attempts. A valid email and eligibility/rules confirmation are required only when the server finds the campaign active. The separate marketing checkbox defaults to false and is optional. Completion outside the window still produces normal assessment results but records `outside_period` and creates no entry. Client outcomes explain qualification, duplication, and closed-period completion; recovered completed assessments retain the outcome.
+## AMOE UX and backend
 
-`qualifyGiveaway` runs inside canonical completion after answer validation and before committing the completion snapshot. It reads the campaign/email index and inserts only if no entry exists. Convex transactional conflict retries serialize concurrent attempts for the same normalized email. Repeated completion of one attempt returns its original snapshot; another assessment with the same email is preserved and marked duplicate. Assessment scores/answers are not inputs to the qualification helper. The one-person restriction additionally requires operator verification; V1 cannot detect one person using different email addresses, nor prove inbox ownership, age or residence through syntax validation alone.
+The Assessment remains the primary hero CTA. A readable disclosure/link beside it, the Method B explanation under How to enter, and the bilingual Assessment entry links lead to `/giveaway#alternate-entry` (with campaign query parameter when needed). AMOE does not visually replace the primary Assessment acquisition experience.
 
-## Private entrant retrieval and manual drawing
+`GiveawayAlternateEntry.tsx` adds a small inline form, enabled only during active campaign state. It collects first name, last name, email, required eligibility attestation, separate required Official Rules acknowledgment, and optional unchecked marketing consent. Names assist winner contact/verification. It does not collect phone, address, business records, Assessment answers, essays, or uploads. No Assessment, account, trial, subscription, payment information, purchase, follow, share, or marketing consent is required.
 
-From an authenticated internal client, call `giveaways.entrants` using the same verified superadmin `userId` and `sessionToken` conventions as the Assessment admin. Arguments:
+`giveaways.enterAlternate` is an anonymous write-only mutation. It validates campaign/time/gates, bounded nonblank names, email using the existing trim/lowercase convention, and both confirmations. It passes entry creation to the same `recordGiveawayEntry` helper used by `qualifyGiveaway` during canonical Assessment completion.
+
+The helper reads and inserts against `by_campaign_email` in the caller's Convex mutation transaction. That index deliberately does not contain entry method. Concurrent mutations use Convex's transaction retries. The first qualifying entry is retained across Assessment→AMOE, AMOE→Assessment, repeated AMOE, repeated Assessment, and mixed concurrent submissions. A later Assessment still completes normally and receives its duplicate outcome. Duplicates do not modify the original entry's identity, method, timestamp, or consent.
+
+AMOE returns the same `{status: "received"}` receipt for a new or duplicate submission. It does not expose whether an email is already entered, nor return names, email, entry IDs, Assessment IDs, or entrant counts. The UI explains that prior entries through either method do not gain another entry. No public list/query was added.
+
+The existing rate-limit helper caps AMOE at 10 submissions/hour per hashed browser key and per hashed normalized email/campaign. Hashes use the existing token-pepper convention; raw emails are not rate-limit keys. This is modest abuse control, not identity verification or protection against all rotating-browser abuse. Rejection of a repeat does not remove an existing entry. Only the existing random browser key is stored locally, with an in-memory fallback if storage is unavailable; contact fields are not persisted in browser storage.
+
+## Minimal model extension / compatibility
+
+The one `giveawayEntries` table now supports:
+
+- `entryMethod`: `assessment` / `alternate`, optional only for legacy schema compatibility. Every new entry explicitly writes its method.
+- `attemptId`: optional because alternate entries do not create Assessments.
+- `firstName`, `lastName`: present on alternate entries; not retroactively required on Assessment entries.
+- `rulesAcknowledgedAt`: written for new entries, optional for legacy rows. The existing Assessment checkbox explicitly combines eligibility and rules confirmation; AMOE has separate required checkboxes.
+- Existing normalized/original email, campaign, qualified status/time, rules version, eligibility timestamp, and marketing consent/time/version remain unchanged.
+
+The private export normalizes legacy rows without `entryMethod` to `assessment`. No migration rewrites historical consent or entries. No second entrant database, winner table, sponsor portal, campaign CMS, account flow, or new dependency is introduced.
+
+## Consent, privacy, and analytics
+
+Entry information may be used to administer the promotion, verify eligibility, contact the selected winner, and fulfill the prize. Marketing requires separate optional consent where applicable. Consent remains unchecked by default, is not required by the backend, and never affects odds. The existing `giveaway_followup_v1` audit convention is reused; repeat submissions do not overwrite the first entry's consent. Optional report-delivery consent remains independent.
+
+Privacy copy now distinguishes alternate-entry names and Assessment references, and explains both entry methods and their administrative uses. No entrant name/email is displayed publicly or sent to analytics. Winner publicity requires appropriate explicit permission.
+
+Existing Vercel `giveaway_page_viewed` and `giveaway_assessment_cta_clicked` remain. `giveaway_alternate_entry_started` fires once on first interaction with the form per mount. Existing Convex Assessment milestones remain; AMOE adds `giveaway_alternate_entry_qualified` and reuses `giveaway_duplicate_entry_detected`. Server AMOE events are deduplicated per entry/event/browser and their metadata contains campaign ID only. Client analytics remain best effort under the existing setup/CSP; no new vendor is introduced.
+
+## Private unified export and manual drawing
+
+Use the existing authenticated internal client/session convention to call `giveaways.entrants`:
 
 ```ts
 {
@@ -54,40 +83,49 @@ From an authenticated internal client, call `giveaways.entrants` using the same 
 }
 ```
 
-Append each response's `page` to a private JSON export. Continue with `continueCursor` until `isDone` is true, including a possible empty last page. The backend caps page size at 250. The combined row count is the qualifying entry total, without the existing analytics scan cap. Never paste session tokens or entrant exports into public tickets, logs, or PRs. Deployment operators may also use the private Convex dashboard's table export with equivalent restricted access.
+Append each `page` to a private JSON export; use `continueCursor` until `isDone`, including a possible empty final page. Maximum page size is 250. The combined row count is the qualifying total without a scan cap. Export **both methods together** and retain method for audit. Do not require an Assessment reference for alternate entries. Legacy method-less rows are classified as Assessment. Never expose exports/session tokens in public issues, PRs, or logs. A deployment operator may also use the restricted Convex dashboard table export, interpreting legacy rows the same way.
 
-V1 intentionally leaves drawing/fulfillment manual to avoid a new irreversible winner-management workflow. After the deadline:
+Winner management remains manual. On or about November 2, 2026, after close:
 
-1. Export all pages for the campaign and freeze the original file in restricted storage. Record campaign/rules version, export time, row count, file SHA-256, and operator. Confirm campaign/email uniqueness and completion timestamps; verify eligibility using the Official Rules, without consulting assessment scores/answers. Preserve exclusions and reasons in a private audit ledger; do not delete assessments or entry records.
-2. Freeze an ordered eligible list of entry IDs and hash that file. Use a cryptographically secure uniform draw, e.g. Node's `crypto.randomInt(eligibleEntries.length)` against that frozen list. Record the list hash, draw timestamp, operator, random index and selected entry ID in an append-only private drawing ledger **before notification**. Retain the original draw; do not rerun to replace it silently. Do not use scores, answers, or weighted selection.
-3. Email the selected entrant. Record notification time and the response deadline 72 hours later. Keep correspondence and eligibility/fulfillment state in the restricted ledger.
-4. If unreachable, nonresponsive after 72 hours, or ineligible, record the reason and time. Exclude that entry and any other verified ineligible entries, freeze/hash the remaining list, and record an alternate random draw as a new ledger event linked to the original. Never overwrite the original selection.
-5. Record delivery/fulfillment. Do not publish identifying information without explicit permission. Only then configure approved announcement copy and `winnerPublicityApproved` as applicable.
+1. Freeze the full combined export in restricted storage. Record campaign/rules version, export time, row count, file SHA-256, and operator. Check normalized-email uniqueness and server qualification timestamps for both methods. Verify eligibility/one-person limits consistently; record exclusions/reasons privately without deleting Assessments or entry records. Absence of an Assessment is not a reason to exclude an alternate entry.
+2. Freeze/hash an ordered list of eligible unique entry IDs. Each has exactly one position. Select a uniform random index, e.g. Node `crypto.randomInt(eligibleEntries.length)`. Record list hash, time, operator, random index, and selected ID in a restricted append-only/private ledger before notification. Do not rerun to replace the canonical drawing silently.
+3. Neither Assessment completion, answers/score, entry method, marketing consent, nor account/subscription status is a drawing input or priority. Do not create separate pools or weights. Method counts may be reported for audit only.
+4. Contact the selected entrant by email; record notification time and the response deadline 72 hours later. Verify eligibility before fulfillment as appropriate, independently of Assessment responses.
+5. If unreachable, nonresponsive after 72 hours, or ineligible, record the reason/time. Exclude that entry, freeze/hash the remaining eligible list, and record a new uniform alternate drawing linked to the original. Never overwrite the original event.
+6. Record delivery/fulfillment and retain correspondence privately. Publish identifying winner information only after appropriate explicit permission; only then configure approved public announcement text.
 
-There is no automated canonical winner or ineligibility/fulfillment status in the database: the retained private drawing ledger is the authoritative manual record. Entry status in the database records qualification at completion. This tradeoff keeps V1 small and avoids accidental repeated server selections. Establish the storage location and responsible operator before drawing.
+The retained private drawing ledger is authoritative for selection, disqualification, alternates, and fulfillment. Database entry status records qualification at submission/completion; no automated winner state is claimed.
 
-## Privacy, consent and analytics
+## Advertising / promotional disclosure
 
-Entry email is used for administration/contact, not automatic marketing enrollment. Consent boolean/time/version are recorded on the entry only when appropriate; optional report-delivery consent remains separate. No entry email is stored in local progress or analytics. Duplicate entry submissions do not change the original entry's contact or consent. Rules and the Privacy Policy explain collection/use; no public entrant endpoint exists.
+Assessment-first messaging is permitted, but it must not imply that Assessment completion is the exclusive method or improves odds. Recommended compact disclosure:
 
-Vercel: `giveaway_page_viewed`, `giveaway_assessment_cta_clicked` with campaign ID. Convex milestones: `giveaway_assessment_started`, `giveaway_assessment_completed`, `giveaway_entry_qualified`, `giveaway_duplicate_entry_detected` with campaign ID. Server milestones are authoritative; page analytics remain best effort and depend on the existing Analytics configuration/CSP. No marketing emails or winner notifications are sent by this implementation.
+> No purchase necessary. Alternate free entry available. Limit one entry per person/email. See Official Rules.
 
-## Owner/legal launch decisions
+Link to `/giveaway` for the full explanation, both methods, and rules. Never advertise bonus entries or priority for completing an Assessment, purchasing, consenting to marketing, or having an account/subscription. This is copy guidance only; no advertising-management system is added.
 
-- Set the exact opening date/time with an explicit offset. Do not infer it from this branch or deployment date.
-- Confirm sponsor full legal identity and mailing address; replace draft sponsor language.
-- Review state-specific eligibility, employee/household restrictions, gift-card issuer restrictions, taxes, delivery timing, retention/deletion policy, releases/liability, disputes/applicable law and any social-platform disclaimers. No new legal exclusions or sponsor identity were invented.
-- Approve final rules and privacy copy, replace the draft review placeholders, and version/freeze the final rules. Generated rules are owner/legal-review-required content, not verified legal advice.
-- Confirm the private export/drawing ledger location and operator, eligibility verification process, notification/delivery process, and handling of one person using multiple emails.
-- Set `enabled: true`, `rulesApproved: true` and a valid `startsAt` only after approval; deploy the shared backend/frontend configuration together. Ensure existing `VITE_ENABLE_OPERATIONS_ASSESSMENT=true` is enabled in production. Giveaway hides its entry CTA when the Assessment feature is off.
-- Keep announcement copy private unless publicity permission has been obtained and recorded.
+## Exact remaining activation steps and legal questions
+
+1. Obtain final owner/professional review of draft rules and Privacy copy. Determine whether sponsor-address disclosure is required and a lawful non-residential publication/contact arrangement if necessary. No residential address is invented or exposed. Review applicable state requirements, narrow insider/family/household definitions, actual gift-card product terms, delivery/tax language, retention/deletion, supportable release/limitations/dispute provisions, and relevant platform/channel disclaimers. Existing Florida-law language alone does not establish promotion-specific legal approval.
+2. Replace draft-review placeholders, version/freeze the approved rules, and retain the approval record. Sponsor is confirmed as **Scrubadub Solutions LLC, operator of SCRUB**; no d/b/a or separate SCRUB entity should be asserted without verified support. Opening, closing, drawing, and prize are confirmed as above.
+3. Designate the restricted export/drawing ledger location and responsible operator. Confirm the uniform verification/one-person procedure and notification/72-hour response/alternate/fulfillment process. Do not collect extra documentation from every entrant by default.
+4. Validate an approved non-production preview at 320/375/390, 768, and 1280/1440px: no horizontal overflow, readable disclosures/rules, primary Assessment CTA, discoverable alternate form, visible keyboard focus and usable mobile controls. Exercise both methods, mixed duplicates, and closing boundaries against a non-production backend.
+5. **Only after deliberate final approval**, separately change `rulesApproved: true` and `enabled: true` in `convex/lib/giveawayCampaigns.ts`. Keep the confirmed timestamps. Verify `VITE_ENABLE_OPERATIONS_ASSESSMENT=true` for the primary Assessment route and deploy matching backend/frontend configuration through the approved release process. AMOE depends on campaign gates, not the Assessment feature flag. This follow-up changes neither activation gate.
+6. Review advertising disclosure before publication and retain frozen rules/configuration for the drawing. Winner identity stays private until explicit publicity permission is recorded.
+
+These rules are draft, subject to final owner/legal review, and not represented as attorney-approved or independently verified legal advice. This follow-up does not deploy production, activate the giveaway, perform a drawing, or send email.
 
 ## Validation
 
-Focused Convex tests cover canonical completion/contact/eligibility, email normalization, optional consent, duplicate attempts and completion retries, concurrent submissions, lost-start-response recovery, attribution persistence, ordinary assessment behavior, varied scores, disabled/prelaunch/exact-close/post-close states, capability checks, and paginated superadmin-only export.
+PR #199 history: full suite 115 files / 606 tests passed, then 4 files / 50 focused tests passed; frontend/Convex typechecks, production build, literal $100 social metadata check, and diff check passed. Its browser viewport testing was blocked by `ERR_BLOCKED_BY_CLIENT`.
 
-Public rendering tests cover upcoming/active/ended/permission-gated winner states, CTA URL, permanent rules access, route guard ordering, local persistence, and static social metadata including the literal `$100` description. Existing bilingual catalog parity tests pass.
+The follow-up adds regression coverage for valid anonymous AMOE, invalid/missing email/name/eligibility/rules, optional consent, repeated/mixed/concurrent duplicates, method persistence, legacy export normalization, combined superadmin-only export, no PII in receipts/events, exact date/gate behavior, equal-method rules/public copy, and unchanged normal Assessment behavior.
 
-Results at implementation: full suite **115 files / 606 tests passed**; final focused Assessment/giveaway regression suite **4 files / 50 tests passed**. Frontend and Convex typechecks passed. Production frontend build passed and emits the separate giveaway HTML. Build warns about the existing large bundle and stale Browserslist data. `git diff --check` passed. Final typechecks and production build were rerun successfully; all three generated social/description fields were checked against the exact literal $100 copy.
+Follow-up results:
 
-Live browser viewport checks could not be completed: the Codex browser blocked `http://localhost:5173/giveaway` with `ERR_BLOCKED_BY_CLIENT`. No visual viewport pass is claimed. Before launch, verify 320/375/390px mobile, 768px tablet, and 1280/1440px desktop; keyboard focus, contact validation/optional consent, rules links, and no horizontal overflow in an approved preview environment. No production entry/test submission was made and no backend deployment was run.
+- Focused giveaway/AMOE/Assessment regressions: **3 files / 64 tests passed**.
+- Full suite: **634 passed, 1 timed out** out of 635 tests in 115 files. The unrelated `managerV2OperationalAdministration.test.ts` hit its existing 5-second timeout while other validation was running. An isolated rerun passed both tests in that file without code or timeout changes. No unrelated failure was modified, and the full invocation is not represented as entirely green.
+- Frontend and Convex typechecks passed. Production frontend build passed; existing Browserslist and large-bundle warnings remain. `git diff --check` passed.
+- Browser retry succeeded at `http://127.0.0.1:5173/giveaway`. The disabled public Giveaway and an isolated static rendering of the real AMOE form had no horizontal overflow at **320, 375, 390, 768, 1280, and 1440px**. Alternate-entry navigation, readable mobile disclosure/rules, labeled controls, visible keyboard focus, native required-field validation, and unchecked optional marketing consent were checked.
+- The form fixture used the existing component/styles with network connections and submissions blocked by CSP; it did not alter campaign flags or contact a backend. Temporary fixture files were removed. This is responsive/native-control validation, not a live browser-to-Convex submission test; qualification/deduplication are covered by Convex tests. A final non-production end-to-end release check remains before activation.
+- `enabled: false` and `rulesApproved: false` were reconfirmed. No Convex deployment, manual production deployment, campaign activation, winner drawing, or email sending occurred.
