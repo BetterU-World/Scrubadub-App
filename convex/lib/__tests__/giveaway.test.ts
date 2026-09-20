@@ -152,6 +152,24 @@ describe("canonical entry qualification", () => {
     const last = await t.query(giveawayApi.entrants, { ...args, sessionToken: "founder-session", paginationOpts: { cursor: next.continueCursor, numItems: 1 } });
     expect(last.page).toHaveLength(0); expect(last.isDone).toBe(true);
   });
+  it("returns operator metrics from the canonical pool only to a verified superadmin", async () => {
+    const t = backend(); const attempt = await answered(t);
+    await t.mutation(api.assessments.complete, { ...attempt, giveawayContact: contact() });
+    await t.mutation(giveawayApi.enterAlternate, alternate("alternate@example.com"));
+    await t.mutation(giveawayApi.enterAlternate, alternate());
+    const { founder, owner } = await t.run(async ctx => {
+      const founder = await ctx.db.insert("users", { name: "Founder", passwordHash: "unused-test-password", email: "dzbfyse@gmail.com", role: "affiliate", status: "active" });
+      const owner = await ctx.db.insert("users", { name: "Owner", passwordHash: "unused-test-password", email: "owner@example.com", role: "owner", status: "active" });
+      for (const [userId, token] of [[founder, "founder-summary"], [owner, "owner-summary"]] as const) await ctx.db.insert("authSessions", { userId, principalType: "staff", version: 1, tokenHash: await hashTokenForLookup(token), createdAt: now, lastUsedAt: now, expiresAt: now + 100000, idleExpiresAt: now + 100000 });
+      return { founder, owner };
+    });
+    const args = { userId: founder, sessionToken: "invalid", campaignId: currentGiveawayId };
+    await expect(t.query(giveawayApi.operatorSummary, args)).rejects.toThrow();
+    await expect(t.query(giveawayApi.operatorSummary, { ...args, userId: owner, sessionToken: "owner-summary" })).rejects.toThrow("Super admin");
+    const summary = await t.query(giveawayApi.operatorSummary, { ...args, sessionToken: "founder-summary" });
+    expect(summary).toMatchObject({ campaign: { state: "active" }, entries: { total: 2, assessment: 1, alternate: 1 }, analytics: { qualifiedAssessment: 1, qualifiedAlternate: 1, duplicateEvents: 1 } });
+    expect(JSON.stringify(summary)).not.toMatch(/owner@example.com|operationsScore|answerValue/);
+  });
 });
 
 describe("free alternate entry in the canonical pool", () => {

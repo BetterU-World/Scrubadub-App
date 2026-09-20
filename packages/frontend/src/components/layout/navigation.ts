@@ -25,6 +25,7 @@ import {
   Receipt,
   Tags,
   ClipboardList,
+  Gift,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -171,6 +172,7 @@ export const adminSection: NavSection = {
   items: [
     { href: "/admin", labelKey: "nav.admin", icon: Shield },
     { href: "/admin/assessments", labelKey: "nav.assessmentResults", icon: ClipboardList },
+    { href: "/admin/giveaways", labelKey: "Giveaways", icon: Gift },
     { href: "/admin/affiliates", labelKey: "nav.affiliateInvites", icon: UserPlus },
   ],
 };
