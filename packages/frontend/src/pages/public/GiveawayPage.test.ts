@@ -42,7 +42,7 @@ describe("public giveaway", () => {
     expect(html).not.toContain('type="email"');
   });
   it("renders upcoming with readable deadline and accessible rules", () => {
-    const html = render(campaign.endsAt - 1000);
+    const html = render(campaign.startsAt! - 1);
     expect(html).toContain("has not opened"); expect(html).toContain("September 21, 2026");
     expect(html).toContain('id="official-rules"'); expect(html).toContain("11:59 PM ET");
     expect(html).not.toContain("11:59:59"); expect(html).not.toContain("Take the assessment to enter");
@@ -71,6 +71,14 @@ describe("public giveaway", () => {
     expect(html).toContain("same chance of winning");
     expect(html).toContain('id="alternate-email"');
     expect(render(campaign.startsAt! - 1)).not.toContain('id="alternate-email"');
+  });
+  it("publishes final Official Rules without internal review commentary", () => {
+    const html = render(campaign.startsAt!);
+    expect(html).toContain("Scrubadub Solutions LLC, operator of SCRUB, is the Sponsor and operator of this Giveaway.");
+    expect(html).toContain("Limit one (1) qualifying entry per person and per email address during the Promotion Period, regardless of entry method.");
+    expect(html).toContain("No purchase or payment is required to enter or to receive the prize.");
+    expect(html).toContain("One (1) $100 Digital Visa Gift Card, with an approximate retail value (ARV) of $100 USD.");
+    expect(html).not.toMatch(/draft|review required|final legal|attorney-approved/i);
   });
   it("collects only the alternate-entry fields with separate required confirmations and optional unchecked marketing", () => {
     const html = renderToStaticMarkup(createElement(GiveawayAlternateEntry, { campaign, active: true }));

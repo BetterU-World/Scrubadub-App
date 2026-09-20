@@ -36,9 +36,11 @@ beforeEach(() => {
 afterEach(() => { Object.assign(campaign, original); delete campaign.winnerMessage; delete campaign.winnerPublicityApproved; vi.useRealTimers(); });
 
 describe("giveaway campaign", () => {
-  it("ships closed until owner launch decisions are completed", () => {
-    expect(original.enabled).toBe(false); expect(new Date(original.startsAt!).toISOString()).toBe("2026-09-21T04:00:00.000Z"); expect(original.rulesApproved).toBe(false);
-    expect(giveawayState(original, now)).toBe("upcoming");
+  it("is armed but waits for the exact server-time opening", () => {
+    expect(original.enabled).toBe(true); expect(original.rulesApproved).toBe(true);
+    expect(new Date(original.startsAt!).toISOString()).toBe("2026-09-21T04:00:00.000Z");
+    expect(giveawayState(original, original.startsAt! - 1)).toBe("upcoming");
+    expect(giveawayState(original, original.startsAt!)).toBe("active");
   });
   it("uses an exclusive midnight ET boundary and guarded announcement", () => {
     expect(giveawayState(campaign, campaign.startsAt! - 1)).toBe("upcoming");
