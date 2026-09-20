@@ -85,6 +85,7 @@ import { AffiliateInvitesPage } from "@/pages/admin/AffiliateInvitesPage";
 import { AssessmentResultsPage } from "@/pages/admin/AssessmentResultsPage";
 import { AssessmentResultDetailPage } from "@/pages/admin/AssessmentResultDetailPage";
 import { AssessmentCleanupPage } from "@/pages/admin/AssessmentCleanupPage";
+import { GiveawayOperatorPage } from "@/pages/admin/GiveawayOperatorPage";
 
 // Shared pages
 import { NotificationsPage } from "@/pages/shared/NotificationsPage";
@@ -528,6 +529,7 @@ export default function App() {
           {user?.isSuperadmin === true && (
             <>
               <Route path="/admin/assessment-cleanup" component={AssessmentCleanupPage} />
+              <Route path="/admin/giveaways" component={GiveawayOperatorPage} />
               <Route path="/admin/assessments/:attemptId" component={AssessmentResultDetailPage} />
               <Route path="/admin/assessments" component={AssessmentResultsPage} />
               <Route path="/admin/affiliates" component={AffiliateInvitesPage} />

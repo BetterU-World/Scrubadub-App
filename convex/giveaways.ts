@@ -50,3 +50,39 @@ export const entrants = query({
     return { ...result, page: result.page.map(entry => ({ ...entry, entryMethod: entry.entryMethod ?? "assessment" })) };
   },
 });
+
+/** Read-only operator summary from the canonical entrant pool and existing backend events. */
+export const operatorSummary = query({
+  args: { userId: v.id("users"), sessionToken: v.string(), campaignId: v.string() },
+  handler: async (ctx, args) => {
+    await requireSuperadminSession(ctx, args.sessionToken, args.userId);
+    const campaign = giveawayCampaigns[args.campaignId];
+    if (!campaign) return null;
+    const SCAN_CAP = 10_000;
+    const [entries, events] = await Promise.all([
+      ctx.db.query("giveawayEntries").withIndex("by_campaign_email", q => q.eq("campaignId", args.campaignId)).take(SCAN_CAP),
+      ctx.db.query("assessmentEvents").take(SCAN_CAP),
+    ]);
+    const assessmentEntries = entries.filter(entry => (entry.entryMethod ?? "assessment") === "assessment").length;
+    const alternateEntries = entries.length - assessmentEntries;
+    const campaignEvents = events.filter(event => event.metadata?.campaignId === args.campaignId);
+    const countEvent = (eventKey: string) => campaignEvents.filter(event => event.eventKey === eventKey).length;
+    return {
+      campaign: {
+        campaignId: campaign.campaignId, name: campaign.name, prize: campaign.prize.title,
+        deadlineLabel: campaign.deadlineLabel, drawingLabel: campaign.drawingLabel,
+        startsAt: campaign.startsAt, endsAt: campaign.endsAt, state: giveawayState(campaign, Date.now()),
+      },
+      scanCapped: entries.length >= SCAN_CAP || events.length >= SCAN_CAP,
+      entries: {
+        total: entries.length, assessment: assessmentEntries, alternate: alternateEntries,
+        latestQualifiedAt: entries.reduce<number | null>((latest, entry) => latest === null || entry.qualifiedAt > latest ? entry.qualifiedAt : latest, null),
+      },
+      analytics: {
+        qualifiedAssessment: countEvent("giveaway_entry_qualified"),
+        qualifiedAlternate: countEvent("giveaway_alternate_entry_qualified"),
+        duplicateEvents: countEvent("giveaway_duplicate_entry_detected"),
+      },
+    };
+  },
+});
