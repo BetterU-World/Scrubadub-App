@@ -3146,10 +3146,10 @@
       "emailHelp": "We need your email so we can contact you if you win. Marketing emails are optional.",
       "email": "Contact email",
       "invalidEmail": "Enter a valid email address.",
-      "eligibility": "I am a U.S. cleaning-business owner/operator, age 18 or older, and I agree to the Official Rules.",
+      "eligibility": "I am a legal resident of the 50 United States or District of Columbia, age 18 or older, and currently own or operate a qualifying cleaning-services business. I meet the Official Rules, including the insider exclusion, and agree to those rules.",
       "rules": "Read Official Rules (opens in a new tab)",
       "marketing": "Optional: I would also like occasional SCRUB updates, resources, and offers.",
-      "limit": "One qualifying entry per person/email. No purchase necessary. Your answers and score do not affect your odds.",
+      "limit": "One qualifying entry per person/email across both entry methods. No purchase necessary. Free alternate entry is available; Assessment completion, answers, score, and marketing consent do not improve your odds.",
       "privacy": "Privacy Policy (opens in a new tab)",
       "submit": "Complete assessment and enter",
       "closed": "Entries are not open for this giveaway. You can finish your assessment, but completing it now does not create an entry.",
@@ -3157,7 +3157,8 @@
       "duplicate": "This email already has an entry for this giveaway. Your assessment is saved; no additional entry was created.",
       "outside_period": "Your assessment is complete. No giveaway entry was created because entries were not open at completion.",
       "previous_completion": "This is your previously completed assessment. Opening a giveaway link does not add an entry to an earlier completion.",
-      "attribution": "You arrived through a giveaway. Entry requires completion while the promotion is open, a valid contact email, and eligibility confirmation. One entry per person/email."
+      "attribution": "You arrived through a giveaway. For Assessment entry, finish while the promotion is open, provide a valid contact email, and confirm eligibility and the Official Rules. Free alternate entry is also available with the same odds. One entry per person/email across both methods.",
+      "alternate": "Free alternate entry (opens in a new tab)"
     },
     "eyebrow": "Free cleaning business operations assessment",
     "title": "See how your cleaning business is really operating.",

@@ -24,10 +24,13 @@ export function PrivacyPage() {
         <ul>
           <li>
             <strong>Assessments and giveaways</strong> — assessment responses and
-            completion records; for giveaway entry, your contact email, campaign,
-            completion reference, entry time, eligibility confirmation, and
-            optional marketing consent. We use giveaway contact information to
-            administer entries, check duplicates, and contact selected entrants.
+            completion records; for giveaway entry through either method, your
+            contact email, campaign, entry method, entry time, eligibility and
+            rules confirmations, and optional marketing consent. Alternate entry
+            also collects first and last name; Assessment entry includes a
+            completion reference. We use this information to administer the
+            promotion, check duplicates, verify eligibility, contact the selected
+            winner, and fulfill the prize.
             Providing an entry email does not by itself authorize marketing
             emails. We do not publicly disclose identifying winner information
             without permission.
