@@ -58,6 +58,12 @@ describe("public giveaway", () => {
     expect(ended).toContain("Alternate entries are not open");
     expect(ended).not.toContain('id="alternate-email"');
   });
+  it("uses a full-width flex CTA on mobile without changing Assessment attribution", () => {
+    Object.assign(campaign, { enabled: true, rulesApproved: true, startsAt: campaign.endsAt - 10000 });
+    const html = render(campaign.endsAt - 1);
+    expect(html).toContain(`href="/assessment?campaign=${currentGiveawayId}"`);
+    expect(html).toContain("btn-primary mt-6 flex w-full items-center justify-center gap-2 sm:inline-flex sm:w-auto");
+  });
   it("discloses equally treated AMOE beside the primary Assessment CTA and in the rules", () => {
     Object.assign(campaign, { enabled: true, rulesApproved: true });
     const html = render(campaign.startsAt!);
