@@ -1,6 +1,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { requireVerifiedClientSession } from "../lib/sessionAuth";
+import { isClientVisibleProposal } from "../lib/clientProposalVisibility";
 
 const CAP = 500;
 
@@ -168,7 +169,7 @@ export const getClientHome = query({
             lineTotalCents: line.lineTotalCents,
           })),
         })),
-      proposals: related.proposals.map((proposal) => ({
+      proposals: related.proposals.filter(isClientVisibleProposal).map((proposal) => ({
         _id: proposal._id,
         clientRelationshipId: proposal.clientRelationshipId,
         title: proposal.title,

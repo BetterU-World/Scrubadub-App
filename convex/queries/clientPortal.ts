@@ -2,6 +2,7 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { requireVerifiedClientSession } from "../lib/sessionAuth";
 import { companyAddOnSelectionVersion } from "../lib/companyAddOnSelection";
+import { isClientVisibleProposal } from "../lib/clientProposalVisibility";
 import {
   AUTHENTICATED_REQUEST_SERVICES,
   AUTHENTICATED_REQUEST_TIME_WINDOWS,
@@ -174,6 +175,7 @@ export const getClientDocuments = query({
     return {
       clientName: context.clientUser.displayName,
       proposals: proposals
+        .filter(isClientVisibleProposal)
         .sort((a, b) => b.updatedAt - a.updatedAt)
         .map((proposal: any) => ({
           _id: proposal._id,
@@ -358,7 +360,7 @@ function projectClientRequest(context: any, request: any, linked: any) {
       contactedAt: request.contactedAt,
       declinedAt: request.declinedAt,
     },
-    proposals: linked.proposals.map((item: any) => ({
+    proposals: linked.proposals.filter(isClientVisibleProposal).map((item: any) => ({
       status: item.status,
       sentAt: item.sentAt,
       acceptedAt: item.acceptedAt,
@@ -572,7 +574,7 @@ export const getClientRequestDetail = query({
         ...summary,
         notes: request.notes,
         requestedAddOns: request.requestedAddOnSnapshots ?? [],
-        proposals: linked.proposals.map((item: any) => ({
+        proposals: linked.proposals.filter(isClientVisibleProposal).map((item: any) => ({
           _id: item._id,
           title: item.title,
           status: item.status,
