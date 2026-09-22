@@ -304,6 +304,7 @@ export function RequestDetailPage() {
 
   // Proposal state
   const [creatingProposal, setCreatingProposal] = useState(false);
+  const [proposalExpanded, setProposalExpanded] = useState(false);
   const [savingProposal, setSavingProposal] = useState(false);
   const [proposalActionLoading, setProposalActionLoading] = useState<string | null>(null);
   const [editingProposal, setEditingProposal] = useState(false);
@@ -628,11 +629,17 @@ export function RequestDetailPage() {
   const formatTimestamp = (timestamp?: number) =>
     timestamp ? new Date(timestamp).toLocaleString() : t("common.unassigned");
 
+  const openProposalSection = () => {
+    setProposalExpanded(true);
+    requestAnimationFrame(() => document.getElementById("request-proposal")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
+
   const handleCreateProposal = async () => {
     setCreatingProposal(true);
     try {
       await createProposal({ userId: user!._id, sessionToken, clientRequestId: request._id });
       setToast({ message: t("proposals.created"), type: "success" });
+      openProposalSection();
     } catch (err: any) {
       setToast({ message: err.message || t("proposals.createFailed"), type: "error" });
     } finally {
@@ -1046,6 +1053,9 @@ export function RequestDetailPage() {
         <div id="request-walkthrough"><WalkthroughCard
           clientRequestId={request._id}
           allowCreate
+          proposalExists={Boolean(proposal)}
+          proposalActionLoading={creatingProposal}
+          onProposalNextAction={proposal ? openProposalSection : handleCreateProposal}
           onToast={(message, type) => {
             setToast({ message, type });
           }}
@@ -1064,11 +1074,13 @@ export function RequestDetailPage() {
           )}
         </> : undefined}
         className="mt-4 scroll-mt-24"
+        expanded={proposalExpanded}
+        onExpandedChange={setProposalExpanded}
       >
 
         <div id="request-proposal" className="scroll-mt-24" />
 
-        {!proposalUnlocked ? (
+        {!proposal && !proposalUnlocked ? (
           <p className="rounded-md bg-gray-50 p-3 text-sm text-gray-600">
             Complete the walkthrough to begin building a proposal.
           </p>

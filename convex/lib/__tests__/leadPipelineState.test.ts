@@ -23,6 +23,36 @@ describe("derived lead pipeline state", () => {
     expect(deriveLeadPipelineState(base({ commercialAccounts: [{ status: "active", updatedAt: NOW }] })).stage).toBe("converted");
   });
 
+  it("separates a scheduled appointment from its draft assessment", () => {
+    const state = deriveLeadPipelineState(base({
+      walkthroughs: [{ status: "draft", appointmentStatus: "scheduled", scheduledDate: "2030-01-10", scheduledStartTime: "09:00", updatedAt: NOW }],
+    }));
+    expect(state.stage).toBe("walkthrough");
+    expect(state.blockers).not.toContain("walkthrough_not_scheduled");
+    expect(state.nextAction).toEqual({ key: "complete_walkthrough", hrefSuffix: "#request-walkthrough" });
+  });
+
+  it("keeps unscheduled, cancelled, archived, and legacy walkthroughs readable", () => {
+    const unscheduled = deriveLeadPipelineState(base({ walkthroughs: [{ status: "draft", appointmentStatus: "draft", updatedAt: NOW }] }));
+    expect(unscheduled.blockers).toContain("walkthrough_not_scheduled");
+    expect(unscheduled.nextAction.key).toBe("schedule_walkthrough");
+
+    const cancelled = deriveLeadPipelineState(base({ walkthroughs: [{ status: "draft", appointmentStatus: "cancelled", scheduledDate: "2030-01-10", scheduledStartTime: "09:00", updatedAt: NOW }] }));
+    expect(cancelled.blockers).toContain("walkthrough_not_scheduled");
+    expect(cancelled.nextAction.key).toBe("schedule_walkthrough");
+
+    const archived = deriveLeadPipelineState(base({ walkthroughs: [{ status: "archived", appointmentStatus: "scheduled", updatedAt: NOW }] }));
+    expect(archived.stage).toBe("new");
+
+    const legacy = deriveLeadPipelineState(base({ walkthroughs: [{ status: "draft", scheduledDate: "2030-01-10", scheduledStartTime: "09:00", updatedAt: NOW }] }));
+    expect(legacy.blockers).not.toContain("walkthrough_not_scheduled");
+    expect(legacy.nextAction.key).toBe("complete_walkthrough");
+
+    const completed = deriveLeadPipelineState(base({ walkthroughs: [{ status: "completed", appointmentStatus: "completed", updatedAt: NOW }] }));
+    expect(completed.stage).toBe("proposal");
+    expect(completed.nextAction.key).toBe("create_proposal");
+  });
+
   it("keeps closed leads closed even when older linked records exist", () => {
     const state = deriveLeadPipelineState(base({
       request: { status: "archived" },

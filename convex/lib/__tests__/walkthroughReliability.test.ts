@@ -103,4 +103,30 @@ describe("walkthrough reliability", () => {
     });
     expect(afterArchive).toEqual([]);
   });
+
+  it("keeps proposal creation explicit, idempotent, and accessible after walkthrough changes", async () => {
+    const t = convexTest(schema, modules);
+    const s = await seed(t, "handoff");
+    const walkthroughId = await t.mutation(api.mutations.walkthroughs.createFromClientRequest, {
+      userId: s.ownerId, sessionToken: s.sessionToken, clientRequestId: s.requestId,
+      scheduledDate: "2030-01-10", scheduledStartTime: "09:00",
+    });
+    await t.mutation(api.mutations.walkthroughs.complete, {
+      userId: s.ownerId, sessionToken: s.sessionToken, walkthroughId,
+    });
+    const proposalArgs = { userId: s.ownerId, sessionToken: s.sessionToken, clientRequestId: s.requestId };
+    expect(await t.query(api.queries.proposals.getProposalByClientRequest, proposalArgs)).toBeNull();
+
+    const proposalId = await t.mutation(api.mutations.proposals.createProposalFromLead, proposalArgs);
+    expect(await t.mutation(api.mutations.proposals.createProposalFromLead, proposalArgs)).toBe(proposalId);
+    await t.mutation(api.mutations.walkthroughs.archive, {
+      userId: s.ownerId, sessionToken: s.sessionToken, walkthroughId,
+    });
+    const anotherWalkthroughId = await t.mutation(api.mutations.walkthroughs.createFromClientRequest, {
+      userId: s.ownerId, sessionToken: s.sessionToken, clientRequestId: s.requestId,
+      scheduledDate: "2030-02-10", scheduledStartTime: "09:00",
+    });
+    expect((await t.run((ctx) => ctx.db.get(anotherWalkthroughId)))?.status).toBe("draft");
+    expect((await t.query(api.queries.proposals.getProposalByClientRequest, proposalArgs))?._id).toBe(proposalId);
+  });
 });
