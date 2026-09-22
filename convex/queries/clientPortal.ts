@@ -105,6 +105,13 @@ function providerName(context: any, record: any) {
   );
 }
 
+async function issuedProposalContent(ctx: any, proposal: any) {
+  if (!proposal.currentIssueId) return null;
+  const issue = await ctx.db.get(proposal.currentIssueId);
+  return issue && issue.proposalId === proposal._id && issue.companyId === proposal.companyId && !issue.withdrawnAt && issue.issuedAt
+    ? issue.content : null;
+}
+
 export const getClientServices = query({
   args: authArgs,
   handler: async (ctx, args) => {
@@ -174,20 +181,24 @@ export const getClientDocuments = query({
     ]);
     return {
       clientName: context.clientUser.displayName,
-      proposals: proposals
+      proposals: (await Promise.all(proposals
         .filter(isClientVisibleProposal)
         .sort((a, b) => b.updatedAt - a.updatedAt)
-        .map((proposal: any) => ({
+        .map(async (proposal: any) => {
+          const content = await issuedProposalContent(ctx, proposal);
+          if (proposal.currentIssueId && !content) return null;
+          return {
           _id: proposal._id,
-          title: proposal.title,
-          businessName: proposal.businessName,
-          propertyAddress: proposal.propertyAddress,
-          serviceFrequency: proposal.serviceFrequency,
-          monthlyPriceCents: proposal.monthlyPriceCents,
-          oneTimePriceCents: proposal.oneTimePriceCents,
+          title: content?.proposal.title ?? proposal.title,
+          businessName: content ? content.proposal.businessName : proposal.businessName,
+          propertyAddress: content ? content.proposal.propertyAddress : proposal.propertyAddress,
+          serviceFrequency: content ? content.proposal.serviceFrequency : proposal.serviceFrequency,
+          monthlyPriceCents: content ? content.proposal.monthlyPriceCents : proposal.monthlyPriceCents,
+          oneTimePriceCents: content ? content.proposal.oneTimePriceCents : proposal.oneTimePriceCents,
           status: proposal.status,
-          providerName: providerName(context, proposal),
-        })),
+          providerName: content?.company.companyName ?? providerName(context, proposal),
+          };
+        }))).filter(Boolean),
       agreements: agreements
         .filter((agreement: any) =>
           ["sent", "signed", "cancelled"].includes(agreement.status),
@@ -574,11 +585,11 @@ export const getClientRequestDetail = query({
         ...summary,
         notes: request.notes,
         requestedAddOns: request.requestedAddOnSnapshots ?? [],
-        proposals: linked.proposals.filter(isClientVisibleProposal).map((item: any) => ({
-          _id: item._id,
-          title: item.title,
-          status: item.status,
-        })),
+        proposals: (await Promise.all(linked.proposals.filter(isClientVisibleProposal).map(async (item: any) => {
+          const content = await issuedProposalContent(ctx, item);
+          if (item.currentIssueId && !content) return null;
+          return { _id: item._id, title: content?.proposal.title ?? item.title, status: item.status };
+        }))).filter(Boolean),
         agreements: linked.agreements
           .filter((item: any) =>
             ["sent", "signed", "cancelled"].includes(item.status),
