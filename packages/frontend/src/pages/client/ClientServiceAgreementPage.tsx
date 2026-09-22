@@ -11,7 +11,7 @@ import { CheckCircle, XCircle } from "lucide-react";
 import { ClientPortalShell } from "@/components/client/ClientPortalShell";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ServiceAgreementStatusBadge } from "@/components/ui/ServiceAgreementStatusBadge";
-import { AgreementContentView } from "@/components/AgreementContentView";
+import { AgreementContentView } from "../../components/AgreementContentView";
 import { PageBack } from "@/components/ui/PageBack";
 import { AsyncButton } from "@/components/ui/AsyncButton";
 
