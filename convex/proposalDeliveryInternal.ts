@@ -61,43 +61,11 @@ async function companyBranding(ctx: any, companyId: any) {
   };
 }
 
-async function safeWalkthroughSummary(ctx: any, proposal: any) {
-  const walkthroughs = await ctx.db
-    .query("walkthroughs")
-    .withIndex("by_proposal", (q: any) => q.eq("proposalId", proposal._id))
-    .collect();
-
-  const walkthrough = walkthroughs
-    .filter(
-      (item: any) =>
-        item.companyId === proposal.companyId &&
-        item.status !== "archived" &&
-        (item.proposalNotes ||
-          item.serviceFrequencyRecommendation ||
-          item.estimatedHours ||
-          item.squareFootage)
-    )
-    .sort((a: any, b: any) => b.updatedAt - a.updatedAt)[0];
-
-  if (!walkthrough) return null;
-
-  return {
-    title: walkthrough.title,
-    walkthroughType: walkthrough.walkthroughType,
-    squareFootage: walkthrough.squareFootage ?? null,
-    estimatedHours: walkthrough.estimatedHours ?? null,
-    serviceFrequencyRecommendation:
-      walkthrough.serviceFrequencyRecommendation ?? null,
-    proposalNotes: walkthrough.proposalNotes ?? null,
-  };
-}
-
 async function safeProposalPayload(ctx: any, proposal: any) {
-  const [request, relationship, branding, walkthroughSummary] = await Promise.all([
+  const [request, relationship, branding] = await Promise.all([
     ctx.db.get(proposal.clientRequestId),
     proposal.clientRelationshipId ? ctx.db.get(proposal.clientRelationshipId) : null,
     companyBranding(ctx, proposal.companyId),
-    safeWalkthroughSummary(ctx, proposal),
   ]);
 
   const totals = calculateProposalTotals(proposal);
@@ -124,8 +92,7 @@ async function safeProposalPayload(ctx: any, proposal: any) {
     proposal: {
       title: proposal.title,
       businessName: proposal.businessName ?? null,
-      propertyAddress: proposal.propertyAddress ?? request?.propertySnapshot?.address ?? null,
-      requestedDate: request?.requestedDate ?? null,
+      propertyAddress: proposal.propertyAddress ?? null,
       serviceFrequency: proposal.serviceFrequency ?? null,
       serviceFrequencyLabel: formatFrequency(proposal.serviceFrequency),
       serviceFrequencyNotes: proposal.serviceFrequencyNotes ?? null,
@@ -147,7 +114,6 @@ async function safeProposalPayload(ctx: any, proposal: any) {
       declinedAt: proposal.declinedAt ?? null,
       proposalResponseNote: proposal.proposalResponseNote ?? null,
     },
-    walkthroughSummary,
   };
 }
 
@@ -156,7 +122,6 @@ function clientProposalPayload(payload: any) {
     company: payload.company,
     clientName: payload.clientName,
     proposal: payload.proposal,
-    walkthroughSummary: payload.walkthroughSummary,
   };
 }
 

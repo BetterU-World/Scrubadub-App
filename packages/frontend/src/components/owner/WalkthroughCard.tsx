@@ -82,7 +82,7 @@ type WalkthroughCardProps = {
   allowCreate?: boolean;
   proposalExists?: boolean;
   proposalActionLoading?: boolean;
-  onProposalNextAction?: () => void;
+  onProposalNextAction?: (walkthroughId: Id<"walkthroughs">) => void;
   onToast?: (message: string, type: "success" | "error") => void;
 };
 
@@ -1051,7 +1051,7 @@ export function WalkthroughCard({
               </button>
             )}
             {onProposalNextAction && (walkthrough.status === "completed" || walkthrough.status === "proposal_created") && (
-              <button type="button" onClick={onProposalNextAction} disabled={proposalActionLoading} className="btn-primary w-full text-sm sm:w-auto">
+              <button type="button" onClick={() => onProposalNextAction(walkthrough._id)} disabled={proposalActionLoading} className="btn-primary w-full text-sm sm:w-auto">
                 {proposalExists ? t("proposals.open") : proposalActionLoading ? t("requests.creating") : t("proposals.create")}
               </button>
             )}

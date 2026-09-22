@@ -93,7 +93,6 @@ type ProposalEmailArgs = {
     title: string;
     businessName?: string | null;
     propertyAddress?: string | null;
-    requestedDate?: string | null;
     serviceFrequencyLabel?: string | null;
     serviceFrequencyNotes?: string | null;
     scopeOfWork?: string | null;
@@ -102,12 +101,6 @@ type ProposalEmailArgs = {
     oneTimePriceLabel?: string | null;
     addOnLineItems?: Array<{ name: string; pricingMethod: string; unitPriceLabel?: string | null; unitLabel?: string | null; quantity?: number | null; finalizedPriceLabel?: string | null; billingCadence: string; lineTotalLabel?: string | null }>;
     totals?: { monthlyTotalLabel?: string | null; oneTimeTotalLabel?: string | null };
-  };
-  walkthroughSummary?: {
-    squareFootage?: number | null;
-    estimatedHours?: number | null;
-    serviceFrequencyRecommendation?: string | null;
-    proposalNotes?: string | null;
   };
 };
 
@@ -121,14 +114,6 @@ export async function sendProposalEmail(args: ProposalEmailArgs): Promise<boolea
     proposal.totals?.oneTimeTotalLabel ? `${proposal.totals.oneTimeTotalLabel} one-time` : proposal.oneTimePriceLabel ? `${proposal.oneTimePriceLabel} one-time` : null,
   ].filter(Boolean);
   const estimate = estimateParts.length ? estimateParts.join(" + ") : null;
-  const walkthrough = args.walkthroughSummary;
-  const walkthroughDetails = walkthrough
-    ? [
-        walkthrough.squareFootage ? `${walkthrough.squareFootage.toLocaleString()} sq ft` : null,
-        walkthrough.estimatedHours ? `${walkthrough.estimatedHours} estimated hours` : null,
-        walkthrough.serviceFrequencyRecommendation ?? null,
-      ].filter(Boolean)
-    : [];
 
   try {
     const { error } = await resend.emails.send({
@@ -162,7 +147,7 @@ export async function sendProposalEmail(args: ProposalEmailArgs): Promise<boolea
                     ${detailRow("Business / property", proposal.businessName || proposal.propertyAddress || null)}
                     ${detailRow("Address", proposal.businessName ? proposal.propertyAddress : null)}
                     ${detailRow("Service frequency", proposal.serviceFrequencyLabel)}
-                    ${detailRow("Recommended schedule", proposal.serviceFrequencyNotes || proposal.requestedDate || null)}
+                    ${detailRow("Recommended schedule", proposal.serviceFrequencyNotes)}
                     ${detailRow("Estimated value", estimate)}
                   </table>
                 </div>
@@ -193,13 +178,6 @@ export async function sendProposalEmail(args: ProposalEmailArgs): Promise<boolea
                   </div>
                 ` : ""}
 
-                ${walkthroughDetails.length || walkthrough?.proposalNotes ? `
-                  <div style="border-left:3px solid #111827; padding-left:14px; margin:0 0 24px;">
-                    <p style="margin:0 0 6px; color:#111827; font-size:14px; font-weight:700;">Walkthrough summary</p>
-                    ${walkthroughDetails.length ? `<p style="margin:0 0 6px; color:#374151; font-size:14px; line-height:1.7;">${escapeHtml(walkthroughDetails.join(" - "))}</p>` : ""}
-                    ${walkthrough?.proposalNotes ? `<p style="margin:0; color:#374151; font-size:14px; line-height:1.7;">${paragraphHtml(walkthrough.proposalNotes)}</p>` : ""}
-                  </div>
-                ` : ""}
 
                 <p style="text-align:center; margin:30px 0 16px;">
                   <a href="${escapeHtml(args.viewUrl)}" style="background-color:#111827; color:#ffffff; padding:13px 22px; border-radius:7px; text-decoration:none; display:inline-block; font-size:15px; font-weight:700;">
