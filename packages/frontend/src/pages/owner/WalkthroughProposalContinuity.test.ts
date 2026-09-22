@@ -48,7 +48,11 @@ describe("walkthrough to proposal continuity", () => {
   it("keeps existing proposal rendering ahead of walkthrough eligibility", () => {
     const details = readFileSync(resolve(process.cwd(), "packages/frontend/src/pages/owner/RequestDetailPage.tsx"), "utf8");
     expect(details).toContain("!proposal && !proposalUnlocked");
-    expect(details).toContain("onProposalNextAction={proposal ? openProposalSection : handleCreateProposal}");
+    expect(details).toContain("onProposalNextAction={proposal ? () => openProposalSection() : handleCreateProposal}");
     expect(details).toContain("expanded={proposalExpanded}");
+    expect(details).toContain("eligibleProposalWalkthroughs.length > 1");
+    expect(details).toContain("sourceWalkthroughId });");
+    const card = readFileSync(resolve(process.cwd(), "packages/frontend/src/components/owner/WalkthroughCard.tsx"), "utf8");
+    expect(card).toContain("onProposalNextAction(walkthrough._id)");
   });
 });

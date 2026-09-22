@@ -209,8 +209,10 @@ export function RequestDetailPage() {
     (api as any).queries.walkthroughs.listByClientRequest,
     params.id && user ? { userId: user._id, sessionToken, clientRequestId: params.id as Id<"clientRequests"> } : "skip"
   );
-  const activeWalkthrough = (leadWalkthroughs ?? []).find((item: any) => item.status !== "archived");
-  const proposalUnlocked = activeWalkthrough?.status === "completed" || activeWalkthrough?.appointmentStatus === "completed";
+  const eligibleProposalWalkthroughs = (leadWalkthroughs ?? []).filter((item: any) =>
+    item.status === "completed" || item.status === "proposal_created"
+  );
+  const proposalUnlocked = eligibleProposalWalkthroughs.length > 0;
   const commercialAccount = useQuery(
     (api as any).queries.commercialAccounts.getByProposal,
     proposal && user
@@ -304,6 +306,7 @@ export function RequestDetailPage() {
 
   // Proposal state
   const [creatingProposal, setCreatingProposal] = useState(false);
+  const [selectedSourceWalkthroughId, setSelectedSourceWalkthroughId] = useState("");
   const [proposalExpanded, setProposalExpanded] = useState(false);
   const [savingProposal, setSavingProposal] = useState(false);
   const [proposalActionLoading, setProposalActionLoading] = useState<string | null>(null);
@@ -634,10 +637,10 @@ export function RequestDetailPage() {
     requestAnimationFrame(() => document.getElementById("request-proposal")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
 
-  const handleCreateProposal = async () => {
+  const handleCreateProposal = async (sourceWalkthroughId: Id<"walkthroughs">) => {
     setCreatingProposal(true);
     try {
-      await createProposal({ userId: user!._id, sessionToken, clientRequestId: request._id });
+      await createProposal({ userId: user!._id, sessionToken, clientRequestId: request._id, sourceWalkthroughId });
       setToast({ message: t("proposals.created"), type: "success" });
       openProposalSection();
     } catch (err: any) {
@@ -1055,7 +1058,7 @@ export function RequestDetailPage() {
           allowCreate
           proposalExists={Boolean(proposal)}
           proposalActionLoading={creatingProposal}
-          onProposalNextAction={proposal ? openProposalSection : handleCreateProposal}
+          onProposalNextAction={proposal ? () => openProposalSection() : handleCreateProposal}
           onToast={(message, type) => {
             setToast({ message, type });
           }}
@@ -1085,14 +1088,32 @@ export function RequestDetailPage() {
             Complete the walkthrough to begin building a proposal.
           </p>
         ) : !proposal ? (
-          <button
-            onClick={handleCreateProposal}
-            disabled={creatingProposal}
-            className="btn-primary flex items-center justify-center gap-2 text-sm w-full sm:w-auto"
-          >
-            <FileText className="w-4 h-4" />
-            {creatingProposal ? t("requests.creating") : t("proposals.create")}
-          </button>
+          <div className="space-y-3">
+            {eligibleProposalWalkthroughs.length > 1 && (
+              <label className="block text-sm font-medium text-gray-700">
+                {t("proposals.sourceWalkthrough")}
+                <select className="input-field mt-1" value={selectedSourceWalkthroughId} onChange={(event) => setSelectedSourceWalkthroughId(event.target.value)}>
+                  <option value="">{t("common.select")}</option>
+                  {eligibleProposalWalkthroughs.map((item: any) => (
+                    <option key={item._id} value={item._id}>{item.title} — {new Date(item.completedAt ?? item.updatedAt).toLocaleString()}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <button
+              onClick={() => {
+                const sourceId = eligibleProposalWalkthroughs.length === 1
+                  ? eligibleProposalWalkthroughs[0]._id
+                  : eligibleProposalWalkthroughs.find((item: any) => item._id === selectedSourceWalkthroughId)?._id;
+                if (sourceId) void handleCreateProposal(sourceId);
+              }}
+              disabled={creatingProposal || (eligibleProposalWalkthroughs.length > 1 && !eligibleProposalWalkthroughs.some((item: any) => item._id === selectedSourceWalkthroughId))}
+              className="btn-primary flex items-center justify-center gap-2 text-sm w-full sm:w-auto"
+            >
+              <FileText className="w-4 h-4" />
+              {creatingProposal ? t("requests.creating") : t("proposals.create")}
+            </button>
+          </div>
         ) : editingProposal ? (
           <div className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

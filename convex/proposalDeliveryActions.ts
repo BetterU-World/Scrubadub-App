@@ -61,7 +61,6 @@ export const sendProposal = action({
       companyPhone: payload.company.companyPhone ?? undefined,
       clientName: payload.clientName,
       proposal: payload.proposal,
-      walkthroughSummary: payload.walkthroughSummary ?? undefined,
     });
 
     if (!sent) {

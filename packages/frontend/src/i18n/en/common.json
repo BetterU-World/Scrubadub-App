@@ -1760,6 +1760,7 @@
     "description": "SCRUB-standard proposal for this lead",
     "emptyDesc": "Create a simple proposal for this lead.",
     "create": "Create Proposal",
+    "sourceWalkthrough": "Completed assessment to use",
     "open": "Open Proposal",
     "created": "Proposal created",
     "createFailed": "Failed to create proposal",

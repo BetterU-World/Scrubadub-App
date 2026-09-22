@@ -57,6 +57,7 @@ export const createProposalFromLead = mutation({
     userId: v.id("users"),
     sessionToken: v.string(),
     clientRequestId: v.id("clientRequests"),
+    sourceWalkthroughId: v.optional(v.id("walkthroughs")),
   },
   handler: async (ctx, args) => {
     const owner = await requireOwnerOrManagerCapability(
@@ -75,12 +76,26 @@ export const createProposalFromLead = mutation({
       .first();
     if (existing) return existing._id;
 
+    const sourceWalkthrough = args.sourceWalkthroughId
+      ? await ctx.db.get(args.sourceWalkthroughId)
+      : null;
+    if (args.sourceWalkthroughId) {
+      if (!sourceWalkthrough) throw new Error("Source walkthrough not found");
+      if (sourceWalkthrough.companyId !== owner.companyId) throw new Error("Access denied");
+      if (sourceWalkthrough.clientRequestId !== request._id) throw new Error("Source walkthrough must match the lead");
+      if (sourceWalkthrough.status !== "completed" && sourceWalkthrough.status !== "proposal_created") {
+        throw new Error("Complete the walkthrough before creating its proposal");
+      }
+      if (sourceWalkthrough.proposalId) throw new Error("Source walkthrough is already linked to a proposal");
+    }
+
     const now = Date.now();
     const clientRelationshipId = await ensureClientRelationshipForLead(ctx, request);
     const proposalId = await ctx.db.insert("proposals", {
       companyId: request.companyId,
       clientRelationshipId,
       clientRequestId: request._id,
+      sourceWalkthroughId: sourceWalkthrough?._id,
       createdByUserId: owner._id,
       title: "Cleaning Proposal",
       clientName: request.requesterName,
@@ -99,22 +114,11 @@ export const createProposalFromLead = mutation({
       updatedAt: now,
     });
 
-    const walkthrough = await ctx.db
-      .query("walkthroughs")
-      .withIndex("by_clientRequest", (q: any) =>
-        q.eq("clientRequestId", args.clientRequestId)
-      )
-      .first();
-    if (
-      walkthrough &&
-      walkthrough.companyId === owner.companyId &&
-      walkthrough.status !== "archived" &&
-      !walkthrough.proposalId
-    ) {
-      await ctx.db.patch(walkthrough._id, {
+    if (sourceWalkthrough) {
+      await ctx.db.patch(sourceWalkthrough._id, {
         proposalId,
-        clientRelationshipId: walkthrough.clientRelationshipId ?? clientRelationshipId,
-        status: walkthrough.status === "completed" ? "proposal_created" : walkthrough.status,
+        clientRelationshipId: sourceWalkthrough.clientRelationshipId ?? clientRelationshipId,
+        status: "proposal_created",
         updatedAt: now,
       });
     }

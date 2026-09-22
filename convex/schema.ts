@@ -1389,6 +1389,7 @@ export default defineSchema({
     companyId: v.id("companies"),
     clientRelationshipId: v.optional(v.id("clientRelationships")),
     clientRequestId: v.id("clientRequests"),
+    sourceWalkthroughId: v.optional(v.id("walkthroughs")),
     createdByUserId: v.id("users"),
     title: v.string(),
     clientName: v.string(),

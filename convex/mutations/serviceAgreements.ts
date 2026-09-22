@@ -102,7 +102,13 @@ async function getDefaultServiceAgreementTemplate(ctx: any, companyId: any) {
   return template?.companyId === companyId ? template : null;
 }
 
-async function getLatestAgreementWalkthrough(ctx: any, companyId: any, proposal: any) {
+async function getAgreementWalkthrough(ctx: any, companyId: any, proposal: any) {
+  if (proposal.sourceWalkthroughId) {
+    const source = await ctx.db.get(proposal.sourceWalkthroughId);
+    return source?.companyId === companyId && source.clientRequestId === proposal.clientRequestId
+      ? source
+      : null;
+  }
   const [proposalWalkthroughs, leadWalkthroughs] = await Promise.all([
     ctx.db
       .query("walkthroughs")
@@ -226,7 +232,7 @@ export const createDraftFromAcceptedProposal = mutation({
     const [template, propertyResult, walkthrough] = await Promise.all([
       getDefaultServiceAgreementTemplate(ctx, companyId),
       request.propertyId ? ctx.db.get(request.propertyId) : null,
-      getLatestAgreementWalkthrough(ctx, companyId, proposal),
+      getAgreementWalkthrough(ctx, companyId, proposal),
     ]);
     const property: any = propertyResult;
     const now = Date.now();
@@ -262,22 +268,13 @@ export const createDraftFromAcceptedProposal = mutation({
         : undefined;
     const servicesIncluded = firstText(
       proposal.scopeOfWork,
-      walkthrough?.proposalNotes,
-      walkthrough?.scopeNotes,
-      walkthrough?.serviceFrequencyRecommendation,
-      request.requestedService,
-      request.notes
+      request.requestedService
     );
     const billingSchedule = [totals.hasMonthlyPricing ? "Monthly" : undefined, totals.hasOneTimePricing ? "One-time" : undefined].filter(Boolean).join(" + ") || undefined;
     const effectiveStartDate = request.requestedDate ?? undefined;
     const serviceFrequency =
       proposal.serviceFrequency ?? (request as any).estimatedFrequency ?? undefined;
-    const specialInstructions = firstText(
-      proposal.notes,
-      walkthrough?.accessNotes,
-      (request as any).leadNotes,
-      request.notes
-    );
+    const specialInstructions = firstText(proposal.notes);
     const exceptions = "None specified";
     const mergeValues = await buildServiceAgreementMergeValues(ctx, companyId, {
       clientName,

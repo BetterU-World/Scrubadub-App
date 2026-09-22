@@ -25,7 +25,6 @@ type ProposalPayload = {
     title: string;
     businessName?: string | null;
     propertyAddress?: string | null;
-    requestedDate?: string | null;
     serviceFrequencyLabel?: string | null;
     serviceFrequencyNotes?: string | null;
     scopeOfWork?: string | null;
@@ -40,12 +39,6 @@ type ProposalPayload = {
     status: "draft" | "sent" | "accepted" | "declined";
     proposalResponseNote?: string | null;
   };
-  walkthroughSummary?: {
-    squareFootage?: number | null;
-    estimatedHours?: number | null;
-    serviceFrequencyRecommendation?: string | null;
-    proposalNotes?: string | null;
-  } | null;
 };
 
 function priceSummary(proposal: ProposalPayload["proposal"]) {
@@ -158,7 +151,6 @@ export function ProposalViewPage() {
 
   const status = proposal.proposal.status;
   const canRespond = status === "sent";
-  const walkthrough = proposal.walkthroughSummary;
 
   return (
     <Shell
@@ -234,38 +226,6 @@ export function ProposalViewPage() {
           <TextBlock title="Notes" value={proposal.proposal.notes} />
         )}
 
-        {(walkthrough?.proposalNotes ||
-          walkthrough?.serviceFrequencyRecommendation ||
-          walkthrough?.estimatedHours ||
-          walkthrough?.squareFootage) && (
-          <div className="rounded-md border border-gray-200 bg-gray-50 p-4">
-            <p className="text-xs font-semibold uppercase text-gray-500">
-              Walkthrough Summary
-            </p>
-            <div className="mt-2 space-y-2 text-sm text-gray-700">
-              {(walkthrough.squareFootage ||
-                walkthrough.estimatedHours ||
-                walkthrough.serviceFrequencyRecommendation) && (
-                <p>
-                  {[
-                    walkthrough.squareFootage
-                      ? `${walkthrough.squareFootage.toLocaleString()} sq ft`
-                      : null,
-                    walkthrough.estimatedHours
-                      ? `${walkthrough.estimatedHours} estimated hours`
-                      : null,
-                    walkthrough.serviceFrequencyRecommendation,
-                  ]
-                    .filter(Boolean)
-                    .join(" - ")}
-                </p>
-              )}
-              {walkthrough.proposalNotes && (
-                <p className="whitespace-pre-wrap">{walkthrough.proposalNotes}</p>
-              )}
-            </div>
-          </div>
-        )}
       </section>
 
       <section className="card mt-4">
