@@ -19,6 +19,13 @@ export function hashToken(token: string): string {
   return crypto.createHash("sha256").update(token + TOKEN_PEPPER).digest("hex");
 }
 
+/** Recreate a proposal issue's link for an authorized resend without persisting its raw token. */
+export function proposalIssueToken(nonce: string): string {
+  return crypto.createHmac("sha256", TOKEN_PEPPER!)
+    .update(`scrub:proposal-issue:${nonce}`)
+    .digest("hex");
+}
+
 /** Invite token expiry: 72 hours */
 export const INVITE_TOKEN_EXPIRY_MS = 72 * 60 * 60 * 1000;
 

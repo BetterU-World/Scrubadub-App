@@ -4,6 +4,8 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { requireOwnerOrManagerCapability } from "../lib/sessionAuth";
 import { ensureClientRelationshipForLead } from "../lib/clientRelationships";
 import { assertProposalReadyForDelivery, newProposalLineItemId, normalizeProposalAddOnLine, validateProposalAddOnLines } from "../lib/proposalAddOnLineItems";
+import { proposalIssueContent } from "../lib/proposalIssueContent";
+import { safeProposalPayload } from "../proposalDeliveryInternal";
 
 const proposalFrequencyValidator = v.union(
   v.literal("one_time"),
@@ -69,6 +71,7 @@ async function getOwnedProposal(
 
 function requireDraft(proposal: Doc<"proposals">) {
   if (proposal.status !== "draft") throw new Error("Return the proposal to draft before editing");
+  if (proposal.pendingDeliveryAttemptId) throw new Error("Wait for the pending proposal delivery attempt before editing");
 }
 
 /** Create an owner-only draft proposal from a lead. Pricing is intentionally blank. */
@@ -205,11 +208,35 @@ export const markProposalSent = mutation({
   handler: async (ctx, args) => {
     const { proposal } = await getOwnedProposal(ctx, args.sessionToken, args.userId, args.proposalId);
     if (proposal.status === "accepted" || proposal.status === "declined") throw new Error("Finalized proposals are immutable");
+    if (proposal.pendingDeliveryAttemptId) throw new Error("A proposal delivery attempt is still pending");
     assertProposalReadyForDelivery(proposal);
     const now = Date.now();
+    let issue = proposal.currentIssueId ? await ctx.db.get(proposal.currentIssueId) : null;
+    if (issue && (issue.companyId !== proposal.companyId || issue.proposalId !== proposal._id || issue.withdrawnAt)) throw new Error("Active proposal issue is invalid");
+    if (!issue) {
+      const latest = await ctx.db.query("proposalIssues")
+        .withIndex("by_proposal", (q) => q.eq("proposalId", proposal._id))
+        .order("desc").first();
+      const payload = await safeProposalPayload(ctx, proposal);
+      const issueId = await ctx.db.insert("proposalIssues", {
+        companyId: proposal.companyId, proposalId: proposal._id,
+        issueNumber: (latest?.issueNumber ?? 0) + 1,
+        content: proposalIssueContent(payload), preparedAt: now, issuedAt: now,
+      });
+      issue = await ctx.db.get(issueId);
+    }
+    if (!issue) throw new Error("Proposal issue could not be recorded");
+    await ctx.db.insert("transactionalDocumentDeliveryAttempts", {
+      companyId: proposal.companyId, documentKind: "proposal", documentId: String(proposal._id),
+      issueId: String(issue._id), channel: "owner_reported_outside_send",
+      attemptedAt: now, resultAt: now, result: "owner_reported",
+    });
     await ctx.db.patch(args.proposalId, {
       status: "sent",
       sentAt: proposal.sentAt ?? now,
+      currentIssueId: issue._id,
+      proposalTokenHash: undefined,
+      proposalTokenCreatedAt: undefined,
       updatedAt: now,
     });
     await ctx.db.patch(proposal.clientRequestId, {
@@ -224,11 +251,14 @@ export const markProposalAccepted = mutation({
   handler: async (ctx, args) => {
     const { proposal } = await getOwnedProposal(ctx, args.sessionToken, args.userId, args.proposalId);
     if (proposal.status === "accepted" || proposal.status === "declined") throw new Error("Finalized proposals are immutable");
+    if (proposal.pendingDeliveryAttemptId) throw new Error("A proposal delivery attempt is still pending");
     assertProposalReadyForDelivery(proposal);
     const now = Date.now();
     await ctx.db.patch(args.proposalId, {
       status: "accepted",
       acceptedAt: now,
+      responseIssueId: proposal.currentIssueId,
+      responseSource: "owner_reported",
       updatedAt: now,
     });
     await ctx.db.patch(proposal.clientRequestId, {
@@ -289,7 +319,14 @@ export const returnProposalToDraft = mutation({
   handler: async (ctx, args) => {
     const { proposal } = await getOwnedProposal(ctx, args.sessionToken, args.userId, args.proposalId);
     if (proposal.status !== "sent") throw new Error("Only sent proposals can return to draft");
-    await ctx.db.patch(proposal._id, { status: "draft", sentAt: undefined, proposalTokenHash: undefined, proposalTokenCreatedAt: undefined, updatedAt: Date.now() });
+    if (proposal.pendingDeliveryAttemptId) throw new Error("A proposal delivery attempt is still pending");
+    const now = Date.now();
+    if (proposal.currentIssueId) {
+      const issue = await ctx.db.get(proposal.currentIssueId);
+      if (!issue || issue.companyId !== proposal.companyId || issue.proposalId !== proposal._id) throw new Error("Active proposal issue is invalid");
+      await ctx.db.patch(issue._id, { withdrawnAt: now });
+    }
+    await ctx.db.patch(proposal._id, { status: "draft", currentIssueId: undefined, sentAt: undefined, proposalTokenHash: undefined, proposalTokenCreatedAt: undefined, updatedAt: now });
   },
 });
 
@@ -298,6 +335,7 @@ export const markProposalDeclined = mutation({
   handler: async (ctx, args) => {
     const { proposal } = await getOwnedProposal(ctx, args.sessionToken, args.userId, args.proposalId);
     if (proposal.status === "accepted" || proposal.status === "declined") throw new Error("Finalized proposals are immutable");
+    if (proposal.pendingDeliveryAttemptId) throw new Error("A proposal delivery attempt is still pending");
     const request = await ctx.db.get(proposal.clientRequestId) as Doc<"clientRequests"> | null;
     const now = Date.now();
     const requestPatch: Record<string, unknown> = {
@@ -309,6 +347,8 @@ export const markProposalDeclined = mutation({
     await ctx.db.patch(args.proposalId, {
       status: "declined",
       declinedAt: now,
+      responseIssueId: proposal.currentIssueId,
+      responseSource: "owner_reported",
       updatedAt: now,
     });
     await ctx.db.patch(proposal.clientRequestId, requestPatch);

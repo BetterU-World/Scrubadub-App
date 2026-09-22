@@ -7,9 +7,15 @@ async function decorateProposal(ctx: any, proposal: any) {
   const relationship = proposal.clientRelationshipId
     ? await ctx.db.get(proposal.clientRelationshipId)
     : null;
+  const latestDeliveryAttempt = await ctx.db.query("transactionalDocumentDeliveryAttempts")
+    .withIndex("by_document", (q: any) => q.eq("documentKind", "proposal").eq("documentId", String(proposal._id)))
+    .order("desc").first();
   return {
     ...proposal,
     calculatedTotals: calculateProposalTotals(proposal),
+    latestDeliveryAttempt: latestDeliveryAttempt?.companyId === proposal.companyId
+      ? { channel: latestDeliveryAttempt.channel, result: latestDeliveryAttempt.result, attemptedAt: latestDeliveryAttempt.attemptedAt }
+      : null,
     clientRelationship:
       relationship?.companyId === proposal.companyId
         ? {

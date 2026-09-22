@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { bedroomsValidator } from "./lib/propertyBedrooms";
+import { proposalIssueContentValidator } from "./lib/proposalIssueContent";
 import {
   securityEventTypeValidator,
   securityMetadataValidator,
@@ -1448,6 +1449,10 @@ export default defineSchema({
     proposalTokenHash: v.optional(v.string()),
     proposalTokenCreatedAt: v.optional(v.number()),
     proposalResponseNote: v.optional(v.string()),
+    currentIssueId: v.optional(v.id("proposalIssues")),
+    pendingDeliveryAttemptId: v.optional(v.id("transactionalDocumentDeliveryAttempts")),
+    responseIssueId: v.optional(v.id("proposalIssues")),
+    responseSource: v.optional(v.union(v.literal("client_token"), v.literal("owner_reported"))),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -1460,6 +1465,35 @@ export default defineSchema({
     .index("by_clientRequestId", ["clientRequestId"])
     .index("by_companyId_status", ["companyId", "status"])
     .index("by_proposalTokenHash", ["proposalTokenHash"]),
+
+  proposalIssues: defineTable({
+    companyId: v.id("companies"),
+    proposalId: v.id("proposals"),
+    issueNumber: v.number(),
+    content: proposalIssueContentValidator,
+    preparedAt: v.number(),
+    issuedAt: v.optional(v.number()),
+    withdrawnAt: v.optional(v.number()),
+    tokenNonce: v.optional(v.string()),
+    tokenHash: v.optional(v.string()),
+    tokenCreatedAt: v.optional(v.number()),
+  })
+    .index("by_proposal", ["proposalId", "issueNumber"])
+    .index("by_tokenHash", ["tokenHash"]),
+
+  transactionalDocumentDeliveryAttempts: defineTable({
+    companyId: v.id("companies"),
+    documentKind: v.union(v.literal("proposal"), v.literal("service_agreement")),
+    documentId: v.string(),
+    issueId: v.string(),
+    channel: v.union(v.literal("email"), v.literal("owner_reported_outside_send")),
+    recipientEmail: v.optional(v.string()),
+    attemptedAt: v.number(),
+    resultAt: v.optional(v.number()),
+    result: v.union(v.literal("pending"), v.literal("provider_accepted"), v.literal("failed"), v.literal("unknown"), v.literal("owner_reported")),
+    errorCategory: v.optional(v.string()),
+  })
+    .index("by_document", ["documentKind", "documentId", "attemptedAt"]),
 
   walkthroughs: defineTable({
     companyId: v.id("companies"),

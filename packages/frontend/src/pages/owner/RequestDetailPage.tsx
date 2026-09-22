@@ -1358,6 +1358,18 @@ export function RequestDetailPage() {
                   </div>
                 )}
               </div>
+              {proposal.latestDeliveryAttempt?.result === "unknown" && (
+                <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{t("proposals.deliveryUnknown")}</p>
+              )}
+              {proposal.latestDeliveryAttempt?.result === "failed" && (
+                <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{t("proposals.deliveryFailed")}</p>
+              )}
+              {proposal.latestDeliveryAttempt?.channel === "owner_reported_outside_send" && (
+                <p className="text-xs text-gray-600">{t("proposals.outsideSendRecorded")}</p>
+              )}
+              {proposal.responseSource === "owner_reported" && (
+                <p className="text-xs text-gray-600">{t("proposals.outsideResponseRecorded")}</p>
+              )}
               {(proposal.addOnLineItems?.length ?? 0) > 0 && (
                 <div className="border-t border-gray-200 pt-4">
                   <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">{t("proposals.addOns.title")}</p>

@@ -3,7 +3,7 @@
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
-import { generateSecureToken, hashToken } from "./lib/tokens";
+import { generateSecureToken, hashToken, proposalIssueToken } from "./lib/tokens";
 import { sendProposalEmail } from "./lib/email";
 import { requireOwnerOrManagerCapability } from "./lib/sessions";
 import { requireAppUrl } from "./lib/environment";
@@ -31,43 +31,47 @@ export const sendProposal = action({
       ctx, args.sessionToken, args.userId, "canManageSalesAndCommercial"
     );
     const ownerArgs = { companyId: owner.companyId, proposalId: args.proposalId };
-    const payload = await ctx.runQuery(
-      (internal as any).proposalDeliveryInternal.getProposalForOwnerDelivery,
-      ownerArgs
+    const baseUrl = appUrl();
+    const tokenNonce = generateSecureToken();
+    const prepared = await ctx.runMutation(
+      (internal as any).proposalDeliveryInternal.prepareProposalEmail,
+      { ...ownerArgs, tokenNonce, tokenHash: hashToken(proposalIssueToken(tokenNonce)) }
     );
-
-    const email = payload.recipientEmail?.trim().toLowerCase();
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      throw new Error("Add a valid client email before sending this proposal");
+    const viewUrl = `${baseUrl}/proposal/${proposalIssueToken(prepared.tokenNonce)}`;
+    let sent = false;
+    try {
+      sent = await sendProposalEmail({
+        email: prepared.recipientEmail,
+        viewUrl,
+        companyName: prepared.content.company.companyName,
+        companyLogoUrl: prepared.content.company.companyLogoUrl ?? undefined,
+        companyEmail: prepared.content.company.companyEmail ?? undefined,
+        replyTo: prepared.replyTo ?? undefined,
+        companyPhone: prepared.content.company.companyPhone ?? undefined,
+        clientName: prepared.content.clientName,
+        proposal: prepared.content.proposal,
+      });
+    } catch {
+      sent = false;
     }
-
-    const token = generateSecureToken();
-    const viewUrl = `${appUrl()}/proposal/${token}`;
-    const result = await ctx.runMutation(
-      (internal as any).proposalDeliveryInternal.setProposalDeliveryTokenAndSent,
-      {
-        ...ownerArgs,
-        proposalTokenHash: hashToken(token),
+    if (sent) {
+      try {
+        const result = await ctx.runMutation(
+          (internal as any).proposalDeliveryInternal.finishProposalEmail,
+          { ...ownerArgs, attemptId: prepared.attemptId, result: "provider_accepted" }
+        );
+        return { success: true, sentAt: result.sentAt };
+      } catch {
+        try {
+          await ctx.runMutation((internal as any).proposalDeliveryInternal.finishProposalEmail,
+            { ...ownerArgs, attemptId: prepared.attemptId, result: "unknown" });
+        } catch { /* The pending record remains durable for operator reconciliation. */ }
+        throw new Error("The email provider accepted the proposal, but SCRUB could not confirm its final state. Retry may send a duplicate email with the same proposal link.");
       }
-    );
-
-    const sent = await sendProposalEmail({
-      email,
-      viewUrl,
-      companyName: payload.company.companyName,
-      companyLogoUrl: payload.company.companyLogoUrl ?? undefined,
-      companyEmail: payload.company.companyEmail ?? undefined,
-      replyTo: payload.company.replyTo ?? undefined,
-      companyPhone: payload.company.companyPhone ?? undefined,
-      clientName: payload.clientName,
-      proposal: payload.proposal,
-    });
-
-    if (!sent) {
-      throw new Error("Proposal was prepared, but the email could not be sent. Please try resend.");
     }
-
-    return { success: true, sentAt: result.sentAt };
+    await ctx.runMutation((internal as any).proposalDeliveryInternal.finishProposalEmail,
+      { ...ownerArgs, attemptId: prepared.attemptId, result: "failed" });
+    throw new Error("The proposal email could not be sent. Please try again.");
   },
 });
 
