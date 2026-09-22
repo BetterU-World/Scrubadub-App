@@ -33,7 +33,7 @@ function formatFrequency(value: string | undefined) {
 export function assertAgreementPriceConsistency(agreement: any) {
   if (agreement.contractAmountCents == null || !agreement.priceSummary) return;
   const amounts = [...agreement.priceSummary.matchAll(/\$\s*([\d,]+)(?:\.(\d{1,2}))?/g)]
-    .map((match: RegExpMatchArray) => Number(match[1].replaceAll(",", "")) * 100 + Number((match[2] ?? "").padEnd(2, "0")));
+    .map((match: RegExpMatchArray) => Number(match[1].replace(/,/g, "")) * 100 + Number((match[2] ?? "").padEnd(2, "0")));
   if (amounts.length && !amounts.includes(agreement.contractAmountCents)) {
     throw new Error("Contract amount and price summary disagree. Review both before sending this agreement.");
   }

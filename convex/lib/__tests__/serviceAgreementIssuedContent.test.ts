@@ -3,6 +3,7 @@ import { convexTest } from "convex-test";
 import schema from "../../schema";
 import { api, internal } from "../../_generated/api";
 import { hashPassword } from "../password";
+import { assertAgreementPriceConsistency } from "../serviceAgreementIssuedContent";
 
 const modules = import.meta.glob("../../**/*.ts");
 const PASSWORD = "test-password-123";
@@ -75,6 +76,10 @@ async function issue(s: Awaited<ReturnType<typeof setup>>) {
 }
 
 describe("service agreement issued content", () => {
+  it("removes every thousands separator when comparing a price summary", () => {
+    expect(() => assertAgreementPriceConsistency({ contractAmountCents: 123456789, priceSummary: "$1,234,567.89 per month" })).not.toThrow();
+    expect(() => assertAgreementPriceConsistency({ contractAmountCents: 123456788, priceSummary: "$1,234,567.89 per month" })).toThrow("price summary disagree");
+  });
   it("uses one canonical preview, resolves structured edits, freezes content and provenance", async () => {
     const s = await setup();
     await update(s, { scopeOfWork: "Updated scope", terms: "Thirty day notice", effectiveEndDate: "2031-12-31", paymentTerms: "Net 15", notes: "INTERNAL ONLY", body: "CONTRADICTORY OVERRIDE" });
