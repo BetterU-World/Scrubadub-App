@@ -1407,6 +1407,7 @@ export default defineSchema({
     ),
     serviceFrequencyNotes: v.optional(v.string()),
     scopeOfWork: v.optional(v.string()),
+    assessmentSuggestedMonthlyPriceCents: v.optional(v.number()),
     monthlyPriceCents: v.optional(v.number()),
     oneTimePriceCents: v.optional(v.number()),
     addOnLineItems: v.optional(
@@ -1523,6 +1524,7 @@ export default defineSchema({
       ),
     ),
     scopeNotes: v.optional(v.string()),
+    proposalReadyScopeText: v.optional(v.string()),
     supplyNotes: v.optional(v.string()),
     accessNotes: v.optional(v.string()),
     riskNotes: v.optional(v.string()),

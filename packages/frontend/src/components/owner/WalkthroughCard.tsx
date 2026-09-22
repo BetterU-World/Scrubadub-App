@@ -57,6 +57,7 @@ const EMPTY_FORM = {
   recommendedCleanerCount: "",
   estimatedMonthlyValue: "",
   scopeNotes: "",
+  scopeProposalReady: false,
   supplyNotes: "",
   accessNotes: "",
   riskNotes: "",
@@ -173,6 +174,7 @@ function formFromWalkthrough(walkthrough: any) {
         ? String(walkthrough.estimatedMonthlyValueCents / 100)
         : "",
     scopeNotes: walkthrough.scopeNotes ?? "",
+    scopeProposalReady: Boolean(walkthrough.proposalReadyScopeText && walkthrough.proposalReadyScopeText === walkthrough.scopeNotes?.trim()),
     supplyNotes: walkthrough.supplyNotes ?? "",
     accessNotes: walkthrough.accessNotes ?? "",
     riskNotes: walkthrough.riskNotes ?? "",
@@ -537,6 +539,7 @@ export function WalkthroughCard({
       t("walkthroughs.invalidAmount")
     ),
     scopeNotes: form.scopeNotes || undefined,
+    proposalReadyScopeText: form.scopeProposalReady ? form.scopeNotes : undefined,
     supplyNotes: form.supplyNotes || undefined,
     accessNotes: form.accessNotes || undefined,
     riskNotes: form.riskNotes || undefined,
@@ -937,12 +940,19 @@ export function WalkthroughCard({
                 <input className="input-field mt-1 text-sm" value={form.serviceFrequencyRecommendation} onChange={(e) => setForm({ ...form, serviceFrequencyRecommendation: e.target.value })} />
               </label>
             </div>
-            {(["scopeNotes", "proposalNotes"] as const).map((key) => (
-              <label key={key} className="block">
-                <span className="text-xs font-medium text-gray-600">{t(`walkthroughs.fields.${key}`)}</span>
-                <textarea className="input-field mt-1 text-sm" rows={3} value={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.value })} />
-              </label>
-            ))}
+            <label className="block">
+              <span className="text-xs font-medium text-gray-600">{t("walkthroughs.fields.scopeNotes")}</span>
+              <span className="mt-1 block text-xs text-gray-500">{t("walkthroughs.scopeProposalReadyHelper")}</span>
+              <textarea className="input-field mt-1 text-sm" rows={3} value={form.scopeNotes} onChange={(e) => setForm({ ...form, scopeNotes: e.target.value, scopeProposalReady: false })} />
+            </label>
+            <label className="flex items-start gap-2 text-sm text-gray-700">
+              <input type="checkbox" className="mt-1" checked={form.scopeProposalReady} disabled={!form.scopeNotes.trim()} onChange={(e) => setForm({ ...form, scopeProposalReady: e.target.checked })} />
+              <span>{t("walkthroughs.scopeProposalReadyConfirm")}</span>
+            </label>
+            <label className="block">
+              <span className="text-xs font-medium text-gray-600">{t("walkthroughs.fields.proposalNotes")}</span>
+              <textarea className="input-field mt-1 text-sm" rows={3} value={form.proposalNotes} onChange={(e) => setForm({ ...form, proposalNotes: e.target.value })} />
+            </label>
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -1037,7 +1047,7 @@ export function WalkthroughCard({
               <div><p className="text-xs font-medium text-gray-500">{t("walkthroughs.fields.recommendedCleanerCount")}</p><p className="mt-1 text-gray-900">{walkthrough.recommendedCleanerCount ?? t("common.unassigned")}</p></div>
               <div><p className="text-xs font-medium text-gray-500">{t("walkthroughs.fields.estimatedMonthlyValue")}</p><p className="mt-1 text-gray-900">{money(walkthrough.estimatedMonthlyValueCents, t("common.unassigned"))}</p></div>
             </div>
-            {walkthrough.scopeNotes && <p className="whitespace-pre-wrap rounded-md bg-white/70 p-3 text-sm text-gray-700">{walkthrough.scopeNotes}</p>}
+            {walkthrough.scopeNotes && <div className="rounded-md bg-white/70 p-3 text-sm text-gray-700"><p className="font-medium">{t("walkthroughs.fields.scopeNotes")}</p><p className="mt-1 whitespace-pre-wrap">{walkthrough.scopeNotes}</p>{walkthrough.proposalReadyScopeText === walkthrough.scopeNotes.trim() && <p className="mt-2 text-xs text-primary-700">{t("walkthroughs.scopeProposalReadyConfirmed")}</p>}</div>}
             {walkthrough.proposalNotes && <p className="whitespace-pre-wrap rounded-md bg-white/70 p-3 text-sm text-gray-700">{walkthrough.proposalNotes}</p>}
           </div>
           <div className="flex flex-wrap gap-2">

@@ -32,6 +32,26 @@ function cleanPrice(value: number | undefined) {
   return value;
 }
 
+function assessmentFrequency(value: string | undefined): Doc<"proposals">["serviceFrequency"] {
+  switch (value) {
+    case "one_time":
+    case "weekly":
+    case "biweekly":
+    case "monthly":
+    case "quarterly":
+    case "custom":
+      return value;
+    default:
+      return undefined;
+  }
+}
+
+function assessmentMonthlyEstimate(value: number | undefined) {
+  return value !== undefined && Number.isSafeInteger(value) && value >= 0 && value <= 1_000_000_000
+    ? value
+    : undefined;
+}
+
 async function getOwnedProposal(
   ctx: MutationCtx,
   sessionToken: string,
@@ -89,6 +109,8 @@ export const createProposalFromLead = mutation({
       if (sourceWalkthrough.proposalId) throw new Error("Source walkthrough is already linked to a proposal");
     }
 
+    const recommendedFrequency = assessmentFrequency(sourceWalkthrough?.serviceFrequencyRecommendation);
+    const leadFrequency = (request as any).estimatedFrequency;
     const now = Date.now();
     const clientRelationshipId = await ensureClientRelationshipForLead(ctx, request);
     const proposalId = await ctx.db.insert("proposals", {
@@ -100,10 +122,16 @@ export const createProposalFromLead = mutation({
       title: "Cleaning Proposal",
       clientName: request.requesterName,
       businessName: cleanOptional((request as any).businessName, 200),
-      propertyAddress: cleanOptional(request.propertySnapshot?.address, 500),
-      serviceFrequency: (request as any).estimatedFrequency,
-      serviceFrequencyNotes: cleanOptional((request as any).estimatedFrequencyNotes, 1000),
-      scopeOfWork: cleanOptional(request.requestedService, 4000),
+      propertyAddress: cleanOptional(sourceWalkthrough?.address, 500) ?? cleanOptional(request.propertySnapshot?.address, 500),
+      serviceFrequency: recommendedFrequency ?? leadFrequency,
+      serviceFrequencyNotes: recommendedFrequency && recommendedFrequency !== leadFrequency
+        ? undefined
+        : cleanOptional((request as any).estimatedFrequencyNotes, 1000),
+      scopeOfWork: sourceWalkthrough?.proposalReadyScopeText &&
+        sourceWalkthrough.proposalReadyScopeText === cleanOptional(sourceWalkthrough.scopeNotes, 4000)
+        ? sourceWalkthrough.proposalReadyScopeText
+        : cleanOptional(request.requestedService, 4000),
+      assessmentSuggestedMonthlyPriceCents: assessmentMonthlyEstimate(sourceWalkthrough?.estimatedMonthlyValueCents),
       addOnLineItems: ((request as any).requestedAddOnSnapshots ?? []).map((item: any) => normalizeProposalAddOnLine({
         lineItemId: newProposalLineItemId(), sourceType: "request_snapshot", sourceClientRequestId: request._id,
         sourceCompanyAddOnId: item.sourceCompanyAddOnId, name: item.name, pricingMethod: item.pricingMethod,

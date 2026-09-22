@@ -69,6 +69,7 @@ const walkthroughFields = {
   estimatedMonthlyValueCents: v.optional(v.number()),
   rooms: v.optional(v.array(roomValidator)),
   scopeNotes: v.optional(v.string()),
+  proposalReadyScopeText: v.optional(v.string()),
   supplyNotes: v.optional(v.string()),
   accessNotes: v.optional(v.string()),
   riskNotes: v.optional(v.string()),
@@ -265,6 +266,11 @@ async function updateLinkedPropertyFacts(
 }
 
 function buildWalkthroughPatch(args: any) {
+  const scopeNotes = cleanOptional(args.scopeNotes, 4000);
+  const proposalReadyScopeText = cleanOptional(args.proposalReadyScopeText, 4000);
+  if (proposalReadyScopeText && proposalReadyScopeText !== scopeNotes) {
+    throw new Error("Confirmed proposal scope must match scope notes");
+  }
   return {
     propertyId: args.propertyId,
     commercialAccountId: args.commercialAccountId,
@@ -300,7 +306,8 @@ function buildWalkthroughPatch(args: any) {
         notes: cleanOptional(room.notes, 1000),
       }))
       .filter((room: any) => room.name || room.notes),
-    scopeNotes: cleanOptional(args.scopeNotes, 4000),
+    scopeNotes,
+    proposalReadyScopeText,
     supplyNotes: cleanOptional(args.supplyNotes, 4000),
     accessNotes: cleanOptional(args.accessNotes, 4000),
     riskNotes: cleanOptional(args.riskNotes, 4000),
