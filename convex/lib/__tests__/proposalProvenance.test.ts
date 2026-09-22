@@ -5,6 +5,7 @@ import { convexTest } from "convex-test";
 import schema from "../../schema";
 import { api, internal } from "../../_generated/api";
 import { hashPassword } from "../password";
+import { calculateProposalTotals } from "../proposalAddOnLineItems";
 
 const modules = import.meta.glob("../../**/*.ts");
 
@@ -41,6 +42,78 @@ async function setup() {
 }
 
 describe("explicit proposal provenance", () => {
+  it("copies only confirmed assessment scope, exact frequency, address, and an unapplied monthly estimate", async () => {
+    const s = await setup();
+    await s.t.run((ctx) => ctx.db.patch(s.requestId, { estimatedFrequency: "monthly", estimatedFrequencyNotes: "Monthly lead schedule" }));
+    await s.t.run((ctx) => ctx.db.patch(s.sourceId, {
+      address: "  44 Assessment Way  ", scopeNotes: "  Client-approved cleaning scope  ",
+      proposalReadyScopeText: "Client-approved cleaning scope", serviceFrequencyRecommendation: "weekly",
+      estimatedMonthlyValueCents: 200_000, contactName: "Different onsite contact",
+      supplyNotes: "SUPPLY SECRET", riskNotes: "RISK SECRET", staffingNotes: "STAFFING SECRET",
+      photos: [{ url: "https://example.com/private-photo", uploadedAt: 1 }],
+      structuredResponses: [{ key: "securityAlarmNotes", groupKey: "operations", valueType: "text", textValue: "STRUCTURED SECRET" }],
+    }));
+    const args = { ...s.ownerAuth, clientRequestId: s.requestId, sourceWalkthroughId: s.sourceId };
+    const proposalId = await s.t.mutation(api.mutations.proposals.createProposalFromLead, args);
+    const initial = await s.t.run((ctx) => ctx.db.get(proposalId));
+    expect(initial).toMatchObject({
+      clientName: "Client", propertyAddress: "44 Assessment Way", scopeOfWork: "Client-approved cleaning scope",
+      serviceFrequency: "weekly", assessmentSuggestedMonthlyPriceCents: 200_000, status: "draft",
+    });
+    expect(initial?.monthlyPriceCents).toBeUndefined();
+    expect(initial?.oneTimePriceCents).toBeUndefined();
+    expect(initial?.serviceFrequencyNotes).toBeUndefined();
+    expect(JSON.stringify(initial)).not.toMatch(/INTERNAL|ALARM CODE|SUPPLY SECRET|RISK SECRET|STAFFING SECRET|STRUCTURED SECRET|private-photo|Different onsite contact/);
+
+    await s.t.run((ctx) => ctx.db.patch(s.sourceId, { status: "archived", address: "Later address", scopeNotes: "Later scope", serviceFrequencyRecommendation: "monthly", estimatedMonthlyValueCents: 900_000 }));
+    expect(await s.t.mutation(api.mutations.proposals.createProposalFromLead, args)).toBe(proposalId);
+    expect(await s.t.run((ctx) => ctx.db.get(proposalId))).toEqual(initial);
+
+    await s.t.mutation(api.mutations.proposals.updateProposal, { ...s.ownerAuth, proposalId, title: initial!.title, clientName: initial!.clientName,
+      businessName: initial!.businessName, propertyAddress: initial!.propertyAddress, serviceFrequency: initial!.serviceFrequency,
+      serviceFrequencyNotes: initial!.serviceFrequencyNotes, scopeOfWork: initial!.scopeOfWork, monthlyPriceCents: initial!.assessmentSuggestedMonthlyPriceCents });
+    const lineId = await s.t.mutation(api.mutations.proposals.addCustomAddOnLine, { ...s.ownerAuth, proposalId, name: "Extra service", pricingMethod: "flat", unitPriceCents: 2_500, billingCadence: "monthly" });
+    expect(lineId).toBeTruthy();
+    const applied = await s.t.run((ctx) => ctx.db.get(proposalId));
+    expect(applied?.assessmentSuggestedMonthlyPriceCents).toBe(200_000);
+    expect(calculateProposalTotals(applied!)).toMatchObject({ baseMonthlyPriceCents: 200_000, addOnMonthlyTotalCents: 2_500, monthlyTotalCents: 202_500 });
+  });
+
+  it("keeps lead fallbacks for historical unconfirmed scope, missing address, and free-text frequency", async () => {
+    const s = await setup();
+    await s.t.run((ctx) => ctx.db.patch(s.requestId, { propertySnapshot: { address: "Lead address" }, estimatedFrequency: "monthly", estimatedFrequencyNotes: "Lead schedule" }));
+    await s.t.run((ctx) => ctx.db.patch(s.sourceId, { address: undefined, serviceFrequencyRecommendation: "twice a week", estimatedMonthlyValueCents: -1 }));
+    const proposalId = await s.t.mutation(api.mutations.proposals.createProposalFromLead, { ...s.ownerAuth, clientRequestId: s.requestId, sourceWalkthroughId: s.sourceId });
+    const proposal = await s.t.run((ctx) => ctx.db.get(proposalId));
+    expect(proposal).toMatchObject({ propertyAddress: "Lead address", scopeOfWork: "Lead scope", serviceFrequency: "monthly", serviceFrequencyNotes: "Lead schedule" });
+    expect(proposal?.assessmentSuggestedMonthlyPriceCents).toBeUndefined();
+    expect(JSON.stringify(proposal)).not.toContain("twice a week");
+  });
+
+  it("requires an exact saved confirmation for proposal-ready scope", async () => {
+    const s = await setup();
+    const base = { ...s.ownerAuth, walkthroughId: s.sourceId, clientRequestId: s.requestId, title: "Assessment", walkthroughType: "commercial" as const };
+    await expect(s.t.mutation(api.mutations.walkthroughs.update, { ...base, scopeNotes: "New scope", proposalReadyScopeText: "Old scope" })).rejects.toThrow("must match");
+    await s.t.mutation(api.mutations.walkthroughs.update, { ...base, scopeNotes: "Confirmed scope", proposalReadyScopeText: "Confirmed scope" });
+    expect((await s.t.run((ctx) => ctx.db.get(s.sourceId)))?.proposalReadyScopeText).toBe("Confirmed scope");
+    await s.t.mutation(api.mutations.walkthroughs.update, { ...base, scopeNotes: "Edited scope" });
+    expect((await s.t.run((ctx) => ctx.db.get(s.sourceId)))?.proposalReadyScopeText).toBeUndefined();
+    const proposalId = await s.t.mutation(api.mutations.proposals.createProposalFromLead, { ...s.ownerAuth, clientRequestId: s.requestId, sourceWalkthroughId: s.sourceId });
+    expect((await s.t.run((ctx) => ctx.db.get(proposalId)))?.scopeOfWork).toBe("Lead scope");
+  });
+
+  it("does not treat an unapplied assessment estimate as agreement price", async () => {
+    const s = await setup();
+    await s.t.run((ctx) => ctx.db.patch(s.sourceId, { estimatedMonthlyValueCents: 200_000 }));
+    const proposalId = await s.t.mutation(api.mutations.proposals.createProposalFromLead, { ...s.ownerAuth, clientRequestId: s.requestId, sourceWalkthroughId: s.sourceId });
+    await s.t.run((ctx) => ctx.db.patch(proposalId, { status: "accepted" }));
+    const agreementId = await s.t.mutation(api.mutations.serviceAgreements.createDraftFromAcceptedProposal, { ...s.ownerAuth, proposalId });
+    const agreement = await s.t.run((ctx) => ctx.db.get(agreementId));
+    expect(agreement?.priceSummary).toBeUndefined();
+    expect(agreement?.contractAmountCents).toBeUndefined();
+    expect(JSON.stringify(agreement)).not.toContain("assessmentSuggestedMonthlyPriceCents");
+  });
+
   it("links exactly the selected completed assessment and never rewrites it on duplicate creation", async () => {
     const s = await setup();
     const args = { ...s.ownerAuth, clientRequestId: s.requestId };
@@ -54,7 +127,7 @@ describe("explicit proposal provenance", () => {
     expect(await s.t.mutation(api.mutations.proposals.createProposalFromLead, { ...args, sourceWalkthroughId: s.secondId })).toBe(proposalId);
     await s.t.run((ctx) => ctx.db.patch(s.sourceId, { status: "archived", address: "Changed after creation", proposalNotes: "NEW SECRET", updatedAt: 100 }));
     expect((await s.t.query(api.queries.proposals.getProposalByClientRequest, args))?.sourceWalkthroughId).toBe(s.sourceId);
-    expect((await s.t.run((ctx) => ctx.db.get(proposalId)))?.propertyAddress).toBeUndefined();
+    expect((await s.t.run((ctx) => ctx.db.get(proposalId)))?.propertyAddress).toBe("Source address");
   });
 
   it("rejects incomplete, archived, mismatched, foreign, and unauthorized source selections", async () => {
@@ -74,6 +147,7 @@ describe("explicit proposal provenance", () => {
     const args = { ...s.ownerAuth, clientRequestId: s.requestId };
     const proposalId = await s.t.mutation(api.mutations.proposals.createProposalFromLead, args);
     expect((await s.t.run((ctx) => ctx.db.get(proposalId)))?.sourceWalkthroughId).toBeUndefined();
+    expect((await s.t.run((ctx) => ctx.db.get(proposalId)))?.assessmentSuggestedMonthlyPriceCents).toBeUndefined();
     expect((await s.t.run((ctx) => ctx.db.get(s.sourceId)))?.proposalId).toBeUndefined();
     expect((await s.t.query(api.queries.proposals.getProposalByClientRequest, args))?._id).toBe(proposalId);
     await s.t.run((ctx) => ctx.db.patch(proposalId, { status: "declined" }));
@@ -87,12 +161,13 @@ describe("explicit proposal provenance", () => {
   it("keeps token payload independent of later assessment edits and internal notes", async () => {
     const s = await setup();
     const proposalId = await s.t.mutation(api.mutations.proposals.createProposalFromLead, { ...s.ownerAuth, clientRequestId: s.requestId, sourceWalkthroughId: s.sourceId });
-    await s.t.run((ctx) => ctx.db.patch(proposalId, { status: "sent", proposalTokenHash: "f2-token-hash", proposalTokenCreatedAt: Date.now(), monthlyPriceCents: 12345 }));
+    await s.t.run((ctx) => ctx.db.patch(proposalId, { status: "sent", proposalTokenHash: "f2-token-hash", proposalTokenCreatedAt: Date.now(), monthlyPriceCents: 12345, assessmentSuggestedMonthlyPriceCents: 98765 }));
     const getPayload = () => s.t.query(internal.proposalDeliveryInternal.getClientProposalByTokenHash, { proposalTokenHash: "f2-token-hash" });
     const before = await getPayload();
     expect(before?.proposal.scopeOfWork).toBe("Lead scope");
     expect(before?.proposal.monthlyPriceCents).toBe(12345);
-    expect(JSON.stringify(before)).not.toMatch(/INTERNAL|ALARM CODE|walkthroughSummary|sourceWalkthroughId/);
+    expect(JSON.stringify(before)).not.toMatch(/INTERNAL|ALARM CODE|walkthroughSummary|sourceWalkthroughId|assessmentSuggestedMonthlyPriceCents/);
+    expect(JSON.stringify(before)).not.toContain("98765");
     await s.t.run((ctx) => ctx.db.patch(s.sourceId, { address: "New address", scopeNotes: "NEW INTERNAL SECRET", proposalNotes: "NEW INTERNAL SECRET", updatedAt: 99 }));
     await s.t.run((ctx) => ctx.db.patch(s.requestId, { propertySnapshot: { address: "New lead address" }, requestedDate: "2030-05-05" }));
     expect(await getPayload()).toEqual(before);

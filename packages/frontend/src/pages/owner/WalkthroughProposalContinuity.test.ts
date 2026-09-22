@@ -55,4 +55,13 @@ describe("walkthrough to proposal continuity", () => {
     const card = readFileSync(resolve(process.cwd(), "packages/frontend/src/components/owner/WalkthroughCard.tsx"), "utf8");
     expect(card).toContain("onProposalNextAction(walkthrough._id)");
   });
+
+  it("requires scope confirmation and applies the estimate only to the editable monthly base field", () => {
+    const card = readFileSync(resolve(process.cwd(), "packages/frontend/src/components/owner/WalkthroughCard.tsx"), "utf8");
+    const details = readFileSync(resolve(process.cwd(), "packages/frontend/src/pages/owner/RequestDetailPage.tsx"), "utf8");
+    expect(card).toContain("scopeNotes: e.target.value, scopeProposalReady: false");
+    expect(card).toContain("proposalReadyScopeText: form.scopeProposalReady ? form.scopeNotes : undefined");
+    expect(details).toContain("monthlyPrice: String(proposal.assessmentSuggestedMonthlyPriceCents / 100)");
+    expect(details).toContain("monthlyPriceCents: centsFromPrice(proposalForm.monthlyPrice)");
+  });
 });

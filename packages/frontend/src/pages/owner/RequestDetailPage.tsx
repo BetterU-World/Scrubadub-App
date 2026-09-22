@@ -1195,6 +1195,16 @@ export function RequestDetailPage() {
                   onChange={(e) => setProposalForm({ ...proposalForm, monthlyPrice: e.target.value })}
                   placeholder="0.00"
                 />
+                {proposal.assessmentSuggestedMonthlyPriceCents != null && (
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                    <span>{t("proposals.assessmentMonthlyEstimate", { amount: formatPrice(proposal.assessmentSuggestedMonthlyPriceCents) })}</span>
+                    {proposalForm.monthlyPrice !== String(proposal.assessmentSuggestedMonthlyPriceCents / 100) && (
+                      <button type="button" className="btn-secondary text-xs" onClick={() => setProposalForm({ ...proposalForm, monthlyPrice: String(proposal.assessmentSuggestedMonthlyPriceCents / 100) })}>
+                        {t("proposals.useAssessmentEstimate")}
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">

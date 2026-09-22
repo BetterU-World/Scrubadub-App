@@ -68,7 +68,7 @@ describe("client portal page projections", () => {
       const proposalFor = async (companyId: typeof company, clientRelationshipId: typeof active, clientRequestId: typeof activeRequest, title: string, status: "draft" | "sent" | "accepted" | "declined") =>
         ctx.db.insert("proposals", {
           companyId, clientRelationshipId, clientRequestId, createdByUserId: owner,
-          title, clientName: "Portal Client", monthlyPriceCents: 25000,
+          title, clientName: "Portal Client", monthlyPriceCents: 25000, assessmentSuggestedMonthlyPriceCents: 99000,
           status, createdAt: 1, updatedAt: 1,
         });
       await proposalFor(company, active, activeRequest, "Internal draft", "draft");
@@ -91,6 +91,7 @@ describe("client portal page projections", () => {
       ["Declined proposal", "declined"],
     ]);
     expect(documents.proposals.every((proposal: any) => proposal.providerName === "Visible Co")).toBe(true);
+    expect(JSON.stringify(documents)).not.toContain("assessmentSuggestedMonthlyPriceCents");
 
     const home = await t.query(api.queries.clientHome.getClientHome, args);
     expect(home.proposals.map((proposal: any) => [proposal.title, proposal.status])).toEqual([
@@ -98,11 +99,13 @@ describe("client portal page projections", () => {
       ["Accepted proposal", "accepted"],
       ["Declined proposal", "declined"],
     ]);
+    expect(JSON.stringify(home)).not.toContain("assessmentSuggestedMonthlyPriceCents");
 
     const detail = await t.query(projectionApi.getClientRequestDetail, { ...args, requestId: seeded.activeRequest });
     expect(detail.request.proposals.map((proposal: any) => proposal.title)).toEqual([
       "Sent proposal", "Accepted proposal", "Declined proposal",
     ]);
+    expect(JSON.stringify(detail)).not.toContain("assessmentSuggestedMonthlyPriceCents");
     expect(detail.request.timelineFacts.proposals.map((proposal: any) => proposal.status)).toEqual([
       "sent", "accepted", "declined",
     ]);
