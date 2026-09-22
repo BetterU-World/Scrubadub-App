@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
 import { ServiceAgreementStatusBadge } from "@/components/ui/ServiceAgreementStatusBadge";
 import { AsyncButton } from "@/components/ui/AsyncButton";
-import { AddOnSnapshotList } from "@/components/AddOnSnapshotList";
+import { AgreementContentView } from "@/components/AgreementContentView";
 
 const FREQUENCIES = ["one_time", "weekly", "biweekly", "monthly", "quarterly", "custom"] as const;
 
@@ -81,19 +81,6 @@ function centsFromPrice(value: string, invalidMessage: string) {
   return cents;
 }
 
-function formatPrice(cents: number | undefined, fallback: string) {
-  if (cents == null) return fallback;
-  return `$${(cents / 100).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
-
-function formatDate(date: string | undefined, fallback: string) {
-  if (!date) return fallback;
-  return new Date(`${date}T00:00:00`).toLocaleDateString();
-}
-
 function Field({
   label,
   children,
@@ -163,6 +150,7 @@ export function ServiceAgreementCard({
   );
   const markSigned = useMutation((api as any).mutations.serviceAgreements.markSigned);
   const markCancelled = useMutation((api as any).mutations.serviceAgreements.markCancelled);
+  const returnToDraft = useMutation((api as any).mutations.serviceAgreements.returnToDraft);
 
   useEffect(() => {
     if (agreement && agreement._id !== loadedId) {
@@ -264,7 +252,7 @@ export function ServiceAgreementCard({
         billingSchedule: form.billingSchedule || undefined,
         specialInstructions: form.specialInstructions || undefined,
         exceptions: form.exceptions || undefined,
-        body: form.body || undefined,
+        body: agreement.contentMode === "structured" ? undefined : form.body || undefined,
         effectiveStartDate: form.effectiveStartDate || undefined,
         effectiveEndDate: form.effectiveEndDate || undefined,
         renewalDate: form.renewalDate || undefined,
@@ -287,7 +275,7 @@ export function ServiceAgreementCard({
     }
   };
 
-  const handleAction = async (action: "ready" | "sent" | "signed" | "cancelled") => {
+  const handleAction = async (action: "ready" | "sent" | "signed" | "cancelled" | "change") => {
     if (!agreement) return;
     setActionLoading(action);
     try {
@@ -299,7 +287,8 @@ export function ServiceAgreementCard({
       if (action === "cancelled") {
         await markCancelled({ userId: user._id, sessionToken, agreementId: agreement._id });
       }
-      showToast(t(`serviceAgreements.${action}Success`), "success");
+      if (action === "change") await returnToDraft({ userId: user._id, sessionToken, agreementId: agreement._id });
+      showToast(action === "change" ? t("serviceAgreements.changeSuccess") : t(`serviceAgreements.${action}Success`), "success");
     } catch (err: any) {
       const message = err.message?.includes("client email")
         ? t("serviceAgreements.recipientEmailRequired")
@@ -310,7 +299,7 @@ export function ServiceAgreementCard({
     }
   };
 
-  const canEdit = agreement && ["draft", "ready", "sent"].includes(agreement.status);
+  const canEdit = agreement && ["draft", "ready"].includes(agreement.status);
 
   if (!agreement && hideWhenMissing) return null;
 
@@ -447,6 +436,7 @@ export function ServiceAgreementCard({
               />
             </Field>
           </div>
+          <p className="text-xs text-gray-600">{t("serviceAgreements.pricingConsistencyHelp")}</p>
           <Field label={t("serviceAgreements.paymentTerms")}>
             <input
               className="input-field mt-1"
@@ -486,15 +476,17 @@ export function ServiceAgreementCard({
               onChange={(e) => setForm({ ...form, terms: e.target.value })}
             />
           </Field>
-          <Field label={t("serviceAgreements.body")}>
+          {agreement.contentMode === "structured" ? (
+            <p className="text-sm text-gray-600">{t("serviceAgreements.generatedBodyHelp")}</p>
+          ) : <Field label={t("serviceAgreements.legacyBodyOverride")}>
             <textarea
               className="input-field mt-1 font-mono text-xs"
               rows={10}
               value={form.body}
               onChange={(e) => setForm({ ...form, body: e.target.value })}
             />
-          </Field>
-          <Field label={t("common.notes")}>
+          </Field>}
+          <Field label={t("serviceAgreements.internalNotes")}>
             <textarea
               className="input-field mt-1"
               rows={3}
@@ -519,97 +511,14 @@ export function ServiceAgreementCard({
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Detail label={t("serviceAgreements.agreementTitle")} value={agreement.title} />
-            <Detail
-              label={t("serviceAgreements.clientName")}
-              value={agreement.clientName || t("commercialAccounts.notSet")}
-            />
-            <Detail
-              label={t("serviceAgreements.propertyAddress")}
-              value={agreement.propertyAddress || t("commercialAccounts.notSet")}
-            />
-            <Detail
-              label={t("serviceAgreements.contractAmount")}
-              value={formatPrice(agreement.contractAmountCents, t("commercialAccounts.notSet"))}
-            />
-            <Detail
-              label={t("serviceAgreements.frequency")}
-              value={
-                agreement.serviceFrequency
-                  ? t(`leadFrequencies.${agreement.serviceFrequency}`)
-                  : t("common.unassigned")
-              }
-            />
-            <Detail
-              label={t("serviceAgreements.effectiveStartDate")}
-              value={formatDate(agreement.effectiveStartDate, t("commercialAccounts.notSet"))}
-            />
-            <Detail
-              label={t("serviceAgreements.effectiveEndDate")}
-              value={formatDate(agreement.effectiveEndDate, t("commercialAccounts.notSet"))}
-            />
-            <Detail
-              label={t("serviceAgreements.renewalDate")}
-              value={formatDate(agreement.renewalDate, t("commercialAccounts.notSet"))}
-            />
-          </div>
-          {agreement.servicesIncluded && (
-            <Detail
-              label={t("serviceAgreements.servicesIncluded")}
-              value={<p className="whitespace-pre-wrap">{agreement.servicesIncluded}</p>}
-            />
+          <p className="text-sm font-semibold text-gray-700">{t("serviceAgreements.clientPreview")}: {agreement.canonicalPreview?.title}</p>
+          {["sent", "signed", "cancelled"].includes(agreement.status) && !agreement.currentIssueId && (
+            <p className="text-xs text-amber-700">{t("serviceAgreements.legacyNoIssue")}</p>
           )}
-          <AddOnSnapshotList items={agreement.acceptedProposalAddOnSnapshots} audience="owner" showPricing />
-          {agreement.priceSummary && (
-            <Detail label={t("serviceAgreements.priceSummary")} value={agreement.priceSummary} />
-          )}
-          {agreement.billingSchedule && (
-            <Detail
-              label={t("serviceAgreements.billingSchedule")}
-              value={agreement.billingSchedule}
-            />
-          )}
-          {agreement.paymentTerms && (
-            <Detail label={t("serviceAgreements.paymentTerms")} value={agreement.paymentTerms} />
-          )}
-          {agreement.scopeOfWork && (
-            <Detail
-              label={t("serviceAgreements.scopeOfWork")}
-              value={<p className="whitespace-pre-wrap">{agreement.scopeOfWork}</p>}
-            />
-          )}
-          {agreement.specialInstructions && (
-            <Detail
-              label={t("serviceAgreements.specialInstructions")}
-              value={<p className="whitespace-pre-wrap">{agreement.specialInstructions}</p>}
-            />
-          )}
-          {agreement.exceptions && (
-            <Detail
-              label={t("serviceAgreements.exceptions")}
-              value={<p className="whitespace-pre-wrap">{agreement.exceptions}</p>}
-            />
-          )}
-          {agreement.terms && (
-            <Detail
-              label={t("serviceAgreements.terms")}
-              value={<p className="whitespace-pre-wrap">{agreement.terms}</p>}
-            />
-          )}
-          {agreement.body && (
-            <Detail
-              label={t("serviceAgreements.body")}
-              value={
-                <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
-                  <p className="whitespace-pre-wrap text-sm leading-6 text-gray-700">{agreement.body}</p>
-                </div>
-              }
-            />
-          )}
+          {agreement.canonicalPreview && <AgreementContentView content={agreement.canonicalPreview} audience="owner" />}
           {agreement.notes && (
             <Detail
-              label={t("common.notes")}
+              label={t("serviceAgreements.internalNotes")}
               value={<p className="whitespace-pre-wrap">{agreement.notes}</p>}
             />
           )}
@@ -623,6 +532,11 @@ export function ServiceAgreementCard({
               {t("serviceAgreements.edit")}
             </button>
           )}
+          {agreement.status === "sent" && (
+            <button type="button" onClick={() => handleAction("change")} disabled={actionLoading !== null} className="btn-secondary text-sm">
+              {t("serviceAgreements.makeChanges")}
+            </button>
+          )}
           {agreement.status === "draft" && (
             <button
               type="button"
@@ -634,7 +548,7 @@ export function ServiceAgreementCard({
               {actionLoading === "ready" ? t("common.saving") : t("serviceAgreements.markReady")}
             </button>
           )}
-          {(agreement.status === "draft" || agreement.status === "ready") && (
+          {["draft", "ready", "sent"].includes(agreement.status) && (
             <AsyncButton
               type="button"
               onClick={() => handleAction("sent")}
@@ -644,7 +558,7 @@ export function ServiceAgreementCard({
               className="btn-primary flex items-center gap-2 text-sm"
             >
               <Send aria-hidden="true" className="h-4 w-4" />
-              {t("serviceAgreements.send")}
+              {agreement.status === "sent" ? t("serviceAgreements.resendUnchanged") : t("serviceAgreements.send")}
             </AsyncButton>
           )}
           {(agreement.status === "sent" || (agreement.status === "signed" && !agreement.signedAt)) && (

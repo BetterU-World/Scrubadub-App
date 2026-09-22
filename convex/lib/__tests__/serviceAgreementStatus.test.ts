@@ -9,6 +9,8 @@ describe("service agreement presentation status", () => {
     expect(getServiceAgreementPresentationStatus({ status: "sent" })).toBe("sent");
     expect(getServiceAgreementPresentationStatus({ status: "signed" })).toBe("acknowledged");
     expect(getServiceAgreementPresentationStatus({ status: "signed", clientRespondedAt: 1 })).toBe("acknowledged");
+    expect(getServiceAgreementPresentationStatus({ status: "signed", acknowledgedAt: 1 })).toBe("acknowledged");
+    expect(getServiceAgreementPresentationStatus({ status: "signed", acknowledgedAt: 1, signedAt: 2 })).toBe("signed_received");
     expect(getServiceAgreementPresentationStatus({ status: "signed", signedAt: 1 })).toBe("signed_received");
     expect(getServiceAgreementPresentationStatus({ status: "cancelled" })).toBe("cancelled");
   });

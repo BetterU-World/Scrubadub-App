@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { requireVerifiedClientSession } from "../lib/sessionAuth";
 import { companyAddOnSelectionVersion } from "../lib/companyAddOnSelection";
 import { isClientVisibleProposal } from "../lib/clientProposalVisibility";
+import { activeServiceAgreementIssue } from "../lib/serviceAgreementIssuedContent";
 import {
   AUTHENTICATED_REQUEST_SERVICES,
   AUTHENTICATED_REQUEST_TIME_WINDOWS,
@@ -199,22 +200,27 @@ export const getClientDocuments = query({
           providerName: content?.company.companyName ?? providerName(context, proposal),
           };
         }))).filter(Boolean),
-      agreements: agreements
+      agreements: (await Promise.all(agreements
         .filter((agreement: any) =>
           ["sent", "signed", "cancelled"].includes(agreement.status),
         )
         .sort((a: any, b: any) => b.updatedAt - a.updatedAt)
-        .map((agreement: any) => ({
-          _id: agreement._id,
-          title: agreement.title,
-          status: agreement.status,
-          effectiveStartDate: agreement.effectiveStartDate,
-          renewalDate: agreement.renewalDate,
-          serviceFrequency: agreement.serviceFrequency,
-          contractAmountCents: agreement.contractAmountCents,
-          declinedAt: agreement.declinedAt,
-          providerName: providerName(context, agreement),
-        })),
+        .map(async (agreement: any) => {
+          const issue = await activeServiceAgreementIssue(ctx, agreement);
+          if (agreement.currentIssueId && !issue) return null;
+          const content = issue?.content ?? agreement;
+          return {
+            _id: agreement._id,
+            title: content.title,
+            status: agreement.status,
+            effectiveStartDate: content.effectiveStartDate,
+            renewalDate: content.renewalDate,
+            serviceFrequency: content.serviceFrequency,
+            contractAmountCents: content.contractAmountCents,
+            declinedAt: agreement.declinedAt,
+            providerName: issue ? content.companyName : providerName(context, agreement),
+          };
+        }))).filter(Boolean),
     };
   },
 });
@@ -342,7 +348,22 @@ async function requestLinkedRecords(ctx: any, request: any) {
     (job, index, all) =>
       all.findIndex((item) => item._id === job._id) === index,
   );
-  return { proposals, agreements, jobs, scheduleProposals };
+  const visibleAgreements = (await Promise.all(agreements
+    .filter((agreement: any) =>
+      agreement.companyId === request.companyId &&
+      agreement.clientRelationshipId === request.clientRelationshipId &&
+      ["sent", "signed", "cancelled"].includes(agreement.status))
+    .map(async (agreement: any) => {
+      if (!agreement.currentIssueId) return agreement;
+      return await activeServiceAgreementIssue(ctx, agreement) ? agreement : null;
+    })))
+    .filter(Boolean);
+  return {
+    proposals,
+    agreements: visibleAgreements,
+    jobs,
+    scheduleProposals,
+  };
 }
 
 function projectClientRequest(context: any, request: any, linked: any) {
@@ -590,16 +611,20 @@ export const getClientRequestDetail = query({
           if (item.currentIssueId && !content) return null;
           return { _id: item._id, title: content?.proposal.title ?? item.title, status: item.status };
         }))).filter(Boolean),
-        agreements: linked.agreements
+        agreements: (await Promise.all(linked.agreements
           .filter((item: any) =>
             ["sent", "signed", "cancelled"].includes(item.status),
           )
-          .map((item: any) => ({
-            _id: item._id,
-            title: item.title,
-            status: item.status,
-            declinedAt: item.declinedAt,
-          })),
+          .map(async (item: any) => {
+            const issue = await activeServiceAgreementIssue(ctx, item);
+            if (item.currentIssueId && !issue) return null;
+            return {
+              _id: item._id,
+              title: issue?.content.title ?? item.title,
+              status: item.status,
+              declinedAt: item.declinedAt,
+            };
+          }))).filter(Boolean),
       },
     };
   },

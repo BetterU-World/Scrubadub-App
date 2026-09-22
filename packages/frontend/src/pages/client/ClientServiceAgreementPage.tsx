@@ -11,29 +11,9 @@ import { CheckCircle, XCircle } from "lucide-react";
 import { ClientPortalShell } from "@/components/client/ClientPortalShell";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ServiceAgreementStatusBadge } from "@/components/ui/ServiceAgreementStatusBadge";
-import { AddOnSnapshotList } from "@/components/AddOnSnapshotList";
+import { AgreementContentView } from "../../components/AgreementContentView";
 import { PageBack } from "@/components/ui/PageBack";
 import { AsyncButton } from "@/components/ui/AsyncButton";
-
-function formatCents(cents: number | undefined, fallback: string) {
-  if (cents == null) return fallback;
-  return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD" }).format(cents / 100);
-}
-
-function formatDate(date: string | undefined, fallback: string) {
-  if (!date) return fallback;
-  return new Date(`${date}T00:00:00`).toLocaleDateString();
-}
-
-function Detail({ label, value }: { label: string; value?: string | null }) {
-  if (!value) return null;
-  return (
-    <div>
-      <p className="text-xs font-medium text-gray-500">{label}</p>
-      <p className="mt-1 whitespace-pre-wrap break-words text-sm text-gray-900">{value}</p>
-    </div>
-  );
-}
 
 export function ClientServiceAgreementPage() {
   const { t } = useTranslation();
@@ -68,12 +48,12 @@ export function ClientServiceAgreementPage() {
     );
   }
 
-  if (!agreement) {
+  if (!agreement || agreement.unavailable) {
     return (
       <ClientPortalShell onSignOut={signOut} contentClassName="max-w-3xl">
         <PageBack href="/client/home" label={t("navigation.backToClientHome")} className="mb-4" />
         <div className="card py-12 text-center">
-          <h1 className="text-xl font-semibold text-gray-900">{t("clientAgreements.notFound")}</h1>
+          <h1 className="text-xl font-semibold text-gray-900">{agreement?.unavailable ? t("clientAgreements.updatedUnavailable") : t("clientAgreements.notFound")}</h1>
         </div>
       </ClientPortalShell>
     );
@@ -84,7 +64,7 @@ export function ClientServiceAgreementPage() {
     setLoadingAction("accept");
     setError("");
     try {
-      await acceptAgreement({ clientUserId, sessionToken, agreementId: agreement._id });
+      await acceptAgreement({ clientUserId, sessionToken, agreementId: agreement._id, issueId: agreement.issueId ?? undefined });
     } catch (err: any) {
       setError(err.message || t("clientAgreements.actionFailed"));
     } finally {
@@ -99,6 +79,7 @@ export function ClientServiceAgreementPage() {
         clientUserId,
         sessionToken,
         agreementId: agreement._id,
+        issueId: agreement.issueId ?? undefined,
         note: note.trim() || undefined,
       });
       setConfirmDecline(false);
@@ -136,38 +117,11 @@ export function ClientServiceAgreementPage() {
             )}
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Detail label={t("serviceAgreements.clientName")} value={agreement.clientName} />
-            <Detail label={t("serviceAgreements.propertyAddress")} value={agreement.propertyAddress} />
-            <Detail
-              label={t("serviceAgreements.frequency")}
-              value={agreement.serviceFrequency ? t(`leadFrequencies.${agreement.serviceFrequency}`) : undefined}
-            />
-            <Detail
-              label={t("serviceAgreements.contractAmount")}
-              value={agreement.priceSummary || formatCents(agreement.contractAmountCents, "")}
-            />
-            <Detail label={t("serviceAgreements.billingSchedule")} value={agreement.billingSchedule} />
-            <Detail
-              label={t("serviceAgreements.effectiveStartDate")}
-              value={formatDate(agreement.effectiveStartDate, "")}
-            />
-          </div>
-
-          <Detail label={t("serviceAgreements.servicesIncluded")} value={agreement.servicesIncluded} />
-          <Detail label={t("serviceAgreements.specialInstructions")} value={agreement.specialInstructions} />
-          <Detail label={t("serviceAgreements.exceptions")} value={agreement.exceptions} />
-
-          <AddOnSnapshotList items={agreement.committedAddOns} audience="client" showPricing />
-
-          {agreement.body && (
-            <div className="border-t border-gray-100 pt-4">
-              <p className="text-xs font-semibold uppercase text-gray-500">{t("serviceAgreements.body")}</p>
-              <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 p-4">
-                <p className="whitespace-pre-wrap break-words text-sm leading-6 text-gray-700">{agreement.body}</p>
-              </div>
-            </div>
+          {agreement.externalSignedReceiptWithoutIssue && (
+            <p className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">{t("clientAgreements.externalUnlinked")}</p>
           )}
+
+          <AgreementContentView content={agreement} audience="client" />
         </section>
 
         <section className="card space-y-4">

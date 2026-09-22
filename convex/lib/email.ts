@@ -292,11 +292,11 @@ export function renderServiceAgreementEmail(args: ServiceAgreementEmailArgs) {
 
 export async function sendServiceAgreementEmail(
   args: ServiceAgreementEmailArgs
-): Promise<boolean> {
+): Promise<{ accepted: boolean; providerMessageId?: string }> {
   const resend = getResendClient();
   try {
     const rendered = renderServiceAgreementEmail(args);
-    const { error } = await resend.emails.send({
+    const { data, error } = await resend.emails.send({
       ...getOperationalEmailHeaders({ companyName: args.companyName, replyTo: args.replyTo }),
       to: args.email,
       ...rendered,
@@ -304,12 +304,12 @@ export async function sendServiceAgreementEmail(
 
     if (error) {
       console.error("[email] Failed to send service agreement email:", error);
-      return false;
+      return { accepted: false };
     }
-    return true;
+    return { accepted: true, providerMessageId: data?.id };
   } catch (err) {
     console.error("[email] Error sending service agreement email:", err);
-    return false;
+    return { accepted: false };
   }
 }
 

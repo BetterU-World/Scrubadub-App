@@ -10,6 +10,7 @@ import {
 } from "../lib/documentMergeFields";
 import { copyAcceptedProposalAddOnSnapshots, formatAgreementAddOnLines } from "../lib/acceptedProposalAddOnSnapshots";
 import { calculateProposalTotals } from "../lib/proposalAddOnLineItems";
+import { activeServiceAgreementIssue, assertAgreementPriceConsistency, buildServiceAgreementIssueContent, renderStructuredAgreementBody } from "../lib/serviceAgreementIssuedContent";
 
 const agreementFields = {
   title: v.string(),
@@ -176,6 +177,21 @@ async function getClientOwnedAgreement(ctx: any, clientUser: any, agreementId: a
   return { clientUser, agreement };
 }
 
+async function assertCurrentClientIssue(ctx: any, agreement: any, renderedIssueId: any) {
+  if (!agreement.currentIssueId) {
+    if (renderedIssueId) throw new Error("This agreement has been updated; reload before responding");
+    return; // Legacy sent agreement, with no invented historical issue.
+  }
+  if (renderedIssueId !== agreement.currentIssueId) {
+    throw new Error("This agreement has been updated; reload before responding");
+  }
+  const issue = await ctx.db.get(agreement.currentIssueId);
+  if (!issue || issue.agreementId !== agreement._id || issue.companyId !== agreement.companyId ||
+    !issue.issuedAt || issue.withdrawnAt) {
+    throw new Error("This agreement is no longer available for response");
+  }
+}
+
 async function notifyOwnerOfAgreementResponse(
   ctx: any,
   agreement: any,
@@ -276,6 +292,7 @@ export const createDraftFromAcceptedProposal = mutation({
       proposal.serviceFrequency ?? (request as any).estimatedFrequency ?? undefined;
     const specialInstructions = firstText(proposal.notes);
     const exceptions = "None specified";
+    const templateBody = template?.body ?? FALLBACK_SERVICE_AGREEMENT_TEMPLATE;
     const mergeValues = await buildServiceAgreementMergeValues(ctx, companyId, {
       clientName,
       propertyAddress,
@@ -286,10 +303,12 @@ export const createDraftFromAcceptedProposal = mutation({
       servicesIncluded,
       specialInstructions,
       exceptions,
+      scopeOfWork: proposal.scopeOfWork,
+      paymentTerms: billingSchedule,
       addOnLineItems: formatAgreementAddOnLines(snapshots),
-    });
+    }, new Date(now));
     const body = renderDocumentTemplate(
-      template?.body ?? FALLBACK_SERVICE_AGREEMENT_TEMPLATE,
+      templateBody,
       mergeValues
     );
     const agreementId = await (ctx.db as any).insert("serviceAgreements", {
@@ -299,6 +318,10 @@ export const createDraftFromAcceptedProposal = mutation({
       clientRequestId: proposal.clientRequestId,
       commercialAccountId: account?._id,
       templateId: template?._id,
+      templateNameAtGeneration: template?.name ?? "SCRUB default service agreement",
+      templateVersionAtGeneration: template?.version,
+      templateBody,
+      contentMode: "structured",
       title: `${proposal.businessName || proposal.clientName} Service Agreement`,
       status: "draft",
       agreementType: "commercial_cleaning",
@@ -341,12 +364,16 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const { agreement } = await getOwnedAgreement(ctx, args.sessionToken, args.userId, args.agreementId);
-    if (agreement.status === "signed" || agreement.status === "cancelled") {
-      throw new Error("Signed or cancelled agreements cannot be edited");
+    if (!["draft", "ready"].includes(agreement.status)) {
+      throw new Error("Make changes before editing a sent agreement; signed or cancelled agreements cannot be edited");
     }
-
+    if (agreement.pendingDeliveryAttemptId) throw new Error("An agreement delivery attempt is still pending");
+    const patch = buildAgreementPatch(args);
+    if (agreement.contentMode === "structured") {
+      patch.body = await renderStructuredAgreementBody(ctx, { ...agreement, ...patch, body: agreement.body });
+    }
     await ctx.db.patch(args.agreementId, {
-      ...buildAgreementPatch(args),
+      ...patch,
       updatedAt: Date.now(),
     });
   },
@@ -357,8 +384,8 @@ export const markReady = mutation({
     sessionToken: v.string(), agreementId: v.id("serviceAgreements") },
   handler: async (ctx, args) => {
     const { agreement } = await getOwnedAgreement(ctx, args.sessionToken, args.userId, args.agreementId);
-    if (agreement.status === "signed" || agreement.status === "cancelled") {
-      throw new Error("Signed or cancelled agreements cannot be marked ready");
+    if (!["draft", "ready"].includes(agreement.status) || agreement.pendingDeliveryAttemptId) {
+      throw new Error("Only an editable agreement can be marked ready");
     }
     const now = Date.now();
     await (ctx.db as any).patch(args.agreementId, {
@@ -377,12 +404,58 @@ export const markSent = mutation({
     if (agreement.status === "signed" || agreement.status === "cancelled") {
       throw new Error("Signed or cancelled agreements cannot be marked sent");
     }
+    if (agreement.pendingDeliveryAttemptId) throw new Error("An agreement delivery attempt is still pending");
     const now = Date.now();
+    let issue: any = agreement.currentIssueId ? await ctx.db.get(agreement.currentIssueId) : null;
+    if (agreement.currentIssueId && (!issue || issue.agreementId !== agreement._id ||
+      issue.companyId !== agreement.companyId || !issue.issuedAt || issue.withdrawnAt)) {
+      throw new Error("Active agreement issue is invalid");
+    }
+    if (!issue) {
+      assertAgreementPriceConsistency(agreement);
+      const latest = await ctx.db.query("serviceAgreementIssues")
+        .withIndex("by_agreement", (q) => q.eq("agreementId", agreement._id)).order("desc").first();
+      const issueId = await ctx.db.insert("serviceAgreementIssues", {
+        companyId: agreement.companyId, agreementId: agreement._id,
+        issueNumber: (latest?.issueNumber ?? 0) + 1,
+        content: await buildServiceAgreementIssueContent(ctx, agreement),
+        templateId: agreement.templateId,
+        templateName: agreement.templateNameAtGeneration,
+        templateVersion: agreement.templateVersionAtGeneration,
+        preparedAt: now, issuedAt: now,
+      });
+      issue = await ctx.db.get(issueId);
+    }
+    if (!issue) throw new Error("Agreement issue could not be recorded");
+    await ctx.db.insert("transactionalDocumentDeliveryAttempts", {
+      companyId: agreement.companyId, documentKind: "service_agreement",
+      documentId: String(agreement._id), issueId: String(issue._id),
+      channel: "owner_reported_outside_send", attemptedAt: now,
+      resultAt: now, result: "owner_reported",
+    });
     await ctx.db.patch(args.agreementId, {
       status: "sent",
       sentAt: agreement.sentAt ?? now,
+      currentIssueId: issue._id,
       updatedAt: now,
     });
+  },
+});
+
+export const returnToDraft = mutation({
+  args: { userId: v.id("users"), sessionToken: v.string(), agreementId: v.id("serviceAgreements") },
+  handler: async (ctx, args) => {
+    const { agreement } = await getOwnedAgreement(ctx, args.sessionToken, args.userId, args.agreementId);
+    if (agreement.status !== "sent") throw new Error("Only sent agreements can be changed");
+    if (agreement.pendingDeliveryAttemptId) throw new Error("An agreement delivery attempt is still pending");
+    const now = Date.now();
+    if (agreement.currentIssueId) {
+      const issue: any = await ctx.db.get(agreement.currentIssueId);
+      if (!issue || issue.agreementId !== agreement._id || issue.companyId !== agreement.companyId ||
+        !issue.issuedAt || issue.withdrawnAt) throw new Error("Active agreement issue is invalid");
+      await ctx.db.patch(issue._id, { withdrawnAt: now });
+    }
+    await ctx.db.patch(agreement._id, { status: "draft", currentIssueId: undefined, sentAt: undefined, readyAt: undefined, updatedAt: now });
   },
 });
 
@@ -394,10 +467,17 @@ export const markSigned = mutation({
     if (agreement.status === "cancelled") {
       throw new Error("Cancelled agreements cannot be signed");
     }
+    if (agreement.pendingDeliveryAttemptId) throw new Error("An agreement delivery attempt is still pending");
     const now = Date.now();
+    if (agreement.currentIssueId && !await activeServiceAgreementIssue(ctx, agreement)) {
+      throw new Error("Active agreement issue is invalid");
+    }
     await ctx.db.patch(args.agreementId, {
       status: "signed",
       signedAt: agreement.signedAt ?? now,
+      signedReceivedIssueId: agreement.currentIssueId,
+      signedReceivedRecordedByUserId: args.userId,
+      signedReceivedSource: "owner_reported_external",
       updatedAt: now,
     });
   },
@@ -411,6 +491,7 @@ export const markCancelled = mutation({
     if (agreement.status === "signed") {
       throw new Error("Signed agreements cannot be cancelled");
     }
+    if (agreement.pendingDeliveryAttemptId) throw new Error("An agreement delivery attempt is still pending");
     const now = Date.now();
     await ctx.db.patch(args.agreementId, {
       status: "cancelled",
@@ -425,6 +506,7 @@ export const clientAccept = mutation({
     clientUserId: v.id("clientUsers"),
     sessionToken: v.string(),
     agreementId: v.id("serviceAgreements"),
+    issueId: v.optional(v.id("serviceAgreementIssues")),
   },
   handler: async (ctx, args) => {
     const clientUser = await requireVerifiedClientSession(ctx, args.sessionToken, args.clientUserId);
@@ -436,11 +518,15 @@ export const clientAccept = mutation({
     if (agreement.status !== "sent") {
       throw new Error("This agreement is not ready for response");
     }
+    await assertCurrentClientIssue(ctx, agreement, args.issueId);
 
     const now = Date.now();
     await ctx.db.patch(args.agreementId, {
       status: "signed",
       clientRespondedAt: now,
+      acknowledgedAt: now,
+      acknowledgedIssueId: agreement.currentIssueId,
+      acknowledgedByClientUserId: clientUser._id,
       updatedAt: now,
     });
 
@@ -459,6 +545,7 @@ export const clientDecline = mutation({
     clientUserId: v.id("clientUsers"),
     sessionToken: v.string(),
     agreementId: v.id("serviceAgreements"),
+    issueId: v.optional(v.id("serviceAgreementIssues")),
     note: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -471,6 +558,7 @@ export const clientDecline = mutation({
     if (agreement.status !== "sent") {
       throw new Error("This agreement is not ready for response");
     }
+    await assertCurrentClientIssue(ctx, agreement, args.issueId);
 
     const now = Date.now();
     await ctx.db.patch(args.agreementId, {
@@ -479,6 +567,8 @@ export const clientDecline = mutation({
       cancelledAt: agreement.cancelledAt ?? now,
       clientResponseNote: cleanNote(args.note),
       clientRespondedAt: now,
+      declinedIssueId: agreement.currentIssueId,
+      declinedByClientUserId: clientUser._id,
       updatedAt: now,
     });
 
