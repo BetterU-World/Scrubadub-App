@@ -13,6 +13,7 @@ export type ServiceAgreementStatusSource = {
   readyAt?: number;
   sentAt?: number;
   signedAt?: number;
+  acknowledgedAt?: number;
   clientRespondedAt?: number;
   cancelledAt?: number;
   declinedAt?: number;
@@ -24,7 +25,7 @@ export function getServiceAgreementPresentationStatus(
   if (!agreement) return "not_created";
   if (agreement.declinedAt != null) return "declined";
   if (agreement.signedAt != null) return "signed_received";
-  if (agreement.status === "signed" || agreement.clientRespondedAt != null) return "acknowledged";
+  if (agreement.acknowledgedAt != null || agreement.status === "signed" || agreement.clientRespondedAt != null) return "acknowledged";
   if (agreement.status === "cancelled" || agreement.cancelledAt != null) return "cancelled";
   if (agreement.status === "sent" || agreement.sentAt != null) return "sent";
   if (agreement.status === "ready" || agreement.readyAt != null) return "ready";

@@ -2,6 +2,7 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { bedroomsValidator } from "./lib/propertyBedrooms";
 import { proposalIssueContentValidator } from "./lib/proposalIssueContent";
+import { serviceAgreementIssueContentValidator } from "./lib/serviceAgreementIssuedContent";
 import {
   securityEventTypeValidator,
   securityMetadataValidator,
@@ -1492,6 +1493,7 @@ export default defineSchema({
     resultAt: v.optional(v.number()),
     result: v.union(v.literal("pending"), v.literal("provider_accepted"), v.literal("failed"), v.literal("unknown"), v.literal("owner_reported")),
     errorCategory: v.optional(v.string()),
+    providerMessageId: v.optional(v.string()),
   })
     .index("by_document", ["documentKind", "documentId", "attemptedAt"]),
 
@@ -1646,6 +1648,10 @@ export default defineSchema({
     clientRequestId: v.optional(v.id("clientRequests")),
     commercialAccountId: v.optional(v.id("commercialAccounts")),
     templateId: v.optional(v.id("documentTemplates")),
+    templateNameAtGeneration: v.optional(v.string()),
+    templateVersionAtGeneration: v.optional(v.number()),
+    templateBody: v.optional(v.string()),
+    contentMode: v.optional(v.literal("structured")),
     title: v.string(),
     status: v.union(
       v.literal("draft"),
@@ -1713,6 +1719,16 @@ export default defineSchema({
     clientRespondedAt: v.optional(v.number()),
     declinedAt: v.optional(v.number()),
     voidedAt: v.optional(v.number()),
+    currentIssueId: v.optional(v.id("serviceAgreementIssues")),
+    pendingDeliveryAttemptId: v.optional(v.id("transactionalDocumentDeliveryAttempts")),
+    acknowledgedAt: v.optional(v.number()),
+    acknowledgedIssueId: v.optional(v.id("serviceAgreementIssues")),
+    acknowledgedByClientUserId: v.optional(v.id("clientUsers")),
+    declinedIssueId: v.optional(v.id("serviceAgreementIssues")),
+    declinedByClientUserId: v.optional(v.id("clientUsers")),
+    signedReceivedIssueId: v.optional(v.id("serviceAgreementIssues")),
+    signedReceivedRecordedByUserId: v.optional(v.id("users")),
+    signedReceivedSource: v.optional(v.literal("owner_reported_external")),
   })
     .index("by_company", ["companyId"])
     .index("by_companyId_clientRelationshipId_updatedAt", [
@@ -1723,6 +1739,19 @@ export default defineSchema({
     .index("by_proposal", ["proposalId"])
     .index("by_clientRequest", ["clientRequestId"])
     .index("by_commercialAccount", ["commercialAccountId"]),
+
+  serviceAgreementIssues: defineTable({
+    companyId: v.id("companies"),
+    agreementId: v.id("serviceAgreements"),
+    issueNumber: v.number(),
+    content: serviceAgreementIssueContentValidator,
+    templateId: v.optional(v.id("documentTemplates")),
+    templateName: v.optional(v.string()),
+    templateVersion: v.optional(v.number()),
+    preparedAt: v.number(),
+    issuedAt: v.optional(v.number()),
+    withdrawnAt: v.optional(v.number()),
+  }).index("by_agreement", ["agreementId", "issueNumber"]),
 
   commercialAccounts: defineTable({
     companyId: v.id("companies"),

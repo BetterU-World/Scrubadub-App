@@ -38,6 +38,11 @@ export const SERVICE_AGREEMENT_MERGE_FIELDS: MergeFieldDefinition[] = [
   { key: "add_on_line_items", label: "Committed add-ons", category: "Agreement" },
   { key: "special_instructions", label: "Special instructions", category: "Agreement" },
   { key: "exceptions", label: "Exceptions", category: "Agreement" },
+  { key: "agreement_end_date", label: "Agreement end date", category: "Agreement" },
+  { key: "renewal_date", label: "Renewal date", category: "Agreement" },
+  { key: "scope_of_work", label: "Scope of work", category: "Agreement" },
+  { key: "payment_terms", label: "Payment terms", category: "Agreement" },
+  { key: "terms", label: "Additional terms", category: "Agreement" },
 ];
 
 export const FALLBACK_SERVICE_AGREEMENT_TEMPLATE = `# Service Agreement
@@ -103,14 +108,20 @@ export async function buildServiceAgreementMergeValues(
     priceSummary?: string;
     billingSchedule?: string;
     effectiveStartDate?: string;
+    effectiveEndDate?: string;
+    renewalDate?: string;
     servicesIncluded?: string;
+    scopeOfWork?: string;
+    paymentTerms?: string;
+    terms?: string;
     specialInstructions?: string;
     exceptions?: string;
     addOnLineItems?: string;
-  }
+  },
+  now?: Date,
 ) {
   const identity = await getCompanyIdentity(ctx, companyId);
-  const companyValues = buildCompanyMergeValues(identity);
+  const companyValues = buildCompanyMergeValues(identity, now);
   const price = value(values.priceSummary, "To be confirmed");
   const startDate = value(values.effectiveStartDate, "To be confirmed");
 
@@ -128,5 +139,10 @@ export async function buildServiceAgreementMergeValues(
     add_on_line_items: value(values.addOnLineItems, "None"),
     special_instructions: value(values.specialInstructions, "None specified"),
     exceptions: value(values.exceptions, "None specified"),
+    agreement_end_date: value(values.effectiveEndDate),
+    renewal_date: value(values.renewalDate),
+    scope_of_work: value(values.scopeOfWork),
+    payment_terms: value(values.paymentTerms),
+    terms: value(values.terms),
   };
 }

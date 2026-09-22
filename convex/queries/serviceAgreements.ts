@@ -2,6 +2,7 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { requireVerifiedClientSession } from "../lib/sessionAuth";
 import { requireOwnerOrManagerCapability } from "../lib/sessionAuth";
+import { activeServiceAgreementIssue, buildServiceAgreementIssueContent } from "../lib/serviceAgreementIssuedContent";
 
 async function requireOwnerCompany(ctx: any, sessionToken: string, userId: any) {
   const user = await requireOwnerOrManagerCapability(
@@ -25,6 +26,8 @@ async function decorateAgreement(ctx: any, agreement: any) {
     : null;
   return {
     ...agreement,
+    canonicalPreview: (await activeServiceAgreementIssue(ctx, agreement))?.content ??
+      (agreement.currentIssueId ? null : await buildServiceAgreementIssueContent(ctx, agreement)),
     clientRelationship:
       relationship?.companyId === agreement.companyId
         ? {
@@ -114,44 +117,21 @@ async function clientRelationshipIds(ctx: any, clientUserId: any) {
 }
 
 async function clientAgreementPayload(ctx: any, agreement: any) {
-  const company = await ctx.db.get(agreement.companyId);
-  const site = await ctx.db
-    .query("companySites")
-    .withIndex("by_companyId", (q: any) => q.eq("companyId", agreement.companyId))
-    .first();
+  const issue = await activeServiceAgreementIssue(ctx, agreement);
+  if (agreement.currentIssueId && !issue) return null;
+  const content = issue?.content ?? await buildServiceAgreementIssueContent(ctx, agreement);
   return {
     _id: agreement._id,
-    companyName: company?.companyDisplayName ?? company?.name ?? "Your Cleaning Company",
-    companyEmail: site?.publicEmail ?? company?.contactEmail ?? null,
-    title: agreement.title,
+    ...content,
+    issueId: issue?._id ?? null,
     status: agreement.status,
-    clientName: agreement.clientName,
-    propertyAddress: agreement.propertyAddress,
-    servicesIncluded: agreement.servicesIncluded,
-    serviceFrequency: agreement.serviceFrequency,
-    contractAmountCents: agreement.contractAmountCents,
-    priceSummary: agreement.priceSummary,
-    billingSchedule: agreement.billingSchedule,
-    effectiveStartDate: agreement.effectiveStartDate,
-    specialInstructions: agreement.specialInstructions,
-    exceptions: agreement.exceptions,
-    body: agreement.body,
     sentAt: agreement.sentAt,
     signedAt: agreement.signedAt,
+    externalSignedReceiptWithoutIssue: agreement.signedReceivedSource === "owner_reported_external" && !issue,
+    acknowledgedAt: agreement.acknowledgedAt,
     clientRespondedAt: agreement.clientRespondedAt,
     declinedAt: agreement.declinedAt,
     clientResponseNote: agreement.clientResponseNote,
-    committedAddOns: (agreement.acceptedProposalAddOnSnapshots ?? []).map((line: any) => ({
-      snapshotId: line.snapshotId,
-      name: line.name,
-      pricingMethod: line.pricingMethod,
-      unitPriceCents: line.unitPriceCents,
-      unitLabel: line.unitLabel ?? null,
-      quantity: line.quantity ?? null,
-      finalizedPriceCents: line.finalizedPriceCents ?? null,
-      lineTotalCents: line.lineTotalCents,
-      billingCadence: line.billingCadence,
-    })),
   };
 }
 
@@ -182,13 +162,14 @@ export const listForClient = query({
           (agreement: any) =>
             agreement.clientRelationshipId &&
             relationshipIds.has(String(agreement.clientRelationshipId)) &&
+            String(agreement.companyId) === String(companyId) &&
             ["sent", "signed", "cancelled"].includes(agreement.status)
         )
       );
     }
 
     agreements.sort((a, b) => (b.sentAt ?? b.updatedAt) - (a.sentAt ?? a.updatedAt));
-    return await Promise.all(agreements.map((agreement) => clientAgreementPayload(ctx, agreement)));
+    return (await Promise.all(agreements.map((agreement) => clientAgreementPayload(ctx, agreement)))).filter(Boolean);
   },
 });
 
@@ -204,7 +185,13 @@ export const getForClient = query({
     const agreement = await ctx.db.get(args.agreementId);
     if (!agreement || !agreement.clientRelationshipId) return null;
     if (!relationshipIds.has(String(agreement.clientRelationshipId))) return null;
-    if (!["sent", "signed", "cancelled"].includes(agreement.status)) return null;
+    const relationship = await ctx.db.get(agreement.clientRelationshipId);
+    if (!relationship || relationship.companyId !== agreement.companyId) return null;
+    if (!["sent", "signed", "cancelled"].includes(agreement.status)) {
+      const priorIssue = await ctx.db.query("serviceAgreementIssues")
+        .withIndex("by_agreement", (q) => q.eq("agreementId", agreement._id)).first();
+      return priorIssue ? { _id: agreement._id, unavailable: true } : null;
+    }
     return await clientAgreementPayload(ctx, agreement);
   },
 });

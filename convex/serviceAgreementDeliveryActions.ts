@@ -22,40 +22,47 @@ export const sendServiceAgreement = action({
       ctx, args.sessionToken, args.userId, "canManageSalesAndCommercial"
     );
     const ownerArgs = { companyId: owner.companyId, agreementId: args.agreementId };
-    const payload = await ctx.runQuery(
-      (internal as any).serviceAgreementDeliveryInternal.getAgreementForOwnerDelivery,
+    const baseUrl = appUrl();
+    const prepared = await ctx.runMutation(
+      (internal as any).serviceAgreementDeliveryInternal.prepareAgreementEmail,
       ownerArgs
     );
-
-    const email = payload.recipientEmail?.trim().toLowerCase();
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      throw new Error("Add a valid client email before sending this agreement");
-    }
-
     const next = `/client/service-agreements/${args.agreementId}`;
-    const viewUrl = `${appUrl()}/client/login?next=${encodeURIComponent(next)}`;
-    const sent = await sendServiceAgreementEmail({
-      email,
+    const viewUrl = `${baseUrl}/client/login?next=${encodeURIComponent(next)}`;
+    let delivery: { accepted: boolean; providerMessageId?: string } = { accepted: false };
+    try {
+      delivery = await sendServiceAgreementEmail({
+      email: prepared.recipientEmail,
       viewUrl,
-      companyName: payload.company.companyName,
-      companyLogoUrl: payload.company.companyLogoUrl ?? undefined,
-      companyEmail: payload.company.companyEmail ?? undefined,
-      replyTo: payload.company.replyTo ?? undefined,
-      companyPhone: payload.company.companyPhone ?? undefined,
-      clientName: payload.clientName,
-      language: payload.language,
-      agreement: payload.agreement,
-    });
-
-    if (!sent) {
-      throw new Error("The agreement email could not be sent. Please try again.");
+      companyName: prepared.content.companyName,
+      companyLogoUrl: prepared.content.companyLogoUrl ?? undefined,
+      companyEmail: prepared.content.companyEmail ?? undefined,
+      replyTo: prepared.replyTo ?? undefined,
+      companyPhone: prepared.content.companyPhone ?? undefined,
+      clientName: prepared.clientName,
+      language: prepared.language,
+      agreement: prepared.agreementEmailSummary,
+      });
+    } catch {
+      delivery = { accepted: false };
     }
-
-    const result = await ctx.runMutation(
-      (internal as any).serviceAgreementDeliveryInternal.markAgreementSent,
-      ownerArgs
-    );
-
-    return { success: true, sentAt: result.sentAt };
+    if (delivery.accepted) {
+      try {
+        const result = await ctx.runMutation(
+          (internal as any).serviceAgreementDeliveryInternal.finishAgreementEmail,
+          { ...ownerArgs, attemptId: prepared.attemptId, result: "provider_accepted", providerMessageId: delivery.providerMessageId }
+        );
+        return { success: true, sentAt: result.sentAt };
+      } catch {
+        try {
+          await ctx.runMutation((internal as any).serviceAgreementDeliveryInternal.finishAgreementEmail,
+            { ...ownerArgs, attemptId: prepared.attemptId, result: "unknown" });
+        } catch { /* Pending record remains for retry/reconciliation. */ }
+        throw new Error("The email provider accepted the agreement, but SCRUB could not confirm its final state. Retry may send a duplicate email.");
+      }
+    }
+    await ctx.runMutation((internal as any).serviceAgreementDeliveryInternal.finishAgreementEmail,
+      { ...ownerArgs, attemptId: prepared.attemptId, result: "failed" });
+    throw new Error("The agreement email could not be sent. Please try again.");
   },
 });
