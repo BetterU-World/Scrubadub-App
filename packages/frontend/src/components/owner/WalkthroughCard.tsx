@@ -80,6 +80,9 @@ type WalkthroughCardProps = {
   proposalId?: Id<"proposals">;
   compact?: boolean;
   allowCreate?: boolean;
+  proposalExists?: boolean;
+  proposalActionLoading?: boolean;
+  onProposalNextAction?: () => void;
   onToast?: (message: string, type: "success" | "error") => void;
 };
 
@@ -240,6 +243,9 @@ export function WalkthroughCard({
   proposalId,
   compact = false,
   allowCreate = false,
+  proposalExists = false,
+  proposalActionLoading = false,
+  onProposalNextAction,
   onToast,
 }: WalkthroughCardProps) {
   const { user, sessionToken } = useAuth();
@@ -1042,6 +1048,11 @@ export function WalkthroughCard({
               <button type="button" onClick={handleComplete} disabled={saving} className="btn-primary flex items-center gap-2 text-sm">
                 <Check className="h-4 w-4" />
                 {t("walkthroughs.markCompleted")}
+              </button>
+            )}
+            {onProposalNextAction && (walkthrough.status === "completed" || walkthrough.status === "proposal_created") && (
+              <button type="button" onClick={onProposalNextAction} disabled={proposalActionLoading} className="btn-primary w-full text-sm sm:w-auto">
+                {proposalExists ? t("proposals.open") : proposalActionLoading ? t("requests.creating") : t("proposals.create")}
               </button>
             )}
             <button type="button" onClick={handleArchive} disabled={saving} className="btn-danger flex items-center gap-2 text-sm">
