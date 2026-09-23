@@ -86,7 +86,7 @@ describe("proposal issued content", () => {
     expect(bodies[1]).toContain(token);
     await s.t.run((ctx) => ctx.db.patch(s.proposalId, { title: "Unreviewed database change", monthlyPriceCents: 99999 }));
     const docs = await s.t.query((api as any).queries.clientPortal.getClientDocuments, s.clientAuth);
-    expect(docs.proposals[0]).toMatchObject({ title: "Original Proposal", providerName: "Original Brand", monthlyPriceCents: 10000 });
+    expect(docs.proposals[0]).toMatchObject({ title: "Original Proposal", providerName: "Original Brand", monthlyPriceCents: 10000, monthlyTotalCents: 13000, basePriceOnly: false });
     expect((await s.t.action(delivery.getProposalByToken, { token })).proposal.title).toBe("Original Proposal");
   });
 
@@ -115,7 +115,21 @@ describe("proposal issued content", () => {
     await s.t.action(delivery.respondToProposal, { token: newToken, decision: "accepted" });
     const accepted = await s.t.run((ctx) => ctx.db.get(s.proposalId));
     expect(accepted).toMatchObject({ status: "accepted", responseIssueId: state.issues[1]._id, responseSource: "client_token" });
+    await s.t.run((ctx) => ctx.db.patch(s.proposalId, {
+      currentIssueId: undefined, title: "Changed working title", monthlyPriceCents: 99999, addOnLineItems: [],
+    }));
+    expect((await s.t.query((api as any).queries.clientPortal.getClientDocuments, s.clientAuth)).proposals[0])
+      .toMatchObject({ title: "Revised Proposal", monthlyPriceCents: 20000, monthlyTotalCents: 23000, basePriceOnly: false });
     await expect(s.t.mutation(proposals.returnProposalToDraft, { ...s.ownerAuth, proposalId: s.proposalId })).rejects.toThrow("Only sent");
+  });
+
+  it("shows an issued proposal without add-ons at its unchanged total", async () => {
+    const s = await setup();
+    await s.t.run((ctx) => ctx.db.patch(s.proposalId, { addOnLineItems: [] }));
+    mockEmail();
+    await s.t.action(delivery.sendProposal, { ...s.ownerAuth, proposalId: s.proposalId });
+    const docs = await s.t.query((api as any).queries.clientPortal.getClientDocuments, s.clientAuth);
+    expect(docs.proposals[0]).toMatchObject({ monthlyPriceCents: 10000, monthlyTotalCents: 10000, basePriceOnly: false });
   });
 
   it("records decline against the issue and keeps owner-reported events distinct", async () => {
@@ -212,7 +226,8 @@ describe("proposal issued content", () => {
     expect(state.proposal!.responseIssueId).toBeUndefined();
     expect(state.issues).toHaveLength(0);
     const docs = await s.t.query((api as any).queries.clientPortal.getClientDocuments, s.clientAuth);
-    expect(docs.proposals).toMatchObject([{ status: "accepted", title: "Original Proposal" }]);
+    expect(docs.proposals).toMatchObject([{ status: "accepted", title: "Original Proposal", monthlyPriceCents: 10000, basePriceOnly: true }]);
+    expect(docs.proposals[0].monthlyTotalCents).toBeUndefined();
   });
 
   it("recovers a stale pending provider attempt as unknown before retrying its same issue", async () => {

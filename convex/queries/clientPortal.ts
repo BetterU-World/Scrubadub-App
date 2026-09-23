@@ -107,8 +107,11 @@ function providerName(context: any, record: any) {
 }
 
 async function issuedProposalContent(ctx: any, proposal: any) {
-  if (!proposal.currentIssueId) return null;
-  const issue = await ctx.db.get(proposal.currentIssueId);
+  const issueId = ["accepted", "declined"].includes(proposal.status)
+    ? proposal.responseIssueId ?? proposal.currentIssueId
+    : proposal.currentIssueId;
+  if (!issueId) return null;
+  const issue = await ctx.db.get(issueId);
   return issue && issue.proposalId === proposal._id && issue.companyId === proposal.companyId && !issue.withdrawnAt && issue.issuedAt
     ? issue.content : null;
 }
@@ -187,7 +190,7 @@ export const getClientDocuments = query({
         .sort((a, b) => b.updatedAt - a.updatedAt)
         .map(async (proposal: any) => {
           const content = await issuedProposalContent(ctx, proposal);
-          if (proposal.currentIssueId && !content) return null;
+          if ((proposal.currentIssueId || proposal.responseIssueId) && !content) return null;
           return {
           _id: proposal._id,
           title: content?.proposal.title ?? proposal.title,
@@ -196,6 +199,9 @@ export const getClientDocuments = query({
           serviceFrequency: content ? content.proposal.serviceFrequency : proposal.serviceFrequency,
           monthlyPriceCents: content ? content.proposal.monthlyPriceCents : proposal.monthlyPriceCents,
           oneTimePriceCents: content ? content.proposal.oneTimePriceCents : proposal.oneTimePriceCents,
+          monthlyTotalCents: content?.proposal.totals.hasMonthlyPricing ? content.proposal.totals.monthlyTotalCents : undefined,
+          oneTimeTotalCents: content?.proposal.totals.hasOneTimePricing ? content.proposal.totals.oneTimeTotalCents : undefined,
+          basePriceOnly: !content && (proposal.addOnLineItems?.length ?? 0) > 0,
           status: proposal.status,
           providerName: content?.company.companyName ?? providerName(context, proposal),
           };
@@ -608,7 +614,7 @@ export const getClientRequestDetail = query({
         requestedAddOns: request.requestedAddOnSnapshots ?? [],
         proposals: (await Promise.all(linked.proposals.filter(isClientVisibleProposal).map(async (item: any) => {
           const content = await issuedProposalContent(ctx, item);
-          if (item.currentIssueId && !content) return null;
+          if ((item.currentIssueId || item.responseIssueId) && !content) return null;
           return { _id: item._id, title: content?.proposal.title ?? item.title, status: item.status };
         }))).filter(Boolean),
         agreements: (await Promise.all(linked.agreements
