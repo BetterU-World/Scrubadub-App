@@ -128,6 +128,8 @@ export async function buildServiceAgreementMergeValues(
   return {
     ...companyValues,
     client_name: value(values.clientName, "Client"),
+    // Existing QA templates may persist this spelling; keep their generated agreements renderable.
+    clientName: value(values.clientName, "Client"),
     property_address: value(values.propertyAddress, "To be confirmed"),
     service_frequency: value(values.serviceFrequency, "To be confirmed"),
     proposal_price: price,
