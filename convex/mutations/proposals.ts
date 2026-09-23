@@ -6,6 +6,7 @@ import { ensureClientRelationshipForLead } from "../lib/clientRelationships";
 import { assertProposalReadyForDelivery, newProposalLineItemId, normalizeProposalAddOnLine, validateProposalAddOnLines } from "../lib/proposalAddOnLineItems";
 import { proposalIssueContent } from "../lib/proposalIssueContent";
 import { safeProposalPayload } from "../proposalDeliveryInternal";
+import { notifyProposalDecision } from "../lib/proposalDecisionNotifications";
 
 const proposalFrequencyValidator = v.union(
   v.literal("one_time"),
@@ -265,6 +266,7 @@ export const markProposalAccepted = mutation({
       leadStage: "accepted",
       lastStageChangedAt: now,
     });
+    await notifyProposalDecision(ctx, proposal, "accepted", "owner_reported", args.userId);
   },
 });
 
@@ -352,5 +354,6 @@ export const markProposalDeclined = mutation({
       updatedAt: now,
     });
     await ctx.db.patch(proposal.clientRequestId, requestPatch);
+    await notifyProposalDecision(ctx, proposal, "declined", "owner_reported", args.userId);
   },
 });

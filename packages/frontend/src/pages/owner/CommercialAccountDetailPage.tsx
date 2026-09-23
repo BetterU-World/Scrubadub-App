@@ -526,6 +526,11 @@ export function CommercialAccountDetailPage() {
           </section>
 
           <div className="grid gap-3">
+            {!account.serviceAgreementId && account.sourceProposal?.status === "accepted" && account.sourceLead?._id && (
+              <Link href={`/requests/${account.sourceLead._id}#request-agreement`} className="btn-secondary text-sm">
+                {t("pipeline.actions.create_agreement")}
+              </Link>
+            )}
             <WalkthroughCard
               commercialAccountId={account._id}
               compact
@@ -534,6 +539,7 @@ export function CommercialAccountDetailPage() {
             <ServiceAgreementCard
               commercialAccountId={account._id}
               hideWhenMissing
+              accessManagementHref={account.sourceLead?._id ? `/requests/${account.sourceLead._id}#request-client-portal` : undefined}
               source={{
                 title: `${account.clientName} ${t("serviceAgreements.title")}`,
                 serviceFrequency: account.serviceFrequency,

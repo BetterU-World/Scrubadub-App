@@ -1123,6 +1123,8 @@ export default defineSchema({
       v.literal("shared_job_accepted"),
       v.literal("shared_job_rejected"),
       v.literal("new_client_request"),
+      v.literal("proposal_accepted"),
+      v.literal("proposal_declined"),
       v.literal("inspection_submitted"),
       v.literal("calendar_sync_alert"),
       v.literal("service_agreement_accepted"),

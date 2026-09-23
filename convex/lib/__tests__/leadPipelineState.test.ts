@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deriveLeadPipelineState, LEAD_STALE_AFTER_MS } from "../leadPipelineState";
+import { acceptedProposalAgreementAction, deriveLeadPipelineState, LEAD_STALE_AFTER_MS } from "../leadPipelineState";
 
 const NOW = 2_000_000_000_000;
 const base = (overrides: any = {}) => ({
@@ -84,8 +84,39 @@ describe("derived lead pipeline state", () => {
       proposals: [{ status: "accepted", updatedAt: NOW }],
       clientPortalStatus: "pending",
     }));
-    expect(state.stage).toBe("onboarding");
+    expect(state.stage).toBe("agreement");
     expect(state.linked).toMatchObject({ property: true, clientRelationship: true, proposal: true, clientPortal: "pending" });
-    expect(state.nextAction).toEqual({ key: "invite_client", hrefSuffix: "#request-client-portal" });
+    expect(state.nextAction).toEqual({ key: "create_agreement", hrefSuffix: "#request-agreement" });
+  });
+
+  it("maps each accepted-proposal agreement lifecycle without conflating acknowledgment and signed receipt", () => {
+    const cases = [
+      [undefined, "create_agreement"],
+      [{ status: "draft" }, "review_agreement"],
+      [{ status: "ready" }, "issue_agreement"],
+      [{ status: "sent" }, "await_client_acknowledgment"],
+      [{ status: "signed", acknowledgedAt: NOW }, "acknowledged_continue_setup"],
+      [{ status: "signed", signedAt: NOW }, "signed_received_continue_setup"],
+      [{ status: "cancelled", declinedAt: NOW }, "review_declined_agreement"],
+      [{ status: "cancelled" }, "review_cancelled_agreement"],
+      [{ status: "sent", sentAt: NOW }, "await_client_acknowledgment"],
+    ] as const;
+    for (const [agreement, key] of cases) {
+      expect(acceptedProposalAgreementAction(agreement, false, true).key).toBe(key);
+    }
+    expect(acceptedProposalAgreementAction({ status: "sent" }, false, false))
+      .toEqual({ key: "enable_client_access", hrefSuffix: "#request-client-portal" });
+    expect(acceptedProposalAgreementAction({ status: "signed", acknowledgedAt: NOW }, true, true).key)
+      .toBe("review_commercial_account");
+  });
+
+  it("keeps the agreement action after an account was created first and matches the accepted proposal", () => {
+    const state = deriveLeadPipelineState(base({
+      proposals: [{ _id: "accepted", status: "accepted", updatedAt: NOW }],
+      agreements: [{ proposalId: "older", status: "sent", updatedAt: NOW }],
+      commercialAccounts: [{ status: "active", updatedAt: NOW }],
+    }));
+    expect(state.stage).toBe("converted");
+    expect(state.nextAction.key).toBe("create_agreement");
   });
 });

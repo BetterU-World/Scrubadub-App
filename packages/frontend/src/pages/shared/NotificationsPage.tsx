@@ -84,7 +84,7 @@ export function NotificationsPage() {
                       {t("notifications.viewJob")}
                   </Link>
                 )}
-                {n.relatedClientRequestId && user.role !== "manager" && (
+                {n.relatedClientRequestId && (user.role === "owner" || user.canManageSalesAndCommercial) && (
                   <Link href={`/requests/${n.relatedClientRequestId}`} className="text-xs text-primary-600 hover:text-primary-700 whitespace-nowrap">
                       {t("notifications.viewRequest")}
                   </Link>

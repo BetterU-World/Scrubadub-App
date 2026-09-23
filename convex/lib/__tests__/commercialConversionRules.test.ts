@@ -135,6 +135,32 @@ describe("commercial conversion rules", () => {
     await expect(t.mutation((api as any).mutations.commercialAccounts.create, createArgs(s.ownerA, auth.sessionToken, foreign))).rejects.toThrow("Access denied");
   });
 
+  it.each(["account-first", "agreement-first"])("links %s creation without requiring acknowledgment or creating duplicates", async (order) => {
+    const t = backend();
+    const s = await seed(t);
+    const auth = await login(t);
+    const source = await requestAndProposal(t, s, { leadType: "commercial" });
+    const accountArgs = createArgs(s.ownerA, auth.sessionToken, source);
+    const agreementArgs = { userId: s.ownerA, sessionToken: auth.sessionToken, proposalId: source.proposalId };
+
+    let accountId: any;
+    let agreementId: any;
+    if (order === "account-first") {
+      accountId = await t.mutation((api as any).mutations.commercialAccounts.create, accountArgs);
+      agreementId = await t.mutation((api as any).mutations.serviceAgreements.createDraftFromAcceptedProposal, agreementArgs);
+    } else {
+      agreementId = await t.mutation((api as any).mutations.serviceAgreements.createDraftFromAcceptedProposal, agreementArgs);
+      accountId = await t.mutation((api as any).mutations.commercialAccounts.create, accountArgs);
+    }
+
+    expect(await t.mutation((api as any).mutations.commercialAccounts.create, accountArgs)).toBe(accountId);
+    expect(await t.mutation((api as any).mutations.serviceAgreements.createDraftFromAcceptedProposal, agreementArgs)).toBe(agreementId);
+    await t.run(async (ctx) => {
+      expect(await ctx.db.get(accountId)).toMatchObject({ sourceProposalId: source.proposalId });
+      expect(await ctx.db.get(agreementId)).toMatchObject({ proposalId: source.proposalId, commercialAccountId: accountId, status: "draft" });
+    });
+  });
+
   it("maps supported request classifications when creating properties and fails closed otherwise", async () => {
     const t = backend();
     const s = await seed(t);

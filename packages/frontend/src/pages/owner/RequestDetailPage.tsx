@@ -163,6 +163,7 @@ export function RequestDetailPage() {
   const createProposal = useMutation(
     (api as any).mutations.proposals.createProposalFromLead
   );
+  const createAgreement = useMutation((api as any).mutations.serviceAgreements.createDraftFromAcceptedProposal);
   const updateProposalMut = useMutation((api as any).mutations.proposals.updateProposal);
   const addCatalogAddOnLine = useMutation((api as any).mutations.proposals.addCatalogAddOnLine);
   const addCustomAddOnLine = useMutation((api as any).mutations.proposals.addCustomAddOnLine);
@@ -306,6 +307,7 @@ export function RequestDetailPage() {
 
   // Proposal state
   const [creatingProposal, setCreatingProposal] = useState(false);
+  const [creatingAgreement, setCreatingAgreement] = useState(false);
   const [selectedSourceWalkthroughId, setSelectedSourceWalkthroughId] = useState("");
   const [proposalExpanded, setProposalExpanded] = useState(false);
   const [savingProposal, setSavingProposal] = useState(false);
@@ -461,6 +463,21 @@ export function RequestDetailPage() {
     }));
     setAccountLoadedKey(key);
   }, [proposal, commercialAccount, request, accountLoadedKey]);
+
+  useEffect(() => {
+    const revealAgreement = () => {
+      if (window.location.hash === "#request-agreement") setProposalExpanded(true);
+    };
+    revealAgreement();
+    window.addEventListener("hashchange", revealAgreement);
+    return () => window.removeEventListener("hashchange", revealAgreement);
+  }, []);
+
+  useEffect(() => {
+    if (proposalExpanded && window.location.hash === "#request-agreement") {
+      requestAnimationFrame(() => document.getElementById("request-agreement")?.scrollIntoView({ block: "start" }));
+    }
+  }, [proposalExpanded, proposal?.status]);
 
   if (
     request === undefined ||
@@ -635,6 +652,26 @@ export function RequestDetailPage() {
   const openProposalSection = () => {
     setProposalExpanded(true);
     requestAnimationFrame(() => document.getElementById("request-proposal")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
+
+  const openAgreementSection = () => {
+    setProposalExpanded(true);
+    window.location.hash = "request-agreement";
+    requestAnimationFrame(() => document.getElementById("request-agreement")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
+
+  const handleCreateAgreement = async () => {
+    if (!proposal || proposal.status !== "accepted" || creatingAgreement) return;
+    setCreatingAgreement(true);
+    try {
+      await createAgreement({ userId: user!._id, sessionToken, proposalId: proposal._id });
+      openAgreementSection();
+      setToast({ message: t("serviceAgreements.created"), type: "success" });
+    } catch (err: any) {
+      setToast({ message: err.message || t("serviceAgreements.actionFailed"), type: "error" });
+    } finally {
+      setCreatingAgreement(false);
+    }
   };
 
   const handleCreateProposal = async (sourceWalkthroughId: Id<"walkthroughs">) => {
@@ -911,6 +948,15 @@ export function RequestDetailPage() {
               </span>
             )}
           </div>
+          {proposal?.status === "accepted" && ["#request-agreement", "#request-client-portal"].includes((request as any).pipeline.nextAction.hrefSuffix) && (
+            <button type="button" onClick={(request as any).pipeline.nextAction.key === "create_agreement" ? handleCreateAgreement :
+              (request as any).pipeline.nextAction.hrefSuffix === "#request-client-portal"
+                ? () => document.getElementById("request-client-portal")?.scrollIntoView({ behavior: "smooth", block: "start" })
+                : openAgreementSection}
+              disabled={creatingAgreement} className="btn-primary mt-3 text-sm">
+              {creatingAgreement ? t("common.saving") : t(`pipeline.actions.${(request as any).pipeline.nextAction.key === "await_client_acknowledgment" ? "review_agreement" : (request as any).pipeline.nextAction.key}`)}
+            </button>
+          )}
           <div className="mt-3 flex flex-wrap gap-2" aria-label={t("pipeline.linkedRecords")}>
             {Object.entries((request as any).pipeline.linked).filter(([, value]) => value && value !== "not_invited").map(([key]) => (
               <span key={key} className="rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-700">{t(`pipeline.links.${key}`)}</span>
@@ -1421,6 +1467,8 @@ export function RequestDetailPage() {
                 <ServiceAgreementCard
                   proposalId={proposal._id}
                   canCreate
+                  onInviteClient={canManageClients ? () => setShowClientInvite(true) : undefined}
+                  accessManagementHref={canManageClients && (request as any).clientRelationship ? `/clients/${(request as any).clientRelationship._id}` : undefined}
                   source={{
                     title: `${proposal.businessName || proposal.clientName} ${t("serviceAgreements.title")}`,
                     clientName:
@@ -1932,13 +1980,15 @@ export function RequestDetailPage() {
               <Link2 className="h-4 w-4 text-gray-500" />
               <h3 className="text-sm font-semibold text-gray-900">{t("requests.clientPortal.relationship")}</h3>
             </div>
-            {(request as any).clientRelationship ? (
+            {(request as any).clientRelationship && canManageClients ? (
               <a
                 href={`/clients/${(request as any).clientRelationship._id}`}
                 className="inline-flex max-w-full break-words rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100"
               >
                 {(request as any).clientRelationship.displayName}
               </a>
+            ) : (request as any).clientRelationship ? (
+              <p className="text-sm text-gray-700">{(request as any).clientRelationship.displayName}</p>
             ) : (
               <p className="text-sm text-gray-500">{t("requests.clientPortal.relationshipHelper")}</p>
             )}
@@ -1969,6 +2019,9 @@ export function RequestDetailPage() {
             )}
             {(request as any).clientPortalStatus === "active" && (
               <p className="text-xs text-green-700">{t("requests.clientPortal.existingAccount")}</p>
+            )}
+            {!canManageClients && (request as any).clientPortalStatus !== "active" && (
+              <p className="max-w-sm text-xs text-amber-700">{t("serviceAgreements.portalAccess.handoff")}</p>
             )}
           </div>
         </div>
