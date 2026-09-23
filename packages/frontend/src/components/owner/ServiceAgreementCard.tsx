@@ -300,6 +300,20 @@ export function ServiceAgreementCard({
   };
 
   const canEdit = agreement && ["draft", "ready"].includes(agreement.status);
+  const deliveryAttempt = agreement?.latestDeliveryAttempt;
+  const deliveryGuidanceKey = deliveryAttempt?.result === "failed"
+    ? "serviceAgreements.deliveryFailed"
+    : deliveryAttempt?.result === "unknown"
+      ? "serviceAgreements.deliveryUnknown"
+      : deliveryAttempt?.result === "pending"
+        ? "serviceAgreements.deliveryPending"
+        : agreement?.sentAt && deliveryAttempt?.channel === "owner_reported_outside_send" && deliveryAttempt.result === "owner_reported"
+          ? "serviceAgreements.outsideSendRecorded"
+          : agreement?.sentAt && deliveryAttempt?.channel === "email" && deliveryAttempt.result === "provider_accepted"
+            ? "serviceAgreements.afterSendGuidance"
+            : agreement?.sentAt
+              ? "serviceAgreements.deliveryUnverified"
+              : null;
 
   if (!agreement && hideWhenMissing) return null;
 
@@ -311,8 +325,8 @@ export function ServiceAgreementCard({
           <div>
             <h3 className="text-sm font-semibold text-gray-900">{t("serviceAgreements.title")}</h3>
             <p className="text-xs text-gray-500">{t("serviceAgreements.manualSigningNote")}</p>
-            {agreement?.sentAt && (
-              <p className="mt-2 max-w-2xl text-xs text-amber-700">{t("serviceAgreements.afterSendGuidance")}</p>
+            {deliveryGuidanceKey && (
+              <p className="mt-2 max-w-2xl text-xs text-amber-700">{t(deliveryGuidanceKey)}</p>
             )}
             {agreement?.clientRelationship && (
               <p className="mt-2 inline-flex rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
