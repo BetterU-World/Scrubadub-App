@@ -76,6 +76,28 @@ async function issue(s: Awaited<ReturnType<typeof setup>>) {
 }
 
 describe("service agreement issued content", () => {
+  it("projects the latest owner-visible delivery provenance without inferring it from sentAt", async () => {
+    const s = await setup();
+    expect((await s.t.query(queries.getById, { ...s.ownerAuth, agreementId: s.agreementId }) as any).latestDeliveryAttempt).toBeNull();
+
+    await s.t.mutation(mutations.markSent, { ...s.ownerAuth, agreementId: s.agreementId });
+    const reported: any = await s.t.query(queries.getById, { ...s.ownerAuth, agreementId: s.agreementId });
+    expect(reported).toMatchObject({ sentAt: expect.any(Number), latestDeliveryAttempt: { channel: "owner_reported_outside_send", result: "owner_reported" } });
+    expect((await s.t.query(queries.getByProposal, { ...s.ownerAuth, proposalId: s.proposalId }) as any).latestDeliveryAttempt)
+      .toEqual(reported.latestDeliveryAttempt);
+
+    for (const result of ["provider_accepted", "failed", "unknown"] as const) {
+      await s.t.run(async (ctx) => {
+        await ctx.db.insert("transactionalDocumentDeliveryAttempts", {
+          companyId: s.companyId, documentKind: "service_agreement", documentId: String(s.agreementId),
+          issueId: String(reported.currentIssueId), channel: "email", attemptedAt: Date.now() + { provider_accepted: 1, failed: 2, unknown: 3 }[result], result,
+        });
+      });
+      expect((await s.t.query(queries.getById, { ...s.ownerAuth, agreementId: s.agreementId }) as any).latestDeliveryAttempt)
+        .toMatchObject({ channel: "email", result });
+    }
+  });
+
   it("renders canonical and persisted QA client-name tokens in generated and issued content", async () => {
     const s = await setup("For {{client_name}} / {{clientName}} at {{property_address}}: {{services_included}}");
     const preview: any = await s.t.query(queries.getById, { ...s.ownerAuth, agreementId: s.agreementId });

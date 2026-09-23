@@ -24,10 +24,16 @@ async function decorateAgreement(ctx: any, agreement: any) {
   const relationship = agreement.clientRelationshipId
     ? await ctx.db.get(agreement.clientRelationshipId)
     : null;
+  const latestDeliveryAttempt = await ctx.db.query("transactionalDocumentDeliveryAttempts")
+    .withIndex("by_document", (q: any) => q.eq("documentKind", "service_agreement").eq("documentId", String(agreement._id)))
+    .order("desc").first();
   return {
     ...agreement,
     canonicalPreview: (await activeServiceAgreementIssue(ctx, agreement))?.content ??
       (agreement.currentIssueId ? null : await buildServiceAgreementIssueContent(ctx, agreement)),
+    latestDeliveryAttempt: latestDeliveryAttempt?.companyId === agreement.companyId
+      ? { channel: latestDeliveryAttempt.channel, result: latestDeliveryAttempt.result, attemptedAt: latestDeliveryAttempt.attemptedAt }
+      : null,
     clientRelationship:
       relationship?.companyId === agreement.companyId
         ? {
