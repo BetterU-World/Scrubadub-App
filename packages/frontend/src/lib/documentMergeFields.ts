@@ -48,6 +48,7 @@ export const SAMPLE_SERVICE_AGREEMENT_VALUES: Record<string, string> = {
   company_header: "Sparkle Clean LLC",
   company_footer: "Thank you for trusting our team.",
   client_name: "Acme Offices",
+  clientName: "Acme Offices",
   property_address: "500 Market Street",
   proposal_price: "$2,400.00 per month",
   contract_price: "$2,400.00 per month",

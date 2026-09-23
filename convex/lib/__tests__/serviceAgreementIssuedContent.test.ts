@@ -20,7 +20,7 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
-async function setup() {
+async function setup(templateBody = "Scope: {{scope_of_work}}. Terms: {{terms}}. End: {{agreement_end_date}}.") {
   const t = convexTest(schema, modules);
   const passwordHash = await hashPassword(PASSWORD);
   const ids = await t.run(async (ctx) => {
@@ -35,7 +35,7 @@ async function setup() {
     const relationshipId = await ctx.db.insert("clientRelationships", { companyId, clientUserId, displayName: "Client", clientType: "commercial", status: "active", email: "f3b-client@example.test", createdAt: 1, updatedAt: 1 });
     const requestId = await ctx.db.insert("clientRequests", { companyId, clientRelationshipId: relationshipId, requesterName: "Client", requesterEmail: "f3b-client@example.test", propertySnapshot: { address: "1 Main St" }, requestedService: "Cleaning", source: "manual", status: "accepted", createdAt: 1 });
     const proposalId = await ctx.db.insert("proposals", { companyId, clientRelationshipId: relationshipId, clientRequestId: requestId, createdByUserId: ownerId, title: "Proposal", clientName: "Client", scopeOfWork: "Original scope", monthlyPriceCents: 10000, status: "accepted", createdAt: 1, updatedAt: 1 });
-    const templateId = await ctx.db.insert("documentTemplates", { companyId, type: "service_agreement", name: "Original Template", body: "Scope: {{scope_of_work}}. Terms: {{terms}}. End: {{agreement_end_date}}.", version: 3, isDefault: true, createdAt: 1, updatedAt: 1 });
+    const templateId = await ctx.db.insert("documentTemplates", { companyId, type: "service_agreement", name: "Original Template", body: templateBody, version: 3, isDefault: true, createdAt: 1, updatedAt: 1 });
     return { companyId, otherCompanyId, siteId, ownerId, managerId, foreignOwnerId, clientUserId, otherClientUserId, relationshipId, requestId, proposalId, templateId };
   });
   const owner = await t.action(api.authActions.signIn, { email: "f3b-owner@example.test", password: PASSWORD });
@@ -76,6 +76,18 @@ async function issue(s: Awaited<ReturnType<typeof setup>>) {
 }
 
 describe("service agreement issued content", () => {
+  it("renders canonical and persisted QA client-name tokens in generated and issued content", async () => {
+    const s = await setup("For {{client_name}} / {{clientName}} at {{property_address}}: {{services_included}}");
+    const preview: any = await s.t.query(queries.getById, { ...s.ownerAuth, agreementId: s.agreementId });
+    expect(preview.canonicalPreview.body).toBe("For Client / Client at 1 Main St: Original scope");
+    await s.t.mutation(mutations.markSent, { ...s.ownerAuth, agreementId: s.agreementId });
+    const issued = await issue(s);
+    expect(issued!.content.body).toBe(preview.canonicalPreview.body);
+    expect(await s.t.query(queries.getForClient, { ...s.clientAuth, agreementId: s.agreementId })).toMatchObject({
+      body: preview.canonicalPreview.body,
+      issueId: issued!._id,
+    });
+  });
   it("removes every thousands separator when comparing a price summary", () => {
     expect(() => assertAgreementPriceConsistency({ contractAmountCents: 123456789, priceSummary: "$1,234,567.89 per month" })).not.toThrow();
     expect(() => assertAgreementPriceConsistency({ contractAmountCents: 123456788, priceSummary: "$1,234,567.89 per month" })).toThrow("price summary disagree");
