@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { resolveOperationalEmailIdentity } from "./lib/operationalEmailIdentity";
 import { assertProposalReadyForDelivery, calculateProposalTotals, proposalAddOnLineAmount } from "./lib/proposalAddOnLineItems";
 import { proposalIssueContent } from "./lib/proposalIssueContent";
+import { notifyProposalDecision } from "./lib/proposalDecisionNotifications";
 
 const PROPOSAL_TOKEN_EXPIRY_MS = 60 * 24 * 60 * 60 * 1000;
 const PENDING_DELIVERY_RECOVERY_MS = 5 * 60 * 1000;
@@ -318,6 +319,7 @@ export const respondToProposalByTokenHash = internalMutation({
           responseSource: "client_token", proposalResponseNote: cleanNote(args.note), updatedAt: now,
         });
         await ctx.db.patch(proposal.clientRequestId, { leadStage: "accepted", lastStageChangedAt: now });
+        await notifyProposalDecision(ctx, proposal, "accepted", "client_token");
       } else {
         const request = await ctx.db.get(proposal.clientRequestId);
         const requestPatch: Record<string, unknown> = { leadStage: "declined", lastStageChangedAt: now };
@@ -327,6 +329,7 @@ export const respondToProposalByTokenHash = internalMutation({
           responseSource: "client_token", proposalResponseNote: cleanNote(args.note), updatedAt: now,
         });
         await ctx.db.patch(proposal.clientRequestId, requestPatch);
+        await notifyProposalDecision(ctx, proposal, "declined", "client_token");
       }
       return issuedPayload(issue, await ctx.db.get(proposal._id));
     }
@@ -361,6 +364,7 @@ export const respondToProposalByTokenHash = internalMutation({
         leadStage: "accepted",
         lastStageChangedAt: now,
       });
+      await notifyProposalDecision(ctx, proposal, "accepted", "client_token");
     } else {
       const request = await ctx.db.get(proposal.clientRequestId);
       const requestPatch: Record<string, unknown> = {
@@ -377,6 +381,7 @@ export const respondToProposalByTokenHash = internalMutation({
         updatedAt: now,
       });
       await ctx.db.patch(proposal.clientRequestId, requestPatch);
+      await notifyProposalDecision(ctx, proposal, "declined", "client_token");
     }
 
     const updated = await ctx.db.get(proposal._id);

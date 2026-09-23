@@ -12,13 +12,45 @@ export type LeadPipelineStage =
 export type LeadAttention = "overdue" | "blocked" | "stale" | "active" | "none";
 
 type PipelineRecord = {
+  _id?: unknown;
+  proposalId?: unknown;
   status: string;
+  signedAt?: number;
+  sentAt?: number;
+  acknowledgedAt?: number;
+  clientRespondedAt?: number;
+  declinedAt?: number;
   updatedAt?: number;
   createdAt?: number;
   appointmentStatus?: "draft" | "scheduled" | "completed" | "cancelled";
   scheduledDate?: string;
   scheduledStartTime?: string;
 };
+
+export function acceptedProposalAgreementAction(
+  agreement: PipelineRecord | undefined,
+  hasCommercialAccount: boolean,
+  clientPortalActive: boolean,
+) {
+  const hrefSuffix = "#request-agreement";
+  if (!agreement) return { key: "create_agreement", hrefSuffix };
+  if (agreement.declinedAt != null) return { key: "review_declined_agreement", hrefSuffix };
+  if (agreement.status === "cancelled") return { key: "review_cancelled_agreement", hrefSuffix };
+  if (agreement.signedAt != null) return {
+    key: hasCommercialAccount ? "review_commercial_account" : "signed_received_continue_setup",
+    hrefSuffix,
+  };
+  if (agreement.acknowledgedAt != null || agreement.clientRespondedAt != null || agreement.status === "signed") return {
+    key: hasCommercialAccount ? "review_commercial_account" : "acknowledged_continue_setup",
+    hrefSuffix,
+  };
+  if (agreement.status === "sent") return {
+    key: clientPortalActive ? "await_client_acknowledgment" : "enable_client_access",
+    hrefSuffix: clientPortalActive ? hrefSuffix : "#request-client-portal",
+  };
+  if (agreement.status === "ready") return { key: "issue_agreement", hrefSuffix };
+  return { key: "review_agreement", hrefSuffix };
+}
 
 export type LeadPipelineInput = {
   request: {
@@ -76,7 +108,8 @@ export function deriveLeadPipelineState(input: LeadPipelineInput) {
     latestWalkthrough?.appointmentStatus === "completed" ||
     (latestWalkthrough?.appointmentStatus === undefined && Boolean(latestWalkthrough?.scheduledDate && latestWalkthrough?.scheduledStartTime));
   const latestProposal = newest(input.proposals);
-  const latestAgreement = newest(input.agreements);
+  const latestAgreement = newest(input.agreements.filter((agreement) =>
+    !latestProposal?._id || agreement.proposalId === latestProposal._id));
   const activeAccount = input.commercialAccounts.find((record) => record.status !== "ended");
   const isClosed =
     request.status === "declined" ||
@@ -90,8 +123,8 @@ export function deriveLeadPipelineState(input: LeadPipelineInput) {
   if (isConverted) stage = "converted";
   else if (isClosed) stage = "closed";
   else if (latestAgreement?.status === "signed") stage = "onboarding";
+  else if (latestProposal?.status === "accepted") stage = "agreement";
   else if (latestAgreement && latestAgreement.status !== "cancelled") stage = "agreement";
-  else if (latestProposal?.status === "accepted") stage = "onboarding";
   else if (latestProposal?.status === "sent") stage = "decision";
   else if (latestProposal?.status === "draft" || latestWalkthrough?.status === "completed" || latestWalkthrough?.status === "proposal_created") stage = "proposal";
   else if (latestWalkthrough) stage = "walkthrough";
@@ -105,6 +138,9 @@ export function deriveLeadPipelineState(input: LeadPipelineInput) {
   if (stage === "onboarding" && !request.clientRelationshipId) blockers.push("client_relationship_missing");
 
   const nextAction = (() => {
+    if (latestProposal?.status === "accepted") return acceptedProposalAgreementAction(
+      latestAgreement, Boolean(activeAccount), input.clientPortalStatus === "active"
+    );
     if (stage === "closed" || stage === "converted") return { key: "view_request", hrefSuffix: "" };
     if (blockers[0] === "missing_contact_method") return { key: "add_contact_details", hrefSuffix: "#request-contact" };
     if (stage === "new" || stage === "qualification") return { key: "qualify_lead", hrefSuffix: "#request-lead-classification" };

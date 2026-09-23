@@ -27,17 +27,19 @@ async function setup() {
     const otherCompanyId = await ctx.db.insert("companies", { name: "Other Provider", timezone: "America/New_York" });
     const siteId = await ctx.db.insert("companySites", { companyId, slug: "f3a", templateId: "A", brandName: "Original Brand", logoUrl: "https://example.test/original.png", publicEmail: "original@example.test", bio: "", serviceArea: "", services: [] });
     const ownerId = await ctx.db.insert("users", { email: "owner-f3a@example.test", passwordHash, name: "Owner", companyId, role: "owner", status: "active" });
+    const managerId = await ctx.db.insert("users", { email: "manager-f3a@example.test", passwordHash, name: "Manager", companyId, role: "manager", status: "active", canManageSalesAndCommercial: true });
     const otherOwnerId = await ctx.db.insert("users", { email: "other-f3a@example.test", passwordHash, name: "Other", companyId: otherCompanyId, role: "owner", status: "active" });
     const clientUserId = await ctx.db.insert("clientUsers", { email: "client-f3a@example.test", passwordHash, displayName: "Client", status: "active", createdAt: 1, updatedAt: 1 });
     const relationshipId = await ctx.db.insert("clientRelationships", { companyId, clientUserId, displayName: "Client", clientType: "commercial", status: "active", email: "client-f3a@example.test", createdAt: 1, updatedAt: 1 });
     const requestId = await ctx.db.insert("clientRequests", { companyId, clientRelationshipId: relationshipId, createdAt: 1, status: "new", requesterName: "Client", requesterEmail: "client-f3a@example.test", propertySnapshot: { address: "1 Original St" }, source: "manual", requestedService: "Original scope" });
     const proposalId = await ctx.db.insert("proposals", { companyId, clientRelationshipId: relationshipId, clientRequestId: requestId, createdByUserId: ownerId, title: "Original Proposal", clientName: "Client", propertyAddress: "1 Original St", scopeOfWork: "Original scope", monthlyPriceCents: 10000, addOnLineItems: [{ lineItemId: "line-1", sourceType: "custom", name: "Windows", pricingMethod: "starting_at", unitPriceCents: 2000, finalizedPriceCents: 3000, billingCadence: "monthly" }], status: "draft", createdAt: 1, updatedAt: 1 });
-    return { companyId, otherCompanyId, siteId, ownerId, otherOwnerId, clientUserId, relationshipId, requestId, proposalId };
+    return { companyId, otherCompanyId, siteId, ownerId, managerId, otherOwnerId, clientUserId, relationshipId, requestId, proposalId };
   });
   const owner = await t.action(api.authActions.signIn, { email: "owner-f3a@example.test", password: PASSWORD });
   const other = await t.action(api.authActions.signIn, { email: "other-f3a@example.test", password: PASSWORD });
+  const manager = await t.action(api.authActions.signIn, { email: "manager-f3a@example.test", password: PASSWORD });
   const client = await t.action(api.clientAuthActions.signIn, { email: "client-f3a@example.test", password: PASSWORD });
-  return { t, ...seeded, ownerAuth: { userId: seeded.ownerId, sessionToken: owner.sessionToken }, otherAuth: { userId: seeded.otherOwnerId, sessionToken: other.sessionToken }, clientAuth: { clientUserId: seeded.clientUserId, sessionToken: client.sessionToken } };
+  return { t, ...seeded, ownerAuth: { userId: seeded.ownerId, sessionToken: owner.sessionToken }, managerAuth: { userId: seeded.managerId, sessionToken: manager.sessionToken }, otherAuth: { userId: seeded.otherOwnerId, sessionToken: other.sessionToken }, clientAuth: { clientUserId: seeded.clientUserId, sessionToken: client.sessionToken } };
 }
 
 function mockEmail(ok = true) {
@@ -55,6 +57,33 @@ async function issueToken(issue: any) {
 }
 
 describe("proposal issued content", () => {
+  it.each(["accepted", "declined"] as const)("notifies the owner and responsible manager once for a public %s decision", async (decision) => {
+    const s = await setup();
+    await s.t.run((ctx) => ctx.db.patch(s.proposalId, { createdByUserId: s.managerId }));
+    mockEmail();
+    await s.t.action(delivery.sendProposal, { ...s.ownerAuth, proposalId: s.proposalId });
+    const issue = await s.t.run(async (ctx) => ctx.db.get((await ctx.db.get(s.proposalId))!.currentIssueId!));
+    const token = await issueToken(issue);
+    await s.t.action(delivery.respondToProposal, { token, decision });
+    await s.t.action(delivery.respondToProposal, { token, decision });
+    const notifications = await s.t.run((ctx) => ctx.db.query("notifications").collect());
+    expect(notifications).toHaveLength(2);
+    expect(notifications.map((item) => item.userId)).toEqual(expect.arrayContaining([s.ownerId, s.managerId]));
+    expect(notifications.every((item) => item.companyId === s.companyId && item.relatedClientRequestId === s.requestId && item.type === `proposal_${decision}`)).toBe(true);
+    expect(await s.t.query(api.queries.notifications.list, s.managerAuth)).toMatchObject([{ relatedClientRequestId: s.requestId }]);
+    expect(await s.t.query(api.queries.notifications.list, s.otherAuth)).toHaveLength(0);
+  });
+
+  it.each(["accepted", "declined"] as const)("notifies the owner for a manager-recorded %s decision without a self-notification", async (decision) => {
+    const s = await setup();
+    await s.t.run((ctx) => ctx.db.patch(s.proposalId, { createdByUserId: s.managerId }));
+    await s.t.mutation(proposals.markProposalSent, { ...s.managerAuth, proposalId: s.proposalId });
+    const mutation = decision === "accepted" ? proposals.markProposalAccepted : proposals.markProposalDeclined;
+    await s.t.mutation(mutation, { ...s.managerAuth, proposalId: s.proposalId });
+    await expect(s.t.mutation(mutation, { ...s.managerAuth, proposalId: s.proposalId })).rejects.toThrow("immutable");
+    expect(await s.t.run((ctx) => ctx.db.query("notifications").collect())).toMatchObject([{ userId: s.ownerId, type: `proposal_${decision}`, relatedClientRequestId: s.requestId }]);
+  });
+
   it("freezes reviewed content and provider identity, and reuses the issue and link on resend", async () => {
     const s = await setup();
     const bodies = mockEmail();

@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import { ServiceAgreementStatusBadge } from "@/components/ui/ServiceAgreementStatusBadge";
 import { AsyncButton } from "@/components/ui/AsyncButton";
 import { AgreementContentView } from "@/components/AgreementContentView";
+import { Link } from "wouter";
 
 const FREQUENCIES = ["one_time", "weekly", "biweekly", "monthly", "quarterly", "custom"] as const;
 
@@ -110,6 +111,8 @@ export function ServiceAgreementCard({
   commercialAccountId,
   canCreate,
   hideWhenMissing,
+  onInviteClient,
+  accessManagementHref,
   source,
   onToast,
 }: {
@@ -117,6 +120,8 @@ export function ServiceAgreementCard({
   commercialAccountId?: Id<"commercialAccounts">;
   canCreate?: boolean;
   hideWhenMissing?: boolean;
+  onInviteClient?: () => void;
+  accessManagementHref?: string;
   source?: AgreementSource;
   onToast?: (message: string, type: ToastType) => void;
 }) {
@@ -145,6 +150,7 @@ export function ServiceAgreementCard({
   );
   const updateAgreement = useMutation((api as any).mutations.serviceAgreements.update);
   const markReady = useMutation((api as any).mutations.serviceAgreements.markReady);
+  const recordOutsideSend = useMutation((api as any).mutations.serviceAgreements.markSent);
   const sendAgreement = useAction(
     (api as any).serviceAgreementDeliveryActions.sendServiceAgreement
   );
@@ -275,7 +281,7 @@ export function ServiceAgreementCard({
     }
   };
 
-  const handleAction = async (action: "ready" | "sent" | "signed" | "cancelled" | "change") => {
+  const handleAction = async (action: "ready" | "sent" | "outside" | "signed" | "cancelled" | "change") => {
     if (!agreement) return;
     setActionLoading(action);
     try {
@@ -283,6 +289,7 @@ export function ServiceAgreementCard({
       if (action === "sent") {
         await sendAgreement({ userId: user._id, sessionToken, agreementId: agreement._id });
       }
+      if (action === "outside") await recordOutsideSend({ userId: user._id, sessionToken, agreementId: agreement._id });
       if (action === "signed") await markSigned({ userId: user._id, sessionToken, agreementId: agreement._id });
       if (action === "cancelled") {
         await markCancelled({ userId: user._id, sessionToken, agreementId: agreement._id });
@@ -290,7 +297,9 @@ export function ServiceAgreementCard({
       if (action === "change") await returnToDraft({ userId: user._id, sessionToken, agreementId: agreement._id });
       showToast(action === "change" ? t("serviceAgreements.changeSuccess") : t(`serviceAgreements.${action}Success`), "success");
     } catch (err: any) {
-      const message = err.message?.includes("client email")
+      const message = err.message?.includes("Active Client Portal access")
+        ? t("serviceAgreements.portalAccess.emailBlocked")
+        : err.message?.includes("client email")
         ? t("serviceAgreements.recipientEmailRequired")
         : err.message || t("serviceAgreements.actionFailed");
       showToast(message, "error");
@@ -300,6 +309,10 @@ export function ServiceAgreementCard({
   };
 
   const canEdit = agreement && ["draft", "ready"].includes(agreement.status);
+  const portalAccess = agreement?.portalAccess;
+  const canManageClients = user.role === "owner" || user.canManageClients === true;
+  const canInvite = portalAccess?.relationshipActive && portalAccess.recipientEmailAvailable &&
+    ["not_invited", "invitation_pending", "client_user_inactive"].includes(portalAccess.status);
   const deliveryAttempt = agreement?.latestDeliveryAttempt;
   const deliveryGuidanceKey = deliveryAttempt?.result === "failed"
     ? "serviceAgreements.deliveryFailed"
@@ -539,6 +552,31 @@ export function ServiceAgreementCard({
         </div>
       )}
 
+      {agreement && ["draft", "ready", "sent"].includes(agreement.status) && portalAccess && (
+        <div className={`rounded-md border p-3 text-sm ${portalAccess.canEmail ? "border-green-200 bg-green-50 text-green-900" : "border-amber-200 bg-amber-50 text-amber-900"}`}>
+          <p>{t(`serviceAgreements.portalAccess.${portalAccess.status}`)}</p>
+          {!portalAccess.canEmail && (
+            <>
+              <p className="mt-1">{t("serviceAgreements.portalAccess.outsideSend")}</p>
+              {canManageClients ? (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {canInvite && onInviteClient && (
+                    <button type="button" onClick={onInviteClient} className="btn-secondary text-sm">
+                      {t("serviceAgreements.portalAccess.invite")}
+                    </button>
+                  )}
+                  {accessManagementHref && (
+                    <Link href={accessManagementHref} className="btn-secondary text-sm">
+                      {t("serviceAgreements.portalAccess.manage")}
+                    </Link>
+                  )}
+                </div>
+              ) : <p className="mt-2 font-medium">{t("serviceAgreements.portalAccess.handoff")}</p>}
+            </>
+          )}
+        </div>
+      )}
+
       {agreement && !editing && (
         <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-3">
           {canEdit && (
@@ -568,12 +606,18 @@ export function ServiceAgreementCard({
               onClick={() => handleAction("sent")}
               pending={actionLoading === "sent"}
               pendingLabel={t("common.sending")}
-              disabled={actionLoading !== null && actionLoading !== "sent"}
+              disabled={!portalAccess?.canEmail || (actionLoading !== null && actionLoading !== "sent")}
               className="btn-primary flex items-center gap-2 text-sm"
             >
               <Send aria-hidden="true" className="h-4 w-4" />
               {agreement.status === "sent" ? t("serviceAgreements.resendUnchanged") : t("serviceAgreements.send")}
             </AsyncButton>
+          )}
+          {["draft", "ready"].includes(agreement.status) && (
+            <button type="button" onClick={() => handleAction("outside")} disabled={actionLoading !== null} className="btn-secondary flex items-center gap-2 text-sm">
+              <Send aria-hidden="true" className="h-4 w-4" />
+              {actionLoading === "outside" ? t("common.saving") : t("serviceAgreements.recordOutsideSend")}
+            </button>
           )}
           {(agreement.status === "sent" || (agreement.status === "signed" && !agreement.signedAt)) && (
             <button

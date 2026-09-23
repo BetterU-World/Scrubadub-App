@@ -2,6 +2,7 @@ import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { resolveOperationalEmailIdentity } from "./lib/operationalEmailIdentity";
 import { activeServiceAgreementIssue, assertAgreementPriceConsistency, buildServiceAgreementIssueContent } from "./lib/serviceAgreementIssuedContent";
+import { requireAgreementEmailAccess, serviceAgreementPortalAccess } from "./lib/serviceAgreementPortalAccess";
 
 const RESEND_COOLDOWN_MS = 60_000;
 const PENDING_RECOVERY_MS = 5 * 60_000;
@@ -15,21 +16,15 @@ function formatFrequency(value: string | null | undefined) {
 }
 
 async function deliveryContext(ctx: any, agreement: any) {
-  const [request, relationship, emailIdentity] = await Promise.all([
-    agreement.clientRequestId ? ctx.db.get(agreement.clientRequestId) : null,
-    agreement.clientRelationshipId ? ctx.db.get(agreement.clientRelationshipId) : null,
+  const [access, emailIdentity] = await Promise.all([
+    serviceAgreementPortalAccess(ctx, agreement),
     resolveOperationalEmailIdentity(ctx, agreement.companyId),
   ]);
-  if (!relationship || relationship.companyId !== agreement.companyId) {
-    throw new Error("Client relationship required before sending");
-  }
-  const recipientEmail = (relationship.email ?? (request?.companyId === agreement.companyId ? request.requesterEmail : null) ?? "").trim().toLowerCase();
-  if (!recipientEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) {
-    throw new Error("Add a client email before sending this agreement (a valid address is required)");
-  }
-  const clientUser = relationship.clientUserId ? await ctx.db.get(relationship.clientUserId) : null;
+  requireAgreementEmailAccess(access);
+  const relationship = await ctx.db.get(agreement.clientRelationshipId);
+  const clientUser = await ctx.db.get(relationship.clientUserId);
   return {
-    recipientEmail,
+    recipientEmail: access.recipientEmail!,
     clientName: agreement.clientName ?? relationship.displayName,
     language: clientUser?.language === "es" ? "es" : "en",
     replyTo: emailIdentity.replyTo ?? null,

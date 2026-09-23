@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { requireVerifiedClientSession } from "../lib/sessionAuth";
 import { requireOwnerOrManagerCapability } from "../lib/sessionAuth";
 import { activeServiceAgreementIssue, buildServiceAgreementIssueContent } from "../lib/serviceAgreementIssuedContent";
+import { serviceAgreementPortalAccess } from "../lib/serviceAgreementPortalAccess";
 
 async function requireOwnerCompany(ctx: any, sessionToken: string, userId: any) {
   const user = await requireOwnerOrManagerCapability(
@@ -34,6 +35,7 @@ async function decorateAgreement(ctx: any, agreement: any) {
     latestDeliveryAttempt: latestDeliveryAttempt?.companyId === agreement.companyId
       ? { channel: latestDeliveryAttempt.channel, result: latestDeliveryAttempt.result, attemptedAt: latestDeliveryAttempt.attemptedAt }
       : null,
+    portalAccess: await serviceAgreementPortalAccess(ctx, agreement),
     clientRelationship:
       relationship?.companyId === agreement.companyId
         ? {

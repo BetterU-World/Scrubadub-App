@@ -42,6 +42,8 @@ export async function createNotification(
       | "shared_job_accepted"
       | "shared_job_rejected"
       | "new_client_request"
+      | "proposal_accepted"
+      | "proposal_declined"
       | "inspection_submitted"
       | "calendar_sync_alert"
       | "service_agreement_accepted"

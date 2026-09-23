@@ -113,9 +113,11 @@ export const getRequestById = query({
       throw new Error("Access denied");
     }
 
-    const clientRelationship = request.clientRelationshipId
+    const linkedRelationship = request.clientRelationshipId
       ? await ctx.db.get(request.clientRelationshipId)
       : null;
+    const clientRelationship = linkedRelationship?.companyId === request.companyId
+      ? linkedRelationship : null;
     const linkedClientUser = clientRelationship?.clientUserId
       ? await ctx.db.get(clientRelationship.clientUserId)
       : null;
@@ -123,7 +125,7 @@ export const getRequestById = query({
       ? await ctx.db.get(clientRelationship.pendingInviteClientUserId)
       : null;
     const clientPortalStatus =
-      linkedClientUser?.status === "active"
+      clientRelationship?.status === "active" && linkedClientUser?.status === "active"
         ? "active"
         : clientRelationship?.inviteTokenHash ||
             linkedClientUser?.status === "pending" ||
@@ -462,6 +464,11 @@ export const listRequestsForPipeline = query({
     const relationshipMap = new Map(
       relationships.map((record) => [record._id, record]),
     );
+    const linkedClientUsers = await Promise.all(relationships.map((record) =>
+      record.clientUserId ? ctx.db.get(record.clientUserId) : null));
+    const activeClientUserIds = new Set(linkedClientUsers
+      .filter((user) => user?.status === "active")
+      .map((user) => String(user!._id)));
     const group = <T extends { clientRequestId?: any }>(records: T[]) => {
       const map = new Map<string, T[]>();
       for (const record of records) {
@@ -490,7 +497,8 @@ export const listRequestsForPipeline = query({
       const relationship = request.clientRelationshipId
         ? relationshipMap.get(request.clientRelationshipId)
         : undefined;
-      const clientPortalStatus = relationship?.clientUserId
+      const clientPortalStatus = relationship?.status === "active" && relationship.clientUserId &&
+        activeClientUserIds.has(String(relationship.clientUserId))
         ? ("active" as const)
         : relationship?.inviteTokenHash ||
             relationship?.pendingInviteClientUserId
