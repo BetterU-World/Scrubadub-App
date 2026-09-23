@@ -2351,7 +2351,8 @@
   "clientDocuments": {
     "title": "Documentos",
     "description": "Consulta las propuestas y los acuerdos de servicio compartidos por tus empresas de limpieza.",
-    "perMonth": "por mes"
+    "perMonth": "por mes",
+    "basePrice": "precio base"
   },
   "clientBilling": {
     "title": "Facturación",

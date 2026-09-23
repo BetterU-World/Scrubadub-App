@@ -2351,7 +2351,8 @@
   "clientDocuments": {
     "title": "Documents",
     "description": "Review proposals and service agreements shared by your cleaning companies.",
-    "perMonth": "per month"
+    "perMonth": "per month",
+    "basePrice": "base price"
   },
   "clientBilling": {
     "title": "Billing",
