@@ -86,6 +86,13 @@ describe("proposal issued content", () => {
 
   it("freezes reviewed content and provider identity, and reuses the issue and link on resend", async () => {
     const s = await setup();
+    const draftReview: any = await s.t.query((api as any).queries.proposals.getProposalByClientRequest,
+      { ...s.ownerAuth, clientRequestId: s.requestId });
+    expect(draftReview.canonicalPreview).toMatchObject({ source: "saved_draft", issueNumber: null,
+      content: { company: { companyName: "Original Brand" }, proposal: { totals: { monthlyTotalCents: 13000 } } } });
+    expect((await s.t.query((api as any).queries.proposals.getProposalByClientRequest,
+      { ...s.managerAuth, clientRequestId: s.requestId }) as any).canonicalPreview.content)
+      .toEqual(draftReview.canonicalPreview.content);
     const bodies = mockEmail();
     await s.t.action(delivery.sendProposal, { ...s.ownerAuth, proposalId: s.proposalId });
     const first = await s.t.run(async (ctx) => {
@@ -95,6 +102,7 @@ describe("proposal issued content", () => {
     const token = await issueToken(first);
     expect(first!.issueNumber).toBe(1);
     expect(first!.content).toMatchObject({ company: { companyName: "Original Brand", companyLogoUrl: "https://example.test/original.png", companyEmail: "original@example.test" }, proposal: { title: "Original Proposal", monthlyPriceCents: 10000, addOnLineItems: [{ name: "Windows", finalizedPriceCents: 3000, lineTotalCents: 3000 }], totals: { monthlyTotalCents: 13000 } } });
+    expect(draftReview.canonicalPreview.content).toEqual(first!.content);
     expect(JSON.stringify(first!.content)).not.toMatch(/sourceWalkthroughId|assessmentSuggested|requesterEmail|lineItemId/);
     await s.t.run(async (ctx) => {
       await ctx.db.patch(s.siteId, { brandName: "Changed Brand", logoUrl: "https://example.test/changed.png" });
@@ -102,6 +110,9 @@ describe("proposal issued content", () => {
     });
     const before = await s.t.action(delivery.getProposalByToken, { token });
     expect(before).toMatchObject({ company: { companyName: "Original Brand" }, proposal: { title: "Original Proposal", scopeOfWork: "Original scope", totals: { monthlyTotalCents: 13000 } } });
+    const ownerSent: any = await s.t.query((api as any).queries.proposals.getProposalByClientRequest,
+      { ...s.ownerAuth, clientRequestId: s.requestId });
+    expect(ownerSent.canonicalPreview).toMatchObject({ source: "issued_snapshot", issueNumber: 1, content: first!.content });
     await s.t.action(delivery.sendProposal, { ...s.ownerAuth, proposalId: s.proposalId });
     const state = await s.t.run(async (ctx) => ({ proposal: await ctx.db.get(s.proposalId), issues: await ctx.db.query("proposalIssues").collect(), attempts: await ctx.db.query("transactionalDocumentDeliveryAttempts").collect() }));
     expect(state.issues).toHaveLength(1);
@@ -126,6 +137,10 @@ describe("proposal issued content", () => {
     const oldIssue = await s.t.run(async (ctx) => ctx.db.get((await ctx.db.get(s.proposalId))!.currentIssueId!));
     const oldToken = await issueToken(oldIssue);
     await s.t.mutation(proposals.returnProposalToDraft, { ...s.ownerAuth, proposalId: s.proposalId });
+    const revision: any = await s.t.query((api as any).queries.proposals.getProposalByClientRequest,
+      { ...s.ownerAuth, clientRequestId: s.requestId });
+    expect(revision.hasPriorIssue).toBe(true);
+    expect(revision.canonicalPreview.source).toBe("saved_draft");
     expect(await s.t.action(delivery.getProposalByToken, { token: oldToken })).toBeNull();
     await expect(s.t.action(delivery.respondToProposal, { token: oldToken, decision: "accepted" })).rejects.toThrow("unavailable");
     await s.t.mutation(proposals.updateProposal, { ...s.ownerAuth, proposalId: s.proposalId, title: "Revised Proposal", clientName: "Client", monthlyPriceCents: 20000 });
@@ -147,6 +162,10 @@ describe("proposal issued content", () => {
     await s.t.run((ctx) => ctx.db.patch(s.proposalId, {
       currentIssueId: undefined, title: "Changed working title", monthlyPriceCents: 99999, addOnLineItems: [],
     }));
+    const ownerAccepted: any = await s.t.query((api as any).queries.proposals.getProposalByClientRequest,
+      { ...s.ownerAuth, clientRequestId: s.requestId });
+    expect(ownerAccepted.canonicalPreview).toMatchObject({ source: "issued_snapshot", issueNumber: 2,
+      content: state.issues[1].content });
     expect((await s.t.query((api as any).queries.clientPortal.getClientDocuments, s.clientAuth)).proposals[0])
       .toMatchObject({ title: "Revised Proposal", monthlyPriceCents: 20000, monthlyTotalCents: 23000, basePriceOnly: false });
     await expect(s.t.mutation(proposals.returnProposalToDraft, { ...s.ownerAuth, proposalId: s.proposalId })).rejects.toThrow("Only sent");
@@ -169,6 +188,11 @@ describe("proposal issued content", () => {
     expect(sent.attempts).toMatchObject([{ channel: "owner_reported_outside_send", result: "owner_reported" }]);
     await s.t.mutation(proposals.markProposalDeclined, { ...s.ownerAuth, proposalId: s.proposalId });
     expect(await s.t.run((ctx) => ctx.db.get(s.proposalId))).toMatchObject({ responseIssueId: sent.proposal!.currentIssueId, responseSource: "owner_reported", status: "declined" });
+    const ownerDeclined: any = await s.t.query((api as any).queries.proposals.getProposalByClientRequest,
+      { ...s.ownerAuth, clientRequestId: s.requestId });
+    expect(ownerDeclined).toMatchObject({ declinedAt: expect.any(Number), canonicalPreview: {
+      source: "issued_snapshot", issueNumber: 1, content: { proposal: { totals: { monthlyTotalCents: 13000 } } },
+    } });
     await expect(s.t.mutation(proposals.updateProposal, { ...s.ownerAuth, proposalId: s.proposalId, title: "No", clientName: "Client" })).rejects.toThrow("draft");
 
     const clientResponse = await setup();
@@ -192,7 +216,10 @@ describe("proposal issued content", () => {
     const { hashToken } = await import("../tokens");
     const legacyToken = "legacy-f3a-token";
     await s.t.run((ctx) => ctx.db.patch(s.proposalId, { status: "sent", proposalTokenHash: hashToken(legacyToken), proposalTokenCreatedAt: Date.now() }));
-    expect(await s.t.action(delivery.getProposalByToken, { token: legacyToken })).toMatchObject({ proposal: { title: "Still editable" } });
+    expect(await s.t.action(delivery.getProposalByToken, { token: legacyToken })).toMatchObject({
+      legacyBaseOnly: true,
+      proposal: { title: "Still editable", totals: { monthlyTotalLabel: null, oneTimeTotalLabel: null } },
+    });
     mockEmail();
     await s.t.action(delivery.sendProposal, { ...s.ownerAuth, proposalId: s.proposalId });
     const migrated = await s.t.run(async (ctx) => ({ proposal: await ctx.db.get(s.proposalId), issues: await ctx.db.query("proposalIssues").collect() }));
@@ -254,6 +281,9 @@ describe("proposal issued content", () => {
     expect(state.proposal).toMatchObject({ status: "accepted", responseSource: "owner_reported" });
     expect(state.proposal!.responseIssueId).toBeUndefined();
     expect(state.issues).toHaveLength(0);
+    const ownerLegacy: any = await s.t.query((api as any).queries.proposals.getProposalByClientRequest,
+      { ...s.ownerAuth, clientRequestId: s.requestId });
+    expect(ownerLegacy.canonicalPreview).toMatchObject({ source: "legacy_current", issueNumber: null });
     const docs = await s.t.query((api as any).queries.clientPortal.getClientDocuments, s.clientAuth);
     expect(docs.proposals).toMatchObject([{ status: "accepted", title: "Original Proposal", monthlyPriceCents: 10000, basePriceOnly: true }]);
     expect(docs.proposals[0].monthlyTotalCents).toBeUndefined();

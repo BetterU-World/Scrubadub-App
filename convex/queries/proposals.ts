@@ -2,8 +2,19 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwnerOrManagerCapability } from "../lib/sessionAuth";
 import { calculateProposalTotals } from "../lib/proposalAddOnLineItems";
+import { safeProposalPayload } from "../proposalDeliveryInternal";
+import { proposalIssueContent } from "../lib/proposalIssueContent";
 
 async function decorateProposal(ctx: any, proposal: any) {
+  const issueId = ["accepted", "declined"].includes(proposal.status)
+    ? proposal.responseIssueId ?? proposal.currentIssueId : proposal.currentIssueId;
+  const issue = issueId ? await ctx.db.get(issueId) : null;
+  const validIssue = issue && issue.companyId === proposal.companyId && issue.proposalId === proposal._id &&
+    !issue.withdrawnAt && issue.issuedAt ? issue : null;
+  const priorIssue = await ctx.db.query("proposalIssues")
+    .withIndex("by_proposal", (q: any) => q.eq("proposalId", proposal._id)).first();
+  const source = proposal.sourceWalkthroughId ? await ctx.db.get(proposal.sourceWalkthroughId) : null;
+  const savedContent = validIssue ? null : proposalIssueContent(await safeProposalPayload(ctx, proposal));
   const relationship = proposal.clientRelationshipId
     ? await ctx.db.get(proposal.clientRelationshipId)
     : null;
@@ -12,6 +23,14 @@ async function decorateProposal(ctx: any, proposal: any) {
     .order("desc").first();
   return {
     ...proposal,
+    canonicalPreview: {
+      source: validIssue ? "issued_snapshot" : proposal.status === "draft" ? "saved_draft" : "legacy_current",
+      content: validIssue?.content ?? savedContent,
+      issueNumber: validIssue?.issueNumber ?? null,
+    },
+    hasPriorIssue: Boolean(priorIssue),
+    sourceAssessment: source && source.companyId === proposal.companyId && source.clientRequestId === proposal.clientRequestId
+      ? { title: source.title, completedAt: source.completedAt ?? null } : null,
     calculatedTotals: calculateProposalTotals(proposal),
     latestDeliveryAttempt: latestDeliveryAttempt?.companyId === proposal.companyId
       ? { channel: latestDeliveryAttempt.channel, result: latestDeliveryAttempt.result, attemptedAt: latestDeliveryAttempt.attemptedAt }
