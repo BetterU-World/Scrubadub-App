@@ -47,7 +47,7 @@ export const getForRead = internalQuery({
         .withIndex("by_company_relationship_resource", (q) => q.eq("companyId", resource.companyId).eq("clientRelationshipId", relationship._id).eq("resourceId", resource._id))
         .first();
       if (assignment) return {
-        storageId: resource.storageId, originalFileName: resource.originalFileName, mimeType: resource.mimeType,
+        storageId: resource.storageId, originalFileName: resource.originalFileName, mimeType: resource.mimeType, sizeBytes: resource.sizeBytes,
       };
     }
     throw new Error("Resource unavailable");

@@ -693,7 +693,30 @@ export default defineSchema({
     lastUploadRequestId: v.string(),
   })
     .index("by_company_status_updated", ["companyId", "status", "updatedAt"])
-    .index("by_company_upload_request", ["companyId", "lastUploadRequestId"]),
+    .index("by_company_upload_request", ["companyId", "lastUploadRequestId"])
+    .index("by_storageId", ["storageId"]),
+
+  resourceUploadIntents: defineTable({
+    companyId: v.id("companies"),
+    userId: v.id("users"),
+    requestId: v.string(),
+    resourceId: v.optional(v.id("companyResources")),
+    expectedStorageId: v.optional(v.id("_storage")),
+    title: v.string(),
+    description: v.optional(v.string()),
+    originalFileName: v.string(),
+    declaredMimeType: v.string(),
+    nonce: v.string(),
+    candidateStorageId: v.optional(v.id("_storage")),
+    status: v.union(v.literal("pending"), v.literal("completed"), v.literal("cancelled")),
+    completedResourceId: v.optional(v.id("companyResources")),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+  })
+    .index("by_user_request", ["userId", "requestId"])
+    .index("by_status_expiry", ["status", "expiresAt"])
+    .index("by_resourceId", ["resourceId"])
+    .index("by_completedResourceId", ["completedResourceId"]),
 
   clientResourceAssignments: defineTable({
     companyId: v.id("companies"),

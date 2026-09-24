@@ -1,12 +1,13 @@
-import { useMemo, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMemo, useRef, useState } from "react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { DialogShell } from "@/components/ui/DialogShell";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
-import { filterResources, resourceFileError, resourceSiteUrl, type ResourceRow } from "./resourceModel";
+import { filterResources, resourceDeclaredMime, resourceFileError, resourceSiteUrl, type ResourceRow } from "./resourceModel";
+import { fetchResourceBlob, uploadResourceCandidate } from "./resourceTransfer";
 
 type Editor = { mode: "add" | "edit" | "replace"; row?: ResourceRow };
 
@@ -21,6 +22,8 @@ export function ResourcesSection() {
   const [file, setFile] = useState<File | null>(null);
   const [requestId, setRequestId] = useState("");
   const [pending, setPending] = useState(false);
+  const [transfer, setTransfer] = useState("");
+  const uploadAbort = useRef<AbortController | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [deleteRow, setDeleteRow] = useState<ResourceRow | null>(null);
@@ -31,6 +34,10 @@ export function ResourcesSection() {
   const archive = useMutation((api as any).mutations.companyResources.archive);
   const restore = useMutation((api as any).mutations.companyResources.restore);
   const deleteArchived = useMutation((api as any).mutations.companyResources.deleteArchived);
+  const beginUpload = useMutation((api as any).mutations.resourceUploadIntents.begin);
+  const registerCandidate = useMutation((api as any).mutations.resourceUploadIntents.registerCandidate);
+  const cancelUpload = useMutation((api as any).mutations.resourceUploadIntents.cancel);
+  const finalizeUpload = useAction((api as any).resourceUploads.finalize);
   const rows = useMemo(() => filterResources(data?.rows ?? [], search), [data, search]);
   const shares = useQuery((api as any).queries.clientResourceAssignments.countsForResources,
     sessionToken && data ? { sessionToken, resourceIds: data.rows.map((row) => row._id) } : "skip") as Record<string, { count: number; limited: boolean }> | undefined;
@@ -61,6 +68,7 @@ export function ResourcesSection() {
       if (validation) { setError(t(`resourcesHub.${validation}Error`)); return; }
     }
     setPending(true);
+    setTransfer("");
     setError("");
     setNotice("");
     let friendlyError = "";
@@ -68,28 +76,37 @@ export function ResourcesSection() {
       if (editor.mode === "edit") {
         await updateDetails({ sessionToken, resourceId: editor.row!._id, title: cleanedTitle, description: description.trim() || undefined });
       } else {
-        if (!site) { friendlyError = t("resourcesHub.serviceUnavailable"); throw new Error(friendlyError); }
-        const body = new FormData();
-        body.append("file", file!);
-        body.append("title", cleanedTitle);
-        body.append("description", description.trim());
-        body.append("requestId", requestId);
-        if (editor.mode === "replace") {
-          body.append("resourceId", editor.row!._id);
-          body.append("expectedStorageId", editor.row!.storageId);
+        const controller = new AbortController();
+        uploadAbort.current = controller;
+        const mimeType = resourceDeclaredMime(file!);
+        const intent = await beginUpload({ sessionToken, requestId, title: cleanedTitle, description: description.trim() || undefined,
+          originalFileName: file!.name, declaredMimeType: mimeType,
+          resourceId: editor.mode === "replace" ? editor.row!._id : undefined,
+          expectedStorageId: editor.mode === "replace" ? editor.row!.storageId : undefined });
+        if (!intent.resourceId) {
+          let storageId: string | null = intent.candidateStorageId;
+          if (storageId) uploadAbort.current = null;
+          try {
+            if (!storageId) {
+              if (!intent.uploadUrl) throw new Error("Upload URL unavailable");
+              storageId = await uploadResourceCandidate(intent.uploadUrl, file!, mimeType, intent.nonce, fraction => setTransfer(t("resourcesHub.uploadingProgress", { percent: Math.round(fraction * 100) })), controller.signal);
+              uploadAbort.current = null;
+              await registerCandidate({ sessionToken, intentId: intent.intentId, storageId });
+            }
+            setTransfer(t("resourcesHub.validating"));
+            await finalizeUpload({ sessionToken, intentId: intent.intentId, storageId });
+          } catch (error) {
+            try { await cancelUpload({ sessionToken, intentId: intent.intentId, storageId: storageId ?? undefined }); } catch { /* Expiry or exact-intent reconciliation handles candidates. */ }
+            throw error;
+          }
         }
-        const response = await fetch(`${site}/resources/upload`, {
-          method: "POST", headers: { Authorization: `Bearer ${sessionToken}` }, body,
-        });
-        if (!response.ok) { friendlyError = t(response.status === 409 ? "resourcesHub.conflict" :
-          response.status === 403 ? "resourcesHub.accessDenied" :
-          response.status === 400 ? "resourcesHub.serverValidation" : "resourcesHub.uploadFailed"); throw new Error(friendlyError); }
       }
       setEditor(null);
       setNotice(t("resourcesHub.saved"));
     } catch {
+      setRequestId(crypto.randomUUID());
       setError(friendlyError || t("resourcesHub.uploadFailed"));
-    } finally { setPending(false); }
+    } finally { uploadAbort.current = null; setPending(false); setTransfer(""); }
   };
 
   const getFile = async (row: ResourceRow, download: boolean) => {
@@ -98,12 +115,10 @@ export function ResourcesSection() {
     setError("");
     setNotice("");
     try {
-      const url = new URL(`${site}/resources/file`);
-      url.searchParams.set("resourceId", row._id);
-      if (download) url.searchParams.set("download", "1");
-      const response = await fetch(url, { headers: { Authorization: `Bearer ${sessionToken}` } });
-      if (!response.ok) throw new Error(t("resourcesHub.openFailed"));
-      const objectUrl = URL.createObjectURL(await response.blob());
+      setTransfer(t("resourcesHub.preparing"));
+      const blob = await fetchResourceBlob({ site, route: "staff", resourceId: row._id, sessionToken,
+        onProgress: fraction => setTransfer(t("resourcesHub.downloadingProgress", { percent: Math.round(fraction * 100) })) });
+      const objectUrl = URL.createObjectURL(blob);
       if (download) {
         const link = document.createElement("a");
         link.href = objectUrl;
@@ -117,7 +132,7 @@ export function ResourcesSection() {
     } catch (cause) {
       tab?.close();
       setError(cause instanceof Error ? cause.message : t("resourcesHub.openFailed"));
-    }
+    } finally { setTransfer(""); }
   };
 
   const changeStatus = async (row: ResourceRow) => {
@@ -165,6 +180,7 @@ export function ResourcesSection() {
     </div>
     {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>}
     {notice && <p role="status" className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800">{notice}</p>}
+    {transfer && <p role="status" className="text-sm text-gray-600">{transfer}</p>}
     {!data ? <PageLoader /> : <>
       {data.limited && <p className="text-xs text-gray-600">{t("resourcesHub.recentLimit")}</p>}
       {!rows.length ? <p className="rounded-xl border border-dashed border-gray-300 p-5 text-sm text-gray-600">{t(search ? "resourcesHub.noMatches" : status === "active" ? "resourcesHub.empty" : "resourcesHub.archivedEmpty")}</p> :
@@ -188,7 +204,7 @@ export function ResourcesSection() {
     <DialogShell open={editor !== null} onOpenChange={(open) => !open && setEditor(null)} pending={pending}
       title={t(`resourcesHub.${editor?.mode ?? "add"}`)} description={editor?.mode === "replace" && countFor(editor.row) > 0
         ? t("resourcesHub.replaceShared", { count: countFor(editor.row) }) : t(editor?.mode === "replace" ? "resourcesHub.replaceHint" : "resourcesHub.fileHint")}
-      footer={<><button type="button" className="btn-secondary" disabled={pending} onClick={() => setEditor(null)}>{t("common.cancel")}</button>
+      footer={<><button type="button" className="btn-secondary" disabled={pending && !uploadAbort.current} onClick={() => pending ? uploadAbort.current?.abort() : setEditor(null)}>{t("common.cancel")}</button>
         <button type="button" className="btn-primary" disabled={pending} onClick={() => void submit()}>{pending ? t("common.processing") : t("common.save")}</button></>}>
       <div className="space-y-3">
         <label className="block text-sm font-medium text-gray-700">{t("resourcesHub.title")}

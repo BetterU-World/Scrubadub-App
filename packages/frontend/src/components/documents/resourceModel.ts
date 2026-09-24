@@ -1,3 +1,5 @@
+import { RESOURCE_MAX_BYTES } from "../../../../../convex/lib/companyResources";
+
 export type ResourceRow = {
   _id: string;
   title: string;
@@ -19,13 +21,19 @@ const extensions: Record<string, string> = {
 };
 
 export function resourceFileError(file: File): "type" | "size" | null {
-  if (!file.size || file.size > 10 * 1024 * 1024) return "size";
+  if (!file.size || file.size > RESOURCE_MAX_BYTES) return "size";
   const name = file.name.toLowerCase();
   if (!file.type) return /\.(pdf|jpe?g|png|webp)$/.test(name) ? null : "type";
   const extension = extensions[file.type];
   if (!extension || !(name.endsWith(extension) ||
     (file.type === "image/jpeg" && name.endsWith(".jpeg")))) return "type";
   return null;
+}
+
+export function resourceDeclaredMime(file: File): string {
+  if (file.type) return file.type;
+  const extension = file.name.toLowerCase().split(".").pop();
+  return extension === "pdf" ? "application/pdf" : extension === "jpg" || extension === "jpeg" ? "image/jpeg" : extension === "png" ? "image/png" : extension === "webp" ? "image/webp" : "";
 }
 
 export function filterResources(rows: ResourceRow[], search: string): ResourceRow[] {

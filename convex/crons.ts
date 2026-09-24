@@ -16,4 +16,6 @@ crons.interval(
   internal.mutations.calendarSync.cronTick
 );
 
+crons.interval("expired-resource-upload-intents", { minutes: 15 }, (internal as any).mutations.resourceUploadIntents.cleanupExpired);
+
 export default crons;
