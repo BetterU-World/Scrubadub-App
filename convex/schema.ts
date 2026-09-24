@@ -677,6 +677,24 @@ export default defineSchema({
     .index("by_companyId", ["companyId"])
     .index("by_companyId_documentKey", ["companyId", "documentKey"]),
 
+  companyResources: defineTable({
+    companyId: v.id("companies"),
+    title: v.string(),
+    description: v.optional(v.string()),
+    storageId: v.id("_storage"),
+    originalFileName: v.string(),
+    mimeType: v.union(v.literal("application/pdf"), v.literal("image/jpeg"), v.literal("image/png"), v.literal("image/webp")),
+    sizeBytes: v.number(),
+    status: v.union(v.literal("active"), v.literal("archived")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    createdByUserId: v.id("users"),
+    updatedByUserId: v.id("users"),
+    lastUploadRequestId: v.string(),
+  })
+    .index("by_company_status_updated", ["companyId", "status", "updatedAt"])
+    .index("by_company_upload_request", ["companyId", "lastUploadRequestId"]),
+
   clientUsers: defineTable({
     email: v.string(),
     passwordHash: v.optional(v.string()),

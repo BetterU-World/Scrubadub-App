@@ -11,12 +11,12 @@ const rows: ClientDocumentRow[] = [
 
 describe("Documents Hub access and filtering", () => {
   it("shows the first authorized section and hides other capabilities", () => {
-    expect(getDocumentSections({ role: "owner" })).toEqual(["client", "team", "templates"]);
+    expect(getDocumentSections({ role: "owner" })).toEqual(["client", "resources", "team", "templates"]);
     expect(getDocumentSections({ role: "manager", canManageSalesAndCommercial: true })).toEqual(["client"]);
-    expect(getDocumentSections({ role: "manager", canManageDocuments: true })).toEqual(["team", "templates"]);
-    expect(getDocumentSections({ role: "manager", canManageSalesAndCommercial: true, canManageDocuments: true })).toEqual(["client", "team", "templates"]);
+    expect(getDocumentSections({ role: "manager", canManageDocuments: true })).toEqual(["resources", "team", "templates"]);
+    expect(getDocumentSections({ role: "manager", canManageSalesAndCommercial: true, canManageDocuments: true })).toEqual(["client", "resources", "team", "templates"]);
     expect(getDocumentSections({ role: "manager", canManageTeam: true } as any)).toEqual([]);
-    expect(getActiveDocumentSection(["team", "templates"], "client")).toBe("team");
+    expect(getActiveDocumentSection(["resources", "team", "templates"], "client")).toBe("resources");
     expect(getActiveDocumentSection(["client", "team", "templates"], "templates")).toBe("templates");
   });
 
@@ -34,7 +34,7 @@ describe("Documents Hub access and filtering", () => {
   it("provides every Hub label in English and Spanish", () => {
     for (const locale of [en, es]) {
       const hub = locale.documentsHub;
-      for (const key of ["client", "team", "templates", "searchPlaceholder", "allTypes", "allStatuses", "clientEmpty", "teamEmpty", "manageWorkerPdfs", "showHistory", "openRequest", "legacyContent"] as const) {
+      for (const key of ["client", "resources", "team", "templates", "searchPlaceholder", "allTypes", "allStatuses", "clientEmpty", "teamEmpty", "manageWorkerPdfs", "showHistory", "openRequest", "legacyContent"] as const) {
         expect(hub[key]).toBeTruthy();
       }
       for (const status of ["draft", "ready", "sent", "accepted", "acknowledged", "signed_received", "declined", "cancelled"] as const) {
