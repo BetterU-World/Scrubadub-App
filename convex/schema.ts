@@ -695,6 +695,16 @@ export default defineSchema({
     .index("by_company_status_updated", ["companyId", "status", "updatedAt"])
     .index("by_company_upload_request", ["companyId", "lastUploadRequestId"]),
 
+  clientResourceAssignments: defineTable({
+    companyId: v.id("companies"),
+    clientRelationshipId: v.id("clientRelationships"),
+    resourceId: v.id("companyResources"),
+    assignedAt: v.number(),
+    assignedByUserId: v.id("users"),
+  })
+    .index("by_company_relationship_resource", ["companyId", "clientRelationshipId", "resourceId"])
+    .index("by_company_resource_relationship", ["companyId", "resourceId", "clientRelationshipId"]),
+
   clientUsers: defineTable({
     email: v.string(),
     passwordHash: v.optional(v.string()),

@@ -2411,7 +2411,7 @@
   },
   "clientDocuments": {
     "title": "Documentos",
-    "description": "Consulta las propuestas y los acuerdos de servicio compartidos por tus empresas de limpieza.",
+    "description": "Consulta las propuestas, los acuerdos de servicio y los recursos compartidos por tus empresas de limpieza.",
     "perMonth": "por mes",
     "basePrice": "precio base"
   },
@@ -3176,7 +3176,7 @@
     }
   },
   "resourcesHub": {
-    "description": "Archivos de la empresa para uso interno. Solo pueden acceder quienes gestionan documentos.",
+    "description": "Archivos de la empresa para guías, políticas y otros recursos de clientes. Los gestores de documentos mantienen la biblioteca.",
     "add": "Añadir recurso",
     "edit": "Editar detalles",
     "replace": "Reemplazar archivo",
@@ -3221,7 +3221,43 @@
     "noMatches": "Ningún recurso coincide con la búsqueda.",
     "recentLimit": "Se muestran los 200 recursos actualizados más recientemente.",
     "deleteConfirm": "¿Eliminar el recurso permanentemente?",
-    "deleteDescription": "¿Eliminar {{title}} y su archivo permanentemente? Esta acción no se puede deshacer."
+    "deleteDescription": "¿Eliminar {{title}} y su archivo permanentemente? Esta acción no se puede deshacer.",
+    "sharedCount_one": "Compartido con {{count}} cliente",
+    "sharedCount_other": "Compartido con {{count}} clientes",
+    "replaceShared_one": "Este recurso se comparte con {{count}} cliente. Al reemplazar el archivo, ese cliente verá el nuevo archivo.",
+    "replaceShared_other": "Este recurso se comparte con {{count}} clientes. Al reemplazar el archivo, esos clientes verán el nuevo archivo.",
+    "archiveConfirm": "¿Archivar el recurso?",
+    "archiveDescription": "¿Archivar {{title}}? Puedes restaurarlo más adelante.",
+    "archiveShared_one": "Este recurso se comparte con {{count}} cliente. Al archivarlo, dejará de verlo hasta que se restaure.",
+    "archiveShared_other": "Este recurso se comparte con {{count}} clientes. Al archivarlo, dejarán de verlo hasta que se restaure.",
+    "deleteBlockedTitle": "Primero quita el acceso de los clientes",
+    "deleteBlocked_one": "Este recurso aún se comparte con {{count}} cliente. Quita su acceso antes de eliminarlo permanentemente.",
+    "deleteBlocked_other": "Este recurso aún se comparte con {{count}} clientes. Quita su acceso antes de eliminarlo permanentemente."
+  },
+  "clientResources": {
+    "title": "Recursos compartidos con este cliente",
+    "description": "Elige recursos de la empresa para este cliente. Aparecerán en Documentos cuando su acceso al portal esté activo.",
+    "add": "Añadir recursos",
+    "addCount_one": "Añadir {{count}} recurso",
+    "addCount_other": "Añadir {{count}} recursos",
+    "added": "Se añadieron los recursos para este cliente.",
+    "addFailed": "No se pudieron añadir los recursos. Actualiza e inténtalo de nuevo.",
+    "remove": "Quitar acceso",
+    "removeDescription": "¿Quitar el acceso de este cliente a {{title}}? El recurso y el acceso de otros clientes se conservan.",
+    "removed": "Se quitó el acceso del cliente.",
+    "removeFailed": "No se pudo quitar el acceso del cliente.",
+    "empty": "Aún no hay recursos compartidos con este cliente.",
+    "inactive": "Activa esta relación con el cliente antes de añadir recursos. Las asignaciones existentes se conservan.",
+    "pickerDescription": "Selecciona uno o más recursos activos de la empresa.",
+    "alreadyShared": "Ya compartido",
+    "selected_one": "{{count}} seleccionado",
+    "selected_other": "{{count}} seleccionados",
+    "noMatches": "Ningún recurso activo coincide con la búsqueda.",
+    "limited": "Se muestran hasta 200 recursos.",
+    "openFailed": "No se pudo abrir este recurso. Actualiza o vuelve a iniciar sesión.",
+    "portalTitle": "Recursos",
+    "portalDescription": "Guías y otros archivos útiles de tus empresas de limpieza.",
+    "portalEmpty": "Todavía no hay documentos disponibles. Vuelve cuando tu empresa de limpieza los comparta."
   },
   "documentsHub": {
     "sections": "Secciones de documentos",

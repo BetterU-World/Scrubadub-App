@@ -6,6 +6,48 @@ import { ClientPortalPage, ClientPortalSection, formatClientMoney } from "@/comp
 import { ServiceAgreementStatusBadge } from "@/components/ui/ServiceAgreementStatusBadge";
 import { useClientAuth } from "@/hooks/useClientAuth";
 import { getClientStatusTranslationKey } from "@/lib/clientPresentation";
+import { useState } from "react";
+import { resourceSiteUrl } from "../../components/documents/resourceModel";
+
+type ClientResource = { resourceId: string; title: string; description?: string; providerName: string; mimeType: string; originalFileName: string; updatedAt: number };
+
+function ClientResourceCards({ rows, sessionToken }: { rows: ClientResource[]; sessionToken: string }) {
+  const { t } = useTranslation();
+  const [error, setError] = useState("");
+  const getFile = async (row: ClientResource, download: boolean) => {
+    const tab = download ? null : window.open("", "_blank");
+    setError("");
+    try {
+      const site = resourceSiteUrl(import.meta.env.VITE_CONVEX_URL, import.meta.env.VITE_CONVEX_SITE_URL);
+      const url = new URL(`${site}/client/resources/file`);
+      url.searchParams.set("resourceId", row.resourceId);
+      if (download) url.searchParams.set("download", "1");
+      const response = await fetch(url, { headers: { Authorization: `Bearer ${sessionToken}` } });
+      if (!response.ok) throw new Error();
+      const objectUrl = URL.createObjectURL(await response.blob());
+      if (download) {
+        const link = document.createElement("a");
+        link.href = objectUrl; link.download = row.originalFileName;
+        document.body.append(link); link.click(); link.remove();
+      } else if (tab) tab.location.href = objectUrl;
+      else throw new Error();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+    } catch { tab?.close(); setError(t("clientResources.openFailed")); }
+  };
+  return <section className="space-y-3" aria-label={t("clientResources.portalTitle")}>
+    <h2 className="text-lg font-semibold text-gray-900">{t("clientResources.portalTitle")}</h2>
+    <p className="text-sm text-gray-600">{t("clientResources.portalDescription")}</p>
+    {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+    <div className="grid gap-4 lg:grid-cols-2">{rows.map((row) => <article key={row.resourceId} className="min-w-0 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+      <h3 className="break-words font-semibold text-gray-900">{row.title}</h3>
+      {row.description && <p className="mt-1 break-words text-sm text-gray-600">{row.description}</p>}
+      <p className="mt-2 text-sm text-gray-500">{row.providerName}</p>
+      <p className="mt-1 text-xs text-gray-500">{row.mimeType} · {t("resourcesHub.updated", { date: new Date(row.updatedAt).toLocaleDateString() })}</p>
+      <div className="mt-3 flex flex-wrap gap-2"><button type="button" className="btn-secondary" onClick={() => void getFile(row, false)}>{t("resourcesHub.open")}</button>
+        <button type="button" className="btn-secondary" onClick={() => void getFile(row, true)}>{t("resourcesHub.download")}</button></div>
+    </article>)}</div>
+  </section>;
+}
 
 export function ClientDocumentsPresentation({ data }: { data: any }) {
   const { t } = useTranslation();
@@ -33,5 +75,15 @@ export function ClientDocumentsPresentation({ data }: { data: any }) {
 export function ClientDocumentsPage() {
   const { t } = useTranslation(); const { clientUserId, sessionToken } = useClientAuth();
   const data = useQuery((api as any).queries.clientPortal.getClientDocuments, clientUserId && sessionToken ? { clientUserId, sessionToken } : "skip");
-  return <ClientPortalPage title={t("clientDocuments.title")} description={t("clientDocuments.description")} data={data}>{data && <ClientDocumentsPresentation data={data} />}</ClientPortalPage>;
+  const resources = useQuery((api as any).queries.clientResources.listVisible, clientUserId && sessionToken ? { sessionToken } : "skip") as { rows: ClientResource[]; limited: boolean } | undefined;
+  const ready = data && resources ? data : undefined;
+  const hasTransactions = Boolean(data?.agreements?.length || data?.proposals?.length);
+  return <ClientPortalPage title={t("clientDocuments.title")} description={t("clientDocuments.description")} data={ready}>
+    {ready && <div className="space-y-6">
+      {hasTransactions && <ClientDocumentsPresentation data={data} />}
+      {resources!.rows.length > 0 && sessionToken && <ClientResourceCards rows={resources!.rows} sessionToken={sessionToken} />}
+      {resources!.limited && <p className="text-xs text-gray-500">{t("clientResources.limited")}</p>}
+      {!hasTransactions && resources!.rows.length === 0 && <p className="rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-600">{t("clientResources.portalEmpty")}</p>}
+    </div>}
+  </ClientPortalPage>;
 }

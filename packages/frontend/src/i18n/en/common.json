@@ -2411,7 +2411,7 @@
   },
   "clientDocuments": {
     "title": "Documents",
-    "description": "Review proposals and service agreements shared by your cleaning companies.",
+    "description": "Review proposals, service agreements, and resources shared by your cleaning companies.",
     "perMonth": "per month",
     "basePrice": "base price"
   },
@@ -3176,7 +3176,7 @@
     }
   },
   "resourcesHub": {
-    "description": "Files owned by your company for internal use. Only document managers can access them.",
+    "description": "Company files for guides, policies, and other client resources. Document managers maintain the library.",
     "add": "Add resource",
     "edit": "Edit details",
     "replace": "Replace file",
@@ -3221,7 +3221,43 @@
     "noMatches": "No resources match your search.",
     "recentLimit": "Showing the 200 most recently updated resources.",
     "deleteConfirm": "Delete resource permanently?",
-    "deleteDescription": "Delete {{title}} and its file permanently? This cannot be undone."
+    "deleteDescription": "Delete {{title}} and its file permanently? This cannot be undone.",
+    "sharedCount_one": "Shared with {{count}} client",
+    "sharedCount_other": "Shared with {{count}} clients",
+    "replaceShared_one": "This resource is shared with {{count}} client. Replacing the file updates what that client will see.",
+    "replaceShared_other": "This resource is shared with {{count}} clients. Replacing the file updates what those clients will see.",
+    "archiveConfirm": "Archive resource?",
+    "archiveDescription": "Archive {{title}}? You can restore it later.",
+    "archiveShared_one": "This resource is shared with {{count}} client. Archiving hides it until restored.",
+    "archiveShared_other": "This resource is shared with {{count}} clients. Archiving hides it until restored.",
+    "deleteBlockedTitle": "Remove client access first",
+    "deleteBlocked_one": "This resource is still shared with {{count}} client. Remove client access before deleting it permanently.",
+    "deleteBlocked_other": "This resource is still shared with {{count}} clients. Remove client access before deleting it permanently."
+  },
+  "clientResources": {
+    "title": "Resources shared with this client",
+    "description": "Choose company resources for this client. They appear in the client's Documents after portal access is active.",
+    "add": "Add resources",
+    "addCount_one": "Add {{count}} resource",
+    "addCount_other": "Add {{count}} resources",
+    "added": "Resources added for this client.",
+    "addFailed": "Could not add resources. Refresh and try again.",
+    "remove": "Remove access",
+    "removeDescription": "Remove this client's access to {{title}}? The company resource and access for other clients stay in place.",
+    "removed": "Client access removed.",
+    "removeFailed": "Could not remove client access.",
+    "empty": "No resources are shared with this client yet.",
+    "inactive": "Activate this client relationship before adding resources. Existing assignments remain saved.",
+    "pickerDescription": "Select one or more active company resources.",
+    "alreadyShared": "Already shared",
+    "selected_one": "{{count}} selected",
+    "selected_other": "{{count}} selected",
+    "noMatches": "No active resources match your search.",
+    "limited": "Showing up to 200 resources.",
+    "openFailed": "Could not open this resource. Refresh or sign in again.",
+    "portalTitle": "Resources",
+    "portalDescription": "Guides and other helpful files from your cleaning companies.",
+    "portalEmpty": "No documents are available yet. Check back after your cleaning company shares them."
   },
   "documentsHub": {
     "sections": "Document sections",

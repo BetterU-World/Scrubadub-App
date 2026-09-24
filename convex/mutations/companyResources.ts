@@ -93,6 +93,10 @@ export const deleteArchived = mutation({
   handler: async (ctx, args) => {
     const { resource } = await ownedResource(ctx, args.sessionToken, args.resourceId);
     if (resource.status !== "archived") throw new Error("Archive this resource before deleting it permanently");
+    const assignment = await ctx.db.query("clientResourceAssignments")
+      .withIndex("by_company_resource_relationship", (q) => q.eq("companyId", resource.companyId).eq("resourceId", resource._id))
+      .first();
+    if (assignment) throw new Error("Remove client access before deleting this resource permanently");
     await ctx.storage.delete(resource.storageId);
     await ctx.db.delete(resource._id);
     return resource._id;
