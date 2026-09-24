@@ -3,10 +3,130 @@ import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { areExternalSideEffectsDisabled, requireStripeSecretKey } from "./lib/environment";
+import type { Id } from "./_generated/dataModel";
+import { cleanResourceDescription, cleanResourceTitle, RESOURCE_MAX_BYTES, validateResourceFile } from "./lib/companyResources";
 
 declare const process: { env: Record<string, string | undefined> };
 
 const http = httpRouter();
+
+function resourceCors(request: Request) {
+  const origin = request.headers.get("Origin");
+  if (!origin) return null;
+  const configured = [process.env.APP_URL, ...(process.env.SCRUB_RESOURCE_ALLOWED_ORIGINS ?? "").split(",")];
+  const allowed = configured.map((value) => {
+    try { return value?.trim() ? new URL(value.trim()).origin : null; } catch { return null; }
+  }).filter(Boolean);
+  return allowed.includes(origin) ? origin : null;
+}
+
+function resourceHeaders(origin: string | null): HeadersInit {
+  return {
+    ...(origin ? { "Access-Control-Allow-Origin": origin, Vary: "Origin" } : {}),
+    "Access-Control-Allow-Headers": "Authorization, Content-Type",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff",
+  };
+}
+
+function resourceError(message: string, status: number, origin: string | null) {
+  return new Response(JSON.stringify({ error: message }), {
+    status, headers: { ...resourceHeaders(origin), "Content-Type": "application/json" },
+  });
+}
+
+function resourceSession(request: Request) {
+  const match = /^Bearer (\S+)$/.exec(request.headers.get("Authorization") ?? "");
+  return match?.[1] ?? null;
+}
+
+const resourceOptions = httpAction(async (_ctx, request) => {
+  const origin = resourceCors(request);
+  return origin ? new Response(null, { status: 204, headers: resourceHeaders(origin) }) : new Response(null, { status: 403 });
+});
+
+const uploadResource = httpAction(async (ctx, request) => {
+  const origin = resourceCors(request);
+  if (!origin) return resourceError("Origin not allowed", 403, null);
+  const sessionToken = resourceSession(request);
+  if (!sessionToken) return resourceError("Sign in required", 401, origin);
+  let newStorageId: Id<"_storage"> | null = null;
+  try {
+    const form = await request.formData();
+    const file = form.get("file");
+    if (!(file instanceof Blob)) throw new Error("Choose a file");
+    if (file.size === 0) throw new Error("File is empty");
+    if (file.size > RESOURCE_MAX_BYTES) throw new Error("File exceeds 10 MB limit");
+    const title = cleanResourceTitle(String(form.get("title") ?? ""));
+    const description = cleanResourceDescription(String(form.get("description") ?? ""));
+    const requestId = String(form.get("requestId") ?? "");
+    const resourceId = String(form.get("resourceId") ?? "") || undefined;
+    const expectedStorageId = String(form.get("expectedStorageId") ?? "") || undefined;
+    const preflight = await ctx.runQuery((internal as any).queries.companyResources.prepareUpload, {
+      sessionToken, requestId, resourceId: resourceId as Id<"companyResources"> | undefined,
+      expectedStorageId: expectedStorageId as Id<"_storage"> | undefined,
+    });
+    if (preflight.reused) return new Response(JSON.stringify({ resourceId: preflight.resourceId, reused: true }), {
+      status: 200, headers: { ...resourceHeaders(origin), "Content-Type": "application/json" },
+    });
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const originalName = "name" in file ? String(file.name) : "";
+    const metadata = validateResourceFile(bytes, file.type, originalName);
+    newStorageId = await ctx.storage.store(new Blob([bytes], { type: metadata.mimeType }));
+    const result = await ctx.runMutation((internal as any).mutations.companyResources.finalizeUpload, {
+      sessionToken, requestId, resourceId: resourceId as Id<"companyResources"> | undefined,
+      expectedStorageId: expectedStorageId as Id<"_storage"> | undefined,
+      storageId: newStorageId, title, description, ...metadata,
+    });
+    if (result.reused) await ctx.storage.delete(newStorageId);
+    // Finalization now owns the new file; later response failures must not remove it.
+    newStorageId = null;
+    return new Response(JSON.stringify(result), {
+      status: 200, headers: { ...resourceHeaders(origin), "Content-Type": "application/json" },
+    });
+  } catch (error: any) {
+    if (newStorageId) {
+      try { await ctx.storage.delete(newStorageId); }
+      catch (cleanupError) {
+        console.error("[resources] failed to clean up new upload", { storageId: newStorageId, cleanupError });
+        return resourceError("Upload failed and file cleanup failed. Contact support.", 500, origin);
+      }
+    }
+    const message = error?.message ?? "Resource upload failed";
+    const status = /changed|Refresh|already used/.test(message) ? 409 : /permission|session|Access denied|Resource unavailable/.test(message) ? 403 : 400;
+    return resourceError(message, status, origin);
+  }
+});
+
+const readResource = httpAction(async (ctx, request) => {
+  const origin = resourceCors(request);
+  if (!origin) return resourceError("Origin not allowed", 403, null);
+  const sessionToken = resourceSession(request);
+  if (!sessionToken) return resourceError("Sign in required", 401, origin);
+  const resourceId = new URL(request.url).searchParams.get("resourceId");
+  if (!resourceId) return resourceError("Resource ID required", 400, origin);
+  try {
+    const resource = await ctx.runQuery((internal as any).queries.companyResources.getForRead, {
+      sessionToken, resourceId: resourceId as Id<"companyResources">,
+    });
+    const blob = await ctx.storage.get(resource.storageId);
+    if (!blob) return resourceError("Resource file unavailable", 404, origin);
+    const disposition = new URL(request.url).searchParams.get("download") === "1" ? "attachment" : "inline";
+    const filename = resource.originalFileName.replace(/["\\\r\n]/g, "");
+    return new Response(blob, { status: 200, headers: {
+      ...resourceHeaders(origin), "Content-Type": resource.mimeType,
+      "Content-Disposition": `${disposition}; filename="resource"; filename*=UTF-8''${encodeURIComponent(filename)}`,
+    } });
+  } catch {
+    return resourceError("Resource unavailable", 403, origin);
+  }
+});
+
+http.route({ path: "/resources/upload", method: "OPTIONS", handler: resourceOptions });
+http.route({ path: "/resources/upload", method: "POST", handler: uploadResource });
+http.route({ path: "/resources/file", method: "OPTIONS", handler: resourceOptions });
+http.route({ path: "/resources/file", method: "GET", handler: readResource });
 
 const stripeWebhook = httpAction(async (ctx, request) => {
   if (areExternalSideEffectsDisabled()) {

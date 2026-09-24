@@ -1,4 +1,4 @@
-export type DocumentSection = "client" | "team" | "templates";
+export type DocumentSection = "client" | "resources" | "team" | "templates";
 
 export function getDocumentSections(user?: {
   role?: string;
@@ -9,7 +9,7 @@ export function getDocumentSections(user?: {
   const documents = user?.role === "owner" || user?.canManageDocuments === true;
   return [
     ...(sales ? ["client" as const] : []),
-    ...(documents ? ["team" as const, "templates" as const] : []),
+    ...(documents ? ["resources" as const, "team" as const, "templates" as const] : []),
   ];
 }
 

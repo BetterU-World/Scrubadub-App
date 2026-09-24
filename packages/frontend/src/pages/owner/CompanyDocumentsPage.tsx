@@ -11,6 +11,7 @@ import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { TemplateEditor } from "@/components/documents/TemplateEditor";
 import { ClientDocumentsSection } from "@/components/documents/ClientDocumentsSection";
 import { TeamDocumentsSection } from "@/components/documents/TeamDocumentsSection";
+import { ResourcesSection } from "@/components/documents/ResourcesSection";
 import { getActiveDocumentSection, getDocumentSections } from "@/components/documents/documentSections";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useAuth } from "@/hooks/useAuth";
@@ -239,6 +240,7 @@ export function CompanyDocumentsPage() {
         </nav>
 
         {activeSection === "client" && <ClientDocumentsSection />}
+        {activeSection === "resources" && <ResourcesSection />}
         {activeSection === "team" && <TeamDocumentsSection />}
         {activeSection === "templates" && <>
         {error && (

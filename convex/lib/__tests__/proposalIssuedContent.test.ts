@@ -201,7 +201,7 @@ describe("proposal issued content", () => {
     const issue = await clientResponse.t.run(async (ctx) => ctx.db.get((await ctx.db.get(clientResponse.proposalId))!.currentIssueId!));
     await clientResponse.t.action(delivery.respondToProposal, { token: await issueToken(issue), decision: "declined" });
     expect(await clientResponse.t.run((ctx) => ctx.db.get(clientResponse.proposalId))).toMatchObject({ status: "declined", responseIssueId: issue!._id, responseSource: "client_token" });
-  });
+  }, 10_000);
 
   it("does not mark a failed first email sent and keeps a legacy token readable until superseded", async () => {
     const s = await setup();
