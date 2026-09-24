@@ -4,7 +4,6 @@ import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { areExternalSideEffectsDisabled, requireStripeSecretKey } from "./lib/environment";
 import type { Id } from "./_generated/dataModel";
-import { cleanResourceDescription, cleanResourceTitle, RESOURCE_MAX_BYTES, validateResourceFile } from "./lib/companyResources";
 
 declare const process: { env: Record<string, string | undefined> };
 
@@ -23,7 +22,7 @@ function resourceCors(request: Request) {
 function resourceHeaders(origin: string | null): HeadersInit {
   return {
     ...(origin ? { "Access-Control-Allow-Origin": origin, Vary: "Origin" } : {}),
-    "Access-Control-Allow-Headers": "Authorization, Content-Type",
+    "Access-Control-Allow-Headers": "Authorization, Content-Type, Range",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Cache-Control": "no-store",
     "X-Content-Type-Options": "nosniff",
@@ -46,110 +45,57 @@ const resourceOptions = httpAction(async (_ctx, request) => {
   return origin ? new Response(null, { status: 204, headers: resourceHeaders(origin) }) : new Response(null, { status: 403 });
 });
 
-const uploadResource = httpAction(async (ctx, request) => {
-  const origin = resourceCors(request);
-  if (!origin) return resourceError("Origin not allowed", 403, null);
-  const sessionToken = resourceSession(request);
-  if (!sessionToken) return resourceError("Sign in required", 401, origin);
-  let newStorageId: Id<"_storage"> | null = null;
-  try {
-    const form = await request.formData();
-    const file = form.get("file");
-    if (!(file instanceof Blob)) throw new Error("Choose a file");
-    if (file.size === 0) throw new Error("File is empty");
-    if (file.size > RESOURCE_MAX_BYTES) throw new Error("File exceeds 10 MB limit");
-    const title = cleanResourceTitle(String(form.get("title") ?? ""));
-    const description = cleanResourceDescription(String(form.get("description") ?? ""));
-    const requestId = String(form.get("requestId") ?? "");
-    const resourceId = String(form.get("resourceId") ?? "") || undefined;
-    const expectedStorageId = String(form.get("expectedStorageId") ?? "") || undefined;
-    const preflight = await ctx.runQuery((internal as any).queries.companyResources.prepareUpload, {
-      sessionToken, requestId, resourceId: resourceId as Id<"companyResources"> | undefined,
-      expectedStorageId: expectedStorageId as Id<"_storage"> | undefined,
-    });
-    if (preflight.reused) return new Response(JSON.stringify({ resourceId: preflight.resourceId, reused: true }), {
-      status: 200, headers: { ...resourceHeaders(origin), "Content-Type": "application/json" },
-    });
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    const originalName = "name" in file ? String(file.name) : "";
-    const metadata = validateResourceFile(bytes, file.type, originalName);
-    newStorageId = await ctx.storage.store(new Blob([bytes], { type: metadata.mimeType }));
-    const result = await ctx.runMutation((internal as any).mutations.companyResources.finalizeUpload, {
-      sessionToken, requestId, resourceId: resourceId as Id<"companyResources"> | undefined,
-      expectedStorageId: expectedStorageId as Id<"_storage"> | undefined,
-      storageId: newStorageId, title, description, ...metadata,
-    });
-    if (result.reused) await ctx.storage.delete(newStorageId);
-    // Finalization now owns the new file; later response failures must not remove it.
-    newStorageId = null;
-    return new Response(JSON.stringify(result), {
-      status: 200, headers: { ...resourceHeaders(origin), "Content-Type": "application/json" },
-    });
-  } catch (error: any) {
-    if (newStorageId) {
-      try { await ctx.storage.delete(newStorageId); }
-      catch (cleanupError) {
-        console.error("[resources] failed to clean up new upload", { storageId: newStorageId, cleanupError });
-        return resourceError("Upload failed and file cleanup failed. Contact support.", 500, origin);
-      }
-    }
-    const message = error?.message ?? "Resource upload failed";
-    const status = /changed|Refresh|already used/.test(message) ? 409 : /permission|session|Access denied|Resource unavailable/.test(message) ? 403 : 400;
-    return resourceError(message, status, origin);
-  }
-});
+const RESOURCE_RANGE_BYTES = 8 * 1024 * 1024;
 
-const readResource = httpAction(async (ctx, request) => {
+async function resourceGeneration(storageId: string) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(storageId));
+  return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("").slice(0, 24);
+}
+
+async function serveResourceRange(ctx: any, request: Request, audience: "staff" | "client") {
   const origin = resourceCors(request);
   if (!origin) return resourceError("Origin not allowed", 403, null);
   const sessionToken = resourceSession(request);
   if (!sessionToken) return resourceError("Sign in required", 401, origin);
-  const resourceId = new URL(request.url).searchParams.get("resourceId");
-  if (!resourceId) return resourceError("Resource ID required", 400, origin);
+  const params = new URL(request.url).searchParams;
+  const resourceId = params.get("resourceId");
+  const match = /^bytes=(\d+)-(\d+)$/.exec(request.headers.get("Range") ?? "");
+  if (!resourceId || !match) return resourceError("Resource ID and bounded range required", 400, origin);
+  const start = Number(match[1]);
+  const end = Number(match[2]);
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || end < start || end - start + 1 > RESOURCE_RANGE_BYTES) return resourceError("Invalid Resource range", 416, origin);
   try {
-    const resource = await ctx.runQuery((internal as any).queries.companyResources.getForRead, {
-      sessionToken, resourceId: resourceId as Id<"companyResources">,
-    });
-    const blob = await ctx.storage.get(resource.storageId);
-    if (!blob) return resourceError("Resource file unavailable", 404, origin);
-    const disposition = new URL(request.url).searchParams.get("download") === "1" ? "attachment" : "inline";
-    const filename = resource.originalFileName.replace(/["\\\r\n]/g, "");
-    return new Response(blob, { status: 200, headers: {
-      ...resourceHeaders(origin), "Content-Type": resource.mimeType,
-      "Content-Disposition": `${disposition}; filename="resource"; filename*=UTF-8''${encodeURIComponent(filename)}`,
+    const reference = audience === "staff" ? (internal as any).queries.companyResources.getForRead : (internal as any).queries.clientResources.getForRead;
+    const resource = await ctx.runQuery(reference, { sessionToken, resourceId: resourceId as Id<"companyResources"> });
+    if (end >= resource.sizeBytes) return resourceError("Range exceeds Resource", 416, origin);
+    const generation = await resourceGeneration(resource.storageId);
+    const expected = params.get("generation");
+    if (expected && expected !== generation) return resourceError("Resource file changed", 409, origin);
+    const url = await ctx.storage.getUrl(resource.storageId);
+    if (!url) return resourceError("Resource file unavailable", 404, origin);
+    const result = await fetch(url, { headers: { Range: `bytes=${start}-${end}` } });
+    if (result.status !== 206 || result.headers.get("Content-Range") !== `bytes ${start}-${end}/${resource.sizeBytes}`) return resourceError("Stored Resource range unavailable", 502, origin);
+    const body = await result.arrayBuffer();
+    if (body.byteLength !== end - start + 1) return resourceError("Stored Resource range changed", 502, origin);
+    return new Response(body, { status: 206, headers: {
+      ...resourceHeaders(origin), "Content-Type": resource.mimeType, "Content-Range": `bytes ${start}-${end}/${resource.sizeBytes}`,
+      "Content-Length": String(body.byteLength), "Accept-Ranges": "bytes", "X-Resource-Generation": generation,
+      "Access-Control-Expose-Headers": "Content-Range, Content-Length, Accept-Ranges, X-Resource-Generation",
     } });
   } catch {
     return resourceError("Resource unavailable", 403, origin);
   }
+}
+
+const readResource = httpAction(async (ctx, request) => {
+  return serveResourceRange(ctx, request, "staff");
 });
 
-http.route({ path: "/resources/upload", method: "OPTIONS", handler: resourceOptions });
-http.route({ path: "/resources/upload", method: "POST", handler: uploadResource });
 http.route({ path: "/resources/file", method: "OPTIONS", handler: resourceOptions });
 http.route({ path: "/resources/file", method: "GET", handler: readResource });
 
 const readClientResource = httpAction(async (ctx, request) => {
-  const origin = resourceCors(request);
-  if (!origin) return resourceError("Origin not allowed", 403, null);
-  const sessionToken = resourceSession(request);
-  if (!sessionToken) return resourceError("Sign in required", 401, origin);
-  const resourceId = new URL(request.url).searchParams.get("resourceId");
-  if (!resourceId) return resourceError("Resource ID required", 400, origin);
-  try {
-    const resource = await ctx.runQuery((internal as any).queries.clientResources.getForRead, {
-      sessionToken, resourceId: resourceId as Id<"companyResources">,
-    });
-    const blob = await ctx.storage.get(resource.storageId);
-    if (!blob) return resourceError("Resource file unavailable", 404, origin);
-    const disposition = new URL(request.url).searchParams.get("download") === "1" ? "attachment" : "inline";
-    const filename = resource.originalFileName.replace(/["\\\r\n]/g, "");
-    return new Response(blob, { status: 200, headers: {
-      ...resourceHeaders(origin), "Content-Type": resource.mimeType,
-      "Content-Disposition": `${disposition}; filename="resource"; filename*=UTF-8''${encodeURIComponent(filename)}`,
-    } });
-  } catch {
-    return resourceError("Resource unavailable", 403, origin);
-  }
+  return serveResourceRange(ctx, request, "client");
 });
 
 http.route({ path: "/client/resources/file", method: "OPTIONS", handler: resourceOptions });

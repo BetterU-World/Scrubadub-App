@@ -8,23 +8,23 @@ import { useClientAuth } from "@/hooks/useClientAuth";
 import { getClientStatusTranslationKey } from "@/lib/clientPresentation";
 import { useState } from "react";
 import { resourceSiteUrl } from "../../components/documents/resourceModel";
+import { fetchResourceBlob } from "../../components/documents/resourceTransfer";
 
 type ClientResource = { resourceId: string; title: string; description?: string; providerName: string; mimeType: string; originalFileName: string; updatedAt: number };
 
 function ClientResourceCards({ rows, sessionToken }: { rows: ClientResource[]; sessionToken: string }) {
   const { t } = useTranslation();
   const [error, setError] = useState("");
+  const [progress, setProgress] = useState("");
   const getFile = async (row: ClientResource, download: boolean) => {
     const tab = download ? null : window.open("", "_blank");
     setError("");
     try {
       const site = resourceSiteUrl(import.meta.env.VITE_CONVEX_URL, import.meta.env.VITE_CONVEX_SITE_URL);
-      const url = new URL(`${site}/client/resources/file`);
-      url.searchParams.set("resourceId", row.resourceId);
-      if (download) url.searchParams.set("download", "1");
-      const response = await fetch(url, { headers: { Authorization: `Bearer ${sessionToken}` } });
-      if (!response.ok) throw new Error();
-      const objectUrl = URL.createObjectURL(await response.blob());
+      setProgress(t("resourcesHub.preparing"));
+      const blob = await fetchResourceBlob({ site, route: "client", resourceId: row.resourceId, sessionToken,
+        onProgress: fraction => setProgress(t("resourcesHub.downloadingProgress", { percent: Math.round(fraction * 100) })) });
+      const objectUrl = URL.createObjectURL(blob);
       if (download) {
         const link = document.createElement("a");
         link.href = objectUrl; link.download = row.originalFileName;
@@ -33,11 +33,13 @@ function ClientResourceCards({ rows, sessionToken }: { rows: ClientResource[]; s
       else throw new Error();
       window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
     } catch { tab?.close(); setError(t("clientResources.openFailed")); }
+    finally { setProgress(""); }
   };
   return <section className="space-y-3" aria-label={t("clientResources.portalTitle")}>
     <h2 className="text-lg font-semibold text-gray-900">{t("clientResources.portalTitle")}</h2>
     <p className="text-sm text-gray-600">{t("clientResources.portalDescription")}</p>
     {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+    {progress && <p role="status" className="text-sm text-gray-600">{progress}</p>}
     <div className="grid gap-4 lg:grid-cols-2">{rows.map((row) => <article key={row.resourceId} className="min-w-0 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
       <h3 className="break-words font-semibold text-gray-900">{row.title}</h3>
       {row.description && <p className="mt-1 break-words text-sm text-gray-600">{row.description}</p>}

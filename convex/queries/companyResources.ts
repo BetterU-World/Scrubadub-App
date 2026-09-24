@@ -46,6 +46,6 @@ export const getForRead = internalQuery({
     const user = await requireOwnerOrManagerCapability(ctx, args.sessionToken, undefined, "canManageDocuments");
     const resource = await ctx.db.get(args.resourceId);
     if (!resource || resource.companyId !== user.companyId) throw new Error("Resource unavailable");
-    return { storageId: resource.storageId, originalFileName: resource.originalFileName, mimeType: resource.mimeType };
+    return { storageId: resource.storageId, originalFileName: resource.originalFileName, mimeType: resource.mimeType, sizeBytes: resource.sizeBytes };
   },
 });

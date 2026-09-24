@@ -15,7 +15,7 @@ async function ownedResource(ctx: any, sessionToken: string, resourceId: any) {
 /** Called only after the HTTP action has inspected the uploaded bytes. */
 export const finalizeUpload = internalMutation({
   args: {
-    sessionToken: v.string(), requestId: v.string(),
+    sessionToken: v.string(), intentId: v.id("resourceUploadIntents"), requestId: v.string(),
     resourceId: v.optional(v.id("companyResources")),
     expectedStorageId: v.optional(v.id("_storage")),
     storageId: v.id("_storage"), title: v.string(), description: v.optional(v.string()),
@@ -23,12 +23,21 @@ export const finalizeUpload = internalMutation({
   },
   handler: async (ctx, args) => {
     const user = await requireOwnerOrManagerCapability(ctx, args.sessionToken, undefined, "canManageDocuments");
+    const intent = await ctx.db.get(args.intentId);
+    if (!intent || intent.companyId !== user.companyId || intent.userId !== user._id || intent.requestId !== args.requestId || intent.resourceId !== args.resourceId || intent.expectedStorageId !== args.expectedStorageId || intent.candidateStorageId !== args.storageId) throw new Error("Upload intent mismatch");
+    if (intent.status === "completed" && intent.completedResourceId) return { resourceId: intent.completedResourceId, reused: true };
+    if (intent.status !== "pending" || intent.expiresAt < Date.now()) throw new Error("Upload intent expired");
+    if (intent.title !== args.title || intent.description !== args.description || intent.originalFileName !== args.originalFileName || intent.declaredMimeType !== args.mimeType) throw new Error("Upload metadata mismatch");
     const uploadKey = resourceUploadKey(user._id, args.requestId, args.resourceId);
     const prior = await ctx.db.query("companyResources")
       .withIndex("by_company_upload_request", (q) => q.eq("companyId", user.companyId).eq("lastUploadRequestId", uploadKey)).first();
-    if (prior) return { resourceId: prior._id, reused: true };
+    if (prior) {
+      await ctx.db.patch(intent._id, { status: "completed", completedResourceId: prior._id });
+      if (prior.storageId !== args.storageId) await ctx.storage.delete(args.storageId);
+      return { resourceId: prior._id, reused: true };
+    }
     const stored = await ctx.db.system.get("_storage", args.storageId);
-    if (!stored || stored.size !== args.sizeBytes) throw new Error("Uploaded file metadata is invalid");
+    if (!stored || stored.size !== args.sizeBytes || stored._creationTime < intent.createdAt || stored.contentType !== `${intent.declaredMimeType}; scrub-intent=${intent.nonce}`) throw new Error("Uploaded file metadata is invalid");
     const title = cleanResourceTitle(args.title);
     const description = cleanResourceDescription(args.description);
     const now = Date.now();
@@ -42,6 +51,7 @@ export const finalizeUpload = internalMutation({
         mimeType: args.mimeType, sizeBytes: args.sizeBytes, updatedAt: now,
         updatedByUserId: user._id, lastUploadRequestId: uploadKey,
       });
+      await ctx.db.patch(intent._id, { status: "completed", completedResourceId: resource._id });
       await ctx.storage.delete(resource.storageId);
       return { resourceId: resource._id, reused: false };
     }
@@ -52,6 +62,7 @@ export const finalizeUpload = internalMutation({
       status: "active", createdAt: now, updatedAt: now,
       createdByUserId: user._id, updatedByUserId: user._id, lastUploadRequestId: uploadKey,
     });
+    await ctx.db.patch(intent._id, { status: "completed", completedResourceId: resourceId });
     return { resourceId, reused: false };
   },
 });
@@ -97,6 +108,15 @@ export const deleteArchived = mutation({
       .withIndex("by_company_resource_relationship", (q) => q.eq("companyId", resource.companyId).eq("resourceId", resource._id))
       .first();
     if (assignment) throw new Error("Remove client access before deleting this resource permanently");
+    const replacementIntents = await ctx.db.query("resourceUploadIntents")
+      .withIndex("by_resourceId", q => q.eq("resourceId", resource._id)).collect();
+    const completedIntents = await ctx.db.query("resourceUploadIntents")
+      .withIndex("by_completedResourceId", q => q.eq("completedResourceId", resource._id)).collect();
+    const intents = new Map([...replacementIntents, ...completedIntents].map(intent => [intent._id, intent]));
+    for (const intent of intents.values()) {
+      if (intent.status === "pending" && intent.candidateStorageId && intent.candidateStorageId !== resource.storageId) await ctx.storage.delete(intent.candidateStorageId);
+      await ctx.db.delete(intent._id);
+    }
     await ctx.storage.delete(resource.storageId);
     await ctx.db.delete(resource._id);
     return resource._id;

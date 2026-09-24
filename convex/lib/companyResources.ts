@@ -1,4 +1,5 @@
-export const RESOURCE_MAX_BYTES = 10 * 1024 * 1024;
+export const RESOURCE_MAX_MEGABYTES = 50;
+export const RESOURCE_MAX_BYTES = RESOURCE_MAX_MEGABYTES * 1024 * 1024;
 export const RESOURCE_MIME_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/webp"] as const;
 export type ResourceMimeType = typeof RESOURCE_MIME_TYPES[number];
 
@@ -53,9 +54,40 @@ export function detectResourceMime(bytes: Uint8Array): ResourceMimeType | null {
   return null;
 }
 
+/** Validate the same E1 signatures from bounded first/last reads. */
+export function detectResourceMimeParts(head: Uint8Array, tail: Uint8Array, size: number): ResourceMimeType | null {
+  if (size >= 10 && ascii(head, 0, 5) === "%PDF-" && ascii(tail, 0, tail.length).includes("%%EOF")) return "application/pdf";
+  if (size >= 4 && head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff && tail[tail.length - 2] === 0xff && tail[tail.length - 1] === 0xd9) return "image/jpeg";
+  if (size >= 45 && [137, 80, 78, 71, 13, 10, 26, 10].every((byte, index) => head[index] === byte) && ascii(head, 12, 4) === "IHDR" && ascii(tail, tail.length - 8, 4) === "IEND") {
+    const view = new DataView(head.buffer, head.byteOffset, head.byteLength);
+    if (view.getUint32(16) > 0 && view.getUint32(20) > 0) return "image/png";
+  }
+  if (size >= 21 && ascii(head, 0, 4) === "RIFF" && ascii(head, 8, 4) === "WEBP") {
+    const view = new DataView(head.buffer, head.byteOffset, head.byteLength);
+    const kind = ascii(head, 12, 4);
+    if (view.getUint32(4, true) + 8 === size && ["VP8 ", "VP8L", "VP8X"].includes(kind) && view.getUint32(16, true) > 0 && view.getUint32(16, true) + 20 <= size) return "image/webp";
+  }
+  return null;
+}
+
+export function validateResourceParts(head: Uint8Array, tail: Uint8Array, size: number, declaredMime: string, originalName: string) {
+  validateResourceSize(size);
+  const filename = cleanResourceFilename(originalName);
+  const mimeType = detectResourceMimeParts(head, tail, size);
+  if (!mimeType) throw new Error("Unsupported or invalid file content");
+  if (declaredMime.toLowerCase() !== mimeType) throw new Error("File type does not match its content");
+  const extension = filename.split(".").pop()?.toLowerCase() ?? "";
+  if (!extensions[mimeType].includes(extension)) throw new Error("Filename extension does not match file type");
+  return { originalFileName: filename, mimeType, sizeBytes: size };
+}
+
+export function validateResourceSize(sizeBytes: number) {
+  if (sizeBytes === 0) throw new Error("File is empty");
+  if (sizeBytes > RESOURCE_MAX_BYTES) throw new Error(`File exceeds ${RESOURCE_MAX_MEGABYTES} MB limit`);
+}
+
 export function validateResourceFile(bytes: Uint8Array, declaredMime: string, originalName: string) {
-  if (bytes.length === 0) throw new Error("File is empty");
-  if (bytes.length > RESOURCE_MAX_BYTES) throw new Error("File exceeds 10 MB limit");
+  validateResourceSize(bytes.length);
   const filename = cleanResourceFilename(originalName);
   const mimeType = detectResourceMime(bytes);
   if (!mimeType) throw new Error("Unsupported or invalid file content");
