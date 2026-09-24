@@ -210,7 +210,8 @@ export function getNavSectionsForRole(
     (canManageClients || item.href !== "/clients") &&
     (canManageSalesAndCommercial || (item.href !== "/requests" && item.href !== "/commercial-accounts")) &&
     (canManageTeam || item.href !== "/employees") &&
-    (canManageDocuments || (item.href !== "/owner/settings/documents" && item.href !== "/owner/settings/onboarding")) &&
+    ((canManageDocuments || canManageSalesAndCommercial || item.href !== "/owner/settings/documents") &&
+      (canManageDocuments || item.href !== "/owner/settings/onboarding")) &&
     (canViewFinancials || item.href !== "/financials") &&
     (canManageInvoices || item.href !== "/commercial-invoices") &&
     (canViewAnalytics || (item.href !== "/performance" && item.href !== "/analytics"))

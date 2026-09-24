@@ -1,18 +1,17 @@
 import { useSimpleFeedbackState } from "@/components/ui/FeedbackProvider";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { Link } from "wouter";
 import {
-  ArrowRight,
   FileSignature,
-  FileText,
   RotateCcw,
-  Users,
 } from "lucide-react";
 import { api } from "../../../../../convex/_generated/api";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { TemplateEditor } from "@/components/documents/TemplateEditor";
+import { ClientDocumentsSection } from "@/components/documents/ClientDocumentsSection";
+import { TeamDocumentsSection } from "@/components/documents/TeamDocumentsSection";
+import { getActiveDocumentSection, getDocumentSections } from "@/components/documents/documentSections";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
@@ -53,14 +52,22 @@ type TemplateRecord = {
 export function CompanyDocumentsPage() {
   const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
-  const templates = useQuery(
+  const canDocuments = user?.role === "owner" || user?.canManageDocuments === true;
+  const sections = getDocumentSections(user);
+  const [selectedSection, setSelectedSection] = useState(() =>
+    typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("section") ?? "");
+  const activeSection = getActiveDocumentSection(sections, selectedSection);
+  const changeSection = (section: string) => {
+    setSelectedSection(section);
+    const url = new URL(window.location.href);
+    url.searchParams.set("section", section);
+    window.history.replaceState(window.history.state, "", url);
+  };
+  const queriedTemplates = useQuery(
     (api as any).queries.documentTemplates.listByType,
-    user?._id ? { userId: user._id, sessionToken, type: "service_agreement" } : "skip",
+    canDocuments && user?._id && sessionToken ? { userId: user._id, sessionToken, type: "service_agreement" } : "skip",
   ) as TemplateRecord[] | undefined;
-  const workerDocuments = useQuery(
-    (api as any).queries.companyOnboardingDocuments.listForOwner,
-    user?._id && sessionToken ? { userId: user._id, sessionToken } : "skip",
-  ) as any[] | undefined;
+  const templates = queriedTemplates ?? [];
   const createTemplate = useMutation(
     (api as any).mutations.documentTemplates.create,
   );
@@ -74,16 +81,10 @@ export function CompanyDocumentsPage() {
     (api as any).mutations.documentTemplates.restoreScrubDefault,
   );
 
-  const defaultTemplate = useMemo(
-    () => templates?.find((template) => template.isDefault) ?? templates?.[0],
-    [templates],
-  );
-  const configuredDefaultTemplate = templates?.find(
-    (template) => template.isDefault,
-  );
+  const defaultTemplate = useMemo(() => templates.find((template) => template.isDefault) ?? templates[0], [queriedTemplates]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectedTemplate =
-    templates?.find((template) => template._id === selectedId) ??
+    templates.find((template) => template._id === selectedId) ??
     defaultTemplate ??
     null;
   const [name, setName] = useState("SCRUB Service Agreement");
@@ -92,7 +93,7 @@ export function CompanyDocumentsPage() {
   const [toast, setToast] = useSimpleFeedbackState();
   const [error, setError] = useState("");
   const [pendingAction, setPendingAction] = useState<
-    { type: "select"; templateId: string } | { type: "restore" } | null
+    { type: "select"; templateId: string } | { type: "restore" } | { type: "section"; section: string } | null
   >(null);
 
   const dirty =
@@ -107,15 +108,8 @@ export function CompanyDocumentsPage() {
     setBody(selectedTemplate.body ?? "");
   }, [selectedTemplate?._id]);
 
-  if (!user || templates === undefined || workerDocuments === undefined)
+  if (!user || !activeSection || (activeSection === "templates" && queriedTemplates === undefined))
     return <PageLoader />;
-
-  const uploadedWorkerDocuments = workerDocuments.filter(
-    (document) => document.storageId,
-  ).length;
-  const remainingWorkerDocumentSlots = workerDocuments.filter(
-    (document) => document.isStandard && !document.storageId,
-  ).length;
 
   const showToast = (message: string) => {
     setToast(message);
@@ -186,6 +180,15 @@ export function CompanyDocumentsPage() {
     setPendingAction({ type: "restore" });
   };
 
+  const requestSectionChange = (section: string) => {
+    if (section === activeSection) return;
+    if (activeSection === "templates" && dirty) {
+      setPendingAction({ type: "section", section });
+      return;
+    }
+    changeSection(section);
+  };
+
   const confirmPendingAction = () => {
     const action = pendingAction;
     setPendingAction(null);
@@ -193,6 +196,12 @@ export function CompanyDocumentsPage() {
       setSelectedId(action.templateId);
     } else if (action?.type === "restore") {
       void restoreDefault();
+    } else if (action?.type === "section") {
+      if (selectedTemplate) {
+        setName(selectedTemplate.name);
+        setBody(selectedTemplate.body);
+      }
+      changeSection(action.section);
     }
   };
 
@@ -215,6 +224,23 @@ export function CompanyDocumentsPage() {
       />
 
       <div className="max-w-6xl space-y-6">
+        <nav aria-label={t("documentsHub.sections")} className="flex flex-wrap gap-2 border-b border-gray-200 pb-3">
+          {sections.map((section) => (
+            <button
+              key={section}
+              type="button"
+              onClick={() => requestSectionChange(section)}
+              aria-current={activeSection === section ? "page" : undefined}
+              className={`rounded-md px-4 py-2 text-sm font-medium ${activeSection === section ? "bg-primary-600 text-white" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"}`}
+            >
+              {t(`documentsHub.${section}`)}
+            </button>
+          ))}
+        </nav>
+
+        {activeSection === "client" && <ClientDocumentsSection />}
+        {activeSection === "team" && <TeamDocumentsSection />}
+        {activeSection === "templates" && <>
         {error && (
           <div
             role="alert"
@@ -223,91 +249,6 @@ export function CompanyDocumentsPage() {
             {error}
           </div>
         )}
-
-        <section
-          className="space-y-4"
-          aria-labelledby="documents-overview-heading"
-        >
-          <div>
-            <h2
-              id="documents-overview-heading"
-              className="text-lg font-semibold text-gray-900"
-            >
-              Documents Hub
-            </h2>
-            <p className="mt-1 text-sm text-gray-500">
-              Client templates generate documents for clients. Worker Documents
-              are company PDFs used during onboarding and compliance.
-            </p>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              ["Client Templates", templates.length.toString()],
-              [
-                "Default Client Template",
-                configuredDefaultTemplate?.name ?? "Not set",
-              ],
-              ["Worker PDFs Uploaded", uploadedWorkerDocuments.toString()],
-              [
-                "Worker Document Slots Remaining",
-                remainingWorkerDocumentSlots.toString(),
-              ],
-            ].map(([label, value]) => (
-              <div key={label} className="card p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-gray-500">
-                  {label}
-                </p>
-                <p
-                  className="mt-1 truncate text-lg font-semibold text-gray-900"
-                  title={value}
-                >
-                  {value}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="card flex items-start gap-3">
-              <div className="rounded-lg bg-primary-50 p-2 text-primary-600">
-                <FileText className="h-5 w-5" aria-hidden="true" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">
-                  Client Document Templates
-                </h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Used to generate documents sent to clients. Currently includes
-                  Service Agreement templates.
-                </p>
-              </div>
-            </div>
-            <Link
-              href="/owner/settings/onboarding"
-              className="card flex items-start gap-3 transition-colors hover:bg-gray-50"
-            >
-              <div className="rounded-lg bg-primary-50 p-2 text-primary-600">
-                <Users className="h-5 w-5" aria-hidden="true" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="font-semibold text-gray-900">
-                    Worker Documents
-                  </h3>
-                  <ArrowRight
-                    className="h-4 w-4 text-gray-400"
-                    aria-hidden="true"
-                  />
-                </div>
-                <p className="mt-1 text-sm text-gray-500">
-                  Company-uploaded PDFs used during worker onboarding and
-                  compliance.
-                </p>
-              </div>
-            </Link>
-          </div>
-        </section>
 
         <section
           className="card space-y-4"
@@ -323,17 +264,16 @@ export function CompanyDocumentsPage() {
                   id="client-templates-heading"
                   className="text-base font-semibold text-gray-900"
                 >
-                  Client Document Templates
+                  {t("documentsHub.serviceAgreementTemplates")}
                 </h2>
                 <p className="text-sm text-gray-500">
-                  Service Agreement templates used to create agreements for
-                  clients.
+                  {t("documentsHub.templateIntro")}
                 </p>
               </div>
             </div>
           </div>
 
-          <h3 className="text-sm font-semibold text-gray-900">Templates</h3>
+          <h3 className="text-sm font-semibold text-gray-900">{t("documentsHub.templates")}</h3>
 
           <div className="grid gap-3 md:grid-cols-3">
             {(templates.length ? templates : []).map((template) => (
@@ -353,37 +293,33 @@ export function CompanyDocumentsPage() {
                     <p className="font-medium text-gray-900">{template.name}</p>
                     <p className="mt-1 text-xs text-gray-500">
                       {template.source === "scrub_default"
-                        ? "SCRUB-provided"
-                        : "Company customized"}
+                        ? t("documentsHub.templateOriginScrub")
+                        : t("documentsHub.templateOriginCompany")}
                     </p>
                   </div>
                   {template.isDefault && (
                     <span className="badge bg-green-100 text-green-700">
-                      Default for new agreements
+                      {t("documentsHub.defaultForNew")}
                     </span>
                   )}
                 </div>
                 {!template.isDefault && (
                   <p className="mt-3 text-xs font-medium text-primary-700">
-                    Select to edit
+                    {t("documentsHub.selectToEdit")}
                   </p>
                 )}
               </button>
             ))}
             {templates.length === 0 && (
               <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-600 md:col-span-3">
-                No client Service Agreement template is configured. Save the
-                editor below or restore the SCRUB-provided template. Once
-                created, the default template is used for new agreements
-                generated from accepted proposals.
+                {t("documentsHub.templateEmpty")}
               </div>
             )}
           </div>
 
           <div className="flex flex-col gap-3 border-t border-gray-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-gray-500">
-              Need a clean starting point? Restore a fresh SCRUB-provided
-              template without removing existing saved templates.
+              {t("documentsHub.restoreHint")}
             </p>
             <button
               type="button"
@@ -392,7 +328,7 @@ export function CompanyDocumentsPage() {
               className="btn-secondary flex shrink-0 items-center justify-center gap-2 text-sm"
             >
               <RotateCcw className="h-4 w-4" aria-hidden="true" />
-              Restore SCRUB Default
+              {t("documentsHub.restoreDefault")}
             </button>
           </div>
         </section>
@@ -416,12 +352,13 @@ export function CompanyDocumentsPage() {
                   disabled={saving}
                   className="btn-secondary text-sm"
                 >
-                  Set as Default
+                  {t("documentsHub.setDefault")}
                 </button>
               ) : undefined
             }
           />
         </section>
+        </>}
       </div>
 
 
@@ -430,18 +367,20 @@ export function CompanyDocumentsPage() {
         onOpenChange={(open) => !open && setPendingAction(null)}
         title={
           pendingAction?.type === "restore"
-            ? "Restore SCRUB Default?"
-            : "Discard unsaved changes?"
+            ? t("documentsHub.restoreConfirm")
+            : t("documentsHub.discardConfirm")
         }
         description={
           pendingAction?.type === "restore"
-            ? `A fresh SCRUB-provided template will be restored and become the default. Existing saved templates will remain.${dirty ? " Your unsaved local changes will be discarded." : ""}`
-            : "Switching templates will discard your unsaved local changes. You can stay here and save them first."
+            ? `${t("documentsHub.restoreDescription")}${dirty ? ` ${t("documentsHub.unsavedDiscard")}` : ""}`
+            : pendingAction?.type === "section"
+              ? t("documentsHub.switchSectionDescription")
+              : t("documentsHub.switchTemplateDescription")
         }
         confirmLabel={
           pendingAction?.type === "restore"
-            ? "Restore Default"
-            : "Discard and Switch"
+            ? t("documentsHub.restoreDefault")
+            : t("documentsHub.discardAndSwitch")
         }
         onConfirm={confirmPendingAction}
         loading={saving}

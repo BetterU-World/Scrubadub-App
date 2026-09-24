@@ -475,7 +475,7 @@ export default function App() {
                 {user?.canManageTeam && <Route path="/employees" component={EmployeeListPage} />}
                 {user?.canManageBusinessConfiguration && <Route path="/inventory-templates" component={InventoryTemplatesPage} />}
                 {user?.canManageDocuments && <Route path="/owner/settings/onboarding" component={CompanyOnboardingDocumentsPage} />}
-                {user?.canManageDocuments && <Route path="/owner/settings/documents" component={CompanyDocumentsPage} />}
+                {(user?.canManageDocuments || user?.canManageSalesAndCommercial) && <Route path="/owner/settings/documents" component={CompanyDocumentsPage} />}
                 {user?.canManageBusinessConfiguration && <Route path="/owner/settings/add-ons" component={CompanyAddOnsPage} />}
               </>
             ) : (
