@@ -11,6 +11,7 @@ import {
 import { copyAcceptedProposalAddOnSnapshots, formatAgreementAddOnLines } from "../lib/acceptedProposalAddOnSnapshots";
 import { calculateProposalTotals } from "../lib/proposalAddOnLineItems";
 import { activeServiceAgreementIssue, assertAgreementPriceConsistency, buildServiceAgreementIssueContent, renderStructuredAgreementBody } from "../lib/serviceAgreementIssuedContent";
+import { approvedServiceAgreementTemplate, approvedServiceAgreementTemplates } from "../lib/serviceAgreementTemplates";
 
 const agreementFields = {
   title: v.string(),
@@ -93,14 +94,8 @@ function cleanAmount(value: number | undefined) {
 }
 
 async function getDefaultServiceAgreementTemplate(ctx: any, companyId: any) {
-  const template = await (ctx.db as any)
-    .query("documentTemplates")
-    .withIndex("by_company_type_default", (q: any) =>
-      q.eq("companyId", companyId).eq("type", "service_agreement").eq("isDefault", true)
-    )
-    .first();
-
-  return template?.companyId === companyId ? template : null;
+  const templates = await approvedServiceAgreementTemplates(ctx, companyId);
+  return templates.find((template: any) => template.isDefault) ?? null;
 }
 
 async function getAgreementWalkthrough(ctx: any, companyId: any, proposal: any) {
@@ -375,6 +370,41 @@ export const update = mutation({
     await ctx.db.patch(args.agreementId, {
       ...patch,
       updatedAt: Date.now(),
+    });
+  },
+});
+
+/** Explicitly replace only the copied template snapshot. Named authoring fields are preserved. */
+export const applyApprovedTemplate = mutation({
+  args: { userId: v.id("users"), sessionToken: v.string(), agreementId: v.id("serviceAgreements"), templateId: v.id("documentTemplates") },
+  handler: async (ctx, args) => {
+    const { agreement } = await getOwnedAgreement(ctx, args.sessionToken, args.userId, args.agreementId);
+    if (agreement.contentMode !== "structured" || !["draft", "ready"].includes(agreement.status) ||
+      agreement.currentIssueId || agreement.pendingDeliveryAttemptId) {
+      throw new Error("Only an editable structured agreement can apply a template");
+    }
+    const template = await approvedServiceAgreementTemplate(ctx, agreement.companyId, args.templateId);
+    const next = { ...agreement, templateId: template._id, templateNameAtGeneration: template.name,
+      templateVersionAtGeneration: template.version, templateBody: template.body };
+    await ctx.db.patch(agreement._id, {
+      templateId: template._id, templateNameAtGeneration: template.name,
+      templateVersionAtGeneration: template.version, templateBody: template.body,
+      body: await renderStructuredAgreementBody(ctx, next), updatedAt: Date.now(),
+    });
+  },
+});
+
+/** Rebuild the derived body from saved fields and the agreement's copied text. */
+export const regenerateFromTemplateSnapshot = mutation({
+  args: { userId: v.id("users"), sessionToken: v.string(), agreementId: v.id("serviceAgreements") },
+  handler: async (ctx, args) => {
+    const { agreement } = await getOwnedAgreement(ctx, args.sessionToken, args.userId, args.agreementId);
+    if (agreement.contentMode !== "structured" || !agreement.templateBody ||
+      !["draft", "ready"].includes(agreement.status) || agreement.currentIssueId || agreement.pendingDeliveryAttemptId) {
+      throw new Error("Only an editable structured agreement can regenerate content");
+    }
+    await ctx.db.patch(agreement._id, {
+      body: await renderStructuredAgreementBody(ctx, agreement), updatedAt: Date.now(),
     });
   },
 });

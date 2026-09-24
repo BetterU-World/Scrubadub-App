@@ -1,37 +1,5 @@
-export type MergeFieldDefinition = {
-  key: string;
-  label: string;
-  category: "Company" | "Client" | "Property" | "Proposal" | "Agreement" | "System";
-};
-
-export const SERVICE_AGREEMENT_FIELDS: MergeFieldDefinition[] = [
-  { key: "company_logo", label: "Company logo", category: "Company" },
-  { key: "company_name", label: "Company name", category: "Company" },
-  { key: "company_phone", label: "Company phone", category: "Company" },
-  { key: "company_email", label: "Company email", category: "Company" },
-  { key: "company_website", label: "Company website", category: "Company" },
-  { key: "company_address", label: "Company address", category: "Company" },
-  { key: "company_license_number", label: "License number", category: "Company" },
-  { key: "company_insurance", label: "Insurance information", category: "Company" },
-  { key: "company_primary_color", label: "Primary color", category: "Company" },
-  { key: "company_secondary_color", label: "Secondary color", category: "Company" },
-  { key: "company_accent_color", label: "Accent color", category: "Company" },
-  { key: "company_header", label: "Document header", category: "Company" },
-  { key: "company_footer", label: "Document footer", category: "Company" },
-  { key: "client_name", label: "Client name", category: "Client" },
-  { key: "property_address", label: "Property address", category: "Property" },
-  { key: "proposal_price", label: "Proposal price", category: "Proposal" },
-  { key: "contract_price", label: "Contract price", category: "Agreement" },
-  { key: "billing_schedule", label: "Billing schedule", category: "Agreement" },
-  { key: "service_frequency", label: "Service frequency", category: "Agreement" },
-  { key: "agreement_start_date", label: "Agreement start date", category: "Agreement" },
-  { key: "start_date", label: "Start date", category: "Agreement" },
-  { key: "services_included", label: "Services included", category: "Agreement" },
-  { key: "add_on_line_items", label: "Committed add-ons", category: "Agreement" },
-  { key: "special_instructions", label: "Special instructions", category: "Agreement" },
-  { key: "exceptions", label: "Exceptions", category: "Agreement" },
-  { key: "today", label: "Today", category: "System" },
-];
+export { SERVICE_AGREEMENT_MERGE_FIELDS as SERVICE_AGREEMENT_FIELDS } from "../../../../convex/lib/serviceAgreementMergeFieldCatalogue";
+export type { AgreementMergeField as MergeFieldDefinition } from "../../../../convex/lib/serviceAgreementMergeFieldCatalogue";
 
 export const SAMPLE_SERVICE_AGREEMENT_VALUES: Record<string, string> = {
   company_logo: "",
@@ -60,6 +28,11 @@ export const SAMPLE_SERVICE_AGREEMENT_VALUES: Record<string, string> = {
   add_on_line_items: "• Interior windows: 3 windows — $24.00 (monthly)",
   special_instructions: "Service after 6 PM on weekdays.",
   exceptions: "Window washing is excluded unless separately approved.",
+  agreement_end_date: "06/30/2027",
+  renewal_date: "07/01/2027",
+  scope_of_work: "Weekly office cleaning and restroom sanitation.",
+  payment_terms: "Net 15 after monthly invoice.",
+  terms: "Please provide 30 days' notice for cancellation.",
   today: new Date().toLocaleDateString(),
 };
 

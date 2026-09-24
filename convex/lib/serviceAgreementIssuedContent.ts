@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { buildServiceAgreementMergeValues, renderDocumentTemplate } from "./documentMergeFields";
 import { formatAgreementAddOnLines } from "./acceptedProposalAddOnSnapshots";
+import { getCompanyIdentity } from "./companyIdentity";
 
 const text = v.union(v.string(), v.null());
 const amount = v.union(v.number(), v.null());
@@ -62,16 +63,15 @@ export async function renderStructuredAgreementBody(ctx: any, agreement: any) {
 }
 
 export async function buildServiceAgreementIssueContent(ctx: any, agreement: any) {
-  const [company, site, body] = await Promise.all([
-    ctx.db.get(agreement.companyId),
-    ctx.db.query("companySites").withIndex("by_companyId", (q: any) => q.eq("companyId", agreement.companyId)).first(),
+  const [identity, body] = await Promise.all([
+    getCompanyIdentity(ctx, agreement.companyId),
     renderStructuredAgreementBody(ctx, agreement),
   ]);
   return {
-    companyName: site?.brandName ?? company?.companyDisplayName ?? company?.name ?? "Your Cleaning Company",
-    companyLogoUrl: site?.logoUrl ?? null,
-    companyEmail: site?.publicEmail ?? company?.contactEmail ?? null,
-    companyPhone: site?.publicPhone ?? company?.contactPhone ?? null,
+    companyName: identity.companyName,
+    companyLogoUrl: identity.logoUrl,
+    companyEmail: identity.email,
+    companyPhone: identity.phone,
     title: agreement.title,
     clientName: agreement.clientName ?? null,
     propertyAddress: agreement.propertyAddress ?? null,

@@ -76,6 +76,111 @@ async function issue(s: Awaited<ReturnType<typeof setup>>) {
 }
 
 describe("service agreement issued content", () => {
+  it("offers only active company templates to sales staff without granting library editing", async () => {
+    const s = await setup();
+    const ids = await s.t.run(async (ctx) => {
+      await ctx.db.patch(s.managerId, { canManageSalesAndCommercial: true });
+      const archived = await ctx.db.insert("documentTemplates", { companyId: s.companyId, type: "service_agreement", name: "Archived", body: "Old", status: "archived", createdAt: 1, updatedAt: 1 });
+      const wrongType = await ctx.db.insert("documentTemplates", { companyId: s.companyId, type: "proposal", name: "Proposal", body: "Wrong", status: "active", createdAt: 1, updatedAt: 1 });
+      const foreign = await ctx.db.insert("documentTemplates", { companyId: s.otherCompanyId, type: "service_agreement", name: "Foreign", body: "Wrong", status: "active", createdAt: 1, updatedAt: 1 });
+      return { archived, wrongType, foreign };
+    });
+    const choices: any[] = await s.t.query((api as any).queries.documentTemplates.listServiceAgreementChoicesForSales, s.managerAuth);
+    expect(choices.map((choice) => choice._id)).toEqual([s.templateId]);
+    for (const templateId of Object.values(ids)) {
+      await expect(s.t.mutation(mutations.applyApprovedTemplate, { ...s.managerAuth, agreementId: s.agreementId, templateId })).rejects.toThrow("Active company");
+    }
+    await expect(s.t.query((api as any).queries.documentTemplates.listByType, { ...s.managerAuth, type: "service_agreement" })).rejects.toThrow("canManageDocuments");
+    await expect(s.t.mutation((api as any).mutations.documentTemplates.update, { ...s.managerAuth, templateId: s.templateId, name: "Changed", body: "Changed" })).rejects.toThrow("canManageDocuments");
+  });
+
+  it("falls back when the company default is archived", async () => {
+    const s = await setup();
+    const nextProposalId = await s.t.run(async (ctx) => {
+      await ctx.db.patch(s.templateId, { status: "archived" });
+      return ctx.db.insert("proposals", { companyId: s.companyId, clientRelationshipId: s.relationshipId, clientRequestId: s.requestId,
+        createdByUserId: s.ownerId, title: "Next", clientName: "Client", status: "accepted", createdAt: 2, updatedAt: 2 });
+    });
+    const nextId = await s.t.mutation(mutations.createDraftFromAcceptedProposal, { ...s.ownerAuth, proposalId: nextProposalId });
+    const draft = await s.t.run((ctx) => ctx.db.get(nextId));
+    expect(draft?.templateId).toBeUndefined();
+    expect(draft?.templateNameAtGeneration).toBe("SCRUB default service agreement");
+  });
+
+  it("uses the same live company identity precedence in the draft header and merge body, then freezes it", async () => {
+    const s = await setup("{{company_name}} / {{company_email}} / {{company_phone}}");
+    await s.t.run((ctx) => ctx.db.insert("companySettings", { companyId: s.companyId, companyName: "Settings Brand",
+      email: "settings@example.test", phone: "555-0100", createdAt: 1, updatedAt: 1 }));
+    const preview: any = await s.t.query(queries.getById, { ...s.ownerAuth, agreementId: s.agreementId });
+    expect(preview.canonicalPreview).toMatchObject({ companyName: "Settings Brand", companyEmail: "settings@example.test",
+      companyPhone: "555-0100", body: "Settings Brand / settings@example.test / 555-0100" });
+    await s.t.mutation(mutations.markSent, { ...s.ownerAuth, agreementId: s.agreementId });
+    expect((await issue(s))!.content).toEqual(preview.canonicalPreview);
+    await s.t.run(async (ctx) => {
+      const settings = await ctx.db.query("companySettings").withIndex("by_companyId", (q) => q.eq("companyId", s.companyId)).first();
+      await ctx.db.patch(settings!._id, { companyName: "Later Brand" });
+    });
+    expect((await s.t.query(queries.getForClient, { ...s.clientAuth, agreementId: s.agreementId }) as any).companyName).toBe("Settings Brand");
+  });
+
+  it("applies and regenerates a copied template without changing named terms or issued history", async () => {
+    const s = await setup();
+    await update(s, { terms: "Thirty day notice", paymentTerms: "Net 15", scopeOfWork: "Custom scope" });
+    const chosenId = await s.t.run((ctx) => ctx.db.insert("documentTemplates", { companyId: s.companyId, type: "service_agreement",
+      name: "Alternate", body: "Scope {{scope_of_work}}; pay {{payment_terms}}; {{terms}}", version: 7, status: "active", createdAt: 1, updatedAt: 1 }));
+    const prospective: any = await s.t.query(queries.previewTemplateApplication, { ...s.ownerAuth, agreementId: s.agreementId, templateId: chosenId });
+    expect(prospective.canonicalPreview.body).toContain("Custom scope; pay Net 15; Thirty day notice");
+    expect(prospective.authoringReview.previewSource).toBe("template_candidate");
+    const sparseId = await s.t.run((ctx) => ctx.db.insert("documentTemplates", { companyId: s.companyId, type: "service_agreement",
+      name: "Sparse", body: "{{client_name}}", status: "active", createdAt: 1, updatedAt: 1 }));
+    const sparse: any = await s.t.query(queries.previewTemplateApplication, { ...s.ownerAuth, agreementId: s.agreementId, templateId: sparseId });
+    expect(sparse.authoringReview.namedSectionsOutsideProse).toEqual(expect.arrayContaining(["scopeOfWork", "paymentTerms", "terms"]));
+    await s.t.mutation(mutations.applyApprovedTemplate, { ...s.ownerAuth, agreementId: s.agreementId, templateId: chosenId });
+    await s.t.run((ctx) => ctx.db.patch(chosenId, { body: "LIBRARY CHANGED", version: 8 }));
+    await s.t.mutation(mutations.regenerateFromTemplateSnapshot, { ...s.ownerAuth, agreementId: s.agreementId });
+    const draft: any = await s.t.query(queries.getById, { ...s.ownerAuth, agreementId: s.agreementId });
+    expect(draft).toMatchObject({ templateId: chosenId, templateNameAtGeneration: "Alternate", templateVersionAtGeneration: 7,
+      terms: "Thirty day notice", paymentTerms: "Net 15", body: prospective.canonicalPreview.body });
+    expect(draft.canonicalPreview).toEqual(prospective.canonicalPreview);
+    expect(draft.authoringReview.previewSource).toBe("saved_agreement");
+    await s.t.mutation(mutations.markSent, { ...s.ownerAuth, agreementId: s.agreementId });
+    const first = await issue(s);
+    await expect(s.t.mutation(mutations.applyApprovedTemplate, { ...s.ownerAuth, agreementId: s.agreementId, templateId: chosenId })).rejects.toThrow("editable structured");
+    await expect(s.t.mutation(mutations.regenerateFromTemplateSnapshot, { ...s.ownerAuth, agreementId: s.agreementId })).rejects.toThrow("editable structured");
+    await s.t.mutation(mutations.returnToDraft, { ...s.ownerAuth, agreementId: s.agreementId });
+    await s.t.mutation(mutations.regenerateFromTemplateSnapshot, { ...s.ownerAuth, agreementId: s.agreementId });
+    expect(await s.t.run((ctx) => ctx.db.get(first!._id))).toMatchObject({ content: first!.content, withdrawnAt: expect.any(Number) });
+    await s.t.run((ctx) => ctx.db.patch(s.agreementId, { contentMode: undefined }));
+    await expect(s.t.mutation(mutations.regenerateFromTemplateSnapshot, { ...s.ownerAuth, agreementId: s.agreementId })).rejects.toThrow("editable structured");
+  });
+
+  it("reports saved-draft review items without treating optional omissions as blockers", async () => {
+    const s = await setup("{{client_name}} {{property_address}} {{scope_of_work}} {{renewal_date}} {{unknown}} {{bad-key}}");
+    await update(s, { clientName: undefined, propertyAddress: undefined, scopeOfWork: undefined, servicesIncluded: undefined,
+      contractAmountCents: 20000 });
+    const draft: any = await s.t.query(queries.getById, { ...s.ownerAuth, agreementId: s.agreementId });
+    const codes = draft.authoringReview.warnings.map((item: any) => item.code);
+    expect(codes).toEqual(expect.arrayContaining(["client_name_missing", "property_address_missing", "scope_missing", "unknown_merge_field", "missing_merge_value", "visible_placeholder"]));
+    expect(draft.authoringReview.suggestions).toEqual(expect.arrayContaining([expect.objectContaining({ code: "renewal_date_missing" })]));
+    expect(draft.authoringReview.technicalBlockers).toEqual([expect.objectContaining({ code: "price_conflict" })]);
+    expect(draft.authoringReview.emailIssueBlockers).toEqual(expect.arrayContaining([expect.objectContaining({ code: "price_conflict" })]));
+    expect(draft.canonicalPreview.body).toContain("{{bad-key}}");
+    await update(s, { clientName: "Acme", propertyAddress: "1 Main St", scopeOfWork: "Cleaning", servicesIncluded: "Cleaning",
+      contractAmountCents: 10000, effectiveEndDate: "2031-12-31", renewalDate: "2032-01-01", terms: "30 day cancellation notice" });
+    const clean: any = await s.t.query(queries.getById, { ...s.ownerAuth, agreementId: s.agreementId });
+    expect(clean.authoringReview.technicalBlockers).toEqual([]);
+    expect(clean.authoringReview.warnings.map((item: any) => item.code)).toContain("unknown_merge_field");
+  });
+
+  it("keeps a representative saved agreement free of strong warnings", async () => {
+    const s = await setup("{{client_name}} at {{property_address}}: {{scope_of_work}}. {{terms}}");
+    await update(s, { scopeOfWork: "Office cleaning", terms: "30 day cancellation notice",
+      effectiveEndDate: "2031-12-31", renewalDate: "2032-01-01" });
+    const draft: any = await s.t.query(queries.getById, { ...s.ownerAuth, agreementId: s.agreementId });
+    expect(draft.authoringReview.warnings).toEqual([]);
+    expect(draft.authoringReview.technicalBlockers).toEqual([]);
+    expect(draft.authoringReview.previewSource).toBe("saved_agreement");
+  });
   it("projects the latest owner-visible delivery provenance without inferring it from sentAt", async () => {
     const s = await setup();
     expect((await s.t.query(queries.getById, { ...s.ownerAuth, agreementId: s.agreementId }) as any).latestDeliveryAttempt).toBeNull();

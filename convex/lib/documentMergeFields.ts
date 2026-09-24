@@ -1,49 +1,6 @@
 import { getCompanyIdentity, type CompanyIdentity } from "./companyIdentity";
-
-export type MergeFieldDefinition = {
-  key: string;
-  label: string;
-  category: "Company" | "Client" | "Property" | "Proposal" | "Agreement" | "System";
-  description?: string;
-};
-
-export const COMPANY_MERGE_FIELDS: MergeFieldDefinition[] = [
-  { key: "company_logo", label: "Company logo", category: "Company" },
-  { key: "company_name", label: "Company name", category: "Company" },
-  { key: "company_phone", label: "Company phone", category: "Company" },
-  { key: "company_email", label: "Company email", category: "Company" },
-  { key: "company_website", label: "Company website", category: "Company" },
-  { key: "company_address", label: "Company address", category: "Company" },
-  { key: "company_license_number", label: "License number", category: "Company" },
-  { key: "company_insurance", label: "Insurance information", category: "Company" },
-  { key: "company_primary_color", label: "Primary color", category: "Company" },
-  { key: "company_secondary_color", label: "Secondary color", category: "Company" },
-  { key: "company_accent_color", label: "Accent color", category: "Company" },
-  { key: "company_header", label: "Document header", category: "Company" },
-  { key: "company_footer", label: "Document footer", category: "Company" },
-  { key: "today", label: "Today", category: "System" },
-];
-
-export const SERVICE_AGREEMENT_MERGE_FIELDS: MergeFieldDefinition[] = [
-  ...COMPANY_MERGE_FIELDS,
-  { key: "client_name", label: "Client name", category: "Client" },
-  { key: "property_address", label: "Property address", category: "Property" },
-  { key: "proposal_price", label: "Proposal price", category: "Proposal" },
-  { key: "service_frequency", label: "Service frequency", category: "Agreement" },
-  { key: "agreement_start_date", label: "Agreement start date", category: "Agreement" },
-  { key: "contract_price", label: "Contract price", category: "Agreement" },
-  { key: "billing_schedule", label: "Billing schedule", category: "Agreement" },
-  { key: "start_date", label: "Start date", category: "Agreement" },
-  { key: "services_included", label: "Services included", category: "Agreement" },
-  { key: "add_on_line_items", label: "Committed add-ons", category: "Agreement" },
-  { key: "special_instructions", label: "Special instructions", category: "Agreement" },
-  { key: "exceptions", label: "Exceptions", category: "Agreement" },
-  { key: "agreement_end_date", label: "Agreement end date", category: "Agreement" },
-  { key: "renewal_date", label: "Renewal date", category: "Agreement" },
-  { key: "scope_of_work", label: "Scope of work", category: "Agreement" },
-  { key: "payment_terms", label: "Payment terms", category: "Agreement" },
-  { key: "terms", label: "Additional terms", category: "Agreement" },
-];
+export { COMPANY_MERGE_FIELDS, SERVICE_AGREEMENT_MERGE_FIELDS } from "./serviceAgreementMergeFieldCatalogue";
+export type { AgreementMergeField as MergeFieldDefinition } from "./serviceAgreementMergeFieldCatalogue";
 
 export const FALLBACK_SERVICE_AGREEMENT_TEMPLATE = `# Service Agreement
 

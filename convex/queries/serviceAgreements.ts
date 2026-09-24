@@ -4,6 +4,8 @@ import { requireVerifiedClientSession } from "../lib/sessionAuth";
 import { requireOwnerOrManagerCapability } from "../lib/sessionAuth";
 import { activeServiceAgreementIssue, buildServiceAgreementIssueContent } from "../lib/serviceAgreementIssuedContent";
 import { serviceAgreementPortalAccess } from "../lib/serviceAgreementPortalAccess";
+import { buildAgreementAuthoringReview } from "../lib/serviceAgreementAuthoring";
+import { approvedServiceAgreementTemplate } from "../lib/serviceAgreementTemplates";
 
 async function requireOwnerCompany(ctx: any, sessionToken: string, userId: any) {
   const user = await requireOwnerOrManagerCapability(
@@ -28,14 +30,17 @@ async function decorateAgreement(ctx: any, agreement: any) {
   const latestDeliveryAttempt = await ctx.db.query("transactionalDocumentDeliveryAttempts")
     .withIndex("by_document", (q: any) => q.eq("documentKind", "service_agreement").eq("documentId", String(agreement._id)))
     .order("desc").first();
+  const canonicalPreview = (await activeServiceAgreementIssue(ctx, agreement))?.content ??
+    (agreement.currentIssueId ? null : await buildServiceAgreementIssueContent(ctx, agreement));
+  const portalAccess = await serviceAgreementPortalAccess(ctx, agreement);
   return {
     ...agreement,
-    canonicalPreview: (await activeServiceAgreementIssue(ctx, agreement))?.content ??
-      (agreement.currentIssueId ? null : await buildServiceAgreementIssueContent(ctx, agreement)),
+    canonicalPreview,
+    authoringReview: canonicalPreview ? await buildAgreementAuthoringReview(ctx, agreement, canonicalPreview, portalAccess) : null,
     latestDeliveryAttempt: latestDeliveryAttempt?.companyId === agreement.companyId
       ? { channel: latestDeliveryAttempt.channel, result: latestDeliveryAttempt.result, attemptedAt: latestDeliveryAttempt.attemptedAt }
       : null,
-    portalAccess: await serviceAgreementPortalAccess(ctx, agreement),
+    portalAccess,
     clientRelationship:
       relationship?.companyId === agreement.companyId
         ? {
@@ -48,6 +53,24 @@ async function decorateAgreement(ctx: any, agreement: any) {
         : null,
   };
 }
+
+/** Preview a deliberate template replacement without changing the saved draft. */
+export const previewTemplateApplication = query({
+  args: { userId: v.id("users"), sessionToken: v.string(), agreementId: v.id("serviceAgreements"), templateId: v.id("documentTemplates") },
+  handler: async (ctx, args) => {
+    const agreement = await getOwnedAgreement(ctx, args.sessionToken, args.userId, args.agreementId);
+    if (!agreement || agreement.contentMode !== "structured" || !["draft", "ready"].includes(agreement.status) ||
+      agreement.currentIssueId || agreement.pendingDeliveryAttemptId) {
+      throw new Error("Only an editable structured agreement can preview a template");
+    }
+    const template = await approvedServiceAgreementTemplate(ctx, agreement.companyId, args.templateId);
+    const candidate = { ...agreement, templateId: template._id, templateNameAtGeneration: template.name,
+      templateVersionAtGeneration: template.version, templateBody: template.body };
+    const canonicalPreview = await buildServiceAgreementIssueContent(ctx, candidate);
+    const portalAccess = await serviceAgreementPortalAccess(ctx, candidate);
+    return { canonicalPreview, authoringReview: await buildAgreementAuthoringReview(ctx, candidate, canonicalPreview, portalAccess, "template_candidate") };
+  },
+});
 
 export const getById = query({
   args: {
