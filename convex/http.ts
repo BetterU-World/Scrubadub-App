@@ -128,6 +128,33 @@ http.route({ path: "/resources/upload", method: "POST", handler: uploadResource 
 http.route({ path: "/resources/file", method: "OPTIONS", handler: resourceOptions });
 http.route({ path: "/resources/file", method: "GET", handler: readResource });
 
+const readClientResource = httpAction(async (ctx, request) => {
+  const origin = resourceCors(request);
+  if (!origin) return resourceError("Origin not allowed", 403, null);
+  const sessionToken = resourceSession(request);
+  if (!sessionToken) return resourceError("Sign in required", 401, origin);
+  const resourceId = new URL(request.url).searchParams.get("resourceId");
+  if (!resourceId) return resourceError("Resource ID required", 400, origin);
+  try {
+    const resource = await ctx.runQuery((internal as any).queries.clientResources.getForRead, {
+      sessionToken, resourceId: resourceId as Id<"companyResources">,
+    });
+    const blob = await ctx.storage.get(resource.storageId);
+    if (!blob) return resourceError("Resource file unavailable", 404, origin);
+    const disposition = new URL(request.url).searchParams.get("download") === "1" ? "attachment" : "inline";
+    const filename = resource.originalFileName.replace(/["\\\r\n]/g, "");
+    return new Response(blob, { status: 200, headers: {
+      ...resourceHeaders(origin), "Content-Type": resource.mimeType,
+      "Content-Disposition": `${disposition}; filename="resource"; filename*=UTF-8''${encodeURIComponent(filename)}`,
+    } });
+  } catch {
+    return resourceError("Resource unavailable", 403, origin);
+  }
+});
+
+http.route({ path: "/client/resources/file", method: "OPTIONS", handler: resourceOptions });
+http.route({ path: "/client/resources/file", method: "GET", handler: readClientResource });
+
 const stripeWebhook = httpAction(async (ctx, request) => {
   if (areExternalSideEffectsDisabled()) {
     return new Response("External side effects disabled", { status: 503 });

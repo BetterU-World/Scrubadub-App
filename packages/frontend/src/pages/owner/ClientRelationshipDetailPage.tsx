@@ -12,6 +12,7 @@ import { Clock, Home, Mail, Plus, Phone, Save, User, Wrench } from "lucide-react
 import { useTranslation } from "react-i18next";
 import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
 import { ServiceAgreementStatusBadge } from "@/components/ui/ServiceAgreementStatusBadge";
+import { ClientResourcesSection } from "@/components/client/ClientResourcesSection";
 
 type ClientType = "residential" | "commercial" | "str" | "property_manager" | "marketplace";
 type RelationshipStatus = "active" | "inactive" | "archived";
@@ -398,6 +399,8 @@ export function ClientRelationshipDetailPage() {
           </div>
         )}
       </section>
+
+      <ClientResourcesSection relationshipId={relationship._id} active={relationship.status === "active"} />
 
       {totalLinkedRecords === 0 && (
         <div className="rounded-lg border border-primary-200 bg-primary-50 p-4 text-sm text-primary-800">

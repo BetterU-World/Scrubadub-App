@@ -24,6 +24,7 @@ export function ResourcesSection() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [deleteRow, setDeleteRow] = useState<ResourceRow | null>(null);
+  const [archiveRow, setArchiveRow] = useState<ResourceRow | null>(null);
   const data = useQuery((api as any).queries.companyResources.list,
     sessionToken ? { sessionToken, status } : "skip") as { rows: ResourceRow[]; limited: boolean } | undefined;
   const updateDetails = useMutation((api as any).mutations.companyResources.updateDetails);
@@ -31,6 +32,9 @@ export function ResourcesSection() {
   const restore = useMutation((api as any).mutations.companyResources.restore);
   const deleteArchived = useMutation((api as any).mutations.companyResources.deleteArchived);
   const rows = useMemo(() => filterResources(data?.rows ?? [], search), [data, search]);
+  const shares = useQuery((api as any).queries.clientResourceAssignments.countsForResources,
+    sessionToken && data ? { sessionToken, resourceIds: data.rows.map((row) => row._id) } : "skip") as Record<string, { count: number; limited: boolean }> | undefined;
+  const countFor = (row?: ResourceRow | null) => row ? shares?.[row._id]?.count ?? 0 : 0;
   const site = useMemo(() => {
     try { return resourceSiteUrl(import.meta.env.VITE_CONVEX_URL, import.meta.env.VITE_CONVEX_SITE_URL); }
     catch { return ""; }
@@ -122,6 +126,7 @@ export function ResourcesSection() {
     try {
       if (row.status === "active") await archive({ sessionToken, resourceId: row._id });
       else await restore({ sessionToken, resourceId: row._id });
+      setArchiveRow(null);
       setNotice(t(row.status === "active" ? "resourcesHub.archivedNotice" : "resourcesHub.restoredNotice"));
     } catch { setError(t("resourcesHub.actionFailed")); }
   };
@@ -169,18 +174,20 @@ export function ResourcesSection() {
           <p className="mt-2 break-all text-xs text-gray-500">{t("resourcesHub.filename")}: {row.originalFileName}</p>
           <p className="mt-1 text-xs text-gray-500">{t("resourcesHub.fileType")}: {({ "application/pdf": "PDF", "image/jpeg": "JPEG", "image/png": "PNG", "image/webp": "WebP" } as Record<string, string>)[row.mimeType] ?? row.mimeType} · {t("resourcesHub.size")}: {(row.sizeBytes / 1024 / 1024).toFixed(2)} MB</p>
           <p className="mt-1 text-xs text-gray-500">{t("resourcesHub.updated", { date: new Date(row.updatedAt).toLocaleDateString() })}</p>
+          {shares && <p className="mt-1 text-xs text-gray-500">{t("resourcesHub.sharedCount", { count: countFor(row) })}</p>}
           <div className="mt-3 flex flex-wrap gap-2 text-sm">
             <button type="button" className="btn-secondary" onClick={() => void getFile(row, false)}>{t("resourcesHub.open")}</button>
             <button type="button" className="btn-secondary" onClick={() => void getFile(row, true)}>{t("resourcesHub.download")}</button>
             <button type="button" className="btn-secondary" onClick={() => openEditor("edit", row)}>{t("resourcesHub.edit")}</button>
-            {row.status === "active" && <button type="button" className="btn-secondary" onClick={() => openEditor("replace", row)}>{t("resourcesHub.replace")}</button>}
-            <button type="button" className="btn-secondary" onClick={() => void changeStatus(row)}>{t(row.status === "active" ? "resourcesHub.archive" : "resourcesHub.restore")}</button>
-            {row.status === "archived" && <button type="button" className="btn-danger" onClick={() => setDeleteRow(row)}>{t("resourcesHub.delete")}</button>}
+            {row.status === "active" && <button type="button" className="btn-secondary" disabled={!shares} onClick={() => openEditor("replace", row)}>{t("resourcesHub.replace")}</button>}
+            <button type="button" className="btn-secondary" disabled={row.status === "active" && !shares} onClick={() => row.status === "active" ? setArchiveRow(row) : void changeStatus(row)}>{t(row.status === "active" ? "resourcesHub.archive" : "resourcesHub.restore")}</button>
+            {row.status === "archived" && <button type="button" className="btn-danger" disabled={!shares} onClick={() => setDeleteRow(row)}>{t("resourcesHub.delete")}</button>}
           </div>
         </article>)}</div>}
     </>}
     <DialogShell open={editor !== null} onOpenChange={(open) => !open && setEditor(null)} pending={pending}
-      title={t(`resourcesHub.${editor?.mode ?? "add"}`)} description={t(editor?.mode === "replace" ? "resourcesHub.replaceHint" : "resourcesHub.fileHint")}
+      title={t(`resourcesHub.${editor?.mode ?? "add"}`)} description={editor?.mode === "replace" && countFor(editor.row) > 0
+        ? t("resourcesHub.replaceShared", { count: countFor(editor.row) }) : t(editor?.mode === "replace" ? "resourcesHub.replaceHint" : "resourcesHub.fileHint")}
       footer={<><button type="button" className="btn-secondary" disabled={pending} onClick={() => setEditor(null)}>{t("common.cancel")}</button>
         <button type="button" className="btn-primary" disabled={pending} onClick={() => void submit()}>{pending ? t("common.processing") : t("common.save")}</button></>}>
       <div className="space-y-3">
@@ -194,8 +201,15 @@ export function ResourcesSection() {
         {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
       </div>
     </DialogShell>
-    <ConfirmDialog open={deleteRow !== null} onOpenChange={(open) => !open && setDeleteRow(null)}
-      title={t("resourcesHub.deleteConfirm")} description={t("resourcesHub.deleteDescription", { title: deleteRow?.title })}
-      confirmLabel={t("resourcesHub.delete")} confirmVariant="danger" onConfirm={permanentlyDelete} />
+    <ConfirmDialog open={archiveRow !== null} onOpenChange={(open) => !open && setArchiveRow(null)}
+      title={t("resourcesHub.archiveConfirm")} description={countFor(archiveRow) > 0
+        ? t("resourcesHub.archiveShared", { count: countFor(archiveRow) }) : t("resourcesHub.archiveDescription", { title: archiveRow?.title })}
+      confirmLabel={t("resourcesHub.archive")} onConfirm={() => archiveRow ? changeStatus(archiveRow) : undefined} />
+    {deleteRow && countFor(deleteRow) > 0 ? <DialogShell open onOpenChange={(open) => !open && setDeleteRow(null)}
+      title={t("resourcesHub.deleteBlockedTitle")} description={t("resourcesHub.deleteBlocked", { count: countFor(deleteRow) })}
+      footer={<button type="button" className="btn-secondary" onClick={() => setDeleteRow(null)}>{t("common.closeDialog")}</button>} /> :
+      <ConfirmDialog open={deleteRow !== null} onOpenChange={(open) => !open && setDeleteRow(null)}
+        title={t("resourcesHub.deleteConfirm")} description={t("resourcesHub.deleteDescription", { title: deleteRow?.title })}
+        confirmLabel={t("resourcesHub.delete")} confirmVariant="danger" onConfirm={permanentlyDelete} />}
   </section>;
 }
