@@ -10,6 +10,12 @@ import { ServiceAgreementStatusBadge } from "@/components/ui/ServiceAgreementSta
 import { AsyncButton } from "@/components/ui/AsyncButton";
 import { AgreementContentView } from "@/components/AgreementContentView";
 import { Link } from "wouter";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
+import { StructuredAgreementEditor } from "./StructuredAgreementEditor";
+import { AgreementReviewItems } from "./AgreementReviewItems";
+import { AgreementTemplateChooser } from "./AgreementTemplateChooser";
+import { EMPTY_AGREEMENT_FORM, agreementFormFromRecord, agreementFormIsDirty, sectionForReviewField } from "./agreementEditorModel";
+import type { AgreementForm } from "./agreementEditorModel";
 
 const FREQUENCIES = ["one_time", "weekly", "biweekly", "monthly", "quarterly", "custom"] as const;
 
@@ -31,48 +37,6 @@ type AgreementSource = {
   renewalDate?: string;
   scopeOfWork?: string;
   notes?: string;
-};
-
-type AgreementForm = {
-  title: string;
-  clientName: string;
-  propertyAddress: string;
-  servicesIncluded: string;
-  priceSummary: string;
-  billingSchedule: string;
-  specialInstructions: string;
-  exceptions: string;
-  body: string;
-  effectiveStartDate: string;
-  effectiveEndDate: string;
-  renewalDate: string;
-  serviceFrequency: string;
-  contractAmount: string;
-  paymentTerms: string;
-  scopeOfWork: string;
-  terms: string;
-  notes: string;
-};
-
-const EMPTY_FORM: AgreementForm = {
-  title: "",
-  clientName: "",
-  propertyAddress: "",
-  servicesIncluded: "",
-  priceSummary: "",
-  billingSchedule: "",
-  specialInstructions: "",
-  exceptions: "",
-  body: "",
-  effectiveStartDate: "",
-  effectiveEndDate: "",
-  renewalDate: "",
-  serviceFrequency: "",
-  contractAmount: "",
-  paymentTerms: "",
-  scopeOfWork: "",
-  terms: "",
-  notes: "",
 };
 
 function centsFromPrice(value: string, invalidMessage: string) {
@@ -131,7 +95,14 @@ export function ServiceAgreementCard({
   const [saving, setSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [loadedId, setLoadedId] = useState<string | null>(null);
-  const [form, setForm] = useState<AgreementForm>(EMPTY_FORM);
+  const [form, setForm] = useState<AgreementForm>(EMPTY_AGREEMENT_FORM);
+  const [savedForm, setSavedForm] = useState<AgreementForm>(EMPTY_AGREEMENT_FORM);
+  const [discardOpen, setDiscardOpen] = useState(false);
+  const [templateOpen, setTemplateOpen] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [templateConfirmOpen, setTemplateConfirmOpen] = useState(false);
+  const [pendingPreviewAt, setPendingPreviewAt] = useState<number | null>(null);
+  const [pendingRevisionOpen, setPendingRevisionOpen] = useState(false);
 
   const agreementByProposal = useQuery(
     (api as any).queries.serviceAgreements.getByProposal,
@@ -157,32 +128,19 @@ export function ServiceAgreementCard({
   const markSigned = useMutation((api as any).mutations.serviceAgreements.markSigned);
   const markCancelled = useMutation((api as any).mutations.serviceAgreements.markCancelled);
   const returnToDraft = useMutation((api as any).mutations.serviceAgreements.returnToDraft);
+  const applyTemplate = useMutation((api as any).mutations.serviceAgreements.applyApprovedTemplate);
+  const templateChoices = useQuery((api as any).queries.documentTemplates.listServiceAgreementChoicesForSales,
+    user && templateOpen ? { userId: user._id, sessionToken } : "skip");
+  const templateCandidate = useQuery((api as any).queries.serviceAgreements.previewTemplateApplication,
+    user && agreement?.contentMode === "structured" && templateOpen && selectedTemplateId
+      ? { userId: user._id, sessionToken, agreementId: agreement._id, templateId: selectedTemplateId as Id<"documentTemplates"> }
+      : "skip");
 
   useEffect(() => {
     if (agreement && agreement._id !== loadedId) {
-      setForm({
-        title: agreement.title ?? "",
-        clientName: agreement.clientName ?? "",
-        propertyAddress: agreement.propertyAddress ?? "",
-        servicesIncluded: agreement.servicesIncluded ?? "",
-        priceSummary: agreement.priceSummary ?? "",
-        billingSchedule: agreement.billingSchedule ?? "",
-        specialInstructions: agreement.specialInstructions ?? "",
-        exceptions: agreement.exceptions ?? "",
-        body: agreement.body ?? "",
-        effectiveStartDate: agreement.effectiveStartDate ?? "",
-        effectiveEndDate: agreement.effectiveEndDate ?? "",
-        renewalDate: agreement.renewalDate ?? "",
-        serviceFrequency: agreement.serviceFrequency ?? "",
-        contractAmount:
-          agreement.contractAmountCents != null
-            ? String(agreement.contractAmountCents / 100)
-            : "",
-        paymentTerms: agreement.paymentTerms ?? "",
-        scopeOfWork: agreement.scopeOfWork ?? "",
-        terms: agreement.terms ?? "",
-        notes: agreement.notes ?? "",
-      });
+      const initial = agreementFormFromRecord(agreement);
+      setForm(initial);
+      setSavedForm(initial);
       setEditing(agreement.status === "draft");
       setLoadedId(agreement._id);
     }
@@ -191,7 +149,7 @@ export function ServiceAgreementCard({
   useEffect(() => {
     if (agreement || !source || loadedId === "source") return;
     setForm({
-      ...EMPTY_FORM,
+      ...EMPTY_AGREEMENT_FORM,
       title: source.title ?? t("serviceAgreements.defaultTitle"),
       clientName: source.clientName ?? "",
       propertyAddress: source.propertyAddress ?? "",
@@ -211,6 +169,28 @@ export function ServiceAgreementCard({
     });
     setLoadedId("source");
   }, [agreement, source, loadedId, t]);
+
+  const dirty = agreementFormIsDirty(form, savedForm);
+  useEffect(() => {
+    if (pendingPreviewAt !== null && agreement?.updatedAt >= pendingPreviewAt) {
+      setPendingPreviewAt(null);
+      if (!dirty) setEditing(false);
+    }
+  }, [agreement?.updatedAt, pendingPreviewAt, dirty]);
+
+  useEffect(() => {
+    if (pendingRevisionOpen && agreement?.status === "draft") {
+      setEditing(true);
+      setPendingRevisionOpen(false);
+    }
+  }, [pendingRevisionOpen, agreement?.status]);
+
+  useEffect(() => {
+    if (!dirty || !agreement || agreement.contentMode !== "structured") return;
+    const guard = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", guard);
+    return () => window.removeEventListener("beforeunload", guard);
+  }, [dirty, agreement]);
 
   if (!user || agreement === undefined) {
     return (
@@ -246,7 +226,7 @@ export function ServiceAgreementCard({
     if (!agreement) return;
     setSaving(true);
     try {
-      await updateAgreement({
+      const updatedAt = await updateAgreement({
         userId: user._id,
         sessionToken,
         agreementId: agreement._id,
@@ -272,12 +252,49 @@ export function ServiceAgreementCard({
         terms: form.terms || undefined,
         notes: form.notes || undefined,
       });
-      setEditing(false);
+      setSavedForm(form);
+      if (agreement.contentMode === "structured") {
+        setPendingPreviewAt(typeof updatedAt === "number" ? updatedAt : (agreement.updatedAt ?? 0) + 1);
+      }
+      else setEditing(false);
       showToast(t("serviceAgreements.saved"), "success");
     } catch (err: any) {
       showToast(err.message || t("serviceAgreements.saveFailed"), "error");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const requestReview = () => {
+    if (dirty) { setDiscardOpen(true); return; }
+    setEditing(false);
+  };
+
+  const goToReviewField = (field: string) => {
+    const section = sectionForReviewField(field);
+    if (!section) return;
+    setEditing(true);
+    window.setTimeout(() => {
+      document.getElementById(`agreement-field-${field}`)?.focus();
+      document.getElementById(`agreement-section-${section}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  };
+
+  const handleTemplateApply = async () => {
+    if (!agreement || !selectedTemplateId || dirty ||
+      templateCandidate?.authoringReview?.template?.id !== selectedTemplateId) return;
+    setActionLoading("template");
+    try {
+      await applyTemplate({ userId: user._id, sessionToken, agreementId: agreement._id,
+        templateId: selectedTemplateId as Id<"documentTemplates"> });
+      setTemplateConfirmOpen(false);
+      setTemplateOpen(false);
+      setSelectedTemplateId(null);
+      showToast(t("serviceAgreements.v2.templateApplied"), "success");
+    } catch (err: any) {
+      showToast(err.message || t("serviceAgreements.actionFailed"), "error");
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -294,7 +311,10 @@ export function ServiceAgreementCard({
       if (action === "cancelled") {
         await markCancelled({ userId: user._id, sessionToken, agreementId: agreement._id });
       }
-      if (action === "change") await returnToDraft({ userId: user._id, sessionToken, agreementId: agreement._id });
+      if (action === "change") {
+        await returnToDraft({ userId: user._id, sessionToken, agreementId: agreement._id });
+        setPendingRevisionOpen(true);
+      }
       showToast(action === "change" ? t("serviceAgreements.changeSuccess") : t(`serviceAgreements.${action}Success`), "success");
     } catch (err: any) {
       const message = err.message?.includes("Active Client Portal access")
@@ -309,6 +329,7 @@ export function ServiceAgreementCard({
   };
 
   const canEdit = agreement && ["draft", "ready"].includes(agreement.status);
+  const structuredEditable = canEdit && agreement.contentMode === "structured";
   const portalAccess = agreement?.portalAccess;
   const canManageClients = user.role === "owner" || user.canManageClients === true;
   const canInvite = portalAccess?.relationshipActive && portalAccess.recipientEmailAvailable &&
@@ -343,13 +364,18 @@ export function ServiceAgreementCard({
             )}
             {agreement?.clientRelationship && (
               <p className="mt-2 inline-flex rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
-                Client relationship: {agreement.clientRelationship.displayName}
+                {t("serviceAgreements.v2.clientRelationship")}: {agreement.clientRelationship.displayName}
               </p>
             )}
           </div>
         </div>
         {(agreement || !hideWhenMissing) && <ServiceAgreementStatusBadge agreement={agreement} />}
       </div>
+
+      {structuredEditable && <div role="tablist" aria-label={t("serviceAgreements.v2.modeLabel")} className="flex w-full gap-1 rounded-lg bg-gray-100 p-1 sm:w-fit">
+        <button type="button" role="tab" aria-selected={editing} onClick={() => setEditing(true)} className={`min-w-0 flex-1 rounded-md px-4 py-2 text-sm font-medium sm:flex-none ${editing ? "bg-white text-primary-700 shadow-sm" : "text-gray-600"}`}>{t("serviceAgreements.v2.editTab")}</button>
+        <button type="button" role="tab" aria-selected={!editing} onClick={requestReview} className={`min-w-0 flex-1 rounded-md px-4 py-2 text-sm font-medium sm:flex-none ${!editing ? "bg-white text-primary-700 shadow-sm" : "text-gray-600"}`}>{t("serviceAgreements.v2.reviewTab")}</button>
+      </div>}
 
       {!agreement ? (
         <div className="space-y-3">
@@ -365,6 +391,24 @@ export function ServiceAgreementCard({
               {actionLoading === "create" ? t("common.saving") : t("serviceAgreements.create")}
             </button>
           )}
+        </div>
+      ) : structuredEditable && editing ? (
+        <div role="tabpanel" className="min-w-0 space-y-4">
+          {templateOpen && <AgreementTemplateChooser
+            choices={templateChoices} selectedId={selectedTemplateId} currentId={agreement.templateId}
+            candidate={templateCandidate?.authoringReview?.template?.id === selectedTemplateId ? templateCandidate : undefined}
+            loading={Boolean(selectedTemplateId && templateCandidate === undefined)}
+            applying={actionLoading === "template"} blocked={dirty} onSelect={setSelectedTemplateId} onApply={handleTemplateApply}
+            onClose={() => { setTemplateOpen(false); setSelectedTemplateId(null); }}
+            confirmOpen={templateConfirmOpen} onConfirmOpenChange={setTemplateConfirmOpen} />}
+          <StructuredAgreementEditor form={form} onChange={(field, value) => { setTemplateConfirmOpen(false); setForm((previous) => ({ ...previous, [field]: value })); }}
+            onSave={handleSave} onCancel={requestReview} saving={saving || pendingPreviewAt !== null} dirty={dirty}
+            onChangeTemplate={() => dirty ? showToast(t("serviceAgreements.v2.saveBeforeTemplate"), "error") : setTemplateOpen(true)}
+            onUnsavedNavigation={() => showToast(t("serviceAgreements.v2.saveBeforeNavigation"), "error")}
+            template={{ name: agreement.authoringReview?.template?.name ?? t("serviceAgreements.v2.defaultTemplate"),
+              version: agreement.authoringReview?.template?.version, fallback: agreement.authoringReview?.template?.fallback ?? true }}
+            canManageTemplates={user.role === "owner" || user.canManageDocuments === true}
+            addOns={agreement.acceptedProposalAddOnSnapshots ?? []} revision={agreement.hasPriorIssue} />
         </div>
       ) : editing ? (
         <div className="space-y-3">
@@ -531,23 +575,38 @@ export function ServiceAgreementCard({
               <Save className="h-4 w-4" />
               {saving ? t("common.saving") : t("serviceAgreements.save")}
             </button>
-            <button type="button" onClick={() => setEditing(false)} className="btn-secondary text-sm">
+            <button type="button" onClick={() => dirty ? setDiscardOpen(true) : setEditing(false)} className="btn-secondary text-sm">
               {t("common.cancel")}
             </button>
           </div>
         </div>
       ) : (
         <div className="space-y-4">
-          <p className="text-sm font-semibold text-gray-700">{t("serviceAgreements.clientPreview")}: {agreement.canonicalPreview?.title}</p>
+          {structuredEditable && <>
+            <div className="rounded-lg border border-primary-100 bg-primary-50 p-4">
+              <h4 className="font-semibold text-gray-900">{t("serviceAgreements.v2.previewHeading")}</h4>
+              <p className="mt-1 text-sm text-gray-700">{t("serviceAgreements.v2.savedPreviewHelp")}</p>
+              <p className="mt-2 break-words text-xs text-gray-600">{t("serviceAgreements.v2.templateLabel")}: {agreement.authoringReview?.template?.name ?? t("serviceAgreements.v2.defaultTemplate")}
+                {agreement.authoringReview?.template?.version != null && !agreement.authoringReview?.template?.fallback ? ` · v${agreement.authoringReview.template.version}` : ""}
+                {agreement.authoringReview?.template?.fallback ? ` (${t("serviceAgreements.v2.scrubFallback")})` : ""}
+              </p>
+              {dirty && <p className="mt-2 text-sm font-medium text-amber-800">{t("serviceAgreements.v2.unsavedPreviewHelp")}</p>}
+              {agreement.hasPriorIssue && <p className="mt-2 text-sm text-gray-700">{t("serviceAgreements.v2.revisionNote")}</p>}
+            </div>
+            <AgreementReviewItems review={agreement.authoringReview} onGoToField={goToReviewField} />
+          </>}
+          <p className="break-words text-sm font-semibold text-gray-700">{t("serviceAgreements.clientPreview")}: {agreement.canonicalPreview?.title}</p>
           {["sent", "signed", "cancelled"].includes(agreement.status) && !agreement.currentIssueId && (
             <p className="text-xs text-amber-700">{t("serviceAgreements.legacyNoIssue")}</p>
           )}
           {agreement.canonicalPreview && <AgreementContentView content={agreement.canonicalPreview} audience="owner" />}
           {agreement.notes && (
-            <Detail
-              label={t("serviceAgreements.internalNotes")}
-              value={<p className="whitespace-pre-wrap">{agreement.notes}</p>}
-            />
+            structuredEditable ? <aside className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <p className="text-sm font-semibold text-gray-800">{t("serviceAgreements.v2.sections.notes")}</p>
+              <p className="mt-1 text-xs text-gray-600">{t("serviceAgreements.v2.internalOnly")}</p>
+              <p className="mt-2 whitespace-pre-wrap break-words text-sm text-gray-800">{agreement.notes}</p>
+            </aside> : <Detail label={t("serviceAgreements.internalNotes")}
+              value={<p className="whitespace-pre-wrap">{agreement.notes}</p>} />
           )}
         </div>
       )}
@@ -579,7 +638,7 @@ export function ServiceAgreementCard({
 
       {agreement && !editing && (
         <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-3">
-          {canEdit && (
+          {canEdit && !structuredEditable && (
             <button type="button" onClick={() => setEditing(true)} className="btn-secondary text-sm">
               {t("serviceAgreements.edit")}
             </button>
@@ -589,7 +648,7 @@ export function ServiceAgreementCard({
               {t("serviceAgreements.makeChanges")}
             </button>
           )}
-          {agreement.status === "draft" && (
+          {agreement.status === "draft" && !structuredEditable && (
             <button
               type="button"
               onClick={() => handleAction("ready")}
@@ -606,15 +665,15 @@ export function ServiceAgreementCard({
               onClick={() => handleAction("sent")}
               pending={actionLoading === "sent"}
               pendingLabel={t("common.sending")}
-              disabled={!portalAccess?.canEmail || (actionLoading !== null && actionLoading !== "sent")}
+              disabled={!portalAccess?.canEmail || (structuredEditable && dirty) || (actionLoading !== null && actionLoading !== "sent")}
               className="btn-primary flex items-center gap-2 text-sm"
             >
               <Send aria-hidden="true" className="h-4 w-4" />
-              {agreement.status === "sent" ? t("serviceAgreements.resendUnchanged") : t("serviceAgreements.send")}
+              {agreement.status === "sent" ? t("serviceAgreements.resendUnchanged") : structuredEditable ? t("serviceAgreements.v2.issueEmail") : t("serviceAgreements.send")}
             </AsyncButton>
           )}
           {["draft", "ready"].includes(agreement.status) && (
-            <button type="button" onClick={() => handleAction("outside")} disabled={actionLoading !== null} className="btn-secondary flex items-center gap-2 text-sm">
+            <button type="button" onClick={() => handleAction("outside")} disabled={actionLoading !== null || (structuredEditable && dirty)} className="btn-secondary flex items-center gap-2 text-sm">
               <Send aria-hidden="true" className="h-4 w-4" />
               {actionLoading === "outside" ? t("common.saving") : t("serviceAgreements.recordOutsideSend")}
             </button>
@@ -636,7 +695,7 @@ export function ServiceAgreementCard({
             <button
               type="button"
               onClick={() => handleAction("cancelled")}
-              disabled={actionLoading === "cancelled"}
+              disabled={actionLoading === "cancelled" || (structuredEditable && dirty)}
               className="btn-danger flex items-center gap-2 text-sm"
             >
               <XCircle className="h-4 w-4" />
@@ -647,6 +706,12 @@ export function ServiceAgreementCard({
           )}
         </div>
       )}
+      <ConfirmDialog open={discardOpen} onOpenChange={setDiscardOpen}
+        title={t("serviceAgreements.v2.discardTitle")}
+        description={t("serviceAgreements.v2.discardBody")}
+        confirmLabel={t("serviceAgreements.v2.discardChanges")}
+        confirmVariant="danger"
+        onConfirm={() => { setForm(savedForm); setDiscardOpen(false); setEditing(false); }} />
     </section>
   );
 }

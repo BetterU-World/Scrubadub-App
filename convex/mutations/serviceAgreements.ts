@@ -367,10 +367,12 @@ export const update = mutation({
     if (agreement.contentMode === "structured") {
       patch.body = await renderStructuredAgreementBody(ctx, { ...agreement, ...patch, body: agreement.body });
     }
+    const updatedAt = Math.max(Date.now(), agreement.updatedAt + 1);
     await ctx.db.patch(args.agreementId, {
       ...patch,
-      updatedAt: Date.now(),
+      updatedAt,
     });
+    return updatedAt;
   },
 });
 
