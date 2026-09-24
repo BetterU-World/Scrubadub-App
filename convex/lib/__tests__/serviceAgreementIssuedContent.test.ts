@@ -83,11 +83,14 @@ describe("service agreement issued content", () => {
       const archived = await ctx.db.insert("documentTemplates", { companyId: s.companyId, type: "service_agreement", name: "Archived", body: "Old", status: "archived", createdAt: 1, updatedAt: 1 });
       const wrongType = await ctx.db.insert("documentTemplates", { companyId: s.companyId, type: "proposal", name: "Proposal", body: "Wrong", status: "active", createdAt: 1, updatedAt: 1 });
       const foreign = await ctx.db.insert("documentTemplates", { companyId: s.otherCompanyId, type: "service_agreement", name: "Foreign", body: "Wrong", status: "active", createdAt: 1, updatedAt: 1 });
-      return { archived, wrongType, foreign };
+      const alternate = await ctx.db.insert("documentTemplates", { companyId: s.companyId, type: "service_agreement", name: "Alternate", body: "{{client_name}}", status: "active", createdAt: 1, updatedAt: 1 });
+      return { archived, wrongType, foreign, alternate };
     });
     const choices: any[] = await s.t.query((api as any).queries.documentTemplates.listServiceAgreementChoicesForSales, s.managerAuth);
-    expect(choices.map((choice) => choice._id)).toEqual([s.templateId]);
-    for (const templateId of Object.values(ids)) {
+    expect(choices.map((choice) => choice._id)).toEqual([s.templateId, ids.alternate]);
+    await s.t.mutation(mutations.applyApprovedTemplate, { ...s.managerAuth, agreementId: s.agreementId, templateId: ids.alternate });
+    expect((await s.t.query(queries.getById, { ...s.managerAuth, agreementId: s.agreementId }) as any).templateId).toBe(ids.alternate);
+    for (const templateId of [ids.archived, ids.wrongType, ids.foreign]) {
       await expect(s.t.mutation(mutations.applyApprovedTemplate, { ...s.managerAuth, agreementId: s.agreementId, templateId })).rejects.toThrow("Active company");
     }
     await expect(s.t.query((api as any).queries.documentTemplates.listByType, { ...s.managerAuth, type: "service_agreement" })).rejects.toThrow("canManageDocuments");
@@ -148,6 +151,9 @@ describe("service agreement issued content", () => {
     await expect(s.t.mutation(mutations.applyApprovedTemplate, { ...s.ownerAuth, agreementId: s.agreementId, templateId: chosenId })).rejects.toThrow("editable structured");
     await expect(s.t.mutation(mutations.regenerateFromTemplateSnapshot, { ...s.ownerAuth, agreementId: s.agreementId })).rejects.toThrow("editable structured");
     await s.t.mutation(mutations.returnToDraft, { ...s.ownerAuth, agreementId: s.agreementId });
+    const revision: any = await s.t.query(queries.getById, { ...s.ownerAuth, agreementId: s.agreementId });
+    expect(revision.hasPriorIssue).toBe(true);
+    expect(revision.status).toBe("draft");
     await s.t.mutation(mutations.regenerateFromTemplateSnapshot, { ...s.ownerAuth, agreementId: s.agreementId });
     expect(await s.t.run((ctx) => ctx.db.get(first!._id))).toMatchObject({ content: first!.content, withdrawnAt: expect.any(Number) });
     await s.t.run((ctx) => ctx.db.patch(s.agreementId, { contentMode: undefined }));

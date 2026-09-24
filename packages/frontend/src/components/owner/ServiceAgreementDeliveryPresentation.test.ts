@@ -101,4 +101,22 @@ describe("owner service agreement delivery presentation", () => {
       expect((es.serviceAgreements.portalAccess as any)[key]).toBeTruthy();
     }
   });
+
+  it("reviews a ready structured draft without a Mark Ready step or creating an issue", () => {
+    staffUser = { _id: "manager-1", role: "manager", canManageSalesAndCommercial: true, canManageDocuments: false };
+    agreement = {
+      _id: "agreement-1", status: "ready", contentMode: "structured", currentIssueId: undefined,
+      canonicalPreview: { title: "Saved agreement" },
+      authoringReview: { warnings: [{ code: "client_name_missing", field: "clientName" }], suggestions: [],
+        template: { name: "Approved template", version: 2, fallback: false } },
+      portalAccess: { status: "ready", canEmail: true },
+    };
+    const html = renderToStaticMarkup(createElement(ServiceAgreementCard, { proposalId: "proposal-1" as any }));
+    expect(html).toContain(en.serviceAgreements.v2.reviewTab);
+    expect(html).toContain(en.serviceAgreements.v2.savedPreviewHelp);
+    expect(html).toContain(en.serviceAgreements.v2.needsAttention);
+    expect(html).toContain(en.serviceAgreements.v2.issueEmail);
+    expect(html).toContain(en.serviceAgreements.recordOutsideSend);
+    expect(html).not.toContain(en.serviceAgreements.markReady);
+  });
 });

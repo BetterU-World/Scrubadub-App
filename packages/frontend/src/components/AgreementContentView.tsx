@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { AddOnSnapshotList } from "@/components/AddOnSnapshotList";
+import { AddOnSnapshotList } from "./AddOnSnapshotList";
 
 type Content = Record<string, any>;
 

@@ -24,6 +24,8 @@ async function getOwnedAgreement(ctx: any, sessionToken: string, userId: any, ag
 }
 
 async function decorateAgreement(ctx: any, agreement: any) {
+  const priorIssue = await ctx.db.query("serviceAgreementIssues")
+    .withIndex("by_agreement", (q: any) => q.eq("agreementId", agreement._id)).first();
   const relationship = agreement.clientRelationshipId
     ? await ctx.db.get(agreement.clientRelationshipId)
     : null;
@@ -35,6 +37,7 @@ async function decorateAgreement(ctx: any, agreement: any) {
   const portalAccess = await serviceAgreementPortalAccess(ctx, agreement);
   return {
     ...agreement,
+    hasPriorIssue: Boolean(priorIssue),
     canonicalPreview,
     authoringReview: canonicalPreview ? await buildAgreementAuthoringReview(ctx, agreement, canonicalPreview, portalAccess) : null,
     latestDeliveryAttempt: latestDeliveryAttempt?.companyId === agreement.companyId
