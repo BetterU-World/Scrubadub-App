@@ -113,7 +113,8 @@ describe("Manager Experience V2 delegated operational administration", () => {
     expect(app).toContain('user?.canManageClients && <Route path="/clients"');
     expect(app).toContain('user?.canManageSalesAndCommercial && <Route path="/commercial-accounts"');
     expect(app).toContain('user?.canManageTeam && <Route path="/employees"');
-    expect(app).toContain('user?.canManageDocuments && <Route path="/owner/settings/documents"');
+    expect(app).toContain('(user?.canManageDocuments || user?.canManageSalesAndCommercial) && <Route path="/owner/settings/documents"');
+    expect(app).toContain('user?.canManageDocuments && <Route path="/owner/settings/onboarding"');
     expect(app).toContain('user?.canManageBusinessConfiguration && <Route path="/inventory-templates"');
     expect(employeePage).toContain("isOwner && emp.role === \"manager\"");
     expect(accountPage).toContain("canManageSchedule && <CollapsibleSection");

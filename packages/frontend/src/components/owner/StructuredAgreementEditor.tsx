@@ -64,7 +64,7 @@ export function StructuredAgreementEditor({ form, onChange, onSave, onCancel, on
         </p>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={onChangeTemplate} className="text-sm font-medium text-primary-700 underline-offset-2 hover:underline">{t("serviceAgreements.v2.changeTemplate")}</button>
-          {canManageTemplates && <Link href="/owner/settings/documents" onClick={(event) => { if (dirty) { event.preventDefault(); onUnsavedNavigation(); } }} className="text-sm text-gray-600 underline-offset-2 hover:underline">{t("serviceAgreements.v2.manageTemplates")}</Link>}
+          {canManageTemplates && <Link href="/owner/settings/documents?section=templates" onClick={(event) => { if (dirty) { event.preventDefault(); onUnsavedNavigation(); } }} className="text-sm text-gray-600 underline-offset-2 hover:underline">{t("serviceAgreements.v2.manageTemplates")}</Link>}
         </div>
       </div>
     </div>

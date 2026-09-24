@@ -69,6 +69,14 @@ describe("role mobile navigation", () => {
       "/inventory-templates", "/owner/settings/add-ons",
     ]));
     expect(configurationOnly).not.toContain("/clients");
+
+    const salesOnly = hrefs(getMoreNavItemsForRole("manager", false, false, false, true));
+    expect(salesOnly).toContain("/owner/settings/documents");
+    expect(salesOnly).not.toContain("/owner/settings/onboarding");
+    const documentsOnly = hrefs(getMoreNavItemsForRole("manager", false, false, false, false, false, true));
+    expect(documentsOnly).toContain("/owner/settings/documents");
+    expect(documentsOnly).toContain("/owner/settings/onboarding");
+    expect(documentsOnly).not.toContain("/requests");
   });
 
   it("uses the canonical Financials route only for financial visibility", () => {
