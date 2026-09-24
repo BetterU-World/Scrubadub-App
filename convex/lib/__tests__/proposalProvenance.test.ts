@@ -120,6 +120,8 @@ describe("explicit proposal provenance", () => {
     const proposalId = await s.t.mutation(api.mutations.proposals.createProposalFromLead, { ...args, sourceWalkthroughId: s.sourceId });
     const initial = await s.t.run(async (ctx) => ({ proposal: await ctx.db.get(proposalId), source: await ctx.db.get(s.sourceId), other: await ctx.db.get(s.secondId) }));
     expect(initial.proposal?.sourceWalkthroughId).toBe(s.sourceId);
+    expect((await s.t.query(api.queries.proposals.getProposalByClientRequest, args))?.sourceAssessment)
+      .toMatchObject({ title: "Chosen assessment", completedAt: 10 });
     expect(initial.proposal?.scopeOfWork).toBe("Lead scope");
     expect(initial.proposal?.monthlyPriceCents).toBeUndefined();
     expect(initial.source?.proposalId).toBe(proposalId);
@@ -147,6 +149,7 @@ describe("explicit proposal provenance", () => {
     const args = { ...s.ownerAuth, clientRequestId: s.requestId };
     const proposalId = await s.t.mutation(api.mutations.proposals.createProposalFromLead, args);
     expect((await s.t.run((ctx) => ctx.db.get(proposalId)))?.sourceWalkthroughId).toBeUndefined();
+    expect((await s.t.query(api.queries.proposals.getProposalByClientRequest, args))?.sourceAssessment).toBeNull();
     expect((await s.t.run((ctx) => ctx.db.get(proposalId)))?.assessmentSuggestedMonthlyPriceCents).toBeUndefined();
     expect((await s.t.run((ctx) => ctx.db.get(s.sourceId)))?.proposalId).toBeUndefined();
     expect((await s.t.query(api.queries.proposals.getProposalByClientRequest, args))?._id).toBe(proposalId);

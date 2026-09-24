@@ -249,7 +249,9 @@ function clientProposalPayload(payload: any) {
   return {
     company: payload.company,
     clientName: payload.clientName,
-    proposal: payload.proposal,
+    legacyBaseOnly: true,
+    proposal: { ...payload.proposal, totals: { ...payload.proposal.totals,
+      monthlyTotalLabel: null, oneTimeTotalLabel: null } },
   };
 }
 

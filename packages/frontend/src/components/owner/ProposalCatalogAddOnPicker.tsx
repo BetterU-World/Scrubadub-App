@@ -5,10 +5,11 @@ import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { useTranslation } from "react-i18next";
 
-export function ProposalCatalogAddOnPicker({ onAdd }: { onAdd: (companyAddOnId: string) => Promise<unknown> }) {
+export function ProposalCatalogAddOnPicker({ onAdd, onError }: { onAdd: (companyAddOnId: string) => Promise<unknown>; onError?: (message: string) => void }) {
   const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const [selectedId, setSelectedId] = useState("");
+  const [adding, setAdding] = useState(false);
   const catalog = useQuery(
     (api as any).queries.companyAddOns.list,
     user ? { userId: user._id, sessionToken, includeArchived: false } : "skip"
@@ -19,7 +20,12 @@ export function ProposalCatalogAddOnPicker({ onAdd }: { onAdd: (companyAddOnId: 
       <option value="">{t("proposals.addOns.chooseCatalog")}</option>
       {(catalog ?? []).filter((item) => item.isActive && item.archivedAt === undefined).map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}
     </select>
-    <button type="button" className="btn-secondary inline-flex items-center gap-2" disabled={!selectedId} onClick={async () => { await onAdd(selectedId); setSelectedId(""); }}>
+    <button type="button" className="btn-secondary inline-flex items-center gap-2" disabled={!selectedId || adding} onClick={async () => {
+      setAdding(true);
+      try { await onAdd(selectedId); setSelectedId(""); }
+      catch (error: any) { onError?.(error.message || t("proposals.actionFailed")); }
+      finally { setAdding(false); }
+    }}>
       <Plus className="h-4 w-4" aria-hidden="true" />{t("proposals.addOns.addCatalog")}
     </button>
   </div>;

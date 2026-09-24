@@ -12,9 +12,13 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { AsyncButton } from "@/components/ui/AsyncButton";
 import { ServiceAgreementCard } from "@/components/owner/ServiceAgreementCard";
 import { WalkthroughCard } from "@/components/owner/WalkthroughCard";
+import { ProposalEditor } from "@/components/owner/ProposalEditor";
+import { ProposalReviewItems } from "@/components/owner/ProposalReviewItems";
+import { ProposalContentView } from "@/components/ProposalContentView";
+import { EMPTY_PROPOSAL_FORM, proposalFormFromRecord, proposalFormIsDirty } from "@/components/owner/proposalEditorModel";
+import type { ProposalForm } from "@/components/owner/proposalEditorModel";
 import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
 import { ServiceAgreementStatusBadge } from "@/components/ui/ServiceAgreementStatusBadge";
-import { ProposalCatalogAddOnPicker } from "@/components/owner/ProposalCatalogAddOnPicker";
 import { RequestScheduleConfirmation } from "@/components/owner/RequestScheduleConfirmation";
 import {
   User,
@@ -40,69 +44,12 @@ import {
   Sparkles,
   Send,
   ClipboardCheck,
-  Trash2,
   RotateCcw,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 function leadPipelineStorageKey(userId: string) {
   return `scrubadub.request-details.lead-pipeline.${userId}`;
-}
-
-function ProposalAddOnLineEditor({ line, onSave, onRemove, onFeedback, t }: { line: any; onSave: (values: any) => Promise<any>; onRemove: () => Promise<any>; onFeedback: (message: string, type: "success" | "error") => void; t: any }) {
-  const [name, setName] = useState(line.name);
-  const [method, setMethod] = useState(line.pricingMethod);
-  const [price, setPrice] = useState(String(line.unitPriceCents / 100));
-  const [unitLabel, setUnitLabel] = useState(line.unitLabel ?? "");
-  const [quantity, setQuantity] = useState(String(line.quantity ?? 1));
-  const [finalPrice, setFinalPrice] = useState(line.finalizedPriceCents ? String(line.finalizedPriceCents / 100) : "");
-  const [cadence, setCadence] = useState(line.billingCadence);
-  const [saving, setSaving] = useState(false);
-  const editingRef = useRef(false);
-  useEffect(() => {
-    if (editingRef.current) return;
-    setName(line.name);
-    setMethod(line.pricingMethod);
-    setPrice(String(line.unitPriceCents / 100));
-    setUnitLabel(line.unitLabel ?? "");
-    setQuantity(String(line.quantity ?? 1));
-    setFinalPrice(line.finalizedPriceCents !== undefined ? String(line.finalizedPriceCents / 100) : "");
-    setCadence(line.billingCadence);
-  }, [line.name, line.pricingMethod, line.unitPriceCents, line.unitLabel, line.quantity, line.finalizedPriceCents, line.billingCadence]);
-  const markEditing = () => { editingRef.current = true; };
-  const sourceLabel = line.sourceType === "request_snapshot" ? t("proposals.addOns.requested") : line.sourceType === "catalog" ? t("proposals.addOns.catalog") : t("proposals.addOns.custom");
-  const needsFinalPrice = method === "starting_at" && !finalPrice;
-  return <div className={`rounded-lg border bg-gray-50 p-3 ${needsFinalPrice ? "border-amber-300" : "border-gray-200"}`}>
-    <div className="mb-3 flex items-center justify-between gap-2"><span className="badge bg-white text-gray-600">{sourceLabel}</span><button type="button" onClick={onRemove} aria-label={t("proposals.addOns.remove", { name })} className="rounded p-1 text-red-500 hover:bg-red-50"><Trash2 className="h-4 w-4" /></button></div>
-    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-      <label className="text-xs text-gray-600">{t("common.name")}<input className="input-field mt-1" value={name} onChange={(e) => { markEditing(); setName(e.target.value); }} /></label>
-      <label className="text-xs text-gray-600">{t("proposals.addOns.method")}<select className="input-field mt-1" value={method} onChange={(e) => { markEditing(); const next = e.target.value; setMethod(next); if (next !== "starting_at") setFinalPrice(""); if (next !== "per_unit") { setUnitLabel(""); setQuantity("1"); } }}><option value="flat">{t("addOns.methods.flat")}</option><option value="starting_at">{t("addOns.methods.starting_at")}</option><option value="per_unit">{t("addOns.methods.per_unit")}</option></select></label>
-      <label className="text-xs text-gray-600">{t("proposals.addOns.unitPrice")}<input className="input-field mt-1" type="number" min="0.01" step="0.01" value={price} onChange={(e) => { markEditing(); setPrice(e.target.value); }} /></label>
-       {method === "per_unit" && <label className="text-xs text-gray-600">{t("publicSite.addOns.quantity")}<input className="input-field mt-1" type="number" min={1} max={999} step={1} value={quantity} onChange={(e) => { markEditing(); setQuantity(e.target.value); }} /></label>}
-       {method === "per_unit" && <label className="text-xs text-gray-600">{t("proposals.addOns.unitLabel")}<input className="input-field mt-1" value={unitLabel} maxLength={40} onChange={(e) => { markEditing(); setUnitLabel(e.target.value); }} /></label>}
-      {method === "starting_at" && <label className="text-xs text-gray-600">{t("proposals.addOns.finalPrice")}<input className="input-field mt-1" type="number" min={price || "0.01"} step="0.01" value={finalPrice} onChange={(e) => { markEditing(); setFinalPrice(e.target.value); }} />{needsFinalPrice && <span className="mt-1 block text-amber-700">{t("proposals.addOns.finalPriceRequired")}</span>}</label>}
-      <label className="text-xs text-gray-600">{t("proposals.addOns.cadence")}<select className="input-field mt-1" value={cadence} onChange={(e) => { markEditing(); setCadence(e.target.value); }}><option value="one_time">{t("proposals.addOns.oneTime")}</option><option value="monthly">{t("proposals.addOns.monthly")}</option></select></label>
-    </div>
-     <button type="button" disabled={saving} className="btn-secondary mt-3 text-sm" onClick={async () => {
-       setSaving(true);
-       try {
-         await onSave({
-           name,
-           pricingMethod: method,
-           unitPriceCents: Math.round(Number(price) * 100),
-           ...(method === "per_unit" ? { unitLabel, quantity: Number(quantity) } : {}),
-           ...(method === "starting_at" && finalPrice ? { finalizedPriceCents: Math.round(Number(finalPrice) * 100) } : {}),
-           billingCadence: cadence,
-         });
-         editingRef.current = false;
-         onFeedback(t("proposals.addOns.lineSaved"), "success");
-       } catch (err: any) {
-         onFeedback(err.message || t("proposals.addOns.lineSaveFailed"), "error");
-       } finally {
-         setSaving(false);
-       }
-     }}>{saving ? t("common.saving") : t("proposals.addOns.saveLine")}</button>
-  </div>;
 }
 
 function loadLeadPipelineExpanded(userId?: string) {
@@ -314,22 +261,13 @@ export function RequestDetailPage() {
   const [proposalActionLoading, setProposalActionLoading] = useState<string | null>(null);
   const [editingProposal, setEditingProposal] = useState(false);
   const [proposalLoadedId, setProposalLoadedId] = useState<string | null>(null);
-  const [customAddOnName, setCustomAddOnName] = useState("");
-  const [customAddOnPrice, setCustomAddOnPrice] = useState("");
+  const [savedProposalForm, setSavedProposalForm] = useState<ProposalForm>(EMPTY_PROPOSAL_FORM);
+  const [proposalDiscardOpen, setProposalDiscardOpen] = useState(false);
+  const [pendingProposalPreviewAt, setPendingProposalPreviewAt] = useState<number | null>(null);
+  const [pendingProposalRevision, setPendingProposalRevision] = useState(false);
   const previousProposalStatus = useRef<string | null>(null);
   const [accountLoadedKey, setAccountLoadedKey] = useState<string | null>(null);
-  const [proposalForm, setProposalForm] = useState({
-    title: "",
-    clientName: "",
-    businessName: "",
-    propertyAddress: "",
-    serviceFrequency: "",
-    serviceFrequencyNotes: "",
-    scopeOfWork: "",
-    monthlyPrice: "",
-    oneTimePrice: "",
-    notes: "",
-  });
+  const [proposalForm, setProposalForm] = useState<ProposalForm>(EMPTY_PROPOSAL_FORM);
   const [showAccountForm, setShowAccountForm] = useState(false);
   const [savingAccount, setSavingAccount] = useState(false);
   const [accountForm, setAccountForm] = useState({
@@ -378,28 +316,38 @@ export function RequestDetailPage() {
 
   useEffect(() => {
     if (proposal && proposal._id !== proposalLoadedId) {
-      setProposalForm({
-        title: proposal.title ?? "",
-        clientName: proposal.clientName ?? "",
-        businessName: proposal.businessName ?? "",
-        propertyAddress: proposal.propertyAddress ?? "",
-        serviceFrequency: proposal.serviceFrequency ?? "",
-        serviceFrequencyNotes: proposal.serviceFrequencyNotes ?? "",
-        scopeOfWork: proposal.scopeOfWork ?? "",
-        monthlyPrice:
-          proposal.monthlyPriceCents != null
-            ? String(proposal.monthlyPriceCents / 100)
-            : "",
-        oneTimePrice:
-          proposal.oneTimePriceCents != null
-            ? String(proposal.oneTimePriceCents / 100)
-            : "",
-        notes: proposal.notes ?? "",
-      });
+      const initial = proposalFormFromRecord(proposal);
+      setProposalForm(initial);
+      setSavedProposalForm(initial);
       setEditingProposal(proposal.status === "draft");
       setProposalLoadedId(proposal._id);
     }
   }, [proposal, proposalLoadedId]);
+
+  const proposalDirty = proposalFormIsDirty(proposalForm, savedProposalForm);
+  useEffect(() => {
+    if (pendingProposalPreviewAt !== null && proposal?.updatedAt >= pendingProposalPreviewAt) {
+      setPendingProposalPreviewAt(null);
+      if (!proposalDirty) {
+        const saved = proposalFormFromRecord(proposal);
+        setProposalForm(saved);
+        setSavedProposalForm(saved);
+        setEditingProposal(false);
+      }
+    }
+  }, [pendingProposalPreviewAt, proposal?.updatedAt, proposalDirty]);
+  useEffect(() => {
+    if (pendingProposalRevision && proposal?.status === "draft") {
+      setEditingProposal(true);
+      setPendingProposalRevision(false);
+    }
+  }, [pendingProposalRevision, proposal?.status]);
+  useEffect(() => {
+    if (!proposalDirty || !proposal || proposal.status !== "draft") return;
+    const guard = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", guard);
+    return () => window.removeEventListener("beforeunload", guard);
+  }, [proposalDirty, proposal]);
 
   useEffect(() => {
     const currentStatus = proposal?.status ?? null;
@@ -736,7 +684,7 @@ export function RequestDetailPage() {
     if (!proposal) return;
     setSavingProposal(true);
     try {
-      await updateProposalMut({
+      const updatedAt = await updateProposalMut({
         sessionToken,
         userId: user!._id,
         proposalId: proposal._id,
@@ -751,7 +699,8 @@ export function RequestDetailPage() {
         oneTimePriceCents: centsFromPrice(proposalForm.oneTimePrice),
         notes: proposalForm.notes || undefined,
       });
-      setEditingProposal(false);
+      setSavedProposalForm(proposalForm);
+      setPendingProposalPreviewAt(typeof updatedAt === "number" ? updatedAt : (proposal.updatedAt ?? 0) + 1);
       setToast({ message: t("proposals.saved"), type: "success" });
     } catch (err: any) {
       setToast({ message: err.message || t("proposals.saveFailed"), type: "error" });
@@ -760,11 +709,16 @@ export function RequestDetailPage() {
     }
   };
 
+  const requestProposalReview = () => {
+    if (proposalDirty) { setProposalDiscardOpen(true); return; }
+    setEditingProposal(false);
+  };
+
   const handleReturnToDraft = async () => {
     setProposalActionLoading("draft");
     try {
       await returnProposalToDraft({ userId: user!._id, sessionToken, proposalId: proposal._id });
-      setEditingProposal(true);
+      setPendingProposalRevision(true);
       setToast({ message: t("proposals.addOns.returnedToDraft"), type: "success" });
     } catch (err: any) {
       setToast({ message: err.message || t("common.error"), type: "error" });
@@ -1129,6 +1083,11 @@ export function RequestDetailPage() {
 
         <div id="request-proposal" className="scroll-mt-24" />
 
+        {proposal?.status === "draft" && <div role="tablist" aria-label={t("proposals.v2.modeLabel")} className="mb-4 flex w-full gap-1 rounded-lg bg-gray-100 p-1 sm:w-fit">
+          <button type="button" role="tab" aria-selected={editingProposal} onClick={() => setEditingProposal(true)} className={`min-w-0 flex-1 rounded-md px-4 py-2 text-sm font-medium sm:flex-none ${editingProposal ? "bg-white text-primary-700 shadow-sm" : "text-gray-600"}`}>{t("proposals.v2.editTab")}</button>
+          <button type="button" role="tab" aria-selected={!editingProposal} onClick={requestProposalReview} className={`min-w-0 flex-1 rounded-md px-4 py-2 text-sm font-medium sm:flex-none ${!editingProposal ? "bg-white text-primary-700 shadow-sm" : "text-gray-600"}`}>{t("proposals.v2.reviewTab")}</button>
+        </div>}
+
         {!proposal && !proposalUnlocked ? (
           <p className="rounded-md bg-gray-50 p-3 text-sm text-gray-600">
             Complete the walkthrough to begin building a proposal.
@@ -1160,297 +1119,45 @@ export function RequestDetailPage() {
               {creatingProposal ? t("requests.creating") : t("proposals.create")}
             </button>
           </div>
-        ) : editingProposal ? (
-          <div className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
-                  {t("proposals.proposalTitle")}
-                </label>
-                <input
-                  className="input-field text-sm"
-                  value={proposalForm.title}
-                  onChange={(e) => setProposalForm({ ...proposalForm, title: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
-                  {t("proposals.clientName")}
-                </label>
-                <input
-                  className="input-field text-sm"
-                  value={proposalForm.clientName}
-                  onChange={(e) => setProposalForm({ ...proposalForm, clientName: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
-                  {t("requests.businessName")}
-                </label>
-                <input
-                  className="input-field text-sm"
-                  value={proposalForm.businessName}
-                  onChange={(e) => setProposalForm({ ...proposalForm, businessName: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
-                  {t("common.address")}
-                </label>
-                <input
-                  className="input-field text-sm"
-                  value={proposalForm.propertyAddress}
-                  onChange={(e) => setProposalForm({ ...proposalForm, propertyAddress: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
-                  {t("proposals.serviceFrequency")}
-                </label>
-                <select
-                  className="input-field text-sm"
-                  value={proposalForm.serviceFrequency}
-                  onChange={(e) => setProposalForm({ ...proposalForm, serviceFrequency: e.target.value })}
-                >
-                  <option value="">{t("common.select")}</option>
-                  {(["one_time", "weekly", "biweekly", "monthly", "quarterly", "custom"] as const).map((freq) => (
-                    <option key={freq} value={freq}>{t(`leadFrequencies.${freq}`)}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
-                  {t("proposals.frequencyNotes")}
-                </label>
-                <input
-                  className="input-field text-sm"
-                  value={proposalForm.serviceFrequencyNotes}
-                  onChange={(e) => setProposalForm({ ...proposalForm, serviceFrequencyNotes: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
-                  {t("proposals.monthlyPrice")}
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className="input-field text-sm"
-                  value={proposalForm.monthlyPrice}
-                  onChange={(e) => setProposalForm({ ...proposalForm, monthlyPrice: e.target.value })}
-                  placeholder="0.00"
-                />
-                {proposal.assessmentSuggestedMonthlyPriceCents != null && (
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-600">
-                    <span>{t("proposals.assessmentMonthlyEstimate", { amount: formatPrice(proposal.assessmentSuggestedMonthlyPriceCents) })}</span>
-                    {proposalForm.monthlyPrice !== String(proposal.assessmentSuggestedMonthlyPriceCents / 100) && (
-                      <button type="button" className="btn-secondary text-xs" onClick={() => setProposalForm({ ...proposalForm, monthlyPrice: String(proposal.assessmentSuggestedMonthlyPriceCents / 100) })}>
-                        {t("proposals.useAssessmentEstimate")}
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
-                  {t("proposals.oneTimePrice")}
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className="input-field text-sm"
-                  value={proposalForm.oneTimePrice}
-                  onChange={(e) => setProposalForm({ ...proposalForm, oneTimePrice: e.target.value })}
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-            <div className="rounded-lg border border-gray-200 p-4 space-y-4">
-              <div>
-                <h4 className="font-semibold text-gray-900">{t("proposals.addOns.title")}</h4>
-                <p className="text-xs text-gray-500">{t("proposals.addOns.editorHelp")}</p>
-              </div>
-              <ProposalCatalogAddOnPicker onAdd={(companyAddOnId) => addCatalogAddOnLine({ userId: user!._id, sessionToken, proposalId: proposal._id, companyAddOnId, billingCadence: "one_time" })} />
-              <div className="grid gap-2 sm:grid-cols-[1fr_10rem_auto]">
-                <input className="input-field" value={customAddOnName} onChange={(e) => setCustomAddOnName(e.target.value)} placeholder={t("proposals.addOns.customName")} />
-                <input className="input-field" type="number" min="0.01" step="0.01" value={customAddOnPrice} onChange={(e) => setCustomAddOnPrice(e.target.value)} placeholder="0.00" />
-                <button type="button" className="btn-secondary" disabled={!customAddOnName.trim() || !customAddOnPrice} onClick={async () => {
-                  await addCustomAddOnLine({ userId: user!._id, sessionToken, proposalId: proposal._id, name: customAddOnName, pricingMethod: "flat", unitPriceCents: Math.round(Number(customAddOnPrice) * 100), billingCadence: "one_time" }); setCustomAddOnName(""); setCustomAddOnPrice("");
-                }}>{t("proposals.addOns.addCustom")}</button>
-              </div>
-              <div className="space-y-3">
-                {(proposal.addOnLineItems ?? []).map((line: any) => (
-                  <ProposalAddOnLineEditor key={line.lineItemId} line={line} t={t}
-                    onSave={(values) => updateAddOnLine({ userId: user!._id, sessionToken, proposalId: proposal._id, lineItemId: line.lineItemId, ...values })}
-                    onFeedback={(message, type) => setToast({ message, type })}
-                    onRemove={() => removeAddOnLine({ userId: user!._id, sessionToken, proposalId: proposal._id, lineItemId: line.lineItemId })} />
-                ))}
-              </div>
-              {(proposal as any).calculatedTotals?.hasUnfinalizedStartingAt && <p className="rounded bg-amber-50 p-2 text-sm text-amber-800">{t("proposals.addOns.finalizeWarning")}</p>}
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                {t("proposals.scopeOfWork")}
-              </label>
-              <textarea
-                className="input-field text-sm"
-                rows={4}
-                value={proposalForm.scopeOfWork}
-                onChange={(e) => setProposalForm({ ...proposalForm, scopeOfWork: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                {t("common.notes")}
-              </label>
-              <textarea
-                className="input-field text-sm"
-                rows={3}
-                value={proposalForm.notes}
-                onChange={(e) => setProposalForm({ ...proposalForm, notes: e.target.value })}
-              />
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              <button
-                onClick={handleSaveProposal}
-                disabled={savingProposal}
-                className="btn-primary flex items-center gap-2 text-sm"
-              >
-                <Save className="w-4 h-4" />
-                {savingProposal ? t("common.saving") : t("proposals.save")}
-              </button>
-              <button
-                onClick={() => setEditingProposal(false)}
-                className="btn-secondary text-sm"
-              >
-                {t("common.cancel")}
-              </button>
-            </div>
-          </div>
+        ) : editingProposal && proposal.status === "draft" ? (
+          <ProposalEditor proposal={proposal} form={proposalForm}
+            onChange={(field, value) => setProposalForm((previous) => ({ ...previous, [field]: value }))}
+            sourceAssessment={proposal.sourceAssessment} dirty={proposalDirty}
+            saving={savingProposal || pendingProposalPreviewAt !== null} revision={proposal.hasPriorIssue}
+            onSave={handleSaveProposal} onCancel={requestProposalReview}
+            onAddCatalog={(companyAddOnId) => addCatalogAddOnLine({ userId: user!._id, sessionToken, proposalId: proposal._id, companyAddOnId, billingCadence: "one_time" })}
+            onAddCustom={(name, unitPriceCents) => addCustomAddOnLine({ userId: user!._id, sessionToken, proposalId: proposal._id, name, pricingMethod: "flat", unitPriceCents, billingCadence: "one_time" })}
+            onUpdateLine={(lineItemId, values) => updateAddOnLine({ userId: user!._id, sessionToken, proposalId: proposal._id, lineItemId, ...values })}
+            onRemoveLine={(lineItemId) => removeAddOnLine({ userId: user!._id, sessionToken, proposalId: proposal._id, lineItemId })}
+            onFeedback={(message, type) => setToast({ message, type })} />
         ) : (
           <div className="space-y-3">
-            <div className="rounded-md border border-gray-200 bg-gray-50 p-4 space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                <div>
-                  <p className="text-xs font-medium uppercase text-gray-500">
-                    {t("proposals.reviewProposal")}
-                  </p>
-                  <h4 className="mt-1 text-base font-semibold text-gray-900">
-                    {proposal.title || t("proposals.title")}
-                  </h4>
-                  <p className="mt-1 text-sm text-gray-600">{proposal.clientName}</p>
-                  {(proposal as any).clientRelationship && (
-                    <p className="mt-2 inline-flex rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700">
-                      Client relationship: {(proposal as any).clientRelationship.displayName}
-                    </p>
-                  )}
-                </div>
-                <span className="badge bg-white text-gray-700 capitalize self-start">
-                  {t(`proposals.statuses.${proposal.status}`)}
-                </span>
+            <div className="min-w-0 space-y-4">
+              <div className="rounded-lg border border-primary-100 bg-primary-50 p-4">
+                <h4 className="font-semibold text-gray-900">{t("proposals.v2.reviewHeading")}</h4>
+                <p className="mt-1 text-sm text-gray-700">{t(proposal.canonicalPreview?.source === "saved_draft" ? "proposals.v2.savedPreviewHelp" : proposal.canonicalPreview?.source === "issued_snapshot" ? "proposals.v2.issuedPreviewHelp" : "proposals.v2.legacyPreviewHelp")}</p>
+                {proposal.sourceAssessment && <p className="mt-2 break-words text-xs text-gray-600">{t("proposals.v2.sourceContext", { title: proposal.sourceAssessment.title, date: proposal.sourceAssessment.completedAt ? new Date(proposal.sourceAssessment.completedAt).toLocaleDateString() : t("proposals.v2.completedAssessment") })}</p>}
+                {proposal.canonicalPreview?.issueNumber != null && <p className="mt-2 text-xs font-medium text-gray-700">{t("proposals.v2.issueNumber", { number: proposal.canonicalPreview.issueNumber })}</p>}
+                {proposal.hasPriorIssue && proposal.status === "draft" && <p className="mt-2 text-sm text-gray-700">{t("proposals.v2.revisionNote")}</p>}
+                {proposal.status === "accepted" && proposal.acceptedAt && <p className="mt-2 text-sm text-green-800">{t("proposals.v2.acceptedAt", { date: formatTimestamp(proposal.acceptedAt) })}</p>}
+                {proposal.status === "declined" && proposal.declinedAt && <p className="mt-2 text-sm text-red-800">{t("proposals.v2.declinedAt", { date: formatTimestamp(proposal.declinedAt) })}</p>}
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                {proposal.businessName && (
-                  <div>
-                    <p className="text-xs font-medium text-gray-500">{t("requests.businessName")}</p>
-                    <p className="text-gray-900">{proposal.businessName}</p>
-                  </div>
-                )}
-                {proposal.propertyAddress && (
-                  <div>
-                    <p className="text-xs font-medium text-gray-500">{t("common.address")}</p>
-                    <p className="text-gray-900">{proposal.propertyAddress}</p>
-                  </div>
-                )}
-                <div>
-                  <p className="text-xs font-medium text-gray-500">{t("proposals.estimatedContractAmount")}</p>
-                  <p className="text-gray-900">
-                    {formatProposalAmount(
-                      (proposal as any).calculatedTotals?.hasMonthlyPricing ? (proposal as any).calculatedTotals.monthlyTotalCents : undefined,
-                      (proposal as any).calculatedTotals?.hasOneTimePricing ? (proposal as any).calculatedTotals.oneTimeTotalCents : undefined
-                    )}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-gray-500">{t("proposals.serviceFrequency")}</p>
-                  <p className="text-gray-900">
-                    {proposal.serviceFrequency ? t(`leadFrequencies.${proposal.serviceFrequency}`) : t("common.unassigned")}
-                  </p>
-                  {proposal.serviceFrequencyNotes && (
-                    <p className="mt-1 text-xs text-gray-500">{proposal.serviceFrequencyNotes}</p>
-                  )}
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-gray-500">{t("proposals.terms")}</p>
-                  <p className="text-gray-900">{t("proposals.termsNotSet")}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-gray-500">{t("proposals.status")}</p>
-                  <p className="text-gray-900">{t(`proposals.statuses.${proposal.status}`)}</p>
-                </div>
-                {proposal.sentAt && (
-                  <div>
-                    <p className="text-xs font-medium text-gray-500">{t("proposals.sentAt")}</p>
-                    <p className="text-gray-900">{formatTimestamp(proposal.sentAt)}</p>
-                  </div>
-                )}
-                {proposal.acceptedAt && (
-                  <div>
-                    <p className="text-xs font-medium text-gray-500">{t("proposals.acceptedOn")}</p>
-                    <p className="text-gray-900">{formatTimestamp(proposal.acceptedAt)}</p>
-                  </div>
-                )}
-              </div>
-              {proposal.latestDeliveryAttempt?.result === "unknown" && (
-                <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{t("proposals.deliveryUnknown")}</p>
-              )}
-              {proposal.latestDeliveryAttempt?.result === "failed" && (
-                <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{t("proposals.deliveryFailed")}</p>
-              )}
-              {proposal.latestDeliveryAttempt?.channel === "owner_reported_outside_send" && (
-                <p className="text-xs text-gray-600">{t("proposals.outsideSendRecorded")}</p>
-              )}
-              {proposal.responseSource === "owner_reported" && (
-                <p className="text-xs text-gray-600">{t("proposals.outsideResponseRecorded")}</p>
-              )}
-              {(proposal.addOnLineItems?.length ?? 0) > 0 && (
-                <div className="border-t border-gray-200 pt-4">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">{t("proposals.addOns.title")}</p>
-                  <div className="space-y-2">
-                    {proposal.addOnLineItems.map((line: any) => {
-                      const amount = line.pricingMethod === "starting_at"
-                        ? line.finalizedPriceCents
-                        : line.pricingMethod === "per_unit"
-                          ? line.unitPriceCents * line.quantity
-                          : line.unitPriceCents;
-                      return <div key={line.lineItemId} className="flex flex-col gap-1 rounded-md border border-gray-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <p className="font-medium text-gray-900">{line.name}</p>
-                          <p className="text-xs text-gray-500">
-                            {line.sourceType === "request_snapshot" ? t("proposals.addOns.requested") : line.sourceType === "catalog" ? t("proposals.addOns.catalog") : t("proposals.addOns.custom")}
-                            {line.pricingMethod === "per_unit" ? ` · ${line.quantity} × ${formatPrice(line.unitPriceCents)} / ${line.unitLabel}` : ""}
-                            {` · ${line.billingCadence === "monthly" ? t("proposals.addOns.monthly") : t("proposals.addOns.oneTime")}`}
-                          </p>
-                        </div>
-                        <p className="font-semibold text-gray-900">{amount == null ? `${t("addOns.methods.starting_at")} ${formatPrice(line.unitPriceCents)}` : formatPrice(amount)}</p>
-                      </div>;
-                    })}
-                  </div>
-                </div>
-              )}
+              <ProposalReviewItems proposal={proposal} onEdit={() => setEditingProposal(true)} />
+              {proposal.canonicalPreview?.content && <div className="min-w-0 rounded-xl border border-gray-200 bg-white p-4 sm:p-5"><ProposalContentView content={proposal.canonicalPreview.content} legacyBaseOnly={proposal.canonicalPreview.source === "legacy_current"} /></div>}
+              {proposal.latestDeliveryAttempt?.result === "unknown" && <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{t("proposals.deliveryUnknown")}</p>}
+              {proposal.latestDeliveryAttempt?.result === "failed" && <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{t("proposals.deliveryFailed")}</p>}
+              {proposal.latestDeliveryAttempt?.channel === "owner_reported_outside_send" && <p className="text-xs text-gray-600">{t("proposals.outsideSendRecorded")}</p>}
+              {proposal.responseSource === "owner_reported" && <p className="text-xs text-gray-600">{t("proposals.outsideResponseRecorded")}</p>}
             </div>
-            {proposal.status === "accepted" && proposal.proposalResponseNote && (
-              <div className="rounded-md border border-green-200 bg-green-50 p-3">
-                <p className="text-xs font-semibold uppercase text-green-800">
+            {["accepted", "declined"].includes(proposal.status) && proposal.proposalResponseNote && (
+              <div className={`rounded-md border p-3 ${proposal.status === "declined" ? "border-red-200 bg-red-50" : "border-green-200 bg-green-50"}`}>
+                <p className={`text-xs font-semibold uppercase ${proposal.status === "declined" ? "text-red-800" : "text-green-800"}`}>
                   {t("proposals.clientResponse")}
                 </p>
-                <p className="mt-1 text-xs text-green-700">
+                <p className={`mt-1 text-xs ${proposal.status === "declined" ? "text-red-700" : "text-green-700"}`}>
                   {t("proposals.clientResponseHelper")}
                 </p>
-                <p className="mt-2 whitespace-pre-wrap text-sm text-green-900">
+                <p className={`mt-2 whitespace-pre-wrap text-sm ${proposal.status === "declined" ? "text-red-900" : "text-green-900"}`}>
                   {proposal.proposalResponseNote}
                 </p>
               </div>
@@ -1918,7 +1625,7 @@ export function RequestDetailPage() {
                     onClick={handleSendProposalEmail}
                     pending={proposalActionLoading === "email"}
                     pendingLabel={t("common.sending")}
-                    disabled={proposalActionLoading !== null && proposalActionLoading !== "email"}
+                    disabled={proposal.calculatedTotals?.hasUnfinalizedStartingAt || proposalDirty || (proposalActionLoading !== null && proposalActionLoading !== "email")}
                     className="btn-primary flex items-center gap-2 text-sm"
                   >
                     <Send aria-hidden="true" className="w-4 h-4" />
@@ -1926,7 +1633,7 @@ export function RequestDetailPage() {
                   </AsyncButton>
                   <button
                     onClick={() => handleProposalAction("sent")}
-                    disabled={proposalActionLoading === "sent"}
+                    disabled={proposal.calculatedTotals?.hasUnfinalizedStartingAt || proposalDirty || proposalActionLoading === "sent"}
                     className="btn-secondary flex items-center gap-2 text-sm"
                   >
                     <Send className="w-4 h-4" />
@@ -1970,6 +1677,10 @@ export function RequestDetailPage() {
             </div>
           </div>
         )}
+        <ConfirmDialog open={proposalDiscardOpen} onOpenChange={setProposalDiscardOpen}
+          title={t("proposals.v2.discardTitle")} description={t("proposals.v2.discardBody")}
+          confirmLabel={t("proposals.v2.discardChanges")} confirmVariant="danger"
+          onConfirm={() => { setProposalForm(savedProposalForm); setProposalDiscardOpen(false); setEditingProposal(false); }} />
       </CollapsibleSection>
 
       {/* Client relationship and portal access */}

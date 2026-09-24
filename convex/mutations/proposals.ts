@@ -188,6 +188,7 @@ export const updateProposal = mutation({
     const { proposal } = await getOwnedProposal(ctx, args.sessionToken, args.userId, args.proposalId);
     requireDraft(proposal);
 
+    const updatedAt = Math.max(Date.now(), proposal.updatedAt + 1);
     await ctx.db.patch(args.proposalId, {
       title: cleanRequired(args.title, "Cleaning Proposal", 200),
       clientName: cleanRequired(args.clientName, "Client", 200),
@@ -199,8 +200,9 @@ export const updateProposal = mutation({
       monthlyPriceCents: cleanPrice(args.monthlyPriceCents),
       oneTimePriceCents: cleanPrice(args.oneTimePriceCents),
       notes: cleanOptional(args.notes, 4000),
-      updatedAt: Date.now(),
+      updatedAt,
     });
+    return updatedAt;
   },
 });
 

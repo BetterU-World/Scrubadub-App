@@ -4,16 +4,15 @@ import { useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useTranslation } from "react-i18next";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { ProposalContentView } from "@/components/ProposalContentView";
 import {
-  Building2,
   CheckCircle,
-  FileText,
-  MapPin,
   MessageSquare,
   XCircle,
 } from "lucide-react";
 
 type ProposalPayload = {
+  legacyBaseOnly?: boolean;
   company: {
     companyName: string;
     companyLogoUrl?: string | null;
@@ -40,35 +39,6 @@ type ProposalPayload = {
     proposalResponseNote?: string | null;
   };
 };
-
-function priceSummary(proposal: ProposalPayload["proposal"]) {
-  const parts = [
-    proposal.totals?.monthlyTotalLabel ? `${proposal.totals.monthlyTotalLabel} per month` : proposal.monthlyPriceLabel ? `${proposal.monthlyPriceLabel} per month` : null,
-    proposal.totals?.oneTimeTotalLabel ? `${proposal.totals.oneTimeTotalLabel} one-time` : proposal.oneTimePriceLabel ? `${proposal.oneTimePriceLabel} one-time` : null,
-  ].filter(Boolean);
-  return parts.length ? parts.join(" + ") : "Estimate not set";
-}
-
-function Detail({
-  icon,
-  label,
-  value,
-}: {
-  icon: ReactNode;
-  label: string;
-  value?: string | null;
-}) {
-  if (!value) return null;
-  return (
-    <div className="flex gap-3 rounded-md border border-gray-200 bg-white p-3">
-      <div className="mt-0.5 text-gray-400">{icon}</div>
-      <div>
-        <p className="text-xs font-medium uppercase text-gray-500">{label}</p>
-        <p className="mt-1 text-sm font-medium text-gray-900">{value}</p>
-      </div>
-    </div>
-  );
-}
 
 export function ProposalViewPage() {
   const { t } = useTranslation();
@@ -158,74 +128,9 @@ export function ProposalViewPage() {
       companyLogoUrl={proposal.company.companyLogoUrl}
     >
       <section className="card space-y-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase text-primary-700">Proposal</p>
-            <h1 className="mt-2 text-2xl font-semibold text-gray-900">
-              {proposal.proposal.title}
-            </h1>
-            <p className="mt-2 text-sm text-gray-600">
-              Prepared for {proposal.clientName} by {proposal.company.companyName}
-            </p>
-          </div>
-          <StatusPill status={status} />
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Detail
-            icon={<Building2 className="h-4 w-4" />}
-            label="Business / property"
-            value={proposal.proposal.businessName}
-          />
-          <Detail
-            icon={<MapPin className="h-4 w-4" />}
-            label="Address"
-            value={proposal.proposal.propertyAddress}
-          />
-          <Detail
-            icon={<FileText className="h-4 w-4" />}
-            label="Service frequency"
-            value={proposal.proposal.serviceFrequencyLabel}
-          />
-          <Detail
-            icon={<FileText className="h-4 w-4" />}
-            label="Estimated value"
-            value={priceSummary(proposal.proposal)}
-          />
-        </div>
-
-        {proposal.proposal.serviceFrequencyNotes && (
-          <TextBlock title="Recommended Schedule" value={proposal.proposal.serviceFrequencyNotes} />
-        )}
-
-        {proposal.proposal.scopeOfWork && (
-          <TextBlock title="Scope Summary" value={proposal.proposal.scopeOfWork} />
-        )}
-
-        {(proposal.proposal.addOnLineItems?.length ?? 0) > 0 && (
-          <div className="rounded-md border border-gray-200 bg-white p-4">
-            <h2 className="text-sm font-semibold text-gray-900">{t("proposals.addOns.title")}</h2>
-            <div className="mt-3 divide-y divide-gray-100">
-              {proposal.proposal.addOnLineItems!.map((line, index) => (
-                <div key={`${line.name}-${index}`} className="flex flex-col justify-between gap-1 py-3 sm:flex-row sm:items-center">
-                  <div>
-                    <p className="font-medium text-gray-900">{line.name}</p>
-                    <p className="text-xs text-gray-500">
-                      {line.billingCadence === "monthly" ? t("proposals.addOns.monthly") : t("proposals.addOns.oneTime")}
-                      {line.quantity ? ` · ${line.quantity} × ${line.unitPriceLabel} / ${line.unitLabel}` : ""}
-                    </p>
-                  </div>
-                  <p className="font-semibold text-gray-900">{line.lineTotalLabel}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {proposal.proposal.notes && (
-          <TextBlock title="Notes" value={proposal.proposal.notes} />
-        )}
-
+        <div className="flex justify-end"><StatusPill status={status} /></div>
+        {proposal.legacyBaseOnly && <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{t("proposals.v2.legacyPublicHelp")}</p>}
+        <ProposalContentView content={proposal} legacyBaseOnly={proposal.legacyBaseOnly === true} />
       </section>
 
       <section className="card mt-4">
@@ -292,15 +197,6 @@ export function ProposalViewPage() {
         )}
       </section>
     </Shell>
-  );
-}
-
-function TextBlock({ title, value }: { title: string; value: string }) {
-  return (
-    <div className="border-t border-gray-100 pt-4">
-      <p className="text-xs font-semibold uppercase text-gray-500">{title}</p>
-      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-gray-700">{value}</p>
-    </div>
   );
 }
 

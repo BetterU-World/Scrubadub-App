@@ -145,7 +145,7 @@ describe("proposal add-on line items", () => {
     const draft: any = await t.run((ctx) => ctx.db.get(proposalId));
     expect(draft).toMatchObject({ status: "draft" });
     expect(draft.proposalTokenHash).toBeUndefined();
-    await expect(t.mutation(proposals.updateProposal, { ...auth, proposalId, title: "Editable again", clientName: "Customer" })).resolves.toBeNull();
+    await expect(t.mutation(proposals.updateProposal, { ...auth, proposalId, title: "Editable again", clientName: "Customer" })).resolves.toEqual(expect.any(Number));
   });
 
   it("blocks unresolved starting-at delivery and keeps accepted/declined proposals immutable", async () => {
@@ -165,16 +165,20 @@ describe("proposal add-on line items", () => {
   it("keeps owner/public/email UI localized, responsive, and public payloads free of trace IDs", () => {
     const owner = readFileSync(fileURLToPath(new URL("../../../packages/frontend/src/pages/owner/RequestDetailPage.tsx", import.meta.url)), "utf8");
     const publicView = readFileSync(fileURLToPath(new URL("../../../packages/frontend/src/pages/public/ProposalViewPage.tsx", import.meta.url)), "utf8");
+    const addOnEditor = readFileSync(fileURLToPath(new URL("../../../packages/frontend/src/components/owner/ProposalAddOnLineEditor.tsx", import.meta.url)), "utf8");
+    const sharedContent = readFileSync(fileURLToPath(new URL("../../../packages/frontend/src/components/ProposalContentView.tsx", import.meta.url)), "utf8");
     const delivery = readFileSync(fileURLToPath(new URL("../../proposalDeliveryInternal.ts", import.meta.url)), "utf8");
     const email = readFileSync(fileURLToPath(new URL("../email.ts", import.meta.url)), "utf8");
     const en = JSON.parse(readFileSync(fileURLToPath(new URL("../../../packages/frontend/src/i18n/en/common.json", import.meta.url)), "utf8"));
     const es = JSON.parse(readFileSync(fileURLToPath(new URL("../../../packages/frontend/src/i18n/es/common.json", import.meta.url)), "utf8"));
     expect(owner).toContain("returnProposalToDraft");
     expect(owner).toContain('proposal.status === "draft" &&');
-    expect(owner).toContain('aria-label={t("proposals.addOns.remove",');
-    expect(owner).toContain('onFeedback(t("proposals.addOns.lineSaved"), "success")');
-    expect(owner).toContain('onFeedback(err.message || t("proposals.addOns.lineSaveFailed"), "error")');
-    expect(publicView).toContain("sm:flex-row");
+    expect(owner).toContain("<ProposalEditor");
+    expect(addOnEditor).toContain('aria-label={t("proposals.addOns.remove",');
+    expect(addOnEditor).toContain('onFeedback(t("proposals.addOns.lineSaved"), "success")');
+    expect(addOnEditor).toContain('onFeedback(err.message || t("proposals.addOns.lineSaveFailed"), "error")');
+    expect(publicView).toContain("<ProposalContentView");
+    expect(sharedContent).toContain("sm:flex-row");
     expect(email).toContain("proposal.addOnLineItems.map");
     const publicMapping = delivery.slice(delivery.indexOf("const addOnLineItems"), delivery.indexOf("return {", delivery.indexOf("const addOnLineItems")));
     expect(publicMapping).not.toContain("sourceCompanyAddOnId");
