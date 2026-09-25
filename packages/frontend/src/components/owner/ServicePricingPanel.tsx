@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
@@ -6,6 +6,11 @@ import { useAuth } from "@/hooks/useAuth";
 
 const cents = (value: string) => /^\d+(?:\.\d{1,2})?$/.test(value.trim()) ? Math.round(Number(value) * 100) : null;
 const money = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value / 100);
+type OfferLine = { name: string; amount: string; quantity?: number; unitLabel?: string; needsFinalPrice?: boolean };
+type RequestedLine = { name: string; pricingMethod: "flat" | "per_unit" | "starting_at"; priceCents: number; quantity?: number; unitLabel?: string };
+export function requestedOfferLines(lines: RequestedLine[]): OfferLine[] {
+  return lines.map((line) => ({ name: line.name, amount: line.pricingMethod === "starting_at" ? "" : ((line.priceCents * (line.quantity ?? 1)) / 100).toFixed(2), quantity: line.quantity, unitLabel: line.unitLabel, needsFinalPrice: line.pricingMethod === "starting_at" }));
+}
 
 export function ServicePricingPanel({ requestId, jobId, commercial = false }: { requestId?: string; jobId?: string; commercial?: boolean }) {
   const { t } = useTranslation();
@@ -18,13 +23,18 @@ export function ServicePricingPanel({ requestId, jobId, commercial = false }: { 
   const markNoCharge = useMutation((api as any).mutations.servicePriceOffers.markNoCharge);
   const confirmAddOns = useMutation((api as any).mutations.servicePriceOffers.confirmDeliveredAddOns);
   const [amount, setAmount] = useState("");
-  const [addOns, setAddOns] = useState<Array<{ name: string; amount: string }>>([]);
+  const [addOns, setAddOns] = useState<OfferLine[]>([]);
   const [evidence, setEvidence] = useState("");
   const [reason, setReason] = useState<"complimentary" | "waived" | "discounted_to_zero">("complimentary");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  if (!allowed || commercial) return null;
   const data = requestId ? requestData : jobData;
+  const requestedKey = data ? `${requestId ?? jobId}:${data.offer?._id ?? "new"}` : "";
+  useEffect(() => {
+    if (!allowed || commercial || !data) return;
+    setAddOns(requestedOfferLines(data.requestedAddOns ?? []));
+  }, [requestedKey]);
+  if (!allowed || commercial) return null;
   if (!data) return null;
   const offer = data.offer;
   const status = jobId ? jobData?.status : offer?.status === "accepted" ? "accepted" : offer?.status === "issued" ? "awaiting_acceptance" : "pending";
@@ -47,10 +57,10 @@ export function ServicePricingPanel({ requestId, jobId, commercial = false }: { 
       {jobId && jobData?.readiness?.reason === "add_ons_unconfirmed" && <button type="button" className="btn-secondary text-sm" disabled={busy} onClick={() => act(() => confirmAddOns({ userId: user!._id, sessionToken, jobId, expectedRevision: revision }))}>{t("jobPricing.confirmAddOns")}</button>}
       <p className="text-sm font-medium">{offer || jobData?.status === "accepted" ? t("jobPricing.revise") : t("jobPricing.createOffer")}</p>
       <label className="block text-sm">{t("jobPricing.baseAmount")}<input className="input-field mt-1 w-full" type="number" min="0" step="0.01" value={amount} onChange={(event) => setAmount(event.target.value)} /></label>
-      {addOns.map((line, index) => <div className="grid grid-cols-[1fr_7rem_auto] gap-2" key={index}><input className="input-field" aria-label={t("jobPricing.addOnName")} placeholder={t("jobPricing.addOnName")} value={line.name} onChange={(event) => setAddOns((all) => all.map((item, i) => i === index ? { ...item, name: event.target.value } : item))} /><input className="input-field" aria-label={t("jobPricing.addOnAmount")} type="number" min="0" step="0.01" value={line.amount} onChange={(event) => setAddOns((all) => all.map((item, i) => i === index ? { ...item, amount: event.target.value } : item))} /><button type="button" className="btn-secondary" onClick={() => setAddOns((all) => all.filter((_, i) => i !== index))}>{t("jobPricing.remove")}</button></div>)}
+      {addOns.map((line, index) => <div className="grid grid-cols-[1fr_7rem_auto] gap-2" key={index}><input className="input-field" aria-label={t("jobPricing.addOnName")} placeholder={t("jobPricing.addOnName")} value={line.name} onChange={(event) => setAddOns((all) => all.map((item, i) => i === index ? { ...item, name: event.target.value } : item))} /><div><input className="input-field" aria-label={t("jobPricing.addOnAmount")} type="number" min="0" step="0.01" value={line.amount} onChange={(event) => setAddOns((all) => all.map((item, i) => i === index ? { ...item, amount: event.target.value, needsFinalPrice: false } : item))} />{line.needsFinalPrice && <span className="text-xs text-amber-700">{t("jobPricing.finalizeStartingAt")}</span>}{line.quantity && <span className="text-xs text-gray-600">{t("jobPricing.quantity", { count: line.quantity })}</span>}</div><button type="button" className="btn-secondary" onClick={() => setAddOns((all) => all.filter((_, i) => i !== index))}>{t("jobPricing.remove")}</button></div>)}
       <button type="button" className="btn-secondary text-sm" onClick={() => setAddOns((all) => [...all, { name: "", amount: "" }])}>{t("jobPricing.addAddOn")}</button>
       <p className="text-xs text-gray-600">{t("jobPricing.consentNotice")}</p>
-      <button type="button" className="btn-primary text-sm" disabled={busy} onClick={() => act(async () => { const base = cents(amount); const lines = addOns.map((line) => ({ name: line.name.trim(), amountCents: cents(line.amount) })); if (base === null || lines.some((line) => !line.name || line.amountCents === null)) throw new Error(t("jobPricing.invalidAmount")); await issue({ userId: user!._id, sessionToken, requestId, jobId, expectedRevision: revision, baseChargeCents: base, addOns: lines }); })}>{t("jobPricing.issueOffer")}</button>
+      <button type="button" className="btn-primary text-sm" disabled={busy} onClick={() => act(async () => { const base = cents(amount); const lines = addOns.map((line) => ({ name: line.name.trim(), amountCents: cents(line.amount), quantity: line.quantity, unitLabel: line.unitLabel })); if (base === null || addOns.some((line) => line.needsFinalPrice) || lines.some((line) => !line.name || line.amountCents === null)) throw new Error(t("jobPricing.invalidAmount")); await issue({ userId: user!._id, sessionToken, requestId, jobId, expectedRevision: revision, baseChargeCents: base, addOns: lines }); })}>{t("jobPricing.issueOffer")}</button>
       {offer?.status === "issued" && <div className="space-y-2"><label className="block text-sm">{t("jobPricing.outsideEvidence")}<textarea className="input-field mt-1 w-full" value={evidence} onChange={(event) => setEvidence(event.target.value)} maxLength={500} /></label><button type="button" className="btn-secondary text-sm" disabled={busy || evidence.trim().length < 5} onClick={() => act(() => recordOutside({ userId: user!._id, sessionToken, offerId: offer._id, expectedRevision: offer.version, evidenceNote: evidence }))}>{t("jobPricing.recordOutside")}</button></div>}
       {jobId && <div className="flex flex-wrap gap-2"><select className="input-field" aria-label={t("jobPricing.noChargeReason")} value={reason} onChange={(event) => setReason(event.target.value as typeof reason)}><option value="complimentary">{t("jobPricing.reasons.complimentary")}</option><option value="waived">{t("jobPricing.reasons.waived")}</option><option value="discounted_to_zero">{t("jobPricing.reasons.discounted_to_zero")}</option></select><button type="button" className="btn-secondary text-sm" disabled={busy} onClick={() => act(() => markNoCharge({ userId: user!._id, sessionToken, jobId, expectedRevision: revision, reason }))}>{t("jobPricing.markNoCharge")}</button></div>}
     </div>}

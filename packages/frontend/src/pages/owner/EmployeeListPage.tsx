@@ -42,7 +42,7 @@ const managerPermissionGroups = [
     ["canRequestRework", "Request rework"],
   ] },
   { title: "Quality", permissions: [
-    ["canApproveForms", "Review and approve completed work"],
+    ["canApproveForms", "Manage Quality Review — review and approve completed work"],
     ["canResolveRedFlags", "Resolve red flags"],
   ] },
   { title: "Business", permissions: [
@@ -761,7 +761,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                           onChange={(e) => setMgrPerms((p) => ({ ...p, [key]: e.target.checked }))}
                           className="rounded border-gray-300"
                         />
-                        {key === "canManageClients" ? t("quick.permissionLabel") : label}
+                        {key === "canManageClients" ? t("quick.permissionLabel") : key === "canApproveForms" ? t("employees.manageQualityReview") : label}
                       </label>
                     ))}</div>)}
                   </div>
@@ -837,7 +837,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                     onChange={(e) => setEditPerms((p) => ({ ...p, [key]: e.target.checked }))}
                     className="rounded border-gray-300"
                   />
-                  {key === "canManageClients" ? t("quick.permissionLabel") : label}
+                  {key === "canManageClients" ? t("quick.permissionLabel") : key === "canApproveForms" ? t("employees.manageQualityReview") : label}
                 </label>
               ))}</div>)}
             </div>

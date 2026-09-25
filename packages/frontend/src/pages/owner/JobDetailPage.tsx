@@ -1350,7 +1350,17 @@ export function JobDetailPage() {
                 </button>
               </div>
             ) : (
-              <span className="text-sm text-green-600 font-medium">{t("jobs.houseCheckDone")}</span>
+              <div className="space-y-2">
+                <span className="text-sm text-green-600 font-medium">{t("jobs.houseCheckDone")}</span>
+                {canReview && job.form && <button type="button" className="btn-primary text-sm block" disabled={approving} onClick={async () => {
+                  const uid = requireUserId(user);
+                  if (!uid) return;
+                  setApproving(true);
+                  try { await approveForm({ formId: job.form._id, userId: uid, sessionToken: getStaffSessionToken() }); setToast({ message: t("jobs.jobApproved"), type: "success" }); }
+                  catch (err: any) { setToast({ message: err.message ?? t("common.failedToApprove"), type: "error" }); }
+                  finally { setApproving(false); }
+                }}>{t("inspection.approveCompletedWork")}</button>}
+              </div>
             )}
           </div>
         </div>
