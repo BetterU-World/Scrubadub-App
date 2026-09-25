@@ -244,6 +244,7 @@ export const getClientBilling = query({
     return {
       clientName: context.clientUser.displayName,
       invoices: invoices
+        .filter((invoice: any) => invoice.status === "issued" || invoice.status === "paid")
         .sort((a, b) => b.updatedAt - a.updatedAt)
         .map((invoice: any) => ({
           _id: invoice._id,

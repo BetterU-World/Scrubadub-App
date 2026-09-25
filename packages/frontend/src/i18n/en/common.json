@@ -2896,7 +2896,14 @@
     "voidSuccess": "Invoice voided",
     "sentSuccess": "Invoice sent",
     "sendFailed": "Failed to send invoice",
-    "send": "Send Invoice",
+    "send": "Email invoice",
+    "resend": "Resend invoice",
+    "lastEmailed": "Last emailed",
+    "issueHelper": "Issuing publishes this invoice in the client's SCRUB portal. It does not send an email.",
+    "missingRelationship": "Link this commercial account to a client before emailing the invoice.",
+    "missingPortalAccess": "Set up this client's portal access before emailing the invoice.",
+    "missingEmail": "Add the client's email address before emailing the invoice.",
+    "paidNote": "This invoice is recorded as paid.",
     "payOnline": "Pay online",
     "summary": "Invoice Summary",
     "invoiceNumber": "Invoice Number",
@@ -2917,7 +2924,7 @@
     "tax": "Tax",
     "actions": "Actions",
     "view": "View",
-    "markIssued": "Mark Issued",
+    "markIssued": "Issue invoice",
     "markPaid": "Mark Paid",
     "void": "Void Invoice",
     "paidInternalNote": "This is manual internal payment tracking only. No Stripe payment was processed.",
@@ -2927,6 +2934,20 @@
       "paid": "Paid",
       "void": "Void"
     }
+  },
+  "jobBilling": {
+    "title": "Billing",
+    "notInvoiced": "Not yet invoiced",
+    "awaitingApproval": "This commercial job can be included in billing after approval.",
+    "explanation": "This approved job is eligible for its commercial account's billing period.",
+    "review": "Review billing period",
+    "periodExplanation": "The draft uses the commercial account's contract amount and applicable add-ons. Other approved jobs in this period may also be included.",
+    "generateDraft": "Generate invoice draft",
+    "noEligible": "No eligible approved jobs were found for this billing period.",
+    "existingPeriodDraft": "A draft already exists for this period. This job was not added to it; review the draft before continuing.",
+    "viewPeriodDraft": "View period draft",
+    "existing": "Included on invoice {{number}} · {{status}}",
+    "view": "View invoice"
   },
   "serviceAgreements": {
     "v2": {

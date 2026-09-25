@@ -10,6 +10,7 @@ import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { Check, FileText, Receipt, Save, Send, XCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AddOnSnapshotList } from "@/components/AddOnSnapshotList";
+import { invoiceEmailActionKey } from "@/lib/invoiceWorkflowPresentation";
 
 function formatCents(cents: number | undefined) {
   if (cents == null) return "$0.00";
@@ -158,6 +159,7 @@ export function CommercialInvoiceDetailPage() {
                   {formatDate(invoice.issueDate)} / {formatDate(invoice.dueDate)}
                 </p>
               </div>
+              {invoice.sentAt && <div><p className="text-xs font-medium text-gray-500">{t("invoices.lastEmailed")}</p><p className="mt-1 text-sm text-gray-900">{formatTimestamp(invoice.sentAt)}</p></div>}
             </div>
           </section>
 
@@ -241,6 +243,9 @@ export function CommercialInvoiceDetailPage() {
           {canManageInvoices && <section className="card space-y-2">
             <h2 className="text-lg font-semibold text-gray-900">{t("invoices.actions")}</h2>
             {invoice.status === "draft" && (
+              <p className="text-sm text-gray-600">{t("invoices.issueHelper")}</p>
+            )}
+            {invoice.status === "draft" && (
               <button
                 type="button"
                 onClick={() => handleAction("issued")}
@@ -252,7 +257,10 @@ export function CommercialInvoiceDetailPage() {
               </button>
             )}
             {invoice.status === "issued" && (
-              <button type="button" onClick={handleSend} disabled={actionLoading === "send"} className="btn-secondary flex w-full items-center justify-center gap-2 text-sm"><Send className="h-4 w-4" />{t("invoices.send")}</button>
+              <>
+                {(!invoice.clientRelationship || !invoice.clientRelationship.hasPortalAccess || !invoice.clientRelationship.hasEmail) && <p className="text-sm text-amber-700">{!invoice.clientRelationship ? t("invoices.missingRelationship") : !invoice.clientRelationship.hasPortalAccess ? t("invoices.missingPortalAccess") : t("invoices.missingEmail")}</p>}
+                <button type="button" onClick={handleSend} disabled={actionLoading === "send" || !invoice.clientRelationship?.hasPortalAccess || !invoice.clientRelationship?.hasEmail} className="btn-secondary flex w-full items-center justify-center gap-2 text-sm"><Send className="h-4 w-4" />{t(invoiceEmailActionKey(invoice.sentAt))}</button>
+              </>
             )}
             {invoice.status === "issued" && (
               <button
@@ -277,7 +285,7 @@ export function CommercialInvoiceDetailPage() {
               </button>
             )}
             {invoice.status === "paid" && (
-              <p className="text-sm text-gray-500">{t("invoices.paidInternalNote")}</p>
+              <p className="text-sm text-gray-500">{t("invoices.paidNote")}</p>
             )}
           </section>}
         </aside>

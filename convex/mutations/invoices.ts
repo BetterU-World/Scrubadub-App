@@ -166,6 +166,7 @@ export const create = mutation({
     const now = Date.now();
     const addOns = await buildInvoiceAddOnSnapshot(ctx, account);
     const totals = calculateInvoiceTotals(account.contractAmountCents ?? 0, addOns.items);
+    if (totals.totalCents <= 0) throw new Error("Invoice total must be greater than zero before billing");
 
     return await ctx.db.insert("invoices", {
       companyId: account.companyId,
@@ -269,6 +270,7 @@ export const generateFromJobs = mutation({
     const dueDate = formatDate(addDays(new Date(now), 30));
     const addOns = await buildInvoiceAddOnSnapshot(ctx, account);
     const totals = calculateInvoiceTotals(account.contractAmountCents ?? 0, addOns.items);
+    if (totals.totalCents <= 0) throw new Error("Invoice total must be greater than zero before billing");
     const invoiceId = await ctx.db.insert("invoices", {
       companyId: account.companyId,
       clientRelationshipId: account.clientRelationshipId,
@@ -331,6 +333,7 @@ export const markIssued = mutation({
   handler: async (ctx, args) => {
     const { invoice } = await getOwnedInvoice(ctx, args.sessionToken, args.userId, args.invoiceId);
     if (invoice.status !== "draft") throw new Error("Only draft invoices can be issued");
+    if (!Number.isSafeInteger(invoice.totalCents) || invoice.totalCents <= 0) throw new Error("Invoice total must be greater than zero before billing");
     const now = Date.now();
     await ctx.db.patch(args.invoiceId, {
       status: "issued",

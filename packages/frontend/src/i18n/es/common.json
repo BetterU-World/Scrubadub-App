@@ -2896,7 +2896,14 @@
     "voidSuccess": "Factura anulada",
     "sentSuccess": "Factura enviada",
     "sendFailed": "No se pudo enviar la factura",
-    "send": "Enviar factura",
+    "send": "Enviar factura por correo",
+    "resend": "Reenviar factura por correo",
+    "lastEmailed": "Último envío por correo",
+    "issueHelper": "Emitir publica esta factura en el portal SCRUB del cliente. No envía un correo.",
+    "missingRelationship": "Vincula esta cuenta comercial a un cliente antes de enviar la factura.",
+    "missingPortalAccess": "Configura el acceso del cliente al portal antes de enviar la factura.",
+    "missingEmail": "Agrega el correo electrónico del cliente antes de enviar la factura.",
+    "paidNote": "Esta factura está registrada como pagada.",
     "payOnline": "Pagar en linea",
     "summary": "Resumen de factura",
     "invoiceNumber": "Numero de factura",
@@ -2917,7 +2924,7 @@
     "tax": "Impuesto",
     "actions": "Acciones",
     "view": "Ver",
-    "markIssued": "Marcar emitida",
+    "markIssued": "Emitir factura",
     "markPaid": "Marcar pagada",
     "void": "Anular factura",
     "paidInternalNote": "Esto es solo seguimiento interno manual. No se proceso ningun pago de Stripe.",
@@ -2927,6 +2934,20 @@
       "paid": "Pagada",
       "void": "Anulada"
     }
+  },
+  "jobBilling": {
+    "title": "Facturación",
+    "notInvoiced": "Aún no facturado",
+    "awaitingApproval": "Este trabajo comercial se puede incluir en la facturación después de aprobarlo.",
+    "explanation": "Este trabajo aprobado puede incluirse en el período de facturación de su cuenta comercial.",
+    "review": "Revisar período de facturación",
+    "periodExplanation": "El borrador usa el importe del contrato de la cuenta comercial y los servicios adicionales aplicables. También puede incluir otros trabajos aprobados de este período.",
+    "generateDraft": "Generar borrador de factura",
+    "noEligible": "No se encontraron trabajos aprobados elegibles para este período de facturación.",
+    "existingPeriodDraft": "Ya existe un borrador para este período. Este trabajo no se agregó; revisa el borrador antes de continuar.",
+    "viewPeriodDraft": "Ver borrador del período",
+    "existing": "Incluido en la factura {{number}} · {{status}}",
+    "view": "Ver factura"
   },
   "serviceAgreements": {
     "v2": {
