@@ -3986,6 +3986,9 @@
     }
   },
   "quick": {
+    "creationMode": "Job creation type",
+    "time": "Time",
+    "createClient": "Create Client",
     "standardJob": "Standard Job",
     "quickJob": "Quick One-Time Job",
     "location": "Location",

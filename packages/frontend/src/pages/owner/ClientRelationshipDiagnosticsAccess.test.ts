@@ -29,7 +29,7 @@ vi.mock("@/components/ui/EmptyState", () => ({
   EmptyState: ({ title }: { title: string }) => createElement("div", null, title),
 }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
-vi.mock("wouter", () => ({ Link: ({ children }: { children: ReactNode }) => createElement("a", null, children) }));
+vi.mock("wouter", () => ({ Link: ({ children }: { children: ReactNode }) => createElement("a", null, children), useLocation: () => ["/clients", vi.fn()] }));
 
 import { ClientRelationshipListPage } from "./ClientRelationshipListPage";
 

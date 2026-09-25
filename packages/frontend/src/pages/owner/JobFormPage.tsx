@@ -11,6 +11,7 @@ import { Building2, Users, Handshake, AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useFeedback } from "@/components/ui/FeedbackProvider";
 import { parseOptionalCustomerChargeCents } from "@/lib/customerCharge";
+import { JobCreationModeSelector } from "@/components/owner/JobCreationModeSelector";
 
 const JOB_TYPES = [
   { value: "standard", labelKey: "jobTypes.standard" },
@@ -272,7 +273,7 @@ export function JobFormPage() {
         title={isEditing ? t("jobs.editJob") : t("jobs.scheduleJob")}
         back={backDestination}
       />
-      {!isEditing && <div className="mb-4 flex flex-wrap gap-2"><span className="btn-secondary">{t("quick.standardJob")}</span><Link href="/jobs/quick" className="btn-primary">{t("quick.quickJob")}</Link></div>}
+      {!isEditing && <JobCreationModeSelector mode="standard" />}
 
       {!isEditing && activeProperties.length === 0 && (
         <div className="card mb-6 border-amber-200 bg-amber-50">
