@@ -11,6 +11,13 @@ import { deriveJobInspectionStatus } from "../lib/jobInspectionStatus";
 function workerSafeJob(job: any) {
   const { acceptedProposalAddOnSnapshots, requiredAddOnSnapshots, sourceProposalId: _sourceProposalId,
     serviceContactSnapshot: _serviceContactSnapshot, customerChargeCents: _customerChargeCents,
+    customerPricingStatus: _pricingStatus, customerPricingSource: _pricingSource,
+    customerPricingRevision: _pricingRevision, customerPricingSnapshot: _pricingSnapshot,
+    customerPriceOfferId: _priceOfferId, customerPriceProposalId: _priceProposalId,
+    customerPriceProposalIssueId: _priceProposalIssueId, customerPriceConsent: _priceConsent,
+    customerNoChargeReason: _noChargeReason, customerNoChargeRecordedByUserId: _noChargeActor,
+    customerNoChargeRecordedAt: _noChargeAt, customerAddOnsFinalizedRevision: _addOnsRevision,
+    customerAddOnsFinalizedAt: _addOnsAt, customerAddOnsFinalizedByUserId: _addOnsActor,
     property, ...safe } = job;
   const { contactName: _contactName, contactPhone: _contactPhone, contactEmail: _contactEmail, ...safeProperty } = property ?? {};
   return { ...safe, ...(property ? { property: safeProperty } : {}), requiredAddOns: requiredAddOnSnapshots ?? operationalAddOnSnapshots(acceptedProposalAddOnSnapshots) };

@@ -24,6 +24,7 @@ import { ensureJobExecutionForm } from "../lib/jobExecutionForm";
 import { submitJobExecution } from "../lib/jobSubmission";
 import { resolvePropertyConditionRequirement } from "../lib/propertyConditionRequirements";
 import { hasOwnerOrManagerPermission } from "../lib/auth";
+import { acceptedOneTimeProposalPrice, checkedPriceSnapshot } from "../lib/jobPricing";
 
 const requestJobTypeValidator = v.union(
   v.literal("standard"),
@@ -217,7 +218,26 @@ export const create = mutation({
       sourceProposalId = copied.proposal._id;
       acceptedProposalAddOnSnapshots = copied.snapshots;
     }
-    return await createCanonicalJob(ctx, { ...args, sourceProposalId, acceptedProposalAddOnSnapshots });
+    const jobId = await createCanonicalJob(ctx, { ...args, sourceProposalId, acceptedProposalAddOnSnapshots });
+    if (sourceProposalId && args.clientRequestId) {
+      const request = await ctx.db.get(args.clientRequestId);
+      const property = await ctx.db.get(args.propertyId);
+      const proposal = await ctx.db.get(sourceProposalId);
+      const priced = request && property?.clientRelationshipId && proposal
+        ? await acceptedOneTimeProposalPrice(ctx, proposal, request, property.clientRelationshipId)
+        : null;
+      await ctx.db.patch(jobId, priced ? {
+        customerChargeCents: priced.snapshot.totalCents,
+        customerPricingStatus: "accepted",
+        customerPricingSource: "accepted_proposal",
+        customerPricingRevision: 1,
+        customerPricingSnapshot: priced.snapshot,
+        customerPriceProposalId: priced.proposalId,
+        customerPriceProposalIssueId: priced.issueId,
+        customerPriceConsent: priced.consent,
+      } : { customerPricingStatus: "pending", customerPricingSource: "legacy_unknown" });
+    }
+    return jobId;
   },
 });
 
@@ -236,6 +256,8 @@ export const createQuick = mutation({
   handler: async (ctx, args) => {
     const actor = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
     if (actor.companyId !== args.companyId || !hasOwnerOrManagerPermission(actor, "canCreateJobs")) throw new Error("Job creation permission required");
+    if (args.customerChargeCents !== undefined && actor.role === "manager" && !actor.canManageSalesAndCommercial) throw new Error("Pricing permission required");
+    if (args.customerChargeCents !== undefined && (!Number.isSafeInteger(args.customerChargeCents) || args.customerChargeCents < 0)) throw new Error("Invalid customer charge");
     if (!!args.propertyId === !!args.newProperty) throw new Error("Choose one location");
     let propertyId = args.propertyId;
     const mayManageProperty = hasOwnerOrManagerPermission(actor, "canManageClients");
@@ -265,14 +287,23 @@ export const createQuick = mutation({
       phone: args.contact?.phone?.trim() || undefined,
       email: args.contact?.email?.trim() || undefined,
     };
-    return await createCanonicalJob(ctx, {
+    const jobId = await createCanonicalJob(ctx, {
       companyId: args.companyId, userId: args.userId, sessionToken: args.sessionToken, propertyId: propertyId!,
       cleanerIds: args.cleanerIds, assignedTeamId: args.assignedTeamId, type: args.type,
       scheduledDate: args.scheduledDate, startTime: args.startTime, durationMinutes: args.durationMinutes,
       notes: args.notes, requireConfirmation: args.requireConfirmation,
       serviceContactSnapshot: Object.values(contact).some(Boolean) ? contact : undefined,
-      customerChargeCents: args.customerChargeCents,
+      customerChargeCents: undefined,
     });
+    if (args.customerChargeCents !== undefined) {
+      const job = await ctx.db.get(jobId);
+      if (job?.clientRelationshipId && !job.commercialAccountId && args.customerChargeCents > 0) {
+        const snapshot = checkedPriceSnapshot(args.customerChargeCents, []);
+        const offerId = await ctx.db.insert("servicePriceOffers", { companyId: args.companyId, clientRelationshipId: job.clientRelationshipId, jobId, version: 1, source: "direct_quote", snapshot, status: "issued", createdByUserId: actor._id, createdAt: Date.now() });
+        await ctx.db.patch(jobId, { customerPricingStatus: "awaiting_acceptance", customerPricingSource: "direct_quote", customerPricingRevision: 1, customerPriceOfferId: offerId });
+      } else await ctx.db.patch(jobId, { customerChargeCents: args.customerChargeCents, customerPricingStatus: undefined, customerPricingSource: args.customerChargeCents > 0 ? "legacy_unknown" : undefined });
+    }
+    return jobId;
   },
 });
 
@@ -317,8 +348,7 @@ export const update = mutation({
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
     if (args.customerChargeCents !== undefined) {
-      if (!Number.isSafeInteger(args.customerChargeCents) || args.customerChargeCents < 0) throw new Error("Invalid customer charge");
-      if (["submitted", "approved", "cancelled"].includes(job.status)) throw new Error("Customer charge is locked for this job");
+      throw new Error("Use the pricing workflow to change the customer charge");
     }
 
     if (args.assignedTeamId) {

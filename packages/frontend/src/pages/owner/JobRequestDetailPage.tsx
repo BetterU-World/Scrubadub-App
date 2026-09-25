@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { RequestScheduleConfirmation } from "@/components/owner/RequestScheduleConfirmation";
+import { ServicePricingPanel } from "@/components/owner/ServicePricingPanel";
 import { Clock3, XCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -109,6 +110,7 @@ export function JobRequestDetailPage() {
           </p>
         )}
       </section>
+      <div className="mt-4"><ServicePricingPanel requestId={request._id} commercial={Boolean(request.commercialAccountId)} /></div>
       <section className="card mt-4">
         <h2 className="font-semibold">{t("jobRequests.preferredSchedule")}</h2>
         <p className="mt-2 text-sm">

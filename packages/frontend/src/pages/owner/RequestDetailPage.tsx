@@ -22,6 +22,7 @@ import type { ProposalForm } from "@/components/owner/proposalEditorModel";
 import { CollapsibleSection } from "@/components/ui/CollapsibleSection";
 import { ServiceAgreementStatusBadge } from "@/components/ui/ServiceAgreementStatusBadge";
 import { RequestScheduleConfirmation } from "@/components/owner/RequestScheduleConfirmation";
+import { ServicePricingPanel } from "@/components/owner/ServicePricingPanel";
 import {
   User,
   Mail,
@@ -892,6 +893,7 @@ export function RequestDetailPage() {
         }
       />
 
+      {!isJobRequest && request.source === "authenticated_client" && <ServicePricingPanel requestId={request._id} commercial={Boolean(request.commercialAccountId)} />}
       {!isJobRequest && <RequestScheduleConfirmation request={request} />}
 
       {(request as any).pipeline && (

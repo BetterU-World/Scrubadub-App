@@ -5,6 +5,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { useClientAuth } from "@/hooks/useClientAuth";
 import { ClientPortalPage } from "@/components/client/ClientPortalPage";
 import { ClientRequestDetailPresentation } from "@/components/client/ClientRequestPresentation";
+import { ClientPriceOfferPanel } from "@/components/client/ClientPriceOfferPanel";
 import { useTranslation } from "react-i18next";
 
 export function ClientRequestDetailPage() {
@@ -70,6 +71,7 @@ export function ClientRequestDetailPage() {
           <p className="mt-1">{t("clientRequests.confirmationMessage")}</p>
         </div>
       )}
+      {data?.request && params.requestId && <ClientPriceOfferPanel requestId={params.requestId} />}
       {data?.request?.status === "declined" &&
         data.request.clientFacingDecisionNote && (
           <section className="rounded-xl border border-red-200 bg-red-50 p-4 sm:p-6">

@@ -891,6 +891,20 @@ export default defineSchema({
       email: v.optional(v.string()),
     })),
     customerChargeCents: v.optional(v.number()),
+    customerPricingStatus: v.optional(v.union(v.literal("pending"), v.literal("awaiting_acceptance"), v.literal("accepted"), v.literal("no_charge"))),
+    customerPricingSource: v.optional(v.union(v.literal("direct_quote"), v.literal("accepted_proposal"), v.literal("post_service_quote"), v.literal("legacy_unknown"))),
+    customerPricingRevision: v.optional(v.number()),
+    customerPricingSnapshot: v.optional(v.object({ baseChargeCents: v.number(), addOns: v.array(v.object({ snapshotId: v.string(), name: v.string(), amountCents: v.number(), quantity: v.optional(v.number()), unitLabel: v.optional(v.string()) })), totalCents: v.number(), currency: v.literal("usd"), createdAt: v.number() })),
+    customerAddOnsFinalizedRevision: v.optional(v.number()),
+    customerAddOnsFinalizedAt: v.optional(v.number()),
+    customerAddOnsFinalizedByUserId: v.optional(v.id("users")),
+    customerPriceOfferId: v.optional(v.id("servicePriceOffers")),
+    customerPriceProposalId: v.optional(v.id("proposals")),
+    customerPriceProposalIssueId: v.optional(v.id("proposalIssues")),
+    customerPriceConsent: v.optional(v.object({ source: v.union(v.literal("client_in_app"), v.literal("owner_reported_outside")), acceptedAt: v.number(), acceptedAmountCents: v.number(), clientUserId: v.optional(v.id("clientUsers")), recordedByUserId: v.optional(v.id("users")), evidenceNote: v.optional(v.string()), offerId: v.optional(v.id("servicePriceOffers")), proposalIssueId: v.optional(v.id("proposalIssues")) })),
+    customerNoChargeReason: v.optional(v.union(v.literal("complimentary"), v.literal("waived"), v.literal("discounted_to_zero"))),
+    customerNoChargeRecordedByUserId: v.optional(v.id("users")),
+    customerNoChargeRecordedAt: v.optional(v.number()),
     clientRelationshipId: v.optional(v.id("clientRelationships")),
     propertyId: v.optional(v.id("properties")),
     cleanerIds: v.array(v.id("users")),
@@ -1525,6 +1539,7 @@ export default defineSchema({
     pendingDeliveryAttemptId: v.optional(v.id("transactionalDocumentDeliveryAttempts")),
     responseIssueId: v.optional(v.id("proposalIssues")),
     responseSource: v.optional(v.union(v.literal("client_token"), v.literal("owner_reported"))),
+    responseRecordedByUserId: v.optional(v.id("users")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -1961,6 +1976,26 @@ export default defineSchema({
     .index("by_commercialAccount", ["commercialAccountId"])
     .index("by_property", ["propertyId"]),
 
+  servicePriceOffers: defineTable({
+    companyId: v.id("companies"),
+    clientRelationshipId: v.id("clientRelationships"),
+    clientRequestId: v.optional(v.id("clientRequests")),
+    jobId: v.optional(v.id("jobs")),
+    version: v.number(),
+    source: v.union(v.literal("direct_quote"), v.literal("post_service_quote")),
+    snapshot: v.object({ baseChargeCents: v.number(), addOns: v.array(v.object({ snapshotId: v.string(), name: v.string(), amountCents: v.number(), quantity: v.optional(v.number()), unitLabel: v.optional(v.string()) })), totalCents: v.number(), currency: v.literal("usd"), createdAt: v.number() }),
+    status: v.union(v.literal("issued"), v.literal("accepted"), v.literal("declined"), v.literal("superseded")),
+    createdByUserId: v.id("users"),
+    createdAt: v.number(),
+    respondedAt: v.optional(v.number()),
+    acceptedByClientUserId: v.optional(v.id("clientUsers")),
+    outsideRecordedByUserId: v.optional(v.id("users")),
+    outsideEvidenceNote: v.optional(v.string()),
+  })
+    .index("by_request", ["clientRequestId", "version"])
+    .index("by_job", ["jobId", "version"])
+    .index("by_company", ["companyId"]),
+
   invoices: defineTable({
     companyId: v.id("companies"),
     clientRelationshipId: v.optional(v.id("clientRelationships")),
@@ -2027,6 +2062,7 @@ export default defineSchema({
   clientRequests: defineTable({
     companyId: v.id("companies"),
     clientRelationshipId: v.optional(v.id("clientRelationships")),
+    currentPriceOfferId: v.optional(v.id("servicePriceOffers")),
     createdAt: v.number(),
     status: v.union(
       v.literal("new"),
