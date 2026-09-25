@@ -1,6 +1,7 @@
 import { logAudit } from "./helpers";
 import { resolvePropertyConditionRequirement } from "./propertyConditionRequirements";
 import { isExistingClientServiceRequest } from "./requestContext";
+import { acceptedOneTimeProposalPrice } from "./jobPricing";
 
 export const REQUEST_JOB_TYPES = [
   "standard",
@@ -123,6 +124,19 @@ export async function createJobFromClientRequest(
     propertyId: validated.propertyId,
     commercialAccountId: validated.commercialAccountId,
   });
+  const offer = request.currentPriceOfferId ? await ctx.db.get(request.currentPriceOfferId) as any : null;
+  if (offer && (offer.companyId !== request.companyId || offer.clientRelationshipId !== validated.relationship._id || offer.clientRequestId !== request._id || !["issued", "accepted"].includes(offer.status))) throw new Error("Current price offer is invalid");
+  let proposalPrice: any = null;
+  let acceptedProposal: any = null;
+  if (!offer && !validated.commercialAccountId) {
+    const proposals = await ctx.db.query("proposals").withIndex("by_clientRequestId", (q: any) => q.eq("clientRequestId", request._id)).collect();
+    const accepted = proposals.filter((proposal: any) => proposal.status === "accepted" && proposal.companyId === request.companyId && proposal.clientRelationshipId === validated.relationship._id);
+    if (accepted.length === 1) {
+      acceptedProposal = accepted[0];
+      proposalPrice = await acceptedOneTimeProposalPrice(ctx, acceptedProposal, request, validated.relationship._id);
+    }
+  }
+  const offerConsent = offer?.status === "accepted" ? { source: offer.acceptedByClientUserId ? "client_in_app" : "owner_reported_outside", acceptedAt: offer.respondedAt, acceptedAmountCents: offer.snapshot.totalCents, clientUserId: offer.acceptedByClientUserId, recordedByUserId: offer.outsideRecordedByUserId, evidenceNote: offer.outsideEvidenceNote, offerId: offer._id } : undefined;
   const jobId = await ctx.db.insert("jobs", {
     companyId: request.companyId,
     clientRelationshipId: validated.relationship._id,
@@ -136,6 +150,16 @@ export async function createJobFromClientRequest(
     startTime: schedule.startTime,
     durationMinutes: schedule.durationMinutes,
     sourceClientRequestId: request._id,
+    sourceProposalId: acceptedProposal?._id,
+    customerChargeCents: offerConsent ? offer.snapshot.totalCents : proposalPrice?.snapshot.totalCents,
+    customerPricingStatus: validated.commercialAccountId ? undefined : offer ? (offerConsent ? "accepted" : "awaiting_acceptance") : proposalPrice ? "accepted" : "pending",
+    customerPricingSource: offer ? offer.source : proposalPrice ? "accepted_proposal" : acceptedProposal ? "legacy_unknown" : undefined,
+    customerPricingRevision: offer?.version ?? (proposalPrice ? 1 : 0),
+    customerPricingSnapshot: offerConsent ? offer.snapshot : proposalPrice?.snapshot,
+    customerPriceOfferId: offer?._id,
+    customerPriceProposalId: proposalPrice?.proposalId,
+    customerPriceProposalIssueId: proposalPrice?.issueId,
+    customerPriceConsent: offerConsent ?? proposalPrice?.consent,
     clientSchedulingNote: validated.clientSchedulingNote || undefined,
     requireConfirmation: false,
     acceptanceStatus: "accepted",
@@ -149,6 +173,7 @@ export async function createJobFromClientRequest(
       }),
     ),
   });
+  if (offer) await ctx.db.patch(offer._id, { jobId });
   await ctx.db.patch(request._id, {
     status: "converted",
     leadStage: "converted",

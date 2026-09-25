@@ -6,7 +6,6 @@ import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { parseOptionalCustomerChargeCents } from "@/lib/customerCharge";
 import { JobCreationModeSelector } from "@/components/owner/JobCreationModeSelector";
 
 const jobTypes = ["standard", "deep_clean", "turnover", "move_in_out", "post_construction", "maintenance"] as const;
@@ -37,7 +36,6 @@ export function QuickJobPage() {
   const [type, setType] = useState<typeof jobTypes[number]>("standard");
   const [workerIds, setWorkerIds] = useState<string[]>([]);
   const [teamId, setTeamId] = useState("");
-  const [charge, setCharge] = useState("");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -46,8 +44,6 @@ export function QuickJobPage() {
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (!user?.companyId || (!newLocation && !propertyId)) { setError(t("quick.chooseLocation")); return; }
-    const cents = parseOptionalCustomerChargeCents(charge);
-    if (cents === null) { setError(t("quick.invalidCharge")); return; }
     setBusy(true); setError("");
     try {
       const id = await create({
@@ -55,7 +51,7 @@ export function QuickJobPage() {
         ...(newLocation ? { newProperty: { address, name: name || undefined, type: propertyType } } : { propertyId: propertyId as Id<"properties"> }),
         contact: { name: contactName || undefined, phone: contactPhone || undefined, email: contactEmail || undefined },
         updatePropertyContact: !newLocation && canManage && updateContact,
-        customerChargeCents: cents, cleanerIds: workerIds as Id<"users">[], assignedTeamId: teamId ? teamId as Id<"teams"> : undefined,
+        cleanerIds: workerIds as Id<"users">[], assignedTeamId: teamId ? teamId as Id<"teams"> : undefined,
         type, scheduledDate: date, startTime: time || undefined, durationMinutes: duration, notes: notes || undefined,
       });
       navigate(`/jobs/${id}`);
@@ -85,7 +81,7 @@ export function QuickJobPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3"><label className="text-sm">{t("jobForm.date")}<input className="input-field w-full mt-1" type="date" value={date} onChange={e => setDate(e.target.value)} required /></label><label className="text-sm">{t("quick.time")}<input className="input-field w-full mt-1" type="time" value={time} onChange={e => setTime(e.target.value)} /></label><label className="text-sm">{t("jobForm.duration")}<input className="input-field w-full mt-1" type="number" min={1} value={duration} onChange={e => setDuration(Number(e.target.value))} required /></label></div>
       <label className="block text-sm">{t("jobForm.jobType")}<select className="input-field w-full mt-1" value={type} onChange={e => { setType(e.target.value as typeof type); setWorkerIds([]); }} >{jobTypes.map(value => <option key={value} value={value}>{t(`jobTypes.${value}`)}</option>)}</select></label>
       {canAssign && <div className="space-y-2"><label className="block text-sm font-medium">{t("quick.assignment")}</label><select className="input-field w-full" value={teamId} onChange={e => { setTeamId(e.target.value); setWorkerIds([]); }}><option value="">{t("quick.individualWorkers")}</option>{(teams ?? []).map(team => <option key={team._id} value={team._id}>{team.name}</option>)}</select>{!teamId && <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">{(assignees ?? []).map(worker => <label key={worker._id} className="flex gap-2 items-center text-sm"><input type="checkbox" checked={workerIds.includes(worker._id)} onChange={e => setWorkerIds(ids => e.target.checked ? [...ids, worker._id] : ids.filter(id => id !== worker._id))} />{worker.name}</label>)}</div>}</div>}
-      <label className="block text-sm">{t("quick.customerCharge")}<input className="input-field w-full mt-1" type="number" min="0" step="0.01" value={charge} onChange={e => setCharge(e.target.value)} placeholder="0.00" /></label>
+      <p className="text-sm text-gray-600">{t("jobPricing.quickNotice")}</p>
       <label className="block text-sm">{t("jobs.notesOptional")}<textarea className="input-field w-full mt-1" value={notes} onChange={e => setNotes(e.target.value)} /></label>
       <button className="btn-primary w-full sm:w-auto" type="submit" disabled={busy}>{busy ? t("common.saving") : t("quick.createJob")}</button>
     </form>

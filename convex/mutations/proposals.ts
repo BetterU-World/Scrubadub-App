@@ -262,6 +262,7 @@ export const markProposalAccepted = mutation({
       acceptedAt: now,
       responseIssueId: proposal.currentIssueId,
       responseSource: "owner_reported",
+      responseRecordedByUserId: args.userId,
       updatedAt: now,
     });
     await ctx.db.patch(proposal.clientRequestId, {
