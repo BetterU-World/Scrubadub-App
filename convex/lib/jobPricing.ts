@@ -36,7 +36,7 @@ export async function acceptedOneTimeProposalPrice(ctx: any, proposal: any, requ
   return { snapshot, proposalId: proposal._id, issueId: issue._id, consent: { source: proposal.responseSource === "client_token" ? "client_in_app" as const : "owner_reported_outside" as const, acceptedAt: proposal.acceptedAt ?? issue.issuedAt, acceptedAmountCents: snapshot.totalCents, recordedByUserId: proposal.responseRecordedByUserId, proposalIssueId: issue._id } };
 }
 
-export async function resolveJobInvoiceablePricing(ctx: any, jobId: any, companyId: any): Promise<any> {
+export async function resolveJobInvoiceablePricing(ctx: any, jobId: any, companyId: any) {
   const job = await ctx.db.get(jobId) as Doc<"jobs"> | null;
   if (!job || job.companyId !== companyId) return { ok: false as const, reason: "wrong_company" as const };
   if (job.commercialAccountId) return { ok: false as const, reason: "commercial_job" as const };
