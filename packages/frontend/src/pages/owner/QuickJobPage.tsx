@@ -6,6 +6,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { parseOptionalCustomerChargeCents } from "@/lib/customerCharge";
 
 const jobTypes = ["standard", "deep_clean", "turnover", "move_in_out", "post_construction", "maintenance"] as const;
 
@@ -44,8 +45,8 @@ export function QuickJobPage() {
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (!user?.companyId || (!newLocation && !propertyId)) { setError(t("quick.chooseLocation")); return; }
-    const cents = charge.trim() ? Number(charge) * 100 : undefined;
-    if (cents !== undefined && (!Number.isSafeInteger(cents) || cents < 0)) { setError(t("quick.invalidCharge")); return; }
+    const cents = parseOptionalCustomerChargeCents(charge);
+    if (cents === null) { setError(t("quick.invalidCharge")); return; }
     setBusy(true); setError("");
     try {
       const id = await create({

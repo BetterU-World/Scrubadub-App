@@ -108,7 +108,7 @@ export function PropertyDetailPage() {
         title={property.name}
         description={t("guidance.owner.propertyDetail")}
         back={{ href: "/properties", label: t("navigation.backToProperties") }}
-        action={
+        action={canManageProperty ?
           <div className="flex gap-2">
             <button
               onClick={() => setShowArchiveConfirm(true)}
@@ -124,7 +124,7 @@ export function PropertyDetailPage() {
             <Link href={`/properties/${property._id}/edit`} className="btn-primary flex items-center gap-2">
               <Pencil className="w-4 h-4" /> {t("common.edit")}
             </Link>
-          </div>
+          </div> : undefined
         }
       />
       <div className="card mb-4 space-y-2">
@@ -147,7 +147,7 @@ export function PropertyDetailPage() {
         >
           {t("properties.details")}
         </button>
-        <button
+        {canManageProperty && <button
           onClick={() => setActiveTab("inventory")}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
             activeTab === "inventory"
@@ -157,7 +157,7 @@ export function PropertyDetailPage() {
         >
           <Package className="w-4 h-4" />
           {t("properties.inventory.title")}
-        </button>
+        </button>}
         {(user?.role === "owner" || user?.canSeeAllJobs) && <button
           onClick={() => setActiveTab("history")}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
@@ -182,8 +182,8 @@ export function PropertyDetailPage() {
         </button>}
       </div>
 
-      {activeTab === "details" && <DetailsTab property={property} />}
-      {activeTab === "inventory" && (
+      {activeTab === "details" && <DetailsTab property={property} canOpenClient={canManageProperty} />}
+      {activeTab === "inventory" && canManageProperty && (
         <InventoryTab
           property={property}
           userId={user!._id}
@@ -208,7 +208,7 @@ export function PropertyDetailPage() {
   );
 }
 
-function DetailsTab({ property }: { property: any }) {
+function DetailsTab({ property, canOpenClient }: { property: any; canOpenClient: boolean }) {
   const { t } = useTranslation();
   const isCommercialOrOffice = property.type === "commercial" || property.type === "office";
   const hasBathroomDetails =
@@ -239,7 +239,7 @@ function DetailsTab({ property }: { property: any }) {
         </div>
       </div>
 
-      {property.clientRelationship && (
+      {property.clientRelationship && canOpenClient && (
         <Link
           href={`/clients/${property.clientRelationship._id}`}
           className="inline-flex w-fit rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100"

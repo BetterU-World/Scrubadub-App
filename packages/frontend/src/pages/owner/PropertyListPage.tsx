@@ -75,9 +75,9 @@ export function PropertyListPage() {
             >
               <Upload className="w-4 h-4" /> {t("properties.import.button")}
             </button>}
-            <Link href="/properties/new" className="btn-primary flex items-center gap-2">
+            {(user.role === "owner" || user.canManageClients) && <Link href="/properties/new" className="btn-primary flex items-center gap-2">
               <Plus className="w-4 h-4" /> {t("properties.addProperty")}
-            </Link>
+            </Link>}
           </div>
         }
       />
@@ -147,7 +147,7 @@ export function PropertyListPage() {
           title={t("properties.noPropertiesYet")}
           description={t("properties.noPropertiesDesc")}
           action={
-            <Link href="/properties/new" className="btn-primary">{t("properties.addProperty")}</Link>
+            (user.role === "owner" || user.canManageClients) ? <Link href="/properties/new" className="btn-primary">{t("properties.addProperty")}</Link> : undefined
           }
         />
       ) : (

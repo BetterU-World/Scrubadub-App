@@ -1,4 +1,5 @@
-import { mutation } from "../_generated/server";
+import { mutation, type MutationCtx } from "../_generated/server";
+import type { Doc, Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { logAudit, createNotification } from "../lib/helpers";
@@ -115,7 +116,27 @@ function findOpenPauseIndex(history: Array<{ resumedAt?: number }>) {
   return -1;
 }
 
-async function createCanonicalJob(ctx: any, args: any) {
+type CanonicalJobCreation = {
+  userId?: Id<"users">;
+  sessionToken: string;
+  companyId: Id<"companies">;
+  propertyId: Id<"properties">;
+  cleanerIds: Id<"users">[];
+  assignedTeamId?: Id<"teams">;
+  assignedManagerId?: Id<"users">;
+  type: Doc<"jobs">["type"];
+  scheduledDate: string;
+  startTime?: string;
+  durationMinutes: number;
+  notes?: string;
+  requireConfirmation?: boolean;
+  sourceProposalId?: Id<"proposals">;
+  acceptedProposalAddOnSnapshots?: Doc<"jobs">["acceptedProposalAddOnSnapshots"];
+  serviceContactSnapshot?: Doc<"jobs">["serviceContactSnapshot"];
+  customerChargeCents?: number;
+};
+
+async function createCanonicalJob(ctx: MutationCtx, args: CanonicalJobCreation) {
     const owner = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
     if (!hasOwnerOrManagerPermission(owner, "canCreateJobs")) throw new Error("Job creation permission required");
     if (owner.role === "manager" && (args.cleanerIds.length > 0 || args.assignedTeamId || args.assignedManagerId) && !owner.canAssignCleaners) throw new Error("Worker assignment permission required");
@@ -183,7 +204,7 @@ export const create = mutation({
     if (!hasOwnerOrManagerPermission(actor, "canCreateJobs") || actor.companyId !== args.companyId) throw new Error("Job creation permission required");
     await requireActiveSubscription(ctx, args.companyId);
     let sourceProposalId: typeof args.proposalId | undefined;
-    let acceptedProposalAddOnSnapshots: any[] | undefined;
+    let acceptedProposalAddOnSnapshots: Doc<"jobs">["acceptedProposalAddOnSnapshots"];
     if (args.proposalId) {
       const property = await ctx.db.get(args.propertyId);
       if (!property || property.companyId !== args.companyId) throw new Error("Property not found");
@@ -245,7 +266,7 @@ export const createQuick = mutation({
       email: args.contact?.email?.trim() || undefined,
     };
     return await createCanonicalJob(ctx, {
-      companyId: args.companyId, userId: args.userId, sessionToken: args.sessionToken, propertyId,
+      companyId: args.companyId, userId: args.userId, sessionToken: args.sessionToken, propertyId: propertyId!,
       cleanerIds: args.cleanerIds, assignedTeamId: args.assignedTeamId, type: args.type,
       scheduledDate: args.scheduledDate, startTime: args.startTime, durationMinutes: args.durationMinutes,
       notes: args.notes, requireConfirmation: args.requireConfirmation,

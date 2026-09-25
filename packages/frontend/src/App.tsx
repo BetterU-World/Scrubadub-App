@@ -469,10 +469,10 @@ export default function App() {
                 {(user?.canManageInvoices || user?.canViewFinancials) && <Route path="/commercial-invoices/:id" component={CommercialInvoiceDetailPage} />}
                 {(user?.canManageInvoices || user?.canViewFinancials) && <Route path="/commercial-invoices" component={CommercialInvoiceListPage} />}
                 {user?.canManageClients && <Route path="/clients/:id" component={ClientRelationshipDetailPage} />}
-                {user?.canManageClients && <Route path="/properties" component={PropertyListPage} />}
+                {(user?.canCreateJobs || user?.canManageSchedule || user?.canManageClients) && <Route path="/properties" component={PropertyListPage} />}
                 {user?.canManageClients && <Route path="/properties/new" component={PropertyFormPage} />}
                 {user?.canManageClients && <Route path="/properties/:id/edit" component={PropertyFormPage} />}
-                {user?.canManageClients && <Route path="/properties/:id" component={PropertyDetailPage} />}
+                {(user?.canCreateJobs || user?.canManageSchedule || user?.canManageClients) && <Route path="/properties/:id" component={PropertyDetailPage} />}
                 {user?.canManageClients && <Route path="/clients" component={ClientRelationshipListPage} />}
                 {user?.canManageSalesAndCommercial && <Route path="/requests/pipeline" component={PipelinePage} />}
                 {user?.canManageSalesAndCommercial && <Route path="/requests/:id" component={RequestDetailPage} />}

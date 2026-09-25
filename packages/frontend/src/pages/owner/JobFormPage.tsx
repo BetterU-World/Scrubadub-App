@@ -10,6 +10,7 @@ import { useLocation, useParams, Link } from "wouter";
 import { Building2, Users, Handshake, AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useFeedback } from "@/components/ui/FeedbackProvider";
+import { parseOptionalCustomerChargeCents } from "@/lib/customerCharge";
 
 const JOB_TYPES = [
   { value: "standard", labelKey: "jobTypes.standard" },
@@ -193,8 +194,8 @@ export function JobFormPage() {
       return;
     }
     setError("");
-    const customerChargeCents = customerCharge.trim() ? Number(customerCharge) * 100 : undefined;
-    if (customerChargeCents !== undefined && (!Number.isSafeInteger(customerChargeCents) || customerChargeCents < 0)) { setError(t("quick.invalidCharge")); return; }
+    const customerChargeCents = parseOptionalCustomerChargeCents(customerCharge);
+    if (customerChargeCents === null) { setError(t("quick.invalidCharge")); return; }
     setLoading(true);
     try {
       const data = {

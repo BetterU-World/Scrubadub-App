@@ -82,6 +82,30 @@ describe("quick jobs V1", () => {
     await expect(s.t.mutation(api.mutations.jobs.createQuick, { ...auth, ...s.base, propertyId })).rejects.toThrow("Job creation");
   });
 
+  it("separates manager Property reading from management", async () => {
+    const s = await setup();
+    const auth = { userId: s.managerId, sessionToken: s.managerAuth.sessionToken };
+    const propertyId = await s.t.run(ctx => ctx.db.insert("properties", { companyId: s.companyId, name: "Existing", address: "6 Main", type: "residential", amenities: [], active: true }));
+    for (const capabilities of [
+      { canCreateJobs: true, canManageSchedule: false, canManageClients: false },
+      { canCreateJobs: false, canManageSchedule: true, canManageClients: false },
+      { canCreateJobs: false, canManageSchedule: false, canManageClients: true },
+    ]) {
+      await s.t.run(ctx => ctx.db.patch(s.managerId, capabilities));
+      expect(await s.t.query(api.queries.properties.list, { ...auth, companyId: s.companyId })).toHaveLength(1);
+      expect((await s.t.query(api.queries.properties.get, { ...auth, propertyId }))?._id).toEqual(propertyId);
+      if (!capabilities.canManageClients) {
+        await expect(s.t.mutation(api.mutations.properties.toggleActive, { ...auth, propertyId })).rejects.toThrow("canManageClients");
+      } else {
+        await s.t.mutation(api.mutations.properties.toggleActive, { ...auth, propertyId });
+        expect((await s.t.run(ctx => ctx.db.get(propertyId)))?.active).toBe(false);
+      }
+    }
+    await s.t.run(ctx => ctx.db.patch(s.managerId, { canCreateJobs: false, canManageSchedule: false, canManageClients: false }));
+    await expect(s.t.query(api.queries.properties.list, { ...auth, companyId: s.companyId })).rejects.toThrow("Property directory permission required");
+    await expect(s.t.query(api.queries.properties.get, { ...auth, propertyId })).rejects.toThrow("Property access permission required");
+  });
+
   it("rejects a mismatched red flag and keeps worker job results free of charge and contact", async () => {
     const s = await setup();
     const auth = { userId: s.ownerId, sessionToken: s.ownerAuth.sessionToken };
