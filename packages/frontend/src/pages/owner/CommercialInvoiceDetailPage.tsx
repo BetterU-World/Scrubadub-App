@@ -35,6 +35,7 @@ export function CommercialInvoiceDetailPage() {
   const { t } = useTranslation();
   const params = useParams<{ id: string }>();
   const [notes, setNotes] = useState("");
+  const [paymentDueDays, setPaymentDueDays] = useState("30");
   const [saving, setSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [toast, setToast] = useFeedbackState<{ message: string; type: "success" | "error" }>();
@@ -52,7 +53,7 @@ export function CommercialInvoiceDetailPage() {
   const sendInvoice = useAction((api as any).invoiceActions.sendInvoice);
 
   useEffect(() => {
-    if (invoice) setNotes(invoice.notes ?? "");
+    if (invoice) { setNotes(invoice.notes ?? ""); setPaymentDueDays(String(invoice.paymentDueDays ?? 30)); }
   }, [invoice?._id]);
 
   if (!user || invoice === undefined) return <PageLoader />;
@@ -68,7 +69,7 @@ export function CommercialInvoiceDetailPage() {
   const handleSaveNotes = async () => {
     setSaving(true);
     try {
-      await updateDraft({ userId: user._id, sessionToken, invoiceId: invoice._id, notes });
+      await updateDraft({ userId: user._id, sessionToken, invoiceId: invoice._id, notes, ...(invoice.invoiceType === "job" ? { paymentDueDays: Number(paymentDueDays) } : {}) });
       showToast(t("invoices.saved"), "success");
     } catch (err: any) {
       showToast(err.message || t("invoices.saveFailed"), "error");
@@ -107,7 +108,7 @@ export function CommercialInvoiceDetailPage() {
       <PageHeader
         title={`${t("invoices.invoice")} ${invoice.invoiceNumber}`}
         description={invoice.title}
-        back={{ href: "/commercial-invoices", label: t("navigation.backToCommercialInvoices") }}
+        back={invoice.invoiceType === "job" ? { href: `/jobs/${invoice.sourceJobId}`, label: t("invoices.backToJob") } : { href: "/commercial-invoices", label: t("navigation.backToCommercialInvoices") }}
         action={
           <span className="badge bg-gray-100 text-gray-700">
             {t(`invoices.statuses.${invoice.status}`)}
@@ -127,7 +128,7 @@ export function CommercialInvoiceDetailPage() {
                 <p className="text-xs font-medium text-gray-500">{t("invoices.invoiceNumber")}</p>
                 <p className="mt-1 text-sm font-medium text-gray-900">{invoice.invoiceNumber}</p>
               </div>
-              <div>
+              {invoice.invoiceType === "commercial" && <div>
                 <p className="text-xs font-medium text-gray-500">{t("invoices.commercialAccount")}</p>
                 <Link
                   href={`/commercial-accounts/${invoice.commercialAccountId}`}
@@ -135,7 +136,7 @@ export function CommercialInvoiceDetailPage() {
                 >
                   {invoice.commercialAccountName ?? t("commercialAccounts.summary")}
                 </Link>
-              </div>
+              </div>}
               {invoice.clientRelationship && (
                 <div>
                   <p className="text-xs font-medium text-gray-500">{t("invoices.client")}</p>
@@ -147,12 +148,13 @@ export function CommercialInvoiceDetailPage() {
                   </Link>
                 </div>
               )}
-              <div>
+              {invoice.invoiceType === "commercial" && <div>
                 <p className="text-xs font-medium text-gray-500">{t("invoices.billingPeriod")}</p>
                 <p className="mt-1 text-sm text-gray-900">
                   {formatDate(invoice.billingStartDate)} - {formatDate(invoice.billingEndDate)}
                 </p>
-              </div>
+              </div>}
+              {invoice.invoiceType === "job" && <div><p className="text-xs font-medium text-gray-500">{t("invoices.serviceDate", { date: formatDate(invoice.serviceSnapshot?.scheduledDate) })}</p><p className="mt-1 text-sm text-gray-900">{invoice.serviceSnapshot?.locationName} {invoice.serviceSnapshot?.address}</p><p className="text-sm text-gray-600">{t("invoices.billTo")}: {invoice.billToSnapshot?.displayName}</p></div>}
               <div>
                 <p className="text-xs font-medium text-gray-500">{t("invoices.issueDue")}</p>
                 <p className="mt-1 text-sm text-gray-900">
@@ -160,6 +162,7 @@ export function CommercialInvoiceDetailPage() {
                 </p>
               </div>
               {invoice.sentAt && <div><p className="text-xs font-medium text-gray-500">{t("invoices.lastEmailed")}</p><p className="mt-1 text-sm text-gray-900">{formatTimestamp(invoice.sentAt)}</p></div>}
+              {invoice.invoiceType === "job" && <div><p className="text-xs font-medium text-gray-500">{t("invoices.paymentDueDays")}</p><p className="mt-1 text-sm text-gray-900">{t("invoices.daysAfterIssue", { count: invoice.paymentDueDays })}</p></div>}
             </div>
           </section>
 
@@ -188,6 +191,7 @@ export function CommercialInvoiceDetailPage() {
             <h2 className="mb-4 text-lg font-semibold text-gray-900">{t("common.notes")}</h2>
             {invoice.status === "draft" && canManageInvoices ? (
               <div className="space-y-3">
+                {invoice.invoiceType === "job" && <label className="block text-sm">{t("invoices.paymentDueDays")}<input className="input-field mt-1" type="number" min="0" max="365" step="1" value={paymentDueDays} onChange={e => setPaymentDueDays(e.target.value)} /></label>}
                 <textarea
                   className="input-field"
                   rows={4}
@@ -210,7 +214,8 @@ export function CommercialInvoiceDetailPage() {
               </p>
             )}
           </section>
-          <AddOnSnapshotList items={invoice.addOnLineItems} audience="owner" showPricing />
+          <AddOnSnapshotList items={invoice.displayLines} audience="owner" showPricing />
+          {invoice.invoiceType === "job" && <p className="text-sm text-gray-600">{t("invoices.priceProvenance", { source: invoice.jobPricingSnapshot?.pricingSource, revision: invoice.jobPricingSnapshot?.pricingRevision })}</p>}
         </div>
 
         <aside className="space-y-6">
@@ -270,7 +275,7 @@ export function CommercialInvoiceDetailPage() {
                 className="btn-primary flex w-full items-center justify-center gap-2 text-sm"
               >
                 <Check className="h-4 w-4" />
-                {t("invoices.markPaid")}
+                {t(invoice.invoiceType === "job" ? "invoices.markPaidOutside" : "invoices.markPaid")}
               </button>
             )}
             {(invoice.status === "draft" || invoice.status === "issued") && (

@@ -299,7 +299,7 @@ export default function App() {
     "/invite", "/subscribe", "/billing", "/properties", "/employees",
     "/client",
     "/jobs", "/calendar", "/red-flags", "/performance", "/analytics", "/financials",
-    "/partners", "/requests", "/clients", "/commercial-accounts", "/commercial-invoices", "/feedback", "/cleaner-leads", "/audit-log", "/notifications", "/manuals", "/proposal",
+    "/partners", "/requests", "/clients", "/commercial-accounts", "/commercial-invoices", "/invoices", "/feedback", "/cleaner-leads", "/audit-log", "/notifications", "/manuals", "/proposal",
     "/admin", "/site", "/affiliate", "/availability", "/owner", "/settings", "/payments", "/internal",
     "/terms", "/privacy", "/contact", "/get-started", "/setup", "/assessment", "/giveaway",
     "/inventory-templates",
@@ -416,7 +416,9 @@ export default function App() {
                 <Route path="/clients/:id" component={ClientRelationshipDetailPage} />
                 <Route path="/clients" component={ClientRelationshipListPage} />
                 <Route path="/commercial-invoices/:id" component={CommercialInvoiceDetailPage} />
+                <Route path="/invoices/:id" component={CommercialInvoiceDetailPage} />
                 <Route path="/commercial-invoices" component={CommercialInvoiceListPage} />
+                <Route path="/invoices" component={CommercialInvoiceListPage} />
                 <Route path="/commercial-accounts/:id" component={CommercialAccountDetailPage} />
                 <Route path="/commercial-accounts" component={CommercialAccountListPage} />
                 <Route path="/feedback" component={FeedbackInboxPage} />
@@ -467,7 +469,9 @@ export default function App() {
                 {user?.canViewAnalytics && <Route path="/analytics" component={AnalyticsPage} />}
                 {user?.canViewFinancials && <Route path="/financials" component={FinancialOverviewPage} />}
                 {(user?.canManageInvoices || user?.canViewFinancials) && <Route path="/commercial-invoices/:id" component={CommercialInvoiceDetailPage} />}
+                {(user?.canManageInvoices || user?.canViewFinancials) && <Route path="/invoices/:id" component={CommercialInvoiceDetailPage} />}
                 {(user?.canManageInvoices || user?.canViewFinancials) && <Route path="/commercial-invoices" component={CommercialInvoiceListPage} />}
+                {(user?.canManageInvoices || user?.canViewFinancials) && <Route path="/invoices" component={CommercialInvoiceListPage} />}
                 {user?.canManageClients && <Route path="/clients/:id" component={ClientRelationshipDetailPage} />}
                 {(user?.canCreateJobs || user?.canManageSchedule || user?.canManageClients) && <Route path="/properties" component={PropertyListPage} />}
                 {user?.canManageClients && <Route path="/properties/new" component={PropertyFormPage} />}

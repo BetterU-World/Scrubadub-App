@@ -2,6 +2,8 @@ import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwnerOrManagerCapability } from "../lib/sessionAuth";
 import { buildInvoiceAddOnSnapshot, calculateInvoiceTotals } from "../lib/invoiceAddOnLineItems";
+import { resolveJobInvoiceablePricing } from "../lib/jobPricing";
+import { assertInvoiceInvariant, invoiceType } from "../lib/invoiceModel";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -93,9 +95,60 @@ async function nextInvoiceNumber(ctx: any, companyId: any) {
     .query("invoices")
     .withIndex("by_company", (q: any) => q.eq("companyId", companyId))
     .collect();
-  const next = invoices.length + 1;
+  const used = new Set(invoices.map((invoice: any) => invoice.invoiceNumber));
+  let next = invoices.length + 1;
+  while (used.has(`INV-${String(next).padStart(5, "0")}`)) next++;
   return `INV-${String(next).padStart(5, "0")}`;
 }
+
+function checkedDueDays(days: number) {
+  if (!Number.isSafeInteger(days) || days < 0 || days > 365) throw new Error("Payment due days must be between 0 and 365");
+  return days;
+}
+
+export const createFromJob = mutation({
+  args: { userId: v.id("users"), sessionToken: v.string(), jobId: v.id("jobs"), paymentDueDays: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const actor = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageInvoices");
+    const days = checkedDueDays(args.paymentDueDays ?? 30);
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.companyId !== actor.companyId) throw new Error("Access denied");
+    if (job.commercialAccountId) throw new Error("Commercial jobs use account billing");
+    const prior = await ctx.db.query("invoices").withIndex("by_companyId_sourceJobId", q => q.eq("companyId", actor.companyId).eq("sourceJobId", job._id)).collect();
+    const active = prior.find(invoice => invoice.status !== "void");
+    if (active) {
+      if (active.status === "draft" && invoiceType(active) === "job") return active._id;
+      throw new Error("Job already has an invoice");
+    }
+    const price = await resolveJobInvoiceablePricing(ctx, job._id, actor.companyId);
+    if (!price.ok) throw new Error(`Job is not ready for invoicing: ${price.reason}`);
+    const relationship = await ctx.db.get(price.clientRelationshipId) as any;
+    if (!relationship || relationship.companyId !== actor.companyId || relationship.status !== "active" || job.clientRelationshipId !== relationship._id) throw new Error("Active client relationship required");
+    const property = job.propertyId ? await ctx.db.get(job.propertyId) as any : null;
+    if (property && property.companyId !== actor.companyId) throw new Error("Invalid job property");
+    const totals = calculateInvoiceTotals(price.baseChargeCents, price.addOns.map(line => ({ lineTotalCents: line.amountCents } as any)), 0);
+    if (totals.totalCents !== price.totalCents || totals.totalCents <= 0) throw new Error("Invalid accepted price");
+    const now = Date.now();
+    const candidate = {
+      companyId: actor.companyId, invoiceType: "job" as const, clientRelationshipId: relationship._id,
+      sourceJobId: job._id, jobIds: [job._id], paymentDueDays: days,
+      jobPricingSnapshot: {
+        baseChargeCents: price.baseChargeCents, addOns: price.addOns, totalCents: price.totalCents,
+        currency: price.currency, pricingRevision: price.pricingRevision,
+        pricingSource: price.priceSource as "direct_quote" | "post_service_quote" | "accepted_proposal",
+        consentSource: price.consent.source, consentAcceptedAt: price.consent.acceptedAt,
+        consentClientUserId: price.consent.clientUserId, consentRecordedByUserId: price.consent.recordedByUserId,
+        offerId: price.consent.offerId, proposalIssueId: price.consent.proposalIssueId,
+      },
+      billToSnapshot: { displayName: relationship.displayName, email: relationship.email },
+      serviceSnapshot: { scheduledDate: job.scheduledDate, jobType: job.type, locationName: property?.name ?? job.propertySnapshot?.name, address: property?.address ?? job.propertySnapshot?.address },
+      title: `${job.scheduledDate} Service Invoice`, invoiceNumber: await nextInvoiceNumber(ctx, actor.companyId),
+      status: "draft" as const, ...totals, createdAt: now, updatedAt: now,
+    };
+    assertInvoiceInvariant(candidate);
+    return await ctx.db.insert("invoices", candidate);
+  },
+});
 
 async function findDraftForBillingPeriod(
   ctx: any,
@@ -172,6 +225,7 @@ export const create = mutation({
       companyId: account.companyId,
       clientRelationshipId: account.clientRelationshipId,
       commercialAccountId: account._id,
+      invoiceType: "commercial",
       title: cleanRequired(args.title, "Commercial Invoice", 200),
       invoiceNumber: await nextInvoiceNumber(ctx, account.companyId),
       status: "draft",
@@ -275,6 +329,7 @@ export const generateFromJobs = mutation({
       companyId: account.companyId,
       clientRelationshipId: account.clientRelationshipId,
       commercialAccountId: account._id,
+      invoiceType: "commercial",
       title: `${account.clientName} Invoice`,
       invoiceNumber: await nextInvoiceNumber(ctx, account.companyId),
       status: "draft",
@@ -313,14 +368,13 @@ export const updateDraft = mutation({
     sessionToken: v.string(),
     invoiceId: v.id("invoices"),
     notes: v.optional(v.string()),
+    paymentDueDays: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const { invoice } = await getOwnedInvoice(ctx, args.sessionToken, args.userId, args.invoiceId);
     if (invoice.status !== "draft") throw new Error("Only draft invoices can be edited");
-    await ctx.db.patch(args.invoiceId, {
-      notes: cleanOptional(args.notes),
-      updatedAt: Date.now(),
-    });
+    const type = assertInvoiceInvariant(invoice);
+    await ctx.db.patch(args.invoiceId, { notes: cleanOptional(args.notes), ...(type === "job" && args.paymentDueDays !== undefined ? { paymentDueDays: checkedDueDays(args.paymentDueDays) } : {}), updatedAt: Date.now() });
   },
 });
 
@@ -333,11 +387,13 @@ export const markIssued = mutation({
   handler: async (ctx, args) => {
     const { invoice } = await getOwnedInvoice(ctx, args.sessionToken, args.userId, args.invoiceId);
     if (invoice.status !== "draft") throw new Error("Only draft invoices can be issued");
+    const type = assertInvoiceInvariant(invoice);
     if (!Number.isSafeInteger(invoice.totalCents) || invoice.totalCents <= 0) throw new Error("Invoice total must be greater than zero before billing");
     const now = Date.now();
     await ctx.db.patch(args.invoiceId, {
       status: "issued",
       issuedAt: now,
+      ...(type === "job" ? { issueDate: formatDate(new Date(now)), dueDate: formatDate(addDays(new Date(now), invoice.paymentDueDays!)) } : {}),
       updatedAt: now,
     });
   },
@@ -352,6 +408,7 @@ export const markPaid = mutation({
   handler: async (ctx, args) => {
     const { invoice } = await getOwnedInvoice(ctx, args.sessionToken, args.userId, args.invoiceId);
     if (invoice.status !== "issued") throw new Error("Only issued invoices can be marked paid");
+    assertInvoiceInvariant(invoice);
     const now = Date.now();
     await ctx.db.patch(args.invoiceId, {
       status: "paid",
@@ -369,6 +426,7 @@ export const voidInvoice = mutation({
   },
   handler: async (ctx, args) => {
     const { invoice } = await getOwnedInvoice(ctx, args.sessionToken, args.userId, args.invoiceId);
+    assertInvoiceInvariant(invoice);
     if (invoice.status === "void") return;
     if (invoice.status === "paid") throw new Error("Paid invoices cannot be voided");
     const now = Date.now();

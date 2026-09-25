@@ -1,9 +1,10 @@
 import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { calculateInvoiceTotals, publicInvoiceAddOns } from "./lib/invoiceAddOnLineItems";
+import { assertInvoiceInvariant, invoiceDisplayLines } from "./lib/invoiceModel";
 
 function verifiedTotals(invoice: any) {
-  const totals = calculateInvoiceTotals(invoice.baseSubtotalCents ?? invoice.subtotalCents, invoice.addOnLineItems ?? [], invoice.taxCents);
+  const totals = calculateInvoiceTotals(invoice.baseSubtotalCents ?? invoice.subtotalCents, invoiceDisplayLines(invoice), invoice.taxCents);
   if (totals.totalCents !== invoice.totalCents || totals.subtotalCents !== invoice.subtotalCents) throw new Error("Invoice totals failed integrity validation");
   return totals;
 }
@@ -13,6 +14,7 @@ export const getForOwnerDelivery = internalQuery({
   handler: async (ctx, args) => {
     const invoice: any = await ctx.db.get(args.invoiceId);
     if (!invoice || invoice.companyId !== args.companyId) throw new Error("Access denied");
+    const type = assertInvoiceInvariant(invoice);
     if (invoice.status !== "issued") throw new Error("Only issued invoices can be sent");
     const relationship: any = invoice.clientRelationshipId ? await ctx.db.get(invoice.clientRelationshipId) : null;
     if (!relationship || relationship.companyId !== invoice.companyId) throw new Error("A linked client relationship is required");
@@ -20,7 +22,7 @@ export const getForOwnerDelivery = internalQuery({
     if (relationship.status !== "active" || clientUser?.status !== "active") throw new Error("Client portal access is required before emailing this invoice");
     if (!relationship.email) throw new Error("Client email is required");
     const company: any = await ctx.db.get(invoice.companyId);
-    return { recipientEmail: relationship.email, clientName: relationship.displayName, companyName: company?.companyDisplayName ?? company?.name ?? "Your Cleaning Company", invoice: { invoiceNumber: invoice.invoiceNumber, title: invoice.title, dueDate: invoice.dueDate, ...verifiedTotals(invoice), addOnLineItems: publicInvoiceAddOns(invoice.addOnLineItems) } };
+    return { recipientEmail: relationship.email, clientName: invoice.billToSnapshot?.displayName ?? relationship.displayName, companyName: company?.companyDisplayName ?? company?.name ?? "Your Cleaning Company", invoice: { invoiceNumber: invoice.invoiceNumber, title: invoice.title, dueDate: invoice.dueDate, invoiceType: type, ...verifiedTotals(invoice), addOnLineItems: type === "job" ? invoiceDisplayLines(invoice) : publicInvoiceAddOns(invoice.addOnLineItems) } };
   },
 });
 
@@ -29,6 +31,7 @@ export const getForClientPayment = internalQuery({
   handler: async (ctx, args) => {
     const invoice: any = await ctx.db.get(args.invoiceId);
     if (!invoice || invoice.status !== "issued") throw new Error("Invoice is not payable");
+    if (assertInvoiceInvariant(invoice) === "job") throw new Error("Online payment for job invoices is not available yet");
     const relationship: any = invoice.clientRelationshipId ? await ctx.db.get(invoice.clientRelationshipId) : null;
     if (!relationship || relationship.clientUserId !== args.clientUserId || relationship.companyId !== invoice.companyId) throw new Error("Access denied");
     const company: any = await ctx.db.get(invoice.companyId);
