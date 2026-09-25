@@ -2,6 +2,7 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { requireVerifiedClientSession } from "../lib/sessionAuth";
 import { isClientVisibleProposal } from "../lib/clientProposalVisibility";
+import { invoiceDisplayLines, invoiceType } from "../lib/invoiceModel";
 
 const CAP = 500;
 
@@ -145,6 +146,8 @@ export const getClientHome = query({
         .sort((a, b) => b.updatedAt - a.updatedAt)
         .map((invoice) => ({
           _id: invoice._id,
+          invoiceType: invoiceType(invoice),
+          serviceSnapshot: invoice.serviceSnapshot,
           clientRelationshipId: invoice.clientRelationshipId,
           invoiceNumber: invoice.invoiceNumber,
           title: invoice.title,
@@ -158,7 +161,7 @@ export const getClientHome = query({
           addOnSubtotalCents: invoice.addOnSubtotalCents ?? 0,
           subtotalCents: invoice.subtotalCents,
           taxCents: invoice.taxCents,
-          addOnLineItems: (invoice.addOnLineItems ?? []).map((line: any) => ({
+          addOnLineItems: invoiceDisplayLines(invoice).map((line: any) => ({
             snapshotId: line.snapshotId,
             name: line.name,
             pricingMethod: line.pricingMethod,

@@ -4,10 +4,14 @@ import { requireOwnerManagerSession } from "../lib/sessionAuth";
 import { hasOwnerOrManagerPermission, hasManagerPermission } from "../lib/auth";
 import { calculateInvoiceTotals } from "../lib/invoiceAddOnLineItems";
 import { getActiveTeamIdsForUser } from "../lib/teams";
+import { assertInvoiceInvariant, invoiceDisplayLines } from "../lib/invoiceModel";
+import { resolveJobInvoiceablePricing } from "../lib/jobPricing";
 
 async function decorateInvoice(ctx: any, invoice: any) {
-  const computedTotals = calculateInvoiceTotals(invoice.baseSubtotalCents ?? invoice.subtotalCents, invoice.addOnLineItems ?? [], invoice.taxCents);
-  const account = await ctx.db.get(invoice.commercialAccountId);
+  const type = assertInvoiceInvariant(invoice);
+  const displayLines = invoiceDisplayLines(invoice);
+  const computedTotals = calculateInvoiceTotals(invoice.baseSubtotalCents ?? invoice.subtotalCents, displayLines, invoice.taxCents);
+  const account = invoice.commercialAccountId ? await ctx.db.get(invoice.commercialAccountId) : null;
   const relationship = invoice.clientRelationshipId
     ? await ctx.db.get(invoice.clientRelationshipId)
     : null;
@@ -15,6 +19,8 @@ async function decorateInvoice(ctx: any, invoice: any) {
   const jobs = await Promise.all(invoice.jobIds.map((jobId: any) => ctx.db.get(jobId)));
   return {
     ...invoice,
+    invoiceType: type,
+    displayLines,
     computedTotals,
     commercialAccountName:
       account?.companyId === invoice.companyId ? account.clientName : null,
@@ -41,6 +47,25 @@ async function decorateInvoice(ctx: any, invoice: any) {
       })),
   };
 }
+
+export const getForResidentialJob = query({
+  args: { userId: v.id("users"), sessionToken: v.string(), jobId: v.id("jobs") },
+  handler: async (ctx, args) => {
+    const actor = await requireInvoiceReader(ctx, args.sessionToken, args.userId);
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.companyId !== actor.companyId) throw new Error("Access denied");
+    if (job.commercialAccountId) return { kind: "commercial" as const };
+    if (actor.role === "manager" && !hasManagerPermission(actor, "canSeeAllJobs") && !hasManagerPermission(actor, "canManageInvoices")) {
+      const teamIds = await getActiveTeamIdsForUser(ctx, actor._id, actor.companyId);
+      if (!job.cleanerIds.includes(actor._id) && job.assignedManagerId !== actor._id && !(job.assignedTeamId && teamIds.has(job.assignedTeamId))) throw new Error("Job access required");
+    }
+    const invoices = await ctx.db.query("invoices").withIndex("by_companyId_sourceJobId", q => q.eq("companyId", actor.companyId).eq("sourceJobId", job._id)).collect();
+    invoices.sort((a, b) => b.createdAt - a.createdAt);
+    const active = invoices.find(invoice => invoice.status !== "void");
+    const readiness = await resolveJobInvoiceablePricing(ctx, job._id, actor.companyId);
+    return { kind: "job" as const, readiness, activeInvoice: active ? { _id: active._id, invoiceNumber: active.invoiceNumber, status: active.status } : null, voidInvoices: invoices.filter(invoice => invoice.status === "void").map(invoice => ({ _id: invoice._id, invoiceNumber: invoice.invoiceNumber, status: invoice.status })), canManage: actor.role === "owner" || actor.canManageInvoices === true };
+  },
+});
 
 export const getBillingForJob = query({
   args: { userId: v.id("users"), sessionToken: v.string(), jobId: v.id("jobs") },

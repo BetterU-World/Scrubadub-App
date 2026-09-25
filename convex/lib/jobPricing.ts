@@ -3,6 +3,14 @@ import type { Doc } from "../_generated/dataModel";
 export type PriceLine = { snapshotId: string; name: string; amountCents: number; quantity?: number; unitLabel?: string };
 export type PriceSnapshot = { baseChargeCents: number; addOns: PriceLine[]; totalCents: number; currency: "usd"; createdAt: number };
 
+function samePrice(left: PriceSnapshot, right: PriceSnapshot) {
+  return left.baseChargeCents === right.baseChargeCents && left.totalCents === right.totalCents && left.currency === right.currency &&
+    left.addOns.length === right.addOns.length && left.addOns.every((line, index) => {
+      const other = right.addOns[index];
+      return other && line.snapshotId === other.snapshotId && line.name === other.name && line.amountCents === other.amountCents && line.quantity === other.quantity && line.unitLabel === other.unitLabel;
+    });
+}
+
 export function checkedPriceSnapshot(baseChargeCents: number, addOns: PriceLine[], createdAt = Date.now()): PriceSnapshot {
   if (!Number.isSafeInteger(baseChargeCents) || baseChargeCents < 0 || baseChargeCents > 100_000_000) throw new Error("Invalid base charge");
   if (addOns.length > 20) throw new Error("Too many priced add-ons");
@@ -58,11 +66,21 @@ export async function resolveJobInvoiceablePricing(ctx: any, jobId: any, company
     if (job.customerPricingSource === "accepted_proposal") {
       if (!job.customerPriceProposalIssueId || consent.proposalIssueId !== job.customerPriceProposalIssueId) throw new Error("Proposal mismatch");
       const issue = await ctx.db.get(job.customerPriceProposalIssueId);
-      if (!issue || issue.companyId !== companyId || issue.proposalId !== job.customerPriceProposalId || !issue.issuedAt || issue.withdrawnAt) throw new Error("Proposal issue mismatch");
+      const proposal = job.customerPriceProposalId ? await ctx.db.get(job.customerPriceProposalId) : null;
+      const request = proposal?.clientRequestId ? await ctx.db.get(proposal.clientRequestId) : null;
+      if (!issue || !proposal || !request || proposal.companyId !== companyId || proposal.clientRelationshipId !== relationship._id || request.companyId !== companyId || request.clientRelationshipId !== relationship._id || issue.companyId !== companyId || issue.proposalId !== proposal._id || !issue.issuedAt || issue.withdrawnAt) throw new Error("Proposal issue mismatch");
+      const accepted = await acceptedOneTimeProposalPrice(ctx, proposal, request, relationship._id);
+      if (!accepted || accepted.issueId !== issue._id || !samePrice(snapshot, accepted.snapshot) || consent.source !== accepted.consent.source || consent.acceptedAt !== accepted.consent.acceptedAt || consent.recordedByUserId !== accepted.consent.recordedByUserId) throw new Error("Proposal price mismatch");
     } else {
       if (!job.customerPriceOfferId || consent.offerId !== job.customerPriceOfferId) throw new Error("Offer mismatch");
       const offer = await ctx.db.get(job.customerPriceOfferId);
-      if (!offer || offer.companyId !== companyId || offer.clientRelationshipId !== relationship._id || offer.jobId !== jobId || offer.version !== job.customerPricingRevision || offer.status !== "accepted" || offer.snapshot.totalCents !== snapshot.totalCents) throw new Error("Offer version mismatch");
+      if (!offer || offer.companyId !== companyId || offer.clientRelationshipId !== relationship._id || offer.jobId !== jobId || offer.version !== job.customerPricingRevision || offer.status !== "accepted" || offer.source !== job.customerPricingSource || !samePrice(snapshot, offer.snapshot) || snapshot.createdAt !== offer.snapshot.createdAt || consent.acceptedAt !== offer.respondedAt) throw new Error("Offer version mismatch");
+      if (offer.clientRequestId) {
+        const request = await ctx.db.get(offer.clientRequestId);
+        if (!request || request.companyId !== companyId || request.clientRelationshipId !== relationship._id || job.sourceClientRequestId !== request._id) throw new Error("Offer request mismatch");
+      }
+      if (consent.source === "client_in_app" && (offer.acceptedByClientUserId !== consent.clientUserId || relationship.clientUserId !== consent.clientUserId)) throw new Error("Client consent mismatch");
+      if (consent.source === "owner_reported_outside" && (offer.outsideRecordedByUserId !== consent.recordedByUserId || !offer.outsideEvidenceNote || offer.outsideEvidenceNote !== consent.evidenceNote)) throw new Error("Outside consent mismatch");
     }
     if (consent.source === "owner_reported_outside" && !consent.recordedByUserId) throw new Error("Outside agreement has no actor");
     if (consent.source === "client_in_app" && job.customerPricingSource !== "accepted_proposal" && !consent.clientUserId) throw new Error("Client agreement has no actor");

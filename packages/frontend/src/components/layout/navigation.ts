@@ -69,7 +69,7 @@ export const ownerSections: NavSection[] = [
       { href: "/requests", labelKey: "nav.requests", icon: Inbox, mobile: true, mobileOrder: 3 },
       { href: "/clients", labelKey: "nav.clients", icon: Users },
       { href: "/commercial-accounts", labelKey: "nav.commercialAccounts", icon: Briefcase },
-      { href: "/commercial-invoices", labelKey: "nav.commercialInvoices", icon: Receipt },
+      { href: "/commercial-invoices", labelKey: "nav.invoices", icon: Receipt },
       { href: "/feedback", labelKey: "nav.feedback", icon: MessageSquare },
       { href: "/cleaner-leads", labelKey: "nav.cleanerLeads", icon: UserPlus },
       {
@@ -117,7 +117,7 @@ export const managerSections: NavSection[] = [
       { href: "/clients", labelKey: "nav.clients", icon: Users },
       { href: "/commercial-accounts", labelKey: "nav.commercialAccounts", icon: Briefcase },
       { href: "/employees", labelKey: "nav.employees", icon: Users },
-      { href: "/commercial-invoices", labelKey: "nav.commercialInvoices", icon: Receipt },
+      { href: "/commercial-invoices", labelKey: "nav.invoices", icon: Receipt },
       { href: "/financials", labelKey: "nav.financials", icon: Banknote },
     ],
   },

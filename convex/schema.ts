@@ -1998,8 +1998,23 @@ export default defineSchema({
 
   invoices: defineTable({
     companyId: v.id("companies"),
+    invoiceType: v.optional(v.union(v.literal("commercial"), v.literal("job"))),
     clientRelationshipId: v.optional(v.id("clientRelationships")),
-    commercialAccountId: v.id("commercialAccounts"),
+    commercialAccountId: v.optional(v.id("commercialAccounts")),
+    sourceJobId: v.optional(v.id("jobs")),
+    paymentDueDays: v.optional(v.number()),
+    jobPricingSnapshot: v.optional(v.object({
+      baseChargeCents: v.number(),
+      addOns: v.array(v.object({ snapshotId: v.string(), name: v.string(), amountCents: v.number(), quantity: v.optional(v.number()), unitLabel: v.optional(v.string()) })),
+      totalCents: v.number(), currency: v.literal("usd"), pricingRevision: v.number(),
+      pricingSource: v.union(v.literal("direct_quote"), v.literal("post_service_quote"), v.literal("accepted_proposal")),
+      consentSource: v.union(v.literal("client_in_app"), v.literal("owner_reported_outside")),
+      consentAcceptedAt: v.number(), consentClientUserId: v.optional(v.id("clientUsers")),
+      consentRecordedByUserId: v.optional(v.id("users")),
+      offerId: v.optional(v.id("servicePriceOffers")), proposalIssueId: v.optional(v.id("proposalIssues")),
+    })),
+    billToSnapshot: v.optional(v.object({ displayName: v.string(), email: v.optional(v.string()) })),
+    serviceSnapshot: v.optional(v.object({ scheduledDate: v.string(), jobType: v.string(), locationName: v.optional(v.string()), address: v.optional(v.string()) })),
     title: v.string(),
     invoiceNumber: v.string(),
     status: v.union(
@@ -2008,10 +2023,10 @@ export default defineSchema({
       v.literal("paid"),
       v.literal("void"),
     ),
-    billingStartDate: v.string(),
-    billingEndDate: v.string(),
-    issueDate: v.string(),
-    dueDate: v.string(),
+    billingStartDate: v.optional(v.string()),
+    billingEndDate: v.optional(v.string()),
+    issueDate: v.optional(v.string()),
+    dueDate: v.optional(v.string()),
     subtotalCents: v.number(),
     baseSubtotalCents: v.optional(v.number()),
     addOnSubtotalCents: v.optional(v.number()),
@@ -2057,6 +2072,7 @@ export default defineSchema({
       "updatedAt",
     ])
     .index("by_commercialAccount", ["commercialAccountId"])
+    .index("by_companyId_sourceJobId", ["companyId", "sourceJobId"])
     .index("by_status", ["status"]),
 
   clientRequests: defineTable({

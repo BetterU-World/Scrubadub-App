@@ -9,6 +9,7 @@ import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { JobTimeline } from "@/components/JobTimeline";
 import { JobInvoiceBillingPanel } from "@/components/owner/JobInvoiceBillingPanel";
+import { ResidentialInvoicePanel } from "@/components/owner/ResidentialInvoicePanel";
 import { ServicePricingPanel } from "@/components/owner/ServicePricingPanel";
 import { JobTimingPanel } from "@/components/JobTimingPanel";
 import { AddOnSnapshotList } from "@/components/AddOnSnapshotList";
@@ -175,6 +176,7 @@ export function ManagerJobDetailPage() {
       <div className="space-y-4">
         <ServicePricingPanel jobId={job._id} commercial={Boolean(job.commercialAccountId)} />
         <JobInvoiceBillingPanel job={job} />
+        {!job.commercialAccountId && <ResidentialInvoicePanel jobId={job._id} />}
         {/* Status & Type + Inspection Summary Badge */}
         <div className="card space-y-4">
           <div className="flex items-center gap-2 flex-wrap">

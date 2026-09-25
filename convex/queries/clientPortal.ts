@@ -4,6 +4,7 @@ import { requireVerifiedClientSession } from "../lib/sessionAuth";
 import { companyAddOnSelectionVersion } from "../lib/companyAddOnSelection";
 import { isClientVisibleProposal } from "../lib/clientProposalVisibility";
 import { activeServiceAgreementIssue } from "../lib/serviceAgreementIssuedContent";
+import { invoiceDisplayLines, invoiceType } from "../lib/invoiceModel";
 import {
   AUTHENTICATED_REQUEST_SERVICES,
   AUTHENTICATED_REQUEST_TIME_WINDOWS,
@@ -248,6 +249,8 @@ export const getClientBilling = query({
         .sort((a, b) => b.updatedAt - a.updatedAt)
         .map((invoice: any) => ({
           _id: invoice._id,
+          invoiceType: invoiceType(invoice),
+          serviceSnapshot: invoice.serviceSnapshot,
           invoiceNumber: invoice.invoiceNumber,
           title: invoice.title,
           status: invoice.status,
@@ -256,7 +259,7 @@ export const getClientBilling = query({
           totalCents: invoice.totalCents,
           baseSubtotalCents: invoice.baseSubtotalCents ?? invoice.subtotalCents,
           addOnSubtotalCents: invoice.addOnSubtotalCents ?? 0,
-          addOnLineItems: invoice.addOnLineItems ?? [],
+          addOnLineItems: invoiceDisplayLines(invoice),
           providerName: providerName(context, invoice),
         })),
     };

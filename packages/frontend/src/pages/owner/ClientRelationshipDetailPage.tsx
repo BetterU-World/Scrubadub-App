@@ -612,7 +612,7 @@ export function ClientRelationshipDetailPage() {
         <RelatedSection title={t("clientRelationships.sections.invoices")} empty={t("clientRelationships.empty.invoices")} count={detail.invoices.length}>
           <div className="divide-y divide-gray-100">
             {detail.invoices.map((invoice: any) => (
-              <Link key={invoice._id} href={`/commercial-invoices/${invoice._id}`} className="flex items-center justify-between gap-3 py-3 text-sm hover:text-primary-700">
+              <Link key={invoice._id} href={invoice.invoiceType === "job" ? `/invoices/${invoice._id}` : `/commercial-invoices/${invoice._id}`} className="flex items-center justify-between gap-3 py-3 text-sm hover:text-primary-700">
                 <span>
                   <span className="block font-medium text-gray-900">{invoice.invoiceNumber}</span>
                   <span className="text-xs text-gray-500">{formatCents(invoice.totalCents, notSet)}</span>

@@ -202,7 +202,7 @@ describe("PR 6C commercial and collaboration session migration", () => {
       "proposalDeliveryActions.ts", "serviceAgreementDeliveryActions.ts",
     ];
     const backendSource = backendFiles.map((path) => readFileSync(fileURLToPath(new URL(`../../${path}`, import.meta.url)), "utf8")).join("\n");
-    expect((backendSource.match(/sessionToken:\s*v\.string\(\)/g) ?? [])).toHaveLength(41); // Existing entries plus invoice lookup by job
+    expect((backendSource.match(/sessionToken:\s*v\.string\(\)/g) ?? [])).toHaveLength(43); // Includes residential invoice creation and job lookup
     expect(backendSource).not.toMatch(/\b(assertOwnerRole|getSessionUser|requireOwner)\s*\(/);
 
     const frontendFiles = [

@@ -13,6 +13,7 @@ import { CancelJobDialog } from "@/components/CancelJobDialog";
 import { useParams, Link } from "wouter";
 import { JobTimeline } from "@/components/JobTimeline";
 import { JobInvoiceBillingPanel } from "@/components/owner/JobInvoiceBillingPanel";
+import { ResidentialInvoicePanel } from "@/components/owner/ResidentialInvoicePanel";
 import { ServicePricingPanel } from "@/components/owner/ServicePricingPanel";
 import { JobTimingPanel } from "@/components/JobTimingPanel";
 import { AddOnSnapshotList } from "@/components/AddOnSnapshotList";
@@ -225,6 +226,7 @@ export function JobDetailPage() {
       <div className="space-y-6">
         <ServicePricingPanel jobId={job._id} commercial={Boolean(job.commercialAccountId)} />
         <JobInvoiceBillingPanel job={job} />
+        {!job.commercialAccountId && <ResidentialInvoicePanel jobId={job._id} />}
         {/* Job info card */}
         <div className="card space-y-4">
           <div className="flex items-center gap-2 flex-wrap">

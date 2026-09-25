@@ -43,7 +43,7 @@ export function CommercialInvoiceListPage() {
   return (
     <div>
       <PageHeader
-        title={t("invoices.companyTitle")}
+        title={t("invoices.allInvoices")}
         description={t("invoices.companyDescription")}
       />
 
@@ -81,10 +81,10 @@ export function CommercialInvoiceListPage() {
                     {t("invoices.invoiceNumber")}
                   </th>
                   <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                    {t("invoices.commercialAccount")}
+                    {t("invoices.clientOrService")}
                   </th>
                   <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                    {t("invoices.billingPeriod")}
+                    {t("invoices.billingContext")}
                   </th>
                   <th scope="col" className="px-4 py-3 text-left text-sm font-medium text-gray-500">
                     {t("commercialAccounts.status")}
@@ -99,21 +99,21 @@ export function CommercialInvoiceListPage() {
                   <tr key={invoice._id} className="block rounded-lg border border-gray-200 p-4 sm:table-row sm:rounded-none sm:border-0 sm:border-b sm:border-gray-100 sm:p-0 sm:last:border-0">
                     <td className="block sm:table-cell sm:px-4 sm:py-3 sm:whitespace-nowrap">
                       <Link
-                        href={`/commercial-invoices/${invoice._id}`}
+                        href={invoice.invoiceType === "job" ? `/invoices/${invoice._id}` : `/commercial-invoices/${invoice._id}`}
                         className="touch-target -mx-3 flex items-center px-3 font-semibold text-gray-900 hover:text-primary-700 sm:mx-0 sm:inline-flex sm:min-h-0 sm:p-0 sm:font-medium"
                       >
                         {invoice.invoiceNumber}
                       </Link>
                     </td>
                     <td className="block min-w-0 pb-3 text-sm text-gray-700 sm:table-cell sm:px-4 sm:py-3">
-                      <span className="mr-2 text-xs font-medium text-gray-500 sm:hidden">{t("invoices.commercialAccount")}</span>
+                      <span className="mr-2 text-xs font-medium text-gray-500 sm:hidden">{t("invoices.clientOrService")}</span>
                       <span className="break-words">
-                      {invoice.commercialAccountName ?? t("commercialAccounts.summary")}
+                      {invoice.invoiceType === "job" ? invoice.billToSnapshot?.displayName : invoice.commercialAccountName ?? t("commercialAccounts.summary")}
                       </span>
                     </td>
                     <td className="block border-t border-gray-100 py-2 text-sm text-gray-700 sm:table-cell sm:border-0 sm:px-4 sm:py-3 sm:whitespace-nowrap">
-                      <span className="mr-2 text-xs font-medium text-gray-500 sm:hidden">{t("invoices.billingPeriod")}</span>
-                      {formatDate(invoice.billingStartDate)} - {formatDate(invoice.billingEndDate)}
+                      <span className="mr-2 text-xs font-medium text-gray-500 sm:hidden">{t("invoices.billingContext")}</span>
+                      {invoice.invoiceType === "job" ? t("invoices.serviceDate", { date: formatDate(invoice.serviceSnapshot?.scheduledDate) }) : `${formatDate(invoice.billingStartDate)} - ${formatDate(invoice.billingEndDate)}`}
                     </td>
                     <td className="block py-2 sm:table-cell sm:px-4 sm:py-3 sm:whitespace-nowrap">
                       <span className="mr-2 text-xs font-medium text-gray-500 sm:hidden">{t("commercialAccounts.status")}</span>

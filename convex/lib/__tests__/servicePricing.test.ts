@@ -149,6 +149,10 @@ describe("residential pricing foundation", () => {
     expect(await s.t.run((ctx) => resolveJobInvoiceablePricing(ctx, jobId, s.company))).toMatchObject({ reason: "add_ons_unconfirmed" });
     await s.t.mutation(offers.confirmDeliveredAddOns, { ...s.ownerAuth, jobId, expectedRevision: 1 });
     expect(await s.t.run((ctx) => resolveJobInvoiceablePricing(ctx, jobId, s.company))).toMatchObject({ ok: true, totalCents: 23000 });
+    const originalSnapshot = (await s.t.run((ctx) => ctx.db.get(jobId)))!.customerPricingSnapshot!;
+    await s.t.run((ctx) => ctx.db.patch(jobId, { customerPricingSnapshot: { ...originalSnapshot, baseChargeCents: 19000, addOns: [{ ...originalSnapshot.addOns[0], amountCents: 4000 }] } }));
+    expect(await s.t.run((ctx) => resolveJobInvoiceablePricing(ctx, jobId, s.company))).toMatchObject({ reason: "invalid_snapshot" });
+    await s.t.run((ctx) => ctx.db.patch(jobId, { customerPricingSnapshot: originalSnapshot }));
   });
 
   it("leaves monthly-only and issue-less accepted proposals unverified", async () => {
