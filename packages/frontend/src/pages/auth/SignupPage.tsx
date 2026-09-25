@@ -5,6 +5,7 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
+import { toFriendlyMessage } from "@/lib/friendlyError";
 
 /** @deprecated ownerType param kept for backward-compat with old landing links */
 
@@ -31,7 +32,8 @@ export function SignupPage() {
       await signUp({ email, password, name, companyName });
       setLocation("/");
     } catch (err: any) {
-      setError(err.message || "Failed to sign up");
+      console.error("Sign-up failed", err);
+      setError(toFriendlyMessage(err, t("feedback.unexpectedError"), t));
     } finally {
       setLoading(false);
     }

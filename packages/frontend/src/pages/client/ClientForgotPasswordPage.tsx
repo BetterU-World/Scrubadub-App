@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { toFriendlyMessage } from "@/lib/friendlyError";
 
 export function ClientForgotPasswordPage() {
   const { t } = useTranslation();
@@ -17,7 +18,7 @@ export function ClientForgotPasswordPage() {
   async function submit(event: FormEvent) {
     event.preventDefault(); setLoading(true); setError("");
     try { await requestReset({ email }); setSubmitted(true); }
-    catch (err: any) { setError(err.message || t("clientAuth.resetRequestFailed")); }
+    catch (err: any) { console.error("Client reset request failed", err); setError(toFriendlyMessage(err, t("feedback.unexpectedError"), t)); }
     finally { setLoading(false); }
   }
 

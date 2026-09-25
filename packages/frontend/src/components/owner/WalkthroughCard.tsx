@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
+import { toFriendlyMessage } from "../../lib/friendlyError";
 import { Archive, Check, ClipboardCheck, Plus, Save, Trash2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { BedroomsDisplay } from "./PropertyBedrooms";
@@ -584,14 +585,10 @@ export function WalkthroughCard({
     return payloadFromForm(walkthrough);
   };
 
-  const friendlySaveError = (error: any) => {
-    const message = String(error?.message ?? "");
-    if ([t("walkthroughs.scheduleRequired"), t("walkthroughs.propertyAddressRequired")].includes(message)) return message;
-    if (message.includes("Assigned manager is invalid")) return t("walkthroughs.invalidAssignee");
-    if (message.includes("date and start time")) return t("walkthroughs.scheduleRequired");
-    if (message.includes("Property address")) return t("walkthroughs.propertyAddressRequired");
-    if (message.includes("Session required")) return t("walkthroughs.sessionExpired");
-    return t("walkthroughs.saveFailedHelp");
+  const displayError = (error: unknown, fallback: string) => {
+    if (error instanceof Error && [t("walkthroughs.scheduleRequired"), t("walkthroughs.propertyAddressRequired")].includes(error.message)) return error.message;
+    console.error("Walkthrough action failed", error);
+    return toFriendlyMessage(error, fallback, t);
   };
 
   const handleCreate = async () => {
@@ -614,7 +611,7 @@ export function WalkthroughCard({
       });
       showToast(t("walkthroughs.created"), "success");
     } catch (err: any) {
-      showToast(friendlySaveError(err), "error");
+      showToast(displayError(err, t("walkthroughs.saveFailedHelp")), "error");
     } finally {
       setSaving(false);
     }
@@ -629,7 +626,7 @@ export function WalkthroughCard({
       setEditing(false);
       showToast(t("walkthroughs.saved"), "success");
     } catch (err: any) {
-      showToast(friendlySaveError(err), "error");
+      showToast(displayError(err, t("walkthroughs.saveFailedHelp")), "error");
     } finally {
       setSaving(false);
     }
@@ -642,7 +639,7 @@ export function WalkthroughCard({
       await completeWalkthrough({ userId: user._id, sessionToken, walkthroughId: walkthrough._id });
       showToast(t("walkthroughs.completed"), "success");
     } catch (err: any) {
-      showToast(err.message || t("walkthroughs.actionFailed"), "error");
+      showToast(displayError(err, t("walkthroughs.actionFailed")), "error");
     } finally {
       setSaving(false);
     }
@@ -655,7 +652,7 @@ export function WalkthroughCard({
       await archiveWalkthrough({ userId: user._id, sessionToken, walkthroughId: walkthrough._id });
       showToast(t("walkthroughs.archived"), "success");
     } catch (err: any) {
-      showToast(err.message || t("walkthroughs.actionFailed"), "error");
+      showToast(displayError(err, t("walkthroughs.actionFailed")), "error");
     } finally {
       setSaving(false);
     }

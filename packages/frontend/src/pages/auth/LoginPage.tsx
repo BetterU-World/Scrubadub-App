@@ -5,6 +5,7 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
+import { isValidSignInEmail, toSignInMessage } from "@/lib/friendlyError";
 
 export function LoginPage() {
   const { signIn } = useAuth();
@@ -17,12 +18,17 @@ export function LoginPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
+    if (!isValidSignInEmail(email)) {
+      setError(t("auth.invalidEmail"));
+      return;
+    }
     setLoading(true);
     try {
       await signIn({ email, password });
       window.location.assign("/");
     } catch (err: any) {
-      setError(String(err?.message ?? err));
+      console.error("Staff sign-in failed", err);
+      setError(toSignInMessage(err, t));
     } finally {
       setLoading(false);
     }

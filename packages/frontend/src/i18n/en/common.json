@@ -28,6 +28,8 @@
     "haveAccount": "Already have an account?",
     "rememberPassword": "Remember your password?",
     "email": "Email",
+    "invalidEmail": "Please enter a valid email address.",
+    "incorrectCredentials": "Incorrect email or password. Please try again.",
     "password": "Password",
     "newPassword": "New Password",
     "confirmPassword": "Confirm Password",
@@ -393,6 +395,10 @@
         "active": "Client Portal Active"
       }
     }
+  },
+  "errors": {
+    "rateLimited": "Too many attempts. Try again in a moment.",
+    "resetLinkExpired": "This reset link is invalid or has expired. Request a new one."
   },
   "feedback": {
     "closeNotification": "Close notification",

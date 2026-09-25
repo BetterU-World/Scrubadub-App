@@ -5,6 +5,7 @@ import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { useClientAuth } from "@/hooks/useClientAuth";
+import { isValidSignInEmail, toSignInMessage } from "@/lib/friendlyError";
 
 export function ClientLoginPage() {
   const { t } = useTranslation();
@@ -17,13 +18,18 @@ export function ClientLoginPage() {
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError("");
+    if (!isValidSignInEmail(email)) {
+      setError(t("auth.invalidEmail"));
+      return;
+    }
     setLoading(true);
     try {
       await signIn({ email, password });
       const next = new URLSearchParams(window.location.search).get("next");
       window.location.assign(next?.startsWith("/client/") ? next : "/client/home");
     } catch (err: any) {
-      setError(err.message || t("clientAuth.signInFailed"));
+      console.error("Client sign-in failed", err);
+      setError(toSignInMessage(err, t));
     } finally {
       setLoading(false);
     }

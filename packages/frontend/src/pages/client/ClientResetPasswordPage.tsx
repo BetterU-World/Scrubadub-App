@@ -6,6 +6,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { PasswordInput } from "@/components/ui/PasswordInput";
+import { toFriendlyMessage } from "@/lib/friendlyError";
 
 export function ClientResetPasswordPage() {
   const { t } = useTranslation();
@@ -20,7 +21,7 @@ export function ClientResetPasswordPage() {
     if (password !== confirm) return setError(t("auth.passwordsNoMatch"));
     setLoading(true);
     try { await resetPassword({ token, newPassword: password }); setSuccess(true); }
-    catch (err: any) { setError(err.message || t("clientAuth.resetFailed")); }
+    catch (err: any) { console.error("Client reset failed", err); setError(toFriendlyMessage(err, t("feedback.unexpectedError"), t)); }
     finally { setLoading(false); }
   }
 
