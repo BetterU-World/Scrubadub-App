@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { Link2, CreditCard, CheckCircle, AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { ownerConnectActionKey, ownerConnectDisplayState } from "../../lib/companyConnectPresentation";
 
 export function StripeConnectPage() {
   const { user } = useAuth();
@@ -44,7 +45,7 @@ export function StripeConnectPage() {
 
   if (!user || connectStatus === undefined) return <PageLoader />;
 
-  const state = checking || refreshFailed ? "checking" : connectStatus?.state ?? "checking";
+  const state = ownerConnectDisplayState(connectStatus?.state, checking, refreshFailed);
   const accountIdSuffix = connectStatus?.stripeConnectAccountId
     ? connectStatus.stripeConnectAccountId.slice(-6)
     : null;
@@ -137,7 +138,7 @@ export function StripeConnectPage() {
               </div>
             </div>
             <button onClick={handleConnectStripe} disabled={loading !== null} className="btn-primary mb-2 w-full">
-              {loading === "connect" ? t("companyConnect.opening") : state === "ready" ? t("companyConnect.manage") : t("companyConnect.continue")}
+              {loading === "connect" ? t("companyConnect.opening") : t(ownerConnectActionKey(state))}
             </button>
             <button
               onClick={handleTestCheckout}
