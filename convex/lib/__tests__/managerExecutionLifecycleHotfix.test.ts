@@ -21,7 +21,7 @@ describe("manager execution lifecycle hotfix", () => {
     process.env.APP_URL = "http://localhost:5173";
   });
 
-  it("runs the sole-manager workflow through shared evidence, owner approval, and client projection", async () => {
+  it("runs the sole-manager workflow through delegated final approval and client projection", async () => {
     const t = convexTest(schema, modules);
     const passwordHash = await hashPassword(PASSWORD);
     const seeded = await t.run(async (ctx) => {
@@ -63,7 +63,8 @@ describe("manager execution lifecycle hotfix", () => {
 
     await t.mutation(api.mutations.inspections.submit, { jobId: seeded.job, readinessScore: 9, severity: "none", userId: seeded.manager, sessionToken: managerAuth.sessionToken });
     await expect(t.mutation(api.mutations.forms.approve, { formId: form!._id, userId: seeded.manager, sessionToken: managerAuth.sessionToken })).rejects.toThrow("Completed work review permission required");
-    await t.mutation(api.mutations.forms.approve, { formId: form!._id, userId: seeded.owner, sessionToken: ownerAuth.sessionToken });
+    await t.run((ctx) => ctx.db.patch(seeded.manager, { canApproveForms: true }));
+    await t.mutation(api.mutations.forms.approve, { formId: form!._id, userId: seeded.manager, sessionToken: managerAuth.sessionToken });
     await expect(t.mutation(api.mutations.forms.approve, { formId: form!._id, userId: seeded.owner, sessionToken: ownerAuth.sessionToken })).resolves.toBeNull();
 
     const final = await t.run(async (ctx) => ({ job: await ctx.db.get(seeded.job), form: await ctx.db.get(form!._id), payments: await ctx.db.query("cleanerPayments").collect() }));

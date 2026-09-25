@@ -14,7 +14,9 @@ export const forRequest = query({
     if (!request || request.companyId !== actor.companyId) throw new Error("Access denied");
     const offer = request.currentPriceOfferId ? await ctx.db.get(request.currentPriceOfferId) : null;
     if (offer && (offer.companyId !== actor.companyId || offer.clientRequestId !== request._id)) throw new Error("Invalid price offer");
-    return { offer, canManage: actor.role === "owner" || actor.canManageSalesAndCommercial === true };
+    const relationship = request.clientRelationshipId ? await ctx.db.get(request.clientRelationshipId) : null;
+    if (!relationship || relationship.companyId !== actor.companyId) throw new Error("Invalid client relationship");
+    return { offer, requestedAddOns: request.requestedAddOnSnapshots ?? [], canManage: actor.role === "owner" || actor.canManageSalesAndCommercial === true };
   },
 });
 
@@ -26,8 +28,10 @@ export const forJob = query({
     const job = await ctx.db.get(args.jobId);
     if (!job || job.companyId !== actor.companyId) throw new Error("Access denied");
     const offer = job.customerPriceOfferId ? await ctx.db.get(job.customerPriceOfferId) : null;
+    const request = job.sourceClientRequestId ? await ctx.db.get(job.sourceClientRequestId) : null;
+    if (job.sourceClientRequestId && (!request || request.companyId !== actor.companyId || request.clientRelationshipId !== job.clientRelationshipId)) throw new Error("Invalid source request");
     const readiness = await resolveJobInvoiceablePricing(ctx, job._id, actor.companyId);
-    return { status: normalizedJobPrice(job), source: job.customerPricingSource, revision: job.customerPricingRevision ?? 0, chargeCents: job.customerChargeCents, snapshot: job.customerPricingSnapshot, consent: job.customerPriceConsent, noChargeReason: job.customerNoChargeReason, offer, readiness, canManage: actor.role === "owner" || actor.canManageSalesAndCommercial === true };
+    return { status: normalizedJobPrice(job), source: job.customerPricingSource, revision: job.customerPricingRevision ?? 0, chargeCents: job.customerChargeCents, snapshot: job.customerPricingSnapshot, consent: job.customerPriceConsent, noChargeReason: job.customerNoChargeReason, offer, readiness, requestedAddOns: request?.requestedAddOnSnapshots ?? [], canManage: actor.role === "owner" || actor.canManageSalesAndCommercial === true };
   },
 });
 

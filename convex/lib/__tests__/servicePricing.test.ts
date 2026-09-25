@@ -44,6 +44,21 @@ const schedule = (api as any).mutations.jobs.confirmClientRequestSchedule;
 const scheduleArgs = (s: any) => ({ ...s.ownerAuth, requestId: s.request, scheduledDate: "2030-01-15", startTime: "09:00", durationMinutes: 120, type: "standard", idempotencyKey: "pricing_schedule_123456789" });
 
 describe("residential pricing foundation", () => {
+  it("prefills staff pricing from the request-time add-on snapshot after catalog changes", async () => {
+    const s = await setup();
+    const catalogId = await s.t.run(async (ctx) => {
+      const id = await ctx.db.insert("companyAddOns", { companyId: s.company, name: "Oven", pricingMethod: "per_unit", priceCents: 1200, unitLabel: "oven", isActive: true, isPublic: true, displayOrder: 0, createdByUserId: s.owner, createdAt: 1, updatedAt: 1 });
+      await ctx.db.patch(s.request, { requestedAddOnSnapshots: [{ sourceCompanyAddOnId: id, name: "Oven", pricingMethod: "per_unit", priceCents: 1200, quantity: 2, unitLabel: "oven" }] });
+      await ctx.db.patch(id, { priceCents: 2000, name: "New oven price" });
+      return id;
+    });
+    const requestData = await s.t.query(offerQueries.forRequest, { ...s.ownerAuth, requestId: s.request });
+    expect(requestData.requestedAddOns).toEqual([{ sourceCompanyAddOnId: catalogId, name: "Oven", pricingMethod: "per_unit", priceCents: 1200, quantity: 2, unitLabel: "oven" }]);
+    expect(requestData.offer).toBeNull();
+    const { jobId } = await s.t.mutation(schedule, scheduleArgs(s));
+    expect((await s.t.query(offerQueries.forJob, { ...s.ownerAuth, jobId })).requestedAddOns).toEqual(requestData.requestedAddOns);
+    expect((await s.t.run((ctx) => ctx.db.get(jobId)))?.customerChargeCents).toBeUndefined();
+  });
   it("keeps a direct request price pending and does not bill requested add-ons", async () => {
     const s = await setup();
     expect((await s.t.run((ctx) => ctx.db.get(s.request)))!.currentPriceOfferId).toBeUndefined();

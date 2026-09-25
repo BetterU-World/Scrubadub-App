@@ -149,7 +149,7 @@ export const approve = mutation({
         userId: cid,
         type: "job_approved",
         title: "Job Approved",
-        message: `Owner approved cleaning for ${job.scheduledDate}`,
+        message: `Completed work was approved for ${job.scheduledDate}`,
         relatedJobId: form.jobId,
       });
 

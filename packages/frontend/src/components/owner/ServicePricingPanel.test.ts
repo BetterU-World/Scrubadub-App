@@ -10,10 +10,21 @@ vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { _id: "owner", role
 vi.mock("@/hooks/useClientAuth", () => ({ useClientAuth: () => ({ clientUserId: "client", sessionToken: "token" }) }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string, vars?: any) => { const value = key.split(".").reduce((record: any, part) => record?.[part], en as any) ?? key; return String(value).replace("{{version}}", String(vars?.version ?? "")); } }) }));
 
-import { ServicePricingPanel } from "./ServicePricingPanel";
+import { ServicePricingPanel, requestedOfferLines } from "./ServicePricingPanel";
 import { ClientPriceOfferPanel } from "../client/ClientPriceOfferPanel";
 
 describe("residential pricing presentation", () => {
+  it("uses request snapshot prices, quantities, and starting-at finalization", () => {
+    expect(requestedOfferLines([
+      { name: "Oven", pricingMethod: "flat", priceCents: 2500 },
+      { name: "Windows", pricingMethod: "per_unit", priceCents: 1200, quantity: 3, unitLabel: "window" },
+      { name: "Deep clean", pricingMethod: "starting_at", priceCents: 4000 },
+    ])).toEqual([
+      { name: "Oven", amount: "25.00", quantity: undefined, unitLabel: undefined, needsFinalPrice: false },
+      { name: "Windows", amount: "36.00", quantity: 3, unitLabel: "window", needsFinalPrice: false },
+      { name: "Deep clean", amount: "", quantity: undefined, unitLabel: undefined, needsFinalPrice: true },
+    ]);
+  });
   it("shows pending and accepted invoiceability honestly to the owner", () => {
     mock.result = { status: "pending", revision: 0, readiness: { ok: false, reason: "price_pending" }, canManage: true };
     const pending = renderToStaticMarkup(createElement(ServicePricingPanel, { jobId: "job" }));

@@ -325,26 +325,6 @@ export function ManagerJobDetailPage() {
                   </p>
                 </div>
               )}
-              {job.form.status === "submitted" && (user?.canApproveForms || user?.canRequestRework) && (
-                <div className="flex flex-wrap gap-2 pt-2">
-                  {user?.canApproveForms && <button className="btn-primary" onClick={async () => {
-                    if (!user) return;
-                    try {
-                      await approveForm({ formId: job.form._id, userId: user._id, sessionToken: getStaffSessionToken() });
-                      setToast({ message: "Completed work approved", type: "success" });
-                    } catch (err: any) { setToast({ message: err.message ?? t("common.failed"), type: "error" }); }
-                  }}>Approve completed work</button>}
-                  {user?.canRequestRework && <button className="btn-secondary" onClick={async () => {
-                    if (!user) return;
-                    const reworkNotes = window.prompt("Describe the required rework");
-                    if (!reworkNotes?.trim()) return;
-                    try {
-                      await requestRework({ formId: job.form._id, notes: reworkNotes.trim(), userId: user._id, sessionToken: getStaffSessionToken() });
-                      setToast({ message: "Rework requested", type: "success" });
-                    } catch (err: any) { setToast({ message: err.message ?? t("common.failed"), type: "error" }); }
-                  }}>Request rework</button>}
-                </div>
-              )}
             </div>
           </div>
         )}
@@ -356,6 +336,23 @@ export function ManagerJobDetailPage() {
               <ClipboardCheck className="w-4 h-4 text-gray-400" />
               {t("inspection.cycleClosed")}
             </p>
+          </div>
+        )}
+        {job.status === "submitted" && job.form?.status === "submitted" && (user?.canApproveForms || user?.canRequestRework) && (
+          <div className="card space-y-2">
+            <h3 className="font-semibold">{t("inspection.completedWorkReview")}</h3>
+            <div className="flex flex-wrap gap-2">
+              {user?.canApproveForms && <button className="btn-primary" onClick={async () => {
+                try { await approveForm({ formId: job.form._id, userId: user._id, sessionToken: getStaffSessionToken() }); setToast({ message: t("inspection.workApproved"), type: "success" }); }
+                catch (err: any) { setToast({ message: err.message ?? t("common.failed"), type: "error" }); }
+              }}>{t("inspection.approveCompletedWork")}</button>}
+              {user?.canRequestRework && <button className="btn-secondary" onClick={async () => {
+                const reworkNotes = window.prompt(t("inspection.describeRework"));
+                if (!reworkNotes?.trim()) return;
+                try { await requestRework({ formId: job.form._id, notes: reworkNotes.trim(), userId: user._id, sessionToken: getStaffSessionToken() }); setToast({ message: t("inspection.reworkRequested"), type: "success" }); }
+                catch (err: any) { setToast({ message: err.message ?? t("common.failed"), type: "error" }); }
+              }}>{t("jobs.requestRework")}</button>}
+            </div>
           </div>
         )}
         {job.status !== "cancelled" && (!inspectionSummary || inspectionSummary.count === 0 || inspectionSummary.inspectionCycleOpen) && !showForm && (
