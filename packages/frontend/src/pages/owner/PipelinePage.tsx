@@ -7,6 +7,7 @@ import { LeadsHeader } from "@/components/ui/LeadsHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { useTranslation } from "react-i18next";
+import { isOptionalAgreementSetupAction } from "@/lib/pipelineActionPresentation";
 import { useTimeAgo } from "@/hooks/useTimeAgo";
 import { AlertCircle, ArrowRight, Building2, CheckCircle2, Inbox, Link2, MapPin, Search } from "lucide-react";
 
@@ -76,7 +77,7 @@ export function PipelinePage() {
                     {request.propertySnapshot?.address && <p className="mt-1 flex items-center gap-1 truncate text-xs text-gray-500"><MapPin className="h-3 w-3 shrink-0" />{request.propertySnapshot.address}</p>}
                     {request.pipeline.attention !== "none" && request.pipeline.attention !== "active" && <span className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${request.pipeline.attention === "overdue" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-800"}`}><AlertCircle className="h-3 w-3" />{t(`pipeline.attention.${request.pipeline.attention}`)}</span>}
                     <div className="mt-2 flex flex-wrap gap-1" aria-label={t("pipeline.linkedRecords")}>{Object.entries(request.pipeline.linked).filter(([key, value]) => key !== "clientPortal" && value).map(([key]) => <span key={key} title={t(`pipeline.links.${key}`)} className="inline-flex items-center rounded bg-gray-100 p-1 text-gray-500"><Link2 className="h-3 w-3" /><span className="sr-only">{t(`pipeline.links.${key}`)}</span></span>)}{request.pipeline.linked.clientPortal === "active" && <span title={t("pipeline.links.clientPortal")} className="inline-flex items-center rounded bg-green-100 p-1 text-green-700"><CheckCircle2 className="h-3 w-3" /><span className="sr-only">{t("pipeline.links.clientPortal")}</span></span>}</div>
-                    <div className="mt-3 border-t pt-2"><p className="text-[11px] uppercase tracking-wide text-gray-400">{t("pipeline.nextAction")}</p><Link href={`/requests/${request._id}${request.pipeline.nextAction.hrefSuffix}`} className="mt-0.5 inline-flex items-center gap-1 text-sm font-medium text-primary-700 hover:text-primary-800">{t(`pipeline.actions.${request.pipeline.nextAction.key}`)}<ArrowRight className="h-3.5 w-3.5" /></Link><p className="mt-1 text-xs text-gray-400">{t("pipeline.lastActivity", { value: timeAgo(request.pipeline.latestActivityAt) })}</p></div>
+                    <div className="mt-3 border-t pt-2"><p className="text-[11px] uppercase tracking-wide text-gray-400">{t(isOptionalAgreementSetupAction(request.pipeline.nextAction.key) ? "pipeline.optionalAction" : "pipeline.nextAction")}</p><Link href={`/requests/${request._id}${request.pipeline.nextAction.hrefSuffix}`} className="mt-0.5 inline-flex items-center gap-1 text-sm font-medium text-primary-700 hover:text-primary-800">{t(`pipeline.actions.${request.pipeline.nextAction.key}`)}<ArrowRight className="h-3.5 w-3.5" /></Link><p className="mt-1 text-xs text-gray-400">{t("pipeline.lastActivity", { value: timeAgo(request.pipeline.latestActivityAt) })}</p></div>
                   </article>)}
                 </div>
               </section>;
