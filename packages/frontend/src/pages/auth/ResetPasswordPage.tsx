@@ -6,6 +6,7 @@ import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
+import { toFriendlyMessage } from "@/lib/friendlyError";
 
 export function ResetPasswordPage() {
   const { t } = useTranslation();
@@ -39,7 +40,8 @@ export function ResetPasswordPage() {
       // Redirect to login after a short delay
       setTimeout(() => setLocation("/login"), 3000);
     } catch (err: any) {
-      setError(err.message || "Failed to reset password");
+      console.error("Password reset failed", err);
+      setError(toFriendlyMessage(err, t("feedback.unexpectedError"), t));
     } finally {
       setLoading(false);
     }

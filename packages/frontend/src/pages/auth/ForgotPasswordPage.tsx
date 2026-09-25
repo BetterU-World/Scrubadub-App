@@ -5,6 +5,7 @@ import { Link } from "wouter";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
+import { toFriendlyMessage } from "@/lib/friendlyError";
 
 export function ForgotPasswordPage() {
   const { t } = useTranslation();
@@ -23,7 +24,8 @@ export function ForgotPasswordPage() {
       await requestReset({ email });
       setSubmitted(true);
     } catch (err: any) {
-      setError(err.message || "Something went wrong");
+      console.error("Password reset request failed", err);
+      setError(toFriendlyMessage(err, t("feedback.unexpectedError"), t));
     } finally {
       setLoading(false);
     }

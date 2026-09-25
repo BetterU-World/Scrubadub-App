@@ -5,6 +5,7 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
+import { toFriendlyMessage } from "@/lib/friendlyError";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -65,6 +66,10 @@ function loadLeadPipelineExpanded(userId?: string) {
 export function RequestDetailPage() {
   const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
+  const displayError = (error: unknown, fallback = t("feedback.unexpectedError")) => {
+    console.error("Request action failed", error);
+    return toFriendlyMessage(error, fallback, t);
+  };
   const params = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const canAssign = user?.role === "owner" || user?.canAssignCleaners === true;
@@ -458,7 +463,7 @@ export function RequestDetailPage() {
       });
       setToast({ message: t("requests.markedAsContacted"), type: "success" });
     } catch (err: any) {
-      setToast({ message: err.message || "Failed to update", type: "error" });
+      setToast({ message: displayError(err), type: "error" });
     } finally {
       setContactingLoading(false);
     }
@@ -474,7 +479,7 @@ export function RequestDetailPage() {
       });
       setToast({ message: t("requests.requestArchived"), type: "success" });
     } catch (err: any) {
-      setToast({ message: err.message || "Failed to archive", type: "error" });
+      setToast({ message: displayError(err), type: "error" });
     } finally {
       setArchiving(false);
     }
@@ -521,7 +526,7 @@ export function RequestDetailPage() {
             ? t("requests.propertyPermissionRequired")
             : err.message?.includes("Client relationship must belong")
               ? t("requests.propertyClientRelationshipInvalid")
-              : err.message || t("requests.propertyCreationFailed");
+              : displayError(err, t("requests.propertyCreationFailed"));
       setToast({
         message,
         type: "error",
@@ -547,7 +552,7 @@ export function RequestDetailPage() {
       setPortalUrl(`${base}/c/${result.token}`);
     } catch (err: any) {
       setToast({
-        message: err.message || "Failed to generate portal link",
+        message: displayError(err),
         type: "error",
       });
     } finally {
@@ -616,7 +621,7 @@ export function RequestDetailPage() {
       openAgreementSection();
       setToast({ message: t("serviceAgreements.created"), type: "success" });
     } catch (err: any) {
-      setToast({ message: err.message || t("serviceAgreements.actionFailed"), type: "error" });
+      setToast({ message: displayError(err, t("serviceAgreements.actionFailed")), type: "error" });
     } finally {
       setCreatingAgreement(false);
     }
@@ -629,7 +634,7 @@ export function RequestDetailPage() {
       setToast({ message: t("proposals.created"), type: "success" });
       openProposalSection();
     } catch (err: any) {
-      setToast({ message: err.message || t("proposals.createFailed"), type: "error" });
+      setToast({ message: displayError(err, t("proposals.createFailed")), type: "error" });
     } finally {
       setCreatingProposal(false);
     }
@@ -645,7 +650,7 @@ export function RequestDetailPage() {
       });
       setToast({ message: "Client relationship created", type: "success" });
     } catch (err: any) {
-      setToast({ message: err.message || "Failed to create client relationship", type: "error" });
+      setToast({ message: displayError(err), type: "error" });
     } finally {
       setCreatingClientRelationship(false);
     }
@@ -703,7 +708,7 @@ export function RequestDetailPage() {
       setPendingProposalPreviewAt(typeof updatedAt === "number" ? updatedAt : (proposal.updatedAt ?? 0) + 1);
       setToast({ message: t("proposals.saved"), type: "success" });
     } catch (err: any) {
-      setToast({ message: err.message || t("proposals.saveFailed"), type: "error" });
+      setToast({ message: displayError(err, t("proposals.saveFailed")), type: "error" });
     } finally {
       setSavingProposal(false);
     }
@@ -721,7 +726,7 @@ export function RequestDetailPage() {
       setPendingProposalRevision(true);
       setToast({ message: t("proposals.addOns.returnedToDraft"), type: "success" });
     } catch (err: any) {
-      setToast({ message: err.message || t("common.error"), type: "error" });
+      setToast({ message: displayError(err), type: "error" });
     } finally { setProposalActionLoading(null); }
   };
 
@@ -738,7 +743,7 @@ export function RequestDetailPage() {
       }
       setToast({ message: t(`proposals.${action}Success`), type: "success" });
     } catch (err: any) {
-      setToast({ message: err.message || t("proposals.actionFailed"), type: "error" });
+      setToast({ message: displayError(err, t("proposals.actionFailed")), type: "error" });
     } finally {
       setProposalActionLoading(null);
     }
@@ -758,7 +763,7 @@ export function RequestDetailPage() {
       });
     } catch (err: any) {
       setToast({
-        message: err.message || t("proposals.sendFailed"),
+        message: displayError(err, t("proposals.sendFailed")),
         type: "error",
       });
     } finally {
@@ -815,7 +820,7 @@ export function RequestDetailPage() {
         ? t("commercialConversion.classificationRequiredError")
         : err.message?.includes("classified as commercial")
           ? t("commercialConversion.notCommercialError")
-          : err.message || t("commercialAccounts.saveFailed");
+          : displayError(err, t("commercialAccounts.saveFailed"));
       setToast({ message, type: "error" });
     } finally {
       setSavingAccount(false);
@@ -834,7 +839,7 @@ export function RequestDetailPage() {
       setShowDecline(false);
       setToast({ message: t("requests.requestDeclined"), type: "success" });
     } catch (err: any) {
-      setToast({ message: err.message || "Failed to decline", type: "error" });
+      setToast({ message: displayError(err), type: "error" });
     } finally {
       setDeclining(false);
     }
@@ -1894,7 +1899,7 @@ export function RequestDetailPage() {
                 setLeadTypeVal(result.leadType);
                 setToast({ message: t("requests.leadDetailsSaved"), type: "success" });
               } catch (err: any) {
-                setToast({ message: err.message || "Failed", type: "error" });
+                setToast({ message: displayError(err), type: "error" });
               } finally {
                 setSavingLeadDetails(false);
               }
@@ -1933,7 +1938,7 @@ export function RequestDetailPage() {
                   });
                   setToast({ message: t("requests.notesSaved"), type: "success" });
                 } catch (err: any) {
-                  setToast({ message: err.message || "Failed", type: "error" });
+                  setToast({ message: displayError(err), type: "error" });
                 } finally {
                   setSavingNotes(false);
                 }
@@ -1980,7 +1985,7 @@ export function RequestDetailPage() {
                     type: "success",
                   });
                 } catch (err: any) {
-                  setToast({ message: err.message || "Failed", type: "error" });
+                  setToast({ message: displayError(err), type: "error" });
                 } finally {
                   setSavingFollowUp(false);
                 }
@@ -2004,7 +2009,7 @@ export function RequestDetailPage() {
                     });
                     setToast({ message: t("requests.followUpCleared"), type: "success" });
                   } catch (err: any) {
-                    setToast({ message: err.message || "Failed", type: "error" });
+                    setToast({ message: displayError(err), type: "error" });
                   } finally {
                     setSavingFollowUp(false);
                   }

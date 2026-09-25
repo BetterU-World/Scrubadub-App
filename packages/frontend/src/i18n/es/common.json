@@ -28,6 +28,8 @@
     "haveAccount": "¿Ya tienes una cuenta?",
     "rememberPassword": "¿Recuerdas tu contraseña?",
     "email": "Correo electrónico",
+    "invalidEmail": "Ingresa una dirección de correo electrónico válida.",
+    "incorrectCredentials": "El correo electrónico o la contraseña son incorrectos. Inténtalo de nuevo.",
     "password": "Contraseña",
     "newPassword": "Nueva contraseña",
     "confirmPassword": "Confirmar contraseña",
@@ -393,6 +395,10 @@
         "active": "Portal del cliente activo"
       }
     }
+  },
+  "errors": {
+    "rateLimited": "Demasiados intentos. Inténtalo de nuevo en un momento.",
+    "resetLinkExpired": "Este enlace para restablecer la contraseña no es válido o ha vencido. Solicita uno nuevo."
   },
   "feedback": {
     "closeNotification": "Cerrar notificación",
