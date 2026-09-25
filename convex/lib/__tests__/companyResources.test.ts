@@ -51,6 +51,26 @@ async function setup() {
   return { t, ...ids, tokens: Object.fromEntries(names.map((name, index) => [name, sessions[index].sessionToken])) as Record<string, string> };
 }
 
+async function setupPortalIsolation() {
+  const t = convexTest(schema, modules);
+  const passwordHash = await hashPassword(password);
+  const { clientId } = await t.run(async (ctx) => {
+    const companyId = await ctx.db.insert("companies", { name: "Resource isolation", timezone: "America/New_York" });
+    await ctx.db.insert("users", { companyId, email: "resource-owner@example.test", passwordHash, name: "Owner", role: "owner", status: "active" });
+    const clientId = await ctx.db.insert("clientUsers", {
+      email: "resource-client@example.test", passwordHash,
+      displayName: "Resource Client", status: "active", createdAt: 1, updatedAt: 1,
+    });
+    await ctx.db.insert("clientRelationships", {
+      companyId, clientUserId: clientId, displayName: "Resource Client",
+      clientType: "residential", status: "active", createdAt: 1, updatedAt: 1,
+    });
+    return { clientId };
+  });
+  const owner = await t.action(api.authActions.signIn, { email: "resource-owner@example.test", password });
+  return { t, clientId, ownerToken: owner.sessionToken };
+}
+
 async function upload(t: ReturnType<typeof convexTest>, token: string, bytes: Uint8Array = pdf, options: { requestId?: string; filename?: string; type?: string; title?: string; resourceId?: string; expectedStorageId?: string } = {}) {
   try {
     const declaredMimeType = options.type ?? "application/pdf";
@@ -278,23 +298,12 @@ describe("Company Resource lifecycle", () => {
   });
 
   it("does not project company Resources into Client Portal Documents", async () => {
-    const s = await setup();
-    const clientId = await s.t.run(async (ctx) => {
-      const clientId = await ctx.db.insert("clientUsers", {
-        email: "resource-client@example.test", passwordHash: await hashPassword(password),
-        displayName: "Resource Client", status: "active", createdAt: 1, updatedAt: 1,
-      });
-      await ctx.db.insert("clientRelationships", {
-        companyId: s.companyId, clientUserId: clientId, displayName: "Resource Client",
-        clientType: "residential", status: "active", createdAt: 1, updatedAt: 1,
-      });
-      return clientId;
-    });
-    const result = await upload(s.t, s.tokens.owner, pdf, { title: "Private company guide" });
+    const s = await setupPortalIsolation();
+    const result = await upload(s.t, s.ownerToken, pdf, { title: "Private company guide" });
     expect(result.status).toBe(200);
     const client = await s.t.action(api.clientAuthActions.signIn, { email: "resource-client@example.test", password });
     const documents = await s.t.query((api as any).queries.clientPortal.getClientDocuments,
-      { clientUserId: clientId, sessionToken: client.sessionToken });
+      { clientUserId: s.clientId, sessionToken: client.sessionToken });
     expect(documents).toMatchObject({ proposals: [], agreements: [] });
     expect(JSON.stringify(documents)).not.toContain("Private company guide");
   });

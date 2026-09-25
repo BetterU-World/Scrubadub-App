@@ -2,7 +2,7 @@
 
 import { action } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { hashPassword, verifyBcryptPassword } from "./lib/password";
 import { generateSecureToken, hashToken, INVITE_TOKEN_EXPIRY_MS, RESET_TOKEN_EXPIRY_MS } from "./lib/tokens";
@@ -227,13 +227,13 @@ export const signIn = action({
     });
     if (!clientUser || clientUser.status !== "active" || !clientUser.passwordHash) {
       await recordSecurityEventFromAction(ctx, { eventType: "login_failure", principalType: "client", outcome: "failure", metadata: { category: "invalid_credentials" } });
-      throw new Error(genericError);
+      throw new ConvexError({ code: "INVALID_CREDENTIALS", message: genericError });
     }
 
     const ok = await verifyBcryptPassword(args.password, clientUser.passwordHash);
     if (!ok) {
       await recordSecurityEventFromAction(ctx, { eventType: "login_failure", principalType: "client", outcome: "failure", metadata: { category: "invalid_credentials" } });
-      throw new Error(genericError);
+      throw new ConvexError({ code: "INVALID_CREDENTIALS", message: genericError });
     }
 
     const session = await issueSession(ctx, {
