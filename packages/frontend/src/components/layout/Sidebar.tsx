@@ -105,6 +105,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose, triggerRef }: Sideb
     user?.canViewFinancials === true,
     user?.canManageInvoices === true,
     user?.canViewAnalytics === true,
+    user?.canCreateJobs === true,
   );
 
   const toggleSection = (titleKey: string) => {

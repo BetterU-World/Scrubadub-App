@@ -1,4 +1,5 @@
-import { mutation } from "../_generated/server";
+import { mutation, type MutationCtx } from "../_generated/server";
+import type { Doc, Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { logAudit, createNotification } from "../lib/helpers";
@@ -115,6 +116,64 @@ function findOpenPauseIndex(history: Array<{ resumedAt?: number }>) {
   return -1;
 }
 
+type CanonicalJobCreation = {
+  userId?: Id<"users">;
+  sessionToken: string;
+  companyId: Id<"companies">;
+  propertyId: Id<"properties">;
+  cleanerIds: Id<"users">[];
+  assignedTeamId?: Id<"teams">;
+  assignedManagerId?: Id<"users">;
+  type: Doc<"jobs">["type"];
+  scheduledDate: string;
+  startTime?: string;
+  durationMinutes: number;
+  notes?: string;
+  requireConfirmation?: boolean;
+  sourceProposalId?: Id<"proposals">;
+  acceptedProposalAddOnSnapshots?: Doc<"jobs">["acceptedProposalAddOnSnapshots"];
+  serviceContactSnapshot?: Doc<"jobs">["serviceContactSnapshot"];
+  customerChargeCents?: number;
+};
+
+async function createCanonicalJob(ctx: MutationCtx, args: CanonicalJobCreation) {
+    const owner = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
+    if (!hasOwnerOrManagerPermission(owner, "canCreateJobs")) throw new Error("Job creation permission required");
+    if (owner.role === "manager" && (args.cleanerIds.length > 0 || args.assignedTeamId || args.assignedManagerId) && !owner.canAssignCleaners) throw new Error("Worker assignment permission required");
+    if (owner.companyId !== args.companyId) throw new Error("Not your company");
+    await requireActiveSubscription(ctx, args.companyId);
+    if (args.assignedTeamId) {
+      await assertTeamInCompany(ctx, args.assignedTeamId, args.companyId, { requireActive: true });
+      if (args.cleanerIds.length > 0) throw new Error("Choose either individual cleaners or a team");
+    }
+    await assertValidJobExecutionAssignees(ctx, args.companyId, args.type, args.cleanerIds);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(args.scheduledDate) || !Number.isInteger(args.durationMinutes) || args.durationMinutes <= 0 || (args.startTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(args.startTime))) throw new Error("Invalid job schedule");
+    if (args.customerChargeCents !== undefined && (!Number.isSafeInteger(args.customerChargeCents) || args.customerChargeCents < 0)) throw new Error("Invalid customer charge");
+    const property = await ctx.db.get(args.propertyId);
+    if (!property || property.companyId !== args.companyId) throw new Error("Property not found");
+    const requiresPropertyConditionCheck = await resolvePropertyConditionRequirement(ctx, { companyId: args.companyId, propertyId: args.propertyId });
+    const jobId = await ctx.db.insert("jobs", {
+      companyId: args.companyId, propertyId: args.propertyId, cleanerIds: args.cleanerIds,
+      assignedTeamId: args.assignedTeamId, assignedManagerId: args.assignedManagerId,
+      type: args.type, scheduledDate: args.scheduledDate, startTime: args.startTime,
+      durationMinutes: args.durationMinutes, notes: args.notes,
+      sourceProposalId: args.sourceProposalId, acceptedProposalAddOnSnapshots: args.acceptedProposalAddOnSnapshots,
+      serviceContactSnapshot: args.serviceContactSnapshot, customerChargeCents: args.customerChargeCents,
+      clientRelationshipId: property.clientRelationshipId, requiresPropertyConditionCheck,
+      status: args.requireConfirmation === false ? "confirmed" : "scheduled",
+      acceptanceStatus: args.requireConfirmation === false ? "accepted" : "pending", reworkCount: 0,
+    });
+    const recipientIds = args.assignedTeamId ? await getJobRecipientUserIds(ctx, { companyId: args.companyId, cleanerIds: args.cleanerIds, assignedTeamId: args.assignedTeamId }) : args.cleanerIds;
+    const emailIdentity = await resolveOperationalEmailIdentity(ctx, args.companyId);
+    for (const cleanerId of recipientIds) {
+      await createNotification(ctx, { companyId: args.companyId, userId: cleanerId, type: "job_assigned", title: "New Job Assigned", message: `You've been assigned to clean ${property.name} on ${args.scheduledDate}`, relatedJobId: jobId });
+      const cleaner = await ctx.db.get(cleanerId);
+      if (cleaner?.email) await ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendJobAssigned, { email: cleaner.email, propertyName: property.name, scheduledDate: args.scheduledDate, startTime: args.startTime, ...emailIdentity });
+    }
+    await logAudit(ctx, { companyId: args.companyId, userId: owner._id, action: "create_job", entityType: "job", entityId: jobId });
+    return jobId;
+}
+
 export const create = mutation({
   args: {
     userId: v.optional(v.id("users")),
@@ -141,141 +200,79 @@ export const create = mutation({
     clientRequestId: v.optional(v.id("clientRequests")),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerManagerSession(
-      ctx,
-      args.sessionToken,
-      args.userId,
-    );
-    if (!hasOwnerOrManagerPermission(owner, "canCreateJobs")) throw new Error("Job creation permission required");
-    if (owner.role === "manager" && (args.cleanerIds.length > 0 || args.assignedTeamId || args.assignedManagerId) && !owner.canAssignCleaners) {
-      throw new Error("Worker assignment permission required");
-    }
-    if (owner.companyId !== args.companyId) throw new Error("Not your company");
+    const actor = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
+    if (!hasOwnerOrManagerPermission(actor, "canCreateJobs") || actor.companyId !== args.companyId) throw new Error("Job creation permission required");
     await requireActiveSubscription(ctx, args.companyId);
-    if (args.assignedTeamId) {
-      await assertTeamInCompany(ctx, args.assignedTeamId, args.companyId, {
-        requireActive: true,
-      });
-      if (args.cleanerIds.length > 0)
-        throw new Error("Choose either individual cleaners or a team");
-    }
-    await assertValidJobExecutionAssignees(ctx, args.companyId, args.type, args.cleanerIds);
-
-    const initialStatus =
-      args.requireConfirmation === false ? "confirmed" : "scheduled";
-    const initialAcceptance =
-      args.requireConfirmation === false
-        ? ("accepted" as const)
-        : ("pending" as const);
-
-    const property = await ctx.db.get(args.propertyId);
-    if (!property || property.companyId !== args.companyId) {
-      throw new Error("Property not found");
-    }
-    const emailIdentity = await resolveOperationalEmailIdentity(
-      ctx,
-      args.companyId,
-    );
-    const requiresPropertyConditionCheck = await resolvePropertyConditionRequirement(ctx, {
-      companyId: args.companyId,
-      propertyId: args.propertyId,
-    });
-
     let sourceProposalId: typeof args.proposalId | undefined;
-    let acceptedProposalAddOnSnapshots: any[] | undefined;
+    let acceptedProposalAddOnSnapshots: Doc<"jobs">["acceptedProposalAddOnSnapshots"];
     if (args.proposalId) {
-      const copied = await copyAcceptedProposalAddOnSnapshots(
-        ctx,
-        args.proposalId,
-        args.companyId,
-      );
-      if (
-        !args.clientRequestId ||
-        copied.proposal.clientRequestId !== args.clientRequestId
-      ) {
-        throw new Error("Accepted proposal must match the source request");
-      }
+      const property = await ctx.db.get(args.propertyId);
+      if (!property || property.companyId !== args.companyId) throw new Error("Property not found");
+      const copied = await copyAcceptedProposalAddOnSnapshots(ctx, args.proposalId, args.companyId);
+      if (!args.clientRequestId || copied.proposal.clientRequestId !== args.clientRequestId) throw new Error("Accepted proposal must match the source request");
       const request = await ctx.db.get(args.clientRequestId);
-      if (!request || request.companyId !== args.companyId)
-        throw new Error("Source request not found");
-      if (request.propertyId && request.propertyId !== args.propertyId) {
-        throw new Error(
-          "Job property must match the accepted proposal request",
-        );
-      }
-      if (
-        copied.proposal.clientRelationshipId &&
-        copied.proposal.clientRelationshipId !== property.clientRelationshipId
-      ) {
-        throw new Error("Job client must match the accepted proposal");
-      }
+      if (!request || request.companyId !== args.companyId) throw new Error("Source request not found");
+      if (request.propertyId && request.propertyId !== args.propertyId) throw new Error("Job property must match the accepted proposal request");
+      if (copied.proposal.clientRelationshipId && copied.proposal.clientRelationshipId !== property.clientRelationshipId) throw new Error("Job client must match the accepted proposal");
       sourceProposalId = copied.proposal._id;
       acceptedProposalAddOnSnapshots = copied.snapshots;
     }
+    return await createCanonicalJob(ctx, { ...args, sourceProposalId, acceptedProposalAddOnSnapshots });
+  },
+});
 
-    const {
-      userId: _uid,
-      sessionToken: _sessionToken,
-      proposalId: _proposalId,
-      clientRequestId: _requestId,
-      ...jobData
-    } = args;
-    const jobId = await ctx.db.insert("jobs", {
-      ...jobData,
-      sourceProposalId,
-      acceptedProposalAddOnSnapshots,
-      clientRelationshipId: property.clientRelationshipId,
-      requiresPropertyConditionCheck,
-      status: initialStatus,
-      acceptanceStatus: initialAcceptance,
-      reworkCount: 0,
-    });
-
-    const recipientIds = args.assignedTeamId
-      ? await getJobRecipientUserIds(ctx, {
-          companyId: args.companyId,
-          cleanerIds: args.cleanerIds,
-          assignedTeamId: args.assignedTeamId,
-        })
-      : args.cleanerIds;
-
-    // Notify assigned cleaners/team members
-    for (const cleanerId of recipientIds) {
-      await createNotification(ctx, {
-        companyId: args.companyId,
-        userId: cleanerId,
-        type: "job_assigned",
-        title: "New Job Assigned",
-        message: `You've been assigned to clean ${property?.name ?? "a property"} on ${args.scheduledDate}`,
-        relatedJobId: jobId,
+export const createQuick = mutation({
+  args: {
+    userId: v.optional(v.id("users")), sessionToken: v.string(), companyId: v.id("companies"),
+    propertyId: v.optional(v.id("properties")),
+    newProperty: v.optional(v.object({ address: v.string(), name: v.optional(v.string()), type: v.union(v.literal("residential"), v.literal("commercial"), v.literal("vacation_rental"), v.literal("office")) })),
+    updatePropertyContact: v.optional(v.boolean()),
+    contact: v.optional(v.object({ name: v.optional(v.string()), phone: v.optional(v.string()), email: v.optional(v.string()) })),
+    customerChargeCents: v.optional(v.number()),
+    cleanerIds: v.array(v.id("users")), assignedTeamId: v.optional(v.id("teams")),
+    type: requestJobTypeValidator, scheduledDate: v.string(), startTime: v.optional(v.string()),
+    durationMinutes: v.number(), notes: v.optional(v.string()), requireConfirmation: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const actor = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
+    if (actor.companyId !== args.companyId || !hasOwnerOrManagerPermission(actor, "canCreateJobs")) throw new Error("Job creation permission required");
+    if (!!args.propertyId === !!args.newProperty) throw new Error("Choose one location");
+    let propertyId = args.propertyId;
+    const mayManageProperty = hasOwnerOrManagerPermission(actor, "canManageClients");
+    if (args.newProperty) {
+      if (!mayManageProperty) throw new Error("Property management permission required");
+      const address = args.newProperty.address.trim();
+      if (!address) throw new Error("Address is required");
+      propertyId = await ctx.db.insert("properties", {
+        companyId: args.companyId, address, name: args.newProperty.name?.trim() || address,
+        type: args.newProperty.type, amenities: [], active: true, managementStatus: "unmanaged",
+        contactName: args.contact?.name?.trim() || undefined,
+        contactPhone: args.contact?.phone?.trim() || undefined,
+        contactEmail: args.contact?.email?.trim() || undefined,
       });
-
-      // Send job assigned email
-      const cleaner = await ctx.db.get(cleanerId);
-      if (cleaner?.email) {
-        await ctx.scheduler.runAfter(
-          0,
-          internal.actions.emailNotifications.sendJobAssigned,
-          {
-            email: cleaner.email,
-            propertyName: property?.name ?? "a property",
-            scheduledDate: args.scheduledDate,
-            startTime: args.startTime,
-            ...emailIdentity,
-          },
-        );
+      await logAudit(ctx, { companyId: args.companyId, userId: actor._id, action: "create_property", entityType: "property", entityId: propertyId });
+    } else {
+      const property = await ctx.db.get(propertyId!);
+      if (!property || property.companyId !== args.companyId || !property.active) throw new Error("Active property not found");
+      if (args.updatePropertyContact) {
+        if (!mayManageProperty) throw new Error("Property management permission required");
+        await ctx.db.patch(property._id, { contactName: args.contact?.name?.trim() || undefined, contactPhone: args.contact?.phone?.trim() || undefined, contactEmail: args.contact?.email?.trim() || undefined });
+        await logAudit(ctx, { companyId: args.companyId, userId: actor._id, action: "update_property", entityType: "property", entityId: property._id });
       }
     }
-
-    await logAudit(ctx, {
-      companyId: args.companyId,
-      userId: owner._id,
-      action: "create_job",
-      entityType: "job",
-      entityId: jobId,
+    const contact = {
+      name: args.contact?.name?.trim() || undefined,
+      phone: args.contact?.phone?.trim() || undefined,
+      email: args.contact?.email?.trim() || undefined,
+    };
+    return await createCanonicalJob(ctx, {
+      companyId: args.companyId, userId: args.userId, sessionToken: args.sessionToken, propertyId: propertyId!,
+      cleanerIds: args.cleanerIds, assignedTeamId: args.assignedTeamId, type: args.type,
+      scheduledDate: args.scheduledDate, startTime: args.startTime, durationMinutes: args.durationMinutes,
+      notes: args.notes, requireConfirmation: args.requireConfirmation,
+      serviceContactSnapshot: Object.values(contact).some(Boolean) ? contact : undefined,
+      customerChargeCents: args.customerChargeCents,
     });
-
-    return jobId;
   },
 });
 
@@ -304,6 +301,7 @@ export const update = mutation({
     notes: v.optional(v.string()),
     assignedManagerId: v.optional(v.id("users")),
     clearAssignedManager: v.optional(v.boolean()),
+    customerChargeCents: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const owner = await requireOwnerManagerSession(
@@ -318,6 +316,10 @@ export const update = mutation({
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
+    if (args.customerChargeCents !== undefined) {
+      if (!Number.isSafeInteger(args.customerChargeCents) || args.customerChargeCents < 0) throw new Error("Invalid customer charge");
+      if (["submitted", "approved", "cancelled"].includes(job.status)) throw new Error("Customer charge is locked for this job");
+    }
 
     if (args.assignedTeamId) {
       await assertTeamInCompany(ctx, args.assignedTeamId, owner.companyId, {
@@ -358,7 +360,7 @@ export const update = mutation({
     ) {
       cleanUpdates.assignedTeamId = undefined;
     }
-    if (updates.propertyId) {
+    if (updates.propertyId && updates.propertyId !== job.propertyId) {
       const property = await ctx.db.get(updates.propertyId);
       if (!property || property.companyId !== owner.companyId) {
         throw new Error("Property not found");

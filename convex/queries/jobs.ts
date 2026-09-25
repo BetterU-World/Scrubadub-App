@@ -9,8 +9,11 @@ import { isRoleCompatibleWithJobExecution } from "../lib/jobExecutionAuth";
 import { deriveJobInspectionStatus } from "../lib/jobInspectionStatus";
 
 function workerSafeJob(job: any) {
-  const { acceptedProposalAddOnSnapshots, requiredAddOnSnapshots, sourceProposalId: _sourceProposalId, ...safe } = job;
-  return { ...safe, requiredAddOns: requiredAddOnSnapshots ?? operationalAddOnSnapshots(acceptedProposalAddOnSnapshots) };
+  const { acceptedProposalAddOnSnapshots, requiredAddOnSnapshots, sourceProposalId: _sourceProposalId,
+    serviceContactSnapshot: _serviceContactSnapshot, customerChargeCents: _customerChargeCents,
+    property, ...safe } = job;
+  const { contactName: _contactName, contactPhone: _contactPhone, contactEmail: _contactEmail, ...safeProperty } = property ?? {};
+  return { ...safe, ...(property ? { property: safeProperty } : {}), requiredAddOns: requiredAddOnSnapshots ?? operationalAddOnSnapshots(acceptedProposalAddOnSnapshots) };
 }
 
 async function isManagerPersonallyAssigned(ctx: any, job: any, userId: any) {
@@ -270,7 +273,11 @@ export const get = query({
       assignmentType: job.assignedTeamId ? "team" : "individual",
       canCurrentUserExecute,
     };
-    return user.role === "owner" ? decorated : workerSafeJob(decorated);
+    if (user.role === "owner") return decorated;
+    const safe = workerSafeJob(decorated);
+    return user.role === "manager" && user.canCreateJobs
+      ? { ...safe, serviceContactSnapshot: job.serviceContactSnapshot, customerChargeCents: job.customerChargeCents }
+      : safe;
   },
 });
 

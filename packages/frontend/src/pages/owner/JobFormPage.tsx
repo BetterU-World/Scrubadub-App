@@ -10,6 +10,7 @@ import { useLocation, useParams, Link } from "wouter";
 import { Building2, Users, Handshake, AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useFeedback } from "@/components/ui/FeedbackProvider";
+import { parseOptionalCustomerChargeCents } from "@/lib/customerCharge";
 
 const JOB_TYPES = [
   { value: "standard", labelKey: "jobTypes.standard" },
@@ -96,6 +97,7 @@ export function JobFormPage() {
   const [startTime, setStartTime] = useState(isEditing ? "" : "10:00");
   const [durationMinutes, setDurationMinutes] = useState(120);
   const [notes, setNotes] = useState("");
+  const [customerCharge, setCustomerCharge] = useState("");
   const [requireConfirmation, setRequireConfirmation] = useState(true);
   const [managerId, setManagerId] = useState("");
   const managerTouched = useRef(false);
@@ -138,6 +140,7 @@ export function JobFormPage() {
   useEffect(() => {
     if (existing) {
       setPropertyId(existing.propertyId ?? "");
+      setCustomerCharge(existing.customerChargeCents === undefined ? "" : (existing.customerChargeCents / 100).toFixed(2));
       setSelectedCleaners(existing.cleanerIds);
       if ((existing as any).assignedTeamId) {
         setAssignmentType("team");
@@ -191,6 +194,8 @@ export function JobFormPage() {
       return;
     }
     setError("");
+    const customerChargeCents = parseOptionalCustomerChargeCents(customerCharge);
+    if (customerChargeCents === null) { setError(t("quick.invalidCharge")); return; }
     setLoading(true);
     try {
       const data = {
@@ -210,6 +215,7 @@ export function JobFormPage() {
           jobId: params.id as Id<"jobs">,
           userId: uid,
           ...data,
+          ...(customerChargeCents !== undefined && !["submitted", "approved", "cancelled"].includes(existing?.status ?? "") ? { customerChargeCents } : {}),
           // Clear manager if user explicitly unset it (was previously assigned)
           ...(canAssignWorkers && !managerId && (existing as any)?.assignedManagerId ? { clearAssignedManager: true } : {}),
           ...(canAssignWorkers && assignmentType === "individual" && (existing as any)?.assignedTeamId ? { clearAssignedTeam: true } : {}),
@@ -266,6 +272,7 @@ export function JobFormPage() {
         title={isEditing ? t("jobs.editJob") : t("jobs.scheduleJob")}
         back={backDestination}
       />
+      {!isEditing && <div className="mb-4 flex flex-wrap gap-2"><span className="btn-secondary">{t("quick.standardJob")}</span><Link href="/jobs/quick" className="btn-primary">{t("quick.quickJob")}</Link></div>}
 
       {!isEditing && activeProperties.length === 0 && (
         <div className="card mb-6 border-amber-200 bg-amber-50">
@@ -507,6 +514,7 @@ export function JobFormPage() {
           <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.notes")}</label>
           <textarea className="input-field" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={t("jobForm.notesPlaceholder")} />
         </div>
+        {isEditing && existing?.customerChargeCents !== undefined && !["submitted", "approved", "cancelled"].includes(existing.status) && <label className="block text-sm">{t("quick.customerCharge")}<input className="input-field w-full mt-1" type="number" min="0" step="0.01" value={customerCharge} onChange={e => setCustomerCharge(e.target.value)} /></label>}
 
         <div className="flex justify-end gap-3 pt-4">
           <button type="button" onClick={() => setLocation(backDestination.href)} className="btn-secondary">{t("common.cancel")}</button>

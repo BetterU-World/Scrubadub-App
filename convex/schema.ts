@@ -814,6 +814,10 @@ export default defineSchema({
 
   properties: defineTable({
     companyId: v.id("companies"),
+    managementStatus: v.optional(v.union(v.literal("managed"), v.literal("unmanaged"))),
+    contactName: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
     clientRelationshipId: v.optional(v.id("clientRelationships")),
     name: v.string(),
     type: v.union(
@@ -873,6 +877,12 @@ export default defineSchema({
 
   jobs: defineTable({
     companyId: v.id("companies"),
+    serviceContactSnapshot: v.optional(v.object({
+      name: v.optional(v.string()),
+      phone: v.optional(v.string()),
+      email: v.optional(v.string()),
+    })),
+    customerChargeCents: v.optional(v.number()),
     clientRelationshipId: v.optional(v.id("clientRelationships")),
     propertyId: v.optional(v.id("properties")),
     cleanerIds: v.array(v.id("users")),

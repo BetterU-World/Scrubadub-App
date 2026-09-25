@@ -100,6 +100,7 @@ export const managerSections: NavSection[] = [
     items: [
       { href: "/", labelKey: "nav.overview", icon: LayoutDashboard, mobile: true, mobileOrder: 1 },
       { href: "/jobs", labelKey: "nav.jobs", icon: ClipboardCheck, mobile: true, mobileOrder: 2 },
+      { href: "/properties", labelKey: "nav.properties", icon: Building2 },
       { href: "/jobs/requests", labelKey: "nav.jobRequests", icon: ClipboardList },
       { href: "/red-flags", labelKey: "nav.redFlags", icon: Flag, mobile: true, mobileOrder: 4 },
       { href: "/calendar", labelKey: "nav.calendar", icon: Calendar, mobile: true, mobileOrder: 3 },
@@ -188,6 +189,7 @@ export function getNavSectionsForRole(
   canViewFinancials = false,
   canManageInvoices = false,
   canViewAnalytics = false,
+  canCreateJobs = false,
 ): NavSection[] {
   let sections: NavSection[];
   switch (role as NavigationRole | undefined) {
@@ -208,6 +210,7 @@ export function getNavSectionsForRole(
     (canManageConfiguration || (item.href !== "/owner/settings/add-ons" && item.href !== "/inventory-templates")) &&
     (canManageSchedule || (item.href !== "/jobs/requests" && item.href !== "/calendar")) &&
     (canManageClients || item.href !== "/clients") &&
+    (canCreateJobs || canManageSchedule || canManageClients || item.href !== "/properties") &&
     (canManageSalesAndCommercial || (item.href !== "/requests" && item.href !== "/commercial-accounts")) &&
     (canManageTeam || item.href !== "/employees") &&
     ((canManageDocuments || canManageSalesAndCommercial || item.href !== "/owner/settings/documents") &&
@@ -218,14 +221,14 @@ export function getNavSectionsForRole(
   ) }));
 }
 
-export function getMobileNavItemsForRole(role?: string, canManageConfiguration = false, canManageSchedule = false, canManageClients = false, canManageSalesAndCommercial = false, canManageTeam = false, canManageDocuments = false, canViewFinancials = false, canManageInvoices = false, canViewAnalytics = false): NavItem[] {
-  return getNavSectionsForRole(role, canManageConfiguration, canManageSchedule, canManageClients, canManageSalesAndCommercial, canManageTeam, canManageDocuments, canViewFinancials, canManageInvoices, canViewAnalytics).flatMap((section) =>
+export function getMobileNavItemsForRole(role?: string, canManageConfiguration = false, canManageSchedule = false, canManageClients = false, canManageSalesAndCommercial = false, canManageTeam = false, canManageDocuments = false, canViewFinancials = false, canManageInvoices = false, canViewAnalytics = false, canCreateJobs = false): NavItem[] {
+  return getNavSectionsForRole(role, canManageConfiguration, canManageSchedule, canManageClients, canManageSalesAndCommercial, canManageTeam, canManageDocuments, canViewFinancials, canManageInvoices, canViewAnalytics, canCreateJobs).flatMap((section) =>
     section.items.filter((item) => item.mobile)
   ).sort((a, b) => (a.mobileOrder ?? 0) - (b.mobileOrder ?? 0));
 }
 
-export function getMoreNavItemsForRole(role?: string, canManageConfiguration = false, canManageSchedule = false, canManageClients = false, canManageSalesAndCommercial = false, canManageTeam = false, canManageDocuments = false, canViewFinancials = false, canManageInvoices = false, canViewAnalytics = false): NavItem[] {
-  return getNavSectionsForRole(role, canManageConfiguration, canManageSchedule, canManageClients, canManageSalesAndCommercial, canManageTeam, canManageDocuments, canViewFinancials, canManageInvoices, canViewAnalytics).flatMap((section) =>
+export function getMoreNavItemsForRole(role?: string, canManageConfiguration = false, canManageSchedule = false, canManageClients = false, canManageSalesAndCommercial = false, canManageTeam = false, canManageDocuments = false, canViewFinancials = false, canManageInvoices = false, canViewAnalytics = false, canCreateJobs = false): NavItem[] {
+  return getNavSectionsForRole(role, canManageConfiguration, canManageSchedule, canManageClients, canManageSalesAndCommercial, canManageTeam, canManageDocuments, canViewFinancials, canManageInvoices, canViewAnalytics, canCreateJobs).flatMap((section) =>
     section.items.filter((item) => !item.mobile)
   );
 }
@@ -255,11 +258,12 @@ export function isMoreNavActive(
   canViewFinancials = false,
   canManageInvoices = false,
   canViewAnalytics = false,
+  canCreateJobs = false,
 ): boolean {
-  const mobileItems = getMobileNavItemsForRole(role, canManageConfiguration, canManageSchedule, canManageClients, canManageSalesAndCommercial, canManageTeam, canManageDocuments, canViewFinancials, canManageInvoices, canViewAnalytics);
+  const mobileItems = getMobileNavItemsForRole(role, canManageConfiguration, canManageSchedule, canManageClients, canManageSalesAndCommercial, canManageTeam, canManageDocuments, canViewFinancials, canManageInvoices, canViewAnalytics, canCreateJobs);
   if (mobileItems.some((item) => isNavItemActive(item, pathname))) return false;
 
-  const moreItems = getMoreNavItemsForRole(role, canManageConfiguration, canManageSchedule, canManageClients, canManageSalesAndCommercial, canManageTeam, canManageDocuments, canViewFinancials, canManageInvoices, canViewAnalytics);
+  const moreItems = getMoreNavItemsForRole(role, canManageConfiguration, canManageSchedule, canManageClients, canManageSalesAndCommercial, canManageTeam, canManageDocuments, canViewFinancials, canManageInvoices, canViewAnalytics, canCreateJobs);
   if (moreItems.some((item) => isNavItemActive(item, pathname))) return true;
 
   return isSuperadmin && adminSection.items.some((item) => isNavItemActive(item, pathname));

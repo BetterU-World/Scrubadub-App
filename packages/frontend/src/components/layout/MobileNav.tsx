@@ -28,6 +28,7 @@ export function MobileNav({ menuOpen, onMoreOpen }: MobileNavProps) {
     user?.canViewFinancials === true,
     user?.canManageInvoices === true,
     user?.canViewAnalytics === true,
+    user?.canCreateJobs === true,
   ] as const;
   const nav = getMobileNavItemsForRole(user?.role, user?.canManageBusinessConfiguration === true, user?.canManageSchedule === true, ...capabilities);
   const hasMoreItems =

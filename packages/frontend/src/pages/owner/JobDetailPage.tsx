@@ -288,6 +288,8 @@ export function JobDetailPage() {
           </div>
 
           {job.notes && <p className="text-sm text-gray-600 border-t pt-3">{job.notes}</p>}
+          {job.customerChargeCents !== undefined && <p className="text-sm text-gray-600">{t("quick.customerCharge")}: ${(job.customerChargeCents / 100).toFixed(2)}</p>}
+          {job.serviceContactSnapshot && <p className="text-sm text-gray-600 break-words">{t("quick.currentContact")}: {[job.serviceContactSnapshot.name, job.serviceContactSnapshot.phone, job.serviceContactSnapshot.email].filter(Boolean).join(" · ")}</p>}
         </div>
 
         <AddOnSnapshotList

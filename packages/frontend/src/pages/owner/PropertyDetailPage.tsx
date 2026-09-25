@@ -63,11 +63,16 @@ export function PropertyDetailPage() {
   const [toast, setToast] = useSimpleFeedbackState();
   const [toggling, setToggling] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [conversionClientId, setConversionClientId] = useState("");
+  const [converting, setConverting] = useState(false);
+  const canManageProperty = user?.role === "owner" || user?.canManageClients === true;
 
   const property = useQuery(api.queries.properties.get,
     user ? { propertyId: params.id as Id<"properties">, userId: user._id, sessionToken } : "skip"
   );
   const toggleActive = useMutation(api.mutations.properties.toggleActive);
+  const manageProperty = useMutation(api.mutations.properties.manage);
+  const clientRelationships = useQuery((api as any).queries.clientRelationships.listForSelect, canManageProperty && user ? { userId: user._id, sessionToken } : "skip");
 
   const history = useQuery(
     api.queries.properties.getHistory,
@@ -103,7 +108,7 @@ export function PropertyDetailPage() {
         title={property.name}
         description={t("guidance.owner.propertyDetail")}
         back={{ href: "/properties", label: t("navigation.backToProperties") }}
-        action={
+        action={canManageProperty ?
           <div className="flex gap-2">
             <button
               onClick={() => setShowArchiveConfirm(true)}
@@ -119,9 +124,17 @@ export function PropertyDetailPage() {
             <Link href={`/properties/${property._id}/edit`} className="btn-primary flex items-center gap-2">
               <Pencil className="w-4 h-4" /> {t("common.edit")}
             </Link>
-          </div>
+          </div> : undefined
         }
       />
+      <div className="card mb-4 space-y-2">
+        <p className="text-sm font-medium">{t(`quick.${property.managementStatus ?? "managed"}`)}</p>
+        {(property.contactName || property.contactPhone || property.contactEmail) && <p className="text-sm text-gray-600 break-words">{t("quick.currentContact")}: {[property.contactName, property.contactPhone, property.contactEmail].filter(Boolean).join(" · ")}</p>}
+        {canManageProperty && property.managementStatus === "unmanaged" && <div className="flex flex-col sm:flex-row gap-2">
+          <select className="input-field min-w-0" aria-label={t("quick.clientOptional")} value={conversionClientId} onChange={e => setConversionClientId(e.target.value)}><option value="">{t("quick.clientOptional")}</option>{(clientRelationships ?? []).map((client: any) => <option key={client._id} value={client._id}>{client.displayName}</option>)}</select>
+          <button type="button" className="btn-primary" disabled={converting} onClick={async () => { setConverting(true); try { await manageProperty({ propertyId: property._id, userId: user!._id, sessionToken, clientRelationshipId: conversionClientId ? conversionClientId as Id<"clientRelationships"> : undefined }); setToast(t("quick.conversionSuccess")); } catch (error) { setToast(error instanceof Error ? error.message : t("jobs.failedToSave")); } finally { setConverting(false); } }}>{t("quick.manageProperty")}</button>
+        </div>}
+      </div>
       {/* Tabs */}
       <div className="flex border-b border-gray-200 mb-6">
         <button
@@ -134,7 +147,7 @@ export function PropertyDetailPage() {
         >
           {t("properties.details")}
         </button>
-        <button
+        {canManageProperty && <button
           onClick={() => setActiveTab("inventory")}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
             activeTab === "inventory"
@@ -144,8 +157,8 @@ export function PropertyDetailPage() {
         >
           <Package className="w-4 h-4" />
           {t("properties.inventory.title")}
-        </button>
-        <button
+        </button>}
+        {(user?.role === "owner" || user?.canSeeAllJobs) && <button
           onClick={() => setActiveTab("history")}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
             activeTab === "history"
@@ -155,8 +168,8 @@ export function PropertyDetailPage() {
         >
           <Clock className="w-4 h-4" />
           {t("properties.history")}
-        </button>
-        <button
+        </button>}
+        {user?.role === "owner" && <button
           onClick={() => setActiveTab("calendar")}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
             activeTab === "calendar"
@@ -166,18 +179,18 @@ export function PropertyDetailPage() {
         >
           <Calendar className="w-4 h-4" />
           Calendar Sync
-        </button>
+        </button>}
       </div>
 
-      {activeTab === "details" && <DetailsTab property={property} />}
-      {activeTab === "inventory" && (
+      {activeTab === "details" && <DetailsTab property={property} canOpenClient={canManageProperty} />}
+      {activeTab === "inventory" && canManageProperty && (
         <InventoryTab
           property={property}
           userId={user!._id}
           sessionToken={sessionToken}
         />
       )}
-      {activeTab === "history" && (
+      {activeTab === "history" && (user?.role === "owner" || user?.canSeeAllJobs) && (
         <HistoryTab
           propertyId={params.id as Id<"properties">}
           history={history}
@@ -195,7 +208,7 @@ export function PropertyDetailPage() {
   );
 }
 
-function DetailsTab({ property }: { property: any }) {
+function DetailsTab({ property, canOpenClient }: { property: any; canOpenClient: boolean }) {
   const { t } = useTranslation();
   const isCommercialOrOffice = property.type === "commercial" || property.type === "office";
   const hasBathroomDetails =
@@ -226,7 +239,7 @@ function DetailsTab({ property }: { property: any }) {
         </div>
       </div>
 
-      {property.clientRelationship && (
+      {property.clientRelationship && canOpenClient && (
         <Link
           href={`/clients/${property.clientRelationship._id}`}
           className="inline-flex w-fit rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100"

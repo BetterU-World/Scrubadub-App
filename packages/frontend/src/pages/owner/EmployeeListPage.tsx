@@ -46,7 +46,7 @@ const managerPermissionGroups = [
     ["canResolveRedFlags", "Resolve red flags"],
   ] },
   { title: "Business", permissions: [
-    ["canManageClients", "Manage clients"],
+    ["canManageClients", "Manage clients and properties"],
     ["canManageSalesAndCommercial", "Manage sales and commercial operations"],
     ["canManageTeam", "Manage team operations"],
     ["canViewFinancials", "View financials"],
@@ -761,7 +761,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                           onChange={(e) => setMgrPerms((p) => ({ ...p, [key]: e.target.checked }))}
                           className="rounded border-gray-300"
                         />
-                        {label}
+                        {key === "canManageClients" ? t("quick.permissionLabel") : label}
                       </label>
                     ))}</div>)}
                   </div>
@@ -837,7 +837,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                     onChange={(e) => setEditPerms((p) => ({ ...p, [key]: e.target.checked }))}
                     className="rounded border-gray-300"
                   />
-                  {label}
+                  {key === "canManageClients" ? t("quick.permissionLabel") : label}
                 </label>
               ))}</div>)}
             </div>

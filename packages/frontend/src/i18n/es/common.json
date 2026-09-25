@@ -3986,5 +3986,34 @@
         "already_automating": "Ya automatiza trabajo repetible"
       }
     }
+  },
+  "quick": {
+    "standardJob": "Trabajo estándar",
+    "quickJob": "Trabajo único rápido",
+    "location": "Ubicación",
+    "existingLocation": "Ubicación existente",
+    "newLocation": "Nueva ubicación",
+    "address": "Dirección del servicio",
+    "locationName": "Nombre de la ubicación (opcional)",
+    "propertyType": "Tipo de propiedad",
+    "searchLocations": "Buscar por nombre o dirección",
+    "managed": "Administrada",
+    "unmanaged": "No administrada",
+    "contactName": "Nombre de contacto",
+    "contactPhone": "Teléfono de contacto",
+    "contactEmail": "Correo de contacto",
+    "updateCurrentContact": "Actualizar también el contacto actual de esta ubicación",
+    "assignment": "Asignación",
+    "individualWorkers": "Trabajadores individuales o sin asignar",
+    "customerCharge": "Cargo al cliente",
+    "createJob": "Crear trabajo",
+    "chooseLocation": "Seleccione una ubicación",
+    "invalidCharge": "Ingrese un importe válido no negativo",
+    "manageProperty": "Administrar esta propiedad",
+    "currentContact": "Contacto actual",
+    "all": "Todas",
+    "conversionSuccess": "La propiedad ahora está administrada",
+    "clientOptional": "Cliente existente (opcional)",
+    "permissionLabel": "Administrar clientes y propiedades"
   }
 }

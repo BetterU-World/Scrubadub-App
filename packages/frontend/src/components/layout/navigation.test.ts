@@ -79,6 +79,18 @@ describe("role mobile navigation", () => {
     expect(documentsOnly).not.toContain("/requests");
   });
 
+  it("shows Properties for any operational read capability without showing Clients", () => {
+    const entries = (canCreateJobs: boolean, canManageSchedule: boolean, canManageClients: boolean) =>
+      hrefs(getNavSectionsForRole("manager", false, canManageSchedule, canManageClients, false, false, false, false, false, false, canCreateJobs).flatMap(section => section.items));
+    expect(entries(false, false, false)).not.toContain("/properties");
+    for (const permissions of [[true, false, false], [false, true, false], [false, false, true]] as const) {
+      expect(entries(permissions[0], permissions[1], permissions[2])).toContain("/properties");
+    }
+    expect(entries(true, false, false)).not.toContain("/clients");
+    expect(entries(false, true, false)).not.toContain("/clients");
+    expect(entries(false, false, true)).toContain("/clients");
+  });
+
   it("uses the canonical Financials route only for financial visibility", () => {
     const financialOnly = hrefs(getMoreNavItemsForRole(
       "manager", false, false, false, false, false, false, true, false, false
