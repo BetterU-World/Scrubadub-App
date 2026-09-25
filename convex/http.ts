@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { snapshotFromStripeAccount } from "./lib/companyConnectReadiness";
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
@@ -314,6 +315,12 @@ const stripeWebhook = httpAction(async (ctx, request) => {
         break;
       }
       case "account.updated": {
+        const account = verifiedEvent.data.object as Stripe.Account;
+        await ctx.runMutation(internal.mutations.companyStripeConnect.syncCompanyStripeConnectStatus, {
+          stripeConnectAccountId: account.id,
+          observedAt: verifiedEvent.created * 1000,
+          ...snapshotFromStripeAccount(account),
+        });
         break;
       }
       case "invoice.payment_succeeded":

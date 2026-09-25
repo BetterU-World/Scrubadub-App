@@ -1,6 +1,6 @@
-import { useState, type ComponentType } from "react";
+import { type ComponentType } from "react";
 import { Link } from "wouter";
-import { useQuery, useAction } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -11,10 +11,8 @@ import {
   Banknote,
   Bell,
   Building2,
-  CheckCircle,
   ChevronRight,
   ClipboardCheck,
-  ExternalLink,
   FileText,
   Globe,
   Link2,
@@ -63,24 +61,7 @@ export function OwnerSettingsPage() {
     api.queries.companyStripeConnect.getCompanyConnectStatus,
     user?._id ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip",
   );
-  const createAccountLink = useAction(
-    api.actions.companyStripeConnect.createCompanyStripeAccountLink,
-  );
-  const [loading, setLoading] = useState<string | null>(null);
-  const isConnected = !!connectStatus?.stripeConnectAccountId;
-
-  const handleManageStripe = async () => {
-    if (!user) return;
-    setLoading("manage");
-    try {
-      const result = await createAccountLink({ userId: user._id, sessionToken: getStaffSessionToken() });
-      if (result?.url) window.location.href = result.url;
-    } catch {
-      window.location.href = "/owner/settings/billing";
-    } finally {
-      setLoading(null);
-    }
-  };
+  const connectState = connectStatus?.state ?? "checking";
 
   return (
     <div>
@@ -111,36 +92,16 @@ export function OwnerSettingsPage() {
         </section>
 
         <section aria-labelledby="settings-billing-heading">
-          <SectionHeading id="settings-billing-heading">{t("settings.groups.billingPayments")}</SectionHeading>
+          <SectionHeading id="settings-billing-heading">{t("settings.scrubSubscription")}</SectionHeading>
           <p className="mb-3 -mt-2 text-sm text-gray-500">{t("settings.billingPaymentsDesc")}</p>
           <div className="space-y-2">
             <BillingSection />
-            {isConnected ? (
-              <div className="card">
-                <div className="mb-3 flex items-center gap-3">
-                  <div className="rounded-lg bg-green-100 p-2 text-green-600">
-                    <CheckCircle className="h-5 w-5" aria-hidden="true" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-gray-900">{t("settings.customerPaymentsConnected")}</p>
-                    <p className="text-sm text-gray-500">{t("settings.payoutsConnectedDesc")}</p>
-                  </div>
-                </div>
-                <button onClick={handleManageStripe} disabled={loading !== null} className="btn-secondary flex items-center gap-1.5 text-sm">
-                  <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-                  {loading === "manage" ? t("settings.opening") : t("settings.managePayoutAccount")}
-                </button>
-              </div>
-            ) : (
-              <SettingsLink
-                href="/owner/settings/billing"
-                icon={Link2}
-                title={t("settings.customerPayments")}
-                description={t("settings.payoutsNotConnectedDesc")}
-              />
-            )}
-            <SettingsLink href="/owner/payments" icon={Banknote} title={t("settings.paymentsLabel")} description={t("settings.paymentsDesc")} />
           </div>
+        </section>
+        <section aria-labelledby="settings-client-payments-heading">
+          <SectionHeading id="settings-client-payments-heading">{t("settings.clientPaymentsPayouts")}</SectionHeading>
+          <SettingsLink href="/owner/settings/billing" icon={Link2} title={t(`companyConnect.states.${connectState}`)} description={t("companyConnect.intro")} />
+          <SettingsLink href="/owner/payments" icon={Banknote} title={t("settings.paymentsLabel")} description={t("settings.paymentsDesc")} />
         </section>
 
         <section aria-labelledby="settings-preferences-heading">

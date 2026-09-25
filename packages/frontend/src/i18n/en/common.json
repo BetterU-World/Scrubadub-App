@@ -1231,7 +1231,9 @@
       "billingPayments": "Billing & Payments",
       "preferencesData": "Preferences & Data"
     },
-    "billingPaymentsDesc": "Manage your SCRUB subscription, receive payments from clients, and track outgoing payments.",
+    "billingPaymentsDesc": "Manage what your business pays SCRUB for its subscription.",
+    "scrubSubscription": "SCRUB subscription billing",
+    "clientPaymentsPayouts": "Client payments and payouts",
     "documentsHub": "Documents",
     "documentsHubDesc": "Find client documents, company resources, team PDFs, and agreement templates.",
     "workerDocuments": "Worker Documents",
@@ -1258,6 +1260,21 @@
     "languageDesc": "Choose your preferred display language",
     "archivedProperties": "Archived Properties",
     "archivedPropertiesDesc": "Restore properties removed from the active property list."
+  },
+  "companyConnect": {
+    "title": "Client payments",
+    "intro": "Set up your business with Stripe so clients can pay your SCRUB invoices securely. Stripe verifies your business and sends payouts to your bank account. Your clients do not need a Stripe account.",
+    "returnChecking": "You’re back from Stripe. We’re checking your account status.",
+    "expired": "Your Stripe setup link expired. Continue setup to get a new link.",
+    "opening": "Opening Stripe…",
+    "continue": "Continue setup",
+    "manage": "Review Stripe account",
+    "account": "Account",
+    "testButton": "Run $1 test",
+    "testReturned": "You returned from the test checkout. Check Stripe for the payment result.",
+    "testCancelled": "The test checkout was canceled.",
+    "states": { "set_up": "Set up payments", "checking": "Checking payment status", "continue_verification": "Continue Stripe verification", "action_needed": "Action needed", "ready": "Ready to accept client payments" },
+    "descriptions": { "set_up": "Set up Stripe to accept client invoice payments.", "checking": "Stripe is confirming your account status.", "continue_verification": "Complete your Stripe verification before clients can pay online.", "action_needed": "Stripe needs more information before client payments are ready.", "ready": "Client invoice payments and payouts are enabled." }
   },
   "addOns": {
     "title": "Company Add-Ons",

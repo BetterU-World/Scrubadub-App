@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
@@ -20,17 +20,31 @@ export function StripeConnectPage() {
   const createTestCheckout = useAction(
     api.actions.companyStripeConnect.createCompanyStripeTestCheckout
   );
+  const refreshStatus = useAction(api.actions.companyStripeConnect.refreshCompanyStripeConnectStatus);
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(true);
+  const [refreshFailed, setRefreshFailed] = useState(false);
 
   // Read query params for feedback
   const params = new URLSearchParams(window.location.search);
   const stripeParam = params.get("stripe");
   const checkoutParam = params.get("checkout");
 
+  useEffect(() => {
+    if (!user?._id) return;
+    let active = true;
+    setChecking(true);
+    setRefreshFailed(false);
+    refreshStatus({ userId: user._id, sessionToken: getStaffSessionToken() })
+      .catch((e: Error) => { if (active) { setError(e.message); setRefreshFailed(true); } })
+      .finally(() => { if (active) setChecking(false); });
+    return () => { active = false; };
+  }, [user?._id, refreshStatus]);
+
   if (!user || connectStatus === undefined) return <PageLoader />;
 
-  const isConnected = !!connectStatus?.stripeConnectAccountId;
+  const state = checking || refreshFailed ? "checking" : connectStatus?.state ?? "checking";
   const accountIdSuffix = connectStatus?.stripeConnectAccountId
     ? connectStatus.stripeConnectAccountId.slice(-6)
     : null;
@@ -68,34 +82,34 @@ export function StripeConnectPage() {
   return (
     <div>
       <PageHeader
-        title="Stripe Connect"
-        description="Connect your Stripe account to receive payments"
+        title={t("companyConnect.title")}
+        description={t("companyConnect.intro")}
         back={{ href: "/owner/settings", label: t("navigation.backToSettings") }}
       />
 
       {/* Feedback banners */}
-      {stripeParam === "return" && (
-        <div className="mb-4 p-3 rounded-lg bg-green-50 text-green-700 text-sm flex items-center gap-2">
-          <CheckCircle className="w-4 h-4 flex-shrink-0" />
-          Stripe onboarding complete! Your account is now connected.
+      {stripeParam === "return" && checking && (
+        <div className="mb-4 p-3 rounded-lg bg-blue-50 text-blue-700 text-sm flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          {t("companyConnect.returnChecking")}
         </div>
       )}
       {stripeParam === "refresh" && (
         <div className="mb-4 p-3 rounded-lg bg-yellow-50 text-yellow-700 text-sm flex items-center gap-2">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          Stripe session expired. Please try connecting again.
+          {t("companyConnect.expired")}
         </div>
       )}
       {checkoutParam === "success" && (
         <div className="mb-4 p-3 rounded-lg bg-green-50 text-green-700 text-sm flex items-center gap-2">
           <CheckCircle className="w-4 h-4 flex-shrink-0" />
-          Test checkout completed successfully!
+          {t("companyConnect.testReturned")}
         </div>
       )}
       {checkoutParam === "cancel" && (
         <div className="mb-4 p-3 rounded-lg bg-yellow-50 text-yellow-700 text-sm flex items-center gap-2">
           <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          Test checkout was cancelled.
+          {t("companyConnect.testCancelled")}
         </div>
       )}
 
@@ -107,28 +121,31 @@ export function StripeConnectPage() {
       )}
 
       <div className="card max-w-md">
-        {isConnected ? (
+        {state !== "set_up" ? (
           <>
             <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 rounded-lg bg-green-100 text-green-600">
-                <CheckCircle className="w-5 h-5" />
+              <div className={`p-2 rounded-lg ${state === "ready" ? "bg-green-100 text-green-600" : "bg-amber-100 text-amber-700"}`}>
+                {state === "ready" ? <CheckCircle className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
               </div>
               <div>
                 <p className="font-semibold text-gray-900">
-                  Stripe Connected
+                  {t(`companyConnect.states.${state}`)}
                 </p>
                 <p className="text-sm text-gray-500">
-                  ...{accountIdSuffix}
+                  {t(`companyConnect.descriptions.${state}`)} {accountIdSuffix && `· ${t("companyConnect.account")} ...${accountIdSuffix}`}
                 </p>
               </div>
             </div>
+            <button onClick={handleConnectStripe} disabled={loading !== null} className="btn-primary mb-2 w-full">
+              {loading === "connect" ? t("companyConnect.opening") : state === "ready" ? t("companyConnect.manage") : t("companyConnect.continue")}
+            </button>
             <button
               onClick={handleTestCheckout}
-              disabled={loading !== null}
+              disabled={loading !== null || state !== "ready"}
               className="btn-primary w-full flex items-center justify-center gap-2"
             >
               <CreditCard className="w-4 h-4" />
-              {loading === "test" ? "Redirecting..." : "Run $1 Test"}
+              {loading === "test" ? t("companyConnect.opening") : t("companyConnect.testButton")}
             </button>
           </>
         ) : (
@@ -139,10 +156,10 @@ export function StripeConnectPage() {
               </div>
               <div>
                 <p className="font-semibold text-gray-900">
-                  Connect Stripe
+                  {t("companyConnect.states.set_up")}
                 </p>
                 <p className="text-sm text-gray-500">
-                  Set up your Express account to receive payments
+                  {t("companyConnect.intro")}
                 </p>
               </div>
             </div>
@@ -152,7 +169,7 @@ export function StripeConnectPage() {
               className="btn-primary w-full flex items-center justify-center gap-2"
             >
               <Link2 className="w-4 h-4" />
-              {loading === "connect" ? "Redirecting..." : "Connect Stripe"}
+              {loading === "connect" ? t("companyConnect.opening") : t("companyConnect.states.set_up")}
             </button>
           </>
         )}
