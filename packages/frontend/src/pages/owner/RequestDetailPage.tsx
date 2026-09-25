@@ -5,6 +5,7 @@ import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
+import { isOptionalAgreementSetupAction } from "@/lib/pipelineActionPresentation";
 import { toFriendlyMessage } from "@/lib/friendlyError";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
@@ -899,7 +900,7 @@ export function RequestDetailPage() {
             <div>
               <p id="request-pipeline-summary" className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t("pipeline.currentPosition")}</p>
               <p className="mt-1 text-lg font-semibold text-gray-900">{t(`pipeline.stages.${(request as any).pipeline.stage}`)}</p>
-              <p className="mt-1 text-sm text-gray-600">{t("pipeline.nextAction")}: {t(`pipeline.actions.${(request as any).pipeline.nextAction.key}`)}</p>
+              <p className="mt-1 text-sm text-gray-600">{t(isOptionalAgreementSetupAction((request as any).pipeline.nextAction.key) ? "pipeline.optionalAction" : "pipeline.nextAction")}: {t(`pipeline.actions.${(request as any).pipeline.nextAction.key}`)}</p>
             </div>
             {(request as any).pipeline.attention !== "none" && (request as any).pipeline.attention !== "active" && (
               <span className="inline-flex self-start items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-800">
@@ -912,7 +913,7 @@ export function RequestDetailPage() {
               (request as any).pipeline.nextAction.hrefSuffix === "#request-client-portal"
                 ? () => document.getElementById("request-client-portal")?.scrollIntoView({ behavior: "smooth", block: "start" })
                 : openAgreementSection}
-              disabled={creatingAgreement} className="btn-primary mt-3 text-sm">
+              disabled={creatingAgreement} className={`${isOptionalAgreementSetupAction((request as any).pipeline.nextAction.key) ? "btn-secondary" : "btn-primary"} mt-3 max-w-full whitespace-normal text-sm`}>
               {creatingAgreement ? t("common.saving") : t(`pipeline.actions.${(request as any).pipeline.nextAction.key === "await_client_acknowledgment" ? "review_agreement" : (request as any).pipeline.nextAction.key}`)}
             </button>
           )}
@@ -1095,7 +1096,7 @@ export function RequestDetailPage() {
 
         {!proposal && !proposalUnlocked ? (
           <p className="rounded-md bg-gray-50 p-3 text-sm text-gray-600">
-            Complete the walkthrough to begin building a proposal.
+            {t("proposals.completeWalkthroughToStart")}
           </p>
         ) : !proposal ? (
           <div className="space-y-3">
