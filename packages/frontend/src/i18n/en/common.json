@@ -3984,5 +3984,34 @@
         "already_automating": "Already automating repeatable work"
       }
     }
+  },
+  "quick": {
+    "standardJob": "Standard Job",
+    "quickJob": "Quick One-Time Job",
+    "location": "Location",
+    "existingLocation": "Existing location",
+    "newLocation": "New location",
+    "address": "Service address",
+    "locationName": "Location name (optional)",
+    "propertyType": "Property type",
+    "searchLocations": "Search locations by name or address",
+    "managed": "Managed",
+    "unmanaged": "Unmanaged",
+    "contactName": "Contact name",
+    "contactPhone": "Contact phone",
+    "contactEmail": "Contact email",
+    "updateCurrentContact": "Also update this location’s current contact",
+    "assignment": "Assignment",
+    "individualWorkers": "Individual workers or unassigned",
+    "customerCharge": "Customer charge",
+    "createJob": "Create Job",
+    "chooseLocation": "Choose a location",
+    "invalidCharge": "Enter a valid nonnegative amount",
+    "manageProperty": "Manage this property",
+    "currentContact": "Current contact",
+    "all": "All",
+    "conversionSuccess": "Property is now managed",
+    "clientOptional": "Existing client (optional)",
+    "permissionLabel": "Manage clients and properties"
   }
 }

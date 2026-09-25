@@ -63,11 +63,16 @@ export function PropertyDetailPage() {
   const [toast, setToast] = useSimpleFeedbackState();
   const [toggling, setToggling] = useState(false);
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
+  const [conversionClientId, setConversionClientId] = useState("");
+  const [converting, setConverting] = useState(false);
+  const canManageProperty = user?.role === "owner" || user?.canManageClients === true;
 
   const property = useQuery(api.queries.properties.get,
     user ? { propertyId: params.id as Id<"properties">, userId: user._id, sessionToken } : "skip"
   );
   const toggleActive = useMutation(api.mutations.properties.toggleActive);
+  const manageProperty = useMutation(api.mutations.properties.manage);
+  const clientRelationships = useQuery((api as any).queries.clientRelationships.listForSelect, canManageProperty && user ? { userId: user._id, sessionToken } : "skip");
 
   const history = useQuery(
     api.queries.properties.getHistory,
@@ -122,6 +127,14 @@ export function PropertyDetailPage() {
           </div>
         }
       />
+      <div className="card mb-4 space-y-2">
+        <p className="text-sm font-medium">{t(`quick.${property.managementStatus ?? "managed"}`)}</p>
+        {(property.contactName || property.contactPhone || property.contactEmail) && <p className="text-sm text-gray-600 break-words">{t("quick.currentContact")}: {[property.contactName, property.contactPhone, property.contactEmail].filter(Boolean).join(" · ")}</p>}
+        {canManageProperty && property.managementStatus === "unmanaged" && <div className="flex flex-col sm:flex-row gap-2">
+          <select className="input-field min-w-0" aria-label={t("quick.clientOptional")} value={conversionClientId} onChange={e => setConversionClientId(e.target.value)}><option value="">{t("quick.clientOptional")}</option>{(clientRelationships ?? []).map((client: any) => <option key={client._id} value={client._id}>{client.displayName}</option>)}</select>
+          <button type="button" className="btn-primary" disabled={converting} onClick={async () => { setConverting(true); try { await manageProperty({ propertyId: property._id, userId: user!._id, sessionToken, clientRelationshipId: conversionClientId ? conversionClientId as Id<"clientRelationships"> : undefined }); setToast(t("quick.conversionSuccess")); } catch (error) { setToast(error instanceof Error ? error.message : t("jobs.failedToSave")); } finally { setConverting(false); } }}>{t("quick.manageProperty")}</button>
+        </div>}
+      </div>
       {/* Tabs */}
       <div className="flex border-b border-gray-200 mb-6">
         <button
@@ -145,7 +158,7 @@ export function PropertyDetailPage() {
           <Package className="w-4 h-4" />
           {t("properties.inventory.title")}
         </button>
-        <button
+        {(user?.role === "owner" || user?.canSeeAllJobs) && <button
           onClick={() => setActiveTab("history")}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
             activeTab === "history"
@@ -155,8 +168,8 @@ export function PropertyDetailPage() {
         >
           <Clock className="w-4 h-4" />
           {t("properties.history")}
-        </button>
-        <button
+        </button>}
+        {user?.role === "owner" && <button
           onClick={() => setActiveTab("calendar")}
           className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
             activeTab === "calendar"
@@ -166,7 +179,7 @@ export function PropertyDetailPage() {
         >
           <Calendar className="w-4 h-4" />
           Calendar Sync
-        </button>
+        </button>}
       </div>
 
       {activeTab === "details" && <DetailsTab property={property} />}
@@ -177,7 +190,7 @@ export function PropertyDetailPage() {
           sessionToken={sessionToken}
         />
       )}
-      {activeTab === "history" && (
+      {activeTab === "history" && (user?.role === "owner" || user?.canSeeAllJobs) && (
         <HistoryTab
           propertyId={params.id as Id<"properties">}
           history={history}

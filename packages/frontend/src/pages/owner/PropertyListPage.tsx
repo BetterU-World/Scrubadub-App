@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 import { ImportPropertiesDialog } from "./ImportPropertiesDialog";
 
 export function PropertyListPage() {
+  const [managementFilter, setManagementFilter] = useState<"all" | "managed" | "unmanaged">("all");
   const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const [showImport, setShowImport] = useState(false);
@@ -29,6 +30,7 @@ export function PropertyListPage() {
   const toggleActive = useMutation(api.mutations.properties.toggleActive);
 
   if (!user || properties === undefined) return <PageLoader />;
+  const visibleProperties = properties.filter(p => managementFilter === "all" || (p.managementStatus ?? "managed") === managementFilter);
 
   const toggleSelected = (id: Id<"properties">) => {
     setSelected((prev) => {
@@ -40,10 +42,10 @@ export function PropertyListPage() {
   };
 
   const toggleSelectAll = () => {
-    if (selected.size === properties.length) {
+    if (selected.size === visibleProperties.length) {
       setSelected(new Set());
     } else {
-      setSelected(new Set(properties.map((p) => p._id)));
+      setSelected(new Set(visibleProperties.map((p) => p._id)));
     }
   };
 
@@ -67,18 +69,22 @@ export function PropertyListPage() {
         description={t("properties.description")}
         action={
           <div className="flex items-center gap-2">
-            <button
+            {user.role === "owner" && <button
               onClick={() => setShowImport(true)}
               className="btn-secondary flex items-center gap-2"
             >
               <Upload className="w-4 h-4" /> {t("properties.import.button")}
-            </button>
+            </button>}
             <Link href="/properties/new" className="btn-primary flex items-center gap-2">
               <Plus className="w-4 h-4" /> {t("properties.addProperty")}
             </Link>
           </div>
         }
       />
+
+      <div className="flex flex-wrap gap-2 mb-4" role="group" aria-label={t("quick.location")}>
+        {(["all", "managed", "unmanaged"] as const).map(status => <button key={status} type="button" className={managementFilter === status ? "btn-primary" : "btn-secondary"} onClick={() => { setManagementFilter(status); setSelected(new Set()); }}>{t(`quick.${status}`)}</button>)}
+      </div>
 
       {user.companyId && (
         <ImportPropertiesDialog
@@ -147,23 +153,23 @@ export function PropertyListPage() {
       ) : (
         <>
           {/* Select all toggle */}
-          <div className="flex items-center gap-2 mb-3">
+          {user.role === "owner" && <div className="flex items-center gap-2 mb-3">
             <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
               <input
                 type="checkbox"
-                checked={selected.size === properties.length && properties.length > 0}
+                checked={selected.size === visibleProperties.length && visibleProperties.length > 0}
                 onChange={toggleSelectAll}
                 className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
               />
               {t("properties.selectAll")}
             </label>
-          </div>
+          </div>}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {properties.map((property) => (
+            {visibleProperties.map((property) => (
               <div key={property._id} className="relative">
                 {/* Checkbox overlay */}
-                <label
+                {user.role === "owner" && <label
                   className="absolute top-3 left-3 z-10 cursor-pointer"
                   onClick={(e) => e.stopPropagation()}
                 >
@@ -173,7 +179,7 @@ export function PropertyListPage() {
                     onChange={() => toggleSelected(property._id)}
                     className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                   />
-                </label>
+                </label>}
 
                 <Link
                   href={`/properties/${property._id}`}
@@ -185,6 +191,7 @@ export function PropertyListPage() {
                     <h3 className="font-semibold text-gray-900">{property.name}</h3>
                     <StatusBadge status={property.active ? "active" : "inactive"} />
                   </div>
+                  <div className="text-xs text-gray-500 mb-1">{t(`quick.${property.managementStatus ?? "managed"}`)}</div>
                   <div className="flex items-center gap-1 text-sm text-gray-500 mb-1">
                     <MapPin className="w-3.5 h-3.5" />
                     {property.address}

@@ -32,7 +32,7 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     const user = await requireOwnerManagerCompany(ctx, args.sessionToken, args.companyId, args.userId);
-    if (user.role === "manager" && !user.canCreateJobs && !user.canManageSchedule) throw new Error("Property directory permission required");
+    if (user.role === "manager" && !user.canCreateJobs && !user.canManageSchedule && !user.canManageClients) throw new Error("Property directory permission required");
 
     const all = await ctx.db
       .query("properties")
@@ -66,7 +66,7 @@ export const get = query({
   args: { propertyId: v.id("properties"), userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
     const user = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
-    if (user.role === "manager" && !user.canCreateJobs && !user.canSeeAllJobs) throw new Error("Property access permission required");
+    if (user.role === "manager" && !user.canCreateJobs && !user.canSeeAllJobs && !user.canManageClients) throw new Error("Property access permission required");
     const property = await ctx.db.get(args.propertyId);
     if (!property) return null;
     if (property.companyId !== user.companyId) throw new Error("Access denied");

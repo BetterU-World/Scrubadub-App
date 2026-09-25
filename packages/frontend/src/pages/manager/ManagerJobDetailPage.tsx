@@ -229,6 +229,8 @@ export function ManagerJobDetailPage() {
               {job.notes}
             </p>
           )}
+          {user?.canCreateJobs && job.customerChargeCents !== undefined && <p className="text-sm text-gray-600">{t("quick.customerCharge")}: ${(job.customerChargeCents / 100).toFixed(2)}</p>}
+          {user?.canCreateJobs && job.serviceContactSnapshot && <p className="text-sm text-gray-600 break-words">{t("quick.currentContact")}: {[job.serviceContactSnapshot.name, job.serviceContactSnapshot.phone, job.serviceContactSnapshot.email].filter(Boolean).join(" · ")}</p>}
         </div>
 
         <AddOnSnapshotList items={(job as any).requiredAddOns} audience="worker" />

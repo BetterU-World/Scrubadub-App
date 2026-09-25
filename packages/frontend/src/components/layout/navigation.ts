@@ -100,6 +100,7 @@ export const managerSections: NavSection[] = [
     items: [
       { href: "/", labelKey: "nav.overview", icon: LayoutDashboard, mobile: true, mobileOrder: 1 },
       { href: "/jobs", labelKey: "nav.jobs", icon: ClipboardCheck, mobile: true, mobileOrder: 2 },
+      { href: "/properties", labelKey: "nav.properties", icon: Building2 },
       { href: "/jobs/requests", labelKey: "nav.jobRequests", icon: ClipboardList },
       { href: "/red-flags", labelKey: "nav.redFlags", icon: Flag, mobile: true, mobileOrder: 4 },
       { href: "/calendar", labelKey: "nav.calendar", icon: Calendar, mobile: true, mobileOrder: 3 },
@@ -207,7 +208,7 @@ export function getNavSectionsForRole(
   return sections.map((section) => ({ ...section, items: section.items.filter((item) =>
     (canManageConfiguration || (item.href !== "/owner/settings/add-ons" && item.href !== "/inventory-templates")) &&
     (canManageSchedule || (item.href !== "/jobs/requests" && item.href !== "/calendar")) &&
-    (canManageClients || item.href !== "/clients") &&
+    (canManageClients || (item.href !== "/clients" && item.href !== "/properties")) &&
     (canManageSalesAndCommercial || (item.href !== "/requests" && item.href !== "/commercial-accounts")) &&
     (canManageTeam || item.href !== "/employees") &&
     ((canManageDocuments || canManageSalesAndCommercial || item.href !== "/owner/settings/documents") &&

@@ -75,6 +75,9 @@ export function PropertyFormPage() {
   const [clientRelationshipId, setClientRelationshipId] = useState("");
   const [type, setType] = useState<string>("residential");
   const [address, setAddress] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
   const [accessInstructions, setAccessInstructions] = useState("");
   const [amenities, setAmenities] = useState<string[]>([]);
   const [amenityInput, setAmenityInput] = useState("");
@@ -102,6 +105,9 @@ export function PropertyFormPage() {
       setClientRelationshipId((existing as any).clientRelationshipId ?? "");
       setType(existing.type);
       setAddress(existing.address);
+      setContactName(existing.contactName ?? "");
+      setContactPhone(existing.contactPhone ?? "");
+      setContactEmail(existing.contactEmail ?? "");
       setAccessInstructions(existing.accessInstructions ?? "");
       setAmenities(existing.amenities);
       setBeds(existing.beds ?? undefined);
@@ -153,6 +159,9 @@ export function PropertyFormPage() {
         ...(clientRelationshipId ? { clientRelationshipId: clientRelationshipId as Id<"clientRelationships"> } : {}),
         type: type as any,
         address,
+        contactName: contactName || undefined,
+        contactPhone: contactPhone || undefined,
+        contactEmail: contactEmail || undefined,
         accessInstructions: accessInstructions || undefined,
         amenities,
         beds: beds ?? undefined,
@@ -257,6 +266,11 @@ export function PropertyFormPage() {
           <input className="input-field" value={address} onChange={(e) => setAddress(e.target.value)} required placeholder="123 Main St, City, ST 12345" />
         </div>
 
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <input className="input-field" aria-label={t("quick.contactName")} placeholder={t("quick.contactName")} value={contactName} onChange={e => setContactName(e.target.value)} />
+          <input className="input-field" type="tel" aria-label={t("quick.contactPhone")} placeholder={t("quick.contactPhone")} value={contactPhone} onChange={e => setContactPhone(e.target.value)} />
+          <input className="input-field" type="email" aria-label={t("quick.contactEmail")} placeholder={t("quick.contactEmail")} value={contactEmail} onChange={e => setContactEmail(e.target.value)} />
+        </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">{t("properties.clientRelationship")}</label>
           <select

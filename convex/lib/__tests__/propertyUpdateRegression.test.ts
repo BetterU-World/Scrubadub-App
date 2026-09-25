@@ -103,7 +103,9 @@ describe("property update regression", () => {
     const t = makeTest();
     const s = await seed(t);
     const auth = await login(t, "manager-a@property.test");
-    await expect(t.mutation(api.mutations.properties.update, updateArgs(s, s.managerA, auth.sessionToken))).rejects.toThrow("Owner session required");
+    await expect(t.mutation(api.mutations.properties.update, updateArgs(s, s.managerA, auth.sessionToken))).rejects.toThrow("canManageClients");
+    await t.run(ctx => ctx.db.patch(s.managerA, { canManageClients: true }));
+    await expect(t.mutation(api.mutations.properties.update, updateArgs(s, s.managerA, auth.sessionToken))).resolves.toBeNull();
   });
 
   it("preserves verified-session identity and same-company authorization", async () => {
@@ -114,7 +116,7 @@ describe("property update regression", () => {
 
     await expect(t.mutation(api.mutations.properties.update, updateArgs(s, s.ownerA, ""))).rejects.toThrow("verified session is required");
     await expect(t.mutation(api.mutations.properties.update, updateArgs(s, s.ownerB, ownerAuth.sessionToken))).rejects.toThrow("does not match");
-    await expect(t.mutation(api.mutations.properties.update, updateArgs(s, s.workerA, workerAuth.sessionToken))).rejects.toThrow("Owner session required");
+    await expect(t.mutation(api.mutations.properties.update, updateArgs(s, s.workerA, workerAuth.sessionToken))).rejects.toThrow("Owner or manager session required");
     await expect(t.mutation(api.mutations.properties.update, updateArgs(s, s.ownerA, ownerAuth.sessionToken, s.propertyB))).rejects.toThrow("Not your company");
   });
 

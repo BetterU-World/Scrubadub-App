@@ -1,7 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { logAudit } from "../lib/helpers";
-import { requireOwnerSession } from "../lib/sessionAuth";
+import { requireOwnerSession, requireOwnerOrManagerCapability } from "../lib/sessionAuth";
 import { requireActiveSubscription } from "../lib/subscriptionGating";
 import { bedroomsValidator, deriveBedroomAggregates, normalizeBedrooms } from "../lib/propertyBedrooms";
 
@@ -15,6 +15,9 @@ export const create = mutation({
     sessionToken: v.string(),
     companyId: v.id("companies"),
     clientRelationshipId: v.optional(v.id("clientRelationships")),
+    contactName: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
     name: v.string(),
     type: v.union(
       v.literal("residential"),
@@ -44,7 +47,7 @@ export const create = mutation({
     propertyConditionCheckOverride: v.optional(propertyConditionOverrideValidator),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageClients");
     if (owner.companyId !== args.companyId) throw new Error("Not your company");
     await requireActiveSubscription(ctx, args.companyId);
     if (args.clientRelationshipId) {
@@ -61,6 +64,7 @@ export const create = mutation({
       bedrooms,
       ...(bedrooms ? deriveBedroomAggregates(bedrooms) : {}),
       active: true,
+      managementStatus: "managed",
     });
 
     await logAudit(ctx, {
@@ -124,6 +128,7 @@ export const bulkCreate = mutation({
           pillowCount: prop.pillowCount,
           maintenanceNotes: prop.maintenanceNotes,
           active: true,
+          managementStatus: "managed",
         });
 
         await logAudit(ctx, {
@@ -153,6 +158,9 @@ export const update = mutation({
     sessionToken: v.string(),
     propertyId: v.id("properties"),
     clientRelationshipId: v.optional(v.id("clientRelationships")),
+    contactName: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
     name: v.string(),
     type: v.union(
       v.literal("residential"),
@@ -182,7 +190,7 @@ export const update = mutation({
     propertyConditionCheckOverride: v.optional(propertyConditionOverrideValidator),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageClients");
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
     if (property.companyId !== owner.companyId) throw new Error("Not your company");
@@ -230,7 +238,7 @@ export const updateWalkthroughFacts = mutation({
     trashCanCount: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageClients");
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
     if (property.companyId !== owner.companyId) throw new Error("Not your company");
@@ -285,7 +293,7 @@ export const updateInventoryItems = mutation({
     items: v.array(inventoryItemValidator),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageClients");
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
     if (property.companyId !== owner.companyId) throw new Error("Not your company");
@@ -311,7 +319,7 @@ export const addInventoryItem = mutation({
     item: inventoryItemValidator,
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageClients");
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
     if (property.companyId !== owner.companyId) throw new Error("Not your company");
@@ -349,7 +357,7 @@ export const removeInventoryItem = mutation({
     itemName: v.string(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageClients");
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
     if (property.companyId !== owner.companyId) throw new Error("Not your company");
@@ -376,7 +384,7 @@ export const removeInventoryItem = mutation({
 export const toggleActive = mutation({
   args: { propertyId: v.id("properties"), userId: v.optional(v.id("users")), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageClients");
     const property = await ctx.db.get(args.propertyId);
     if (!property) throw new Error("Property not found");
     if (property.companyId !== owner.companyId) throw new Error("Not your company");
@@ -390,5 +398,29 @@ export const toggleActive = mutation({
       entityType: "property",
       entityId: args.propertyId,
     });
+  },
+});
+
+export const manage = mutation({
+  args: {
+    userId: v.optional(v.id("users")),
+    sessionToken: v.string(),
+    propertyId: v.id("properties"),
+    clientRelationshipId: v.optional(v.id("clientRelationships")),
+  },
+  handler: async (ctx, args) => {
+    const actor = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageClients");
+    const property = await ctx.db.get(args.propertyId);
+    if (!property || property.companyId !== actor.companyId) throw new Error("Property not found");
+    if ((property.managementStatus ?? "managed") !== "unmanaged") throw new Error("Property is already managed");
+    if (args.clientRelationshipId) {
+      const relationship = await ctx.db.get(args.clientRelationshipId);
+      if (!relationship || relationship.companyId !== actor.companyId) throw new Error("Client relationship must belong to your company");
+    }
+    await ctx.db.patch(args.propertyId, {
+      managementStatus: "managed",
+      ...(args.clientRelationshipId ? { clientRelationshipId: args.clientRelationshipId } : {}),
+    });
+    await logAudit(ctx, { companyId: actor.companyId, userId: actor._id, action: "update_property", entityType: "property", entityId: args.propertyId });
   },
 });

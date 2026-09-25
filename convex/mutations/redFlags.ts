@@ -37,6 +37,7 @@ export const create = mutation({
     // Verify job belongs to this company
     const job = await ctx.db.get(args.jobId);
     if (!job || job.companyId !== user.companyId) throw new Error("Access denied");
+    if (!job.propertyId || job.propertyId !== args.propertyId) throw new Error("Job property does not match red flag property");
     if (!(await isUserAssignedToJob(ctx, job, user._id))) {
       throw new Error("Not assigned to perform this job");
     }

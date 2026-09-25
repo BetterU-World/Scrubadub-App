@@ -507,6 +507,7 @@ export const createPropertyFromRequest = mutation({
       address,
       amenities: [],
       active: true,
+      managementStatus: "managed",
       ownerNotes: snap.notes || undefined,
     });
 

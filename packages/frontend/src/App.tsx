@@ -26,6 +26,7 @@ import { EmployeeListPage } from "@/pages/owner/EmployeeListPage";
 import { WorkerDetailPage } from "@/pages/owner/WorkerDetailPage";
 import { JobListPage } from "@/pages/owner/JobListPage";
 import { JobFormPage } from "@/pages/owner/JobFormPage";
+import { QuickJobPage } from "@/pages/owner/QuickJobPage";
 import { JobDetailPage } from "@/pages/owner/JobDetailPage";
 import { CalendarPage } from "@/pages/owner/CalendarPage";
 import { RedFlagsDashboard } from "@/pages/owner/RedFlagsDashboard";
@@ -397,6 +398,7 @@ export default function App() {
                 <Route path="/jobs/requests/:requestId" component={JobRequestDetailPage} />
                 <Route path="/jobs/requests" component={JobRequestListPage} />
                 <Route path="/jobs/new" component={JobFormPage} />
+                <Route path="/jobs/quick" component={QuickJobPage} />
                 <Route path="/jobs/:id/edit" component={JobFormPage} />
                 <Route path="/jobs/:id/work/form" component={WorkerJobFormPage} />
                 <Route path="/jobs/:id/work" component={WorkerJobDetailPage} />
@@ -452,6 +454,7 @@ export default function App() {
                 {user?.canManageSchedule && <Route path="/jobs/requests/:requestId" component={JobRequestDetailPage} />}
                 {user?.canManageSchedule && <Route path="/jobs/requests" component={JobRequestListPage} />}
                 {user?.canCreateJobs && <Route path="/jobs/new" component={JobFormPage} />}
+                {user?.canCreateJobs && <Route path="/jobs/quick" component={QuickJobPage} />}
                 {user?.canCreateJobs && <Route path="/jobs/:id/edit" component={JobFormPage} />}
                 <Route path="/jobs/:id/work/form" component={WorkerJobFormPage} />
                 <Route path="/jobs/:id/work" component={WorkerJobDetailPage} />
@@ -466,6 +469,10 @@ export default function App() {
                 {(user?.canManageInvoices || user?.canViewFinancials) && <Route path="/commercial-invoices/:id" component={CommercialInvoiceDetailPage} />}
                 {(user?.canManageInvoices || user?.canViewFinancials) && <Route path="/commercial-invoices" component={CommercialInvoiceListPage} />}
                 {user?.canManageClients && <Route path="/clients/:id" component={ClientRelationshipDetailPage} />}
+                {user?.canManageClients && <Route path="/properties" component={PropertyListPage} />}
+                {user?.canManageClients && <Route path="/properties/new" component={PropertyFormPage} />}
+                {user?.canManageClients && <Route path="/properties/:id/edit" component={PropertyFormPage} />}
+                {user?.canManageClients && <Route path="/properties/:id" component={PropertyDetailPage} />}
                 {user?.canManageClients && <Route path="/clients" component={ClientRelationshipListPage} />}
                 {user?.canManageSalesAndCommercial && <Route path="/requests/pipeline" component={PipelinePage} />}
                 {user?.canManageSalesAndCommercial && <Route path="/requests/:id" component={RequestDetailPage} />}

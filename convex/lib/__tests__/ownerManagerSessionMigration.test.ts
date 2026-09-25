@@ -88,13 +88,16 @@ describe("owner and manager session migration", () => {
     await expect(t.query(api.queries.properties.get, { propertyId: propertyB, userId: ownerA, sessionToken: "" })).rejects.toThrow("verified session is required");
   });
 
-  it("preserves manager visibility without granting owner-only operations", async () => {
+  it("preserves manager visibility and gates Property management by capability", async () => {
     const t = makeTest();
     const { companyA, companyB, managerA, propertyA } = await seed(t);
     const auth = await login(t, "manager-a@pr3.test");
     await expect(t.query(api.queries.jobs.getForManager, { companyId: companyA, userId: managerA, sessionToken: auth.sessionToken })).resolves.toHaveLength(1);
     await expect(t.query(api.queries.jobs.getForManager, { companyId: companyB, userId: managerA, sessionToken: auth.sessionToken })).rejects.toThrow("Access denied");
-    await expect(t.mutation(api.mutations.properties.toggleActive, { propertyId: propertyA, userId: managerA, sessionToken: auth.sessionToken })).rejects.toThrow("Owner session required");
+    await expect(t.mutation(api.mutations.properties.toggleActive, { propertyId: propertyA, userId: managerA, sessionToken: auth.sessionToken })).rejects.toThrow("canManageClients");
+    await t.run(ctx => ctx.db.patch(managerA, { canManageClients: true }));
+    await t.mutation(api.mutations.properties.toggleActive, { propertyId: propertyA, userId: managerA, sessionToken: auth.sessionToken });
+    expect((await t.run(ctx => ctx.db.get(propertyA)))?.active).toBe(false);
   });
 
   it("rejects revoked and expired owner sessions", async () => {
