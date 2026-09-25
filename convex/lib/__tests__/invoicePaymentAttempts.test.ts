@@ -39,16 +39,32 @@ describe("invoice payment attempts", () => {
     await expect(s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, destinationStripeAccountId: "acct_other" })).rejects.toThrow("account changed");
   });
 
-  it("reconciles mismatched facts and atomically applies an exact successful payment", async () => {
+  it("atomically applies an exact successful payment and treats retries as idempotent", async () => {
     const s = await setup();
     const attemptId = await s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, destinationStripeAccountId: "acct_payee" });
     await s.t.mutation(internal.invoicePaymentInternal.opened, { attemptId, sessionId: "cs_exact", url: "https://checkout.stripe.test/session" });
     const facts = { attemptId, sessionId: "cs_exact", paymentIntentId: "pi_exact", amountCents: 50000, currency: "usd", destination: "acct_payee", feeCents: 200, invoiceIdMetadata: String(s.invoice), companyIdMetadata: String(s.company) };
-    expect(await s.t.mutation(internal.invoicePaymentInternal.applySuccess, { ...facts, feeCents: 0 })).toBe("reconciliation_required");
-    expect((await s.t.run(ctx => ctx.db.get(s.invoice)))?.status).toBe("issued");
     expect(await s.t.mutation(internal.invoicePaymentInternal.applySuccess, facts)).toBe("paid");
     expect(await s.t.mutation(internal.invoicePaymentInternal.applySuccess, facts)).toBe("already_paid");
     expect(await s.t.run(ctx => ctx.db.get(s.invoice))).toMatchObject({ status: "paid", paymentSource: "online", canonicalPaymentAttemptId: attemptId, stripePaymentIntentId: "pi_exact" });
+  });
+
+  it("keeps reconciliation terminal even when a later call supplies matching facts", async () => {
+    const s = await setup();
+    const attemptId = await s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, destinationStripeAccountId: "acct_payee" });
+    await s.t.mutation(internal.invoicePaymentInternal.opened, { attemptId, sessionId: "cs_review", url: "https://checkout.stripe.test/review" });
+    const facts = { attemptId, sessionId: "cs_review", paymentIntentId: "pi_review", amountCents: 50000, currency: "usd", destination: "acct_payee", feeCents: 200, invoiceIdMetadata: String(s.invoice), companyIdMetadata: String(s.company) };
+    expect(await s.t.mutation(internal.invoicePaymentInternal.applySuccess, { ...facts, feeCents: 0 })).toBe("reconciliation_required");
+    const original = await s.t.run(ctx => ctx.db.get(attemptId));
+    expect(original).toMatchObject({ status: "reconciliation_required", exceptionReason: "payment_facts_mismatch", stripeCheckoutSessionId: "cs_review", stripePaymentIntentId: "pi_review" });
+    expect((await s.t.run(ctx => ctx.db.get(s.invoice)))?.status).toBe("issued");
+    expect(await s.t.mutation(internal.invoicePaymentInternal.applySuccess, facts)).toBe("reconciliation_required");
+    expect(await s.t.mutation(internal.invoicePaymentInternal.applySuccess, { ...facts, paymentIntentId: "pi_later" })).toBe("reconciliation_required");
+    expect(await s.t.run(ctx => ctx.db.get(attemptId))).toEqual(original);
+    const invoice = await s.t.run(ctx => ctx.db.get(s.invoice));
+    expect(invoice?.status).toBe("issued");
+    expect(invoice?.canonicalPaymentAttemptId).toBeUndefined();
+    expect(invoice?.paymentSource).toBeUndefined();
   });
 
   it("preserves a second real payment as reconciliation required", async () => {

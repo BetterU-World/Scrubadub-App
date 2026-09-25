@@ -88,6 +88,9 @@ export const applySuccess = internalMutation({
       if (!prior) await ctx.db.insert("invoicePaymentExceptions", { stripeCheckoutSessionId: args.sessionId, stripePaymentIntentId: args.paymentIntentId, invoiceIdCandidate: String(attempt.invoiceId), companyIdCandidate: String(attempt.companyId), reason: "paid_attempt_identity_conflict", amountCents: args.amountCents, currency: args.currency, createdAt: Date.now() });
       return "reconciliation_required";
     }
+    // A successful charge needing reconciliation is a human-review boundary.
+    // Retries must retain the original payment identity and exception evidence.
+    if (attempt.status === "reconciliation_required") return "reconciliation_required";
     const invoice = await ctx.db.get(attempt.invoiceId);
     const mismatch = !invoice || invoice.companyId !== attempt.companyId || invoice.clientRelationshipId !== attempt.clientRelationshipId || invoice.totalCents !== attempt.amountCents || attempt.stripeCheckoutSessionId !== args.sessionId || (attempt.stripePaymentIntentId && attempt.stripePaymentIntentId !== args.paymentIntentId) || attempt.amountCents !== args.amountCents || args.currency !== "usd" || attempt.currency !== "usd" || attempt.destinationStripeAccountId !== args.destination || attempt.platformFeeCents !== PLATFORM_FEE_CENTS || args.feeCents !== PLATFORM_FEE_CENTS || String(attempt.invoiceId) !== args.invoiceIdMetadata || String(attempt.companyId) !== args.companyIdMetadata;
     const reason = mismatch ? "payment_facts_mismatch" : invoice.status !== "issued" || invoice.canonicalPaymentAttemptId ? "invoice_no_longer_payable_or_duplicate" : null;
