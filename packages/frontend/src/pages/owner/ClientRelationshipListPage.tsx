@@ -1,6 +1,6 @@
 import { useFeedbackState } from "@/components/ui/FeedbackProvider";
-import { FormEvent, useState } from "react";
-import { Link } from "wouter";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { Link, useLocation } from "wouter";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,6 +10,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { RelationshipDiagnostics } from "@/components/owner/RelationshipDiagnostics";
 import { Users, Plus, Save } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Id } from "../../../../../convex/_generated/dataModel";
+import { clientPrefillFromProperty } from "../../lib/clientFromProperty";
 
 type ClientType = "residential" | "commercial" | "str" | "property_manager" | "marketplace";
 type RelationshipStatus = "active" | "inactive" | "archived";
@@ -41,6 +43,11 @@ function label(value: string) {
 export function ClientRelationshipListPage() {
   const { t } = useTranslation();
   const { user, sessionToken } = useAuth();
+  const [, navigate] = useLocation();
+  const originatingPropertyId = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("fromProperty");
+  const property = useQuery(api.queries.properties.get,
+    user && originatingPropertyId ? { propertyId: originatingPropertyId as Id<"properties">, userId: user._id, sessionToken } : "skip"
+  );
   const relationships = useQuery(
     (api as any).queries.clientRelationships.list,
     user ? { userId: user._id, sessionToken } : "skip"
@@ -49,8 +56,16 @@ export function ClientRelationshipListPage() {
 
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const prefilledPropertyId = useRef<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useFeedbackState<{ message: string; type: "success" | "error" }>();
+
+  useEffect(() => {
+    if (!property || property.clientRelationshipId || prefilledPropertyId.current === property._id) return;
+    prefilledPropertyId.current = property._id;
+    setForm({ ...EMPTY_FORM, ...clientPrefillFromProperty(property) });
+    setShowCreate(true);
+  }, [property]);
 
   if (!user || relationships === undefined) return <PageLoader />;
 
@@ -60,6 +75,10 @@ export function ClientRelationshipListPage() {
 
   const handleCreate = async (event: FormEvent) => {
     event.preventDefault();
+    if (originatingPropertyId && (!property || property.clientRelationshipId)) {
+      showToast("This property is unavailable or already has a client", "error");
+      return;
+    }
     setSaving(true);
     try {
       await createRelationship({
@@ -72,10 +91,12 @@ export function ClientRelationshipListPage() {
         email: form.email || undefined,
         phone: form.phone || undefined,
         status: form.status,
+        originatingPropertyId: property?._id,
       });
       setForm(EMPTY_FORM);
       setShowCreate(false);
       showToast("Client relationship created", "success");
+      if (property && !property.clientRelationshipId) navigate(`/properties/${property._id}`);
     } catch (err: any) {
       showToast(err.message || "Failed to create client relationship", "error");
     } finally {
@@ -102,6 +123,7 @@ export function ClientRelationshipListPage() {
 
       {showCreate && (
         <form onSubmit={handleCreate} className="card mb-6 space-y-4">
+          {property && !property.clientRelationshipId && <p className="text-sm text-gray-600">{property.address}</p>}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block">
               <span className="text-xs font-medium text-gray-600">Display name</span>

@@ -1,12 +1,13 @@
 import { FormEvent, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { useLocation, Link } from "wouter";
+import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { parseOptionalCustomerChargeCents } from "@/lib/customerCharge";
+import { JobCreationModeSelector } from "@/components/owner/JobCreationModeSelector";
 
 const jobTypes = ["standard", "deep_clean", "turnover", "move_in_out", "post_construction", "maintenance"] as const;
 
@@ -64,7 +65,7 @@ export function QuickJobPage() {
 
   return <div className="max-w-2xl mx-auto min-w-0">
     <PageHeader title={t("quick.quickJob")} back={{ href: "/jobs", label: t("navigation.backToJobs") }} />
-    <div className="mb-4 flex flex-wrap gap-2"><Link href="/jobs/new" className="btn-secondary">{t("quick.standardJob")}</Link><span className="btn-primary">{t("quick.quickJob")}</span></div>
+    <JobCreationModeSelector mode="quick" />
     {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
     <form onSubmit={submit} className="card space-y-4 min-w-0">
       <div><label className="block text-sm font-medium mb-1">{t("quick.location")}</label><div className="flex flex-wrap gap-2">
@@ -81,7 +82,7 @@ export function QuickJobPage() {
       </div>}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3"><input className="input-field" aria-label={t("quick.contactName")} placeholder={t("quick.contactName")} value={contactName} onChange={e => setContactName(e.target.value)} /><input className="input-field" type="tel" aria-label={t("quick.contactPhone")} placeholder={t("quick.contactPhone")} value={contactPhone} onChange={e => setContactPhone(e.target.value)} /><input className="input-field" type="email" aria-label={t("quick.contactEmail")} placeholder={t("quick.contactEmail")} value={contactEmail} onChange={e => setContactEmail(e.target.value)} /></div>
       {!newLocation && canManage && propertyId && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={updateContact} onChange={e => setUpdateContact(e.target.checked)} />{t("quick.updateCurrentContact")}</label>}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3"><label className="text-sm">{t("jobForm.date")}<input className="input-field w-full mt-1" type="date" value={date} onChange={e => setDate(e.target.value)} required /></label><label className="text-sm">{t("jobForm.time")}<input className="input-field w-full mt-1" type="time" value={time} onChange={e => setTime(e.target.value)} /></label><label className="text-sm">{t("jobForm.duration")}<input className="input-field w-full mt-1" type="number" min={1} value={duration} onChange={e => setDuration(Number(e.target.value))} required /></label></div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3"><label className="text-sm">{t("jobForm.date")}<input className="input-field w-full mt-1" type="date" value={date} onChange={e => setDate(e.target.value)} required /></label><label className="text-sm">{t("quick.time")}<input className="input-field w-full mt-1" type="time" value={time} onChange={e => setTime(e.target.value)} /></label><label className="text-sm">{t("jobForm.duration")}<input className="input-field w-full mt-1" type="number" min={1} value={duration} onChange={e => setDuration(Number(e.target.value))} required /></label></div>
       <label className="block text-sm">{t("jobForm.jobType")}<select className="input-field w-full mt-1" value={type} onChange={e => { setType(e.target.value as typeof type); setWorkerIds([]); }} >{jobTypes.map(value => <option key={value} value={value}>{t(`jobTypes.${value}`)}</option>)}</select></label>
       {canAssign && <div className="space-y-2"><label className="block text-sm font-medium">{t("quick.assignment")}</label><select className="input-field w-full" value={teamId} onChange={e => { setTeamId(e.target.value); setWorkerIds([]); }}><option value="">{t("quick.individualWorkers")}</option>{(teams ?? []).map(team => <option key={team._id} value={team._id}>{team.name}</option>)}</select>{!teamId && <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">{(assignees ?? []).map(worker => <label key={worker._id} className="flex gap-2 items-center text-sm"><input type="checkbox" checked={workerIds.includes(worker._id)} onChange={e => setWorkerIds(ids => e.target.checked ? [...ids, worker._id] : ids.filter(id => id !== worker._id))} />{worker.name}</label>)}</div>}</div>}
       <label className="block text-sm">{t("quick.customerCharge")}<input className="input-field w-full mt-1" type="number" min="0" step="0.01" value={charge} onChange={e => setCharge(e.target.value)} placeholder="0.00" /></label>

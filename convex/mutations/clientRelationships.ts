@@ -78,10 +78,14 @@ export const create = mutation({
   args: {
     userId: v.id("users"),
     sessionToken: v.string(),
+    originatingPropertyId: v.optional(v.id("properties")),
     ...relationshipFields,
   },
   handler: async (ctx, args) => {
     const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageClients");
+    const property = args.originatingPropertyId ? await ctx.db.get(args.originatingPropertyId) : null;
+    if (args.originatingPropertyId && (!property || property.companyId !== owner.companyId)) throw new Error("Property not found");
+    if (property?.clientRelationshipId) throw new Error("Property already has a client");
     const now = Date.now();
     const relationshipId = await ctx.db.insert("clientRelationships", {
       companyId: owner.companyId!,
@@ -89,6 +93,10 @@ export const create = mutation({
       createdAt: now,
       updatedAt: now,
     });
+    if (args.originatingPropertyId) {
+      await ctx.db.patch(args.originatingPropertyId, { clientRelationshipId: relationshipId });
+      await logAudit(ctx, { companyId: owner.companyId!, userId: owner._id, action: "update_property", entityType: "property", entityId: args.originatingPropertyId });
+    }
 
     await logAudit(ctx, {
       companyId: owner.companyId!,

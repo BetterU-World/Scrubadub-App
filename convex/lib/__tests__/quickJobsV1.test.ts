@@ -62,6 +62,37 @@ describe("quick jobs V1", () => {
     expect(history.totalJobs).toBe(3);
   });
 
+  it("creates a Client after early conversion, links the same Property, and preserves historical Jobs", async () => {
+    const s = await setup();
+    const owner = { userId: s.ownerId, sessionToken: s.ownerAuth.sessionToken };
+    const quickId = await s.t.mutation(api.mutations.jobs.createQuick, { ...owner, ...s.base, newProperty: { address: "10 Main", type: "residential" }, contact: { name: "Jane", phone: "555-1212", email: "jane@example.com" } });
+    const quick = await s.t.run(ctx => ctx.db.get(quickId));
+    const propertyId = quick!.propertyId!;
+    await s.t.mutation(api.mutations.properties.manage, { ...owner, propertyId });
+    expect(await s.t.run(ctx => ctx.db.get(propertyId))).toMatchObject({ managementStatus: "managed" });
+    expect((await s.t.run(ctx => ctx.db.get(propertyId)))?.clientRelationshipId).toBeUndefined();
+
+    const manager = { userId: s.managerId, sessionToken: s.managerAuth.sessionToken };
+    await s.t.run(ctx => ctx.db.patch(s.managerId, { canManageClients: false }));
+    const input = { displayName: "Jane", clientType: "residential" as const, primaryContactName: "Jane", email: "jane@example.com", phone: "555-1212", status: "active" as const, originatingPropertyId: propertyId };
+    await expect(s.t.mutation(api.mutations.clientRelationships.create, { ...manager, ...input })).rejects.toThrow("canManageClients");
+    await s.t.run(ctx => ctx.db.patch(s.managerId, { canManageClients: true }));
+    const foreignCompanyId = await s.t.run(ctx => ctx.db.insert("companies", { name: "Other", timezone: "America/New_York", subscriptionStatus: "active" }));
+    const foreignPropertyId = await s.t.run(ctx => ctx.db.insert("properties", { companyId: foreignCompanyId, name: "Foreign", address: "Elsewhere", type: "residential", amenities: [], active: true }));
+    await expect(s.t.mutation(api.mutations.clientRelationships.create, { ...manager, ...input, originatingPropertyId: foreignPropertyId })).rejects.toThrow("Property not found");
+    const clientId = await s.t.mutation(api.mutations.clientRelationships.create, { ...manager, ...input });
+    expect(await s.t.run(ctx => ctx.db.get(clientId))).toMatchObject({ primaryContactName: "Jane", email: "jane@example.com", phone: "555-1212" });
+    expect(await s.t.run(ctx => ctx.db.get(propertyId))).toMatchObject({ managementStatus: "managed", clientRelationshipId: clientId });
+    expect((await s.t.run(ctx => ctx.db.get(quickId)))?.clientRelationshipId).toBeUndefined();
+    expect(await s.t.run(ctx => ctx.db.get(quickId))).toMatchObject({ serviceContactSnapshot: { name: "Jane", phone: "555-1212", email: "jane@example.com" } });
+    const futureId = await s.t.mutation(api.mutations.jobs.createQuick, { ...owner, ...s.base, propertyId });
+    expect((await s.t.run(ctx => ctx.db.get(futureId)))?.clientRelationshipId).toEqual(clientId);
+    await expect(s.t.mutation(api.mutations.clientRelationships.create, { ...owner, ...input })).rejects.toThrow("already has a client");
+    const ownerPropertyId = await s.t.run(ctx => ctx.db.insert("properties", { companyId: s.companyId, name: "Owner Property", address: "11 Main", type: "residential", amenities: [], active: true, managementStatus: "managed" }));
+    const ownerClientId = await s.t.mutation(api.mutations.clientRelationships.create, { ...owner, ...input, originatingPropertyId: ownerPropertyId });
+    expect((await s.t.run(ctx => ctx.db.get(ownerPropertyId)))?.clientRelationshipId).toEqual(ownerClientId);
+  });
+
   it("composes manager permissions and rolls back a failed new-location Job", async () => {
     const s = await setup();
     const auth = { userId: s.managerId, sessionToken: s.managerAuth.sessionToken };
