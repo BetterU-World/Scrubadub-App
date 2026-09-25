@@ -347,6 +347,13 @@ export default defineSchema({
     // Stripe Connect (company-level Express account)
     stripeConnectAccountId: v.optional(v.string()),
     stripeConnectOnboardedAt: v.optional(v.number()),
+    stripeConnectChargesEnabled: v.optional(v.boolean()),
+    stripeConnectPayoutsEnabled: v.optional(v.boolean()),
+    stripeConnectDetailsSubmitted: v.optional(v.boolean()),
+    stripeConnectRequirementsDue: v.optional(v.boolean()),
+    stripeConnectDisabledReason: v.optional(v.string()),
+    stripeConnectLastSyncAt: v.optional(v.number()),
+    stripeConnectStatusObservedAt: v.optional(v.number()),
     // Company profile defaults (feed microsites via fallback)
     companyDisplayName: v.optional(v.string()),
     contactEmail: v.optional(v.string()),
@@ -359,6 +366,7 @@ export default defineSchema({
   })
     .index("by_qaFixtureKey", ["qaFixtureKey"])
     .index("by_stripeCustomerId", ["stripeCustomerId"])
+    .index("by_stripeConnectAccountId", ["stripeConnectAccountId"])
     .index("by_publicRequestToken", ["publicRequestToken"]),
 
   companySettings: defineTable({

@@ -11,6 +11,7 @@ import { ActionCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
 import { requireOwnerSession } from "../lib/sessions";
 import { requireAppUrl } from "../lib/environment";
+import { snapshotFromStripeAccount } from "../lib/companyConnectReadiness";
 
 /**
  * Shared helper: load owner+company and ensure a Connect account exists.
@@ -92,6 +93,26 @@ export const createCompanyStripeAccountLink = action({
     });
 
     return { url: accountLink.url };
+  },
+});
+
+export const refreshCompanyStripeConnectStatus = action({
+  args: { userId: v.id("users"), sessionToken: v.string() },
+  handler: async (ctx, args) => {
+    const principal = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const data = await ctx.runQuery(internal.queries.companyStripeConnect.getOwnerAndCompany, { userId: principal.userId });
+    if (!data) throw new Error("Owner or company not found");
+    if (!data.stripeConnectAccountId) return { refreshed: false };
+    const stripe = getStripeClientOrNull();
+    if (!stripe) throw new Error("Stripe is not configured");
+    const observedAt = Date.now();
+    const account = await stripe.accounts.retrieve(data.stripeConnectAccountId);
+    await ctx.runMutation(internal.mutations.companyStripeConnect.syncCompanyStripeConnectStatus, {
+      stripeConnectAccountId: data.stripeConnectAccountId,
+      observedAt,
+      ...snapshotFromStripeAccount(account),
+    });
+    return { refreshed: true };
   },
 });
 

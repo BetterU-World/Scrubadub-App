@@ -1231,7 +1231,9 @@
       "billingPayments": "Facturación y pagos",
       "preferencesData": "Preferencias y datos"
     },
-    "billingPaymentsDesc": "Gestiona tu suscripción a SCRUB, recibe pagos de clientes y controla los pagos salientes.",
+    "billingPaymentsDesc": "Gestiona lo que tu empresa paga a SCRUB por su suscripción.",
+    "scrubSubscription": "Facturación de la suscripción a SCRUB",
+    "clientPaymentsPayouts": "Pagos de clientes y depósitos",
     "documentsHub": "Documentos",
     "documentsHubDesc": "Encuentra documentos de clientes, recursos de la empresa, PDF del equipo y plantillas de acuerdos.",
     "workerDocuments": "Documentos de trabajadores",
@@ -1258,6 +1260,21 @@
     "languageDesc": "Elige tu idioma de visualización preferido",
     "archivedProperties": "Propiedades archivadas",
     "archivedPropertiesDesc": "Restaura propiedades eliminadas de la lista de propiedades activas."
+  },
+  "companyConnect": {
+    "title": "Pagos de clientes",
+    "intro": "Configura tu empresa con Stripe para que los clientes paguen tus facturas de SCRUB de forma segura. Stripe verifica tu empresa y envía los fondos a tu cuenta bancaria. Tus clientes no necesitan una cuenta de Stripe.",
+    "returnChecking": "Has vuelto de Stripe. Estamos comprobando el estado de tu cuenta.",
+    "expired": "El enlace de configuración de Stripe caducó. Continúa la configuración para obtener uno nuevo.",
+    "opening": "Abriendo Stripe…",
+    "continue": "Continuar configuración",
+    "manage": "Revisar cuenta de Stripe",
+    "account": "Cuenta",
+    "testButton": "Hacer prueba de $1",
+    "testReturned": "Has vuelto del pago de prueba. Consulta el resultado en Stripe.",
+    "testCancelled": "El pago de prueba se canceló.",
+    "states": { "set_up": "Configurar pagos", "checking": "Comprobando estado de pagos", "continue_verification": "Continuar verificación con Stripe", "action_needed": "Se requiere una acción", "ready": "Listo para aceptar pagos de clientes" },
+    "descriptions": { "set_up": "Configura Stripe para aceptar pagos de facturas de clientes.", "checking": "Stripe está confirmando el estado de tu cuenta.", "continue_verification": "Completa la verificación de Stripe para que los clientes puedan pagar en línea.", "action_needed": "Stripe necesita más información antes de que puedas recibir pagos de clientes.", "ready": "Los pagos de facturas de clientes y los depósitos están habilitados." }
   },
   "addOns": {
     "title": "Servicios adicionales de la empresa",

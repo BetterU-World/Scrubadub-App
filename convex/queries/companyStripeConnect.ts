@@ -1,6 +1,7 @@
 import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwnerSession } from "../lib/sessionAuth";
+import { companyConnectState, canAcceptClientInvoicePayments } from "../lib/companyConnectReadiness";
 
 /**
  * Public query: returns the company's Stripe Connect status.
@@ -14,6 +15,11 @@ export const getCompanyConnectStatus = query({
     return {
       stripeConnectAccountId: company.stripeConnectAccountId ?? null,
       stripeConnectOnboardedAt: company.stripeConnectOnboardedAt ?? null,
+      chargesEnabled: company.stripeConnectChargesEnabled ?? null,
+      payoutsEnabled: company.stripeConnectPayoutsEnabled ?? null,
+      lastSyncAt: company.stripeConnectLastSyncAt ?? null,
+      state: companyConnectState(company),
+      canAcceptClientInvoicePayments: canAcceptClientInvoicePayments(company) && companyConnectState(company) === "ready",
     };
   },
 });
