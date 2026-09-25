@@ -308,9 +308,40 @@ const stripeWebhook = httpAction(async (ctx, request) => {
             },
           );
         }
-        if (meta.type === "commercial_invoice_payment" && meta.invoiceId && session.payment_status === "paid") {
+        if (meta.type === "invoice_payment" && session.payment_status === "paid") {
+          const attemptId = meta.invoicePaymentAttemptId;
+          const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : (session.payment_intent as any)?.id;
+          if (!attemptId || !paymentIntentId) {
+            await ctx.runMutation((internal as any).invoicePaymentInternal.recordException, { sessionId: session.id, invoiceIdCandidate: meta.invoiceId, companyIdCandidate: meta.companyId, reason: "missing_payment_identity", amountCents: session.amount_total ?? undefined, currency: session.currency ?? undefined });
+            break;
+          }
+          const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+          if (intent.id !== paymentIntentId || intent.status !== "succeeded" || intent.amount_received !== session.amount_total || intent.currency !== session.currency || intent.metadata?.invoicePaymentAttemptId !== attemptId || intent.metadata?.invoiceId !== meta.invoiceId || intent.metadata?.companyId !== meta.companyId) {
+            await ctx.runMutation((internal as any).invoicePaymentInternal.recordException, { sessionId: session.id, paymentIntentId, invoiceIdCandidate: meta.invoiceId, companyIdCandidate: meta.companyId, reason: "stripe_payment_intent_mismatch", amountCents: session.amount_total ?? undefined, currency: session.currency ?? undefined });
+            break;
+          }
+          const attempt: any = await ctx.runQuery((internal as any).invoicePaymentInternal.getByCheckoutSession, { sessionId: session.id });
+          if (!attempt) {
+            await ctx.runMutation((internal as any).invoicePaymentInternal.recordException, { sessionId: session.id, paymentIntentId, invoiceIdCandidate: meta.invoiceId, companyIdCandidate: meta.companyId, reason: "unknown_payment_attempt", amountCents: session.amount_total ?? undefined, currency: session.currency ?? undefined });
+            break;
+          }
+          if (String(attempt._id) !== attemptId) {
+            await ctx.runMutation((internal as any).invoicePaymentInternal.recordException, { sessionId: session.id, paymentIntentId, invoiceIdCandidate: meta.invoiceId, companyIdCandidate: meta.companyId, reason: "attempt_metadata_mismatch", amountCents: session.amount_total ?? undefined, currency: session.currency ?? undefined });
+            break;
+          }
+          await ctx.runMutation((internal as any).invoicePaymentInternal.applySuccess, { attemptId: attempt._id, sessionId: session.id, paymentIntentId, amountCents: session.amount_total ?? -1, currency: session.currency ?? "", destination: intent.transfer_data?.destination ?? "", feeCents: intent.application_fee_amount ?? -1, invoiceIdMetadata: meta.invoiceId, companyIdMetadata: meta.companyId });
+        }
+        if (meta.type === "commercial_invoice_payment" && session.payment_status === "paid") {
           const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : (session.payment_intent as any)?.id ?? undefined;
-          await ctx.runMutation((internal as any).invoiceDeliveryInternal.markPaidFromCheckout, { invoiceId: meta.invoiceId as any, stripeCheckoutSessionId: session.id, stripePaymentIntentId: paymentIntentId });
+          await ctx.runMutation((internal as any).invoicePaymentInternal.recordException, { sessionId: session.id, paymentIntentId, invoiceIdCandidate: meta.invoiceId, reason: "legacy_checkout_without_attempt", amountCents: session.amount_total ?? undefined, currency: session.currency ?? undefined });
+        }
+        break;
+      }
+      case "checkout.session.expired": {
+        const session = verifiedEvent.data.object as Stripe.Checkout.Session;
+        if (session.metadata?.type === "invoice_payment") {
+          const attempt: any = await ctx.runQuery((internal as any).invoicePaymentInternal.getByCheckoutSession, { sessionId: session.id });
+          if (attempt) await ctx.runMutation((internal as any).invoicePaymentInternal.markUnavailable, { attemptId: attempt._id, status: "expired" });
         }
         break;
       }

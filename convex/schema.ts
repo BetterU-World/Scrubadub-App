@@ -2064,6 +2064,9 @@ export default defineSchema({
     sentAt: v.optional(v.number()),
     stripeCheckoutSessionId: v.optional(v.string()),
     stripePaymentIntentId: v.optional(v.string()),
+    paymentSource: v.optional(v.union(v.literal("online"), v.literal("outside"))),
+    paidRecordedByUserId: v.optional(v.id("users")),
+    canonicalPaymentAttemptId: v.optional(v.id("invoicePaymentAttempts")),
   })
     .index("by_company", ["companyId"])
     .index("by_companyId_clientRelationshipId_updatedAt", [
@@ -2074,6 +2077,21 @@ export default defineSchema({
     .index("by_commercialAccount", ["commercialAccountId"])
     .index("by_companyId_sourceJobId", ["companyId", "sourceJobId"])
     .index("by_status", ["status"]),
+
+  invoicePaymentAttempts: defineTable({
+    companyId: v.id("companies"), invoiceId: v.id("invoices"), invoiceType: v.union(v.literal("commercial"), v.literal("job")),
+    clientRelationshipId: v.id("clientRelationships"), amountCents: v.number(), currency: v.literal("usd"),
+    destinationStripeAccountId: v.string(), platformFeeCents: v.number(),
+    status: v.union(v.literal("creating"), v.literal("open"), v.literal("paid"), v.literal("failed"), v.literal("expired"), v.literal("reconciliation_required")),
+    stripeCheckoutSessionId: v.optional(v.string()), stripeCheckoutUrl: v.optional(v.string()), stripePaymentIntentId: v.optional(v.string()),
+    exceptionReason: v.optional(v.string()), createdAt: v.number(), updatedAt: v.number(), completedAt: v.optional(v.number()),
+  }).index("by_invoiceId", ["invoiceId"]).index("by_stripeCheckoutSessionId", ["stripeCheckoutSessionId"]),
+
+  invoicePaymentExceptions: defineTable({
+    stripeCheckoutSessionId: v.string(), stripePaymentIntentId: v.optional(v.string()),
+    invoiceIdCandidate: v.optional(v.string()), companyIdCandidate: v.optional(v.string()), reason: v.string(),
+    amountCents: v.optional(v.number()), currency: v.optional(v.string()), createdAt: v.number(),
+  }).index("by_stripeCheckoutSessionId", ["stripeCheckoutSessionId"]).index("by_invoiceIdCandidate", ["invoiceIdCandidate"]),
 
   clientRequests: defineTable({
     companyId: v.id("companies"),

@@ -2451,7 +2451,11 @@
   "clientBilling": {
     "title": "Facturación",
     "description": "Consulta el estado, las fechas de vencimiento, los totales y las opciones de pago en línea de tus facturas.",
-    "payInvoice": "Pagar la factura {{invoice}} en línea"
+    "payInvoice": "Pagar la factura {{invoice}} en línea",
+    "startingPayment": "Iniciando el pago…",
+    "paymentUnavailable": "El pago en línea no está disponible ahora. Inténtalo de nuevo más tarde.",
+    "paymentProcessing": "Pago enviado. SCRUB lo está confirmando; el estado de la factura se actualizará aquí.",
+    "paymentCanceled": "Se canceló el pago. No se registró ningún pago aquí; puedes intentarlo de nuevo."
   },
   "clientLocations": {
     "title": "Ubicaciones",
@@ -2930,6 +2934,9 @@
     "missingPortalAccess": "Configura el acceso del cliente al portal antes de enviar la factura.",
     "missingEmail": "Agrega el correo electrónico del cliente antes de enviar la factura.",
     "paidNote": "Esta factura está registrada como pagada.",
+    "paidOnlineDetail": "Pagada en línea · comisión de SCRUB {{fee}}",
+    "paidOutsideDetail": "Pagada fuera de SCRUB",
+    "paymentReconciliationRequired": "Se requiere atención: hay que conciliar un pago en línea.",
     "payOnline": "Pagar en linea",
     "summary": "Resumen de factura",
     "invoiceNumber": "Numero de factura",

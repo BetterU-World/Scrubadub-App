@@ -4,12 +4,21 @@ import schema from "../../schema";
 import { api, internal } from "../../_generated/api";
 import { hashPassword } from "../password";
 import Stripe from "stripe";
-import { canAcceptClientInvoicePayments, companyConnectState, snapshotFromStripeAccount } from "../companyConnectReadiness";
+import { canAcceptClientInvoicePayments, companyConnectState, liveInvoiceCheckoutReady, snapshotFromStripeAccount } from "../companyConnectReadiness";
 
 const modules = import.meta.glob("../../**/*.ts");
 const now = Date.now();
 
 describe("company Connect readiness", () => {
+  it("requires the exact live unrestricted account for invoice Checkout", () => {
+    const ready = { id: "acct_expected", charges_enabled: true, payouts_enabled: true, requirements: { currently_due: [], past_due: [] } };
+    expect(liveInvoiceCheckoutReady(ready, "acct_expected")).toBe(true);
+    expect(liveInvoiceCheckoutReady(ready, "acct_other")).toBe(false);
+    expect(liveInvoiceCheckoutReady({ ...ready, charges_enabled: false }, "acct_expected")).toBe(false);
+    expect(liveInvoiceCheckoutReady({ ...ready, payouts_enabled: false }, "acct_expected")).toBe(false);
+    expect(liveInvoiceCheckoutReady({ ...ready, requirements: { currently_due: ["external_account"] } }, "acct_expected")).toBe(false);
+    expect(liveInvoiceCheckoutReady({ ...ready, requirements: { disabled_reason: "requirements.past_due" } }, "acct_expected")).toBe(false);
+  });
   it("requires both charge and payout capability", () => {
     expect(companyConnectState({}, now)).toBe("set_up");
     expect(companyConnectState({ stripeConnectAccountId: "acct_1" }, now)).toBe("checking");

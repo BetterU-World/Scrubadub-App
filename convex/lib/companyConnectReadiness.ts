@@ -13,7 +13,12 @@ export type CompanyConnectSnapshot = {
 export const CONNECT_STATUS_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 export function canAcceptClientInvoicePayments(value: CompanyConnectSnapshot): boolean {
-  return !!value.stripeConnectAccountId && value.stripeConnectChargesEnabled === true && value.stripeConnectPayoutsEnabled === true;
+  return !!value.stripeConnectAccountId && value.stripeConnectChargesEnabled === true && value.stripeConnectPayoutsEnabled === true && !value.stripeConnectRequirementsDue && !value.stripeConnectDisabledReason;
+}
+
+export function liveInvoiceCheckoutReady(account: { id: string; charges_enabled: boolean; payouts_enabled: boolean; requirements?: { currently_due?: string[] | null; past_due?: string[] | null; disabled_reason?: string | null } | null }, expectedAccountId: string) {
+  const snapshot = snapshotFromStripeAccount(account);
+  return account.id === expectedAccountId && snapshot.chargesEnabled && snapshot.payoutsEnabled && !snapshot.requirementsDue && !snapshot.disabledReason;
 }
 
 export function companyConnectState(value: CompanyConnectSnapshot, now = Date.now()): CompanyConnectState {

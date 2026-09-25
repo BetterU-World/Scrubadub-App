@@ -1,4 +1,5 @@
 import { mutation } from "../_generated/server";
+import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { requireOwnerOrManagerCapability } from "../lib/sessionAuth";
 import { buildInvoiceAddOnSnapshot, calculateInvoiceTotals } from "../lib/invoiceAddOnLineItems";
@@ -412,9 +413,13 @@ export const markPaid = mutation({
     const now = Date.now();
     await ctx.db.patch(args.invoiceId, {
       status: "paid",
+      paymentSource: "outside",
+      paidRecordedByUserId: args.userId,
       paidAt: now,
       updatedAt: now,
     });
+    const attempts = await ctx.db.query("invoicePaymentAttempts").withIndex("by_invoiceId", q => q.eq("invoiceId", args.invoiceId)).collect();
+    if (attempts.some(a => a.status === "creating" || a.status === "open")) await ctx.scheduler.runAfter(0, (internal as any).invoiceActions.expireInvoiceCheckoutSessions, { invoiceId: args.invoiceId });
   },
 });
 
@@ -435,5 +440,7 @@ export const voidInvoice = mutation({
       voidedAt: now,
       updatedAt: now,
     });
+    const attempts = await ctx.db.query("invoicePaymentAttempts").withIndex("by_invoiceId", q => q.eq("invoiceId", args.invoiceId)).collect();
+    if (attempts.some(a => a.status === "creating" || a.status === "open")) await ctx.scheduler.runAfter(0, (internal as any).invoiceActions.expireInvoiceCheckoutSessions, { invoiceId: args.invoiceId });
   },
 });

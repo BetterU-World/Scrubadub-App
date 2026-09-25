@@ -17,11 +17,15 @@ async function decorateInvoice(ctx: any, invoice: any) {
     : null;
   const clientUser = relationship?.clientUserId ? await ctx.db.get(relationship.clientUserId) : null;
   const jobs = await Promise.all(invoice.jobIds.map((jobId: any) => ctx.db.get(jobId)));
+  const paymentAttempts = await ctx.db.query("invoicePaymentAttempts").withIndex("by_invoiceId", (q: any) => q.eq("invoiceId", invoice._id)).collect();
+  const paymentExceptions = await ctx.db.query("invoicePaymentExceptions").withIndex("by_invoiceIdCandidate", (q: any) => q.eq("invoiceIdCandidate", String(invoice._id))).collect();
   return {
     ...invoice,
     invoiceType: type,
     displayLines,
     computedTotals,
+    onlinePayment: paymentAttempts.find((attempt: any) => attempt._id === invoice.canonicalPaymentAttemptId) ? { platformFeeCents: 200, stripePaymentIntentId: invoice.stripePaymentIntentId } : null,
+    paymentReconciliationRequired: paymentAttempts.some((attempt: any) => attempt.status === "reconciliation_required") || paymentExceptions.length > 0,
     commercialAccountName:
       account?.companyId === invoice.companyId ? account.clientName : null,
     clientRelationship:

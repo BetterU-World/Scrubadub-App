@@ -25,15 +25,14 @@ export const getForOwnerDelivery = internalQuery({
     return { recipientEmail: relationship.email, clientName: invoice.billToSnapshot?.displayName ?? relationship.displayName, companyName: company?.companyDisplayName ?? company?.name ?? "Your Cleaning Company", invoice: { invoiceNumber: invoice.invoiceNumber, title: invoice.title, dueDate: invoice.dueDate, invoiceType: type, ...verifiedTotals(invoice), addOnLineItems: type === "job" ? invoiceDisplayLines(invoice) : publicInvoiceAddOns(invoice.addOnLineItems) } };
   },
 });
-
 export const getForClientPayment = internalQuery({
   args: { clientUserId: v.id("clientUsers"), invoiceId: v.id("invoices") },
   handler: async (ctx, args) => {
     const invoice: any = await ctx.db.get(args.invoiceId);
     if (!invoice || invoice.status !== "issued") throw new Error("Invoice is not payable");
-    if (assertInvoiceInvariant(invoice) === "job") throw new Error("Online payment for job invoices is not available yet");
+    assertInvoiceInvariant(invoice);
     const relationship: any = invoice.clientRelationshipId ? await ctx.db.get(invoice.clientRelationshipId) : null;
-    if (!relationship || relationship.clientUserId !== args.clientUserId || relationship.companyId !== invoice.companyId) throw new Error("Access denied");
+    if (!relationship || relationship.status !== "active" || relationship.clientUserId !== args.clientUserId || relationship.companyId !== invoice.companyId) throw new Error("Access denied");
     const company: any = await ctx.db.get(invoice.companyId);
     if (!company?.stripeConnectAccountId) throw new Error("This company has not enabled online invoice payments");
     return { invoiceId: invoice._id, invoiceNumber: invoice.invoiceNumber, totalCents: verifiedTotals(invoice).totalCents, destinationAccountId: company.stripeConnectAccountId };
@@ -46,17 +45,5 @@ export const markSent = internalMutation({
     const invoice: any = await ctx.db.get(args.invoiceId);
     if (!invoice || invoice.companyId !== args.companyId || invoice.status !== "issued") throw new Error("Invoice is not sendable");
     const sentAt = Date.now(); await ctx.db.patch(args.invoiceId, { sentAt, updatedAt: sentAt }); return { sentAt };
-  },
-});
-
-export const markPaidFromCheckout = internalMutation({
-  args: { invoiceId: v.id("invoices"), stripeCheckoutSessionId: v.string(), stripePaymentIntentId: v.optional(v.string()) },
-  handler: async (ctx, args) => {
-    const invoice: any = await ctx.db.get(args.invoiceId);
-    if (!invoice || invoice.status === "void") return;
-    if (invoice.status === "paid") return;
-    if (invoice.status !== "issued") throw new Error("Invoice is not payable");
-    const now = Date.now();
-    await ctx.db.patch(args.invoiceId, { status: "paid", paidAt: now, updatedAt: now, stripeCheckoutSessionId: args.stripeCheckoutSessionId, stripePaymentIntentId: args.stripePaymentIntentId });
   },
 });
