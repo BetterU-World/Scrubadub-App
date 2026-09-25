@@ -195,14 +195,14 @@ describe("PR 6C commercial and collaboration session migration", () => {
     ).rejects.toThrow("Proposal link unavailable or expired");
   });
 
-  it("keeps all 39 scoped entry points session-verified and preserves exact frontend skip branches", () => {
+  it("keeps commercial entry points session-verified and preserves exact frontend skip branches", () => {
     const backendFiles = [
       "queries/commercialSchedules.ts", "mutations/commercialSchedules.ts", "queries/companyOnboardingDocuments.ts", "mutations/companyOnboardingDocuments.ts",
       "queries/invoices.ts", "mutations/invoices.ts", "queries/partners.ts", "mutations/partners.ts",
       "proposalDeliveryActions.ts", "serviceAgreementDeliveryActions.ts",
     ];
     const backendSource = backendFiles.map((path) => readFileSync(fileURLToPath(new URL(`../../${path}`, import.meta.url)), "utf8")).join("\n");
-    expect((backendSource.match(/sessionToken:\s*v\.string\(\)/g) ?? [])).toHaveLength(40); // 39 migrated + existing worker document listing
+    expect((backendSource.match(/sessionToken:\s*v\.string\(\)/g) ?? [])).toHaveLength(41); // Existing entries plus invoice lookup by job
     expect(backendSource).not.toMatch(/\b(assertOwnerRole|getSessionUser|requireOwner)\s*\(/);
 
     const frontendFiles = [

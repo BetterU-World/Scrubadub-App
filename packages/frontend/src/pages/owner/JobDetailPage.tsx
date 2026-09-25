@@ -12,6 +12,7 @@ import { StatusBadge } from "@/components/ui/StatusBadge";
 import { CancelJobDialog } from "@/components/CancelJobDialog";
 import { useParams, Link } from "wouter";
 import { JobTimeline } from "@/components/JobTimeline";
+import { JobInvoiceBillingPanel } from "@/components/owner/JobInvoiceBillingPanel";
 import { JobTimingPanel } from "@/components/JobTimingPanel";
 import { AddOnSnapshotList } from "@/components/AddOnSnapshotList";
 import {
@@ -221,6 +222,7 @@ export function JobDetailPage() {
 
 
       <div className="space-y-6">
+        <JobInvoiceBillingPanel job={job} />
         {/* Job info card */}
         <div className="card space-y-4">
           <div className="flex items-center gap-2 flex-wrap">

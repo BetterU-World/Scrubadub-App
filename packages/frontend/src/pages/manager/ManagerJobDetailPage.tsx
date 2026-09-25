@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { JobTimeline } from "@/components/JobTimeline";
+import { JobInvoiceBillingPanel } from "@/components/owner/JobInvoiceBillingPanel";
 import { JobTimingPanel } from "@/components/JobTimingPanel";
 import { AddOnSnapshotList } from "@/components/AddOnSnapshotList";
 import { CancelJobDialog } from "@/components/CancelJobDialog";
@@ -171,6 +172,7 @@ export function ManagerJobDetailPage() {
       />
 
       <div className="space-y-4">
+        <JobInvoiceBillingPanel job={job} />
         {/* Status & Type + Inspection Summary Badge */}
         <div className="card space-y-4">
           <div className="flex items-center gap-2 flex-wrap">

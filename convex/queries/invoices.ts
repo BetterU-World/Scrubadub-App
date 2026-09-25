@@ -1,8 +1,9 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwnerManagerSession } from "../lib/sessionAuth";
-import { hasOwnerOrManagerPermission } from "../lib/auth";
+import { hasOwnerOrManagerPermission, hasManagerPermission } from "../lib/auth";
 import { calculateInvoiceTotals } from "../lib/invoiceAddOnLineItems";
+import { getActiveTeamIdsForUser } from "../lib/teams";
 
 async function decorateInvoice(ctx: any, invoice: any) {
   const computedTotals = calculateInvoiceTotals(invoice.baseSubtotalCents ?? invoice.subtotalCents, invoice.addOnLineItems ?? [], invoice.taxCents);
@@ -10,6 +11,7 @@ async function decorateInvoice(ctx: any, invoice: any) {
   const relationship = invoice.clientRelationshipId
     ? await ctx.db.get(invoice.clientRelationshipId)
     : null;
+  const clientUser = relationship?.clientUserId ? await ctx.db.get(relationship.clientUserId) : null;
   const jobs = await Promise.all(invoice.jobIds.map((jobId: any) => ctx.db.get(jobId)));
   return {
     ...invoice,
@@ -24,6 +26,8 @@ async function decorateInvoice(ctx: any, invoice: any) {
             businessName: relationship.businessName,
             clientType: relationship.clientType,
             status: relationship.status,
+            hasEmail: !!relationship.email,
+            hasPortalAccess: relationship.status === "active" && clientUser?.status === "active",
           }
         : null,
     jobs: jobs
@@ -37,6 +41,33 @@ async function decorateInvoice(ctx: any, invoice: any) {
       })),
   };
 }
+
+export const getBillingForJob = query({
+  args: { userId: v.id("users"), sessionToken: v.string(), jobId: v.id("jobs") },
+  handler: async (ctx, args) => {
+    const actor = await requireInvoiceReader(ctx, args.sessionToken, args.userId);
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.companyId !== actor.companyId) throw new Error("Access denied");
+    if (actor.role === "manager" && !hasManagerPermission(actor, "canSeeAllJobs")) {
+      const teamIds = await getActiveTeamIdsForUser(ctx, actor._id, actor.companyId);
+      if (!job.cleanerIds.includes(actor._id) && job.assignedManagerId !== actor._id && !(job.assignedTeamId && teamIds.has(job.assignedTeamId))) throw new Error("Job access required");
+    }
+    if (!job.commercialAccountId) return { kind: "non_commercial" as const };
+    const account = await ctx.db.get(job.commercialAccountId);
+    if (!account || account.companyId !== actor.companyId) throw new Error("Commercial account not found");
+    const invoices = await ctx.db.query("invoices")
+      .withIndex("by_company", q => q.eq("companyId", actor.companyId)).collect();
+    const existing = invoices.find(invoice => invoice.status !== "void" && invoice.jobIds.includes(job._id));
+    return {
+      kind: "commercial" as const,
+      jobStatus: job.status,
+      scheduledDate: job.scheduledDate,
+      commercialAccountId: account._id,
+      accountName: account.clientName,
+      existingInvoice: existing ? { _id: existing._id, invoiceNumber: existing.invoiceNumber, status: existing.status } : null,
+    };
+  },
+});
 
 async function requireInvoiceReader(ctx: any, sessionToken: string, userId: any) {
   const actor = await requireOwnerManagerSession(ctx, sessionToken, userId);

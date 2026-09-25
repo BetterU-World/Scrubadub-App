@@ -15,7 +15,10 @@ export const getForOwnerDelivery = internalQuery({
     if (!invoice || invoice.companyId !== args.companyId) throw new Error("Access denied");
     if (invoice.status !== "issued") throw new Error("Only issued invoices can be sent");
     const relationship: any = invoice.clientRelationshipId ? await ctx.db.get(invoice.clientRelationshipId) : null;
-    if (!relationship || relationship.companyId !== invoice.companyId || !relationship.email) throw new Error("Client email is required");
+    if (!relationship || relationship.companyId !== invoice.companyId) throw new Error("A linked client relationship is required");
+    const clientUser: any = relationship.clientUserId ? await ctx.db.get(relationship.clientUserId) : null;
+    if (relationship.status !== "active" || clientUser?.status !== "active") throw new Error("Client portal access is required before emailing this invoice");
+    if (!relationship.email) throw new Error("Client email is required");
     const company: any = await ctx.db.get(invoice.companyId);
     return { recipientEmail: relationship.email, clientName: relationship.displayName, companyName: company?.companyDisplayName ?? company?.name ?? "Your Cleaning Company", invoice: { invoiceNumber: invoice.invoiceNumber, title: invoice.title, dueDate: invoice.dueDate, ...verifiedTotals(invoice), addOnLineItems: publicInvoiceAddOns(invoice.addOnLineItems) } };
   },

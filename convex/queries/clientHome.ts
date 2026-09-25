@@ -141,6 +141,7 @@ export const getClientHome = query({
           completedAt: job.completedAt,
         })),
       invoices: related.invoices
+        .filter((invoice) => invoice.status === "issued" || invoice.status === "paid")
         .sort((a, b) => b.updatedAt - a.updatedAt)
         .map((invoice) => ({
           _id: invoice._id,
