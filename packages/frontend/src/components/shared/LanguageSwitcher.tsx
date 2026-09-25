@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { Globe } from "lucide-react";
+import { saveExplicitLanguage } from "../../i18n/languagePreference";
 
 const LANGUAGES = [
   { code: "en", label: "EN" },
@@ -17,7 +18,10 @@ export function LanguageSwitcher() {
       {LANGUAGES.map((lang) => (
         <button
           key={lang.code}
-          onClick={() => i18n.changeLanguage(lang.code)}
+          onClick={() => {
+            saveExplicitLanguage(lang.code);
+            void i18n.changeLanguage(lang.code);
+          }}
           className={`min-h-11 px-1.5 py-0.5 text-xs font-medium rounded transition-colors ${
             current === lang.code
               ? "bg-primary-100 text-primary-700"

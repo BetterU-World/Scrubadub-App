@@ -2,7 +2,7 @@
 
 import { action, query } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import {
   hashPassword,
@@ -119,7 +119,7 @@ export const signIn = action({
     });
     if (!user || user.status === "inactive") {
       await recordSecurityEventFromAction(ctx, { eventType: "login_failure", principalType: "staff", outcome: "failure", metadata: { category: "invalid_credentials" } });
-      throw new Error(genericError);
+      throw new ConvexError({ code: "INVALID_CREDENTIALS", message: genericError });
     }
 
     let passwordValid = false;
@@ -139,7 +139,7 @@ export const signIn = action({
 
     if (!passwordValid) {
       await recordSecurityEventFromAction(ctx, { eventType: "login_failure", principalType: "staff", outcome: "failure", metadata: { category: "invalid_credentials" } });
-      throw new Error(genericError);
+      throw new ConvexError({ code: "INVALID_CREDENTIALS", message: genericError });
     }
 
     const session = await issueSession(ctx, { principalType: "staff", userId: user._id });

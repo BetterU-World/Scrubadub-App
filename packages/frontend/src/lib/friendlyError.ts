@@ -69,6 +69,23 @@ export function toSignInMessage(
   err: unknown,
   translate: (key: string) => string,
 ): string {
+  const data = err && typeof err === "object" && "data" in err ? err.data : undefined;
+  let knownData = data;
+  // Nested Convex calls may JSON-encode errorData more than once.
+  for (let depth = 0; depth < 3 && typeof knownData === "string"; depth++) {
+    if (!knownData.startsWith("{") && !knownData.startsWith('"')) break;
+    try {
+      knownData = JSON.parse(knownData);
+    } catch {
+      break;
+    }
+  }
+  if (knownData && typeof knownData === "object" && "code" in knownData && knownData.code === "INVALID_CREDENTIALS") {
+    return translate("auth.incorrectCredentials");
+  }
+  if (knownData === "Rate limit exceeded. Please wait a moment before trying again.") {
+    return translate("errors.rateLimited");
+  }
   const raw = err instanceof Error ? err.message : typeof err === "string" ? err : "";
   if (/rate limit exceeded/i.test(raw)) return translate("errors.rateLimited");
   if (/invalid email or password/i.test(raw)) return translate("auth.incorrectCredentials");

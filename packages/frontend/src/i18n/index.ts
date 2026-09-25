@@ -3,28 +3,16 @@ import { initReactI18next } from "react-i18next";
 
 import en from "./en/common.json";
 import es from "./es/common.json";
-
-const STORAGE_KEY = "scrub_language";
+import { initialLanguage } from "./languagePreference";
 
 function getSavedLanguage(): string {
+  let storage: Storage | undefined;
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved === "en" || saved === "es") return saved;
+    storage = localStorage;
   } catch {
-    // localStorage unavailable
+    // Storage can be unavailable in restricted browser contexts.
   }
-
-  // No saved preference — detect from browser language
-  const detected = navigator.language?.startsWith("es") ? "es" : "en";
-
-  // Persist so we don't re-detect on every load
-  try {
-    localStorage.setItem(STORAGE_KEY, detected);
-  } catch {
-    // localStorage unavailable
-  }
-
-  return detected;
+  return initialLanguage(navigator.language ?? "en", storage);
 }
 
 i18n.use(initReactI18next).init({
@@ -39,15 +27,6 @@ i18n.use(initReactI18next).init({
   interpolation: {
     escapeValue: false, // React already escapes
   },
-});
-
-// Persist language changes to localStorage
-i18n.on("languageChanged", (lng) => {
-  try {
-    localStorage.setItem(STORAGE_KEY, lng);
-  } catch {
-    // localStorage unavailable
-  }
 });
 
 export default i18n;
