@@ -2451,7 +2451,11 @@
   "clientBilling": {
     "title": "Billing",
     "description": "Review invoice status, due dates, totals, and available online payment actions.",
-    "payInvoice": "Pay invoice {{invoice}} online"
+    "payInvoice": "Pay invoice {{invoice}} online",
+    "startingPayment": "Starting Checkout…",
+    "paymentUnavailable": "Online payment is unavailable right now. Please try again later.",
+    "paymentProcessing": "Payment submitted. SCRUB is confirming it; your invoice status will update here.",
+    "paymentCanceled": "Checkout was canceled. No payment was recorded here; you can try again."
   },
   "clientLocations": {
     "title": "Locations",
@@ -2930,6 +2934,9 @@
     "missingPortalAccess": "Set up this client's portal access before emailing the invoice.",
     "missingEmail": "Add the client's email address before emailing the invoice.",
     "paidNote": "This invoice is recorded as paid.",
+    "paidOnlineDetail": "Paid online · SCRUB fee {{fee}}",
+    "paidOutsideDetail": "Paid outside SCRUB",
+    "paymentReconciliationRequired": "Action needed: an online payment needs reconciliation.",
     "payOnline": "Pay online",
     "summary": "Invoice Summary",
     "invoiceNumber": "Invoice Number",

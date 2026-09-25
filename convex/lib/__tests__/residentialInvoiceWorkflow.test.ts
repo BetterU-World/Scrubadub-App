@@ -13,7 +13,7 @@ async function setup() {
   const t = convexTest(schema, modules);
   const passwordHash = await hashPassword(PASSWORD);
   const seeded = await t.run(async ctx => {
-    const company = await ctx.db.insert("companies", { name: "Homes", timezone: "America/New_York" });
+    const company = await ctx.db.insert("companies", { name: "Homes", timezone: "America/New_York", stripeConnectAccountId: "acct_homes" });
     const otherCompany = await ctx.db.insert("companies", { name: "Other", timezone: "America/New_York" });
     const owner = await ctx.db.insert("users", { companyId: company, role: "owner", status: "active", email: "home-owner@test.dev", name: "Owner", passwordHash });
     const manager = await ctx.db.insert("users", { companyId: company, role: "manager", status: "active", canManageInvoices: true, email: "home-manager@test.dev", name: "Manager", passwordHash });
@@ -53,7 +53,7 @@ describe("residential single-job invoices", () => {
     expect((Date.parse(`${issued?.dueDate}T00:00:00Z`) - Date.parse(`${issued?.issueDate}T00:00:00Z`)) / 86400000).toBe(7);
     expect((await s.t.query(api.queries.clientPortal.getClientBilling, s.clientAuth)).invoices).toHaveLength(1);
     expect((await s.t.query(api.queries.clientPortal.getClientBilling, s.otherClientAuth)).invoices).toHaveLength(0);
-    await expect(s.t.query(internal.invoiceDeliveryInternal.getForClientPayment, { clientUserId: s.client, invoiceId: id })).rejects.toThrow("not available yet");
+    expect((await s.t.query(internal.invoiceDeliveryInternal.getForClientPayment, { clientUserId: s.client, invoiceId: id })).totalCents).toBe(issued?.totalCents);
   });
 
   it("reuses a draft, blocks issued duplicates, and permits a new numbered invoice after void", async () => {
