@@ -5,9 +5,10 @@ import { hasOwnerOrManagerPermission, hasManagerPermission } from "../lib/auth";
 import { calculateInvoiceTotals } from "../lib/invoiceAddOnLineItems";
 import { getActiveTeamIdsForUser } from "../lib/teams";
 import { assertInvoiceInvariant, invoiceDisplayLines, invoicePlatformFeeCents } from "../lib/invoiceModel";
+import { ownerInvoicePaymentRecord } from "../lib/invoicePaymentExperience";
 import { resolveJobInvoiceablePricing } from "../lib/jobPricing";
 
-async function decorateInvoice(ctx: any, invoice: any) {
+async function decorateInvoice(ctx: any, invoice: any, diagnostics?: boolean) {
   const type = assertInvoiceInvariant(invoice);
   const displayLines = invoiceDisplayLines(invoice);
   const computedTotals = calculateInvoiceTotals(invoice.baseSubtotalCents ?? invoice.subtotalCents, displayLines, invoice.taxCents);
@@ -19,8 +20,12 @@ async function decorateInvoice(ctx: any, invoice: any) {
   const jobs = await Promise.all(invoice.jobIds.map((jobId: any) => ctx.db.get(jobId)));
   const paymentAttempts = await ctx.db.query("invoicePaymentAttempts").withIndex("by_invoiceId", (q: any) => q.eq("invoiceId", invoice._id)).collect();
   const paymentExceptions = await ctx.db.query("invoicePaymentExceptions").withIndex("by_invoiceIdCandidate", (q: any) => q.eq("invoiceIdCandidate", String(invoice._id))).collect();
+  const financialEvents = diagnostics === undefined ? [] : (await Promise.all(paymentAttempts.map((attempt: any) =>
+    ctx.db.query("invoiceStripeFinancialEvents").withIndex("by_attemptId", (q: any) => q.eq("attemptId", attempt._id)).collect(),
+  ))).flat();
   return {
     ...invoice,
+    ...(diagnostics === undefined ? {} : { paymentRecord: ownerInvoicePaymentRecord(invoice, paymentAttempts, paymentExceptions, financialEvents, diagnostics) }),
     invoiceType: type,
     displayLines,
     computedTotals,
@@ -118,7 +123,7 @@ export const getById = query({
     const invoice = await ctx.db.get(args.invoiceId);
     if (!invoice) return null;
     if (invoice.companyId !== owner.companyId) throw new Error("Access denied");
-    return await decorateInvoice(ctx, invoice);
+    return await decorateInvoice(ctx, invoice, hasOwnerOrManagerPermission(owner, "canViewFinancials"));
   },
 });
 

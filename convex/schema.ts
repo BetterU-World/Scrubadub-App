@@ -2103,7 +2103,7 @@ export default defineSchema({
     stripeEventId: v.string(), eventType: v.string(), objectId: v.string(), paymentIntentId: v.optional(v.string()),
     eventAccount: v.optional(v.string()), source: v.string(), attemptId: v.optional(v.id("invoicePaymentAttempts")),
     contextValid: v.boolean(), createdAt: v.number(),
-  }).index("by_stripeEventId", ["stripeEventId"]),
+  }).index("by_stripeEventId", ["stripeEventId"]).index("by_attemptId", ["attemptId"]),
 
   invoicePaymentExceptions: defineTable({
     stripeCheckoutSessionId: v.string(), stripePaymentIntentId: v.optional(v.string()),

@@ -39,6 +39,47 @@ async function setup(price = 10000) {
 }
 
 describe("commercial invoice workflow", () => {
+  it("projects the complete client lifecycle and canonical owner evidence without client Stripe internals", async () => {
+    const s = await setup(2500);
+    process.env.APP_URL = "https://scrub.test";
+    process.env.STRIPE_SECRET_KEY = "sk_test_fixture";
+    await s.t.run(ctx => ctx.db.patch(s.company, { stripeConnectArchitecture: "merchant_direct_v2", stripeConnectAccountId: "acct_company" }));
+    const created = await s.t.mutation(api.mutations.invoices.generateFromJobs, { ...s.ownerArgs, commercialAccountId: s.account, billingStartDate: "2030-01-01", billingEndDate: "2030-01-31" });
+    const invoiceId = created.invoiceId!;
+    await s.t.mutation(api.mutations.invoices.markIssued, { ...s.ownerArgs, invoiceId });
+    const billing = async () => (await s.t.query(api.queries.clientPortal.getClientBilling, s.clientArgs)).invoices[0];
+    const owner = () => s.t.query(api.queries.invoices.getById, { ...s.ownerArgs, invoiceId });
+    expect(await billing()).toMatchObject({ paymentState: "payable", canPayOnline: true });
+    const attemptId = await s.t.mutation((internal as any).invoicePaymentInternal.reserve, { invoiceId, clientUserId: s.client, connectedStripeAccountId: "acct_company" });
+    expect(await billing()).toMatchObject({ status: "issued", paymentState: "processing", canPayOnline: false });
+    for (const status of ["failed", "expired", "reconciliation_required"] as const) {
+      await s.t.run(ctx => ctx.db.patch(attemptId, { status }));
+      expect(await billing()).toMatchObject({ status: "issued", paymentState: status === "reconciliation_required" ? "attention" : status, canPayOnline: status !== "reconciliation_required" });
+    }
+    await s.t.run(ctx => ctx.db.patch(attemptId, { status: "creating" }));
+    await s.t.mutation((internal as any).invoicePaymentInternal.opened, { attemptId, sessionId: "cs_canonical", url: "https://checkout.test" });
+    const amount = (await billing()).totalCents;
+    expect(await s.t.mutation((internal as any).invoicePaymentInternal.applySuccess, { attemptId, sessionId: "cs_canonical", paymentIntentId: "pi_canonical", amountCents: amount, currency: "usd", feeCents: 0, destination: "", eventAccount: "acct_company", eventSource: "connect", invoiceIdMetadata: String(invoiceId), companyIdMetadata: String(s.company) })).toBe("paid");
+    expect(await billing()).toMatchObject({ status: "paid", paymentState: "paid", paymentSource: "online", canPayOnline: false });
+    expect(JSON.stringify(await billing())).not.toMatch(/pi_canonical|cs_canonical|acct_company|checkout\.test/);
+    expect((await owner())?.paymentRecord).toMatchObject({ state: "paid", source: "online", platformFeeCents: 0, references: { paymentIntentId: "pi_canonical", chargeModel: "direct" } });
+    expect((await s.t.query(api.queries.invoices.getById, { ...s.managerArgs, invoiceId }))?.paymentRecord?.references).toBeNull();
+    await s.t.run(ctx => ctx.db.patch(s.otherManager, { canViewFinancials: true }));
+    expect((await s.t.query(api.queries.invoices.getById, { ...s.otherArgs, invoiceId }))?.paymentRecord?.references?.paymentIntentId).toBe("pi_canonical");
+    await s.t.run(ctx => ctx.db.patch(s.otherManager, { canViewFinancials: false }));
+    await expect(s.t.query(api.queries.invoices.getById, { ...s.otherArgs, invoiceId })).rejects.toThrow("Invoice access required");
+    await s.t.mutation((internal as any).invoicePaymentInternal.recordFinancialEvent, { stripeEventId: "evt_refund", eventType: "charge.refunded", objectId: "ch_canonical", paymentIntentId: "pi_canonical", eventAccount: "acct_company", source: "connect" });
+    await s.t.mutation((internal as any).invoicePaymentInternal.recordFinancialEvent, { stripeEventId: "evt_dispute", eventType: "charge.dispute.closed", objectId: "dp_canonical", paymentIntentId: "pi_canonical", eventAccount: "acct_company", source: "connect" });
+    await s.t.mutation((internal as any).invoicePaymentInternal.recordFinancialEvent, { stripeEventId: "evt_wrong", eventType: "charge.dispute.created", objectId: "dp_wrong", paymentIntentId: "pi_canonical", eventAccount: "acct_wrong", source: "connect" });
+    const record = (await owner())?.paymentRecord;
+    expect(record).toMatchObject({ state: "paid", hasRefundEvidence: true, hasDisputeEvidence: true });
+    expect(record?.history.filter((e: any) => e.kind.startsWith("charge.")).map((e: any) => e.kind).sort()).toEqual(["charge.dispute.closed", "charge.refunded"]);
+    expect(JSON.stringify(record)).not.toMatch(/dp_wrong|evt_wrong|stripeCheckoutUrl|exceptionReason/);
+    await s.t.mutation((internal as any).invoicePaymentInternal.recordException, { sessionId: "cs_conflict", invoiceIdCandidate: String(invoiceId), companyIdCandidate: String(s.company), reason: "paid_attempt_identity_conflict" });
+    expect(await billing()).toMatchObject({ status: "paid", paymentNeedsAttention: true, canPayOnline: false });
+    expect((await owner())?.paymentRecord).toMatchObject({ state: "paid", needsAttention: true });
+  });
+
   it("projects the canonical frozen fee, including historical and outside payments", async () => {
     const s = await setup();
     for (const [amount, fee, model] of [[2500, 0, "direct"], [2999, 0, "direct"], [3000, 200, "direct"], [50000, 200, "direct"], [2500, 200, undefined]] as const) {
