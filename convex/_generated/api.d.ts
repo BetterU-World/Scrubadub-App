@@ -39,6 +39,7 @@ import type * as giveaways from "../giveaways.js";
 import type * as http from "../http.js";
 import type * as invoiceActions from "../invoiceActions.js";
 import type * as invoiceDeliveryInternal from "../invoiceDeliveryInternal.js";
+import type * as invoicePaymentInternal from "../invoicePaymentInternal.js";
 import type * as lib_acceptedProposalAddOnSnapshots from "../lib/acceptedProposalAddOnSnapshots.js";
 import type * as lib_assessmentAnalytics from "../lib/assessmentAnalytics.js";
 import type * as lib_assessmentApplicability from "../lib/assessmentApplicability.js";
@@ -249,6 +250,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   invoiceActions: typeof invoiceActions;
   invoiceDeliveryInternal: typeof invoiceDeliveryInternal;
+  invoicePaymentInternal: typeof invoicePaymentInternal;
   "lib/acceptedProposalAddOnSnapshots": typeof lib_acceptedProposalAddOnSnapshots;
   "lib/assessmentAnalytics": typeof lib_assessmentAnalytics;
   "lib/assessmentApplicability": typeof lib_assessmentApplicability;
