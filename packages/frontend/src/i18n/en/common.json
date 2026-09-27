@@ -1270,13 +1270,13 @@
     "expired": "Your Stripe setup link expired. Continue setup to get a new link.",
     "opening": "Opening Stripe…",
     "continue": "Continue setup",
-    "manage": "Review Stripe account",
+    "manage": "Review Stripe account", "reconnect": "Reconnect Stripe",
     "account": "Account",
     "testButton": "Run $1 test",
     "testReturned": "You returned from the test checkout. Check Stripe for the payment result.",
     "testCancelled": "The test checkout was canceled.",
-    "states": { "set_up": "Set up payments", "checking": "Checking payment status", "continue_verification": "Continue Stripe verification", "action_needed": "Action needed", "ready": "Ready to accept client payments" },
-    "descriptions": { "set_up": "Set up Stripe to accept client invoice payments.", "checking": "Stripe is confirming your account status.", "continue_verification": "Complete your Stripe verification before clients can pay online.", "action_needed": "Stripe needs more information before client payments are ready.", "ready": "Client invoice payments and payouts are enabled." }
+    "states": { "reconnect_required": "Reconnect Stripe for client payments", "payments_paused": "Payments awaiting activation", "set_up": "Set up payments", "checking": "Checking payment status", "continue_verification": "Continue Stripe verification", "action_needed": "Action needed", "ready": "Ready to accept client payments" },
+    "descriptions": { "reconnect_required": "Connect a new Stripe account to continue accepting online invoice payments. Your previous payment history stays available.", "payments_paused": "Stripe verification is complete. Online payments will be available after SCRUB completes payment validation.", "set_up": "Set up Stripe to accept client invoice payments.", "checking": "Stripe is confirming your account status.", "continue_verification": "Complete your Stripe verification before clients can pay online.", "action_needed": "Stripe needs more information before client payments are ready.", "ready": "Client invoice payments and payouts are enabled." }
   },
   "addOns": {
     "title": "Company Add-Ons",

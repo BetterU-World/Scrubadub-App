@@ -346,6 +346,10 @@ export default defineSchema({
     stripeSubscriptionEventCreatedAt: v.optional(v.number()),
     // Stripe Connect (company-level Express account)
     stripeConnectAccountId: v.optional(v.string()),
+    stripeConnectArchitecture: v.optional(v.literal("merchant_direct_v2")),
+    stripeConnectModernReady: v.optional(v.boolean()),
+    stripeConnectPendingAccountId: v.optional(v.string()),
+    stripeConnectFlowId: v.optional(v.id("companyConnectFlows")),
     stripeConnectOnboardedAt: v.optional(v.number()),
     stripeConnectChargesEnabled: v.optional(v.boolean()),
     stripeConnectPayoutsEnabled: v.optional(v.boolean()),
@@ -2081,11 +2085,25 @@ export default defineSchema({
   invoicePaymentAttempts: defineTable({
     companyId: v.id("companies"), invoiceId: v.id("invoices"), invoiceType: v.union(v.literal("commercial"), v.literal("job")),
     clientRelationshipId: v.id("clientRelationships"), amountCents: v.number(), currency: v.literal("usd"),
-    destinationStripeAccountId: v.string(), platformFeeCents: v.number(),
+    chargeModel: v.optional(v.union(v.literal("destination"), v.literal("direct"))),
+    connectedStripeAccountId: v.optional(v.string()),
+    destinationStripeAccountId: v.optional(v.string()), platformFeeCents: v.number(),
     status: v.union(v.literal("creating"), v.literal("open"), v.literal("paid"), v.literal("failed"), v.literal("expired"), v.literal("reconciliation_required")),
     stripeCheckoutSessionId: v.optional(v.string()), stripeCheckoutUrl: v.optional(v.string()), stripePaymentIntentId: v.optional(v.string()),
     exceptionReason: v.optional(v.string()), createdAt: v.number(), updatedAt: v.number(), completedAt: v.optional(v.number()),
-  }).index("by_invoiceId", ["invoiceId"]).index("by_stripeCheckoutSessionId", ["stripeCheckoutSessionId"]),
+  }).index("by_invoiceId", ["invoiceId"]).index("by_stripeCheckoutSessionId", ["stripeCheckoutSessionId"]).index("by_companyId", ["companyId"]).index("by_stripePaymentIntentId", ["stripePaymentIntentId"]),
+
+  companyConnectFlows: defineTable({
+    companyId: v.id("companies"), ownerId: v.id("users"), previousAccountId: v.optional(v.string()),
+    accountId: v.optional(v.string()), status: v.union(v.literal("creating"), v.literal("onboarding"), v.literal("active")),
+    createdAt: v.number(), activatedAt: v.optional(v.number()),
+  }).index("by_companyId", ["companyId"]),
+
+  invoiceStripeFinancialEvents: defineTable({
+    stripeEventId: v.string(), eventType: v.string(), objectId: v.string(), paymentIntentId: v.optional(v.string()),
+    eventAccount: v.optional(v.string()), source: v.string(), attemptId: v.optional(v.id("invoicePaymentAttempts")),
+    contextValid: v.boolean(), createdAt: v.number(),
+  }).index("by_stripeEventId", ["stripeEventId"]),
 
   invoicePaymentExceptions: defineTable({
     stripeCheckoutSessionId: v.string(), stripePaymentIntentId: v.optional(v.string()),

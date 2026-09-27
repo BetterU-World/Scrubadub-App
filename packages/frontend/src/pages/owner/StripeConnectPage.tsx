@@ -140,14 +140,14 @@ export function StripeConnectPage() {
             <button onClick={handleConnectStripe} disabled={loading !== null} className="btn-primary mb-2 w-full">
               {loading === "connect" ? t("companyConnect.opening") : t(ownerConnectActionKey(state))}
             </button>
-            <button
+            {connectStatus.testCheckoutAvailable && <button
               onClick={handleTestCheckout}
               disabled={loading !== null || state !== "ready"}
               className="btn-primary w-full flex items-center justify-center gap-2"
             >
               <CreditCard className="w-4 h-4" />
               {loading === "test" ? t("companyConnect.opening") : t("companyConnect.testButton")}
-            </button>
+            </button>}
           </>
         ) : (
           <>

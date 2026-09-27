@@ -2,6 +2,7 @@ import { query, internalQuery } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwnerSession } from "../lib/sessionAuth";
 import { companyConnectState, canAcceptClientInvoicePayments } from "../lib/companyConnectReadiness";
+import { invoicePaymentsEnabled, stripeExpectedLivemode } from "../lib/environment";
 
 /**
  * Public query: returns the company's Stripe Connect status.
@@ -14,6 +15,8 @@ export const getCompanyConnectStatus = query({
     if (!company) throw new Error("Company not found");
     return {
       stripeConnectAccountId: company.stripeConnectAccountId ?? null,
+      pendingAccountId: company.stripeConnectPendingAccountId ?? null,
+      testCheckoutAvailable: invoicePaymentsEnabled() && !stripeExpectedLivemode(),
       stripeConnectOnboardedAt: company.stripeConnectOnboardedAt ?? null,
       chargesEnabled: company.stripeConnectChargesEnabled ?? null,
       payoutsEnabled: company.stripeConnectPayoutsEnabled ?? null,
@@ -41,6 +44,9 @@ export const getOwnerAndCompany = internalQuery({
       email: user.email,
       companyId: company._id,
       stripeConnectAccountId: company.stripeConnectAccountId ?? null,
+      stripeConnectArchitecture: company.stripeConnectArchitecture,
+      pendingAccountId: company.stripeConnectPendingAccountId,
+      flowId: company.stripeConnectFlowId,
     };
   },
 });
