@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { assertInvoiceInvariant, invoiceDisplayLines } from "./lib/invoiceModel";
 import { calculateInvoiceTotals } from "./lib/invoiceAddOnLineItems";
 import { computeInvoicePlatformFee, validatePaymentEventAccount, resolvePaymentAttemptChargeModel } from "./lib/invoiceStripeContext";
+import { paymentNeedsAttention } from "./lib/invoicePaymentExperience";
 
 async function payable(ctx: any, invoiceId: any, clientUserId: any) {
   const invoice = await ctx.db.get(invoiceId);
@@ -12,6 +13,9 @@ async function payable(ctx: any, invoiceId: any, clientUserId: any) {
   if (!relationship || relationship.status !== "active" || relationship.companyId !== invoice.companyId || relationship.clientUserId !== clientUserId) throw new Error("Access denied");
   const client = await ctx.db.get(clientUserId);
   if (!client || client.status !== "active") throw new Error("Client portal access required");
+  const attempts = await ctx.db.query("invoicePaymentAttempts").withIndex("by_invoiceId", (q: any) => q.eq("invoiceId", invoice._id)).collect();
+  const exceptions = await ctx.db.query("invoicePaymentExceptions").withIndex("by_invoiceIdCandidate", (q: any) => q.eq("invoiceIdCandidate", String(invoice._id))).collect();
+  if (paymentNeedsAttention(invoice, attempts, exceptions)) throw new Error("Payment requires review before another Checkout can be started");
   const company = await ctx.db.get(invoice.companyId);
   if (!company?.stripeConnectAccountId || company.stripeConnectArchitecture !== "merchant_direct_v2") throw new Error("Reconnect Stripe to accept online invoice payments");
   const totals = calculateInvoiceTotals(invoice.baseSubtotalCents ?? invoice.subtotalCents, invoiceDisplayLines(invoice), invoice.taxCents);

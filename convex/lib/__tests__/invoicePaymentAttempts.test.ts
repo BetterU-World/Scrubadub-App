@@ -21,6 +21,28 @@ async function setup() {
 }
 
 describe("invoice payment attempts", () => {
+  it.each(["attempt", "exception"])("blocks a new reservation and inspection when %s evidence needs review", async kind => {
+    const s = await setup();
+    const attemptId = await s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, connectedStripeAccountId: "acct_payee" });
+    await s.t.mutation(internal.invoicePaymentInternal.opened, { attemptId, sessionId: "cs_review", url: "https://checkout.test" });
+    if (kind === "attempt") await s.t.mutation(internal.invoicePaymentInternal.reconcileAttempt, { attemptId, sessionId: "cs_review", reason: "payment_facts_mismatch" });
+    else await s.t.mutation(internal.invoicePaymentInternal.recordException, { sessionId: "cs_conflict", invoiceIdCandidate: String(s.invoice), companyIdCandidate: String(s.company), reason: "unknown_payment_attempt" });
+    const before = await s.t.run(ctx => ctx.db.query("invoicePaymentAttempts").collect());
+    await expect(s.t.query(internal.invoicePaymentInternal.inspect, { invoiceId: s.invoice, clientUserId: s.client })).rejects.toThrow("requires review");
+    await expect(s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, connectedStripeAccountId: "acct_payee" })).rejects.toThrow("requires review");
+    expect(await s.t.run(ctx => ctx.db.query("invoicePaymentAttempts").collect())).toEqual(before);
+    expect((await s.t.run(ctx => ctx.db.get(s.invoice)))?.status).toBe("issued");
+  });
+
+  it.each(["failed", "expired"] as const)("permits a new attempt after a %s attempt without review evidence", async status => {
+    const s = await setup();
+    const first = await s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, connectedStripeAccountId: "acct_payee" });
+    await s.t.mutation(internal.invoicePaymentInternal.markUnavailable, { attemptId: first, status });
+    const second = await s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, connectedStripeAccountId: "acct_payee" });
+    expect(second).not.toBe(first);
+    expect(await s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, connectedStripeAccountId: "acct_payee" })).toBe(second);
+  });
+
   it("configures an exact direct charge, stored fee, and account-aware idempotency", () => {
     const attempt = { _id: "attempt_one", invoiceId: "invoice_one", companyId: "company_one", amountCents: 50000, chargeModel: "direct" as const, connectedStripeAccountId: "acct_payee", platformFeeCents: 200 };
     const { parameters, options } = invoiceCheckoutParameters(attempt, "INV-00001", "https://app.test");

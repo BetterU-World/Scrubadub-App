@@ -10,6 +10,7 @@ import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { Check, FileText, Receipt, Save, Send, XCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AddOnSnapshotList } from "@/components/AddOnSnapshotList";
+import { InvoicePaymentRecord } from "../../components/owner/InvoicePaymentRecord";
 import { invoiceEmailActionKey } from "@/lib/invoiceWorkflowPresentation";
 
 function formatCents(cents: number | undefined) {
@@ -245,6 +246,8 @@ export function CommercialInvoiceDetailPage() {
             </div>
           </section>
 
+          <InvoicePaymentRecord record={invoice.paymentRecord} />
+
           {canManageInvoices && <section className="card space-y-2">
             <h2 className="text-lg font-semibold text-gray-900">{t("invoices.actions")}</h2>
             {invoice.status === "draft" && (
@@ -275,7 +278,7 @@ export function CommercialInvoiceDetailPage() {
                 className="btn-primary flex w-full items-center justify-center gap-2 text-sm"
               >
                 <Check className="h-4 w-4" />
-                {t(invoice.invoiceType === "job" ? "invoices.markPaidOutside" : "invoices.markPaid")}
+                {t("invoices.markPaidOutside")}
               </button>
             )}
             {(invoice.status === "draft" || invoice.status === "issued") && (
@@ -289,10 +292,10 @@ export function CommercialInvoiceDetailPage() {
                 {t("invoices.void")}
               </button>
             )}
-            {invoice.status === "paid" && (
+            {!invoice.paymentRecord && invoice.status === "paid" && (
               <p className="text-sm text-gray-500">{invoice.paymentSource === "online" ? invoice.onlinePayment?.platformFeeCents != null ? t("invoices.paidOnlineDetail", { fee: formatCents(invoice.onlinePayment.platformFeeCents) }) : t("invoices.paidOnlineFeeUnavailable") : invoice.paymentSource === "outside" ? t("invoices.paidOutsideDetail") : t("invoices.paidNote")}{invoice.paidAt && ` · ${new Date(invoice.paidAt).toLocaleString()}`}</p>
             )}
-            {invoice.paymentReconciliationRequired && <p className="text-sm font-medium text-amber-700">{t("invoices.paymentReconciliationRequired")}</p>}
+            {!invoice.paymentRecord && invoice.paymentReconciliationRequired && <p className="text-sm font-medium text-amber-700">{t("invoices.paymentReconciliationRequired")}</p>}
           </section>}
         </aside>
       </div>

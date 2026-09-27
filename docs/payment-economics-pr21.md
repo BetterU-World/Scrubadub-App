@@ -151,3 +151,50 @@ The cleanup reads the canonical attempt's frozen fee without retroactively apply
 - Perform a tiny controlled LIVE payment, inspect ownership, fees, balances and reconciliation, and independently review the result before broad enablement.
 
 No deployment, environment change, Stripe configuration change, payment creation or live enablement is part of this cleanup.
+
+
+## PR3 audit and payment experience scope
+
+Audit performed against merged PR2, PR2.1 and #234. PR3 preserves the verified payment rail rather than replaying the older checklist.
+
+| Original PR3 area | Before PR3 | Existing evidence / remaining work |
+| --- | --- | --- |
+| Canonical payment, webhook reconciliation, late/duplicate protection | Already satisfied | `invoicePaymentInternal.ts`, `http.ts`, direct-charge and payment-attempt suites; verified real TEST E2E above. |
+| Accounts v2, direct ownership, fee economics, historical compatibility, live gate | Already satisfied | `companyStripeMerchant.ts`, `invoiceStripeContext.ts`, `environment.ts`; unchanged. |
+| Open/creating processing UI and actual frozen fee display | Already satisfied | #234: `ClientBillingPage.tsx`, `queries/invoices.ts`, `invoiceModel.ts`; preserved. |
+| Stripe setup explanation | Already satisfied | #234: `StripeConnectPage.tsx`, EN/ES copy; unchanged. |
+| Return and terminal client states | Partial | Paid invoice state existed, but redirects/cancel copy could imply an outcome, failed/expired attempts lacked guidance, and review evidence did not suppress Pay Online. |
+| Owner provenance/payment record | Partial | Inline online/outside/fee labels existed only in the management actions section; no coherent read-only record for financial viewers. |
+| Reconciliation visibility | Partial | Owner generic flag existed; clients could see a payable invoice. Checkout reservation also allowed a new attempt after terminal reconciliation evidence. |
+| Refund execution | Deferred | No refund action or accounting model; existing event evidence lacks amounts, refund IDs/status, full/partial totals and application-fee refund state. |
+| Dispute visibility | Missing | Signed account-validated events were stored, but owners had no read-only presentation. Actual dispute status/outcome/amount is not stored. |
+| Dispute response/evidence submission | Deferred | No mature authorized workflow or response/evidence model. |
+| Compact payment history | Missing | Attempt, canonical invoice and financial-event records existed without a combined invoice detail view. Broad reporting remains deferred. |
+
+### Implemented PR3 behavior
+
+- Client Billing derives paid, processing, attention, failed, expired or awaiting-payment presentation from stored invoice/attempt/exception evidence. Checkout return/cancel parameters display neutral guidance only; they never authorize Paid. Paid online and recorded-outside sources are distinguished. Failed/expired attempts offer retry only when online availability and lifecycle allow it. Server-side live Merchant readiness and payment validation remain authoritative; query availability is only a UI hint.
+- Review evidence takes precedence over routine processing/retry. Both internal inspection and atomic reservation now reject another Checkout on an issued invoice with a reconciliation-required attempt, an inconsistent paid attempt, or matching exception evidence. Failed/expired retries and the existing one-active-attempt reservation remain intact. No reconciliation record is cleared or auto-healed.
+- The shared owner invoice detail (residential and commercial) includes a read-only payment record: lifecycle, source, invoice amount, canonical payment amount when recorded, paid time and frozen fee. Outside payment shows zero fee and says SCRUB did not process it. Missing source, fee or method evidence is not invented. Existing invoice reader permissions govern access; support references additionally require `canViewFinancials` (owners retain access).
+- Compact history contains stored initiation/current attempt-state records, canonical invoice confirmation/outside-paid record and verified refund/dispute event receipts. It does not reconstruct lost intermediate states. Displayed times are SCRUB record/receipt times, not invented Stripe occurrence times.
+- A `by_attemptId` index on `invoiceStripeFinancialEvents` supports scoped reads without scanning other companies' events. Existing ingestion and stored event payload fields are unchanged. Only matched, context-valid evidence is shown; no raw payloads, Checkout URLs, identity/bank data or secrets are added to projections.
+- Refund activity and dispute opened/updated/closed event receipts are shown read-only. A closed dispute event does not establish won/lost status, and a refund event does not establish full/partial accounting. These unknowns are stated explicitly; canonical invoice paid provenance remains unchanged.
+- All new lifecycle/record copy is localized in EN and ES. No refund, force-reconcile or dispute-response button is added.
+
+### Refund execution blockers: modern and historical payments
+
+There is no existing complete refund backend. Invoice status supports draft/issued/paid/void, not refund accounting; retained financial events contain only event/object/PaymentIntent/account/source identifiers, matched attempt and receipt time. They cannot establish remaining refundable amount, full versus partial completion, refund failures or fee-return totals. Payment method descriptions also are not stored.
+
+For modern direct charges, execution must use the original frozen connected account; application fees do not return automatically, and proportional/full fee behavior must be approved explicitly. See [Stripe direct-charge refunds](https://docs.stripe.com/connect/direct-charges.md?platform=web&ui=stripe-hosted#issue-refunds).
+
+Historical destination charges require platform-context refund execution and a deliberate transfer-reversal policy. By default, the transferred company funds remain with the company; returning the application fee for a destination charge also requires reversing the transfer. See [Stripe destination-charge refunds](https://docs.stripe.com/connect/destination-charges?platform=web&ui=elements#issue-refunds).
+
+Before execution can be added, approve full/partial refund and application-fee policies for both models; design idempotent authorized refund commands and durable refund/fee/transfer accounting; ingest authoritative refund amounts/statuses and failures; define invoice balance/state behavior; and cover concurrent/refailed refunds and historical account ownership. PR3 deliberately leaves money movement deferred and preserves existing evidence.
+
+### Dispute limits and remaining work
+
+PR3 shows verified event activity and receipt history only. No current dispute status, disputed amount, Stripe event occurrence time or won/lost outcome is inferred. Owners are directed to review the payment with Stripe; SCRUB does not submit responses. Rich status capture and response controls require a separate approved model/workflow.
+
+The production-readiness requirements above remain in force: independent read-only audit, snapshot Connect scope and eight events, platform subscription lifecycle plus invoice.paid, exact destination/signing-secret correspondence, and separately authorized controlled live validation before broad enablement. The live-payment kill switch remains untouched. Original zero-fee request-log omission and real subscription webhook lifecycle isolation remain independently unverified.
+
+Worker/partner payout architecture remains a separate investigation. PR3 performs no deployment, Stripe/Convex configuration changes, real/test payment creation or live enablement.

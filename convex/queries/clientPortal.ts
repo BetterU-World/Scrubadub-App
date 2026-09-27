@@ -1,15 +1,19 @@
 import { query } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { requireVerifiedClientSession } from "../lib/sessionAuth";
 import { companyAddOnSelectionVersion } from "../lib/companyAddOnSelection";
 import { isClientVisibleProposal } from "../lib/clientProposalVisibility";
 import { activeServiceAgreementIssue } from "../lib/serviceAgreementIssuedContent";
-import { invoiceDisplayLines, invoiceType, invoicePaymentProcessing } from "../lib/invoiceModel";
+import { invoiceDisplayLines, invoiceType } from "../lib/invoiceModel";
 import {
   AUTHENTICATED_REQUEST_SERVICES,
   AUTHENTICATED_REQUEST_TIME_WINDOWS,
   deriveClientRequestStatus,
 } from "../lib/clientRequestPortal";
+
+import { invoicePaymentLifecycle } from "../lib/invoicePaymentExperience";
+import { invoicePaymentsEnabled } from "../lib/environment";
 
 const CAP = 500;
 const authArgs = {
@@ -247,9 +251,23 @@ export const getClientBilling = query({
       invoices: await Promise.all(invoices
         .filter((invoice: any) => invoice.status === "issued" || invoice.status === "paid")
         .sort((a, b) => b.updatedAt - a.updatedAt)
-        .map(async (invoice: any) => ({
+        .map(async (invoice: any) => {
+          const [attempts, exceptions, company] = await Promise.all([
+            ctx.db.query("invoicePaymentAttempts").withIndex("by_invoiceId", q => q.eq("invoiceId", invoice._id)).collect(),
+            ctx.db.query("invoicePaymentExceptions").withIndex("by_invoiceIdCandidate", q => q.eq("invoiceIdCandidate", String(invoice._id))).collect(),
+            ctx.db.get(invoice.companyId as Id<"companies">),
+          ]);
+          const lifecycle = invoicePaymentLifecycle(invoice, attempts, exceptions);
+          const canPayOnline = invoice.status === "issued" && !lifecycle.needsAttention && lifecycle.state !== "processing" &&
+            invoicePaymentsEnabled() && company?.stripeConnectArchitecture === "merchant_direct_v2" && !!company.stripeConnectAccountId && invoice.totalCents >= 50;
+          return {
           _id: invoice._id,
-          paymentProcessing: invoicePaymentProcessing(invoice, await ctx.db.query("invoicePaymentAttempts").withIndex("by_invoiceId", q => q.eq("invoiceId", invoice._id)).collect()),
+          paymentProcessing: lifecycle.state === "processing",
+          paymentState: lifecycle.state,
+          paymentNeedsAttention: lifecycle.needsAttention,
+          canPayOnline,
+          paymentSource: invoice.paymentSource === "online" || invoice.paymentSource === "outside" ? invoice.paymentSource : null,
+          paidAt: invoice.status === "paid" ? invoice.paidAt ?? null : null,
           invoiceType: invoiceType(invoice),
           serviceSnapshot: invoice.serviceSnapshot,
           invoiceNumber: invoice.invoiceNumber,
@@ -262,7 +280,8 @@ export const getClientBilling = query({
           addOnSubtotalCents: invoice.addOnSubtotalCents ?? 0,
           addOnLineItems: invoiceDisplayLines(invoice),
           providerName: providerName(context, invoice),
-        }))),
+          };
+        })),
     };
   },
 });
