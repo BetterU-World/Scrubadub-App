@@ -8,6 +8,16 @@ import { Link2, CreditCard, CheckCircle, AlertCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ownerConnectActionKey, ownerConnectDisplayState } from "../../lib/companyConnectPresentation";
 
+export function StripeOnboardingHelp() {
+  const { t } = useTranslation();
+  return <div className="mb-4 space-y-2 text-sm text-gray-600">
+    <p>{t("companyConnect.onboardingPurpose")}</p>
+    <p>{t("companyConnect.onboardingVerification")}</p>
+    <p>{t("companyConnect.onboardingPrivacy")}</p>
+    <p className="font-medium">{t("companyConnect.onboardingHaveReady")}</p>
+  </div>;
+}
+
 export function StripeConnectPage() {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -122,6 +132,7 @@ export function StripeConnectPage() {
       )}
 
       <div className="card max-w-md">
+        {state !== "ready" && <StripeOnboardingHelp />}
         {state !== "set_up" ? (
           <>
             <div className="flex items-center gap-3 mb-4">

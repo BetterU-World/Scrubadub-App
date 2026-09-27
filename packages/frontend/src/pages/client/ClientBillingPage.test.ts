@@ -15,3 +15,23 @@ describe("client billing invoice types", () => {
     expect(commercial).toContain("invoices.payOnline");
   });
 });
+
+
+describe("client billing payment processing", () => {
+  const invoice = { _id: "pending", invoiceNumber: "INV-00002", status: "issued", totalCents: 2500, providerName: "Provider", invoiceType: "commercial" };
+  it("replaces Pay Online with an accessible processing message", () => {
+    const html = renderToStaticMarkup(createElement(ClientBillingPresentation, { data: { invoices: [{ ...invoice, paymentProcessing: true }] }, onPay: () => undefined }));
+    expect(html).toContain('role="status"');
+    expect(html).toContain("clientBilling.processingTitle");
+    expect(html).toContain("clientBilling.processingDetail");
+    expect(html).not.toContain("invoices.payOnline");
+    expect(html).not.toContain("<button");
+  });
+  it("allows payment again after a terminal attempt and renders Paid without a payment action", () => {
+    const render = (status: string) => renderToStaticMarkup(createElement(ClientBillingPresentation, { data: { invoices: [{ ...invoice, status, paymentProcessing: false }] }, onPay: () => undefined }));
+    expect(render("issued")).toContain("invoices.payOnline");
+    expect(render("issued")).not.toContain("clientBilling.processingTitle");
+    expect(render("paid")).toContain("clientPresentation.statuses.paid");
+    expect(render("paid")).not.toContain("<button");
+  });
+});

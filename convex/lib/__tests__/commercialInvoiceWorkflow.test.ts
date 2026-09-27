@@ -39,6 +39,48 @@ async function setup(price = 10000) {
 }
 
 describe("commercial invoice workflow", () => {
+  it("projects the canonical frozen fee, including historical and outside payments", async () => {
+    const s = await setup();
+    for (const [amount, fee, model] of [[2500, 0, "direct"], [2999, 0, "direct"], [3000, 200, "direct"], [50000, 200, "direct"], [2500, 200, undefined]] as const) {
+      const invoiceId = await s.t.run(async ctx => {
+        const invoiceId = await ctx.db.insert("invoices", { companyId: s.company, clientRelationshipId: s.relationship, commercialAccountId: s.account, title: "Fee display", invoiceNumber: "FEE", status: "paid", paymentSource: "online", billingStartDate: "2030-01-01", billingEndDate: "2030-01-31", issueDate: "2030-02-01", dueDate: "2030-03-01", subtotalCents: amount, taxCents: 0, totalCents: amount, jobIds: [], createdAt: 1, updatedAt: 1 });
+        const attemptId = await ctx.db.insert("invoicePaymentAttempts", { companyId: s.company, invoiceId, clientRelationshipId: s.relationship, invoiceType: "commercial", amountCents: amount, currency: "usd", chargeModel: model, platformFeeCents: fee, status: "paid", createdAt: 1, updatedAt: 1 });
+        await ctx.db.patch(invoiceId, { canonicalPaymentAttemptId: attemptId });
+        // A noncanonical attempt must never override the frozen canonical fee.
+        await ctx.db.insert("invoicePaymentAttempts", { companyId: s.company, invoiceId, clientRelationshipId: s.relationship, invoiceType: "commercial", amountCents: amount, currency: "usd", platformFeeCents: 999, status: "failed", createdAt: 1, updatedAt: 1 });
+        return invoiceId;
+      });
+      const query = () => s.t.query(api.queries.invoices.getById, { ...s.ownerArgs, invoiceId });
+      expect((await query())?.onlinePayment?.platformFeeCents).toBe(fee);
+      await s.t.run(ctx => ctx.db.patch(invoiceId, { canonicalPaymentAttemptId: undefined }));
+      expect((await query())?.onlinePayment?.platformFeeCents).toBeNull();
+      await s.t.run(ctx => ctx.db.patch(invoiceId, { paymentSource: "outside" }));
+      expect((await query())?.onlinePayment).toBeNull();
+    }
+  });
+
+  it("reactively projects only issued invoices with creating/open attempts as processing", async () => {
+    const s = await setup();
+    const { invoiceId, attemptId } = await s.t.run(async ctx => {
+      const invoiceId = await ctx.db.insert("invoices", { companyId: s.company, clientRelationshipId: s.relationship, commercialAccountId: s.account, title: "Pending display", invoiceNumber: "PENDING", status: "issued", billingStartDate: "2030-01-01", billingEndDate: "2030-01-31", issueDate: "2030-02-01", dueDate: "2030-03-01", subtotalCents: 10000, taxCents: 0, totalCents: 10000, jobIds: [], createdAt: 1, updatedAt: 1 });
+      const attemptId = await ctx.db.insert("invoicePaymentAttempts", { companyId: s.company, invoiceId, clientRelationshipId: s.relationship, invoiceType: "commercial", amountCents: 10000, currency: "usd", platformFeeCents: 200, status: "creating", createdAt: 1, updatedAt: 1 });
+      return { invoiceId, attemptId };
+    });
+    for (const status of ["creating", "open", "failed", "expired", "reconciliation_required"] as const) {
+      await s.t.run(ctx => ctx.db.patch(attemptId, { status }));
+      const result = await s.t.query(api.queries.clientPortal.getClientBilling, s.clientArgs);
+      expect(result.invoices[0].paymentProcessing).toBe(status === "creating" || status === "open");
+      expect(result.invoices[0].status).toBe("issued");
+      expect(JSON.stringify(result)).not.toContain(String(attemptId));
+    }
+    await s.t.run(async ctx => {
+      await ctx.db.patch(attemptId, { status: "open" });
+      await ctx.db.patch(invoiceId, { status: "paid" });
+    });
+    const paid = (await s.t.query(api.queries.clientPortal.getClientBilling, s.clientArgs)).invoices[0];
+    expect(paid).toMatchObject({ status: "paid", paymentProcessing: false });
+  });
+
   it("shows only issued and paid invoices in both client projections", async () => {
     const s = await setup();
     await s.t.run(async ctx => {

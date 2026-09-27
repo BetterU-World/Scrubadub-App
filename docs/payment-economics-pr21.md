@@ -85,7 +85,7 @@ After merge, an authorized operator must complete and independently review the t
 
 ## Post-merge TEST-mode E2E sequence
 
-No verified local test credential was available. All automated integration tests use mocks and signed fixtures; no Stripe API request was made with a real test or live credential.
+At initial PR2.1 implementation, no verified local test credential was available. The original automated integration tests used mocks and signed fixtures. The subsequent real DEV payment validation is recorded below.
 
 1. Use a separate nonproduction Convex deployment and an authorized Stripe sandbox/test key, installed through deployment secrets rather than chat. Keep the live gate unset. Ensure APP_URL points to that deployment and external side effects are allowed there.
 2. Configure platform events and connected-account events with separate signing secrets. Subscribe Connect to `checkout.session.completed`, `checkout.session.expired`, `checkout.session.async_payment_failed`, `account.updated`, `charge.refunded`, `charge.dispute.created/updated/closed`. Configure SCRUB subscription events separately in platform scope. Confirm event payloads include connected `account`. Keep card-only payment methods.
@@ -122,4 +122,32 @@ Validation completed locally on 2026-09-27:
 
 The build retains its existing large-chunk/Browserslist notices. Automated results establish application behavior with mocks, not Stripe platform eligibility or verified real transaction economics.
 
-Merge review should confirm the preview API contract and controlled migration. **Live enablement blockers:** unavailable independent Stripe test E2E evidence; unconfirmed platform preview access and exact restricted-key permissions; unverified real Radar/pricing/balance behavior. Preview SDK/API changes require another documented version review. Uncertain old creation/payment evidence requires support reconciliation, not account swapping. This PR does not migrate multi-country operations or implement automated refund policy.
+Merge review should confirm the preview API contract and controlled migration. **Remaining live enablement blockers:** production readiness audit; unconfirmed platform preview access and exact restricted-key permissions; unverified production Radar/pricing/balance behavior. Preview SDK/API changes require another documented version review. Uncertain old creation/payment evidence requires support reconciliation, not account swapping. This PR does not migrate multi-country operations or implement automated refund policy.
+
+## Completed DEV payment validation and display cleanup
+
+Real Stripe TEST-mode E2E passed on Convex DEV `majestic-turtle-198` with the hosted DEV frontend. This validates the tested payment path; it is not a production readiness audit or proof that every negative scenario above was exercised.
+
+| Client charge | Frozen SCRUB fee | Actual Stripe processing fee | Connected company net |
+| --- | --- | --- | --- |
+| $25.00 | $0 | $1.03 | $23.97 |
+| $29.99 | $0 | $1.17 | $28.82 |
+| $30.00 | $2 | $1.17 | $26.83 |
+| $500.00 | $2 | $14.80 | $483.20 |
+
+Actual connected-account Sessions, PaymentIntents, Charges and balance transactions established direct ownership and company processing-fee responsibility. Platform-context retrieval did not resolve those objects. Two application fees credited the platform $4 total; the two smaller charges had no application-fee objects. Genuine delayed Stripe Connect completion deliveries matched the exact connected event account and reconciled all four invoices and attempts to Paid, with canonical references and zero reconciliation exceptions. A genuine repeated $25 completion left application and financial state unchanged.
+
+Original zero-fee create request logs were not independently inspected; code omission and null Stripe fee fields were verified. Platform subscription webhook lifecycle isolation remains untested in this real E2E.
+
+The cleanup reads the canonical attempt's frozen fee without retroactively applying current policy to historical destination charges. Missing/invalid legacy fee evidence is displayed as unavailable. Outside payment has no SCRUB fee. Client Billing projects open/creating attempts reactively and replaces Pay Online with a processing message while they exist; terminal attempt states release that presentation and Paid still requires canonical reconciliation. Onboarding explanation appears above the existing Connect controls in English and Spanish. These are presentation changes only.
+
+### Required before production live rollout
+
+- Perform a read-only production Stripe/Convex readiness audit before enabling live invoice payments; this cleanup does not perform that audit.
+- Verify the production connected-account destination uses **snapshot payloads**, **connected-account scope**, and the eight payment events listed above. A webhook URL alone is insufficient.
+- Verify the separate platform subscription destination includes `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, and `invoice.paid`.
+- Verify both production signing secrets correspond to the exact configured destinations, including payload type and event scope.
+- Keep `SCRUB_ENABLE_LIVE_INVOICE_PAYMENTS` unset/false pending readiness validation and the separately authorized controlled live smoke-test process. Keep broad rollout disabled until that process passes.
+- Perform a tiny controlled LIVE payment, inspect ownership, fees, balances and reconciliation, and independently review the result before broad enablement.
+
+No deployment, environment change, Stripe configuration change, payment creation or live enablement is part of this cleanup.

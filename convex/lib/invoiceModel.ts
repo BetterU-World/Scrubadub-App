@@ -1,5 +1,24 @@
 import { checkedPriceSnapshot } from "./jobPricing";
 
+// Display only: never recompute a historical fee from today's fee policy.
+export function invoicePlatformFeeCents(invoice: any, attempts: any[]): number | null {
+  if (invoice.paymentSource === "outside") return 0;
+  if (invoice.status !== "paid" || invoice.paymentSource !== "online" || !invoice.canonicalPaymentAttemptId) return null;
+  const canonical = attempts.find(attempt =>
+    attempt._id === invoice.canonicalPaymentAttemptId &&
+    attempt.invoiceId === invoice._id && attempt.companyId === invoice.companyId,
+  );
+  const fee = canonical?.platformFeeCents;
+  return Number.isSafeInteger(fee) && fee >= 0 ? fee : null;
+}
+
+export function invoicePaymentProcessing(invoice: any, attempts: any[]): boolean {
+  return invoice.status === "issued" && attempts.some(attempt =>
+    attempt.invoiceId === invoice._id && attempt.companyId === invoice.companyId &&
+    (attempt.status === "creating" || attempt.status === "open"),
+  );
+}
+
 export function invoiceType(invoice: any): "commercial" | "job" {
   if (invoice.invoiceType === "job") return "job";
   if ((invoice.invoiceType === "commercial" || invoice.invoiceType === undefined) && invoice.commercialAccountId && invoice.billingStartDate && invoice.billingEndDate) return "commercial";

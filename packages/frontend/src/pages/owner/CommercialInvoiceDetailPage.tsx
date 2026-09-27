@@ -290,7 +290,7 @@ export function CommercialInvoiceDetailPage() {
               </button>
             )}
             {invoice.status === "paid" && (
-              <p className="text-sm text-gray-500">{invoice.paymentSource === "online" ? t("invoices.paidOnlineDetail", { fee: formatCents(invoice.onlinePayment?.platformFeeCents ?? 200) }) : invoice.paymentSource === "outside" ? t("invoices.paidOutsideDetail") : t("invoices.paidNote")}{invoice.paidAt && ` · ${new Date(invoice.paidAt).toLocaleString()}`}</p>
+              <p className="text-sm text-gray-500">{invoice.paymentSource === "online" ? invoice.onlinePayment?.platformFeeCents != null ? t("invoices.paidOnlineDetail", { fee: formatCents(invoice.onlinePayment.platformFeeCents) }) : t("invoices.paidOnlineFeeUnavailable") : invoice.paymentSource === "outside" ? t("invoices.paidOutsideDetail") : t("invoices.paidNote")}{invoice.paidAt && ` · ${new Date(invoice.paidAt).toLocaleString()}`}</p>
             )}
             {invoice.paymentReconciliationRequired && <p className="text-sm font-medium text-amber-700">{t("invoices.paymentReconciliationRequired")}</p>}
           </section>}
