@@ -1263,7 +1263,12 @@
     "archivedProperties": "Propiedades archivadas",
     "archivedPropertiesDesc": "Restaura propiedades eliminadas de la lista de propiedades activas."
   },
-  "companyConnect": { "reconnect": "Volver a conectar Stripe",
+  "companyConnect": {
+    "onboardingPurpose": "SCRUB usa Stripe para procesar los pagos de clientes de forma segura y enviar las ganancias a la cuenta bancaria de tu empresa.",
+    "onboardingVerification": "Los procesadores de pagos deben verificar a las personas y empresas que reciben dinero. Stripe te pedirá verificar tu identidad y/o tu empresa; según tu negocio, esto puede incluir información legal, de identidad y fiscal.",
+    "onboardingPrivacy": "Ingresas la información sensible de verificación y pagos directamente en Stripe, que la gestiona, en lugar de SCRUB. La configuración puede tomar unos minutos; después volverás a SCRUB.",
+    "onboardingHaveReady": "Ten a mano: información legal de tu empresa, datos de identificación y la cuenta bancaria para recibir los pagos.",
+    "reconnect": "Volver a conectar Stripe",
     "title": "Pagos de clientes",
     "intro": "Configura tu empresa con Stripe para que los clientes paguen tus facturas de SCRUB de forma segura. Stripe verifica tu empresa y envía los fondos a tu cuenta bancaria. Tus clientes no necesitan una cuenta de Stripe.",
     "returnChecking": "Has vuelto de Stripe. Estamos comprobando el estado de tu cuenta.",
@@ -2449,6 +2454,8 @@
     "basePrice": "precio base"
   },
   "clientBilling": {
+    "processingTitle": "Pago en proceso",
+    "processingDetail": "Ya hay un pago en curso. SCRUB está esperando la confirmación.",
     "title": "Facturación",
     "description": "Consulta el estado, las fechas de vencimiento, los totales y las opciones de pago en línea de tus facturas.",
     "payInvoice": "Pagar la factura {{invoice}} en línea",
@@ -2934,6 +2941,7 @@
     "missingPortalAccess": "Configura el acceso del cliente al portal antes de enviar la factura.",
     "missingEmail": "Agrega el correo electrónico del cliente antes de enviar la factura.",
     "paidNote": "Esta factura está registrada como pagada.",
+    "paidOnlineFeeUnavailable": "Pagada en línea · comisión de SCRUB no disponible",
     "paidOnlineDetail": "Pagada en línea · comisión de SCRUB {{fee}}",
     "paidOutsideDetail": "Pagada fuera de SCRUB",
     "paymentReconciliationRequired": "Se requiere atención: hay que conciliar un pago en línea.",

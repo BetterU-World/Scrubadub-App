@@ -1264,6 +1264,10 @@
     "archivedPropertiesDesc": "Restore properties removed from the active property list."
   },
   "companyConnect": {
+    "onboardingPurpose": "SCRUB uses Stripe to securely process client payments and send earnings to your company’s bank account.",
+    "onboardingVerification": "Payment processors must verify the people and businesses receiving money. Stripe will ask you to verify yourself and/or your business; depending on your business, this may include legal, identity and tax information.",
+    "onboardingPrivacy": "You enter sensitive verification and payment information directly with Stripe, which handles it, rather than in SCRUB. Setup may take a few minutes; you’ll return to SCRUB afterward.",
+    "onboardingHaveReady": "Have ready: business/legal information, identification details and the bank account for payouts.",
     "title": "Client payments",
     "intro": "Set up your business with Stripe so clients can pay your SCRUB invoices securely. Stripe verifies your business and sends payouts to your bank account. Your clients do not need a Stripe account.",
     "returnChecking": "You’re back from Stripe. We’re checking your account status.",
@@ -2449,6 +2453,8 @@
     "basePrice": "base price"
   },
   "clientBilling": {
+    "processingTitle": "Payment processing",
+    "processingDetail": "A payment is already in progress. SCRUB is waiting for confirmation.",
     "title": "Billing",
     "description": "Review invoice status, due dates, totals, and available online payment actions.",
     "payInvoice": "Pay invoice {{invoice}} online",
@@ -2934,6 +2940,7 @@
     "missingPortalAccess": "Set up this client's portal access before emailing the invoice.",
     "missingEmail": "Add the client's email address before emailing the invoice.",
     "paidNote": "This invoice is recorded as paid.",
+    "paidOnlineFeeUnavailable": "Paid online · SCRUB fee unavailable",
     "paidOnlineDetail": "Paid online · SCRUB fee {{fee}}",
     "paidOutsideDetail": "Paid outside SCRUB",
     "paymentReconciliationRequired": "Action needed: an online payment needs reconciliation.",

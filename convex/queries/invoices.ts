@@ -4,7 +4,7 @@ import { requireOwnerManagerSession } from "../lib/sessionAuth";
 import { hasOwnerOrManagerPermission, hasManagerPermission } from "../lib/auth";
 import { calculateInvoiceTotals } from "../lib/invoiceAddOnLineItems";
 import { getActiveTeamIdsForUser } from "../lib/teams";
-import { assertInvoiceInvariant, invoiceDisplayLines } from "../lib/invoiceModel";
+import { assertInvoiceInvariant, invoiceDisplayLines, invoicePlatformFeeCents } from "../lib/invoiceModel";
 import { resolveJobInvoiceablePricing } from "../lib/jobPricing";
 
 async function decorateInvoice(ctx: any, invoice: any) {
@@ -24,7 +24,7 @@ async function decorateInvoice(ctx: any, invoice: any) {
     invoiceType: type,
     displayLines,
     computedTotals,
-    onlinePayment: paymentAttempts.find((attempt: any) => attempt._id === invoice.canonicalPaymentAttemptId) ? { platformFeeCents: 200, stripePaymentIntentId: invoice.stripePaymentIntentId } : null,
+    onlinePayment: invoice.paymentSource === "online" ? { platformFeeCents: invoicePlatformFeeCents(invoice, paymentAttempts), stripePaymentIntentId: invoice.stripePaymentIntentId } : null,
     paymentReconciliationRequired: paymentAttempts.some((attempt: any) => attempt.status === "reconciliation_required") || paymentExceptions.length > 0,
     commercialAccountName:
       account?.companyId === invoice.companyId ? account.clientName : null,

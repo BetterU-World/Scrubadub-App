@@ -4,7 +4,7 @@ import { requireVerifiedClientSession } from "../lib/sessionAuth";
 import { companyAddOnSelectionVersion } from "../lib/companyAddOnSelection";
 import { isClientVisibleProposal } from "../lib/clientProposalVisibility";
 import { activeServiceAgreementIssue } from "../lib/serviceAgreementIssuedContent";
-import { invoiceDisplayLines, invoiceType } from "../lib/invoiceModel";
+import { invoiceDisplayLines, invoiceType, invoicePaymentProcessing } from "../lib/invoiceModel";
 import {
   AUTHENTICATED_REQUEST_SERVICES,
   AUTHENTICATED_REQUEST_TIME_WINDOWS,
@@ -244,11 +244,12 @@ export const getClientBilling = query({
     );
     return {
       clientName: context.clientUser.displayName,
-      invoices: invoices
+      invoices: await Promise.all(invoices
         .filter((invoice: any) => invoice.status === "issued" || invoice.status === "paid")
         .sort((a, b) => b.updatedAt - a.updatedAt)
-        .map((invoice: any) => ({
+        .map(async (invoice: any) => ({
           _id: invoice._id,
+          paymentProcessing: invoicePaymentProcessing(invoice, await ctx.db.query("invoicePaymentAttempts").withIndex("by_invoiceId", q => q.eq("invoiceId", invoice._id)).collect()),
           invoiceType: invoiceType(invoice),
           serviceSnapshot: invoice.serviceSnapshot,
           invoiceNumber: invoice.invoiceNumber,
@@ -261,7 +262,7 @@ export const getClientBilling = query({
           addOnSubtotalCents: invoice.addOnSubtotalCents ?? 0,
           addOnLineItems: invoiceDisplayLines(invoice),
           providerName: providerName(context, invoice),
-        })),
+        }))),
     };
   },
 });
