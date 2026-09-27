@@ -31,6 +31,21 @@ export function requireStripeSecretKey(): string {
   return requireValue("STRIPE_SECRET_KEY");
 }
 
+export function stripeExpectedLivemode(): boolean {
+  const key = requireStripeSecretKey();
+  if (/^(sk|rk)_test_/.test(key)) return false;
+  if (/^(sk|rk)_live_/.test(key)) return true;
+  throw new Error("Stripe key mode cannot be verified");
+}
+export function invoicePaymentsEnabled(): boolean {
+  if (areExternalSideEffectsDisabled()) return false;
+  try { return !stripeExpectedLivemode() || process.env.SCRUB_ENABLE_LIVE_INVOICE_PAYMENTS === "true"; }
+  catch { return false; }
+}
+export function assertInvoicePaymentsEnabled(): void {
+  if (!invoicePaymentsEnabled()) throw new Error("Online invoice payments are not enabled in this environment");
+}
+
 export function isExternalSideEffectsKillSwitchEnabled(): boolean {
   return TRUE_VALUES.has(
     (process.env.SCRUB_DISABLE_EXTERNAL_SIDE_EFFECTS ?? "").trim().toLowerCase(),

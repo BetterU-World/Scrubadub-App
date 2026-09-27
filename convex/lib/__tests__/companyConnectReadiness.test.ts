@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { convexTest } from "convex-test";
 import schema from "../../schema";
 import { api, internal } from "../../_generated/api";
@@ -9,7 +9,7 @@ import { canAcceptClientInvoicePayments, companyConnectState, liveInvoiceCheckou
 const modules = import.meta.glob("../../**/*.ts");
 const now = Date.now();
 
-describe("company Connect readiness", () => {
+describe("company Connect readiness", () => { beforeEach(() => { vi.stubEnv("APP_URL", "https://scrub.example"); vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_mock"); }); afterEach(() => vi.unstubAllEnvs());
   it("requires the exact live unrestricted account for invoice Checkout", () => {
     const ready = { id: "acct_expected", charges_enabled: true, payouts_enabled: true, requirements: { currently_due: [], past_due: [] } };
     expect(liveInvoiceCheckoutReady(ready, "acct_expected")).toBe(true);
@@ -21,13 +21,13 @@ describe("company Connect readiness", () => {
   });
   it("requires both charge and payout capability", () => {
     expect(companyConnectState({}, now)).toBe("set_up");
-    expect(companyConnectState({ stripeConnectAccountId: "acct_1" }, now)).toBe("checking");
+    expect(companyConnectState({ stripeConnectAccountId: "acct_1", stripeConnectArchitecture: "merchant_direct_v2" as const, stripeConnectModernReady: true }, now)).toBe("checking");
     for (const [charges, payouts] of [[false, false], [true, false], [false, true]] as const) {
-      const value = { stripeConnectAccountId: "acct_1", stripeConnectChargesEnabled: charges, stripeConnectPayoutsEnabled: payouts, stripeConnectLastSyncAt: now };
+      const value = { stripeConnectAccountId: "acct_1", stripeConnectArchitecture: "merchant_direct_v2" as const, stripeConnectModernReady: true, stripeConnectChargesEnabled: charges, stripeConnectPayoutsEnabled: payouts, stripeConnectLastSyncAt: now };
       expect(canAcceptClientInvoicePayments(value)).toBe(false);
       expect(companyConnectState(value, now)).toBe("continue_verification");
     }
-    const ready = { stripeConnectAccountId: "acct_1", stripeConnectChargesEnabled: true, stripeConnectPayoutsEnabled: true, stripeConnectLastSyncAt: now };
+    const ready = { stripeConnectAccountId: "acct_1", stripeConnectArchitecture: "merchant_direct_v2" as const, stripeConnectModernReady: true, stripeConnectChargesEnabled: true, stripeConnectPayoutsEnabled: true, stripeConnectLastSyncAt: now };
     expect(canAcceptClientInvoicePayments(ready)).toBe(true);
     expect(companyConnectState(ready, now)).toBe("ready");
     expect(companyConnectState(ready, now + 25 * 60 * 60 * 1000)).toBe("checking");
@@ -84,7 +84,7 @@ describe("company Connect readiness", () => {
       await ctx.db.insert("companies", { name: "A", timezone: "America/New_York", stripeConnectAccountId: "acct_a" }),
       await ctx.db.insert("companies", { name: "B", timezone: "America/New_York", stripeConnectAccountId: "acct_b" }),
     ]);
-    const event = { id: "evt_company_a", object: "event", type: "account.updated", created: Math.floor(Date.now() / 1000), data: { object: { id: "acct_a", object: "account", charges_enabled: true, payouts_enabled: false, details_submitted: true, requirements: { currently_due: ["external_account"] } } } };
+    const event = { id: "evt_company_a", object: "event", type: "account.updated", account: "acct_a", created: Math.floor(Date.now() / 1000), data: { object: { id: "acct_a", object: "account", charges_enabled: true, payouts_enabled: false, details_submitted: true, requirements: { currently_due: ["external_account"] } } } };
     const payload = JSON.stringify(event);
     const signature = Stripe.webhooks.generateTestHeaderString({ payload, secret: process.env.STRIPE_WEBHOOK_CONNECT_SECRET });
     const response = await t.fetch("/stripe/webhook", { method: "POST", headers: { "stripe-signature": signature }, body: payload });

@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { validatePaymentEventAccount, retrievePaymentIntentForAttempt } from "./lib/invoiceStripeContext";
 import { snapshotFromStripeAccount } from "./lib/companyConnectReadiness";
 import { httpRouter } from "convex/server";
 import { httpAction } from "./_generated/server";
@@ -170,6 +171,7 @@ const stripeWebhook = httpAction(async (ctx, request) => {
       case "customer.subscription.created":
       case "customer.subscription.updated":
       case "customer.subscription.deleted": {
+        if (matchedSecret !== "account" || verifiedEvent.account) break;
         const subscription = verifiedEvent.data.object as Stripe.Subscription;
         const subCustomerId =
           typeof subscription.customer === "string"
@@ -199,6 +201,7 @@ const stripeWebhook = httpAction(async (ctx, request) => {
         break;
       }
       case "invoice.paid": {
+        if (matchedSecret !== "account" || verifiedEvent.account) break;
         const invoice = verifiedEvent.data.object as Stripe.Invoice;
         // Extract string IDs — Stripe may expand these to full objects
         const invoiceCustomerId =
@@ -239,6 +242,7 @@ const stripeWebhook = httpAction(async (ctx, request) => {
         // Handle settlement payments
         if (
           meta.type === "settlement_payment" &&
+          matchedSecret === "account" && !verifiedEvent.account &&
           meta.settlementId &&
           session.payment_status === "paid"
         ) {
@@ -264,6 +268,7 @@ const stripeWebhook = httpAction(async (ctx, request) => {
         // Handle settlement batch payments
         if (
           meta.type === "settlement_batch" &&
+          matchedSecret === "account" && !verifiedEvent.account &&
           meta.batchId &&
           session.payment_status === "paid"
         ) {
@@ -288,6 +293,7 @@ const stripeWebhook = httpAction(async (ctx, request) => {
         // Handle cleaner payout payments
         if (
           meta.type === "cleaner_payout" &&
+          matchedSecret === "account" && !verifiedEvent.account &&
           meta.cleanerPaymentId &&
           session.payment_status === "paid"
         ) {
@@ -311,25 +317,35 @@ const stripeWebhook = httpAction(async (ctx, request) => {
         if (meta.type === "invoice_payment" && session.payment_status === "paid") {
           const attemptId = meta.invoicePaymentAttemptId;
           const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : (session.payment_intent as any)?.id;
-          if (!attemptId || !paymentIntentId) {
-            await ctx.runMutation((internal as any).invoicePaymentInternal.recordException, { sessionId: session.id, invoiceIdCandidate: meta.invoiceId, companyIdCandidate: meta.companyId, reason: "missing_payment_identity", amountCents: session.amount_total ?? undefined, currency: session.currency ?? undefined });
-            break;
-          }
-          const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
-          if (intent.id !== paymentIntentId || intent.status !== "succeeded" || intent.amount_received !== session.amount_total || intent.currency !== session.currency || intent.metadata?.invoicePaymentAttemptId !== attemptId || intent.metadata?.invoiceId !== meta.invoiceId || intent.metadata?.companyId !== meta.companyId) {
-            await ctx.runMutation((internal as any).invoicePaymentInternal.recordException, { sessionId: session.id, paymentIntentId, invoiceIdCandidate: meta.invoiceId, companyIdCandidate: meta.companyId, reason: "stripe_payment_intent_mismatch", amountCents: session.amount_total ?? undefined, currency: session.currency ?? undefined });
-            break;
-          }
           const attempt: any = await ctx.runQuery((internal as any).invoicePaymentInternal.getByCheckoutSession, { sessionId: session.id });
           if (!attempt) {
             await ctx.runMutation((internal as any).invoicePaymentInternal.recordException, { sessionId: session.id, paymentIntentId, invoiceIdCandidate: meta.invoiceId, companyIdCandidate: meta.companyId, reason: "unknown_payment_attempt", amountCents: session.amount_total ?? undefined, currency: session.currency ?? undefined });
+            // Metadata is only a candidate. Never use it to replace a frozen Session.
+            if (attemptId) {
+              const candidate: any = await ctx.runQuery((internal as any).invoicePaymentInternal.getMetadataCandidate, { candidate: attemptId });
+              if (candidate?.stripeCheckoutSessionId && validatePaymentEventAccount(candidate, verifiedEvent.account, matchedSecret)) await ctx.runMutation((internal as any).invoicePaymentInternal.reconcileAttempt, { attemptId: candidate._id, sessionId: candidate.stripeCheckoutSessionId, reason: "checkout_session_identity_mismatch" });
+            }
             break;
           }
-          if (String(attempt._id) !== attemptId) {
-            await ctx.runMutation((internal as any).invoicePaymentInternal.recordException, { sessionId: session.id, paymentIntentId, invoiceIdCandidate: meta.invoiceId, companyIdCandidate: meta.companyId, reason: "attempt_metadata_mismatch", amountCents: session.amount_total ?? undefined, currency: session.currency ?? undefined });
+          const reject = async (reason: string) => {
+            await ctx.runMutation((internal as any).invoicePaymentInternal.recordException, { sessionId: session.id, paymentIntentId, invoiceIdCandidate: meta.invoiceId, companyIdCandidate: meta.companyId, reason, amountCents: session.amount_total ?? undefined, currency: session.currency ?? undefined });
+            await ctx.runMutation((internal as any).invoicePaymentInternal.reconcileAttempt, { attemptId: attempt._id, sessionId: session.id, reason });
+          };
+          if (!validatePaymentEventAccount(attempt, verifiedEvent.account, matchedSecret)) {
+            await reject("stripe_event_account_mismatch");
             break;
           }
-          await ctx.runMutation((internal as any).invoicePaymentInternal.applySuccess, { attemptId: attempt._id, sessionId: session.id, paymentIntentId, amountCents: session.amount_total ?? -1, currency: session.currency ?? "", destination: intent.transfer_data?.destination ?? "", feeCents: intent.application_fee_amount ?? -1, invoiceIdMetadata: meta.invoiceId, companyIdMetadata: meta.companyId });
+          if (String(attempt._id) !== attemptId || !paymentIntentId) {
+            await reject("missing_or_mismatched_payment_identity");
+            break;
+          }
+          // Transient read failures return 500 for replay, never mark paid.
+          const intent = await retrievePaymentIntentForAttempt(stripe, attempt, paymentIntentId);
+          if (intent.id !== paymentIntentId || intent.status !== "succeeded" || intent.amount_received !== session.amount_total || intent.amount !== session.amount_total || intent.currency !== session.currency || intent.livemode !== verifiedEvent.livemode || session.livemode !== verifiedEvent.livemode || intent.metadata?.invoicePaymentAttemptId !== attemptId || intent.metadata?.invoiceId !== meta.invoiceId || intent.metadata?.companyId !== meta.companyId) {
+            await reject("stripe_payment_intent_mismatch");
+            break;
+          }
+          await ctx.runMutation((internal as any).invoicePaymentInternal.applySuccess, { attemptId: attempt._id, sessionId: session.id, paymentIntentId, amountCents: session.amount_total ?? -1, currency: session.currency ?? "", destination: typeof intent.transfer_data?.destination === "string" ? intent.transfer_data.destination : intent.transfer_data?.destination?.id ?? "", feeCents: intent.application_fee_amount ?? 0, eventAccount: verifiedEvent.account, eventSource: matchedSecret, invoiceIdMetadata: meta.invoiceId, companyIdMetadata: meta.companyId });
         }
         if (meta.type === "commercial_invoice_payment" && session.payment_status === "paid") {
           const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : (session.payment_intent as any)?.id ?? undefined;
@@ -337,16 +353,21 @@ const stripeWebhook = httpAction(async (ctx, request) => {
         }
         break;
       }
+      case "checkout.session.async_payment_failed":
       case "checkout.session.expired": {
         const session = verifiedEvent.data.object as Stripe.Checkout.Session;
         if (session.metadata?.type === "invoice_payment") {
           const attempt: any = await ctx.runQuery((internal as any).invoicePaymentInternal.getByCheckoutSession, { sessionId: session.id });
-          if (attempt) await ctx.runMutation((internal as any).invoicePaymentInternal.markUnavailable, { attemptId: attempt._id, status: "expired" });
+          if (attempt) {
+            if (!validatePaymentEventAccount(attempt, verifiedEvent.account, matchedSecret) || session.metadata?.invoicePaymentAttemptId !== String(attempt._id)) await ctx.runMutation((internal as any).invoicePaymentInternal.reconcileAttempt, { attemptId: attempt._id, sessionId: session.id, reason: "stripe_event_account_or_identity_mismatch" });
+            else await ctx.runMutation((internal as any).invoicePaymentInternal.markUnavailable, { attemptId: attempt._id, status: verifiedEvent.type === "checkout.session.expired" ? "expired" : "failed" });
+          }
         }
         break;
       }
       case "account.updated": {
         const account = verifiedEvent.data.object as Stripe.Account;
+        if (matchedSecret !== "connect" || verifiedEvent.account !== account.id) break;
         await ctx.runMutation(internal.mutations.companyStripeConnect.syncCompanyStripeConnectStatus, {
           stripeConnectAccountId: account.id,
           observedAt: verifiedEvent.created * 1000,
@@ -358,6 +379,14 @@ const stripeWebhook = httpAction(async (ctx, request) => {
       case "invoice.payment_failed":
         break;
       case "charge.refunded":
+      case "charge.dispute.created":
+      case "charge.dispute.updated":
+      case "charge.dispute.closed": {
+        const object = verifiedEvent.data.object as Stripe.Charge | Stripe.Dispute;
+        const intent = object.payment_intent;
+        await ctx.runMutation((internal as any).invoicePaymentInternal.recordFinancialEvent, { stripeEventId: verifiedEvent.id, eventType: verifiedEvent.type, objectId: object.id, paymentIntentId: typeof intent === "string" ? intent : intent?.id, eventAccount: verifiedEvent.account, source: matchedSecret });
+        break;
+      }
       case "invoice.voided": {
         const obj = verifiedEvent.data.object as unknown as Record<string, unknown>;
         console.warn(`[STRIPE-WEBHOOK] ${verifiedEvent.type} received — no commission reversal yet`, {

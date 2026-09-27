@@ -9,7 +9,7 @@ const modules = import.meta.glob("../../**/*.ts");
 async function setup() {
   const t = convexTest(schema, modules);
   const ids = await t.run(async ctx => {
-    const company = await ctx.db.insert("companies", { name: "Payee", timezone: "America/New_York", stripeConnectAccountId: "acct_payee" });
+    const company = await ctx.db.insert("companies", { name: "Payee", timezone: "America/New_York", stripeConnectAccountId: "acct_payee", stripeConnectArchitecture: "merchant_direct_v2" });
     const client = await ctx.db.insert("clientUsers", { email: "pay@test.dev", displayName: "Payer", status: "active", createdAt: 1, updatedAt: 1 });
     const other = await ctx.db.insert("clientUsers", { email: "other@test.dev", displayName: "Other", status: "active", createdAt: 1, updatedAt: 1 });
     const relationship = await ctx.db.insert("clientRelationships", { companyId: company, clientUserId: client, displayName: "Payer", clientType: "commercial", status: "active", createdAt: 1, updatedAt: 1 });
@@ -21,29 +21,29 @@ async function setup() {
 }
 
 describe("invoice payment attempts", () => {
-  it("configures exact destination charge, $2 company-paid fee, and unique idempotency", () => {
-    const attempt = { _id: "attempt_one", invoiceId: "invoice_one", companyId: "company_one", amountCents: 50000, destinationStripeAccountId: "acct_payee" };
+  it("configures an exact direct charge, stored fee, and account-aware idempotency", () => {
+    const attempt = { _id: "attempt_one", invoiceId: "invoice_one", companyId: "company_one", amountCents: 50000, chargeModel: "direct" as const, connectedStripeAccountId: "acct_payee", platformFeeCents: 200 };
     const { parameters, options } = invoiceCheckoutParameters(attempt, "INV-00001", "https://app.test");
-    expect(parameters).toMatchObject({ mode: "payment", payment_method_types: ["card"], line_items: [{ price_data: { unit_amount: 50000, currency: "usd" } }], payment_intent_data: { transfer_data: { destination: "acct_payee" }, application_fee_amount: 200, metadata: { invoicePaymentAttemptId: "attempt_one", invoiceId: "invoice_one", companyId: "company_one" } }, metadata: { invoicePaymentAttemptId: "attempt_one" }, success_url: "https://app.test/client/billing?invoice_payment=processing", cancel_url: "https://app.test/client/billing?invoice_payment=cancel" });
-    expect(options.idempotencyKey).toBe("invoice-payment-attempt:attempt_one");
+    expect(parameters).toMatchObject({ mode: "payment", payment_method_types: ["card"], line_items: [{ price_data: { unit_amount: 50000, currency: "usd" } }], payment_intent_data: { application_fee_amount: 200, metadata: { invoicePaymentAttemptId: "attempt_one", invoiceId: "invoice_one", companyId: "company_one" } }, metadata: { invoicePaymentAttemptId: "attempt_one" }, success_url: "https://app.test/client/billing?invoice_payment=processing", cancel_url: "https://app.test/client/billing?invoice_payment=cancel" });
+    expect(options.idempotencyKey).toBe("invoice-payment-attempt:direct:acct_payee:attempt_one");
     expect(invoiceCheckoutParameters({ ...attempt, _id: "attempt_two" }, "INV-00001", "https://app.test").options.idempotencyKey).not.toBe(options.idempotencyKey);
   });
   it("binds an issued invoice to one active attempt and exact $2 fee", async () => {
     const s = await setup();
     await expect(s.t.query(internal.invoicePaymentInternal.inspect, { invoiceId: s.invoice, clientUserId: s.other })).rejects.toThrow("Access denied");
-    const attemptId = await s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, destinationStripeAccountId: "acct_payee" });
-    expect(await s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, destinationStripeAccountId: "acct_payee" })).toBe(attemptId);
+    const attemptId = await s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, connectedStripeAccountId: "acct_payee" });
+    expect(await s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, connectedStripeAccountId: "acct_payee" })).toBe(attemptId);
     const attempt = await s.t.run(ctx => ctx.db.get(attemptId));
-    expect(attempt).toMatchObject({ amountCents: 50000, currency: "usd", platformFeeCents: 200, destinationStripeAccountId: "acct_payee", status: "creating" });
+    expect(attempt).toMatchObject({ amountCents: 50000, currency: "usd", platformFeeCents: 200, connectedStripeAccountId: "acct_payee", chargeModel: "direct", status: "creating" });
     expect((await s.t.run(ctx => ctx.db.get(s.invoice)))?.totalCents).toBe(50000);
-    await expect(s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, destinationStripeAccountId: "acct_other" })).rejects.toThrow("account changed");
+    await expect(s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, connectedStripeAccountId: "acct_other" })).rejects.toThrow("account changed");
   });
 
   it("atomically applies an exact successful payment and treats retries as idempotent", async () => {
     const s = await setup();
-    const attemptId = await s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, destinationStripeAccountId: "acct_payee" });
+    const attemptId = await s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, connectedStripeAccountId: "acct_payee" });
     await s.t.mutation(internal.invoicePaymentInternal.opened, { attemptId, sessionId: "cs_exact", url: "https://checkout.stripe.test/session" });
-    const facts = { attemptId, sessionId: "cs_exact", paymentIntentId: "pi_exact", amountCents: 50000, currency: "usd", destination: "acct_payee", feeCents: 200, invoiceIdMetadata: String(s.invoice), companyIdMetadata: String(s.company) };
+    const facts = { attemptId, sessionId: "cs_exact", paymentIntentId: "pi_exact", amountCents: 50000, currency: "usd", destination: "", eventAccount: "acct_payee", eventSource: "connect", feeCents: 200, invoiceIdMetadata: String(s.invoice), companyIdMetadata: String(s.company) };
     expect(await s.t.mutation(internal.invoicePaymentInternal.applySuccess, facts)).toBe("paid");
     expect(await s.t.mutation(internal.invoicePaymentInternal.applySuccess, facts)).toBe("already_paid");
     expect(await s.t.run(ctx => ctx.db.get(s.invoice))).toMatchObject({ status: "paid", paymentSource: "online", canonicalPaymentAttemptId: attemptId, stripePaymentIntentId: "pi_exact" });
@@ -51,9 +51,9 @@ describe("invoice payment attempts", () => {
 
   it("keeps reconciliation terminal even when a later call supplies matching facts", async () => {
     const s = await setup();
-    const attemptId = await s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, destinationStripeAccountId: "acct_payee" });
+    const attemptId = await s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, connectedStripeAccountId: "acct_payee" });
     await s.t.mutation(internal.invoicePaymentInternal.opened, { attemptId, sessionId: "cs_review", url: "https://checkout.stripe.test/review" });
-    const facts = { attemptId, sessionId: "cs_review", paymentIntentId: "pi_review", amountCents: 50000, currency: "usd", destination: "acct_payee", feeCents: 200, invoiceIdMetadata: String(s.invoice), companyIdMetadata: String(s.company) };
+    const facts = { attemptId, sessionId: "cs_review", paymentIntentId: "pi_review", amountCents: 50000, currency: "usd", destination: "", eventAccount: "acct_payee", eventSource: "connect", feeCents: 200, invoiceIdMetadata: String(s.invoice), companyIdMetadata: String(s.company) };
     expect(await s.t.mutation(internal.invoicePaymentInternal.applySuccess, { ...facts, feeCents: 0 })).toBe("reconciliation_required");
     const original = await s.t.run(ctx => ctx.db.get(attemptId));
     expect(original).toMatchObject({ status: "reconciliation_required", exceptionReason: "payment_facts_mismatch", stripeCheckoutSessionId: "cs_review", stripePaymentIntentId: "pi_review" });
@@ -69,12 +69,12 @@ describe("invoice payment attempts", () => {
 
   it("preserves a second real payment as reconciliation required", async () => {
     const s = await setup();
-    const first = await s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, destinationStripeAccountId: "acct_payee" });
+    const first = await s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, connectedStripeAccountId: "acct_payee" });
     await s.t.mutation(internal.invoicePaymentInternal.opened, { attemptId: first, sessionId: "cs_first", url: "https://checkout.stripe.test/first" });
     await s.t.mutation(internal.invoicePaymentInternal.markUnavailable, { attemptId: first, status: "expired" });
-    const second = await s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, destinationStripeAccountId: "acct_payee" });
+    const second = await s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, connectedStripeAccountId: "acct_payee" });
     await s.t.mutation(internal.invoicePaymentInternal.opened, { attemptId: second, sessionId: "cs_second", url: "https://checkout.stripe.test/second" });
-    const facts = { amountCents: 50000, currency: "usd", destination: "acct_payee", feeCents: 200, invoiceIdMetadata: String(s.invoice), companyIdMetadata: String(s.company) };
+    const facts = { amountCents: 50000, currency: "usd", destination: "", eventAccount: "acct_payee", eventSource: "connect", feeCents: 200, invoiceIdMetadata: String(s.invoice), companyIdMetadata: String(s.company) };
     expect(await s.t.mutation(internal.invoicePaymentInternal.applySuccess, { ...facts, attemptId: first, sessionId: "cs_first", paymentIntentId: "pi_first" })).toBe("paid");
     expect(await s.t.mutation(internal.invoicePaymentInternal.applySuccess, { ...facts, attemptId: second, sessionId: "cs_second", paymentIntentId: "pi_second" })).toBe("reconciliation_required");
     expect((await s.t.run(ctx => ctx.db.get(second)))?.status).toBe("reconciliation_required");
@@ -88,9 +88,9 @@ describe("invoice payment attempts", () => {
     ["invoice metadata", { invoiceIdMetadata: "different_invoice" }],
   ])("holds a successful payment for reconciliation when %s differs", async (_name, change) => {
     const s = await setup();
-    const attemptId = await s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, destinationStripeAccountId: "acct_payee" });
+    const attemptId = await s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, connectedStripeAccountId: "acct_payee" });
     await s.t.mutation(internal.invoicePaymentInternal.opened, { attemptId, sessionId: "cs_mismatch", url: "https://checkout.stripe.test/mismatch" });
-    const facts = { attemptId, sessionId: "cs_mismatch", paymentIntentId: "pi_mismatch", amountCents: 50000, currency: "usd", destination: "acct_payee", feeCents: 200, invoiceIdMetadata: String(s.invoice), companyIdMetadata: String(s.company), ...change };
+    const facts = { attemptId, sessionId: "cs_mismatch", paymentIntentId: "pi_mismatch", amountCents: 50000, currency: "usd", destination: "", eventAccount: "acct_payee", eventSource: "connect", feeCents: 200, invoiceIdMetadata: String(s.invoice), companyIdMetadata: String(s.company), ...change };
     expect(await s.t.mutation(internal.invoicePaymentInternal.applySuccess, facts)).toBe("reconciliation_required");
     expect((await s.t.run(ctx => ctx.db.get(s.invoice)))?.status).toBe("issued");
     expect((await s.t.run(ctx => ctx.db.get(attemptId)))?.status).toBe("reconciliation_required");
@@ -99,17 +99,17 @@ describe("invoice payment attempts", () => {
   it("rejects inactive relationships and unissued invoices before attempt reservation", async () => {
     const s = await setup();
     await s.t.run(ctx => ctx.db.patch(s.relationship, { status: "inactive" }));
-    await expect(s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, destinationStripeAccountId: "acct_payee" })).rejects.toThrow("Access denied");
+    await expect(s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, connectedStripeAccountId: "acct_payee" })).rejects.toThrow("Access denied");
     await s.t.run(async ctx => { await ctx.db.patch(s.relationship, { status: "active" }); await ctx.db.patch(s.invoice, { status: "void" }); });
-    await expect(s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, destinationStripeAccountId: "acct_payee" })).rejects.toThrow("not payable");
+    await expect(s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, connectedStripeAccountId: "acct_payee" })).rejects.toThrow("not payable");
   });
 
   it.each(["outside", "void"])("retains a late successful charge after %s transition", async transition => {
     const s = await setup();
-    const attemptId = await s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, destinationStripeAccountId: "acct_payee" });
+    const attemptId = await s.t.mutation(internal.invoicePaymentInternal.reserve, { invoiceId: s.invoice, clientUserId: s.client, connectedStripeAccountId: "acct_payee" });
     await s.t.mutation(internal.invoicePaymentInternal.opened, { attemptId, sessionId: "cs_late", url: "https://checkout.stripe.test/late" });
     await s.t.run(ctx => ctx.db.patch(s.invoice, transition === "outside" ? { status: "paid", paymentSource: "outside", paidAt: 5 } : { status: "void", voidedAt: 5 }));
-    expect(await s.t.mutation(internal.invoicePaymentInternal.applySuccess, { attemptId, sessionId: "cs_late", paymentIntentId: "pi_late", amountCents: 50000, currency: "usd", destination: "acct_payee", feeCents: 200, invoiceIdMetadata: String(s.invoice), companyIdMetadata: String(s.company) })).toBe("reconciliation_required");
+    expect(await s.t.mutation(internal.invoicePaymentInternal.applySuccess, { attemptId, sessionId: "cs_late", paymentIntentId: "pi_late", amountCents: 50000, currency: "usd", destination: "", eventAccount: "acct_payee", eventSource: "connect", feeCents: 200, invoiceIdMetadata: String(s.invoice), companyIdMetadata: String(s.company) })).toBe("reconciliation_required");
     expect((await s.t.run(ctx => ctx.db.get(attemptId)))?.stripePaymentIntentId).toBe("pi_late");
     expect((await s.t.run(ctx => ctx.db.get(s.invoice)))?.status).toBe(transition === "outside" ? "paid" : "void");
   });
