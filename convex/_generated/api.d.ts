@@ -152,6 +152,7 @@ import type * as mutations_workers from "../mutations/workers.js";
 import type * as workerCompensation from "../workerCompensation.js";
 import type * as outgoingMutations from "../outgoingMutations.js";
 import type * as outgoingQueries from "../outgoingQueries.js";
+import type * as partnerCompensation from "../partnerCompensation.js";
 import type * as proposalDeliveryActions from "../proposalDeliveryActions.js";
 import type * as proposalDeliveryInternal from "../proposalDeliveryInternal.js";
 import type * as qaFixtures from "../qaFixtures.js";
@@ -369,6 +370,7 @@ declare const fullApi: ApiFromModules<{
   workerCompensation: typeof workerCompensation;
   outgoingMutations: typeof outgoingMutations;
   outgoingQueries: typeof outgoingQueries;
+  partnerCompensation: typeof partnerCompensation;
   proposalDeliveryActions: typeof proposalDeliveryActions;
   proposalDeliveryInternal: typeof proposalDeliveryInternal;
   qaFixtures: typeof qaFixtures;

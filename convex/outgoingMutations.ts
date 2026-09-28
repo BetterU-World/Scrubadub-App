@@ -1,4 +1,5 @@
 import { planOutsideAllocation } from "./lib/outgoingAllocation";
+import { partnerEligibility } from "./lib/partnerCompensation";
 import { approvedExecution } from "./lib/performedWorkers";
 import type { MutationCtx } from "./_generated/server";
 import type { Id } from "./_generated/dataModel";
@@ -45,6 +46,8 @@ export const createDraftTerms = mutation({
       args.sessionToken,
       args.userId,
     );
+    if (args.source.type === "partner_shared_job")
+      throw new Error("Use the partner proposal workflow");
     const snapshot = await buildTerms(
       ctx,
       owner.companyId,
@@ -95,6 +98,8 @@ export const updateDraftTerms = mutation({
       throw new Error("Access denied");
     if (terms.lifecycle !== "draft")
       throw new Error("Approved terms are immutable");
+    if (terms.source.type === "partner_shared_job")
+      throw new Error("Partner proposals are immutable: propose a new version");
     if (terms.revision !== args.expectedRevision)
       throw new Error("Stale terms revision");
     const snapshot = await buildTerms(
@@ -197,6 +202,8 @@ export async function materializeTerms(
   )
     throw new Error("Source already materialized: use explicit adjustments");
   let acceptance: Doc<"outgoingTerms">["acceptance"];
+  let partner = terms.partner;
+  let executionSequence = terms.executionSequence;
   if (terms.source.type === "worker_job") {
     if (args.partnerAcceptance)
       throw new Error("Worker terms do not accept partner evidence");
@@ -240,21 +247,32 @@ export async function materializeTerms(
     )
       throw new Error("Duplicate worker compensation unit");
   } else {
+    const fulfillment = await partnerEligibility(ctx, terms);
+    executionSequence = fulfillment.execution.sequence;
+    partner = {
+      ...terms.partner!,
+      approvalExecutionSequence: executionSequence,
+      fulfillmentApprovedAt: fulfillment.copy.approvedAt,
+    };
     const share = await ctx.db.get(terms.source.sharedJobId);
-    const acceptor =
-      args.partnerAcceptance &&
-      (await ctx.db.get(args.partnerAcceptance.actorUserId));
     if (
       !share ||
       !["accepted", "in_progress", "completed"].includes(share.status) ||
-      !acceptor ||
-      acceptor.role !== "owner" ||
-      acceptor.status !== "active" ||
-      acceptor.companyId !== share.toCompanyId
+      !args.partnerAcceptance
     )
       throw new Error("Partner acceptance required");
     text(args.partnerAcceptance!.evidence, "acceptance evidence");
-    acceptance = { ...args.partnerAcceptance!, acceptedAt: Date.now() };
+    if (
+      fingerprint(args.partnerAcceptance) !==
+      fingerprint(
+        terms.acceptance && {
+          actorUserId: terms.acceptance.actorUserId,
+          evidence: terms.acceptance.evidence,
+        },
+      )
+    )
+      throw new Error("Partner acceptance evidence mismatch");
+    acceptance = terms.acceptance;
   }
   const now = Date.now();
   await ctx.db.patch(terms._id, {
@@ -263,6 +281,8 @@ export async function materializeTerms(
     approvedAt: now,
     updatedAt: now,
     acceptance,
+    partner,
+    executionSequence,
   });
   await event(ctx, terms.payerCompanyId, approver._id, `terms:${terms._id}`, {
     type: "terms_approved",
@@ -293,7 +313,7 @@ export async function materializeTerms(
       sourceLabel: terms.sourceLabel,
       approvedById: approver._id,
       approvedAt: now,
-      executionSequence: terms.executionSequence,
+      executionSequence,
       createdAt: now,
       adjustmentCents: 0,
       adjustmentCount: 0,

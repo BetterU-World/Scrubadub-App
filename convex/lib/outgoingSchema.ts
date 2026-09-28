@@ -28,6 +28,29 @@ export const outgoingTables = {
     approvedAt: v.optional(v.number()),
     executionSequence: v.optional(v.number()),
     acceptance: v.optional(outgoingAcceptance),
+    partner: v.optional(
+      v.object({
+        connectionId: v.id("ownerConnections"),
+        originalJobId: v.id("jobs"),
+        copiedJobId: v.id("jobs"),
+        recipientCompanyId: v.id("companies"),
+        state: v.union(
+          v.literal("proposed"),
+          v.literal("accepted"),
+          v.literal("declined"),
+          v.literal("superseded"),
+        ),
+        proposedByName: v.string(),
+        respondedById: v.optional(v.id("users")),
+        respondedByName: v.optional(v.string()),
+        respondedAt: v.optional(v.number()),
+        replacesTermsId: v.optional(v.id("outgoingTerms")),
+        supersededById: v.optional(v.id("users")),
+        supersededAt: v.optional(v.number()),
+        approvalExecutionSequence: v.optional(v.number()),
+        fulfillmentApprovedAt: v.optional(v.number()),
+      }),
+    ),
   })
     .index("by_payer", ["payerCompanyId"])
     .index("by_source_version", ["payerCompanyId", "sourceKey", "version"]),
@@ -58,6 +81,7 @@ export const outgoingTables = {
   })
     .index("by_payer", ["payerCompanyId", "approvedAt"])
     .index("by_recipient", ["payerCompanyId", "recipientKey", "approvedAt"])
+    .index("by_recipient_global", ["recipientKey", "approvedAt"])
     .index("by_source", ["payerCompanyId", "sourceKey"])
     .index("by_terms_line", ["termsId", "lineId"]),
   outgoingSettlements: defineTable({

@@ -1310,6 +1310,7 @@ export default defineSchema({
     .index("by_companyAId_status", ["companyAId", "status"]),
 
   sharedJobs: defineTable({
+    governingTermsId: v.optional(v.id("outgoingTerms")),
     originalJobId: v.id("jobs"),
     copiedJobId: v.id("jobs"),
     fromCompanyId: v.id("companies"),
