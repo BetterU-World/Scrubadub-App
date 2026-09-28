@@ -1,6 +1,7 @@
 import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { slugify, SLUG_RE, RESERVED_SLUGS, randomSuffix } from "./lib/slugs";
+import { subscriptionAllowsWrites } from "./lib/stripeSubscriptionCompatibility";
 
 export const getUserByEmail = internalQuery({
   args: { email: v.string() },
@@ -395,20 +396,12 @@ export const revokeInviteToken = internalMutation({
   },
 });
 
-const PAST_DUE_GRACE_MS = 3 * 24 * 60 * 60 * 1000;
-
 export const checkSubscription = internalQuery({
   args: { companyId: v.id("companies") },
   handler: async (ctx, args) => {
     const company = await ctx.db.get(args.companyId);
     if (!company) throw new Error("Company not found");
-    const status = company.subscriptionStatus;
-    if (!status) return; // no subscription → allow
-    if (status === "active" || status === "trialing") return;
-    if (status === "past_due") {
-      const periodEnd = company.currentPeriodEnd ?? 0;
-      if (Date.now() < periodEnd + PAST_DUE_GRACE_MS) return;
-    }
+    if (subscriptionAllowsWrites(company.subscriptionStatus, company.currentPeriodEnd)) return;
     throw new Error("Subscription inactive. Please update billing to continue.");
   },
 });

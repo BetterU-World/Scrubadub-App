@@ -56,7 +56,7 @@ export const syncSubscription = internalMutation({
     stripeSubscriptionId: v.string(),
     stripePriceId: v.string(),
     status: v.string(),
-    currentPeriodEnd: v.number(),
+    currentPeriodEnd: v.optional(v.number()),
     cancelAtPeriodEnd: v.boolean(),
     eventCreated: v.optional(v.number()),
   },
