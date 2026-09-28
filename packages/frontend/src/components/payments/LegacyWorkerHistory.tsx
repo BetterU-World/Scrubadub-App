@@ -40,7 +40,7 @@ export function LegacyWorkerHistory({
             {r.amountCents == null
               ? t("compensation.amountMissing")
               : money(r.amountCents)}{" "}
-            · {r.status === "OPEN" ? t("compensation.legacyOpen") : r.status}
+            · {t(r.status === "OPEN" ? "compensation.legacyOpen" : r.status === "PAID" ? "compensation.legacyPaid" : "compensation.legacyCanceled")}
           </p>
           <p>
             {r.method === "outside_app"

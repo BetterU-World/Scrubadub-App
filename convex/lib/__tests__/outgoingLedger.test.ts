@@ -14,6 +14,223 @@ const m = api.outgoingMutations;
 const q = api.outgoingQueries;
 const page = { numItems: 50, cursor: null };
 
+describe("PR D hardening", () => {
+  it("rechecks every PR C endpoint with verified sessions and role capabilities", async () => {
+    const s = await setup();
+    const c = api.workerCompensation;
+    await s.t.run((ctx) =>
+      ctx.db.patch(s.restricted.userId, {
+        canManageTeam: true,
+        canManageInvoices: true,
+        canApproveForms: true,
+      }),
+    );
+    for (const actor of [s.manager, s.restricted, s.worker]) {
+      await expect(
+        s.t.query(c.historicalCandidates, { ...actor }),
+      ).rejects.toThrow();
+      await expect(
+        s.t.query(c.previewPayment, {
+          ...actor,
+          workerId: s.worker.userId,
+          amountCents: 100,
+        }),
+      ).rejects.toThrow();
+      await expect(
+        s.t.mutation(c.reviewCompensation, {
+          ...actor,
+          jobId: s.job,
+          workerId: s.worker.userId,
+          amountCents: 100,
+          reason: "Reviewed work",
+        }),
+      ).rejects.toThrow();
+      await expect(
+        s.t.mutation(c.confirmHistoricalWorkers, {
+          ...actor,
+          jobId: s.job,
+          performedWorkerIds: [s.worker.userId],
+        }),
+      ).rejects.toThrow();
+    }
+    for (const actor of [s.restricted, s.worker]) {
+      await expect(
+        s.t.query(c.jobCompensation, { ...actor, jobId: s.job }),
+      ).rejects.toThrow();
+      await expect(s.t.query(c.workerBalances, { ...actor })).rejects.toThrow();
+    }
+    await expect(
+      s.t.query(c.submissionCandidates, { ...s.restricted, jobId: s.job }),
+    ).rejects.toThrow();
+    await expect(
+      s.t.query(c.submissionCandidates, { ...s.foreign, jobId: s.job }),
+    ).rejects.toThrow();
+    for (const ref of [c.submissionCandidates, c.jobCompensation])
+      await expect(
+        s.t.query(ref, { ...s.owner, sessionToken: "", jobId: s.job }),
+      ).rejects.toThrow();
+    for (const ref of [c.historicalCandidates, c.workerBalances])
+      await expect(
+        s.t.query(ref, { ...s.owner, sessionToken: "" }),
+      ).rejects.toThrow();
+    expect(await s.t.query(c.workerBalances, { ...s.manager })).toEqual([]);
+  });
+
+  it("fails explicitly above recipient and company aggregate safety bounds", async () => {
+    const s = await setup();
+    const id = await s.obligation(100);
+    await s.t.run(async (ctx) => {
+      const row = await ctx.db.get(id);
+      const { _id, _creationTime, ...fields } = row!;
+      for (let i = 0; i < 500; i++)
+        await ctx.db.insert("outgoingObligations", fields);
+    });
+    await expect(
+      s.t.query(q.recipientOutstandingTotals, { ...s.worker }),
+    ).rejects.toThrow("too large");
+    await s.t.run(async (ctx) => {
+      const row = await ctx.db.get(id);
+      const { _id, _creationTime, ...fields } = row!;
+      for (let i = 0; i < 4500; i++)
+        await ctx.db.insert("outgoingObligations", fields);
+    });
+    await expect(
+      s.t.query(api.workerCompensation.workerBalances, { ...s.owner }),
+    ).rejects.toThrow("too large");
+  });
+
+  it.each(["2026-02-30", "not-a-date", "2026-9-01", "2999-01-01"])(
+    "rejects malformed or future payment date %s without ledger writes",
+    async (paymentDate) => {
+      const s = await setup();
+      await s.obligation();
+      await expect(s.record(1000, "bad-date", { paymentDate })).rejects.toThrow(
+        /payment date/,
+      );
+      expect((await s.financialRows()).settlements).toHaveLength(0);
+    },
+  );
+  it("keeps payment date and server recording timestamp distinct and public references safe", async () => {
+    const s = await setup();
+    await s.obligation();
+    const id = await s.record(1000, "dates", {
+      publicReference: "Check 103",
+      administrativeNote: "Owner confidential note",
+    });
+    for (const actor of [s.worker, s.manager]) {
+      const detail = await s.t.query(q.getSettlementDetail, {
+        ...actor,
+        settlementId: id,
+      });
+      expect(detail.settlement.publicReference).toBe("Check 103");
+      expect(detail.allocations[0].sourceLabel).toBeTruthy();
+      expect(detail.settlement.paymentDate).toBe("2026-09-01");
+      expect(detail.settlement.recordedAt).toBeGreaterThan(
+        Date.parse("2026-09-01"),
+      );
+      expect(JSON.stringify(detail)).not.toContain("Owner confidential note");
+      const history = await s.t.query(q.listSettlementHistory, {
+        ...actor,
+        recipient:
+          actor === s.manager
+            ? { type: "worker", userId: s.worker.userId }
+            : undefined,
+        paginationOpts: page,
+      });
+      expect(JSON.stringify(history)).not.toContain("Owner confidential note");
+    }
+    expect(
+      (await s.t.query(q.getSettlementDetail, { ...s.owner, settlementId: id }))
+        .settlement,
+    ).toHaveProperty("administrativeNote", "Owner confidential note");
+  });
+  it("returns authoritative allocation total and remaining per-job compensation", async () => {
+    const s = await setup();
+    const id = await s.obligation(10000);
+    const preview = await s.t.query(api.workerCompensation.previewPayment, {
+      ...s.owner,
+      workerId: s.worker.userId,
+      amountCents: 2500,
+      selectedObligationIds: [id],
+    });
+    expect(preview.error).toBeNull();
+    expect(preview).toHaveProperty("allocatedCents", 2500);
+    expect(preview).toHaveProperty("remainingRecipientCents", 7500);
+    expect(preview.allocations[0]).toHaveProperty("remainingCents", 7500);
+    await s.record(2500, "preview-match", {
+      allocations: preview.allocations.map(
+        ({ obligationId, amountCents, expectedVersion }) => ({
+          obligationId,
+          amountCents,
+          expectedVersion,
+        }),
+      ),
+    });
+    expect((await s.state(id)).collectibleOutstandingCents).toBe(7500);
+  });
+  it("rejects an empty or trivial no-compensation reason and retains audited final review", async () => {
+    const s = await setup();
+    const args = {
+      ...s.owner,
+      jobId: s.job,
+      workerId: s.worker.userId,
+      amountCents: 0,
+    };
+    await expect(
+      s.t.mutation(api.workerCompensation.reviewCompensation, {
+        ...args,
+        reason: "x",
+      }),
+    ).rejects.toThrow("reason");
+    await s.t.mutation(api.workerCompensation.reviewCompensation, {
+      ...args,
+      reason: "Volunteer work confirmed",
+    });
+    const detail = await s.t.query(api.workerCompensation.jobCompensation, {
+      ...s.owner,
+      jobId: s.job,
+    });
+    expect(detail.workers[0].noCompensation).toMatchObject({
+      reason: "Volunteer work confirmed",
+      reviewedById: s.owner.userId,
+    });
+    expect(detail.workers[0].noCompensation?.reviewedAt).toBeGreaterThan(0);
+    expect((await s.financialRows()).obligations).toHaveLength(0);
+    await expect(
+      s.t.mutation(api.workerCompensation.reviewCompensation, {
+        ...args,
+        amountCents: 100,
+        reason: "Correction",
+      }),
+    ).rejects.toThrow("already reviewed");
+  });
+  it.each([
+    "standard",
+    "deep_clean",
+    "turnover",
+    "move_in_out",
+    "post_construction",
+    "maintenance",
+  ] as const)(
+    "supports genuine company labor on %s jobs without partner recipient inference",
+    async (type) => {
+      const s = await setup();
+      await s.t.run((ctx) => ctx.db.patch(s.job, { type }));
+      const id = await s.t.mutation(api.workerCompensation.reviewCompensation, {
+        ...s.owner,
+        jobId: s.job,
+        workerId: s.worker.userId,
+        amountCents: 10000,
+        reason: "Approved labor",
+      });
+      expect((await s.state(id!)).recipient).toMatchObject({
+        type: "worker",
+        userId: s.worker.userId,
+      });
+    },
+  );
+});
+
 describe("PR C worker compensation", () => {
   const c = api.workerCompensation;
   async function review(
@@ -196,7 +413,13 @@ describe("PR C worker compensation", () => {
       10000, 5000,
     ]);
     const id = await s.record(15000, "preview", {
-      allocations: preview.allocations.map(({ sourceLabel, ...row }) => row),
+      allocations: preview.allocations.map(
+        ({ obligationId, amountCents, expectedVersion }) => ({
+          obligationId,
+          amountCents,
+          expectedVersion,
+        }),
+      ),
     });
     expect(
       (
@@ -211,7 +434,13 @@ describe("PR C worker compensation", () => {
     });
     expect(selected.allocations[0].obligationId).toBe(d);
     await s.record(10000, "selected-preview", {
-      allocations: selected.allocations.map(({ sourceLabel, ...row }) => row),
+      allocations: selected.allocations.map(
+        ({ obligationId, amountCents, expectedVersion }) => ({
+          obligationId,
+          amountCents,
+          expectedVersion,
+        }),
+      ),
     });
     expect((await s.state(d)).outstandingCents).toBe(0);
     expect(
@@ -238,7 +467,13 @@ describe("PR C worker compensation", () => {
     await s.record(1000, "intervening");
     await expect(
       s.record(5000, "stale-preview", {
-        allocations: preview.allocations.map(({ sourceLabel, ...row }) => row),
+        allocations: preview.allocations.map(
+          ({ obligationId, amountCents, expectedVersion }) => ({
+            obligationId,
+            amountCents,
+            expectedVersion,
+          }),
+        ),
       }),
     ).rejects.toThrow("Stale");
     expect((await s.state(id)).recordedPaidCents).toBe(1000);
@@ -343,19 +578,58 @@ describe("PR C worker compensation", () => {
 describe("PR C preserved boundaries", () => {
   it("records owner self-work without creating worker compensation", async () => {
     const s = await setup();
-    await s.t.run(ctx => ctx.db.patch(s.job, { status: "in_progress", cleanerIds: [], assignedManagerId: s.owner.userId, executionHistory: undefined, approvedExecutionSequence: undefined }));
-    await s.t.mutation(api.mutations.jobs.ownerCompleteJob, { ...s.owner, jobId: s.job, performedWorkerIds: [s.owner.userId] });
-    const review = await s.t.query(api.workerCompensation.jobCompensation, { ...s.owner, jobId: s.job });
+    await s.t.run((ctx) =>
+      ctx.db.patch(s.job, {
+        status: "in_progress",
+        cleanerIds: [],
+        assignedManagerId: s.owner.userId,
+        executionHistory: undefined,
+        approvedExecutionSequence: undefined,
+      }),
+    );
+    await s.t.mutation(api.mutations.jobs.ownerCompleteJob, {
+      ...s.owner,
+      jobId: s.job,
+      performedWorkerIds: [s.owner.userId],
+    });
+    const review = await s.t.query(api.workerCompensation.jobCompensation, {
+      ...s.owner,
+      jobId: s.job,
+    });
     expect(review.evidence?.workers[0].role).toBe("owner");
     expect(review.workers).toEqual([]);
     expect((await s.financialRows()).obligations).toEqual([]);
   });
   it("preserves partner source uniqueness across terms versions", async () => {
     const s = await setup();
-    const draft = () => s.t.mutation(m.createDraftTerms, { ...s.owner, source: { type: "partner_shared_job", sharedJobId: s.share }, currency: "USD", lines: [{ lineId: "partner", recipient: { type: "partner_company", companyId: s.other }, amountCents: 12000, basis: "accepted work" }] });
-    const approve = (termsId: Id<"outgoingTerms">) => s.t.mutation(internal.outgoingMutations.approveAndMaterialize, { termsId, approverUserId: s.owner.userId, expectedRevision: 1, partnerAcceptance: { actorUserId: s.foreign.userId, evidence: "accepted terms" } });
+    const draft = () =>
+      s.t.mutation(m.createDraftTerms, {
+        ...s.owner,
+        source: { type: "partner_shared_job", sharedJobId: s.share },
+        currency: "USD",
+        lines: [
+          {
+            lineId: "partner",
+            recipient: { type: "partner_company", companyId: s.other },
+            amountCents: 12000,
+            basis: "accepted work",
+          },
+        ],
+      });
+    const approve = (termsId: Id<"outgoingTerms">) =>
+      s.t.mutation(internal.outgoingMutations.approveAndMaterialize, {
+        termsId,
+        approverUserId: s.owner.userId,
+        expectedRevision: 1,
+        partnerAcceptance: {
+          actorUserId: s.foreign.userId,
+          evidence: "accepted terms",
+        },
+      });
     await approve(await draft());
-    await expect(approve(await draft())).rejects.toThrow("Source already materialized");
+    await expect(approve(await draft())).rejects.toThrow(
+      "Source already materialized",
+    );
     expect((await s.financialRows()).obligations).toHaveLength(1);
   });
 });

@@ -1,3 +1,4 @@
+import { FinancialBoundary } from "./FinancialBoundary";
 import { useState } from "react";
 import { useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
@@ -7,6 +8,13 @@ import { useAuth, getStaffSessionToken } from "@/hooks/useAuth";
 import { RecipientLedger, money } from "./RecipientLedger";
 
 export function WorkerBalances() {
+  return (
+    <FinancialBoundary>
+      <WorkerBalancesContent />
+    </FinancialBoundary>
+  );
+}
+function WorkerBalancesContent() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const balances = useQuery(
@@ -32,10 +40,44 @@ export function WorkerBalances() {
     <div className="space-y-4 min-w-0">
       <p className="text-sm text-gray-500">{t("compensation.hubHelp")}</p>
       <h2 className="font-semibold text-xl">{t("compensation.workerOwed")}</h2>
+      {balances && balances.length > 0 && (
+        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 card">
+          <div>
+            <dt>{t("compensation.workerOwed")}</dt>
+            <dd className="font-semibold text-xl">
+              {money(balances.reduce((n, b) => n + b.outstandingCents, 0))}
+            </dd>
+          </div>
+          <div>
+            <dt>{t("compensation.workersOutstanding")}</dt>
+            <dd>{balances.filter((b) => b.outstandingCents > 0).length}</dd>
+          </div>
+          <div>
+            <dt>{t("compensation.openItems")}</dt>
+            <dd>{balances.reduce((n, b) => n + b.openCount, 0)}</dd>
+          </div>
+          {balances.some((b) => b.oldestApprovedAt !== undefined) && (
+            <div>
+              <dt>{t("compensation.oldest")}</dt>
+              <dd>
+                {new Date(
+                  Math.min(
+                    ...balances.flatMap((b) =>
+                      b.oldestApprovedAt === undefined
+                        ? []
+                        : [b.oldestApprovedAt],
+                    ),
+                  ),
+                ).toLocaleDateString()}
+              </dd>
+            </div>
+          )}
+        </dl>
+      )}
       {balances === undefined ? (
         <p>{t("common.loading")}</p>
       ) : balances.length === 0 ? (
-        <p>{t("compensation.empty")}</p>
+        <p>{t("compensation.ownerEmpty")}</p>
       ) : (
         balances.map((b) => (
           <article className="card space-y-3 min-w-0" key={b.workerId}>
@@ -58,7 +100,7 @@ export function WorkerBalances() {
             <p className="text-sm">
               {b.outstandingCents > 0
                 ? t("compensation.OWED")
-                : t("compensation.PAID")}
+                : t("compensation.noOutstanding")}
               {b.oldestApprovedAt &&
                 ` · ${t("compensation.oldest")}: ${new Date(b.oldestApprovedAt).toLocaleDateString()}`}
             </p>

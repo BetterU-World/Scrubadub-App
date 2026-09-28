@@ -14,7 +14,10 @@ export function usePerformedWorkers(jobId: Id<"jobs">, enabled = true) {
       : "skip",
   );
   const [selected, setSelected] = useState<Id<"users">[]>([]);
-  return { candidates: candidates ?? [], selected, setSelected };
+  const validSelected = selected.filter((id) =>
+    candidates?.some((w) => w.userId === id),
+  );
+  return { candidates, selected: validSelected, setSelected };
 }
 
 export function PerformedWorkerPicker({
@@ -22,7 +25,7 @@ export function PerformedWorkerPicker({
   selected,
   setSelected,
 }: {
-  candidates: { userId: Id<"users">; displayName: string }[];
+  candidates: { userId: Id<"users">; displayName: string }[] | undefined;
   selected: Id<"users">[];
   setSelected: (ids: Id<"users">[]) => void;
 }) {
@@ -31,10 +34,14 @@ export function PerformedWorkerPicker({
     <fieldset className="space-y-2 my-4 min-w-0">
       <legend className="font-medium">{t("compensation.performed")}</legend>
       <p className="text-sm text-gray-500">{t("compensation.rosterHelp")}</p>
-      {candidates.map((w) => (
+      {candidates === undefined && <p role="status">{t("common.loading")}</p>}
+      {candidates?.length === 0 && (
+        <p role="status">{t("compensation.noCandidates")}</p>
+      )}
+      {candidates?.map((w) => (
         <label
           key={w.userId}
-          className="flex items-center gap-3 py-2 break-words"
+          className="flex items-center gap-3 py-3 min-h-11 break-words"
         >
           <input
             type="checkbox"

@@ -109,7 +109,9 @@ export const reviewCompensation = mutation({
       .withIndex("by_source", (q) =>
         q.eq("payerCompanyId", owner.companyId).eq("sourceKey", key),
       )
-      .collect();
+      .take(501);
+    if (obligations.length > 500)
+      throw new Error("Job compensation history too large");
     const existing = obligations.find(
       (o) => o.recipientKey === `worker:${args.workerId}`,
     );
@@ -134,6 +136,8 @@ export const reviewCompensation = mutation({
       throw new Error("Compensation already reviewed without obligation");
     }
     if (args.amountCents === 0) {
+      if (args.reason.trim().length < 5)
+        throw new Error("Invalid no-compensation reason: explain the decision");
       await ctx.db.patch(job._id, {
         compensationReviews: [
           ...reviews,
@@ -212,7 +216,9 @@ export const jobCompensation = query({
           .eq("payerCompanyId", reader.companyId)
           .eq("sourceKey", sourceKey({ type: "worker_job", jobId: job._id })),
       )
-      .collect();
+      .take(501);
+    if (obligations.length > 500)
+      throw new Error("Job compensation history too large");
     const eligible = evidence?.workers.filter((w) => w.role !== "owner") ?? [];
     const workers = await Promise.all(
       eligible.map(async (w) => {
@@ -287,13 +293,44 @@ export const previewPayment = query({
         recipientKey({ type: "worker", userId: args.workerId }),
         { ...args, currency: "USD" },
       );
+      const recipientHistory = await ctx.db
+        .query("outgoingObligations")
+        .withIndex("by_recipient", (q) =>
+          q
+            .eq("payerCompanyId", owner.companyId)
+            .eq(
+              "recipientKey",
+              recipientKey({ type: "worker", userId: args.workerId }),
+            ),
+        )
+        .take(501);
+      if (recipientHistory.some((o) => o.currency !== "USD"))
+        throw new Error("Unsupported currency in ledger");
+      const remainingRecipientCents =
+        recipientHistory.length > 500
+          ? null
+          : recipientHistory.reduce(
+              (total, obligation) =>
+                boundedTotal(
+                  total + projection(obligation).collectibleOutstandingCents,
+                ),
+              0,
+            ) - args.amountCents;
       return {
         error: null,
+        remainingRecipientCents,
+        allocatedCents: plan.reduce(
+          (total, p) => boundedTotal(total + p.amountCents),
+          0,
+        ),
         allocations: plan.map((p) => ({
           obligationId: p.obligation._id,
           sourceLabel: p.obligation.sourceLabel,
           amountCents: p.amountCents,
           expectedVersion: p.obligation.ledgerVersion,
+          remainingCents:
+            projection(p.obligation).collectibleOutstandingCents -
+            p.amountCents,
         })),
       };
     } catch (error) {

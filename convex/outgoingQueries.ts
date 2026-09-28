@@ -17,6 +17,22 @@ import {
   MAX_RECIPIENT_OBLIGATIONS,
 } from "./lib/outgoingLedger";
 
+async function safeSettlement(
+  ctx: QueryCtx,
+  args: { userId: Doc<"users">["_id"]; sessionToken: string },
+  settlement: Doc<"outgoingSettlements">,
+  reversed: boolean,
+) {
+  const reader = await requireVerifiedStaffSession(
+    ctx,
+    args.sessionToken,
+    args.userId,
+  );
+  if (reader.role === "owner")
+    return { ...settlement, ledgerReversed: reversed };
+  return publicSettlement(settlement, reversed);
+}
+
 const auth = { userId: v.id("users"), sessionToken: v.string() };
 function publicObligation(o: Doc<"outgoingObligations">) {
   return {
@@ -149,7 +165,9 @@ export const getObligationDetail = query({
     const allocations = await ctx.db
       .query("outgoingSettlementAllocations")
       .withIndex("by_obligation", (q) => q.eq("obligationId", obligation._id))
-      .collect();
+      .take(MAX_RECIPIENT_OBLIGATIONS + 1);
+    if (allocations.length > MAX_RECIPIENT_OBLIGATIONS)
+      throw new Error("Payment history too large for detail query");
     const payments = [];
     for (const allocation of allocations) {
       const settlement = await ctx.db.get(allocation.settlementId);
@@ -163,7 +181,7 @@ export const getObligationDetail = query({
       payments.push({
         allocation,
         settlement: companyRead
-          ? { ...settlement, ledgerReversed: !!reversal }
+          ? await safeSettlement(ctx, args, settlement, !!reversal)
           : publicSettlement(settlement, !!reversal),
         reversal: reversal
           ? {
@@ -235,6 +253,7 @@ export const recipientOutstandingTotals = query({
       .take(MAX_RECIPIENT_OBLIGATIONS + 1);
     if (obligations.length > MAX_RECIPIENT_OBLIGATIONS)
       throw new Error("Recipient history too large for aggregate query");
+    let approvedCents = 0;
     let openObligationCount = 0;
     let outstandingCents = 0;
     let recordedPaidCents = 0;
@@ -243,6 +262,9 @@ export const recipientOutstandingTotals = query({
         throw new Error(
           "Unsupported currency in ledger: totals cannot mix currencies",
         );
+      approvedCents = boundedTotal(
+        approvedCents + obligation.basePrincipalCents,
+      );
       const state = projection(obligation);
       if (state.collectibleOutstandingCents > 0) openObligationCount++;
       outstandingCents = boundedTotal(
@@ -254,6 +276,7 @@ export const recipientOutstandingTotals = query({
     }
     return {
       currency: "USD",
+      approvedCents,
       outstandingCents,
       recordedPaidCents,
       obligationCount: obligations.length,
@@ -276,12 +299,26 @@ export const getSettlementDetail = query({
       .query("outgoingSettlementAllocations")
       .withIndex("by_settlement", (q) => q.eq("settlementId", settlement._id))
       .collect();
+    // A settlement has at most 100 allocations. Labels come from frozen obligations,
+    // avoiding one full obligation-history query per displayed allocation in React.
+    const labeledAllocations = await Promise.all(
+      allocations.map(async (allocation) => {
+        const obligation = await ctx.db.get(allocation.obligationId);
+        if (
+          !obligation ||
+          obligation.payerCompanyId !== settlement.payerCompanyId ||
+          obligation.recipientKey !== settlement.recipientKey
+        )
+          throw new Error("Invalid ledger evidence");
+        return { ...allocation, sourceLabel: obligation.sourceLabel };
+      }),
+    );
     const reversal = await settlementReversal(ctx, settlement);
     return {
       settlement: companyRead
-        ? { ...settlement, ledgerReversed: !!reversal }
+        ? await safeSettlement(ctx, args, settlement, !!reversal)
         : publicSettlement(settlement, !!reversal),
-      allocations,
+      allocations: labeledAllocations,
       reversal: reversal
         ? {
             createdAt: reversal.createdAt,
@@ -317,7 +354,7 @@ export const listSettlementHistory = query({
         page.page.map(async (settlement) => {
           const reversed = !!(await settlementReversal(ctx, settlement));
           return access.companyRead
-            ? { ...settlement, ledgerReversed: reversed }
+            ? await safeSettlement(ctx, args, settlement, reversed)
             : publicSettlement(settlement, reversed);
         }),
       ),

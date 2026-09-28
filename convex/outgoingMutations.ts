@@ -189,7 +189,8 @@ export async function materializeTerms(
         .eq("payerCompanyId", terms.payerCompanyId)
         .eq("sourceKey", terms.sourceKey),
     )
-    .collect();
+    .take(501);
+  if (versions.length > 500) throw new Error("Source terms history too large");
   if (
     terms.source.type !== "worker_job" &&
     versions.some((version) => version.lifecycle === "approved")
@@ -208,6 +209,16 @@ export async function materializeTerms(
       terms.executionSequence !== evidence?.sequence
     )
       throw new Error("Execution evidence changed: review compensation again");
+    const existing = await ctx.db
+      .query("outgoingObligations")
+      .withIndex("by_source", (q) =>
+        q
+          .eq("payerCompanyId", terms.payerCompanyId)
+          .eq("sourceKey", terms.sourceKey),
+      )
+      .take(501);
+    if (existing.length > 500)
+      throw new Error("Job compensation history too large");
     for (const line of terms.lines) {
       if (
         line.recipient.type !== "worker" ||
@@ -218,14 +229,6 @@ export async function materializeTerms(
         )
       )
         throw new Error("Approved performed-worker evidence required");
-      const existing = await ctx.db
-        .query("outgoingObligations")
-        .withIndex("by_source", (q) =>
-          q
-            .eq("payerCompanyId", terms.payerCompanyId)
-            .eq("sourceKey", terms.sourceKey),
-        )
-        .collect();
       if (existing.some((o) => o.recipientKey === recipientKey(line.recipient)))
         throw new Error(
           "Worker source already materialized: use explicit adjustments",
@@ -380,6 +383,9 @@ export const recordOutsideSettlement = mutation({
         throw new Error("Idempotency key content mismatch");
       return prior._id;
     }
+    // Preserve retries of existing declarations, including pre-hardening future dates.
+    if (args.paymentDate > new Date().toISOString().slice(0, 10))
+      throw new Error("Future payment date is not allowed");
     if (
       await ctx.db
         .query("outgoingEvents")

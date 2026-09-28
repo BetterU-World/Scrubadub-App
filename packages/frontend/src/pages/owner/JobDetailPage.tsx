@@ -1,4 +1,5 @@
 import { JobCompensation } from "@/components/payments/JobCompensation";
+import { compensationError } from "@/components/payments/compensationErrors";
 import { usePerformedWorkers, PerformedWorkerPicker } from "@/components/payments/PerformedWorkerPicker";
 import { LegacyOutgoingNotice } from "@/components/payments/LegacyOutgoingNotice";
 import { useFeedbackState } from "@/components/ui/FeedbackProvider";
@@ -783,7 +784,7 @@ export function JobDetailPage() {
                       await ownerCompleteJobMut({ performedWorkerIds: roster.selected, jobId: job._id, userId: uid, sessionToken: getStaffSessionToken() });
                       setToast({ message: t("jobs.cleanCompleted"), type: "success" });
                     } catch (err: any) {
-                      setToast({ message: err.message ?? t("common.failed"), type: "error" });
+                      setToast({ message: compensationError(err, t), type: "error" });
                     }
                   }}
                   className={`text-sm flex items-center gap-2 ${job.currentPauseStartedAt === undefined ? "btn-primary" : "btn-secondary opacity-60 cursor-not-allowed"}`}
