@@ -128,26 +128,7 @@ export async function submitJobExecution(ctx: MutationCtx, args: SubmissionArgs)
     }
   }
 
-  if (!job.assignedTeamId) {
-    const existingPayment = await ctx.db
-      .query("cleanerPayments")
-      .withIndex("by_jobId", (q) => q.eq("jobId", job._id))
-      .first();
-    if (!existingPayment) {
-      const cleanerId = job.cleanerIds[0];
-      const cleaner = cleanerId ? await ctx.db.get(cleanerId) : null;
-      if (cleanerId && (cleaner?.role === "cleaner" || cleaner?.role === "maintenance")) {
-        const cleanerPaymentId = await ctx.db.insert("cleanerPayments", {
-          companyId: job.companyId,
-          jobId: job._id,
-          cleanerUserId: cleanerId,
-          status: "OPEN",
-          createdAt: now,
-        });
-        await ctx.db.patch(job._id, { cleanerPaymentId });
-      }
-    }
-  }
+  // Legacy outgoing creation is retired. Submission only advances operational work.
 
   await logAudit(ctx, {
     companyId: job.companyId,

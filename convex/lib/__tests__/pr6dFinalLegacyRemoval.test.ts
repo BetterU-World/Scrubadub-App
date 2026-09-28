@@ -70,7 +70,7 @@ describe("PR 6D final legacy authorization removal", () => {
     process.env.APP_URL = "http://localhost:5173";
   });
 
-  it("allows verified owners to use cleaner-payment and settlement workflows", async () => {
+  it("preserves verified financial reads while retiring cleaner-payment and settlement writes", async () => {
     const t = backend();
     const s = await seed(t);
     const owner = await login(t, "owner-a@pr6d.test");
@@ -83,14 +83,11 @@ describe("PR 6D final legacy authorization removal", () => {
       expect.objectContaining({ _id: s.settlement, direction: "owing", amountCents: 7500 }),
     ]);
 
-    const paymentId = await t.mutation(api.mutations.cleanerPayments.createCleanerPayment, {
+    await expect(t.mutation(api.mutations.cleanerPayments.createCleanerPayment, {
       ...common, jobId: s.jobA, amountCents: 5000,
-    });
-    await expect(t.run((ctx) => ctx.db.get(paymentId))).resolves.toMatchObject({
-      companyId: s.companyA, cleanerUserId: s.cleanerA, paidByUserId: s.ownerA,
-    });
-    await t.mutation(api.mutations.settlements.markSettlementPaid, { ...common, settlementId: s.settlement });
-    await expect(t.run((ctx) => ctx.db.get(s.settlement))).resolves.toMatchObject({ status: "paid" });
+    })).rejects.toThrow("Legacy outgoing payments are retired");
+    await expect(t.mutation(api.mutations.settlements.markSettlementPaid, { ...common, settlementId: s.settlement })).rejects.toThrow("Legacy outgoing payments are retired");
+    await expect(t.run((ctx) => ctx.db.get(s.settlement))).resolves.toMatchObject({ status: "open" });
   });
 
   it("rejects legacy-only, forged, non-owner, and cross-company financial access", async () => {
@@ -104,7 +101,7 @@ describe("PR 6D final legacy authorization removal", () => {
     await expect(t.query(api.queries.settlements.listMySettlements, { userId: s.managerA, sessionToken: manager.sessionToken, status: "open" })).rejects.toThrow("Owner session required");
     await expect(t.mutation(api.mutations.cleanerPayments.createCleanerPayment, {
       userId: s.ownerA, sessionToken: owner.sessionToken, jobId: s.jobB, amountCents: 5000,
-    })).rejects.toThrow("does not belong to your company");
+    })).rejects.toThrow("Access denied");
   });
 
   it("fails closed for invalid, revoked, and expired financial sessions", async () => {

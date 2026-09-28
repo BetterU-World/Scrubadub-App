@@ -1,3 +1,4 @@
+import { retireLegacyOutgoing } from "../lib/legacyOutgoingRetirement";
 import { mutation, type MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
@@ -1183,37 +1184,10 @@ export const updatePlannedCleanerPay = mutation({
     amountCents: v.number(),
   },
   handler: async (ctx, args) => {
-    const owner = await requireOwnerSession(
-      ctx,
-      args.sessionToken,
-      args.userId,
-    );
-
-    if (args.amountCents < 100) {
-      throw new Error("Minimum planned pay is $1.00");
-    }
-
-    const job = await ctx.db.get(args.jobId);
-    if (!job || job.companyId !== owner.companyId) {
-      throw new Error("Job not found or does not belong to your company");
-    }
-    if (job.status === "cancelled" || job.status === "denied") {
-      throw new Error("Cannot set planned pay for cancelled or rejected jobs");
-    }
-    if (job.cleanerIds.length === 0) {
-      throw new Error("No cleaner assigned to this job");
-    }
-    const payableWorker = await ctx.db.get(job.cleanerIds[0]);
-    if (
-      payableWorker?.role !== "cleaner" &&
-      payableWorker?.role !== "maintenance"
-    ) {
-      throw new Error("The assigned job executor is not eligible for cleaner pay");
-    }
-
-    await ctx.db.patch(args.jobId, {
-      plannedCleanerPayCents: args.amountCents,
-    });
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const record = await ctx.db.get(args.jobId);
+    if (!record || record.companyId !== owner.companyId) throw new Error("Access denied");
+    return retireLegacyOutgoing();
   },
 });
 

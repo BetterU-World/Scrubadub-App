@@ -1,69 +1,15 @@
 "use node";
-
-declare const process: { env: Record<string, string | undefined> };
+import { retireLegacyOutgoing } from "../lib/legacyOutgoingRetirement";
 
 import { action } from "../_generated/server";
-import { internal } from "../_generated/api";
 import { v } from "convex/values";
-import { getStripeClientOrNull } from "../lib/stripe";
 import { requireStaffSession } from "../lib/sessions";
-import { requireAppUrl } from "../lib/environment";
 
-/**
- * Create a Stripe Account Link for cleaner Express onboarding.
- * Idempotently creates the Express account if it doesn't exist yet.
- * Returns the URL to redirect the cleaner to.
- */
+/** Retired creation endpoint. Historical completion is handled separately. */
 export const createCleanerStripeAccountLink = action({
   args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const principal = await requireStaffSession(ctx, args.sessionToken, args.userId);
-    const stripe = getStripeClientOrNull();
-    if (!stripe) throw new Error("Stripe is not configured");
-
-    const data = await ctx.runQuery(
-      internal.queries.cleanerStripeConnect.getCleanerForConnect,
-      { userId: principal.userId },
-    );
-    if (!data) throw new Error("User not found");
-
-    let accountId = data.stripeConnectAccountId;
-
-    // Create Express account if missing
-    if (!accountId) {
-      const account = await stripe.accounts.create({
-        type: "express",
-        email: data.email,
-        capabilities: {
-          card_payments: { requested: true },
-          transfers: { requested: true },
-        },
-        metadata: {
-          convexUserId: String(data.userId),
-          convexCompanyId: String(data.companyId),
-        },
-      });
-
-      accountId = account.id;
-
-      await ctx.runMutation(
-        internal.mutations.cleanerStripeConnect.setCleanerStripeConnectAccount,
-        {
-          userId: data.userId,
-          stripeConnectAccountId: account.id,
-        },
-      );
-    }
-
-    const appUrl = requireAppUrl();
-
-    const accountLink = await stripe.accountLinks.create({
-      account: accountId,
-      refresh_url: `${appUrl}/settings?stripe=refresh`,
-      return_url: `${appUrl}/settings?stripe=return`,
-      type: "account_onboarding",
-    });
-
-    return { url: accountLink.url };
+    await requireStaffSession(ctx, args.sessionToken, args.userId);
+    return retireLegacyOutgoing();
   },
 });

@@ -1,3 +1,4 @@
+import { LegacyOutgoingNotice } from "@/components/payments/LegacyOutgoingNotice";
 import { useState } from "react";
 import type { ComponentType, ReactNode } from "react";
 import { Link } from "wouter";
@@ -737,108 +738,6 @@ function ComplianceHubSection({
   );
 }
 
-function PaymentsSection({
-  connectStatus,
-  payments,
-  loading,
-  error,
-  accountIdSuffix,
-  isConnected,
-  onConnect,
-}: {
-  connectStatus: any;
-  payments: any[];
-  loading: boolean;
-  error: string | null;
-  accountIdSuffix: string | null;
-  isConnected: boolean;
-  onConnect: () => void;
-}) {
-  const openPayments = payments.filter((payment) => payment.paymentStatus !== "PAID");
-  const paidPayments = payments.filter((payment) => payment.paymentStatus === "PAID");
-  const nextOpenPayment = openPayments[0];
-
-  return (
-    <SectionCard id="payments" icon={Banknote} title="Payments" action={<SectionLink href="/payments">Open Payments</SectionLink>}>
-      {error && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-700">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          {error}
-        </div>
-      )}
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-lg bg-gray-50 px-3 py-3">
-          <p className="text-xs text-gray-500">Open Payment Items</p>
-          <p className="text-xl font-bold text-gray-900">{openPayments.length}</p>
-        </div>
-        <div className="rounded-lg bg-gray-50 px-3 py-3">
-          <p className="text-xs text-gray-500">Paid Items</p>
-          <p className="text-xl font-bold text-gray-900">{paidPayments.length}</p>
-        </div>
-      </div>
-
-      {nextOpenPayment && (
-        <p className="mt-3 text-sm text-gray-600">
-          Next open item: <span className="font-medium text-gray-900">{nextOpenPayment.jobLabel}</span> - {formatMoney(nextOpenPayment.plannedPayCents)}
-        </p>
-      )}
-
-      <div className="mt-4 rounded-lg border border-gray-100 bg-gray-50 px-3 py-3">
-        {isConnected ? (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-100 text-green-600">
-                <CheckCircle className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="font-semibold text-gray-900">Stripe Connected</p>
-                <p className="text-sm text-gray-500">Account ...{accountIdSuffix}</p>
-              </div>
-            </div>
-            <button
-              onClick={onConnect}
-              disabled={loading}
-              className="btn-secondary flex items-center justify-center gap-2"
-            >
-              <Link2 className="w-4 h-4" />
-              {loading ? "Redirecting..." : "Update Stripe Info"}
-            </button>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-gray-100 text-gray-500">
-                <Link2 className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="font-semibold text-gray-900">Connect Stripe</p>
-                <p className="text-sm text-gray-500">
-                  Set up your account so your employer can pay you through SCRUB.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={onConnect}
-              disabled={loading}
-              className="btn-primary flex items-center justify-center gap-2"
-            >
-              <Link2 className="w-4 h-4" />
-              {loading ? "Redirecting..." : "Connect Stripe"}
-            </button>
-          </div>
-        )}
-      </div>
-
-      {connectStatus?.stripeConnectPayoutsEnabled === false && isConnected && (
-        <p className="mt-3 text-sm text-amber-700">
-          Stripe is connected, but payouts may still need attention in Stripe.
-        </p>
-      )}
-    </SectionCard>
-  );
-}
-
 function AccountSection({ email, onSignOut }: { email: string; onSignOut: () => void }) {
   return (
     <SectionCard id="account" icon={Wrench} title="Account">
@@ -898,23 +797,13 @@ export function CleanerSettingsPage() {
     (api as any).queries.companyOnboardingDocuments.listForWorker,
     user?._id ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
-  const payments = useQuery(
-    api.queries.cleanerPayments.listCleanerJobsWithPaymentStatus,
-    user?._id ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
-  );
-  const createAccountLink = useAction(
-    api.actions.cleanerStripeConnect.createCleanerStripeAccountLink
-  );
+
   const getManualSignedUrl = useAction(api.actions.manuals.getManualSignedUrl);
   const completeOnboardingItem = useMutation((api as any).mutations.workers.completeMyOnboardingItem);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
   const [openingManualId, setOpeningManualId] = useState<string | null>(null);
   const [completingItemId, setCompletingItemId] = useState<string | null>(null);
   const [completionError, setCompletionError] = useState<string | null>(null);
-
-  const params = new URLSearchParams(window.location.search);
-  const stripeParam = params.get("stripe");
 
   if (
     !user ||
@@ -922,7 +811,6 @@ export function CleanerSettingsPage() {
     workerProfile === undefined ||
     manuals === undefined ||
     companyDocuments === undefined ||
-    payments === undefined ||
     (workerProfile?._id && (documents === undefined || onboardingItems === undefined))
   ) {
     return <PageLoader />;
@@ -932,21 +820,6 @@ export function CleanerSettingsPage() {
   const accountIdSuffix = connectStatus?.stripeConnectAccountId
     ? connectStatus.stripeConnectAccountId.slice(-6)
     : null;
-
-  const handleConnect = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await createAccountLink({ userId: user._id, sessionToken: getStaffSessionToken() });
-      if (result?.url) {
-        window.location.href = result.url;
-      }
-    } catch (e: any) {
-      setError(e.message ?? "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleOpenManual = async (manualId: string) => {
     setOpeningManualId(manualId);
@@ -989,19 +862,6 @@ export function CleanerSettingsPage() {
         description={t("guidance.worker.settings")}
       />
 
-      {stripeParam === "return" && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg bg-green-50 p-3 text-sm text-green-700">
-          <CheckCircle className="w-4 h-4 flex-shrink-0" />
-          Stripe onboarding complete. You can receive payments for jobs.
-        </div>
-      )}
-      {stripeParam === "refresh" && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg bg-yellow-50 p-3 text-sm text-yellow-700">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          Stripe session expired. Start the connection again when you are ready.
-        </div>
-      )}
-
       <div className="grid gap-4 lg:grid-cols-2">
         <ProfileBasicsSection user={user} workerProfile={workerProfile} />
         <WorkPreferencesSection user={user} workerProfile={workerProfile} />
@@ -1020,15 +880,7 @@ export function CleanerSettingsPage() {
             openingManualId={openingManualId}
           />
         </div>
-        <PaymentsSection
-          connectStatus={connectStatus}
-          payments={payments ?? []}
-          loading={loading}
-          error={error}
-          accountIdSuffix={accountIdSuffix}
-          isConnected={isConnected}
-          onConnect={handleConnect}
-        />
+        <SectionCard id="payments" title="Payment history" icon={Banknote}><LegacyOutgoingNotice />{isConnected && <p className="text-sm text-gray-500 mt-2">Legacy Stripe account ending {accountIdSuffix}. Worker payment onboarding is retired.</p>}<SectionLink href="/payments">View payment history</SectionLink></SectionCard>
         <AccountSection email={user.email} onSignOut={signOut} />
       </div>
     </div>

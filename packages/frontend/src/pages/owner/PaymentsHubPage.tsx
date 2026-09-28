@@ -1,3 +1,4 @@
+import { LegacyOutgoingNotice } from "@/components/payments/LegacyOutgoingNotice";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -34,10 +35,11 @@ export function PaymentsHubPage() {
     <div>
       <PageHeader
         title={t("payments.title")}
-        description={t("guidance.owner.payments")}
+        description="View historical worker and partner payment records."
       />
 
-      <div className="max-w-lg space-y-2">
+      <LegacyOutgoingNotice />
+      <div className="max-w-lg space-y-2 mt-4">
         {/* Partner Settlements */}
         <Link
           href="/owner/settlements"
@@ -49,13 +51,13 @@ export function PaymentsHubPage() {
           <div className="flex-1 min-w-0">
             <p className="font-medium text-gray-900">{t("payments.partnerSettlements")}</p>
             <p className="text-sm text-gray-500">
-              {t("payments.partnerSettlementsDesc")}
+              Historical partner settlement records
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             {openSettlementsCount > 0 && (
               <span className="badge bg-amber-100 text-amber-700">
-                {t("payments.countOpen", { count: openSettlementsCount })}
+                {"Historical open: " + openSettlementsCount}
               </span>
             )}
             <ChevronRight className="w-4 h-4 text-gray-400" />
@@ -73,13 +75,13 @@ export function PaymentsHubPage() {
           <div className="flex-1 min-w-0">
             <p className="font-medium text-gray-900">{t("payments.cleanerPayments")}</p>
             <p className="text-sm text-gray-500">
-              {t("payments.cleanerPaymentsDesc")}
+              Historical worker payment records
             </p>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             {openCleanerCount > 0 && (
               <span className="badge bg-amber-100 text-amber-700">
-                {t("payments.countOpen", { count: openCleanerCount })}
+                {"Historical open: " + openCleanerCount}
               </span>
             )}
             <ChevronRight className="w-4 h-4 text-gray-400" />

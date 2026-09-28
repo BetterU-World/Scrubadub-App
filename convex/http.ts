@@ -256,7 +256,7 @@ const stripeWebhook = httpAction(async (ctx, request) => {
               settlementId: meta.settlementId as any,
               stripeCheckoutSessionId: session.id,
               stripePaymentIntentId: paymentIntentId,
-              stripeDestinationAccountId: meta.recipientCompanyId,
+              // A company ID is not a Stripe destination account ID. Do not fabricate provenance.
               payerUserId: meta.payerUserId
                 ? (meta.payerUserId as any)
                 : undefined,

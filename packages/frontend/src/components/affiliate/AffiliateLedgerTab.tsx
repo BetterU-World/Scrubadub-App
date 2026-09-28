@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import { useTranslation } from "react-i18next";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
@@ -495,14 +495,10 @@ function BatchDetailModal({
     api.queries.affiliatePayoutBatches.getPayoutBatch,
     sessionToken ? { userId, sessionToken, batchId } : "skip"
   );
-  const payViaStripe = useAction(
-    api.actions.stripePayouts.payPayoutBatchViaStripe
-  );
+
   const [showVoid, setShowVoid] = useState(false);
   const [voidNotes, setVoidNotes] = useState("");
-  const [showStripeConfirm, setShowStripeConfirm] = useState(false);
-  const [stripeBusy, setStripeBusy] = useState(false);
-  const [stripeError, setStripeError] = useState<string | null>(null);
+
   const [copiedTransferId, setCopiedTransferId] = useState(false);
 
   function handleExportBatchCsv() {
@@ -511,29 +507,7 @@ function BatchDetailModal({
     downloadCsv(csv, `scrubadub-batch-${batch._id.slice(-6)}-${formatISO(Date.now())}.csv`);
   }
 
-  async function handlePayViaStripe() {
-    setStripeBusy(true);
-    setStripeError(null);
-    try {
-      const result = await payViaStripe({ userId, sessionToken: getStaffSessionToken(), batchId });
-      if (!result.ok) {
-        setStripeError(result.reason ?? "Payment failed");
-      }
-      setShowStripeConfirm(false);
-    } catch (err: any) {
-      setStripeError(err.message ?? "Unexpected error");
-    } finally {
-      setStripeBusy(false);
-    }
-  }
-
   const payoutStatus = batch?.payoutStatus ?? (batch?.status === "voided" ? "voided" : "recorded");
-  const affiliateReady = batch?.affiliateStripe?.payoutsEnabled ?? false;
-  const canPayViaStripe =
-    batch?.status === "recorded" &&
-    (payoutStatus === "recorded" || payoutStatus === "failed") &&
-    !batch?.stripeTransferId &&
-    affiliateReady;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -716,20 +690,10 @@ function BatchDetailModal({
 
             {/* Action buttons */}
             <div className="flex flex-wrap gap-2">
-              {/* Pay via Stripe */}
-              {canPayViaStripe && !showVoid && !showStripeConfirm && (
-                <button
-                  onClick={() => setShowStripeConfirm(true)}
-                  disabled={stripeBusy}
-                  className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-white bg-indigo-600 rounded hover:bg-indigo-700 transition-colors disabled:opacity-50"
-                >
-                  <Zap className="h-3 w-3" />
-                  {payoutStatus === "failed" ? "Retry Stripe Payment" : "Pay via Stripe"}
-                </button>
-              )}
+              <p className="text-sm text-gray-500">Electronic affiliate payouts are currently unavailable. Payout requests and history remain available.</p>
 
               {/* Void button */}
-              {batch.status === "recorded" && !showVoid && !showStripeConfirm && payoutStatus !== "paid" && payoutStatus !== "processing" && (
+              {batch.status === "recorded" && !showVoid && payoutStatus !== "paid" && payoutStatus !== "processing" && (
                 <button
                   onClick={() => setShowVoid(true)}
                   className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium text-red-700 bg-red-50 rounded hover:bg-red-100 transition-colors"
@@ -741,44 +705,8 @@ function BatchDetailModal({
             </div>
 
             {/* Stripe error message */}
-            {stripeError && !showStripeConfirm && (
-              <p className="text-xs text-red-600 mt-2">{stripeError}</p>
-            )}
 
             {/* Stripe confirm dialog */}
-            {showStripeConfirm && (
-              <div className="border border-indigo-200 rounded-md p-3 mt-2">
-                <p className="text-sm text-indigo-800 mb-2 font-medium">
-                  This will send {formatCents(batch.totalCommissionCents)} in real funds via Stripe.
-                </p>
-                <p className="text-xs text-gray-600 mb-3">
-                  The transfer will be sent to the affiliate's connected Stripe account. This cannot be undone automatically.
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      setShowStripeConfirm(false);
-                      setStripeError(null);
-                    }}
-                    disabled={stripeBusy}
-                    className="px-3 py-1 text-sm text-gray-700 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handlePayViaStripe}
-                    disabled={stripeBusy}
-                    className="inline-flex items-center gap-1 px-3 py-1 text-sm text-white bg-indigo-600 rounded hover:bg-indigo-700 disabled:opacity-50"
-                  >
-                    <Zap className="h-3 w-3" />
-                    {stripeBusy ? "Sending..." : "Confirm Payment"}
-                  </button>
-                </div>
-                {stripeError && (
-                  <p className="text-xs text-red-600 mt-2">{stripeError}</p>
-                )}
-              </div>
-            )}
 
             {showVoid && (
               <div className="border border-red-200 rounded-md p-3 mt-2">

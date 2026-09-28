@@ -1,24 +1,14 @@
 "use node";
-
-declare const process: { env: Record<string, string | undefined> };
+import { retireLegacyOutgoing } from "../lib/legacyOutgoingRetirement";
 
 import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
-import { getStripeClientOrNull } from "../lib/stripe";
 import { requireOwnerSession } from "../lib/sessions";
-import { requireAppUrl } from "../lib/environment";
 
-const CHECKOUT_LIMIT = 3;
-const CHECKOUT_WINDOW_MS = 60_000; // 60 seconds
 
-const PLATFORM_FEE_CENTS = 200; // $2
 
-/**
- * Create a Stripe Checkout Session so Owner can pay a cleaner for a job.
- * Uses destination charge: funds land in cleaner's connected account minus the
- * platform application_fee_amount.
- */
+/** Retired creation endpoint. Historical completion is handled separately. */
 export const createCleanerPaymentCheckout = action({
   args: {
     userId: v.id("users"),
@@ -27,93 +17,8 @@ export const createCleanerPaymentCheckout = action({
   },
   handler: async (ctx, args): Promise<{ url: string | null }> => {
     const principal = await requireOwnerSession(ctx, args.sessionToken, args.userId);
-    // Rate limit: 3 checkout creations per 60s per user
-    await ctx.runMutation(internal.rateLimitInternal.enforce, {
-      key: `u:${principal.userId}:createCleanerPaymentCheckout`,
-      limit: CHECKOUT_LIMIT,
-      windowMs: CHECKOUT_WINDOW_MS,
-    });
-
-    const stripe = getStripeClientOrNull();
-    if (!stripe) throw new Error("Stripe is not configured");
-
-    // Fetch caller (payer) info
-    const payer: any = await ctx.runQuery(
-      internal.queries.companyStripeConnect.getOwnerAndCompany,
-      { userId: principal.userId },
-    );
-    if (!payer) throw new Error("Owner or company not found");
-
-    // Fetch payment + cleaner data via internal query
-    const data: any = await ctx.runQuery(
-      internal.queries.cleanerPayments.getCleanerPaymentForCheckout,
-      { cleanerPaymentId: args.cleanerPaymentId },
-    );
-    if (!data) throw new Error("Cleaner payment not found");
-
-    // Authorization: caller must be from the same company
-    if (data.companyId !== payer.companyId) {
-      throw new Error("Access denied");
-    }
-
-    if (data.status !== "OPEN") {
-      throw new Error("Payment is not open");
-    }
-
-    if (!data.cleanerStripeAccountId) {
-      throw new Error(
-        "Cleaner has not connected Stripe yet. They must complete Stripe Connect onboarding first.",
-      );
-    }
-
-    const amountCents = data.amountCents;
-    if (!amountCents || amountCents < 100) {
-      throw new Error("Payment amount must be set (min $1.00) before checkout");
-    }
-    // Cap fee so we never charge more fee than the payment amount
-    const feeCents = Math.min(PLATFORM_FEE_CENTS, amountCents);
-
-    const appUrl = requireAppUrl();
-
-    const session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      line_items: [
-        {
-          price_data: {
-            currency: "usd",
-            product_data: {
-              name: `Payment for job — ${data.cleanerName}`,
-              description: `Payment for this job: ${data.jobLabel}`,
-            },
-            unit_amount: amountCents,
-          },
-          quantity: 1,
-        },
-      ],
-      payment_intent_data: {
-        application_fee_amount: feeCents,
-        transfer_data: {
-          destination: data.cleanerStripeAccountId,
-        },
-        metadata: {
-          type: "cleaner_payout",
-          cleanerPaymentId: String(args.cleanerPaymentId),
-          jobId: String(data.jobId),
-          companyId: String(data.companyId),
-          payerUserId: String(principal.userId),
-        },
-      },
-      metadata: {
-        type: "cleaner_payout",
-        cleanerPaymentId: String(args.cleanerPaymentId),
-        jobId: String(data.jobId),
-        companyId: String(data.companyId),
-        payerUserId: String(principal.userId),
-      },
-      success_url: `${appUrl}/owner/jobs/${data.jobId}?payment=success`,
-      cancel_url: `${appUrl}/owner/jobs/${data.jobId}?payment=cancel`,
-    });
-
-    return { url: session.url };
+    const data = await ctx.runQuery(internal.queries.cleanerPayments.getCleanerPaymentForCheckout, { cleanerPaymentId: args.cleanerPaymentId });
+    if (!data || data.companyId !== principal.companyId) throw new Error("Access denied");
+    return retireLegacyOutgoing();
   },
 });
