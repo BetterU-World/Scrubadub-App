@@ -1,6 +1,6 @@
 import { createElement, type ComponentProps, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type PrimitiveProps = Record<string, unknown> & { children?: ReactNode };
 
@@ -52,6 +52,7 @@ function renderDialog(props: Partial<ComponentProps<typeof DialogShell>> = {}) {
 }
 
 describe("DialogShell responsive contract", () => {
+  afterEach(() => vi.unstubAllGlobals());
   beforeEach(() => {
     captured.content = undefined;
     captured.root = undefined;
@@ -103,6 +104,31 @@ describe("DialogShell responsive contract", () => {
       )({ preventDefault });
       expect(preventDefault).toHaveBeenCalledOnce();
     }
+  });
+
+  it("restores a controlled dialog's opener and safely ignores a removed opener", () => {
+    class Opener {
+      isConnected = true;
+      focus = vi.fn();
+    }
+    const opener = new Opener();
+    vi.stubGlobal("HTMLElement", Opener);
+    const page = { activeElement: opener };
+    vi.stubGlobal("document", page);
+    renderDialog();
+    (captured.content!.onOpenAutoFocus as () => void)();
+    page.activeElement = new Opener(); // Focus has moved into the dialog.
+    const preventDefault = vi.fn();
+    const close = captured.content!.onCloseAutoFocus as (e: { preventDefault: () => void }) => void;
+    close({ preventDefault });
+    expect(opener.focus).toHaveBeenCalledOnce();
+    expect(page.activeElement.focus).not.toHaveBeenCalled();
+    expect(preventDefault).toHaveBeenCalledOnce();
+    opener.isConnected = false;
+    preventDefault.mockClear();
+    close({ preventDefault });
+    expect(opener.focus).toHaveBeenCalledOnce();
+    expect(preventDefault).not.toHaveBeenCalled();
   });
 });
 

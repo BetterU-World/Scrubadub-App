@@ -15,13 +15,6 @@ export interface WorkerTeamSummary {
   description?: string | null;
 }
 
-export interface WorkerPaymentSummary {
-  id: string;
-  jobLabel: string;
-  paymentStatus: string;
-  plannedPayCents?: number | null;
-}
-
 export interface WorkerOnboardingItemSummary {
   id: string;
   title: string;
@@ -54,7 +47,6 @@ export interface WorkerHomeViewModel {
     jobsCompleted: number;
     jobsRequiringRework: number;
   };
-  payments: WorkerPaymentSummary[];
   onboarding: {
     profile: { onboardingStatus?: string | null; jobEligibilityStatus?: string | null } | null;
     documents: WorkerDocumentSummary[];

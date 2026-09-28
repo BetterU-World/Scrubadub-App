@@ -12,12 +12,12 @@ export function PaymentsHubPage() {
       <PageHeader title={t("payments.title")} />
       <WorkerBalances />
       <PartnerPayments />
-      <Link
+      {user?.role === "owner" && <Link
         className="btn-secondary inline-block"
         href="/owner/cleaner-payments"
       >
         {t("compensation.legacy")}
-      </Link>
+      </Link>}
       {user?.role === "owner" && (
         <Link className="btn-secondary inline-block" href="/owner/settlements">
           {t("compensation.partnerHistory")}

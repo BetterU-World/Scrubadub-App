@@ -264,7 +264,8 @@ export const historicalCandidates = query({
     const users = await ctx.db
       .query("users")
       .withIndex("by_companyId", (q) => q.eq("companyId", owner.companyId))
-      .collect();
+      .take(5001);
+    if (users.length > 5000) throw new Error("Worker candidate history is too large for this view");
     return users
       .filter((u) =>
         ["owner", "manager", "cleaner", "maintenance"].includes(u.role),

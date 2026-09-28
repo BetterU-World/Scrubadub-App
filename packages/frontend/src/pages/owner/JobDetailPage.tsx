@@ -37,7 +37,6 @@ import {
   Share2,
   Package,
   AlertTriangle,
-  DollarSign,
   CreditCard,
   ImagePlus,
   Play,
@@ -109,10 +108,6 @@ export function JobDetailPage() {
     user && job ? { jobId: params.id as Id<"jobs">, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
   const reopenInspection = useMutation(api.mutations.inspections.reopenInspection);
-
-  // Cleaner payments
-
-  // Settlements
 
   // Owner self-execution mutations
   const ownerStartJobMut = useMutation(api.mutations.jobs.ownerStartJob);
@@ -598,28 +593,6 @@ export function JobDetailPage() {
 
         {user?.role === "owner" && <LegacyOutgoingNotice />}
 
-        {/* Cleaner Payment panel — Cleaner view (read-only planned pay) */}
-        {user?.role !== "owner" && job.cleanerIds?.includes(user?._id as any) && (
-          <div className="card border-emerald-200">
-            <h3 className="font-semibold text-emerald-700 flex items-center gap-2 mb-3">
-              <DollarSign className="w-5 h-5" /> {t("jobs.yourPay")}
-            </h3>
-            {(job as any).plannedCleanerPayCents ? (
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">{t("jobs.plannedPayForJob")}</p>
-                  <p className="text-xl font-bold text-gray-900">
-                    ${((job as any).plannedCleanerPayCents / 100).toFixed(2)}
-                  </p>
-                </div>
-                <span className="badge bg-blue-100 text-blue-700">{t("status.planned")}</span>
-              </div>
-            ) : (
-              <p className="text-sm text-gray-500">{t("jobs.paySetByManager")}</p>
-            )}
-          </div>
-        )}
-
         {/* Shared job status (Owner1 view: shows who the job is shared to) */}
         {sharedStatus && sharedStatus.length > 0 && (
           <div className="card border-blue-200">
@@ -740,12 +713,11 @@ export function JobDetailPage() {
           </div>
         )}
 
-        {/* Partner Settlement card (Owner1 view: when job has an accepted/completed partner) */}
+        {/* Canonical partner compensation terms */}
         {sharedStatus?.map(s => <button key={s._id} className="btn-secondary w-full whitespace-normal" aria-expanded={compensationShare === s._id} onClick={() => setCompensationShare(compensationShare === s._id ? null : s._id)}>{t("partnerCompensation.reviewTerms")} · {s.toCompanyName}</button>)}
         {compensationShare && <PartnerCompensation key={compensationShare} sharedJobId={compensationShare}/>}
         {incomingShared && <PartnerCompensation sharedJobId={incomingShared._id}/>}
 
-        {/* Mark settlement paid dialog */}
 
       </div>
 
@@ -895,7 +867,6 @@ export function JobDetailPage() {
         }}
       />
 
-      {/* Stripe Connect invite modal */}
 
       {/* Rework dialog */}
       {showRework && (

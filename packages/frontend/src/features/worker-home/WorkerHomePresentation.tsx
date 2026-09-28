@@ -1,5 +1,6 @@
 import type { ComponentType, ReactNode } from "react";
 import { Link } from "wouter";
+import { useTranslation } from "react-i18next";
 import {
   AlertCircle, Banknote, Bell, BookOpen, Calendar, CheckCircle2, ChevronRight,
   ClipboardCheck, Clock, FileText, MapPin, Settings, TrendingUp, Users,
@@ -16,10 +17,6 @@ function formatDate(value?: string | number | null) {
   const date = typeof value === "number" ? new Date(value) : new Date(`${value}T12:00:00`);
   if (Number.isNaN(date.getTime())) return String(value);
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
-function formatMoney(cents?: number | null) {
-  return cents == null ? "Amount pending" : `$${(cents / 100).toFixed(2)}`;
 }
 
 function formatLabel(value?: string | null) {
@@ -55,10 +52,9 @@ function JobsSection({ title, icon, jobs, empty, href, action, mode, limit = 3 }
 }
 
 export function WorkerHomePresentation({ model, interactionMode = "production", afterWelcome }: { model: WorkerHomeViewModel; interactionMode?: WorkerHomeInteractionMode; afterWelcome?: ReactNode }) {
+  const { t } = useTranslation();
   const activeVisible = model.activeJobs.filter((job) => job.status === "in_progress" || job.status === "rework_requested");
   const visibleActive = activeVisible.length ? activeVisible : model.activeJobs;
-  const openPayments = model.payments.filter((item) => item.paymentStatus !== "PAID");
-  const paidPayments = model.payments.filter((item) => item.paymentStatus === "PAID");
   const requiredItems = model.onboarding.items.filter((item) => item.required !== false);
   const incompleteItems = requiredItems.filter((item) => item.status !== "complete" && item.status !== "waived");
   const missingDocuments = model.onboarding.documents.filter((item) => item.required !== false && item.status !== "reviewed" && item.status !== "waived");
@@ -77,7 +73,7 @@ export function WorkerHomePresentation({ model, interactionMode = "production", 
       <section className="card"><SectionHeader icon={Bell} title="Notifications" action={<SectionLink href="/notifications" mode={interactionMode}>View Notifications</SectionLink>} />{model.notifications.unreadCount > 0 ? <div className="flex items-center gap-2 rounded-lg bg-primary-50 px-3 py-3 text-primary-800"><AlertCircle className="h-4 w-4 flex-shrink-0" /><p className="text-sm font-medium">{model.notifications.unreadCount} unread notification{model.notifications.unreadCount === 1 ? "" : "s"}</p></div> : <EmptySummary>No unread notifications.</EmptySummary>}</section>
       <section className="card"><SectionHeader icon={Users} title="Team" />{model.teams.length === 0 ? <EmptySummary>You are not assigned to an active team right now.</EmptySummary> : <div className="space-y-2">{model.teams.slice(0, 3).map((team) => <div key={team.id} className="rounded-lg bg-gray-50 px-3 py-2"><p className="text-sm font-medium text-gray-900">{team.name}</p>{team.description && <p className="mt-0.5 text-xs text-gray-500">{team.description}</p>}</div>)}</div>}</section>
       <section className="card"><SectionHeader icon={TrendingUp} title="Performance" action={<SectionLink href="/jobs" mode={interactionMode}>Open Performance</SectionLink>} /><div className="grid grid-cols-2 gap-3">{[["Active Jobs", model.performance.activeJobs], ["Awaiting Review", model.performance.jobsAwaitingReview], ["Completed", model.performance.jobsCompleted], ["Needs Rework", model.performance.jobsRequiringRework]].map(([label, value]) => <div key={String(label)} className="rounded-lg bg-gray-50 px-3 py-3"><p className="text-xs text-gray-500">{label}</p><p className="text-xl font-bold text-gray-900">{value}</p></div>)}</div></section>
-      <section className="card"><SectionHeader icon={Banknote} title="Payments" action={<SectionLink href="/payments" mode={interactionMode}>Open Payments</SectionLink>} /><div className="space-y-3"><div className="grid grid-cols-2 gap-3"><div className="rounded-lg bg-amber-50 px-3 py-3"><p className="text-xs text-amber-700">Open</p><p className="text-xl font-bold text-amber-900">{openPayments.length}</p></div><div className="rounded-lg bg-green-50 px-3 py-3"><p className="text-xs text-green-700">Paid</p><p className="text-xl font-bold text-green-900">{paidPayments.length}</p></div></div>{openPayments[0] ? <p className="text-sm text-gray-600">Next open item: <span className="font-medium text-gray-900">{openPayments[0].jobLabel}</span> - {formatMoney(openPayments[0].plannedPayCents)}</p> : <EmptySummary>No open payment items.</EmptySummary>}</div></section>
+      <section className="card"><SectionHeader icon={Banknote} title={t("nav.payments")} action={<SectionLink href="/payments" mode={interactionMode}>{t("paymentsCutover.workerPaymentsLink")}</SectionLink>} /><p className="text-sm text-gray-600">{t("paymentsCutover.workerHomeHelp")}</p></section>
       <section className="card"><SectionHeader icon={FileText} title="Onboarding & Documents" action={<SectionLink href="/settings#compliance" mode={interactionMode}>Open Compliance</SectionLink>} />{!model.onboarding.profile ? <EmptySummary>Your worker profile is not initialized yet.</EmptySummary> : <div className="space-y-3"><div className={`rounded-lg px-3 py-3 ${onboardingAttention > 0 ? "bg-amber-50 text-amber-800" : "bg-green-50 text-green-700"}`}><p className="text-sm font-semibold">{onboardingAttention > 0 ? `${onboardingAttention} item${onboardingAttention === 1 ? "" : "s"} need attention` : "Onboarding is in good shape"}</p><p className="mt-0.5 text-xs">Status: {formatLabel(model.onboarding.profile.onboardingStatus)} - Eligibility: {formatLabel(model.onboarding.profile.jobEligibilityStatus)}</p></div>{incompleteItems.slice(0, 2).map((item) => <div key={item.id} className="flex items-center justify-between gap-3 rounded-lg bg-gray-50 px-3 py-2"><p className="text-sm font-medium text-gray-900">{item.title}</p><span className="badge bg-amber-100 text-amber-700">{formatLabel(item.status)}</span></div>)}</div>}</section>
       <section className="card"><SectionHeader icon={Clock} title="Availability" action={<SectionLink href="/availability" mode={interactionMode}>Edit Availability</SectionLink>} /><p className="text-sm text-gray-600">Keep your regular schedule and day overrides current so upcoming assignments match when you can work.</p></section>
       <section className="card"><SectionHeader icon={ChevronRight} title="Quick Actions" /><div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{actions.map((action) => <PresentationLink key={action.href} href={action.href} mode={interactionMode} className="touch-target flex items-center gap-2 rounded-lg border border-gray-200 px-3 text-sm font-medium text-gray-700"><action.icon className="h-4 w-4 text-gray-400" />{action.label}</PresentationLink>)}</div></section>

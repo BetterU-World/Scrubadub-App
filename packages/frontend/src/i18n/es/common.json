@@ -4352,5 +4352,17 @@
     "referenceHelp": "Visible para los lectores financieros autorizados de la empresa destinataria. No introduzcas números de cuenta bancaria ni de ruta.",
     "eligibilityError": "La aprobación financiera requiere términos aceptados vigentes y la ejecución aprobada del trabajo compartido vinculado.",
     "connectionError": "Las propuestas y aceptaciones requieren una conexión activa entre las empresas. Actualiza los detalles del trabajo compartido."
+  },
+  "paymentsCutover": {
+    "workerPaymentsLink": "Abrir historial de compensación",
+    "workerHomeHelp": "Consulta la compensación aprobada y los pagos externos registrados en Pagos. Un trabajo asignado o completado no significa por sí solo que se deba dinero.",
+    "partnerLegacyTitle": "Historial de liquidaciones entre socios anteriores",
+    "partnerLegacyHelp": "Registros de solo lectura del flujo retirado. Los registros OPEN históricos no son deuda de V2.",
+    "partnerLegacyEmpty": "No hay liquidaciones históricas entre socios.",
+    "payable": "Registro histórico para {{name}}",
+    "receivable": "Registro histórico de {{name}}",
+    "outsideMethod": "Método de pago externo registrado: {{method}}",
+    "methodMissing": "Método de pago no registrado",
+    "affiliateContext": "La configuración de cuentas de Stripe solo está disponible en un contexto autorizado de referencias de afiliados. La incorporación para pagos a trabajadores y socios sigue retirada."
   }
 }

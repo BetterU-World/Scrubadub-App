@@ -1,4 +1,6 @@
-# Outgoing Payments V2: canonical ledger, worker and partner workflows (PR B–E)
+# Outgoing Payments V2: canonical architecture (PR A–F)
+
+Outgoing Payments V2 is SCRUB's canonical ledger for worker compensation and inter-company partner compensation. SCRUB records financial obligations and outside-declared settlements but does not electronically send or verify those outgoing payments. V2 is complete for this defined scope; electronic execution, payroll/tax, affiliate redesign, multi-company identity and automated provider verification are separate future initiatives.
 
 SCRUB is the ledger, not the bank. **Recorded outside payment != provider-verified payment. Settlement reversal != external refund/reversal.**
 
@@ -128,3 +130,15 @@ Disconnection blocks new proposals/acceptance and existing shared-work creation 
 Legacy OPEN settlements never become V2 debt or authoritative suggestions. Older legitimate work can use explicit proposal/acceptance only when its linked copy already has genuine approved submission evidence. Owner-confirmed historical worker rosters are insufficient for B2B reconstruction. No automatic migration, fabricated acceptance or legacy payment reconciliation occurs.
 
 Schema additions are optional partner metadata on outgoingTerms, optional governingTermsId on sharedJobs and an outgoingObligations by_recipient_global index for recipient-company summaries. No financial table or electronic rail is added. Recorded outside payment != provider-verified payment; settlement reversal != external refund/reversal. Client payments and affiliates remain unchanged; PR F cleanup/cutover is separate. See outgoing-payments-partner-validation.md for the audit, exact scope and validation.
+
+## Final cutover (PR F)
+
+Payments Hub is the current owner/financial-manager workspace; Worker Payments is the worker's frozen-recipient self-history. Worker Home links there without inferring debt from assignment, planned pay, operational completion or old payment status. Showcase now uses explicit fictional approved/declaration evidence separately from assignment fixtures. Owner/manager Job Detail uses canonical compensation review; the old planned-worker-pay panel and empty legacy action comments are removed.
+
+Legacy worker/partner history remains secondary, read-only and excluded from V2 balances. Worker history queries load only after expansion and fail locally rather than showing partial data. Company legacy history remains owner-only; a financial manager's old worker-history URL redirects to the canonical Hub. Legacy partner copy is localized in EN/ES and explicitly states that historical OPEN is not V2 debt.
+
+Generic user Express onboarding and legacy status refresh were discovered to admit workers. Both now authenticate and fail closed, together with legacy internal user account setters. Current affiliates use `affiliateStripeAccountId`: affiliate role or an owner/manager with their own stored referral code may use contained affiliate onboarding; cleaner/maintenance may not. Affiliate onboarding does not enable electronic payout execution. Historical user account metadata remains readable; old return/refresh URLs redirect to `/affiliate`. Company Accounts v2 Merchant onboarding, direct invoice charges, application fees, reconciliation, subscriptions and signed webhook routing remain unchanged.
+
+Canonical bounds remain 100 lines/allocations, 500 recipient/source/relationship history and 5,000 company summary rows; indexed settlement allocations are inherently limited to 100 by creation. PR F adds explicit 5,000 historical-roster/legacy-job bounds and 500 legacy payment/history/batch-link bounds. Oversized historical batches reject transactionally and require reconciliation instead of partially updating history. Conflict evidence lookup returns the exact existing audit match without materializing the entire audit log; that filtered historical lookup remains subject to Convex's execution/read limits. Affiliate scaling is outside this worker/partner cutover.
+
+Controlled dialogs now restore keyboard focus to their connected opener, preserving existing pending-state dismissal guards. Partner proposal amount errors reference their localized message. The final system audit, classification, validation results, deliberate limitations and deployed smoke checklist are in [outgoing-payments-cutover-validation.md](outgoing-payments-cutover-validation.md). Earlier phase-zero, worker and partner validation documents remain historical implementation evidence.

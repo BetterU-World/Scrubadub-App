@@ -49,7 +49,9 @@ export const listMySettlements = query({
         .withIndex("by_fromCompany_status", (q) =>
           q.eq("fromCompanyId", companyId).eq("status", args.status)
         )
-        .collect();
+        .order("desc")
+        .take(501);
+      if (fromSettlements.length > 500) throw new Error("Legacy settlement history is too large for this view");
 
       for (const s of fromSettlements) {
         const toCompany = await ctx.db.get(s.toCompanyId);
@@ -86,7 +88,9 @@ export const listMySettlements = query({
         .withIndex("by_toCompany_status", (q) =>
           q.eq("toCompanyId", companyId).eq("status", args.status)
         )
-        .collect();
+        .order("desc")
+        .take(501);
+      if (toSettlements.length > 500) throw new Error("Legacy settlement history is too large for this view");
 
       for (const s of toSettlements) {
         const fromCompany = await ctx.db.get(s.fromCompanyId);
@@ -129,7 +133,7 @@ export const listMySettlements = query({
 });
 
 /**
- * Get settlement for a specific job (used in JobDetailPage).
+ * Historical compatibility only; not used for canonical Job Detail.
  */
 export const getSettlementForJob = query({
   args: {
@@ -208,7 +212,8 @@ export const getSettlementBatchForPayment = internalQuery({
     const items = await ctx.db
       .query("settlementBatchItems")
       .withIndex("by_batchId", (q) => q.eq("batchId", args.batchId))
-      .collect();
+      .take(501);
+    if (items.length > 500) throw new Error("Legacy settlement batch history is too large for this view");
 
     return {
       _id: batch._id,

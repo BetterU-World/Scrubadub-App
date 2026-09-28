@@ -9,9 +9,12 @@ import { CheckCircle, ExternalLink, Settings } from "lucide-react";
 
 export function StripePayoutsSection() {
   const { user, userId, isLoading } = useAuth();
+  const { t } = useTranslation();
 
   if (isLoading) return <PageLoader />;
   if (!userId || !user) return null;
+  if (user.role !== "affiliate" && (!(["owner", "manager"].includes(user.role)) || !user.referralCode))
+    return <p className="text-sm break-words">{t("paymentsCutover.affiliateContext")}</p>;
 
   return <StripePayoutsInner userId={userId} />;
 }

@@ -1,128 +1,31 @@
 "use node";
-
-declare const process: { env: Record<string, string | undefined> };
-
 import { action } from "../_generated/server";
-import { internal } from "../_generated/api";
 import { v } from "convex/values";
-import { getStripeClientOrNull } from "../lib/stripe";
 import { requireStaffSession } from "../lib/sessions";
-import { areExternalSideEffectsDisabled, requireAppUrl } from "../lib/environment";
+import { retireLegacyOutgoing } from "../lib/legacyOutgoingRetirement";
+import { areExternalSideEffectsDisabled } from "../lib/environment";
 
-/**
- * Quick check whether STRIPE_SECRET_KEY is configured.
- * Called once on component mount to drive the UI.
- */
+/** Shared configuration probe; client billing still uses the configured Stripe client. */
 export const isStripeConfigured = action({
   args: {},
-  handler: async () => {
-    return !areExternalSideEffectsDisabled() && !!process.env.STRIPE_SECRET_KEY;
-  },
+  handler: async () => !areExternalSideEffectsDisabled() && !!process.env.STRIPE_SECRET_KEY,
 });
 
-/**
- * Start (or resume) Stripe Connect Express onboarding for an affiliate.
- * Creates the Connect account if needed, then returns an Account Link URL.
- */
+/** Retained fail-closed public compatibility boundary. Current affiliates use
+ * affiliateStripeConnect and never write the legacy worker account field. */
 export const startStripeConnectOnboarding = action({
-  args: {
-    userId: v.id("users"),
-    sessionToken: v.string(),
-    returnTo: v.optional(v.string()),
-  },
+  args: { userId: v.id("users"), sessionToken: v.string(), returnTo: v.optional(v.string()) },
   handler: async (ctx, args) => {
-    const principal = await requireStaffSession(ctx, args.sessionToken, args.userId);
-    const stripe = getStripeClientOrNull();
-    if (!stripe) {
-      return { ok: false as const, reason: "not_configured" };
-    }
-
-    // Fetch user via internal query (auth check)
-    const user = await ctx.runQuery(
-      internal.queries.stripeConnect.getUserForStripeConnect,
-      { userId: principal.userId }
-    );
-    if (!user) {
-      return { ok: false as const, reason: "user_not_found" };
-    }
-
-    const appUrl = args.returnTo || requireAppUrl();
-
-    let accountId = user.stripeConnectAccountId;
-
-    // Create a new Express account if none exists
-    if (!accountId) {
-      const account = await stripe.accounts.create({
-        type: "express",
-        email: user.email,
-        metadata: { convexUserId: String(user._id) },
-      });
-      accountId = account.id;
-
-      await ctx.runMutation(
-        internal.mutations.stripeConnect.setStripeConnectAccount,
-        { userId: principal.userId, stripeConnectAccountId: accountId }
-      );
-    }
-
-    // Create an Account Link for onboarding
-    const accountLink = await stripe.accountLinks.create({
-      account: accountId,
-      refresh_url: `${appUrl}/affiliate/stripe/refresh`,
-      return_url: `${appUrl}/affiliate/stripe/return`,
-      type: "account_onboarding",
-    });
-
-    return { ok: true as const, url: accountLink.url };
+    await requireStaffSession(ctx, args.sessionToken, args.userId);
+    return retireLegacyOutgoing();
   },
 });
 
-/**
- * Fetch the latest Stripe Connect account status and persist to DB.
- */
+/** Legacy user-account refresh cannot restart or mutate retired worker onboarding. */
 export const syncMyStripeConnectStatus = action({
   args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
-    const principal = await requireStaffSession(ctx, args.sessionToken, args.userId);
-    const stripe = getStripeClientOrNull();
-    if (!stripe) {
-      return { ok: false as const, reason: "not_configured" };
-    }
-
-    const user = await ctx.runQuery(
-      internal.queries.stripeConnect.getUserForStripeConnect,
-      { userId: principal.userId }
-    );
-    if (!user || !user.stripeConnectAccountId) {
-      return { ok: false as const, reason: "no_account" };
-    }
-
-    const account = await stripe.accounts.retrieve(
-      user.stripeConnectAccountId
-    );
-
-    const currentlyDue = account.requirements?.currently_due ?? [];
-    const requirementsDue = currentlyDue.join(", ").slice(0, 500);
-
-    const payoutsEnabled = account.payouts_enabled ?? false;
-    const detailsSubmitted = account.details_submitted ?? false;
-
-    const onboardingStatus =
-      payoutsEnabled && detailsSubmitted && currentlyDue.length === 0
-        ? ("complete" as const)
-        : ("in_progress" as const);
-
-    await ctx.runMutation(
-      internal.mutations.stripeConnect.syncStripeConnectFields,
-      {
-        userId: principal.userId,
-        payoutsEnabled,
-        detailsSubmitted,
-        requirementsDue,
-        onboardingStatus,
-      }
-    );
-
-    return { ok: true as const };
+    await requireStaffSession(ctx, args.sessionToken, args.userId);
+    return retireLegacyOutgoing();
   },
 });

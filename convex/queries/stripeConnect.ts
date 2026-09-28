@@ -64,6 +64,7 @@ export const getUserAndCompanyForAffiliateConnect = internalQuery({
       _id: user._id,
       email: user.email,
       role: user.role,
+      referralCode: user.referralCode,
       companyId: user.companyId,
       affiliateStripeAccountId: user.affiliateStripeAccountId ?? null,
       companyStripeConnectAccountId: company?.stripeConnectAccountId ?? null,

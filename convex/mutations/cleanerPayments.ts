@@ -88,7 +88,8 @@ export const markCleanerPaidViaStripe = internalMutation({
     const batchLinks = await ctx.db
       .query("cleanerPaymentJobs")
       .withIndex("by_cleanerPaymentId", (q) => q.eq("cleanerPaymentId", args.cleanerPaymentId))
-      .collect();
+      .take(501);
+    if (batchLinks.length > 500) throw new Error("Legacy payment batch history is too large; reconciliation required");
     for (const link of batchLinks) {
       const linkedJob = await ctx.db.get(link.jobId);
       if (linkedJob && !linkedJob.cleanerPaymentId) {

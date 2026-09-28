@@ -46,10 +46,6 @@ export function WorkerHomePage() {
     api.queries.jobs.getForCleaner,
     user?.companyId ? { cleanerId: user._id, companyId: user.companyId, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   ) as WorkerJob[] | undefined;
-  const payments = useQuery(
-    api.queries.cleanerPayments.listCleanerJobsWithPaymentStatus,
-    user?._id ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
-  );
   const teams = useQuery(
     (api as any).queries.teams.listMyTeams,
     user?._id ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
@@ -71,7 +67,7 @@ export function WorkerHomePage() {
     user?._id && workerProfile?._id ? { userId: user._id, sessionToken: getStaffSessionToken(), workerProfileId: workerProfile._id } : "skip"
   );
 
-  if (!user || jobs === undefined || payments === undefined || teams === undefined || workerProfile === undefined || unreadCount === undefined || (workerProfile?._id && (documents === undefined || onboardingItems === undefined))) {
+  if (!user || jobs === undefined || teams === undefined || workerProfile === undefined || unreadCount === undefined || (workerProfile?._id && (documents === undefined || onboardingItems === undefined))) {
     return <PageLoader />;
   }
 
@@ -85,12 +81,11 @@ export function WorkerHomePage() {
     jobsCompleted: jobs.filter((job) => job.status === "approved").length,
     jobsRequiringRework: jobs.filter((job) => job.status === "rework_requested").length,
   };
-  const openPayments = payments.filter((payment: any) => payment.paymentStatus !== "PAID").length;
   const onboardingAttention = workerProfile?._id
     ? (documents ?? []).filter((document: any) => document.required !== false && document.status !== "reviewed" && document.status !== "waived").length +
       (onboardingItems ?? []).filter((item: any) => item.required !== false && item.status !== "complete" && item.status !== "waived").length
     : 0;
-  const attentionCount = todayJobs.length + activeJobs.filter((job) => job.status === "in_progress" || job.status === "rework_requested").length + openPayments + onboardingAttention + unreadCount;
+  const attentionCount = todayJobs.length + activeJobs.filter((job) => job.status === "in_progress" || job.status === "rework_requested").length + onboardingAttention + unreadCount;
 
   const model: WorkerHomeViewModel = {
     worker: { name: user.name ?? "worker", role: user.role === "maintenance" ? "maintenance" : "cleaner" },
@@ -102,7 +97,6 @@ export function WorkerHomePage() {
     notifications: { unreadCount },
     teams: (teams ?? []).map((team: any) => ({ id: String(team._id), name: team.name, description: team.description })),
     performance,
-    payments: payments.map((payment: any) => ({ id: String(payment._id), jobLabel: payment.jobLabel, paymentStatus: payment.paymentStatus, plannedPayCents: payment.plannedPayCents })),
     onboarding: {
       profile: workerProfile ? { onboardingStatus: workerProfile.onboardingStatus, jobEligibilityStatus: workerProfile.jobEligibilityStatus } : null,
       documents: (documents ?? []).map((document: any) => ({ id: String(document._id), status: document.status, required: document.required })),

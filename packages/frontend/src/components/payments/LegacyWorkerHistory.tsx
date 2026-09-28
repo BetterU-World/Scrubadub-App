@@ -1,14 +1,28 @@
 import { useQuery } from "convex/react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth, getStaffSessionToken } from "@/hooks/useAuth";
 import { money } from "./RecipientLedger";
+import { FinancialBoundary } from "./FinancialBoundary";
 
 export function LegacyWorkerHistory({
   company = false,
 }: {
   company?: boolean;
 }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  return (
+    <details className="card" onToggle={(event) => setOpen(event.currentTarget.open)}>
+      <summary className="cursor-pointer font-medium">{t("compensation.legacy")}</summary>
+      <p className="text-sm text-gray-500 my-3">{t("compensation.legacyHelp")}</p>
+      {open && <FinancialBoundary><LegacyWorkerRows company={company} /></FinancialBoundary>}
+    </details>
+  );
+}
+
+function LegacyWorkerRows({ company }: { company: boolean }) {
   const { user } = useAuth();
   const { t } = useTranslation();
   const args = user
@@ -24,13 +38,7 @@ export function LegacyWorkerHistory({
   );
   const rows = company ? all : mine;
   return (
-    <details className="card">
-      <summary className="cursor-pointer font-medium">
-        {t("compensation.legacy")}
-      </summary>
-      <p className="text-sm text-gray-500 my-3">
-        {t("compensation.legacyHelp")}
-      </p>
+    <div>
       {rows?.map((r) => (
         <div key={r._id} className="border-t py-3 text-sm break-words">
           <p>
@@ -49,6 +57,6 @@ export function LegacyWorkerHistory({
           </p>
         </div>
       ))}
-    </details>
+    </div>
   );
 }
