@@ -1,4 +1,5 @@
 import { defineSchema, defineTable } from "convex/server";
+import { outgoingTables } from "./lib/outgoingSchema";
 import { v } from "convex/values";
 import { bedroomsValidator } from "./lib/propertyBedrooms";
 import { proposalIssueContentValidator } from "./lib/proposalIssueContent";
@@ -11,6 +12,7 @@ import {
 } from "./lib/securityEvents";
 
 export default defineSchema({
+  ...outgoingTables,
   assessmentDefinitions: defineTable({
     key: v.string(),
     definitionVersion: v.number(),
