@@ -12,7 +12,7 @@ vi.mock("convex/react", () => ({
 }));
 vi.mock("@/hooks/useAuth", () => ({
   getStaffSessionToken: () => "token",
-  useAuth: () => ({ userId: "affiliate-1", sessionToken: "token", isLoading: false, user: { isSuperadmin: true } }),
+  useAuth: () => ({ userId: "affiliate-1", sessionToken: "token", isLoading: false, user: { role: "affiliate", isSuperadmin: true } }),
 }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock("@/components/ui/TableScrollRegion", () => ({

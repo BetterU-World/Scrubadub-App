@@ -21,14 +21,17 @@ export const getOrCreateAffiliateStripeAccount = action({
   args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args): Promise<string> => {
     const principal = await requireStaffSession(ctx, args.sessionToken, args.userId);
-    const stripe = getStripeClientOrNull();
-    if (!stripe) throw new Error("Stripe is not configured");
+    if (!["affiliate", "owner", "manager"].includes(principal.role))
+      throw new Error("Affiliate onboarding authority required");
 
     const data: any = await ctx.runQuery(
       internal.queries.stripeConnect.getUserAndCompanyForAffiliateConnect,
       { userId: principal.userId }
     );
     if (!data) throw new Error("User not found");
+    if (data.role !== "affiliate" && (!["owner", "manager"].includes(data.role) || !data.referralCode))
+      throw new Error("Affiliate referral context required");
+    const stripe = getStripeClientOrNull();
 
     // 1. Already has affiliate account
     if (data.affiliateStripeAccountId) {
@@ -78,14 +81,17 @@ export const createAffiliateStripeAccountLink = action({
   args: { userId: v.id("users"), sessionToken: v.string() },
   handler: async (ctx, args) => {
     const principal = await requireStaffSession(ctx, args.sessionToken, args.userId);
-    const stripe = getStripeClientOrNull();
-    if (!stripe) throw new Error("Stripe is not configured");
+    if (!["affiliate", "owner", "manager"].includes(principal.role))
+      throw new Error("Affiliate onboarding authority required");
 
     const data = await ctx.runQuery(
       internal.queries.stripeConnect.getUserAndCompanyForAffiliateConnect,
       { userId: principal.userId }
     );
     if (!data) throw new Error("User not found");
+    if (data.role !== "affiliate" && (!["owner", "manager"].includes(data.role) || !data.referralCode))
+      throw new Error("Affiliate referral context required");
+    const stripe = getStripeClientOrNull();
 
     let accountId = data.affiliateStripeAccountId;
 

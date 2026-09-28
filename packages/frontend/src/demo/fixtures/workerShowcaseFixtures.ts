@@ -105,10 +105,6 @@ export const brightSideWorkerHomeFixture = {
   notifications: { unreadCount: 2 },
   teams: [{ id: "team-blue-ridge", name: "Blue Ridge Team", description: "Turnovers and residential cleaning" }],
   performance: { activeJobs: activeJobs.length, jobsAwaitingReview: 0, jobsCompleted: 18, jobsRequiringRework: 0 },
-  payments: [
-    { id: "payment-riverstone", jobLabel: "Riverstone Retreat turnover", paymentStatus: "PLANNED", plannedPayCents: 14500 },
-    { id: "payment-sunroom", jobLabel: brightSideProperties.sunroomBungalow.name, paymentStatus: "PAID", plannedPayCents: 11000 },
-  ],
   onboarding: {
     profile: { onboardingStatus: "in_progress", jobEligibilityStatus: "eligible" },
     documents: [{ id: "document-handbook", status: "reviewed", required: true }],

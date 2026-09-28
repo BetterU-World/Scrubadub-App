@@ -4,8 +4,15 @@ import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { LegacyOutgoingNotice } from "@/components/payments/LegacyOutgoingNotice";
+import { useTranslation } from "react-i18next";
+import { Link } from "wouter";
+import { FinancialBoundary } from "@/components/payments/FinancialBoundary";
 
 export function SettlementsPage() {
+  return <FinancialBoundary><SettlementHistory /></FinancialBoundary>;
+}
+function SettlementHistory() {
+  const { t } = useTranslation();
   const { user, sessionToken } = useAuth();
   const args = user && sessionToken ? { userId: user._id, sessionToken } : null;
   const open = useQuery(
@@ -22,24 +29,22 @@ export function SettlementsPage() {
       ? [...open, ...paid].sort((a, b) => b.createdAt - a.createdAt)
       : undefined;
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 min-w-0">
       <PageHeader
-        title="Partner settlement history"
-        description="Read-only records from the retired settlement workflow."
+        title={t("paymentsCutover.partnerLegacyTitle")}
+        description={t("paymentsCutover.partnerLegacyHelp")}
       />
+      <Link href="/owner/payments" className="btn-secondary inline-block">{t("partnerCompensation.openPayments")}</Link>
       <LegacyOutgoingNotice />
       {records === undefined ? (
         <PageLoader />
       ) : records.length === 0 ? (
-        <p>No historical partner settlements.</p>
+        <p>{t("paymentsCutover.partnerLegacyEmpty")}</p>
       ) : (
         records.map((record) => (
-          <div className="card space-y-1" key={record._id}>
+          <div className="card space-y-1 min-w-0 break-words" key={record._id}>
             <p className="font-semibold">
-              {record.direction === "owing"
-                ? "Historical record payable to "
-                : "Historical record receivable from "}
-              {record.counterpartyName}
+              {t(record.direction === "owing" ? "paymentsCutover.payable" : "paymentsCutover.receivable", { name: record.counterpartyName })}
             </p>
             <p>{record.jobLabel}</p>
             <p>
@@ -48,16 +53,14 @@ export function SettlementsPage() {
                 currency: record.currency,
               }).format(record.amountCents / 100)}{" "}
               ·{" "}
-              {record.status === "open"
-                ? "Historical open record — unavailable"
-                : "Paid (legacy record)"}
+              {t(record.status === "open" ? "compensation.legacyOpen" : "compensation.legacyPaid")}
             </p>
             <p className="text-sm text-gray-500">
               {record.paidMethod === "scrubadub_stripe"
-                ? "Legacy Stripe payment record"
+                ? t("compensation.legacyMethod")
                 : record.paidMethod
-                  ? "Recorded outside SCRUB: " + record.paidMethod
-                  : "Payment method not recorded"}
+                  ? t("paymentsCutover.outsideMethod", { method: record.paidMethod })
+                  : t("paymentsCutover.methodMissing")}
               {record.paidAt
                 ? " · " + new Date(record.paidAt).toLocaleDateString()
                 : ""}

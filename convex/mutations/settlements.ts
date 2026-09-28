@@ -167,7 +167,8 @@ export const markSettlementBatchPaidViaStripe = internalMutation({
     const items = await ctx.db
       .query("settlementBatchItems")
       .withIndex("by_batchId", (q) => q.eq("batchId", args.batchId))
-      .collect();
+      .take(501);
+    if (items.length > 500) throw new Error("Legacy settlement batch history is too large; reconciliation required");
 
     for (const item of items) {
       const s = await ctx.db.get(item.settlementId);

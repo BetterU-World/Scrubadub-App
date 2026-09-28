@@ -1,7 +1,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { clsx } from "clsx";
 import { X } from "lucide-react";
-import { ReactNode } from "react";
+import { ReactNode, useRef } from "react";
 import { useTranslation } from "react-i18next";
 
 type DialogShellProps = {
@@ -30,6 +30,7 @@ export function DialogShell({
   footer,
 }: DialogShellProps) {
   const { t } = useTranslation();
+  const opener = useRef<HTMLElement | null>(null);
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen && pending) return;
@@ -41,6 +42,18 @@ export function DialogShell({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
         <Dialog.Content
+          onOpenAutoFocus={() => {
+            // Controlled dialogs often have no Radix Trigger; preserve their actual opener.
+            opener.current = document.activeElement instanceof HTMLElement
+              ? document.activeElement
+              : null;
+          }}
+          onCloseAutoFocus={(event) => {
+            if (opener.current?.isConnected) {
+              event.preventDefault();
+              opener.current.focus();
+            }
+          }}
           aria-busy={pending || undefined}
           className={clsx(
             "fixed left-1/2 top-[calc(50%+(var(--safe-area-top)-var(--safe-area-bottom))/2)] z-50 flex max-h-[calc(100dvh-2rem-var(--safe-area-top)-var(--safe-area-bottom))] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-xl bg-white shadow-xl focus:outline-none",

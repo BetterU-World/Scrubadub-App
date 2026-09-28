@@ -19,16 +19,13 @@ export async function recordLegacyCompletionConflict(
     .withIndex("by_companyId_timestamp", (q) =>
       q.eq("companyId", input.companyId),
     )
-    .collect();
-  if (
-    existing.some(
-      (row) =>
-        row.action === "legacy_outgoing_reconciliation_required" &&
-        row.entityId === input.entityId &&
-        row.details === details,
-    )
-  )
-    return;
+    .filter((q) => q.and(
+      q.eq(q.field("action"), "legacy_outgoing_reconciliation_required"),
+      q.eq(q.field("entityId"), input.entityId),
+      q.eq(q.field("details"), details),
+    ))
+    .first();
+  if (existing) return;
   const owner = await ctx.db
     .query("users")
     .withIndex("by_companyId", (q) => q.eq("companyId", input.companyId))

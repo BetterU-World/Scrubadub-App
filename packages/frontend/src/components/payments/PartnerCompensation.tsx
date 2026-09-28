@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { Link } from "wouter";
@@ -37,6 +37,7 @@ function TermsContent({ sharedJobId }: { sharedJobId: Id<"sharedJobs"> }) {
   const [amount, setAmount] = useState(""),
     [error, setError] = useState(""),
     [pending, setPending] = useState(false);
+  const amountErrorId = useId();
   const [command, setCommand] = useState<{
     kind: "propose" | "accept" | "decline" | "approve";
     termsId?: Id<"outgoingTerms">;
@@ -126,10 +127,11 @@ function TermsContent({ sharedJobId }: { sharedJobId: Id<"sharedJobs"> }) {
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               aria-invalid={!!amount && parseMoney(amount) === null}
+              aria-describedby={!!amount && parseMoney(amount) === null ? amountErrorId : undefined}
             />
           </label>
           {!!amount && parseMoney(amount) === null && (
-            <p role="alert">{t("compensation.moneyError")}</p>
+            <p id={amountErrorId} role="alert">{t("compensation.moneyError")}</p>
           )}
           <button
             className="btn-primary"

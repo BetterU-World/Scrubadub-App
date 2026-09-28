@@ -4349,5 +4349,17 @@
     "referenceHelp": "Visible to the recipient company's authorized financial readers. Do not enter bank account or routing numbers.",
     "eligibilityError": "Financial approval requires accepted governing terms and approved execution of the linked shared job.",
     "connectionError": "An active connection between the companies is required for proposals and acceptance. Refresh the shared-work details."
+  },
+  "paymentsCutover": {
+    "workerPaymentsLink": "Open compensation history",
+    "workerHomeHelp": "View approved compensation and recorded outside payments in Payments. Assigned or completed work does not by itself mean money is owed.",
+    "partnerLegacyTitle": "Legacy partner settlement history",
+    "partnerLegacyHelp": "Read-only records from the retired workflow. Historical OPEN records are not V2 debt.",
+    "partnerLegacyEmpty": "No historical partner settlements.",
+    "payable": "Historical record to {{name}}",
+    "receivable": "Historical record from {{name}}",
+    "outsideMethod": "Outside payment method recorded: {{method}}",
+    "methodMissing": "Payment method not recorded",
+    "affiliateContext": "Stripe account setup is available only in an authorized affiliate referral context. Worker and partner payment onboarding remains retired."
   }
 }

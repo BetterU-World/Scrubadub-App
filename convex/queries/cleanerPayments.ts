@@ -4,7 +4,7 @@ import { requireOwnerSession, requireWorkerSession } from "../lib/sessionAuth";
 import { withPerfLog } from "../lib/perfLog";
 
 /**
- * Get cleaner payment record for a specific job (used in JobDetailPage).
+ * Historical compatibility only: not used for V2 financial review.
  * Returns the payment record + cleaner's name and stripeConnectAccountId.
  */
 export const getCleanerPaymentForJob = query({
@@ -109,7 +109,9 @@ export const listCleanerPaymentsForCompany = query({
       const payments = await ctx.db
         .query("cleanerPayments")
         .withIndex("by_companyId", (q) => q.eq("companyId", owner.companyId))
-        .collect();
+        .order("desc")
+        .take(501);
+      if (payments.length > 500) throw new Error("Legacy payment history is too large for this view");
 
       const filtered = args.status
         ? payments.filter((p) => p.status === args.status)
@@ -159,13 +161,17 @@ export const listMyCleanerPayments = query({
   handler: async (ctx, args) => {
     const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
 
+    if (!user.companyId) throw new Error("Company access required");
+
     const payments = await ctx.db
       .query("cleanerPayments")
       .withIndex("by_cleanerUserId", (q) => q.eq("cleanerUserId", user._id))
-      .collect();
+      .order("desc")
+      .take(501);
+    if (payments.length > 500) throw new Error("Legacy payment history is too large for this view");
 
     const results = [];
-    for (const p of payments) {
+    for (const p of payments.filter((payment) => payment.companyId === user.companyId)) {
       const job = await ctx.db.get(p.jobId);
       const property = job?.propertyId ? await ctx.db.get(job.propertyId) : null;
       const jobLabel =
@@ -191,8 +197,8 @@ export const listMyCleanerPayments = query({
 });
 
 /**
- * List unpaid jobs for a company (owner view, for OPEN tab).
- * Sources from jobs table — shows items even before a cleanerPayments record exists.
+ * Retained legacy compatibility projection, with no current frontend caller.
+ * Assignment/planned pay here is NOT V2 debt or financial eligibility.
  */
 export const listUnpaidJobsForCompany = query({
   args: { userId: v.id("users"), sessionToken: v.string() },
@@ -203,7 +209,8 @@ export const listUnpaidJobsForCompany = query({
       const jobs = await ctx.db
         .query("jobs")
         .withIndex("by_companyId_status", (q) => q.eq("companyId", owner.companyId))
-        .collect();
+        .take(5001);
+      if (jobs.length > 5000) throw new Error("Legacy job history is too large for this view");
 
       const results = [];
       for (const job of jobs) {
@@ -256,8 +263,8 @@ export const listUnpaidJobsForCompany = query({
 });
 
 /**
- * List all jobs for a cleaner with their payment status (cleaner view).
- * Combines job data with cleanerPayment records.
+ * Retained legacy compatibility projection, with no current frontend caller.
+ * Planned amounts and old status are NOT current V2 balances.
  */
 export const listCleanerJobsWithPaymentStatus = query({
   args: { userId: v.id("users"), sessionToken: v.string() },
@@ -269,7 +276,8 @@ export const listCleanerJobsWithPaymentStatus = query({
     const jobs = await ctx.db
       .query("jobs")
       .withIndex("by_companyId_status", (q) => q.eq("companyId", companyId))
-      .collect();
+      .take(5001);
+    if (jobs.length > 5000) throw new Error("Legacy job history is too large for this view");
 
     const results = [];
     for (const job of jobs) {
