@@ -3,6 +3,7 @@
 declare const process: { env: Record<string, string | undefined> };
 
 import Stripe from "stripe";
+import { subscriptionPeriodEndMs } from "../lib/stripeSubscriptionCompatibility";
 import { randomUUID } from "node:crypto";
 import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
@@ -191,7 +192,7 @@ export const completePublicSetup = action({
         stripePriceId: subscription?.items?.data?.[0]?.price?.id,
         subscriptionStatus: subscription?.status,
         currentPeriodEnd: subscription
-          ? (subscription as any).current_period_end ?? 0
+          ? subscriptionPeriodEndMs(subscription)
           : undefined,
         cancelAtPeriodEnd: subscription?.cancel_at_period_end,
         tier,

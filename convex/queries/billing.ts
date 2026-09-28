@@ -1,4 +1,5 @@
 import { query, internalQuery } from "../_generated/server";
+import { storedSubscriptionPeriodEndMs } from "../lib/stripeSubscriptionCompatibility";
 import { v } from "convex/values";
 import { isFounderEmail } from "../lib/founderEmails";
 import { tierToScrubPlan, planDisplayName, planPrice, cleanerLimit } from "../lib/plans";
@@ -46,7 +47,7 @@ export const getCompanySubscription = query({
     return {
       subscriptionStatus: company.subscriptionStatus,
       tier: company.tier,
-      currentPeriodEnd: company.currentPeriodEnd,
+      currentPeriodEnd: storedSubscriptionPeriodEndMs(company.currentPeriodEnd),
       cancelAtPeriodEnd: company.cancelAtPeriodEnd,
       subscriptionBecameInactiveAt: company.subscriptionBecameInactiveAt,
       stripeCustomerId: company.stripeCustomerId,

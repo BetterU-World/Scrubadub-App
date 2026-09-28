@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { subscriptionPeriodEndMs, invoiceSubscriptionId } from "./lib/stripeSubscriptionCompatibility";
 import { validatePaymentEventAccount, retrievePaymentIntentForAttempt } from "./lib/invoiceStripeContext";
 import { snapshotFromStripeAccount } from "./lib/companyConnectReadiness";
 import { httpRouter } from "convex/server";
@@ -178,13 +179,15 @@ const stripeWebhook = httpAction(async (ctx, request) => {
             ? subscription.customer
             : subscription.customer?.id ?? "";
         const priceId = subscription.items?.data?.[0]?.price?.id ?? "";
+        const currentPeriodEnd = subscriptionPeriodEndMs(subscription);
+        if (currentPeriodEnd === undefined) console.warn("[STRIPE-WEBHOOK] subscription period unavailable; past-due grace disabled", { eventId: verifiedEvent.id });
 
         await ctx.runMutation(internal.mutations.billing.syncSubscription, {
           stripeCustomerId: subCustomerId,
           stripeSubscriptionId: subscription.id,
           stripePriceId: priceId,
           status: subscription.status,
-          currentPeriodEnd: (subscription as any).current_period_end ?? 0,
+          currentPeriodEnd,
           cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
           eventCreated: verifiedEvent.created,
         });
@@ -208,16 +211,12 @@ const stripeWebhook = httpAction(async (ctx, request) => {
           typeof invoice.customer === "string"
             ? invoice.customer
             : invoice.customer?.id ?? null;
-        const rawSubscription = (invoice as any).subscription;
-        const invoiceSubscriptionId =
-          typeof rawSubscription === "string"
-            ? rawSubscription
-            : rawSubscription?.id ?? null;
+        const invoiceSubscription = invoiceSubscriptionId(invoice);
 
-        if (invoiceCustomerId && invoiceSubscriptionId) {
+        if (invoiceCustomerId && invoiceSubscription) {
           const attrArgs = {
             stripeCustomerId: invoiceCustomerId,
-            stripeSubscriptionId: invoiceSubscriptionId,
+            stripeSubscriptionId: invoiceSubscription,
             attributionType: "invoice_paid" as const,
             stripeInvoiceId: invoice.id,
             amountCents: invoice.amount_paid,
@@ -231,7 +230,7 @@ const stripeWebhook = httpAction(async (ctx, request) => {
           console.warn("[STRIPE-WEBHOOK] skipping recordAttribution — missing customerId or subscriptionId", {
             eventId: verifiedEvent.id,
             invoiceCustomerId,
-            invoiceSubscriptionId,
+            invoiceSubscriptionId: invoiceSubscription,
           });
         }
         break;

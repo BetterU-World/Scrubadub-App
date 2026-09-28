@@ -1,9 +1,7 @@
 import { QueryCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
 import { isFounderEmail } from "./founderEmails";
-
-/** Grace period for past_due invoices: 3 days in ms */
-const PAST_DUE_GRACE_MS = 3 * 24 * 60 * 60 * 1000;
+import { subscriptionAllowsWrites } from "./stripeSubscriptionCompatibility";
 
 /**
  * Check if a company's subscription allows write operations.
@@ -30,19 +28,7 @@ export async function requireActiveSubscription(
     .collect();
   if (owners.some((u) => isFounderEmail(u.email))) return;
 
-  const status = company.subscriptionStatus;
-
-  // No subscription info yet → allow (new or legacy company)
-  if (!status) return;
-
-  // Active or trialing → allow
-  if (status === "active" || status === "trialing") return;
-
-  // Past due with grace window
-  if (status === "past_due") {
-    const periodEnd = company.currentPeriodEnd ?? 0;
-    if (Date.now() < periodEnd + PAST_DUE_GRACE_MS) return;
-  }
+  if (subscriptionAllowsWrites(company.subscriptionStatus, company.currentPeriodEnd)) return;
 
   throw new Error(
     "Your subscription is inactive. Please update your billing to continue creating content."
