@@ -1,4 +1,5 @@
 import { defineSchema, defineTable } from "convex/server";
+import { executionEvidence } from "./lib/performedWorkers";
 import { outgoingTables } from "./lib/outgoingSchema";
 import { v } from "convex/values";
 import { bedroomsValidator } from "./lib/propertyBedrooms";
@@ -1044,6 +1045,10 @@ export default defineSchema({
     // Shared-job fields (set on the copy created in the partner's company)
     sharedFromJobId: v.optional(v.id("jobs")),
     sharedFromCompanyName: v.optional(v.string()),
+    executionHistory: v.optional(v.array(executionEvidence)),
+    submittedExecutionSequence: v.optional(v.number()),
+    approvedExecutionSequence: v.optional(v.number()),
+    compensationReviews: v.optional(v.array(v.object({ workerId: v.id("users"), executionSequence: v.number(), reason: v.string(), reviewedById: v.id("users"), reviewedAt: v.number() }))),
     // Planned cleaner pay amount (owner-set, before actual payment)
     plannedCleanerPayCents: v.optional(v.number()),
     // Cleaner payment pointer

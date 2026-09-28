@@ -7,11 +7,358 @@ import { hashToken } from "../tokens";
 import { MAX_OUTGOING_CENTS } from "../outgoingLedger";
 import type { Id } from "../../_generated/dataModel";
 import type { FunctionArgs } from "convex/server";
+import { vi } from "vitest";
 
 const modules = import.meta.glob("../../**/*.ts");
 const m = api.outgoingMutations;
 const q = api.outgoingQueries;
 const page = { numItems: 50, cursor: null };
+
+describe("PR C worker compensation", () => {
+  const c = api.workerCompensation;
+  async function review(
+    s: Awaited<ReturnType<typeof setup>>,
+    workerId = s.worker.userId,
+    amountCents = 12000,
+    reason = "Reviewed work",
+  ) {
+    return s.t.mutation(c.reviewCompensation, {
+      ...s.owner,
+      jobId: s.job,
+      workerId,
+      amountCents,
+      reason,
+    });
+  }
+  it("approves independent JOB × WORKER units and safely retries concurrent approvals", async () => {
+    const s = await setup();
+    const ids = await Promise.all([review(s), review(s)]);
+    expect(ids[0]).toBe(ids[1]);
+    expect((await s.financialRows()).obligations).toHaveLength(1);
+    const pending = await s.t.query(c.jobCompensation, {
+      ...s.owner,
+      jobId: s.job,
+    });
+    expect(pending.workers).toHaveLength(2);
+    expect(pending.obligations).toHaveLength(1);
+    const second = await review(s, s.coworker.userId, 9000);
+    expect(second).not.toBe(ids[0]);
+    expect(await review(s, s.coworker.userId, 9000)).toBe(second);
+    expect(
+      (await s.financialRows()).obligations
+        .map((o) => o.basePrincipalCents)
+        .sort((a, b) => a - b),
+    ).toEqual([9000, 12000]);
+    await expect(review(s, s.worker.userId, 13000)).rejects.toThrow(
+      "adjustment",
+    );
+    await s.assertEvidence();
+  });
+  it.each([
+    "scheduled",
+    "submitted",
+    "denied",
+    "cancelled",
+    "rework_requested",
+  ] as const)("does not approve compensation for %s work", async (status) => {
+    const s = await setup();
+    await s.t.run((ctx) => ctx.db.patch(s.job, { status }));
+    await expect(review(s)).rejects.toThrow("evidence required");
+    expect((await s.financialRows()).obligations).toHaveLength(0);
+  });
+  it("assignment alone is not eligibility; historical confirmation is explicit, owner only, and debt free", async () => {
+    const s = await setup();
+    await s.t.run((ctx) =>
+      ctx.db.patch(s.job, {
+        executionHistory: undefined,
+        approvedExecutionSequence: undefined,
+      }),
+    );
+    await expect(review(s)).rejects.toThrow("evidence required");
+    const args = {
+      jobId: s.job,
+      performedWorkerIds: [s.worker.userId, s.coworker.userId, s.owner.userId],
+    };
+    await expect(
+      s.t.mutation(c.confirmHistoricalWorkers, { ...s.manager, ...args }),
+    ).rejects.toThrow();
+    await expect(
+      s.t.mutation(c.confirmHistoricalWorkers, { ...s.foreign, ...args }),
+    ).rejects.toThrow("Access denied");
+    await s.t.mutation(c.confirmHistoricalWorkers, { ...s.owner, ...args });
+    const data = await s.t.query(c.jobCompensation, {
+      ...s.owner,
+      jobId: s.job,
+    });
+    expect(data.evidence?.provenance).toBe("owner_confirmed_historical");
+    expect(data.workers).toHaveLength(2);
+    expect((await s.financialRows()).obligations).toHaveLength(0);
+    await expect(review(s, s.owner.userId)).rejects.toThrow(
+      "evidence required",
+    );
+    await expect(
+      s.t.mutation(c.confirmHistoricalWorkers, { ...s.owner, ...args }),
+    ).rejects.toThrow("Only historical");
+  });
+  it("preserves explicit no-compensation review without zero-dollar debt", async () => {
+    const s = await setup();
+    expect(await review(s, s.worker.userId, 0, "Training")).toBeNull();
+    expect(await review(s, s.worker.userId, 0, "Training")).toBeNull();
+    expect((await s.financialRows()).obligations).toHaveLength(0);
+    expect(
+      (await s.t.query(c.jobCompensation, { ...s.owner, jobId: s.job }))
+        .workers[0].noCompensation?.reason,
+    ).toBe("Training");
+    await expect(review(s)).rejects.toThrow("already reviewed");
+  });
+  it("suggestions are not debt, never split planned pay, and cannot change approved principal", async () => {
+    const s = await setup();
+    expect(
+      (
+        await s.t.query(c.jobCompensation, { ...s.owner, jobId: s.job })
+      ).workers.map((w) => w.suggestionCents),
+    ).toEqual([undefined, undefined]);
+    await s.t.run((ctx) =>
+      ctx.db.patch(s.profile, {
+        payProfile: {
+          payType: "per_job",
+          defaultRateCents: 7777,
+          currency: "USD",
+        },
+      }),
+    );
+    expect(
+      (await s.t.query(c.jobCompensation, { ...s.owner, jobId: s.job }))
+        .workers[0].suggestionCents,
+    ).toBe(7777);
+    const id = await review(s, s.worker.userId, 5555);
+    await s.t.run(async (ctx) => {
+      await ctx.db.patch(s.job, { plannedCleanerPayCents: 1, cleanerIds: [] });
+      await ctx.db.patch(s.profile, {
+        payProfile: { payType: "per_job", defaultRateCents: 1 },
+      });
+    });
+    expect((await s.state(id!)).basePrincipalCents).toBe(5555);
+  });
+  it("freezes recipients and execution, survives reassignment, renames and deactivation, and remains settleable", async () => {
+    const s = await setup();
+    await s.t.run(async (ctx) => {
+      await ctx.db.patch(s.worker.userId, {
+        name: "Renamed",
+        status: "inactive",
+      });
+      await ctx.db.patch(s.job, {
+        cleanerIds: [s.coworker.userId],
+        scheduledDate: "2030-01-01",
+      });
+    });
+    const id = await review(s);
+    expect((await s.state(id!)).recipient.displayName).toBe("worker");
+    expect((await s.state(id!)).sourceLabel).toContain("2026-09-01");
+    await s.record(12000);
+    expect((await s.state(id!)).outstandingCents).toBe(0);
+    expect(
+      (await s.t.query(c.workerBalances, s.owner))[0].recordedPaidCents,
+    ).toBe(12000);
+  });
+  it("enforces owner writes and manager financial read capability", async () => {
+    const s = await setup();
+    for (const actor of [s.manager, s.restricted, s.worker, s.foreign])
+      await expect(
+        s.t.mutation(c.reviewCompensation, {
+          ...actor,
+          jobId: s.job,
+          workerId: s.worker.userId,
+          amountCents: 12000,
+          reason: "work",
+        }),
+      ).rejects.toThrow();
+    await expect(
+      s.t.query(c.jobCompensation, { ...s.manager, jobId: s.job }),
+    ).resolves.toHaveProperty("workers");
+    await expect(
+      s.t.query(c.jobCompensation, { ...s.restricted, jobId: s.job }),
+    ).rejects.toThrow();
+    await expect(s.t.query(c.workerBalances, s.foreign)).resolves.toEqual([]);
+  });
+  it("previews oldest-first and selected jobs using canonical math, then commits exactly the preview", async () => {
+    const s = await setup();
+    const a = await s.obligation(10000);
+    const b = await s.obligation(10000);
+    const d = await s.obligation(10000);
+    const preview = await s.t.query(c.previewPayment, {
+      ...s.owner,
+      workerId: s.worker.userId,
+      amountCents: 15000,
+    });
+    expect(preview.error).toBeNull();
+    expect(preview.allocations.map((x) => x.amountCents)).toEqual([
+      10000, 5000,
+    ]);
+    const id = await s.record(15000, "preview", {
+      allocations: preview.allocations.map(({ sourceLabel, ...row }) => row),
+    });
+    expect(
+      (
+        await s.t.query(q.getSettlementDetail, { ...s.owner, settlementId: id })
+      ).allocations.map((x) => x.amountCents),
+    ).toEqual([10000, 5000]);
+    const selected = await s.t.query(c.previewPayment, {
+      ...s.owner,
+      workerId: s.worker.userId,
+      amountCents: 10000,
+      selectedObligationIds: [d],
+    });
+    expect(selected.allocations[0].obligationId).toBe(d);
+    await s.record(10000, "selected-preview", {
+      allocations: selected.allocations.map(({ sourceLabel, ...row }) => row),
+    });
+    expect((await s.state(d)).outstandingCents).toBe(0);
+    expect(
+      (await s.state(a)).outstandingCents + (await s.state(b)).outstandingCents,
+    ).toBe(5000);
+    expect(
+      (
+        await s.t.query(c.previewPayment, {
+          ...s.owner,
+          workerId: s.worker.userId,
+          amountCents: 999999,
+        })
+      ).error,
+    ).toContain("exceeds");
+  });
+  it("rejects a stale preview rather than silently reallocating", async () => {
+    const s = await setup();
+    const id = await s.obligation(10000);
+    const preview = await s.t.query(c.previewPayment, {
+      ...s.owner,
+      workerId: s.worker.userId,
+      amountCents: 5000,
+    });
+    await s.record(1000, "intervening");
+    await expect(
+      s.record(5000, "stale-preview", {
+        allocations: preview.allocations.map(({ sourceLabel, ...row }) => row),
+      }),
+    ).rejects.toThrow("Stale");
+    expect((await s.state(id)).recordedPaidCents).toBe(1000);
+  });
+  it("captures explicit submission rosters, retains rework history, and makes only the approved execution eligible", async () => {
+    vi.useFakeTimers();
+    process.env.SCRUB_DISABLE_EXTERNAL_SIDE_EFFECTS = "true";
+    const s = await setup();
+    try {
+      const form = await s.t.run(async (ctx) => {
+        await ctx.db.patch(s.job, {
+          status: "in_progress",
+          cleanerIds: [s.worker.userId, s.coworker.userId],
+          executionHistory: undefined,
+          approvedExecutionSequence: undefined,
+        });
+        return ctx.db.insert("forms", {
+          jobId: s.job,
+          companyId: s.company,
+          cleanerId: s.worker.userId,
+          status: "in_progress",
+        });
+      });
+      await expect(
+        s.t.mutation(api.mutations.forms.submit, { ...s.worker, formId: form }),
+      ).rejects.toThrow("Confirm the workers");
+      await s.t.mutation(api.mutations.forms.submit, {
+        ...s.worker,
+        formId: form,
+        performedWorkerIds: [s.worker.userId, s.coworker.userId],
+      });
+      await expect(review(s)).rejects.toThrow("evidence required");
+      await s.t.mutation(api.mutations.forms.requestRework, {
+        ...s.owner,
+        formId: form,
+        notes: "Redo",
+      });
+      await s.t.mutation(api.mutations.jobs.startJob, {
+        ...s.worker,
+        jobId: s.job,
+      });
+      await s.t.mutation(api.mutations.forms.submit, {
+        ...s.worker,
+        formId: form,
+        performedWorkerIds: [s.coworker.userId],
+      });
+      await s.t.mutation(api.mutations.forms.approve, {
+        ...s.manager,
+        formId: form,
+      });
+      const job = await s.t.run((ctx) => ctx.db.get(s.job));
+      expect(job?.executionHistory).toHaveLength(2);
+      expect(job?.approvedExecutionSequence).toBe(2);
+      expect((await s.financialRows()).obligations).toHaveLength(0);
+      await expect(review(s)).rejects.toThrow("evidence required");
+      await review(s, s.coworker.userId, 9000);
+      expect((await s.financialRows()).obligations).toHaveLength(1);
+      await s.t.mutation(api.mutations.forms.submit, {
+        ...s.worker,
+        formId: form,
+      });
+      expect(
+        (await s.t.run((ctx) => ctx.db.get(s.job)))?.executionHistory,
+      ).toEqual(job?.executionHistory);
+    } finally {
+      await s.t.finishAllScheduledFunctions(vi.runAllTimers);
+      vi.useRealTimers();
+      delete process.env.SCRUB_DISABLE_EXTERNAL_SIDE_EFFECTS;
+    }
+  });
+  it("freezes team workers instead of consulting later membership", async () => {
+    const s = await setup();
+    const before = await s.t.run(async (ctx) => {
+      const teamId = await ctx.db.insert("teams", {
+        companyId: s.company,
+        name: "Team",
+        active: true,
+        createdBy: s.owner.userId,
+        createdAt: 1,
+        updatedAt: 1,
+      });
+      const member = await ctx.db.insert("teamMembers", {
+        companyId: s.company,
+        teamId,
+        userId: s.worker.userId,
+        role: "lead",
+        active: true,
+        addedAt: 1,
+      });
+      await ctx.db.patch(s.job, { assignedTeamId: teamId, cleanerIds: [] });
+      return { member, job: await ctx.db.get(s.job) };
+    });
+    await s.t.run((ctx) => ctx.db.patch(before.member, { active: false }));
+    expect(
+      (await s.t.query(c.jobCompensation, { ...s.owner, jobId: s.job }))
+        .evidence,
+    ).toEqual(before.job?.executionHistory?.[0]);
+    await review(s);
+  });
+});
+
+describe("PR C preserved boundaries", () => {
+  it("records owner self-work without creating worker compensation", async () => {
+    const s = await setup();
+    await s.t.run(ctx => ctx.db.patch(s.job, { status: "in_progress", cleanerIds: [], assignedManagerId: s.owner.userId, executionHistory: undefined, approvedExecutionSequence: undefined }));
+    await s.t.mutation(api.mutations.jobs.ownerCompleteJob, { ...s.owner, jobId: s.job, performedWorkerIds: [s.owner.userId] });
+    const review = await s.t.query(api.workerCompensation.jobCompensation, { ...s.owner, jobId: s.job });
+    expect(review.evidence?.workers[0].role).toBe("owner");
+    expect(review.workers).toEqual([]);
+    expect((await s.financialRows()).obligations).toEqual([]);
+  });
+  it("preserves partner source uniqueness across terms versions", async () => {
+    const s = await setup();
+    const draft = () => s.t.mutation(m.createDraftTerms, { ...s.owner, source: { type: "partner_shared_job", sharedJobId: s.share }, currency: "USD", lines: [{ lineId: "partner", recipient: { type: "partner_company", companyId: s.other }, amountCents: 12000, basis: "accepted work" }] });
+    const approve = (termsId: Id<"outgoingTerms">) => s.t.mutation(internal.outgoingMutations.approveAndMaterialize, { termsId, approverUserId: s.owner.userId, expectedRevision: 1, partnerAcceptance: { actorUserId: s.foreign.userId, evidence: "accepted terms" } });
+    await approve(await draft());
+    await expect(approve(await draft())).rejects.toThrow("Source already materialized");
+    expect((await s.financialRows()).obligations).toHaveLength(1);
+  });
+});
 
 async function setup() {
   const t = convexTest(schema, modules);
@@ -83,6 +430,24 @@ async function setup() {
       durationMinutes: 60,
       reworkCount: 0,
       plannedCleanerPayCents: 88888,
+      approvedExecutionSequence: 1,
+      executionHistory: [
+        {
+          sequence: 1,
+          provenance: "submission_confirmed",
+          confirmedById: worker.userId,
+          confirmedAt: 1,
+          scheduledDate: "2026-09-01",
+          workers: [
+            { userId: worker.userId, displayName: "worker", role: "cleaner" },
+            {
+              userId: coworker.userId,
+              displayName: "coworker",
+              role: "cleaner",
+            },
+          ],
+        },
+      ],
     });
     const foreignJob = await ctx.db.insert("jobs", {
       companyId: other,
@@ -168,6 +533,19 @@ async function setup() {
       ctx.db.insert("jobs", {
         companyId: ids.company,
         cleanerIds: [recipient],
+        approvedExecutionSequence: 1,
+        executionHistory: [
+          {
+            sequence: 1,
+            provenance: "submission_confirmed",
+            confirmedById: recipient,
+            confirmedAt: 1,
+            scheduledDate: "2026-09-01",
+            workers: [
+              { userId: recipient, displayName: "worker", role: "cleaner" },
+            ],
+          },
+        ],
         type: "standard",
         status: "approved",
         scheduledDate: "2026-09-01",

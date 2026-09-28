@@ -1,4 +1,4 @@
-# Outgoing Payments V2: canonical ledger backend (PR B)
+# Outgoing Payments V2: canonical ledger and worker workflow (PR B/C)
 
 SCRUB is the ledger, not the bank. **Recorded outside payment != provider-verified payment. Settlement reversal != external refund/reversal.**
 
@@ -30,9 +30,9 @@ Amounts are safe integer minor units, positive where required, capped at 1,000,0
 
 Owners can create/update drafts tied to an actual company-owned job or an actual outgoing shared-job relationship. Worker lines validate same-company worker identity; partner lines validate the shared recipient company. Drafts freeze names/source labels; approval validates structural identities without refreshing those snapshots.
 
-`approveAndMaterialize` is INTERNAL only. It verifies an active payer owner, approved worker job or accepted/in-progress/completed partner share, and partner-owner acceptance evidence where applicable. It approves and creates all obligations/events atomically. Retry returns the original obligations. Transactional source/version and terms/line checks prevent duplicate materialization. Only one terms version per source may materialize in PR B; subsequent financial changes use explicit adjustments. New draft versions do not create additional debt.
+`approveAndMaterialize` is INTERNAL only. It verifies an active payer owner, approved worker job or accepted/in-progress/completed partner share, and partner-owner acceptance evidence where applicable. It approves and creates all obligations/events atomically. Retry returns the original obligations. Transactional source/version and terms/line checks prevent duplicate materialization. PR C narrows worker uniqueness to payer company × job × worker recipient. Each worker is approved independently in a one-line terms document; another terms version cannot create a second base obligation for that worker/job. Partner sources retain one materialized terms version per source pending PR E. Subsequent financial corrections use explicit adjustments.
 
-This is a foundation, not full work eligibility/compensation approval or partner acceptance UX. PR C/E must define and connect those workflows before calling the internal path. No production owner API can directly insert an arbitrary approved obligation.
+PR C connects owner worker approval to this shared materialization transaction after verifying the frozen, operationally approved performed-worker evidence. Partner acceptance UX remains reserved for PR E. No production API can insert an arbitrary approved obligation.
 
 ## Declarations, allocations and idempotency
 
@@ -60,7 +60,29 @@ All public endpoints require verified staff sessions; claimed user IDs must matc
 
 Worker self-history uses frozen worker user identity scoped to the current authenticated company; it does not consult current job/team assignment. Self-history exposes approved amounts, basis, adjustments, allocations, outside methods/provenance, payment/recording dates, reversal evidence and balances. It omits private notes, request fingerprints, command keys and other recipients' terms. Partner-side access/acceptance is reserved for PR E. This does not implement multi-company login; a future identity migration must preserve the original user/profile relationship.
 
-## Legacy and future extension
+## Worker compensation workflow (PR C)
+
+Assignment and current team membership are scheduling intent. Final submission now requires an explicit performed-worker selection through the existing checklist/job submission path. It appends a frozen `jobs.executionHistory` entry with worker identities, display names, roles, source/date label, confirming actor/time and `submission_confirmed` provenance. It sets `submittedExecutionSequence`. Form approval selects that entry with `approvedExecutionSequence`; owner self-completion captures and selects its explicit roster in the same transaction. Owner performers remain operational evidence and are excluded from outgoing worker compensation.
+
+Rework retains prior execution entries, resets the canonical form to editable when work restarts, and captures a new roster at the later submission. Only the selected, finally approved execution establishes eligibility. Failed/submitted/rework/denied/canceled work does not establish financial eligibility. Submission retries do not append another execution. No obligation is created by submission, operational approval, or historical roster confirmation.
+
+An approved older job with no execution history offers an owner-only explicit historical roster confirmation. It records `owner_confirmed_historical` provenance, including inactive historical workers in the same tenant. Nothing is silently inferred from assignments, current team members, planned pay, or legacy payment records. Existing evidence cannot be replaced through this historical confirmation endpoint.
+
+The owner reviews each performed non-owner worker independently. A per-job pay profile in USD can supply an editable suggestion. If no such profile exists, legacy planned job pay is suggested only when there is exactly one eligible worker. Hourly/salary/vendor rates are not converted into job compensation, and multi-worker planned pay is never split. Suggestions are not debt and can be changed before approval. Each positive approval creates one single-line terms document and calls the same canonical materializer transaction as PR B. Frozen execution names/source labels and the execution sequence are retained. A $0 review requires a reason and stores a narrow audited `compensationReviews` outcome on the job; it creates no financial obligation or fake zero-dollar ledger event.
+
+**Worker base uniqueness is payer × job × frozen worker recipient.** Source-index transaction reads prevent duplicate debt across concurrent approvals or new terms versions. An exact approval retry returns its existing obligation even after operational edits; different financial content requires adjustment. Other workers on the job can approve later in separate terms versions. The previous PR B one-approved-version-per-job rule is intentionally superseded only for worker sources; partner materialization remains one version per shared source pending PR E. Immutable principal, append-only events, tenant checks, allocation/version checks, void/reversal rules and settlement idempotency remain intact.
+
+Job Detail displays compensation review, no-compensation outcomes and canonical balances. Owner Payments replaces the retired worker surface with company worker balances, original approval totals, recorded paid, open jobs and oldest outstanding approval, with recipient detail also available in Worker Detail. Authorized managers can read these views but cannot invoke any financial write. Worker Payments uses frozen-recipient self-history, including allocations, corrections and visibly reversed records. Private administrative notes are never exposed to workers. Legacy history remains separately labeled and never contributes to V2 outstanding totals.
+
+Record payment collects amount, outside method, date, public reference and optional private note. A shared server allocation planner supplies the preview and commits canonical settlement allocations. No selection means oldest approved outstanding first; explicit selection restricts the eligible jobs. Confirmation submits the displayed exact allocation amounts and ledger versions; intervening ledger changes reject rather than silently reallocating. Full and partial payments use the same arithmetic. Adjustment, ordinary unpaid void and ledger reversal require reasons and explicit confirmation; reversal copy says it does not reverse/refund/cancel the external payment.
+
+Deactivation, assignment/team edits, profile changes, renames and schedule edits never alter frozen obligations or execution history. Inactive performed workers can receive compensation only through explicit owner review; existing debts remain visible and settleable. Worker sign-in retains existing active-session rules, so deactivated access is not newly granted.
+
+New schema fields are optional for rollout compatibility: execution history, submitted/approved execution sequence and no-compensation reviews on jobs; execution sequence on terms and obligations. No new financial table or provider integration is added. Recipient totals preserve PR B's 500-obligation bound; company summary currently refuses histories over 5,000 obligations. Financial histories paginate. Future aggregates can remove these deliberate limits.
+
+New copy follows the existing EN/ES i18n system. Responsive card-based layouts and Radix dialogs were checked at 360, 390, 412, 430, 768 and 1440 px using local component fixtures; this is layout validation, not a deployed end-to-end payment test. See `outgoing-payments-worker-validation.md` for validation and changed files.
+
+## Preserved boundaries
 
 No reads/migration of legacy OPEN payments, planned pay, partner settlements or Stripe evidence generate V2 obligations. PR A retirement and affiliate separation remain intact. No electronic attempts, funding, payout accounts, Stripe calls, Treasury, payroll/tax calculations or company funds balance are added. Future provider evidence must use a distinct provenance and reviewed electronic extension, not reinterpret `outside_declared`.
 

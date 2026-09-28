@@ -1,3 +1,7 @@
+import { planOutsideAllocation } from "./lib/outgoingAllocation";
+import { approvedExecution } from "./lib/performedWorkers";
+import type { MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
 import { mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { requireOwnerSession } from "./lib/sessionAuth";
@@ -120,140 +124,188 @@ export const approveAndMaterialize = internalMutation({
       v.object({ actorUserId: v.id("users"), evidence: v.string() }),
     ),
   },
-  handler: async (ctx, args) => {
-    const terms = await ctx.db.get(args.termsId);
-    const approver = await ctx.db.get(args.approverUserId);
+  handler: materializeTerms,
+});
+
+export async function materializeTerms(
+  ctx: MutationCtx,
+  args: {
+    termsId: Id<"outgoingTerms">;
+    approverUserId: Id<"users">;
+    expectedRevision: number;
+    partnerAcceptance?: { actorUserId: Id<"users">; evidence: string };
+  },
+) {
+  const terms = await ctx.db.get(args.termsId);
+  const approver = await ctx.db.get(args.approverUserId);
+  if (
+    !terms ||
+    !approver ||
+    approver.status !== "active" ||
+    approver.role !== "owner" ||
+    approver.companyId !== terms.payerCompanyId
+  )
+    throw new Error("Owner approval required");
+  if (terms.revision !== args.expectedRevision)
+    throw new Error("Stale terms revision");
+  if (terms.lifecycle === "approved") {
     if (
-      !terms ||
-      !approver ||
-      approver.status !== "active" ||
-      approver.role !== "owner" ||
-      approver.companyId !== terms.payerCompanyId
+      terms.approvedById !== approver._id ||
+      fingerprint(args.partnerAcceptance) !==
+        fingerprint(
+          terms.acceptance && {
+            actorUserId: terms.acceptance.actorUserId,
+            evidence: terms.acceptance.evidence,
+          },
+        )
     )
-      throw new Error("Owner approval required");
-    if (terms.revision !== args.expectedRevision)
-      throw new Error("Stale terms revision");
-    if (terms.lifecycle === "approved") {
-      if (
-        terms.approvedById !== approver._id ||
-        fingerprint(args.partnerAcceptance) !==
-          fingerprint(
-            terms.acceptance && {
-              actorUserId: terms.acceptance.actorUserId,
-              evidence: terms.acceptance.evidence,
-            },
-          )
-      )
-        throw new Error("Approval retry content mismatch");
-      const existing = [];
-      for (const line of terms.lines) {
-        const obligation = await ctx.db
-          .query("outgoingObligations")
-          .withIndex("by_terms_line", (q) =>
-            q.eq("termsId", terms._id).eq("lineId", line.lineId),
-          )
-          .unique();
-        if (!obligation)
-          throw new Error("Approved terms have missing materialization");
-        existing.push(obligation._id);
-      }
-      return existing;
-    }
-    // Validate current structural identities, but preserve draft financial/display snapshots.
-    await buildTerms(
-      ctx,
-      terms.payerCompanyId,
-      terms.source,
-      terms.currency,
-      terms.lines,
-    );
-    const versions = await ctx.db
-      .query("outgoingTerms")
-      .withIndex("by_source_version", (q) =>
-        q
-          .eq("payerCompanyId", terms.payerCompanyId)
-          .eq("sourceKey", terms.sourceKey),
-      )
-      .collect();
-    if (versions.some((version) => version.lifecycle === "approved"))
-      throw new Error("Source already materialized: use explicit adjustments");
-    let acceptance: Doc<"outgoingTerms">["acceptance"];
-    if (terms.source.type === "worker_job") {
-      if (args.partnerAcceptance)
-        throw new Error("Worker terms do not accept partner evidence");
-      const job = await ctx.db.get(terms.source.jobId);
-      if (job?.status !== "approved")
-        throw new Error("Approved source work required");
-    } else {
-      const share = await ctx.db.get(terms.source.sharedJobId);
-      const acceptor =
-        args.partnerAcceptance &&
-        (await ctx.db.get(args.partnerAcceptance.actorUserId));
-      if (
-        !share ||
-        !["accepted", "in_progress", "completed"].includes(share.status) ||
-        !acceptor ||
-        acceptor.role !== "owner" ||
-        acceptor.status !== "active" ||
-        acceptor.companyId !== share.toCompanyId
-      )
-        throw new Error("Partner acceptance required");
-      text(args.partnerAcceptance!.evidence, "acceptance evidence");
-      acceptance = { ...args.partnerAcceptance!, acceptedAt: Date.now() };
-    }
-    const now = Date.now();
-    await ctx.db.patch(terms._id, {
-      lifecycle: "approved",
-      approvedById: approver._id,
-      approvedAt: now,
-      updatedAt: now,
-      acceptance,
-    });
-    await event(ctx, terms.payerCompanyId, approver._id, `terms:${terms._id}`, {
-      type: "terms_approved",
-      termsId: terms._id,
-    });
-    const ids = [];
+      throw new Error("Approval retry content mismatch");
+    const existing = [];
     for (const line of terms.lines) {
-      const prior = await ctx.db
+      const obligation = await ctx.db
         .query("outgoingObligations")
         .withIndex("by_terms_line", (q) =>
           q.eq("termsId", terms._id).eq("lineId", line.lineId),
         )
         .unique();
-      if (prior) throw new Error("Duplicate materialization");
-      const id = await ctx.db.insert("outgoingObligations", {
-        payerCompanyId: terms.payerCompanyId,
-        recipient: line.recipient,
-        recipientKey: recipientKey(line.recipient),
-        source: terms.source,
-        sourceKey: terms.sourceKey,
-        termsId: terms._id,
-        termsVersion: terms.version,
-        lineId: line.lineId,
-        basePrincipalCents: line.amountCents,
-        currency: terms.currency,
-        basis: line.basis,
-        payerName: terms.payerName,
-        sourceLabel: terms.sourceLabel,
-        approvedById: approver._id,
-        approvedAt: now,
-        createdAt: now,
-        adjustmentCents: 0,
-        adjustmentCount: 0,
-        settledCents: 0,
-        ledgerVersion: 1,
-      });
-      await event(ctx, terms.payerCompanyId, approver._id, `obligation:${id}`, {
-        type: "obligation_created",
-        obligationId: id,
-        termsId: terms._id,
-      });
-      ids.push(id);
+      if (!obligation)
+        throw new Error("Approved terms have missing materialization");
+      existing.push(obligation._id);
     }
-    return ids;
-  },
-});
+    return existing;
+  }
+  // Validate current structural identities, but preserve draft financial/display snapshots.
+  await buildTerms(
+    ctx,
+    terms.payerCompanyId,
+    terms.source,
+    terms.currency,
+    terms.lines,
+  );
+  const versions = await ctx.db
+    .query("outgoingTerms")
+    .withIndex("by_source_version", (q) =>
+      q
+        .eq("payerCompanyId", terms.payerCompanyId)
+        .eq("sourceKey", terms.sourceKey),
+    )
+    .collect();
+  if (
+    terms.source.type !== "worker_job" &&
+    versions.some((version) => version.lifecycle === "approved")
+  )
+    throw new Error("Source already materialized: use explicit adjustments");
+  let acceptance: Doc<"outgoingTerms">["acceptance"];
+  if (terms.source.type === "worker_job") {
+    if (args.partnerAcceptance)
+      throw new Error("Worker terms do not accept partner evidence");
+    const job = await ctx.db.get(terms.source.jobId);
+    if (job?.status !== "approved")
+      throw new Error("Approved source work required");
+    const evidence = approvedExecution(job!);
+    if (
+      terms.executionSequence !== undefined &&
+      terms.executionSequence !== evidence?.sequence
+    )
+      throw new Error("Execution evidence changed: review compensation again");
+    for (const line of terms.lines) {
+      if (
+        line.recipient.type !== "worker" ||
+        !evidence?.workers.some(
+          (w) =>
+            w.userId === (line.recipient as { userId: Id<"users"> }).userId &&
+            w.role !== "owner",
+        )
+      )
+        throw new Error("Approved performed-worker evidence required");
+      const existing = await ctx.db
+        .query("outgoingObligations")
+        .withIndex("by_source", (q) =>
+          q
+            .eq("payerCompanyId", terms.payerCompanyId)
+            .eq("sourceKey", terms.sourceKey),
+        )
+        .collect();
+      if (existing.some((o) => o.recipientKey === recipientKey(line.recipient)))
+        throw new Error(
+          "Worker source already materialized: use explicit adjustments",
+        );
+    }
+    if (
+      new Set(terms.lines.map((l) => recipientKey(l.recipient))).size !==
+      terms.lines.length
+    )
+      throw new Error("Duplicate worker compensation unit");
+  } else {
+    const share = await ctx.db.get(terms.source.sharedJobId);
+    const acceptor =
+      args.partnerAcceptance &&
+      (await ctx.db.get(args.partnerAcceptance.actorUserId));
+    if (
+      !share ||
+      !["accepted", "in_progress", "completed"].includes(share.status) ||
+      !acceptor ||
+      acceptor.role !== "owner" ||
+      acceptor.status !== "active" ||
+      acceptor.companyId !== share.toCompanyId
+    )
+      throw new Error("Partner acceptance required");
+    text(args.partnerAcceptance!.evidence, "acceptance evidence");
+    acceptance = { ...args.partnerAcceptance!, acceptedAt: Date.now() };
+  }
+  const now = Date.now();
+  await ctx.db.patch(terms._id, {
+    lifecycle: "approved",
+    approvedById: approver._id,
+    approvedAt: now,
+    updatedAt: now,
+    acceptance,
+  });
+  await event(ctx, terms.payerCompanyId, approver._id, `terms:${terms._id}`, {
+    type: "terms_approved",
+    termsId: terms._id,
+  });
+  const ids = [];
+  for (const line of terms.lines) {
+    const prior = await ctx.db
+      .query("outgoingObligations")
+      .withIndex("by_terms_line", (q) =>
+        q.eq("termsId", terms._id).eq("lineId", line.lineId),
+      )
+      .unique();
+    if (prior) throw new Error("Duplicate materialization");
+    const id = await ctx.db.insert("outgoingObligations", {
+      payerCompanyId: terms.payerCompanyId,
+      recipient: line.recipient,
+      recipientKey: recipientKey(line.recipient),
+      source: terms.source,
+      sourceKey: terms.sourceKey,
+      termsId: terms._id,
+      termsVersion: terms.version,
+      lineId: line.lineId,
+      basePrincipalCents: line.amountCents,
+      currency: terms.currency,
+      basis: line.basis,
+      payerName: terms.payerName,
+      sourceLabel: terms.sourceLabel,
+      approvedById: approver._id,
+      approvedAt: now,
+      executionSequence: terms.executionSequence,
+      createdAt: now,
+      adjustmentCents: 0,
+      adjustmentCount: 0,
+      settledCents: 0,
+      ledgerVersion: 1,
+    });
+    await event(ctx, terms.payerCompanyId, approver._id, `obligation:${id}`, {
+      type: "obligation_created",
+      obligationId: id,
+      termsId: terms._id,
+    });
+    ids.push(id);
+  }
+  return ids;
+}
 
 export const recordOutsideSettlement = mutation({
   args: {
@@ -339,86 +391,12 @@ export const recordOutsideSettlement = mutation({
         .unique()
     )
       throw new Error("Idempotency key content mismatch");
-    const ids =
-      args.allocations?.map((a) => a.obligationId) ??
-      args.selectedObligationIds;
-    if (
-      ids &&
-      (ids.length === 0 ||
-        ids.length > MAX_OUTGOING_LINES ||
-        new Set(ids).size !== ids.length)
-    )
-      throw new Error("Invalid or duplicate selected obligations");
-    let obligations: Doc<"outgoingObligations">[];
-    if (ids)
-      obligations = await Promise.all(
-        ids.map((id) => obligationForPayer(ctx, id, owner.companyId)),
-      );
-    else {
-      obligations = await ctx.db
-        .query("outgoingObligations")
-        .withIndex("by_recipient", (q) =>
-          q.eq("payerCompanyId", owner.companyId).eq("recipientKey", key),
-        )
-        .take(MAX_RECIPIENT_OBLIGATIONS + 1);
-      if (obligations.length > MAX_RECIPIENT_OBLIGATIONS)
-        throw new Error(
-          "Recipient history too large: select explicit obligations",
-        );
-      obligations = obligations.filter(
-        (o) => o.voidedAt === undefined && projection(o).outstandingCents > 0,
-      );
-      if (obligations.length > MAX_OUTGOING_LINES)
-        throw new Error("Too many obligations: select explicit obligations");
-    }
-    for (const obligation of obligations) {
-      if (
-        obligation.recipientKey !== key ||
-        obligation.currency !== args.currency
-      )
-        throw new Error("Recipient/currency mismatch");
-      if (obligation.voidedAt !== undefined)
-        throw new Error("Voided obligation is not payable");
-    }
-    obligations.sort(
-      (a, b) =>
-        a.approvedAt - b.approvedAt ||
-        (a._id < b._id ? -1 : a._id > b._id ? 1 : 0),
+    const planned = await planOutsideAllocation(
+      ctx,
+      owner.companyId,
+      key,
+      args,
     );
-    const planned: {
-      obligation: Doc<"outgoingObligations">;
-      amountCents: number;
-    }[] = [];
-    if (args.allocations) {
-      let total = 0;
-      for (const allocation of args.allocations) {
-        cents(allocation.amountCents);
-        const obligation = obligations.find(
-          (o) => o._id === allocation.obligationId,
-        )!;
-        if (allocation.expectedVersion !== obligation.ledgerVersion)
-          throw new Error("Stale selected allocation");
-        if (allocation.amountCents > projection(obligation).outstandingCents)
-          throw new Error("Allocation exceeds outstanding");
-        total = boundedTotal(total + allocation.amountCents);
-        planned.push({ obligation, amountCents: allocation.amountCents });
-      }
-      if (total !== args.amountCents)
-        throw new Error("Allocation sum mismatch");
-    } else {
-      let remaining = args.amountCents;
-      for (const obligation of obligations) {
-        if (remaining === 0) break;
-        const amountCents = Math.min(
-          remaining,
-          projection(obligation).outstandingCents,
-        );
-        if (amountCents > 0) planned.push({ obligation, amountCents });
-        remaining -= amountCents;
-      }
-      if (remaining > 0) throw new Error("Payment exceeds outstanding");
-    }
-    if (planned.length === 0) throw new Error("No payable obligations");
     const now = Date.now();
     const settlementId = await ctx.db.insert("outgoingSettlements", {
       payerCompanyId: owner.companyId,

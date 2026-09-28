@@ -1,3 +1,4 @@
+import { JobCompensation } from "@/components/payments/JobCompensation";
 import { useFeedbackState } from "@/components/ui/FeedbackProvider";
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
@@ -174,6 +175,7 @@ export function ManagerJobDetailPage() {
       />
 
       <div className="space-y-4">
+        <JobCompensation jobId={job._id} />
         <ServicePricingPanel jobId={job._id} commercial={Boolean(job.commercialAccountId)} />
         <JobInvoiceBillingPanel job={job} />
         {!job.commercialAccountId && <ResidentialInvoicePanel jobId={job._id} />}

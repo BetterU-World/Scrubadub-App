@@ -124,7 +124,6 @@ export async function buildTerms(
       if (
         !worker ||
         worker.companyId !== payerCompanyId ||
-        worker.status !== "active" ||
         !["cleaner", "maintenance", "manager"].includes(worker.role)
       )
         throw new Error("Invalid worker recipient");

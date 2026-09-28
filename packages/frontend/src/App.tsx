@@ -467,6 +467,8 @@ export default function App() {
                 {user?.canManageSchedule && <Route path="/calendar" component={CalendarPage} />}
                 {user?.canViewAnalytics && <Route path="/performance" component={PerformancePage} />}
                 {user?.canViewAnalytics && <Route path="/analytics" component={AnalyticsPage} />}
+                {user?.canViewFinancials && <Route path="/owner/payments" component={PaymentsHubPage} />}
+                {user?.canViewFinancials && <Route path="/owner/cleaner-payments" component={CleanerPaymentsPage} />}
                 {user?.canViewFinancials && <Route path="/financials" component={FinancialOverviewPage} />}
                 {(user?.canManageInvoices || user?.canViewFinancials) && <Route path="/commercial-invoices/:id" component={CommercialInvoiceDetailPage} />}
                 {(user?.canManageInvoices || user?.canViewFinancials) && <Route path="/invoices/:id" component={CommercialInvoiceDetailPage} />}

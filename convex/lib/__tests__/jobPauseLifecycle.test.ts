@@ -84,11 +84,11 @@ describe("job pause lifecycle", () => {
       return formId;
     });
     await t.mutation(api.mutations.jobs.pauseJob, { jobId: activeJob, reason: "break", userId: cleaner, sessionToken: auth.sessionToken });
-    await t.mutation(api.mutations.forms.submit, { formId: form, userId: cleaner, sessionToken: auth.sessionToken });
+    await t.mutation(api.mutations.forms.submit, { performedWorkerIds: [cleaner], formId: form, userId: cleaner, sessionToken: auth.sessionToken });
     const submitted = await t.run((ctx) => ctx.db.get(activeJob));
     expect(submitted).toMatchObject({ status: "submitted", completedAt: expect.any(Number) });
     expect(submitted?.currentPauseStartedAt).toBeUndefined();
     expect(submitted?.pauseHistory?.[0]).toMatchObject({ resumedAt: submitted?.completedAt, durationMs: expect.any(Number), resumedByUserId: cleaner });
-    await expect(t.mutation(api.mutations.forms.submit, { formId: form, userId: cleaner, sessionToken: auth.sessionToken })).resolves.toMatchObject({ alreadySubmitted: true });
+    await expect(t.mutation(api.mutations.forms.submit, { performedWorkerIds: [cleaner], formId: form, userId: cleaner, sessionToken: auth.sessionToken })).resolves.toMatchObject({ alreadySubmitted: true });
   });
 });
