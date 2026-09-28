@@ -1,3 +1,5 @@
+import { compensationError } from "@/components/payments/compensationErrors";
+import { usePerformedWorkers, PerformedWorkerPicker } from "@/components/payments/PerformedWorkerPicker";
 import { useFeedbackState } from "@/components/ui/FeedbackProvider";
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
@@ -23,6 +25,7 @@ export function MaintenanceJobDetailPage() {
   const job = useQuery(api.queries.jobs.get,
     user ? { jobId: params.id as Id<"jobs">, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
+  const roster = usePerformedWorkers(params.id as Id<"jobs">, Boolean(job?.canCurrentUserExecute));
   const acceptJob = useMutation(api.mutations.jobs.acceptJob);
   const denyJob = useMutation(api.mutations.jobs.denyJob);
   const arriveJob = useMutation(api.mutations.jobs.arriveJob);
@@ -34,6 +37,7 @@ export function MaintenanceJobDetailPage() {
   const [denyReason, setDenyReason] = useState("");
   const [showComplete, setShowComplete] = useState(false);
   const [completionNotes, setCompletionNotes] = useState("");
+  const [submissionError, setSubmissionError] = useState("");
   const [completing, setCompleting] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [denying, setDenying] = useState(false);
@@ -72,11 +76,12 @@ export function MaintenanceJobDetailPage() {
   const handleCompleteJob = async () => {
     if (!user) return;
     setCompleting(true);
+    setSubmissionError("");
     try {
-      await completeJob({ jobId: job._id, notes: completionNotes || undefined, userId: user._id, sessionToken: getStaffSessionToken() });
+      await completeJob({ performedWorkerIds: roster.selected, jobId: job._id, notes: completionNotes || undefined, userId: user._id, sessionToken: getStaffSessionToken() });
       setShowComplete(false);
     } catch (err: any) {
-      console.error(err);
+      setSubmissionError(compensationError(err, t));
     } finally {
       setCompleting(false);
     }
@@ -251,6 +256,8 @@ export function MaintenanceJobDetailPage() {
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold mb-4">Deny Job</h3>
+            {submissionError && <p role="alert" className="text-red-600">{submissionError}</p>}
+      <PerformedWorkerPicker {...roster} />
             <textarea
               className="input-field mb-4"
               rows={3}
@@ -301,6 +308,7 @@ export function MaintenanceJobDetailPage() {
               <button onClick={() => setShowComplete(false)} className="btn-secondary">Cancel</button>
               <AsyncButton
                 onClick={handleCompleteJob}
+                disabled={!roster.selected.length}
                 pending={completing}
                 pendingLabel={t("common.completing")}
                 className="btn-primary flex items-center gap-2"

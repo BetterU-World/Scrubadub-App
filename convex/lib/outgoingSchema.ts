@@ -26,6 +26,7 @@ export const outgoingTables = {
     updatedAt: v.number(),
     approvedById: v.optional(v.id("users")),
     approvedAt: v.optional(v.number()),
+    executionSequence: v.optional(v.number()),
     acceptance: v.optional(outgoingAcceptance),
   })
     .index("by_payer", ["payerCompanyId"])
@@ -46,6 +47,7 @@ export const outgoingTables = {
     sourceLabel: v.string(),
     approvedById: v.id("users"),
     approvedAt: v.number(),
+    executionSequence: v.optional(v.number()),
     createdAt: v.number(),
     // Derived caches: updated atomically with allocations/events. Never edit base principal.
     adjustmentCents: v.number(),

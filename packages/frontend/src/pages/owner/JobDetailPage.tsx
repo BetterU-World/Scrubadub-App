@@ -1,3 +1,5 @@
+import { JobCompensation } from "@/components/payments/JobCompensation";
+import { usePerformedWorkers, PerformedWorkerPicker } from "@/components/payments/PerformedWorkerPicker";
 import { LegacyOutgoingNotice } from "@/components/payments/LegacyOutgoingNotice";
 import { useFeedbackState } from "@/components/ui/FeedbackProvider";
 import { useState, useEffect } from "react";
@@ -48,6 +50,7 @@ import {
 
 export function JobDetailPage() {
   const params = useParams<{ id: string }>();
+  const roster = usePerformedWorkers(params.id as Id<"jobs">);
   const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
   const job = useQuery(api.queries.jobs.get,
@@ -184,6 +187,7 @@ export function JobDetailPage() {
       />
 
       <div className="space-y-6">
+        <JobCompensation jobId={job._id} />
         <ServicePricingPanel jobId={job._id} commercial={Boolean(job.commercialAccountId)} />
         <JobInvoiceBillingPanel job={job} />
         {!job.commercialAccountId && <ResidentialInvoicePanel jobId={job._id} />}
@@ -747,6 +751,7 @@ export function JobDetailPage() {
           </h3>
           <p className="text-xs text-gray-400 mb-4">{t("jobs.ownerExecutionDesc")}</p>
 
+          {job.status === "in_progress" && <PerformedWorkerPicker {...roster} />}
           {/* Clean workflow actions */}
           {job.type !== "maintenance" && (
             <div className="space-y-2 mb-4">
@@ -770,12 +775,12 @@ export function JobDetailPage() {
               )}
               {job.status === "in_progress" && (
                 <button
-                  disabled={job.currentPauseStartedAt !== undefined}
+                  disabled={!roster.selected.length || job.currentPauseStartedAt !== undefined}
                   onClick={async () => {
                     const uid = requireUserId(user);
                     if (!uid) return;
                     try {
-                      await ownerCompleteJobMut({ jobId: job._id, userId: uid, sessionToken: getStaffSessionToken() });
+                      await ownerCompleteJobMut({ performedWorkerIds: roster.selected, jobId: job._id, userId: uid, sessionToken: getStaffSessionToken() });
                       setToast({ message: t("jobs.cleanCompleted"), type: "success" });
                     } catch (err: any) {
                       setToast({ message: err.message ?? t("common.failed"), type: "error" });

@@ -57,7 +57,7 @@ describe("manager execution lifecycle hotfix", () => {
     const storageId = await t.run((ctx) => ctx.storage.store(new Blob(["evidence"], { type: "text/plain" })));
     await t.mutation(api.mutations.forms.addPhoto, { formId: form!._id, photoStorageId: storageId, userId: seeded.manager, sessionToken: managerAuth.sessionToken });
     await t.mutation(api.mutations.forms.markAllComplete, { formId: form!._id, userId: seeded.manager, sessionToken: managerAuth.sessionToken });
-    await t.mutation(api.mutations.forms.submit, { formId: form!._id, userId: seeded.manager, sessionToken: managerAuth.sessionToken });
+    await t.mutation(api.mutations.forms.submit, { performedWorkerIds: [seeded.manager], formId: form!._id, userId: seeded.manager, sessionToken: managerAuth.sessionToken });
     await expect(t.run((ctx) => ctx.db.get(seeded.job))).resolves.toMatchObject({ status: "submitted", completedAt: expect.any(Number) });
     await t.mutation(api.mutations.jobs.completeJob, { jobId: seeded.job, notes: "Done", userId: seeded.manager, sessionToken: managerAuth.sessionToken });
 
@@ -119,7 +119,7 @@ describe("manager execution lifecycle hotfix", () => {
     await t.mutation(api.mutations.jobs.startJob, { jobId: seeded.job, userId: seeded.cleaner, sessionToken: cleanerAuth.sessionToken });
     const form = await t.run((ctx) => ctx.db.query("forms").withIndex("by_jobId", (q) => q.eq("jobId", seeded.job)).unique());
     await t.mutation(api.mutations.forms.markAllComplete, { formId: form!._id, userId: seeded.cleaner, sessionToken: cleanerAuth.sessionToken });
-    await t.mutation(api.mutations.forms.submit, { formId: form!._id, userId: seeded.cleaner, sessionToken: cleanerAuth.sessionToken });
+    await t.mutation(api.mutations.forms.submit, { performedWorkerIds: [seeded.cleaner], formId: form!._id, userId: seeded.cleaner, sessionToken: cleanerAuth.sessionToken });
     await t.mutation(api.mutations.jobs.completeJob, { jobId: seeded.job, userId: seeded.cleaner, sessionToken: cleanerAuth.sessionToken });
     await t.mutation(api.mutations.forms.approve, { formId: form!._id, userId: seeded.owner, sessionToken: ownerAuth.sessionToken });
     await expect(t.run((ctx) => ctx.db.get(seeded.job))).resolves.toMatchObject({ status: "approved", approvedAt: expect.any(Number) });

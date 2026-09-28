@@ -1,3 +1,4 @@
+import { RecipientLedger } from "@/components/payments/RecipientLedger";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
@@ -539,6 +540,7 @@ export function WorkerDetailPage() {
         back={{ href: "/employees", label: t("navigation.backToWorkers") }}
       />
 
+      {(user.role === "owner" || user.canViewFinancials) && <section className="mb-6"><RecipientLedger workerId={params.id as Id<"users">} /></section>}
       <CollapsibleSection title="Identity" defaultExpanded className="mb-6">
         <div className="grid gap-4 md:grid-cols-4">
           <DetailItem label="Email" value={workerUser?.email ?? "Not set"} />

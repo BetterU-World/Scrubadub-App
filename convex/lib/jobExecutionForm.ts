@@ -13,7 +13,12 @@ export async function ensureJobExecutionForm(
     .query("forms")
     .withIndex("by_jobId", (q) => q.eq("jobId", job._id))
     .first();
-  if (existing) return existing._id;
+  if (existing) {
+    if (job.status === "rework_requested" && existing.status === "rework_requested") {
+      await ctx.db.patch(existing._id, { status: "in_progress", submittedAt: undefined });
+    }
+    return existing._id;
+  }
 
   const formId = await ctx.db.insert("forms", {
     jobId: job._id,

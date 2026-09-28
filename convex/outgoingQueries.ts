@@ -235,6 +235,7 @@ export const recipientOutstandingTotals = query({
       .take(MAX_RECIPIENT_OBLIGATIONS + 1);
     if (obligations.length > MAX_RECIPIENT_OBLIGATIONS)
       throw new Error("Recipient history too large for aggregate query");
+    let openObligationCount = 0;
     let outstandingCents = 0;
     let recordedPaidCents = 0;
     for (const obligation of obligations) {
@@ -243,6 +244,7 @@ export const recipientOutstandingTotals = query({
           "Unsupported currency in ledger: totals cannot mix currencies",
         );
       const state = projection(obligation);
+      if (state.collectibleOutstandingCents > 0) openObligationCount++;
       outstandingCents = boundedTotal(
         outstandingCents + state.collectibleOutstandingCents,
       );
@@ -255,6 +257,7 @@ export const recipientOutstandingTotals = query({
       outstandingCents,
       recordedPaidCents,
       obligationCount: obligations.length,
+      openObligationCount,
     };
   },
 });

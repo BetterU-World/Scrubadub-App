@@ -376,6 +376,7 @@ describe("permanent legacy outgoing containment", () => {
       });
       await s.t.mutation(api.mutations.forms.submit, {
         formId: form,
+        performedWorkerIds: [s.worker.id],
         userId: s.worker.id,
         sessionToken: s.worker.token,
       });

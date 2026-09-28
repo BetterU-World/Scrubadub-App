@@ -1,3 +1,5 @@
+import { compensationError } from "@/components/payments/compensationErrors";
+import { usePerformedWorkers, PerformedWorkerPicker } from "@/components/payments/PerformedWorkerPicker";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -112,6 +114,7 @@ export function CleaningFormPage() {
     form && user ? { formId: form._id, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
 
+  const roster = usePerformedWorkers(params.id as Id<"jobs">, Boolean(job?.canCurrentUserExecute));
   const updateItem = useMutation(api.mutations.forms.updateItem);
   const updateScore = useMutation(api.mutations.forms.updateScore);
   const submitForm = useMutation(api.mutations.forms.submit);
@@ -128,6 +131,7 @@ export function CleaningFormPage() {
   const [rfNote, setRfNote] = useState("");
   const [selfScore, setSelfScore] = useState(8);
   const [showReview, setShowReview] = useState(false);
+  const [submissionError, setSubmissionError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   // Fast mode
@@ -359,13 +363,14 @@ export function CleaningFormPage() {
 
   const handleSubmit = async () => {
     setSubmitting(true);
+    setSubmissionError("");
     try {
       await updateScore({ formId: form._id, cleanerScore: selfScore, userId: user!._id, sessionToken: getStaffSessionToken() });
-      await submitForm({ formId: form._id, userId: user!._id, sessionToken: getStaffSessionToken() });
+      await submitForm({ performedWorkerIds: roster.selected, formId: form._id, userId: user!._id, sessionToken: getStaffSessionToken() });
       clearFormCache();
       setLocation(`/jobs/${job._id}`);
     } catch (err) {
-      console.error(err);
+      setSubmissionError(compensationError(err, t));
     } finally {
       setSubmitting(false);
     }
@@ -507,16 +512,18 @@ export function CleaningFormPage() {
             );
           })}
 
+          {submissionError && <p role="alert" className="text-red-600">{submissionError}</p>}
+          <PerformedWorkerPicker {...roster} />
           <button
             onClick={handleSubmit}
-            disabled={submitting}
+            disabled={submitting || !roster.selected.length}
             className="btn-primary w-full py-3 text-lg flex items-center justify-center gap-2"
           >
             {submitting ? <LoadingSpinner size="sm" /> : <Check className="w-5 h-5" />}
             Complete Checklist
           </button>
           <p className="text-xs text-gray-500 text-center mt-2">
-            You'll return to the job page for final submission.
+            {t("compensation.submissionHelp")}
           </p>
         </div>
       </div>

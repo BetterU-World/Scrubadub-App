@@ -1,3 +1,4 @@
+import { freezePerformedWorkers } from "../lib/performedWorkers";
 import { retireLegacyOutgoing } from "../lib/legacyOutgoingRetirement";
 import { mutation, type MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -876,6 +877,7 @@ export const completeJob = mutation({
   args: {
     jobId: v.id("jobs"),
     notes: v.optional(v.string()),
+    performedWorkerIds: v.optional(v.array(v.id("users"))),
     userId: v.optional(v.id("users")),
     sessionToken: v.string(),
   },
@@ -885,6 +887,7 @@ export const completeJob = mutation({
       job,
       user,
       notes: args.notes,
+      performedWorkerIds: args.performedWorkerIds,
     });
   },
 });
@@ -1039,6 +1042,7 @@ export const ownerCompleteJob = mutation({
   args: {
     jobId: v.id("jobs"),
     notes: v.optional(v.string()),
+    performedWorkerIds: v.optional(v.array(v.id("users"))),
     userId: v.id("users"),
     sessionToken: v.string(),
   },
@@ -1059,7 +1063,9 @@ export const ownerCompleteJob = mutation({
     if (job.currentPauseStartedAt !== undefined)
       throw new Error("Resume the job before completing it");
 
+    const evidence = await freezePerformedWorkers(ctx, job, owner, args.performedWorkerIds);
     await ctx.db.patch(args.jobId, {
+      approvedExecutionSequence: evidence.sequence,
       status: "approved",
       completedAt: Date.now(),
       approvedAt: Date.now(),

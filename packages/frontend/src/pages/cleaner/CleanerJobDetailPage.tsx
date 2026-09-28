@@ -1,3 +1,5 @@
+import { compensationError } from "@/components/payments/compensationErrors";
+import { usePerformedWorkers, PerformedWorkerPicker } from "@/components/payments/PerformedWorkerPicker";
 import { useFeedbackState } from "@/components/ui/FeedbackProvider";
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
@@ -31,6 +33,7 @@ export function CleanerJobDetailPage() {
   const job = useQuery(api.queries.jobs.get,
     user ? { jobId: params.id as Id<"jobs">, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
+  const roster = usePerformedWorkers(params.id as Id<"jobs">, Boolean(job?.canCurrentUserExecute));
   const acceptJob = useMutation(api.mutations.jobs.acceptJob);
   const denyJob = useMutation(api.mutations.jobs.denyJob);
   const arriveJob = useMutation(api.mutations.jobs.arriveJob);
@@ -56,6 +59,7 @@ export function CleanerJobDetailPage() {
   const [cleanerCancelling, setCleanerCancelling] = useState(false);
   const [showComplete, setShowComplete] = useState(false);
   const [completionNotes, setCompletionNotes] = useState("");
+  const [submissionError, setSubmissionError] = useState("");
   const [completing, setCompleting] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [denying, setDenying] = useState(false);
@@ -126,11 +130,12 @@ export function CleanerJobDetailPage() {
   const handleCompleteJob = async () => {
     if (!user) return;
     setCompleting(true);
+    setSubmissionError("");
     try {
-      await completeJob({ jobId: job._id, notes: completionNotes || undefined, userId: user._id, sessionToken: getStaffSessionToken() });
+      await completeJob({ performedWorkerIds: roster.selected, jobId: job._id, notes: completionNotes || undefined, userId: user._id, sessionToken: getStaffSessionToken() });
       setShowComplete(false);
     } catch (err: any) {
-      console.error(err);
+      setSubmissionError(compensationError(err, t));
     } finally {
       setCompleting(false);
     }
@@ -375,6 +380,8 @@ export function CleanerJobDetailPage() {
         title={t("jobs.denyJob")}
         pending={denying}
       >
+            {submissionError && <p role="alert" className="text-red-600">{submissionError}</p>}
+      <PerformedWorkerPicker {...roster} />
             <textarea
               className="input-field mb-4"
               rows={3}
@@ -463,6 +470,7 @@ export function CleanerJobDetailPage() {
               <button onClick={() => setShowComplete(false)} className="btn-secondary">{t("common.cancel")}</button>
               <AsyncButton
                 onClick={handleCompleteJob}
+                disabled={!roster.selected.length}
                 pending={completing}
                 pendingLabel={t("common.completing")}
                 className="btn-primary flex items-center gap-2"

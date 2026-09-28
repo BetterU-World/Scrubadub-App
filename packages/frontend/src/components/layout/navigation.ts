@@ -118,6 +118,7 @@ export const managerSections: NavSection[] = [
       { href: "/commercial-accounts", labelKey: "nav.commercialAccounts", icon: Briefcase },
       { href: "/employees", labelKey: "nav.employees", icon: Users },
       { href: "/commercial-invoices", labelKey: "nav.invoices", icon: Receipt },
+      { href: "/owner/payments", labelKey: "nav.payments", icon: Banknote, activePrefixes: ["/owner/cleaner-payments"] },
       { href: "/financials", labelKey: "nav.financials", icon: Banknote },
     ],
   },
@@ -215,7 +216,7 @@ export function getNavSectionsForRole(
     (canManageTeam || item.href !== "/employees") &&
     ((canManageDocuments || canManageSalesAndCommercial || item.href !== "/owner/settings/documents") &&
       (canManageDocuments || item.href !== "/owner/settings/onboarding")) &&
-    (canViewFinancials || item.href !== "/financials") &&
+    (canViewFinancials || (item.href !== "/financials" && item.href !== "/owner/payments")) &&
     (canManageInvoices || item.href !== "/commercial-invoices") &&
     (canViewAnalytics || (item.href !== "/performance" && item.href !== "/analytics"))
   ) }));

@@ -1,3 +1,4 @@
+import { freezePerformedWorkers } from "./performedWorkers";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
@@ -10,6 +11,7 @@ type SubmissionArgs = {
   user: Doc<"users">;
   formId?: Id<"forms">;
   notes?: string;
+  performedWorkerIds?: Id<"users">[];
   maintenanceCost?: number;
   maintenanceVendor?: string;
 };
@@ -70,6 +72,7 @@ export async function submitJobExecution(ctx: MutationCtx, args: SubmissionArgs)
     }
   }
 
+  await freezePerformedWorkers(ctx, job, user, args.performedWorkerIds);
   const now = Date.now();
   let pauseHistory = job.pauseHistory;
   if (job.currentPauseStartedAt !== undefined) {

@@ -137,7 +137,7 @@ export const approve = mutation({
       status: "approved",
       ownerNotes: args.notes,
     });
-    await ctx.db.patch(form.jobId, { status: "approved", approvedAt: Date.now() });
+    await ctx.db.patch(form.jobId, { status: "approved", approvedAt: Date.now(), approvedExecutionSequence: job.submittedExecutionSequence });
 
     const approveProperty = job.propertyId ? await ctx.db.get(job.propertyId) : null;
     const approvePropertyName = approveProperty?.name ?? job.propertySnapshot?.name ?? "a property";
@@ -259,6 +259,7 @@ export const submit = mutation({
     formId: v.id("forms"),
     userId: v.optional(v.id("users")),
     sessionToken: v.string(),
+    performedWorkerIds: v.optional(v.array(v.id("users"))),
     maintenanceCost: v.optional(v.number()),
     maintenanceVendor: v.optional(v.string()),
   },
@@ -271,6 +272,7 @@ export const submit = mutation({
       job,
       user,
       formId: args.formId,
+      performedWorkerIds: args.performedWorkerIds,
       maintenanceCost: args.maintenanceCost,
       maintenanceVendor: args.maintenanceVendor,
     });

@@ -1,3 +1,6 @@
+import { useTranslation } from "react-i18next";
+import { compensationError } from "@/components/payments/compensationErrors";
+import { usePerformedWorkers, PerformedWorkerPicker } from "@/components/payments/PerformedWorkerPicker";
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -8,6 +11,7 @@ import { useParams, useLocation } from "wouter";
 import { Check, Send, ImagePlus, ChevronLeft, MessageSquare } from "lucide-react";
 
 export function MaintenanceFormPage() {
+  const { t } = useTranslation();
   const params = useParams<{ id: string }>();
   const { user } = useAuth();
   const [, setLocation] = useLocation();
@@ -26,6 +30,7 @@ export function MaintenanceFormPage() {
     form && user ? { formId: form._id, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
 
+  const roster = usePerformedWorkers(params.id as Id<"jobs">, Boolean(job?.canCurrentUserExecute));
   const updateItem = useMutation(api.mutations.forms.updateItem);
   const submitForm = useMutation(api.mutations.forms.submit);
   const generateUploadUrl = useMutation(api.mutations.storage.generateUploadUrl);
@@ -33,6 +38,7 @@ export function MaintenanceFormPage() {
 
   const [showNoteFor, setShowNoteFor] = useState<string | null>(null);
   const [noteText, setNoteText] = useState("");
+  const [submissionError, setSubmissionError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [costEstimate, setCostEstimate] = useState("");
@@ -82,9 +88,11 @@ export function MaintenanceFormPage() {
 
   const handleSubmit = async () => {
     setSubmitting(true);
+    setSubmissionError("");
     try {
       const parsedCost = parseFloat(costEstimate);
       await submitForm({
+        performedWorkerIds: roster.selected,
         formId: form._id,
         userId: user!._id,
         sessionToken: getStaffSessionToken(),
@@ -93,7 +101,7 @@ export function MaintenanceFormPage() {
       });
       setLocation(`/jobs/${job._id}`);
     } catch (err) {
-      console.error(err);
+      setSubmissionError(compensationError(err, t));
     } finally {
       setSubmitting(false);
     }
@@ -208,10 +216,12 @@ export function MaintenanceFormPage() {
         </div>
       </div>
 
+      {submissionError && <p role="alert" className="text-red-600">{submissionError}</p>}
+      <PerformedWorkerPicker {...roster} />
       {/* Submit */}
       <button
         onClick={handleSubmit}
-        disabled={submitting || !allComplete}
+        disabled={!roster.selected.length || submitting || !allComplete}
         className="btn-primary w-full flex items-center justify-center gap-2 py-3 text-lg"
       >
         {submitting ? <LoadingSpinner size="sm" /> : <Send className="w-5 h-5" />}
