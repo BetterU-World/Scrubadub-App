@@ -1,6 +1,7 @@
+import { LegacyOutgoingNotice } from "@/components/payments/LegacyOutgoingNotice";
 import { useFeedbackState } from "@/components/ui/FeedbackProvider";
 import { useState, useEffect } from "react";
-import { useQuery, useMutation, useAction } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
@@ -105,28 +106,8 @@ export function JobDetailPage() {
   const reopenInspection = useMutation(api.mutations.inspections.reopenInspection);
 
   // Cleaner payments
-  const cleanerPaymentData = useQuery(
-    api.queries.cleanerPayments.getCleanerPaymentForJob,
-    user && sessionToken && job
-      ? { userId: user._id, sessionToken, jobId: params.id as Id<"jobs"> }
-      : "skip"
-  );
-  const createCleanerPayment = useMutation(api.mutations.cleanerPayments.createCleanerPayment);
-  const markCleanerPaidOutside = useMutation(api.mutations.cleanerPayments.markCleanerPaidOutside);
-  const createCleanerPaymentCheckout = useAction(api.actions.cleanerPayments.createCleanerPaymentCheckout);
-  const updatePlannedCleanerPay = useMutation(api.mutations.jobs.updatePlannedCleanerPay);
-  const sendStripeConnectInviteMut = useMutation(api.mutations.cleanerPayments.sendStripeConnectInvite);
 
   // Settlements
-  const settlement = useQuery(
-    api.queries.settlements.getSettlementForJob,
-    user && sessionToken && job && !job.sharedFromJobId
-      ? { userId: user._id, sessionToken, originalJobId: params.id as Id<"jobs"> }
-      : "skip"
-  );
-  const upsertSettlement = useMutation(api.mutations.settlements.upsertSettlementForSharedJob);
-  const markSettlementPaid = useMutation(api.mutations.settlements.markSettlementPaid);
-  const createSettlementCheckout = useAction(api.actions.settlements.createSettlementPayCheckout);
 
   // Owner self-execution mutations
   const ownerStartJobMut = useMutation(api.mutations.jobs.ownerStartJob);
@@ -149,33 +130,13 @@ export function JobDetailPage() {
   const [sharing, setSharing] = useState(false);
   const [expandPackage, setExpandPackage] = useState(false);
   const [sharedJobAction, setSharedJobAction] = useState(false);
-  const [settlementAmount, setSettlementAmount] = useState("");
-  const [settlementSaving, setSettlementSaving] = useState(false);
-  const [settlementPayMethod, setSettlementPayMethod] = useState("");
-  const [showSettlementPay, setShowSettlementPay] = useState(false);
-  const [stripePayLoading, setStripePayLoading] = useState(false);
-  const [cleanerPayAmount, setCleanerPayAmount] = useState("");
-  const [cleanerPayAmountInit, setCleanerPayAmountInit] = useState(false);
-  const [cleanerPaySaving, setCleanerPaySaving] = useState(false);
-  const [cleanerStripeLoading, setCleanerStripeLoading] = useState(false);
-  const [plannedPaySaving, setPlannedPaySaving] = useState(false);
-  const [editingPlannedPay, setEditingPlannedPay] = useState(false);
-  const [showConnectStripeModal, setShowConnectStripeModal] = useState(false);
-  const [connectStripeLoading, setConnectStripeLoading] = useState(false);
+
   // Owner self-execution state
   const [ownerInspScore, setOwnerInspScore] = useState(7);
   const [ownerInspSeverity, setOwnerInspSeverity] = useState("none");
   const [ownerInspNotes, setOwnerInspNotes] = useState("");
   const [ownerInspSubmitting, setOwnerInspSubmitting] = useState(false);
   const [ownerInspectionSubmitted, setOwnerInspectionSubmitted] = useState(false);
-
-  // Pre-fill cleaner pay amount from planned pay
-  useEffect(() => {
-    if (job && !cleanerPayAmountInit && (job as any).plannedCleanerPayCents) {
-      setCleanerPayAmount(((job as any).plannedCleanerPayCents / 100).toFixed(2));
-      setCleanerPayAmountInit(true);
-    }
-  }, [job, cleanerPayAmountInit]);
 
   if (job === undefined) return <PageLoader />;
   if (job === null) return <div className="text-center py-12 text-gray-500">{t("jobs.jobNotFound")}</div>;
@@ -221,7 +182,6 @@ export function JobDetailPage() {
           </div>
         }
       />
-
 
       <div className="space-y-6">
         <ServicePricingPanel jobId={job._id} commercial={Boolean(job.commercialAccountId)} />
@@ -629,250 +589,7 @@ export function JobDetailPage() {
           </div>
         )}
 
-        {/* Cleaner Payment panel — Owner view */}
-        {user?.role === "owner" && cleanerPaymentData && cleanerPaymentData.cleanerUserId && (() => {
-          const { payment, cleanerName, cleanerStripeAccountId } = cleanerPaymentData;
-          const isPaid = payment?.status === "PAID";
-          const isCheckoutInProgress = payment?.status === "OPEN" && payment?.amountCents != null && payment?.method != null;
-          const isEligible = ["submitted", "approved"].includes(job.status);
-          const isRejectedOrCancelled = job.status === "cancelled" || job.status === "denied" || (job as any).acceptanceStatus === "denied";
-
-          return (
-            <div className="card border-emerald-200">
-              <h3 className="font-semibold text-emerald-700 flex items-center gap-2 mb-3">
-                <DollarSign className="w-5 h-5" /> {t("jobs.cleanerPayment")}
-              </h3>
-
-              {isRejectedOrCancelled && !isPaid ? (
-                /* Rejected or cancelled — no payment actions */
-                <div className="flex items-center gap-2 py-2">
-                  <AlertTriangle className="w-4 h-4 text-gray-400" />
-                  <p className="text-sm text-gray-500">
-                    {job.status === "cancelled"
-                      ? t("jobs.paymentsUnavailableCancelled")
-                      : t("jobs.paymentsUnavailableRejected")}
-                  </p>
-                </div>
-              ) : isPaid ? (
-                /* Already paid */
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-500">{t("jobs.paidTo", { name: cleanerName })}</p>
-                      <p className="text-xl font-bold text-gray-900">
-                        ${((payment!.amountCents ?? 0) / 100).toFixed(2)}
-                      </p>
-                    </div>
-                    <span className="badge bg-green-100 text-green-700">{t("status.paid")}</span>
-                  </div>
-                  {payment!.paidAt && (
-                    <p className="text-xs text-gray-500 flex items-center gap-1">
-                      {t("payments.paidOn")} {new Date(payment!.paidAt).toLocaleDateString()}
-                      {payment!.method === "in_app" ? (
-                        <span className="inline-flex items-center gap-1 ml-1">
-                          <CreditCard className="w-3 h-3" /> {t("payments.viaScrub")}
-                        </span>
-                      ) : (
-                        <span> — {t("payments.paidOutsideApp")}</span>
-                      )}
-                    </p>
-                  )}
-                </div>
-              ) : isCheckoutInProgress ? (
-                /* Checkout in progress */
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-500">{t("jobs.paymentTo", { name: cleanerName })}</p>
-                      <p className="text-xl font-bold text-gray-900">
-                        ${(payment!.amountCents! / 100).toFixed(2)}
-                      </p>
-                    </div>
-                    <span className="badge bg-amber-100 text-amber-700">{t("jobs.checkoutStarted")}</span>
-                  </div>
-                  <p className="text-sm text-gray-500">
-                    {t("jobs.checkoutDesc")}
-                  </p>
-                </div>
-              ) : (
-                /* Planned pay + pay actions (when eligible) */
-                <div className="space-y-3">
-                  <p className="text-sm text-gray-600">
-                    {t("jobs.payWorker", { name: cleanerName })}
-                  </p>
-
-                  {/* Planned pay: saved state (non-eligible, has amount, not editing) */}
-                  {!isEligible && (job as any).plannedCleanerPayCents && !editingPlannedPay ? (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobs.plannedPay")}</label>
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 max-w-xs">
-                          <DollarSign className="w-4 h-4" />
-                          <span className="font-medium text-gray-700">
-                            {((job as any).plannedCleanerPayCents / 100).toFixed(2)}
-                          </span>
-                        </div>
-                        <span className="text-xs font-medium text-green-600 flex items-center gap-1">
-                          <CheckCircle className="w-3.5 h-3.5" /> {t("jobs.saved")}
-                        </span>
-                        <button
-                          onClick={() => {
-                            setEditingPlannedPay(true);
-                            setCleanerPayAmount(((job as any).plannedCleanerPayCents / 100).toFixed(2));
-                          }}
-                          className="btn-secondary text-xs flex items-center gap-1"
-                        >
-                          <Pencil className="w-3 h-3" /> {t("jobs.change")}
-                        </button>
-                      </div>
-                      <p className="text-xs text-gray-400 mt-1">
-                        {t("jobs.paymentAfterSubmit")}
-                      </p>
-                    </div>
-                  ) : (
-                    /* Editable amount input (when eligible, or planned pay not set, or editing) */
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        {isEligible ? t("jobs.amount") : t("jobs.plannedPay")}
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="1"
-                          className="input-field max-w-xs"
-                          placeholder="0.00"
-                          value={cleanerPayAmount}
-                          onChange={(e) => setCleanerPayAmount(e.target.value)}
-                        />
-                        {!isEligible && (
-                          <button
-                            disabled={plannedPaySaving || !cleanerPayAmount || Number(cleanerPayAmount) < 1}
-                            onClick={async () => {
-                              const uid = requireUserId(user);
-                              if (!uid) return;
-                              setPlannedPaySaving(true);
-                              try {
-                                const amountCents = Math.round(Number(cleanerPayAmount) * 100);
-                                await updatePlannedCleanerPay({
-                                  sessionToken: getStaffSessionToken(),
-                                  userId: uid,
-                                  jobId: params.id as Id<"jobs">,
-                                  amountCents,
-                                });
-                                setEditingPlannedPay(false);
-                                setToast({ message: t("jobs.saved"), type: "success" });
-                              } catch (err: any) {
-                                setToast({ message: err.message ?? t("common.failedToSave"), type: "error" });
-                              } finally {
-                                setPlannedPaySaving(false);
-                              }
-                            }}
-                            className="btn-secondary text-sm"
-                          >
-                            {plannedPaySaving ? t("common.saving") : t("common.save")}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {isEligible ? (
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {cleanerStripeAccountId ? (
-                        <button
-                          disabled={cleanerStripeLoading || cleanerPaySaving || !cleanerPayAmount || Number(cleanerPayAmount) < 1}
-                          onClick={async () => {
-                            const uid = requireUserId(user);
-                            if (!uid) return;
-                            setCleanerStripeLoading(true);
-                            try {
-                              const amountCents = Math.round(Number(cleanerPayAmount) * 100);
-                              // Also persist as planned pay
-                              await updatePlannedCleanerPay({
-                                sessionToken: getStaffSessionToken(),
-                                userId: uid,
-                                jobId: params.id as Id<"jobs">,
-                                amountCents,
-                              });
-                              const paymentId = await createCleanerPayment({
-                                userId: uid,
-                                sessionToken: getStaffSessionToken(),
-                                jobId: params.id as Id<"jobs">,
-                                amountCents,
-                              });
-                              const result = await createCleanerPaymentCheckout({
-                                userId: uid,
-                                sessionToken: getStaffSessionToken(),
-                                cleanerPaymentId: paymentId,
-                              });
-                              if (result?.url) window.location.href = result.url;
-                            } catch (err: any) {
-                              console.error("Checkout error:", err);
-                              setToast({ message: toFriendlyMessage(err, t("common.paymentDidNotGoThrough")), type: "error" });
-                            } finally {
-                              setCleanerStripeLoading(false);
-                            }
-                          }}
-                          className="btn-primary text-sm flex items-center gap-1"
-                        >
-                          <CreditCard className="w-4 h-4" />
-                          {cleanerStripeLoading ? t("common.loading") : t("jobs.payViaScrub")}
-                        </button>
-                      ) : (
-                        <button
-                          disabled={!cleanerPaymentData?.cleanerEmail}
-                          onClick={() => setShowConnectStripeModal(true)}
-                          className="btn-primary text-sm flex items-center gap-1"
-                          title={!cleanerPaymentData?.cleanerEmail ? t("jobs.connectCleanerNoEmail") : undefined}
-                        >
-                          <CreditCard className="w-4 h-4" />
-                          {t("jobs.connectCleanerToStripe")}
-                        </button>
-                      )}
-                      <button
-                        disabled={cleanerPaySaving || cleanerStripeLoading || !cleanerPayAmount || Number(cleanerPayAmount) < 1}
-                        onClick={async () => {
-                          const uid = requireUserId(user);
-                          if (!uid) return;
-                          setCleanerPaySaving(true);
-                          try {
-                            const amountCents = Math.round(Number(cleanerPayAmount) * 100);
-                            await updatePlannedCleanerPay({
-                              sessionToken: getStaffSessionToken(),
-                              userId: uid,
-                              jobId: params.id as Id<"jobs">,
-                              amountCents,
-                            });
-                            await markCleanerPaidOutside({
-                              userId: uid,
-                              sessionToken: getStaffSessionToken(),
-                              jobId: params.id as Id<"jobs">,
-                              amountCents,
-                            });
-                            setToast({ message: t("jobs.cleanerMarkedPaid"), type: "success" });
-                          } catch (err: any) {
-                            setToast({ message: toFriendlyMessage(err, t("common.failedToRecordPayment")), type: "error" });
-                          } finally {
-                            setCleanerPaySaving(false);
-                          }
-                        }}
-                        className="btn-secondary text-sm flex items-center gap-1"
-                      >
-                        <CheckCircle className="w-4 h-4" />
-                        {cleanerPaySaving ? t("common.saving") : t("jobs.markPaidOutside")}
-                      </button>
-                    </div>
-                  ) : !((job as any).plannedCleanerPayCents && !editingPlannedPay) ? (
-                    <p className="text-xs text-gray-400">
-                      {t("jobs.paymentAfterSubmit")}
-                    </p>
-                  ) : null}
-                </div>
-              )}
-            </div>
-          );
-        })()}
+        {user?.role === "owner" && <LegacyOutgoingNotice />}
 
         {/* Cleaner Payment panel — Cleaner view (read-only planned pay) */}
         {user?.role !== "owner" && job.cleanerIds?.includes(user?._id as any) && (
@@ -1017,220 +734,9 @@ export function JobDetailPage() {
         )}
 
         {/* Partner Settlement card (Owner1 view: when job has an accepted/completed partner) */}
-        {sharedStatus && sharedStatus.some((s) => s.status === "accepted" || s.status === "completed" || s.status === "in_progress") && (
-          <div className="card border-amber-200">
-            <h3 className="font-semibold text-amber-700 flex items-center gap-2 mb-3">
-              <DollarSign className="w-5 h-5" /> {t("jobs.partnerSettlement")}
-            </h3>
-
-            {settlement === undefined ? (
-              <div className="flex items-center gap-2 text-sm text-gray-400">
-                <LoadingSpinner size="sm" />
-                <span>{t("common.loading")}</span>
-              </div>
-            ) : settlement === null ? (
-              /* No settlement yet — create */
-              <div className="space-y-3">
-                <p className="text-sm text-gray-600">
-                  {t("jobs.createSettlementDesc")}
-                </p>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Amount ($)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    className="input-field max-w-xs"
-                    placeholder="0.00"
-                    value={settlementAmount}
-                    onChange={(e) => setSettlementAmount(e.target.value)}
-                  />
-                </div>
-                <button
-                  disabled={settlementSaving || !settlementAmount || Number(settlementAmount) <= 0}
-                  onClick={async () => {
-                    const uid = requireUserId(user);
-                    const partner = sharedStatus!.find((s) => s.status === "accepted" || s.status === "completed" || s.status === "in_progress");
-                    if (!uid || !partner) return;
-                    setSettlementSaving(true);
-                    try {
-                      await upsertSettlement({
-                        userId: uid,
-                        sessionToken: getStaffSessionToken(),
-                        originalJobId: params.id as Id<"jobs">,
-                        toCompanyId: partner.toCompanyId,
-                        amountCents: Math.round(Number(settlementAmount) * 100),
-                      });
-                      setToast({ message: t("jobs.settlementCreated"), type: "success" });
-                    } catch (err: any) {
-                      setToast({ message: err.message ?? t("common.failed"), type: "error" });
-                    } finally {
-                      setSettlementSaving(false);
-                    }
-                  }}
-                  className="btn-primary text-sm"
-                >
-                  {settlementSaving ? t("requests.creating") : t("jobs.createSettlement")}
-                </button>
-              </div>
-            ) : settlement.status === "open" ? (
-              /* Open settlement — show amount, update, mark paid */
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500">{t("jobs.amountOwedTo", { name: settlement.toCompanyName })}</p>
-                    <p className="text-xl font-bold text-gray-900">${(settlement.amountCents / 100).toFixed(2)}</p>
-                  </div>
-                  <span className="badge bg-amber-100 text-amber-700">Open</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    className="input-field max-w-[120px] text-sm"
-                    placeholder={(settlement.amountCents / 100).toFixed(2)}
-                    value={settlementAmount}
-                    onChange={(e) => setSettlementAmount(e.target.value)}
-                  />
-                  <button
-                    disabled={settlementSaving || !settlementAmount || Number(settlementAmount) <= 0}
-                    onClick={async () => {
-                      const uid = requireUserId(user);
-                      if (!uid) return;
-                      setSettlementSaving(true);
-                      try {
-                        await upsertSettlement({
-                          userId: uid,
-                          sessionToken: getStaffSessionToken(),
-                          originalJobId: params.id as Id<"jobs">,
-                          toCompanyId: settlement.toCompanyId,
-                          amountCents: Math.round(Number(settlementAmount) * 100),
-                        });
-                        setSettlementAmount("");
-                        setToast({ message: t("jobs.amountUpdated"), type: "success" });
-                      } catch (err: any) {
-                        setToast({ message: err.message ?? t("common.failed"), type: "error" });
-                      } finally {
-                        setSettlementSaving(false);
-                      }
-                    }}
-                    className="btn-secondary text-sm"
-                  >
-                    {t("common.update")}
-                  </button>
-                  <button
-                    disabled={stripePayLoading}
-                    onClick={async () => {
-                      const uid = requireUserId(user);
-                      if (!uid || !settlement) return;
-                      setStripePayLoading(true);
-                      try {
-                        const result = await createSettlementCheckout({
-                          userId: uid,
-                          sessionToken: getStaffSessionToken(),
-                          settlementId: settlement._id,
-                        });
-                        if (result?.url) window.location.href = result.url;
-                      } catch (err: any) {
-                        console.error("Checkout error:", err);
-                        setToast({ message: toFriendlyMessage(err, t("common.paymentDidNotGoThrough")), type: "error" });
-                      } finally {
-                        setStripePayLoading(false);
-                      }
-                    }}
-                    className="btn-primary text-sm flex items-center gap-1"
-                  >
-                    <CreditCard className="w-4 h-4" />
-                    {stripePayLoading ? t("common.loading") : t("jobs.payViaScrub")}
-                  </button>
-                  <button
-                    onClick={() => setShowSettlementPay(true)}
-                    className="btn-secondary text-sm flex items-center gap-1"
-                  >
-                    <CheckCircle className="w-4 h-4" /> {t("jobs.markPaid")}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              /* Paid settlement */
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-500">{t("jobs.paidTo", { name: settlement.toCompanyName })}</p>
-                    <p className="text-xl font-bold text-gray-900">${(settlement.amountCents / 100).toFixed(2)}</p>
-                  </div>
-                  <span className="badge bg-green-100 text-green-700">Paid</span>
-                </div>
-                {settlement.paidAt && (
-                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                    {t("payments.paidOn")} {new Date(settlement.paidAt).toLocaleDateString()}
-                    {settlement.paidMethod === "scrubadub_stripe" ? (
-                      <span className="inline-flex items-center gap-1 ml-1">
-                        <CreditCard className="w-3 h-3" /> via Scrubadub
-                      </span>
-                    ) : settlement.paidMethod ? (
-                      <span> via {settlement.paidMethod}</span>
-                    ) : null}
-                  </p>
-                )}
-                {settlement.note && (
-                  <p className="text-xs text-gray-500">Note: {settlement.note}</p>
-                )}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Mark settlement paid dialog */}
-        {showSettlementPay && settlement && (
-          <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm">
-              <h3 className="text-lg font-semibold mb-4">{t("jobs.markSettlementPaid")}</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobs.paymentMethod")}</label>
-                  <input
-                    type="text"
-                    className="input-field"
-                    placeholder={t("jobs.paymentMethodPlaceholder")}
-                    value={settlementPayMethod}
-                    onChange={(e) => setSettlementPayMethod(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-3 mt-4">
-                <button onClick={() => { setShowSettlementPay(false); setSettlementPayMethod(""); }} className="btn-secondary">{t("common.cancel")}</button>
-                <button
-                  disabled={settlementSaving}
-                  onClick={async () => {
-                    const uid = requireUserId(user);
-                    if (!uid) return;
-                    setSettlementSaving(true);
-                    try {
-                      await markSettlementPaid({
-                        userId: uid,
-                        sessionToken: getStaffSessionToken(),
-                        settlementId: settlement._id,
-                        paidMethod: settlementPayMethod || undefined,
-                      });
-                      setShowSettlementPay(false);
-                      setSettlementPayMethod("");
-                      setToast({ message: t("jobs.settlementPaid"), type: "success" });
-                    } catch (err: any) {
-                      setToast({ message: err.message ?? t("common.failed"), type: "error" });
-                    } finally {
-                      setSettlementSaving(false);
-                    }
-                  }}
-                  className="btn-primary"
-                >
-                  {settlementSaving ? t("common.saving") : t("jobs.confirmPaid")}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+
       </div>
 
       {/* Owner self-execution controls — only when owner is explicitly self-assigned */}
@@ -1379,69 +885,6 @@ export function JobDetailPage() {
       />
 
       {/* Stripe Connect invite modal */}
-      {showConnectStripeModal && cleanerPaymentData && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-2">{t("jobs.connectCleanerToStripe")}</h3>
-            {cleanerPaymentData.cleanerEmail ? (
-              <>
-                <p className="text-sm text-gray-600 mb-4">
-                  {t("jobs.connectCleanerToStripeDesc", { name: cleanerPaymentData.cleanerName })}
-                </p>
-                <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 mb-4 text-sm text-gray-700">
-                  {cleanerPaymentData.cleanerEmail}
-                </div>
-                <div className="flex justify-end gap-2">
-                  <button
-                    onClick={() => setShowConnectStripeModal(false)}
-                    className="btn-secondary text-sm"
-                  >
-                    {t("common.cancel")}
-                  </button>
-                  <button
-                    disabled={connectStripeLoading}
-                    onClick={async () => {
-                      const uid = requireUserId(user);
-                      if (!uid || !cleanerPaymentData.cleanerUserId) return;
-                      setConnectStripeLoading(true);
-                      try {
-                        await sendStripeConnectInviteMut({
-                          userId: uid,
-                          sessionToken: getStaffSessionToken(),
-                          cleanerUserId: cleanerPaymentData.cleanerUserId,
-                        });
-                        setShowConnectStripeModal(false);
-                        setToast({ message: t("jobs.stripeInviteSent"), type: "success" });
-                      } catch (err: any) {
-                        setToast({ message: toFriendlyMessage(err, t("jobs.stripeInviteFailed")), type: "error" });
-                      } finally {
-                        setConnectStripeLoading(false);
-                      }
-                    }}
-                    className="btn-primary text-sm"
-                  >
-                    {connectStripeLoading ? t("common.loading") : t("jobs.sendInvite")}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="text-sm text-gray-600 mb-4">
-                  {t("jobs.connectCleanerNoEmail")}
-                </p>
-                <div className="flex justify-end">
-                  <button
-                    onClick={() => setShowConnectStripeModal(false)}
-                    className="btn-secondary text-sm"
-                  >
-                    {t("common.close")}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Rework dialog */}
       {showRework && (

@@ -1,11 +1,10 @@
+import { recordLegacyCompletionConflict } from "../lib/legacyOutgoingCompletion";
+import { retireLegacyOutgoing } from "../lib/legacyOutgoingRetirement";
 import { mutation, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwnerSession } from "../lib/sessionAuth";
-import { checkRateLimit } from "../lib/rateLimit";
 
-/**
- * Create or update a settlement for a shared job (idempotent per originalJobId + from/to).
- */
+/** Retired compatibility endpoint; authenticates ownership but never writes financial state. */
 export const upsertSettlementForSharedJob = mutation({
   args: {
     userId: v.id("users"),
@@ -17,82 +16,13 @@ export const upsertSettlementForSharedJob = mutation({
   },
   handler: async (ctx, args) => {
     const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
-    const fromCompanyId = owner.companyId;
-
-    // Verify the job belongs to this owner's company
-    const job = await ctx.db.get(args.originalJobId);
-    if (!job || job.companyId !== fromCompanyId) {
-      throw new Error("Job not found or does not belong to your company");
-    }
-
-    // Lightweight validation: verify a sharedJob record exists for this pair
-    const sharedJob = await ctx.db
-      .query("sharedJobs")
-      .withIndex("by_originalJobId", (q) => q.eq("originalJobId", args.originalJobId))
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("fromCompanyId"), fromCompanyId),
-          q.eq(q.field("toCompanyId"), args.toCompanyId)
-        )
-      )
-      .first();
-
-    if (!sharedJob) {
-      throw new Error("No shared job record found for this job and partner");
-    }
-
-    // Block settlements for rejected or cancelled shared jobs
-    if (sharedJob.status === "rejected") {
-      throw new Error("Cannot create settlement for a rejected shared job");
-    }
-    if (job.status === "cancelled") {
-      throw new Error("Cannot create settlement for a cancelled job");
-    }
-
-    // Check for existing settlement (idempotent upsert)
-    const existing = await ctx.db
-      .query("companySettlements")
-      .withIndex("by_originalJobId", (q) => q.eq("originalJobId", args.originalJobId))
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("fromCompanyId"), fromCompanyId),
-          q.eq(q.field("toCompanyId"), args.toCompanyId)
-        )
-      )
-      .first();
-
-    const now = Date.now();
-    const currency = args.currency ?? "usd";
-
-    if (existing) {
-      if (existing.status === "paid") {
-        throw new Error("Settlement is already paid");
-      }
-      await ctx.db.patch(existing._id, {
-        amountCents: args.amountCents,
-        currency,
-        updatedAt: now,
-      });
-      return existing._id;
-    }
-
-    return await ctx.db.insert("companySettlements", {
-      fromCompanyId,
-      toCompanyId: args.toCompanyId,
-      originalJobId: args.originalJobId,
-      sharedJobId: sharedJob._id,
-      amountCents: args.amountCents,
-      currency,
-      status: "open",
-      createdAt: now,
-      updatedAt: now,
-    });
+    const record = await ctx.db.get(args.originalJobId);
+    if (!record || record.companyId !== owner.companyId) throw new Error("Access denied");
+    return retireLegacyOutgoing();
   },
 });
 
-/**
- * Mark a settlement as paid.
- */
+/** Retired compatibility endpoint; authenticates ownership but never writes financial state. */
 export const markSettlementPaid = mutation({
   args: {
     userId: v.id("users"),
@@ -103,41 +33,15 @@ export const markSettlementPaid = mutation({
   },
   handler: async (ctx, args) => {
     const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
-    // Rate limit: 10 mark-paid per 60s per user
-    await checkRateLimit(ctx, {
-      key: `u:${owner._id}:markSettlementPaid`,
-      limit: 10,
-      windowMs: 60_000,
-    });
-
-    const settlement = await ctx.db.get(args.settlementId);
-    if (!settlement) throw new Error("Settlement not found");
-
-    // Only the owing company can mark paid
-    if (settlement.fromCompanyId !== owner.companyId) {
-      throw new Error("Only the owing company can mark a settlement as paid");
-    }
-
-    if (settlement.status === "paid") {
-      throw new Error("Settlement is already paid");
-    }
-
-    const now = Date.now();
-    await ctx.db.patch(args.settlementId, {
-      status: "paid",
-      paidAt: now,
-      updatedAt: now,
-      paidMethod: args.paidMethod,
-      note: args.note,
-    });
-
-    return args.settlementId;
+    const record = await ctx.db.get(args.settlementId);
+    if (!record || record.fromCompanyId !== owner.companyId) throw new Error("Access denied");
+    return retireLegacyOutgoing();
   },
 });
 
 /**
  * Internal mutation: mark a settlement as paid via Stripe (called from webhook).
- * Idempotent — if already paid, no-op.
+ * Same-Session retries are no-ops; conflicting Session evidence is audited.
  */
 export const markSettlementPaidViaStripe = internalMutation({
   args: {
@@ -156,7 +60,12 @@ export const markSettlementPaidViaStripe = internalMutation({
       return;
     }
 
-    // Idempotent: if already paid, no-op
+    // Preserve distinct completion evidence without overwriting historical state.
+    if ((settlement.status === "paid" && settlement.stripeCheckoutSessionId !== args.stripeCheckoutSessionId) || (settlement.stripeCheckoutSessionId && settlement.stripeCheckoutSessionId !== args.stripeCheckoutSessionId)) {
+      await recordLegacyCompletionConflict(ctx, { companyId: settlement.fromCompanyId, entityType: "companySettlements", entityId: String(settlement._id), previousSessionId: settlement.stripeCheckoutSessionId, incomingSessionId: args.stripeCheckoutSessionId, incomingPaymentIntentId: args.stripePaymentIntentId });
+      return;
+    }
+    // Same-object retries are idempotent; distinct completion evidence stays visible.
     if (settlement.status === "paid") {
       console.log("[settlement:webhook] already paid, skipping:", args.settlementId);
       return;
@@ -180,10 +89,7 @@ export const markSettlementPaidViaStripe = internalMutation({
   },
 });
 
-/**
- * Batch: create a settlement batch for multiple open settlements to the same partner.
- * Returns the batch ID so the action can create a Stripe checkout.
- */
+/** Retired compatibility endpoint; authenticates ownership but never writes financial state. */
 export const createSettlementBatch = mutation({
   args: {
     userId: v.id("users"),
@@ -192,55 +98,15 @@ export const createSettlementBatch = mutation({
   },
   handler: async (ctx, args) => {
     const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
-    // Rate limit: 2 batch pay creations per 60s per user
-    await checkRateLimit(ctx, {
-      key: `u:${owner._id}:createSettlementBatch`,
-      limit: 2,
-      windowMs: 60_000,
-    });
-
-    if (args.settlementIds.length === 0) throw new Error("No settlements selected");
-
-    let toCompanyId: any = null;
-    let totalAmountCents = 0;
-    let currency = "usd";
-
-    for (const sId of args.settlementIds) {
-      const s = await ctx.db.get(sId);
-      if (!s) throw new Error("Settlement not found");
-      if (s.fromCompanyId !== owner.companyId) throw new Error("Access denied");
-      if (s.status !== "open") throw new Error("One or more settlements is not open");
-      if (!toCompanyId) {
-        toCompanyId = s.toCompanyId;
-        currency = s.currency;
-      } else if (String(toCompanyId) !== String(s.toCompanyId)) {
-        throw new Error("All settlements in a batch must be to the same partner");
-      }
-      totalAmountCents += s.amountCents;
+    for (const id of args.settlementIds) {
+      const record = await ctx.db.get(id);
+      if (!record || record.fromCompanyId !== owner.companyId) throw new Error("Access denied");
     }
-
-    const now = Date.now();
-    const batchId = await ctx.db.insert("settlementBatches", {
-      fromCompanyId: owner.companyId,
-      toCompanyId,
-      totalAmountCents,
-      currency,
-      status: "OPEN",
-      createdAt: now,
-      paidByUserId: owner._id,
-    });
-
-    for (const sId of args.settlementIds) {
-      await ctx.db.insert("settlementBatchItems", { batchId, settlementId: sId });
-    }
-
-    return batchId;
+    return retireLegacyOutgoing();
   },
 });
 
-/**
- * Batch: mark multiple settlements to the same partner as paid outside app.
- */
+/** Retired compatibility endpoint; authenticates ownership but never writes financial state. */
 export const markSettlementBatchPaidOutside = mutation({
   args: {
     userId: v.id("users"),
@@ -251,39 +117,11 @@ export const markSettlementBatchPaidOutside = mutation({
   },
   handler: async (ctx, args) => {
     const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
-    // Rate limit: 10 mark-paid-outside per 60s per user
-    await checkRateLimit(ctx, {
-      key: `u:${owner._id}:markSettlementBatchPaidOutside`,
-      limit: 10,
-      windowMs: 60_000,
-    });
-
-    if (args.settlementIds.length === 0) throw new Error("No settlements selected");
-
-    let toCompanyId: any = null;
-    for (const sId of args.settlementIds) {
-      const s = await ctx.db.get(sId);
-      if (!s) throw new Error("Settlement not found");
-      if (s.fromCompanyId !== owner.companyId) throw new Error("Access denied");
-      if (s.status !== "open") throw new Error("One or more settlements is not open");
-      if (!toCompanyId) toCompanyId = s.toCompanyId;
-      else if (String(toCompanyId) !== String(s.toCompanyId)) {
-        throw new Error("All settlements must be to the same partner");
-      }
+    for (const id of args.settlementIds) {
+      const record = await ctx.db.get(id);
+      if (!record || record.fromCompanyId !== owner.companyId) throw new Error("Access denied");
     }
-
-    const now = Date.now();
-    for (const sId of args.settlementIds) {
-      await ctx.db.patch(sId, {
-        status: "paid" as const,
-        paidAt: now,
-        updatedAt: now,
-        paidMethod: args.paidMethod || "outside_app",
-        note: args.note,
-      });
-    }
-
-    return { count: args.settlementIds.length };
+    return retireLegacyOutgoing();
   },
 });
 
@@ -305,6 +143,11 @@ export const markSettlementBatchPaidViaStripe = internalMutation({
       return;
     }
 
+    if ((batch.status === "PAID" && batch.stripeCheckoutSessionId !== args.stripeCheckoutSessionId) || (batch.stripeCheckoutSessionId && batch.stripeCheckoutSessionId !== args.stripeCheckoutSessionId)) {
+      await recordLegacyCompletionConflict(ctx, { companyId: batch.fromCompanyId, entityType: "settlementBatches", entityId: String(batch._id), previousSessionId: batch.stripeCheckoutSessionId, incomingSessionId: args.stripeCheckoutSessionId, incomingPaymentIntentId: args.stripePaymentIntentId });
+      return;
+    }
+    // Same-object retries are idempotent; distinct completion evidence stays visible.
     if (batch.status === "PAID") {
       console.log("[settlementBatch:webhook] already paid, skipping:", args.batchId);
       return;

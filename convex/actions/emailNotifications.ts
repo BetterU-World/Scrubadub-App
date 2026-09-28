@@ -6,7 +6,6 @@ import {
   sendJobAssignedEmail,
   sendJobCompletedEmail,
   sendJobApprovedEmail,
-  sendStripeConnectInviteEmail,
   sendPasswordResetEmail,
   sendClientPasswordResetEmail,
   sendInviteEmail,
@@ -102,10 +101,8 @@ export const sendStripeConnectInvite = internalAction({
     ownerName: v.optional(v.string()),
   },
   handler: async (_ctx, args) => {
-    const sent = await sendStripeConnectInviteEmail(args.email, args.ownerName);
-    if (!sent) {
-      console.error("[emailNotifications] Stripe connect invite email failed for", args.email);
-    }
+    // Do not promote the retired worker payment rail, including previously queued invites.
+    return;
   },
 });
 
