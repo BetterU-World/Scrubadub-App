@@ -10,6 +10,14 @@ import { DialogShell } from "@/components/ui/DialogShell";
 
 import { money, parseMoney } from "./compensationMoney";
 export { money, parseMoney } from "./compensationMoney";
+type Recipient =
+  | { type: "worker"; userId: Id<"users"> }
+  | { type: "partner_company"; companyId: Id<"companies"> };
+type LedgerProps = {
+  workerId?: Id<"users">;
+  partnerCompanyId?: Id<"companies">;
+  payerCompanyId?: Id<"companies">;
+};
 type Correction = {
   kind: "adjust" | "void" | "reverse";
   id: string;
@@ -19,23 +27,31 @@ type Correction = {
   paid?: number;
 };
 
-export function RecipientLedger(props: { workerId?: Id<"users"> }) {
+export function RecipientLedger(props: LedgerProps) {
   return (
     <FinancialBoundary>
       <RecipientLedgerContent {...props} />
     </FinancialBoundary>
   );
 }
-function RecipientLedgerContent({ workerId }: { workerId?: Id<"users"> }) {
+function RecipientLedgerContent({
+  workerId,
+  partnerCompanyId,
+  payerCompanyId,
+}: LedgerProps) {
   const { user } = useAuth();
   const { t } = useTranslation();
   const auth = user
     ? { userId: user._id, sessionToken: getStaffSessionToken() }
     : null;
-  const recipient = workerId
-    ? { type: "worker" as const, userId: workerId }
-    : undefined;
-  const args = auth ? { ...auth, recipient } : ("skip" as const);
+  const recipient: Recipient | undefined = partnerCompanyId
+    ? { type: "partner_company", companyId: partnerCompanyId }
+    : workerId
+      ? { type: "worker" as const, userId: workerId }
+      : undefined;
+  const args = auth
+    ? { ...auth, recipient, payerCompanyId }
+    : ("skip" as const);
   const totals = useQuery(api.outgoingQueries.recipientOutstandingTotals, args);
   const obligations = usePaginatedQuery(
     api.outgoingQueries.listRecipientHistory,
@@ -52,10 +68,15 @@ function RecipientLedgerContent({ workerId }: { workerId?: Id<"users"> }) {
   const [history, setHistory] = useState<Id<"outgoingObligations"> | null>(
     null,
   );
-  const owner = user?.role === "owner";
+  const owner =
+    user?.role === "owner" &&
+    (!payerCompanyId || payerCompanyId === user.companyId);
   if (!auth) return null;
   if (!totals) return <p role="status">{t("common.loading")}</p>;
-  const name = obligations.results[0]?.recipient.displayName;
+  const name =
+    payerCompanyId && payerCompanyId !== user?.companyId
+      ? obligations.results[0]?.payerName
+      : obligations.results[0]?.recipient.displayName;
   return (
     <div className="space-y-4 min-w-0">
       <h2 className="font-semibold text-xl break-words">
@@ -82,7 +103,7 @@ function RecipientLedgerContent({ workerId }: { workerId?: Id<"users"> }) {
           value={String(totals.openObligationCount)}
         />
       </div>
-      {owner && workerId && totals.outstandingCents > 0 && (
+      {owner && recipient && totals.outstandingCents > 0 && (
         <button className="btn-primary" onClick={() => setPaymentOpen(true)}>
           {t("compensation.recordPayment")}
         </button>
@@ -94,6 +115,12 @@ function RecipientLedgerContent({ workerId }: { workerId?: Id<"users"> }) {
       {obligations.results.map((o) => (
         <article className="card space-y-2 min-w-0" key={o._id}>
           <h4 className="font-medium break-words">{o.sourceLabel}</h4>
+          {o.recipient.type === "partner_company" && (
+            <p className="text-sm">
+              {t("partnerCompensation.version", { version: o.termsVersion })} ·{" "}
+              {t("compensation.approved")}: {money(o.basePrincipalCents)}
+            </p>
+          )}
           {o.adjusted && (
             <p className="text-sm">{t("compensation.adjustedIndicator")}</p>
           )}
@@ -184,6 +211,7 @@ function RecipientLedgerContent({ workerId }: { workerId?: Id<"users"> }) {
         <PaymentHistory
           key={p._id}
           payment={p}
+          payerName={obligations.results[0]?.payerName}
           onReverse={
             owner && !p.ledgerReversed
               ? () => setCorrection({ kind: "reverse", id: p._id })
@@ -196,9 +224,9 @@ function RecipientLedgerContent({ workerId }: { workerId?: Id<"users"> }) {
           {t("compensation.more")}
         </button>
       )}
-      {paymentOpen && workerId && (
+      {paymentOpen && recipient && (
         <RecordPayment
-          workerId={workerId}
+          recipient={recipient!}
           name={name}
           onClose={() => setPaymentOpen(false)}
         />
@@ -235,6 +263,7 @@ function Metric({ label, cents }: { label: string; cents: number }) {
 
 function PaymentHistory({
   payment,
+  payerName,
   onReverse,
 }: {
   payment: {
@@ -245,8 +274,10 @@ function PaymentHistory({
     recordedAt: number;
     ledgerReversed: boolean;
     publicReference?: string;
+    recipient: Recipient;
   };
   onReverse?: () => void;
+  payerName?: string;
 }) {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -270,11 +301,20 @@ function PaymentHistory({
         {t("compensation.recordedDate")}:{" "}
         {new Date(payment.recordedAt).toLocaleDateString()}
       </p>
-      <p className="text-sm text-gray-500">{t("compensation.outsideHelp")}</p>
+      <p className="text-sm text-gray-500">
+        {t(
+          payment.recipient.type === "partner_company"
+            ? "partnerCompensation.recordedByPayer"
+            : "compensation.outsideHelp",
+          { name: payerName ?? "" },
+        )}
+      </p>
       {payment.publicReference && (
         <p className="text-sm break-words">{payment.publicReference}</p>
       )}
-      <p className="text-sm">{t("compensation.recordedByCompany")}</p>
+      {payment.recipient.type === "worker" && (
+        <p className="text-sm">{t("compensation.recordedByCompany")}</p>
+      )}
       {user?.role === "owner" &&
         detail &&
         "administrativeNote" in detail.settlement &&
@@ -522,11 +562,11 @@ const methods = [
   "other",
 ] as const;
 function RecordPayment({
-  workerId,
+  recipient,
   name,
   onClose,
 }: {
-  workerId: Id<"users">;
+  recipient: Recipient;
   name?: string;
   onClose: () => void;
 }) {
@@ -557,17 +597,15 @@ function RecordPayment({
     : null;
   const obligations = usePaginatedQuery(
     api.outgoingQueries.listRecipientHistory,
-    auth
-      ? { ...auth, recipient: { type: "worker", userId: workerId } }
-      : "skip",
+    auth ? { ...auth, recipient } : "skip",
     { initialNumItems: 50 },
   );
   const preview = useQuery(
-    api.workerCompensation.previewPayment,
+    api.outgoingQueries.previewPayment,
     auth && (parseMoney(amount) ?? 0) > 0
       ? {
           ...auth,
-          workerId,
+          recipient,
           amountCents: parseMoney(amount)!,
           selectedObligationIds: selected.length ? selected : undefined,
         }
@@ -581,7 +619,7 @@ function RecordPayment({
     try {
       await record({
         ...auth,
-        recipient: { type: "worker", userId: workerId },
+        recipient,
         currency: "USD",
         amountCents: parseMoney(amount)!,
         paymentDate: date,
@@ -671,17 +709,30 @@ function RecordPayment({
                 value={method}
                 onChange={(e) => setMethod(e.target.value as typeof method)}
               >
-                {methods.map((m) => (
-                  <option key={m} value={m}>
-                    {t(`compensation.${m}`)}
-                  </option>
-                ))}
+                {methods
+                  .filter(
+                    (m) =>
+                      recipient.type === "worker" || m !== "payroll_provider",
+                  )
+                  .map((m) => (
+                    <option key={m} value={m}>
+                      {t(`compensation.${m}`)}
+                    </option>
+                  ))}
               </select>
             </label>
             <label className="block">
-              {t("compensation.reference")}
+              {t(
+                recipient.type === "partner_company"
+                  ? "partnerCompensation.reference"
+                  : "compensation.reference",
+              )}
               <span className="block text-xs text-gray-500">
-                {t("compensation.referenceHelp")}
+                {t(
+                  recipient.type === "partner_company"
+                    ? "partnerCompensation.referenceHelp"
+                    : "compensation.referenceHelp",
+                )}
               </span>
               <input
                 className="input-field"
@@ -781,11 +832,11 @@ function RecordPayment({
             <p>
               {confirmed.remainingRecipientCents === null
                 ? t("compensation.remainingUnavailable")
-                : `${t("compensation.remainingWorker")}: ${money(confirmed.remainingRecipientCents)}`}
+                : `${t(recipient.type === "partner_company" ? "partnerCompensation.remainingCompany" : "compensation.remainingWorker")}: ${money(confirmed.remainingRecipientCents)}`}
             </p>
             {reference.trim() && (
               <p className="break-words">
-                {t("compensation.reference")}: {reference}
+                {t(recipient.type === "partner_company" ? "partnerCompensation.reference" : "compensation.reference")}: {reference}
               </p>
             )}
             <p className="text-sm">{t("compensation.recordConfirm")}</p>

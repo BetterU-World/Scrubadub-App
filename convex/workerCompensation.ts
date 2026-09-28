@@ -17,7 +17,7 @@ import {
   boundedTotal,
 } from "./lib/outgoingLedger";
 import { materializeTerms } from "./outgoingMutations";
-import { planOutsideAllocation } from "./lib/outgoingAllocation";
+import { paymentPreview } from "./lib/outgoingPaymentPreview";
 import { requireAssignedJobExecutor } from "./lib/jobExecutionAuth";
 import { getJobRecipientUserIds } from "./lib/teams";
 
@@ -286,56 +286,7 @@ export const previewPayment = query({
       args.sessionToken,
       args.userId,
     );
-    try {
-      const plan = await planOutsideAllocation(
-        ctx,
-        owner.companyId,
-        recipientKey({ type: "worker", userId: args.workerId }),
-        { ...args, currency: "USD" },
-      );
-      const recipientHistory = await ctx.db
-        .query("outgoingObligations")
-        .withIndex("by_recipient", (q) =>
-          q
-            .eq("payerCompanyId", owner.companyId)
-            .eq(
-              "recipientKey",
-              recipientKey({ type: "worker", userId: args.workerId }),
-            ),
-        )
-        .take(501);
-      if (recipientHistory.some((o) => o.currency !== "USD"))
-        throw new Error("Unsupported currency in ledger");
-      const remainingRecipientCents =
-        recipientHistory.length > 500
-          ? null
-          : recipientHistory.reduce(
-              (total, obligation) =>
-                boundedTotal(
-                  total + projection(obligation).collectibleOutstandingCents,
-                ),
-              0,
-            ) - args.amountCents;
-      return {
-        error: null,
-        remainingRecipientCents,
-        allocatedCents: plan.reduce(
-          (total, p) => boundedTotal(total + p.amountCents),
-          0,
-        ),
-        allocations: plan.map((p) => ({
-          obligationId: p.obligation._id,
-          sourceLabel: p.obligation.sourceLabel,
-          amountCents: p.amountCents,
-          expectedVersion: p.obligation.ledgerVersion,
-          remainingCents:
-            projection(p.obligation).collectibleOutstandingCents -
-            p.amountCents,
-        })),
-      };
-    } catch (error) {
-      return { error: (error as Error).message, allocations: [] };
-    }
+    return paymentPreview(ctx, owner.companyId, recipientKey({type:"worker",userId:args.workerId}), args);
   },
 });
 

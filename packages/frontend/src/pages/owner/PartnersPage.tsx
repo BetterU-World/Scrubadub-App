@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { useTranslation } from "react-i18next";
+import { Link } from "wouter";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
@@ -186,6 +187,7 @@ export function PartnersPage() {
           </button>
         }
       />
+      <Link href="/owner/payments" className="btn-secondary inline-block">{t("partnerCompensation.openPayments")}</Link>
 
       {/* Connect by email */}
       <div className="card mb-6">

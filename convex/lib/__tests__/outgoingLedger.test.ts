@@ -601,33 +601,11 @@ describe("PR C preserved boundaries", () => {
     expect((await s.financialRows()).obligations).toEqual([]);
   });
   it("preserves partner source uniqueness across terms versions", async () => {
-    const s = await setup();
-    const draft = () =>
-      s.t.mutation(m.createDraftTerms, {
-        ...s.owner,
-        source: { type: "partner_shared_job", sharedJobId: s.share },
-        currency: "USD",
-        lines: [
-          {
-            lineId: "partner",
-            recipient: { type: "partner_company", companyId: s.other },
-            amountCents: 12000,
-            basis: "accepted work",
-          },
-        ],
-      });
-    const approve = (termsId: Id<"outgoingTerms">) =>
-      s.t.mutation(internal.outgoingMutations.approveAndMaterialize, {
-        termsId,
-        approverUserId: s.owner.userId,
-        expectedRevision: 1,
-        partnerAcceptance: {
-          actorUserId: s.foreign.userId,
-          evidence: "accepted terms",
-        },
-      });
-    await approve(await draft());
-    await expect(approve(await draft())).rejects.toThrow(
+    const s = await partnerSetup();
+    const termsId = await s.propose();
+    await s.accept(termsId);
+    await s.partnerApprove(termsId);
+    await expect(s.propose(35000, 1)).rejects.toThrow(
       "Source already materialized",
     );
     expect((await s.financialRows()).obligations).toHaveLength(1);
@@ -1037,50 +1015,23 @@ describe("canonical outgoing ledger", () => {
     await expect(s.approve(termsId)).rejects.toThrow("Approved source");
     expect((await s.financialRows()).obligations).toEqual([]);
   });
-  it("supports partner obligations only with actual shared-source and owner acceptance evidence", async () => {
-    const s = await setup();
-    const termsId = await s.t.mutation(m.createDraftTerms, {
-      ...s.owner,
-      source: { type: "partner_shared_job", sharedJobId: s.share },
-      currency: "USD",
-      lines: [
-        {
-          lineId: "partner",
-          recipient: { type: "partner_company", companyId: s.other },
-          amountCents: 12000,
-          basis: "Shared work terms",
-        },
-      ],
-    });
-    await expect(s.approve(termsId)).rejects.toThrow("Partner acceptance");
-    const approval = {
-      termsId,
-      approverUserId: s.owner.userId,
-      expectedRevision: 1,
-      partnerAcceptance: {
-        actorUserId: s.foreign.userId,
-        evidence: "Explicit partner-owner approval reference",
-      },
-    };
-    const [id] = await s.t.mutation(
-      internal.outgoingMutations.approveAndMaterialize,
-      approval,
-    );
-    expect(
-      await s.t.mutation(
-        internal.outgoingMutations.approveAndMaterialize,
-        approval,
-      ),
-    ).toEqual([id]);
+  it("supports partner obligations only with exact recipient acceptance and approved shared execution", async () => {
+    const s = await partnerSetup();
+    const termsId = await s.propose();
+    await expect(s.partnerApprove(termsId)).rejects.toThrow();
+    await s.accept(termsId);
+    const [id] = await s.partnerApprove(termsId);
+    expect(await s.partnerApprove(termsId)).toEqual([id]);
     expect((await s.state(id)).recipient.type).toBe("partner_company");
-    const settlementId = await s.record(12000, "partner-payment", {
+    const settlementId = await s.record(30000, "partner-payment", {
       recipient: { type: "partner_company", companyId: s.other },
       selectedObligationIds: [id],
     });
     expect((await s.state(id)).paymentState).toBe("PAID");
-    await expect(
-      s.t.query(q.getSettlementDetail, { ...s.foreign, settlementId }),
-    ).rejects.toThrow("Access denied");
+    expect(
+      (await s.t.query(q.getSettlementDetail, { ...s.foreign, settlementId }))
+        .settlement.provenance,
+    ).toBe("outside_declared");
     await s.assertEvidence();
   });
   it("records partial settlements, then full settlement, without claiming provider verification", async () => {
@@ -1748,7 +1699,7 @@ describe("canonical outgoing ledger", () => {
         currency: "USD",
         lines: [line],
       }),
-    ).rejects.toThrow("mismatch");
+    ).rejects.toThrow("proposal workflow");
     await expect(
       s.t.mutation(m.createDraftTerms, {
         ...s.owner,
@@ -1762,5 +1713,684 @@ describe("canonical outgoing ledger", () => {
         ],
       }),
     ).rejects.toThrow("mismatch");
+  });
+});
+
+async function partnerSetup() {
+  const s = await setup();
+  const connection = await s.t.run(async (ctx) => {
+    const c = await ctx.db.insert("ownerConnections", {
+      companyAId: s.company,
+      companyBId: s.other,
+      status: "active",
+      createdAt: 1,
+    });
+    await ctx.db.patch(s.foreignJob, {
+      sharedFromJobId: s.job,
+      approvedAt: 2,
+      approvedExecutionSequence: 1,
+      executionHistory: [
+        {
+          sequence: 1,
+          provenance: "submission_confirmed",
+          confirmedById: s.foreign.userId,
+          confirmedAt: 1,
+          scheduledDate: "2026-09-01",
+          workers: [
+            {
+              userId: s.foreign.userId,
+              displayName: "Recipient owner",
+              role: "owner",
+            },
+          ],
+        },
+      ],
+    });
+    return c;
+  });
+  const propose = (amountCents = 30000, expectedLatestVersion = 0) =>
+    s.t.mutation(api.partnerCompensation.propose, {
+      ...s.owner,
+      sharedJobId: s.share,
+      amountCents,
+      expectedLatestVersion,
+    });
+  const accept = (
+    termsId: Id<"outgoingTerms">,
+    expectedGoverningTermsId?: Id<"outgoingTerms">,
+  ) =>
+    s.t.mutation(api.partnerCompensation.respond, {
+      ...s.foreign,
+      termsId,
+      expectedRevision: 1,
+      accept: true,
+      expectedGoverningTermsId,
+    });
+  const partnerApprove = (termsId: Id<"outgoingTerms">) =>
+    s.t.mutation(api.partnerCompensation.approve, {
+      ...s.owner,
+      termsId,
+      expectedRevision: 1,
+      expectedExecutionSequence: 1,
+    });
+  return { ...s, connection, propose, accept, partnerApprove };
+}
+
+describe("PR E partner workflow", () => {
+  it("creates no debt through the actual copied-form approval path", async () => {
+    const s = await partnerSetup(),
+      termsId = await s.propose();
+    await s.accept(termsId);
+    const formId = await s.t.run(async (ctx) => {
+      await ctx.db.patch(s.foreignJob, {
+        status: "submitted",
+        submittedExecutionSequence: 1,
+        approvedExecutionSequence: undefined,
+        approvedAt: undefined,
+      });
+      return ctx.db.insert("forms", {
+        companyId: s.other,
+        jobId: s.foreignJob,
+        cleanerId: s.foreign.userId,
+        status: "submitted",
+      });
+    });
+    await expect(s.partnerApprove(termsId)).rejects.toThrow("execution");
+    await s.t.mutation(api.mutations.forms.approve, { ...s.foreign, formId });
+    expect((await s.financialRows()).obligations).toEqual([]);
+    expect(
+      (
+        await s.t.query(api.partnerCompensation.detail, {
+          ...s.owner,
+          sharedJobId: s.share,
+        })
+      ).fulfillment?.sequence,
+    ).toBe(1);
+    const results = await Promise.all([
+      s.partnerApprove(termsId),
+      s.partnerApprove(termsId),
+    ]);
+    expect(results[0]).toEqual(results[1]);
+    expect((await s.financialRows()).obligations).toHaveLength(1);
+  });
+  it("records oldest-first multi-job allocations to one partner and rejects cross-recipient/company selections", async () => {
+    const s = await partnerSetup();
+    const first = await s.propose(30000);
+    await s.accept(first);
+    const [a] = await s.partnerApprove(first);
+    const share = await s.t.run(async (ctx) => {
+      const original = await ctx.db.get(s.job),
+        copy = await ctx.db.get(s.foreignJob);
+      const { _id: x, _creationTime: y, ...originalFields } = original!;
+      const { _id: z, _creationTime: w, ...copyFields } = copy!;
+      const originalJobId = await ctx.db.insert("jobs", {
+        ...originalFields,
+        scheduledDate: "2026-09-02",
+      });
+      const copiedJobId = await ctx.db.insert("jobs", {
+        ...copyFields,
+        sharedFromJobId: originalJobId,
+        scheduledDate: "2026-09-02",
+      });
+      return ctx.db.insert("sharedJobs", {
+        originalJobId,
+        copiedJobId,
+        fromCompanyId: s.company,
+        toCompanyId: s.other,
+        status: "completed",
+        sharePackage: false,
+        completedAt: 2,
+      });
+    });
+    const second = await s.t.mutation(api.partnerCompensation.propose, {
+      ...s.owner,
+      sharedJobId: share,
+      amountCents: 20000,
+      expectedLatestVersion: 0,
+    });
+    await s.t.mutation(api.partnerCompensation.respond, {
+      ...s.foreign,
+      termsId: second,
+      expectedRevision: 1,
+      accept: true,
+    });
+    const [b] = await s.t.mutation(api.partnerCompensation.approve, {
+      ...s.owner,
+      termsId: second,
+      expectedRevision: 1,
+      expectedExecutionSequence: 1,
+    });
+    const recipient = { type: "partner_company" as const, companyId: s.other },
+      preview = await s.t.query(q.previewPayment, {
+        ...s.owner,
+        recipient,
+        amountCents: 40000,
+      });
+    expect(
+      preview.allocations.map((p) => [p.obligationId, p.amountCents]),
+    ).toEqual([
+      [a, 30000],
+      [b, 10000],
+    ]);
+    const payment = await s.record(40000, "partner-multi", {
+      recipient,
+      allocations: preview.allocations.map(
+        ({ obligationId, amountCents, expectedVersion }) => ({
+          obligationId,
+          amountCents,
+          expectedVersion,
+        }),
+      ),
+    });
+    expect(
+      (
+        await s.t.query(q.getSettlementDetail, {
+          ...s.foreign,
+          settlementId: payment,
+        })
+      ).allocations,
+    ).toHaveLength(2);
+    const worker = await s.obligation(1000);
+    await expect(
+      s.record(100, "mix-recipient", {
+        recipient,
+        selectedObligationIds: [worker, b],
+      }),
+    ).rejects.toThrow();
+    await expect(
+      s.t.query(q.previewPayment, {
+        ...s.foreign,
+        recipient: { type: "partner_company", companyId: s.company },
+        amountCents: 100,
+        selectedObligationIds: [b],
+      }),
+    ).resolves.toMatchObject({ error: "Access denied" });
+    await s.record(10000, "partner-finish", {
+      recipient,
+      selectedObligationIds: [b],
+    });
+    expect((await s.state(b)).paymentState).toBe("PAID");
+    await s.assertEvidence();
+  });
+  it("blocks acceptance on disconnected relationships and retains closed identities for reinvitation", async () => {
+    const s = await partnerSetup(),
+      id = await s.propose();
+    await s.t.mutation(api.mutations.partners.disconnectConnection, {
+      ...s.owner,
+      connectionId: s.connection,
+    });
+    await expect(s.accept(id)).rejects.toThrow("Active partner");
+    // Existing disconnection and immutable proposal evidence are never deleted by PR E.
+    expect((await s.t.run((ctx) => ctx.db.get(s.connection)))?.status).toBe(
+      "disconnected",
+    );
+    expect(
+      (
+        await s.t.query(api.partnerCompensation.detail, {
+          ...s.foreign,
+          sharedJobId: s.share,
+        })
+      ).terms[0].partner?.connectionId,
+    ).toBe(s.connection);
+    vi.useFakeTimers();
+    try {
+      const invite = await s.t.mutation(api.mutations.partners.connectByEmail, {
+        ...s.owner,
+        email: "foreign@ledger.test",
+      });
+      expect(invite.success).toBe(true);
+      expect((await s.t.run((ctx) => ctx.db.get(s.connection)))?.status).toBe(
+        "disconnected",
+      );
+      expect(
+        await s.t.mutation(api.mutations.partners.connectByEmail, {
+          ...s.owner,
+          email: "foreign@ledger.test",
+        }),
+      ).toMatchObject({ success: false, reason: "already_pending" });
+    } finally {
+      vi.clearAllTimers();
+      vi.useRealTimers();
+    }
+  });
+  it("fails honestly on oversized partner recipient totals and source histories", async () => {
+    const s = await partnerSetup(),
+      termsId = await s.propose();
+    await s.accept(termsId);
+    const [id] = await s.partnerApprove(termsId);
+    await s.t.run(async (ctx) => {
+      const row = await ctx.db.get(id);
+      const { _id, _creationTime, ...fields } = row!;
+      for (let i = 0; i < 500; i++)
+        await ctx.db.insert("outgoingObligations", fields);
+    });
+    await expect(
+      s.t.query(q.recipientOutstandingTotals, {
+        ...s.foreign,
+        payerCompanyId: s.company,
+        recipient: { type: "partner_company", companyId: s.other },
+      }),
+    ).rejects.toThrow("too large");
+    await s.t.run(async (ctx) => {
+      const row = await ctx.db.get(termsId);
+      const { _id, _creationTime, ...fields } = row!;
+      for (let i = 0; i < 500; i++)
+        await ctx.db.insert("outgoingTerms", { ...fields, version: i + 2 });
+    });
+    await expect(
+      s.t.query(api.partnerCompensation.detail, {
+        ...s.foreign,
+        sharedJobId: s.share,
+      }),
+    ).rejects.toThrow("too large");
+  });
+  it("preserves exact immutable versions, decline and explicit governing replacement without debt", async () => {
+    const s = await partnerSetup(),
+      p = api.partnerCompensation;
+    const a = await s.propose();
+    expect(await s.propose()).toBe(a);
+    await s.accept(a);
+    await expect(
+      s.t.mutation(m.updateDraftTerms, {
+        ...s.owner,
+        termsId: a,
+        expectedRevision: 1,
+        currency: "USD",
+        lines: [
+          {
+            lineId: "partner",
+            recipient: { type: "partner_company", companyId: s.other },
+            amountCents: 35000,
+            basis: "changed",
+          },
+        ],
+      }),
+    ).rejects.toThrow("immutable");
+    const b = await s.propose(35000, 1);
+    let d = await s.t.query(p.detail, { ...s.foreign, sharedJobId: s.share });
+    expect(d.governingTermsId).toBe(a);
+    await s.t.mutation(p.respond, {
+      ...s.foreign,
+      termsId: b,
+      expectedRevision: 1,
+      accept: false,
+      expectedGoverningTermsId: a,
+    });
+    const c = await s.propose(36000, 2);
+    await expect(s.accept(c)).rejects.toThrow("Governing terms changed");
+    await s.accept(c, a);
+    d = await s.t.query(p.detail, { ...s.owner, sharedJobId: s.share });
+    expect(d.governingTermsId).toBe(c);
+    expect(d.terms.find((t) => t._id === c)?.partner?.replacesTermsId).toBe(a);
+    expect(d.terms.find((t) => t._id === a)?.lines[0].amountCents).toBe(30000);
+    expect(d.terms.find((t) => t._id === b)?.partner?.state).toBe("declined");
+    expect((await s.financialRows()).obligations).toEqual([]);
+    await expect(s.partnerApprove(a)).rejects.toThrow("governing");
+    await s.partnerApprove(c);
+    expect((await s.financialRows()).obligations[0].basePrincipalCents).toBe(
+      36000,
+    );
+  });
+  it.each([
+    "scheduled",
+    "in_progress",
+    "submitted",
+    "rework_requested",
+    "cancelled",
+  ] as const)(
+    "blocks financial approval for copied work in %s",
+    async (status) => {
+      const s = await partnerSetup(),
+        id = await s.propose();
+      await s.accept(id);
+      await s.t.run((ctx) => ctx.db.patch(s.foreignJob, { status }));
+      await expect(s.partnerApprove(id)).rejects.toThrow(
+        "Approved shared execution",
+      );
+      expect((await s.financialRows()).obligations).toEqual([]);
+    },
+  );
+  it("rejects missing, historical or stale approved execution and broken copied linkage", async () => {
+    const s = await partnerSetup(),
+      id = await s.propose();
+    await s.accept(id);
+    await s.t.run((ctx) =>
+      ctx.db.patch(s.foreignJob, { approvedExecutionSequence: 2 }),
+    );
+    await expect(s.partnerApprove(id)).rejects.toThrow("execution");
+    await s.t.run(async (ctx) => {
+      const copy = await ctx.db.get(s.foreignJob);
+      await ctx.db.patch(s.foreignJob, {
+        approvedExecutionSequence: 1,
+        executionHistory: copy!.executionHistory!.map((e) => ({
+          ...e,
+          provenance: "owner_confirmed_historical" as const,
+        })),
+      });
+    });
+    await expect(s.partnerApprove(id)).rejects.toThrow("execution");
+    await s.t.run((ctx) =>
+      ctx.db.patch(s.foreignJob, { sharedFromJobId: undefined }),
+    );
+    await expect(s.partnerApprove(id)).rejects.toThrow("linkage");
+  });
+  it("restricts both company financial authorities and denies third-company, worker, manager writes and unauthenticated reads", async () => {
+    const s = await partnerSetup(),
+      id = await s.propose(),
+      p = api.partnerCompensation;
+    for (const actor of [s.manager, s.restricted, s.worker, s.foreign])
+      await expect(
+        s.t.mutation(p.propose, {
+          ...actor,
+          sharedJobId: s.share,
+          amountCents: 1000,
+          expectedLatestVersion: 1,
+        }),
+      ).rejects.toThrow();
+    for (const actor of [s.owner, s.manager, s.restricted, s.worker])
+      await expect(
+        s.t.mutation(p.respond, {
+          ...actor,
+          termsId: id,
+          expectedRevision: 1,
+          accept: true,
+        }),
+      ).rejects.toThrow();
+    await s.accept(id);
+    for (const actor of [s.manager, s.restricted, s.worker, s.foreign])
+      await expect(
+        s.t.mutation(p.approve, {
+          ...actor,
+          termsId: id,
+          expectedRevision: 1,
+          expectedExecutionSequence: 1,
+        }),
+      ).rejects.toThrow();
+    for (const actor of [
+      s.worker,
+      s.restricted,
+      { ...s.owner, sessionToken: "" },
+    ])
+      await expect(
+        s.t.query(p.detail, { ...actor, sharedJobId: s.share }),
+      ).rejects.toThrow();
+    expect(
+      (await s.t.query(p.detail, { ...s.manager, sharedJobId: s.share }))
+        .terms[0]._id,
+    ).toBe(id);
+    await s.t.run((ctx) =>
+      ctx.db.patch(s.manager.userId, { companyId: s.other }),
+    );
+    await expect(
+      s.t.mutation(p.respond, {
+        ...s.manager,
+        termsId: id,
+        expectedRevision: 1,
+        accept: true,
+      }),
+    ).rejects.toThrow("Owner");
+    await s.t.run(async (ctx) => {
+      const c = await ctx.db.insert("companies", {
+        name: "Third",
+        timezone: "UTC",
+      });
+      await ctx.db.patch(s.foreign.userId, { companyId: c });
+    });
+    await expect(
+      s.t.query(p.detail, { ...s.foreign, sharedJobId: s.share }),
+    ).rejects.toThrow("Access denied");
+  });
+  it("preserves accepted debt and recipient projections after disconnection and isolates payer private notes", async () => {
+    const s = await partnerSetup(),
+      id = await s.propose();
+    await s.accept(id);
+    await s.t.mutation(api.mutations.partners.disconnectConnection, {
+      ...s.owner,
+      connectionId: s.connection,
+    });
+    await expect(s.propose(35000, 1)).rejects.toThrow("Active partner");
+    const [obligationId] = await s.partnerApprove(id);
+    const settlementId = await s.record(12000, "partial-partner", {
+      recipient: { type: "partner_company", companyId: s.other },
+      administrativeNote: "PAYER-SECRET",
+      publicReference: "Check 105",
+    });
+    const args = {
+      ...s.foreign,
+      payerCompanyId: s.company,
+      recipient: { type: "partner_company" as const, companyId: s.other },
+    };
+    expect(await s.t.query(q.recipientOutstandingTotals, args)).toMatchObject({
+      approvedCents: 30000,
+      recordedPaidCents: 12000,
+      outstandingCents: 18000,
+    });
+    for (const result of [
+      await s.t.query(q.listSettlementHistory, {
+        ...args,
+        paginationOpts: page,
+      }),
+      await s.t.query(q.getSettlementDetail, { ...s.foreign, settlementId }),
+      await s.t.query(q.getObligationDetail, { ...s.foreign, obligationId }),
+    ]) {
+      expect(JSON.stringify(result)).not.toContain("PAYER-SECRET");
+      expect(JSON.stringify(result)).toContain("Check 105");
+      expect(JSON.stringify(result)).not.toContain("requestFingerprint");
+    }
+    for (const actor of [s.foreign, s.manager, s.worker])
+      await expect(
+        s.t.mutation(m.recordOutsideSettlement, {
+          ...actor,
+          recipient: { type: "partner_company", companyId: s.other },
+          currency: "USD",
+          amountCents: 100,
+          paymentDate: "2026-09-01",
+          method: "check",
+          idempotencyKey: "no-write",
+        }),
+      ).rejects.toThrow();
+    await s.record(18000, "second-partner", {
+      recipient: { type: "partner_company", companyId: s.other },
+    });
+    expect((await s.state(obligationId)).outstandingCents).toBe(0);
+    await s.assertEvidence();
+  });
+  it("reuses partial allocations, stale preview rejection, date checks, adjustments, void and reversal without changing accepted terms", async () => {
+    const s = await partnerSetup(),
+      termsId = await s.propose();
+    await s.accept(termsId);
+    const [id] = await s.partnerApprove(termsId),
+      recipient = { type: "partner_company" as const, companyId: s.other };
+    const preview = await s.t.query(q.previewPayment, {
+      ...s.owner,
+      recipient,
+      amountCents: 12000,
+      selectedObligationIds: [id],
+    });
+    expect(preview).toMatchObject({
+      allocatedCents: 12000,
+      remainingRecipientCents: 18000,
+    });
+    const record = {
+      recipient,
+      allocations: preview.allocations.map(
+        ({ obligationId, amountCents, expectedVersion }) => ({
+          obligationId,
+          amountCents,
+          expectedVersion,
+        }),
+      ),
+      publicReference: "B2B-public",
+      administrativeNote: "secret",
+    };
+    const payment = await s.record(12000, "partner-idempotent", record);
+    expect(await s.record(12000, "partner-idempotent", record)).toBe(payment);
+    await expect(s.record(12000, "stale-partner", record)).rejects.toThrow(
+      "Stale",
+    );
+    await expect(
+      s.record(19000, "over-partner", { recipient }),
+    ).rejects.toThrow();
+    await expect(
+      s.record(100, "future-partner", { recipient, paymentDate: "2999-01-01" }),
+    ).rejects.toThrow("payment date");
+    await expect(
+      s.t.mutation(m.adjustObligation, {
+        ...s.owner,
+        obligationId: id,
+        deltaCents: -20000,
+        reason: "Correction",
+        expectedVersion: 2,
+        idempotencyKey: "bad-correction",
+      }),
+    ).rejects.toThrow("below recorded");
+    await s.t.mutation(m.adjustObligation, {
+      ...s.owner,
+      obligationId: id,
+      deltaCents: 1000,
+      reason: "Correction",
+      expectedVersion: 2,
+      idempotencyKey: "partner-adjust",
+    });
+    await expect(
+      s.t.mutation(m.voidObligation, {
+        ...s.owner,
+        obligationId: id,
+        expectedVersion: 3,
+        reason: "Void",
+        idempotencyKey: "partner-void-paid",
+      }),
+    ).rejects.toThrow("unsettled");
+    await s.t.mutation(m.reverseOutsideSettlement, {
+      ...s.owner,
+      settlementId: payment,
+      reason: "Ledger record only",
+      idempotencyKey: "partner-reverse",
+    });
+    expect((await s.state(id)).outstandingCents).toBe(31000);
+    await s.t.mutation(m.voidObligation, {
+      ...s.owner,
+      obligationId: id,
+      expectedVersion: 4,
+      reason: "Void unpaid",
+      idempotencyKey: "partner-void",
+    });
+    expect(
+      (
+        await s.t.query(api.partnerCompensation.detail, {
+          ...s.foreign,
+          sharedJobId: s.share,
+        })
+      ).terms[0].lines[0].amountCents,
+    ).toBe(30000);
+    expect((await s.financialRows()).settlements).toHaveLength(1);
+    await s.assertEvidence();
+  });
+  it("keeps A-to-B compensation separate from B-to-workers and rejects A-to-B-workers", async () => {
+    const s = await partnerSetup();
+    const workers = await s.t.run(async (ctx) => {
+      const users = [];
+      for (const name of ["Maya", "Elena"])
+        users.push(
+          await ctx.db.insert("users", {
+            companyId: s.other,
+            role: "cleaner",
+            name,
+            email: name + "@partner.test",
+            passwordHash: "fixture",
+            status: "active",
+          }),
+        );
+      await ctx.db.patch(s.foreignJob, {
+        cleanerIds: users,
+        executionHistory: [
+          {
+            sequence: 1,
+            provenance: "submission_confirmed",
+            confirmedById: s.foreign.userId,
+            confirmedAt: 1,
+            scheduledDate: "2026-09-01",
+            workers: users.map((userId, i) => ({
+              userId,
+              displayName: i ? "Elena" : "Maya",
+              role: "cleaner",
+            })),
+          },
+        ],
+      });
+      return users;
+    });
+    const terms = await s.propose();
+    await s.accept(terms);
+    await s.partnerApprove(terms);
+    for (const [i, workerId] of workers.entries())
+      await s.t.mutation(api.workerCompensation.reviewCompensation, {
+        ...s.foreign,
+        jobId: s.foreignJob,
+        workerId,
+        amountCents: i ? 9000 : 12000,
+        reason: "Reviewed performed work",
+      });
+    await expect(
+      s.t.mutation(api.workerCompensation.reviewCompensation, {
+        ...s.owner,
+        jobId: s.job,
+        workerId: workers[0],
+        amountCents: 12000,
+        reason: "No foreign worker debt",
+      }),
+    ).rejects.toThrow();
+    const rows = (await s.financialRows()).obligations;
+    expect(rows.filter((o) => o.payerCompanyId === s.company)).toHaveLength(1);
+    expect(
+      rows.filter(
+        (o) => o.payerCompanyId === s.other && o.recipient.type === "worker",
+      ),
+    ).toHaveLength(2);
+    expect(
+      (
+        await s.t.query(api.partnerCompensation.balances, {
+          ...s.owner,
+          direction: "payable",
+        })
+      )[0].outstandingCents,
+    ).toBe(30000);
+    expect(
+      (
+        await s.t.query(api.workerCompensation.workerBalances, { ...s.foreign })
+      ).reduce((sum, b) => sum + b.outstandingCents, 0),
+    ).toBe(21000);
+  });
+  it("never infers proposals or debt from legacy open rows and blocks the generic partner draft path", async () => {
+    const s = await partnerSetup();
+    expect(
+      (
+        await s.t.query(api.partnerCompensation.detail, {
+          ...s.foreign,
+          sharedJobId: s.share,
+        })
+      ).terms,
+    ).toEqual([]);
+    expect(
+      await s.t.query(api.partnerCompensation.balances, {
+        ...s.owner,
+        direction: "payable",
+      }),
+    ).toEqual([]);
+    await expect(
+      s.t.mutation(m.createDraftTerms, {
+        ...s.owner,
+        source: { type: "partner_shared_job", sharedJobId: s.share },
+        currency: "USD",
+        lines: [
+          {
+            lineId: "partner",
+            recipient: { type: "partner_company", companyId: s.other },
+            amountCents: 100,
+            basis: "Legacy",
+          },
+        ],
+      }),
+    ).rejects.toThrow("proposal workflow");
   });
 });

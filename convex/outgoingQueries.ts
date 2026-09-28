@@ -8,6 +8,8 @@ import {
   requireVerifiedStaffSession,
 } from "./lib/sessionAuth";
 import { outgoingRecipientInput } from "./lib/outgoingValidators";
+import { requireOwnerSession } from "./lib/sessionAuth";
+import { paymentPreview } from "./lib/outgoingPaymentPreview";
 import {
   projection,
   recipientKey,
@@ -28,7 +30,7 @@ async function safeSettlement(
     args.sessionToken,
     args.userId,
   );
-  if (reader.role === "owner")
+  if (reader.role === "owner" && reader.companyId === settlement.payerCompanyId)
     return { ...settlement, ledgerReversed: reversed };
   return publicSettlement(settlement, reversed);
 }
@@ -44,6 +46,8 @@ function publicObligation(o: Doc<"outgoingObligations">) {
     sourceLabel: o.sourceLabel,
     currency: o.currency,
     basis: o.basis,
+    termsVersion: o.termsVersion,
+    termsId: o.termsId,
     approvedAt: o.approvedAt,
     ...projection(o),
   };
@@ -74,7 +78,17 @@ async function canReadTarget(
     args.sessionToken,
     args.userId,
   );
-  if (user.companyId !== payerCompanyId) throw new Error("Access denied");
+  if (user.companyId !== payerCompanyId) {
+    if (!user.companyId || key !== `partner_company:${user.companyId}`)
+      throw new Error("Access denied");
+    await requireOwnerOrManagerCapability(
+      ctx,
+      args.sessionToken,
+      args.userId,
+      "canViewFinancials",
+    );
+    return false;
+  }
   if (key === `worker:${user._id}`) return false; // Frozen identity; no current job/team lookup.
   await requireOwnerOrManagerCapability(
     ctx,
@@ -89,6 +103,7 @@ async function historyAuthority(
   args: {
     userId: Doc<"users">["_id"];
     sessionToken: string;
+    payerCompanyId?: Doc<"companies">["_id"];
     recipient?:
       | { type: "worker"; userId: Doc<"users">["_id"] }
       | { type: "partner_company"; companyId: Doc<"companies">["_id"] };
@@ -105,6 +120,10 @@ async function historyAuthority(
     userId: user._id,
   };
   const key = recipientKey(recipient);
+  if (args.payerCompanyId && args.payerCompanyId !== user.companyId) {
+    await canReadTarget(ctx, args, args.payerCompanyId, key);
+    return { payerCompanyId: args.payerCompanyId, key, companyRead: false };
+  }
   const companyRead = key !== `worker:${user._id}`;
   if (companyRead)
     await requireOwnerOrManagerCapability(
@@ -218,6 +237,7 @@ export const listRecipientHistory = query({
   args: {
     ...auth,
     recipient: v.optional(outgoingRecipientInput),
+    payerCompanyId: v.optional(v.id("companies")),
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
@@ -240,7 +260,11 @@ export const listRecipientHistory = query({
   },
 });
 export const recipientOutstandingTotals = query({
-  args: { ...auth, recipient: v.optional(outgoingRecipientInput) },
+  args: {
+    ...auth,
+    recipient: v.optional(outgoingRecipientInput),
+    payerCompanyId: v.optional(v.id("companies")),
+  },
   handler: async (ctx, args) => {
     const access = await historyAuthority(ctx, args);
     const obligations = await ctx.db
@@ -335,6 +359,7 @@ export const listSettlementHistory = query({
   args: {
     ...auth,
     recipient: v.optional(outgoingRecipientInput),
+    payerCompanyId: v.optional(v.id("companies")),
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
@@ -359,5 +384,27 @@ export const listSettlementHistory = query({
         }),
       ),
     };
+  },
+});
+
+export const previewPayment = query({
+  args: {
+    ...auth,
+    recipient: outgoingRecipientInput,
+    amountCents: v.number(),
+    selectedObligationIds: v.optional(v.array(v.id("outgoingObligations"))),
+  },
+  handler: async (ctx, args) => {
+    const owner = await requireOwnerSession(
+      ctx,
+      args.sessionToken,
+      args.userId,
+    );
+    return paymentPreview(
+      ctx,
+      owner.companyId,
+      recipientKey(args.recipient),
+      args,
+    );
   },
 });

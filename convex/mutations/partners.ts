@@ -103,26 +103,20 @@ export const connectByEmail = mutation({
       .query("ownerConnections")
       .withIndex("by_companyAId", (q) => q.eq("companyAId", owner.companyId))
       .collect();
-    const forwardMatch = existingA.find(
-      (c) => c.companyBId === targetCompanyId
-    );
 
     const existingB = await ctx.db
       .query("ownerConnections")
       .withIndex("by_companyAId", (q) => q.eq("companyAId", targetCompanyId))
       .collect();
-    const reverseMatch = existingB.find(
-      (c) => c.companyBId === owner.companyId
-    );
-
-    const existing = forwardMatch || reverseMatch;
+    const matches = [...existingA.filter(c => c.companyBId === targetCompanyId), ...existingB.filter(c => c.companyBId === owner.companyId)];
+    const existing = matches.find(c => connStatus(c) === "active") ?? matches.find(c => connStatus(c) === "pending");
     if (existing) {
       const st = connStatus(existing);
       if (st === "active") return { success: false as const, reason: "already_connected" };
       if (st === "pending") return { success: false as const, reason: "already_pending" };
-      // declined / disconnected → remove old record so we can re-invite
-      await ctx.db.delete(existing._id);
     }
+    // Preserve closed relationship identities referenced by immutable financial terms.
+    // Reinvitation creates a new connection; active/pending matches above prevent duplicates.
 
     const connId = await ctx.db.insert("ownerConnections", {
       companyAId: owner.companyId,

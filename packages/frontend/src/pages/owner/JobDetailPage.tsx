@@ -44,6 +44,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { getPartnerResponseStatus } from "@/lib/partnerJobStatus";
+import { PartnerCompensation } from "@/components/payments/PartnerCompensation";
 import {
   INVENTORY_CATEGORIES,
   INVENTORY_CATEGORY_LABELS,
@@ -133,6 +134,7 @@ export function JobDetailPage() {
   const [sharePackage, setSharePackage] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [expandPackage, setExpandPackage] = useState(false);
+  const [compensationShare, setCompensationShare] = useState<Id<"sharedJobs"> | null>(null);
   const [sharedJobAction, setSharedJobAction] = useState(false);
 
   // Owner self-execution state
@@ -739,6 +741,9 @@ export function JobDetailPage() {
         )}
 
         {/* Partner Settlement card (Owner1 view: when job has an accepted/completed partner) */}
+        {sharedStatus?.map(s => <button key={s._id} className="btn-secondary w-full whitespace-normal" aria-expanded={compensationShare === s._id} onClick={() => setCompensationShare(compensationShare === s._id ? null : s._id)}>{t("partnerCompensation.reviewTerms")} · {s.toCompanyName}</button>)}
+        {compensationShare && <PartnerCompensation key={compensationShare} sharedJobId={compensationShare}/>}
+        {incomingShared && <PartnerCompensation sharedJobId={incomingShared._id}/>}
 
         {/* Mark settlement paid dialog */}
 
