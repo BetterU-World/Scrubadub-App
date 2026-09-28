@@ -1,5 +1,6 @@
+import { FinancialBoundary } from "./FinancialBoundary";
 import { compensationError } from "./compensationErrors";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useQuery, useMutation, usePaginatedQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
@@ -13,9 +14,19 @@ type Correction = {
   kind: "adjust" | "void" | "reverse";
   id: string;
   version?: number;
+  base?: number;
+  adjusted?: number;
+  paid?: number;
 };
 
-export function RecipientLedger({ workerId }: { workerId?: Id<"users"> }) {
+export function RecipientLedger(props: { workerId?: Id<"users"> }) {
+  return (
+    <FinancialBoundary>
+      <RecipientLedgerContent {...props} />
+    </FinancialBoundary>
+  );
+}
+function RecipientLedgerContent({ workerId }: { workerId?: Id<"users"> }) {
   const { user } = useAuth();
   const { t } = useTranslation();
   const auth = user
@@ -42,15 +53,22 @@ export function RecipientLedger({ workerId }: { workerId?: Id<"users"> }) {
     null,
   );
   const owner = user?.role === "owner";
-  if (!auth || !totals) return null;
+  if (!auth) return null;
+  if (!totals) return <p role="status">{t("common.loading")}</p>;
   const name = obligations.results[0]?.recipient.displayName;
   return (
     <div className="space-y-4 min-w-0">
       <h2 className="font-semibold text-xl break-words">
         {name ?? t("compensation.title")}
       </h2>
-      <p className="text-sm text-gray-500">{t("compensation.outsideHelp")}</p>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <p className="text-sm text-gray-500">
+        {t("compensation.outsideOverview")}
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Summary
+          label={t("compensation.approved")}
+          value={money(totals.approvedCents)}
+        />
         <Summary
           label={t("compensation.outstanding")}
           value={money(totals.outstandingCents)}
@@ -76,10 +94,13 @@ export function RecipientLedger({ workerId }: { workerId?: Id<"users"> }) {
       {obligations.results.map((o) => (
         <article className="card space-y-2 min-w-0" key={o._id}>
           <h4 className="font-medium break-words">{o.sourceLabel}</h4>
+          {o.adjusted && (
+            <p className="text-sm">{t("compensation.adjustedIndicator")}</p>
+          )}
           <p className="text-sm">
             {new Date(o.approvedAt).toLocaleDateString()} ·{" "}
             {t(
-              `compensation.${o.lifecycle === "VOIDED" ? "VOIDED" : o.paymentState}`,
+              `compensation.${o.lifecycle === "VOIDED" ? "VOIDED" : o.adjustedPrincipalCents === 0 && o.recordedPaidCents === 0 ? "noOutstanding" : o.paymentState}`,
             )}
           </p>
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
@@ -120,6 +141,9 @@ export function RecipientLedger({ workerId }: { workerId?: Id<"users"> }) {
                       kind: "adjust",
                       id: o._id,
                       version: o.ledgerVersion,
+                      base: o.basePrincipalCents,
+                      adjusted: o.adjustedPrincipalCents,
+                      paid: o.recordedPaidCents,
                     })
                   }
                 >
@@ -250,12 +274,20 @@ function PaymentHistory({
       {payment.publicReference && (
         <p className="text-sm break-words">{payment.publicReference}</p>
       )}
+      <p className="text-sm">{t("compensation.recordedByCompany")}</p>
+      {user?.role === "owner" &&
+        detail &&
+        "administrativeNote" in detail.settlement &&
+        detail.settlement.administrativeNote && (
+          <p className="text-sm break-words">
+            {t("compensation.privateNote")}:{" "}
+            {detail.settlement.administrativeNote}
+          </p>
+        )}
       {detail?.allocations.map((a) => (
-        <AllocationLabel
-          key={a._id}
-          id={a.obligationId}
-          cents={a.amountCents}
-        />
+        <p key={a._id} className="text-sm break-words">
+          {a.sourceLabel} · {money(a.amountCents)}
+        </p>
       ))}
       {payment.ledgerReversed && (
         <p className="text-amber-700">{t("compensation.reversed")}</p>
@@ -266,30 +298,6 @@ function PaymentHistory({
         </button>
       )}
     </article>
-  );
-}
-function AllocationLabel({
-  id,
-  cents,
-}: {
-  id: Id<"outgoingObligations">;
-  cents: number;
-}) {
-  const { user } = useAuth();
-  const detail = useQuery(
-    api.outgoingQueries.getObligationDetail,
-    user
-      ? {
-          userId: user._id,
-          sessionToken: getStaffSessionToken(),
-          obligationId: id,
-        }
-      : "skip",
-  );
-  return (
-    <p className="text-sm break-words">
-      {detail?.obligation.sourceLabel} · {money(cents)}
-    </p>
   );
 }
 function ObligationHistory({
@@ -340,6 +348,7 @@ function CorrectionDialog({
   const { t } = useTranslation();
   const [reason, setReason] = useState("");
   const [amount, setAmount] = useState("");
+  const amountErrorId = useId();
   const [negative, setNegative] = useState(false);
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
@@ -347,6 +356,10 @@ function CorrectionDialog({
   const voidDebt = useMutation(api.outgoingMutations.voidObligation);
   const reverse = useMutation(api.outgoingMutations.reverseOutsideSettlement);
   const retry = useRef(new Map<string, string>());
+  const delta = (parseMoney(amount) ?? 0) * (negative ? -1 : 1);
+  const nextPrincipal = (command.adjusted ?? 0) + delta;
+  const invalidAdjustment =
+    nextPrincipal < (command.paid ?? 0) || nextPrincipal > 1_000_000_000_000;
   async function submit() {
     if (!user) return;
     setPending(true);
@@ -403,8 +416,23 @@ function CorrectionDialog({
                 className="input-field"
                 value={amount}
                 inputMode="decimal"
+                aria-invalid={amount.length > 0 && parseMoney(amount) === null}
+                aria-describedby={
+                  amount.length > 0 && parseMoney(amount) === null
+                    ? amountErrorId
+                    : undefined
+                }
                 onChange={(e) => setAmount(e.target.value)}
               />
+              {amount.length > 0 && parseMoney(amount) === null && (
+                <p
+                  id={amountErrorId}
+                  role="alert"
+                  className="text-red-600 text-sm"
+                >
+                  {t("compensation.moneyError")}
+                </p>
+              )}
             </label>
             <label className="flex gap-2">
               <input
@@ -414,6 +442,38 @@ function CorrectionDialog({
               />
               {t("compensation.decrease")}
             </label>
+            <dl className="space-y-2 text-sm" aria-live="polite">
+              <Metric
+                label={t("compensation.approved")}
+                cents={command.base ?? 0}
+              />
+              <Metric
+                label={t("compensation.adjustedTotal")}
+                cents={command.adjusted ?? 0}
+              />
+              <Metric label={t("compensation.change")} cents={delta} />
+              <Metric
+                label={t("compensation.afterAdjustment")}
+                cents={nextPrincipal}
+              />
+              <Metric
+                label={t("compensation.recordedPaid")}
+                cents={command.paid ?? 0}
+              />
+              <Metric
+                label={t("compensation.outstanding")}
+                cents={Math.max(0, nextPrincipal - (command.paid ?? 0))}
+              />
+            </dl>
+            {invalidAdjustment && (
+              <p role="alert">
+                {t(
+                  nextPrincipal < (command.paid ?? 0)
+                    ? "compensation.belowPaidError"
+                    : "compensation.moneyError",
+                )}
+              </p>
+            )}
           </>
         )}
         <label className="block">
@@ -434,7 +494,8 @@ function CorrectionDialog({
           disabled={
             pending ||
             !reason.trim() ||
-            (command.kind === "adjust" && !(parseMoney(amount) ?? 0))
+            (command.kind === "adjust" &&
+              (!(parseMoney(amount) ?? 0) || invalidAdjustment))
           }
           onClick={submit}
         >
@@ -450,6 +511,7 @@ type Allocation = {
   amountCents: number;
   expectedVersion: number;
   sourceLabel: string;
+  remainingCents: number;
 };
 const methods = [
   "ach_or_bank_transfer",
@@ -471,6 +533,7 @@ function RecordPayment({
   const { user } = useAuth();
   const { t } = useTranslation();
   const [amount, setAmount] = useState("");
+  const amountErrorId = useId();
   const [date, setDate] = useState(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -483,6 +546,8 @@ function RecordPayment({
   const [selected, setSelected] = useState<Id<"outgoingObligations">[]>([]);
   const [confirmed, setConfirmed] = useState<{
     allocations: Allocation[];
+    allocatedCents: number;
+    remainingRecipientCents: number | null;
     key: string;
   } | null>(null);
   const [pending, setPending] = useState(false);
@@ -524,11 +589,25 @@ function RecordPayment({
         publicReference: reference.trim() || undefined,
         administrativeNote: note.trim() || undefined,
         idempotencyKey: confirmed.key,
-        allocations: confirmed.allocations.map(({ sourceLabel, ...a }) => a),
+        allocations: confirmed.allocations.map(
+          ({ obligationId, amountCents, expectedVersion }) => ({
+            obligationId,
+            amountCents,
+            expectedVersion,
+          }),
+        ),
       });
       onClose();
     } catch (e) {
       setError(compensationError(e, t));
+      if (
+        /Stale|exceeds outstanding|Voided/.test(
+          e instanceof Error ? e.message : String(e),
+        )
+      ) {
+        setConfirmed(null);
+        setError(t("compensation.stalePaymentError"));
+      }
     } finally {
       setPending(false);
     }
@@ -541,6 +620,11 @@ function RecordPayment({
       title={`${t("compensation.recordPayment")} · ${name ?? ""}`}
     >
       <div className="space-y-3">
+        {error && (
+          <p role="alert" className="text-red-600 break-words">
+            {error}
+          </p>
+        )}
         {!confirmed ? (
           <>
             <label className="block">
@@ -548,15 +632,34 @@ function RecordPayment({
               <input
                 className="input-field"
                 inputMode="decimal"
+                aria-invalid={amount.length > 0 && parseMoney(amount) === null}
+                aria-describedby={
+                  amount.length > 0 && parseMoney(amount) === null
+                    ? amountErrorId
+                    : undefined
+                }
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
               />
+              {amount.length > 0 && parseMoney(amount) === null && (
+                <p
+                  id={amountErrorId}
+                  role="alert"
+                  className="text-red-600 text-sm"
+                >
+                  {t("compensation.moneyError")}
+                </p>
+              )}
             </label>
             <label className="block">
               {t("compensation.paymentDate")}
+              <span className="block text-xs text-gray-500">
+                {t("compensation.dateHelp")}
+              </span>
               <input
                 className="input-field"
                 type="date"
+                max={new Date().toISOString().slice(0, 10)}
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
               />
@@ -577,6 +680,9 @@ function RecordPayment({
             </label>
             <label className="block">
               {t("compensation.reference")}
+              <span className="block text-xs text-gray-500">
+                {t("compensation.referenceHelp")}
+              </span>
               <input
                 className="input-field"
                 value={reference}
@@ -635,10 +741,17 @@ function RecordPayment({
             )}
             <button
               className="btn-primary"
-              disabled={!preview || !!preview.error || !date}
+              disabled={
+                !preview ||
+                !!preview.error ||
+                !date ||
+                date > new Date().toISOString().slice(0, 10)
+              }
               onClick={() =>
                 setConfirmed({
                   allocations: preview!.allocations,
+                  allocatedCents: preview!.allocatedCents!,
+                  remainingRecipientCents: preview!.remainingRecipientCents!,
                   key: crypto.randomUUID(),
                 })
               }
@@ -656,14 +769,26 @@ function RecordPayment({
             {confirmed.allocations.map((a) => (
               <p className="text-sm break-words" key={a.obligationId}>
                 {a.sourceLabel} · {money(a.amountCents)}
+                <span className="block">
+                  {t("compensation.remainingOnJob")}: {money(a.remainingCents)}
+                </span>
               </p>
             ))}
-            <p className="text-sm">{t("compensation.recordConfirm")}</p>
-            {error && (
-              <p role="alert" className="text-red-600 break-words">
-                {error}
+            <p>
+              {t("compensation.totalAllocated")}:{" "}
+              <strong>{money(confirmed.allocatedCents)}</strong>
+            </p>
+            <p>
+              {confirmed.remainingRecipientCents === null
+                ? t("compensation.remainingUnavailable")
+                : `${t("compensation.remainingWorker")}: ${money(confirmed.remainingRecipientCents)}`}
+            </p>
+            {reference.trim() && (
+              <p className="break-words">
+                {t("compensation.reference")}: {reference}
               </p>
             )}
+            <p className="text-sm">{t("compensation.recordConfirm")}</p>
             <div className="flex flex-wrap gap-2">
               <button
                 className="btn-secondary"

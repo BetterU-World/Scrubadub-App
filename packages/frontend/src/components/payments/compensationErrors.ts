@@ -4,6 +4,7 @@ import type { TFunction } from "i18next";
 export function compensationError(error: unknown, t: TFunction): string {
   const message = error instanceof Error ? error.message : String(error);
   const rules: [RegExp, string][] = [
+    [/integer minor-unit|Financial total/, "moneyError"],
     [/Confirm the workers|Performed worker|Invalid performed/, "rosterError"],
     [/Stale|Execution evidence changed/, "staleError"],
     [/below recorded settlement/, "belowPaidError"],

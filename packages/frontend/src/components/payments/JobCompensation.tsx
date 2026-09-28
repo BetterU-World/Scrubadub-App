@@ -1,5 +1,6 @@
+import { FinancialBoundary } from "./FinancialBoundary";
 import { compensationError } from "./compensationErrors";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
@@ -8,7 +9,14 @@ import { useAuth, getStaffSessionToken } from "@/hooks/useAuth";
 import { PerformedWorkerPicker } from "./PerformedWorkerPicker";
 import { RecipientLedger, money, parseMoney } from "./RecipientLedger";
 
-export function JobCompensation({ jobId }: { jobId: Id<"jobs"> }) {
+export function JobCompensation(props: { jobId: Id<"jobs"> }) {
+  return (
+    <FinancialBoundary>
+      <JobCompensationContent {...props} />
+    </FinancialBoundary>
+  );
+}
+function JobCompensationContent({ jobId }: { jobId: Id<"jobs"> }) {
   const { user } = useAuth();
   const { t } = useTranslation();
   const canRead =
@@ -47,7 +55,8 @@ export function JobCompensation({ jobId }: { jobId: Id<"jobs"> }) {
       setPending(false);
     }
   }
-  if (!canRead || !data || !auth) return null;
+  if (!canRead || !auth) return null;
+  if (!data) return <p role="status">{t("common.loading")}</p>;
   return (
     <section
       className="card space-y-4 min-w-0"
@@ -68,7 +77,7 @@ export function JobCompensation({ jobId }: { jobId: Id<"jobs"> }) {
           {user?.role === "owner" && (
             <>
               <PerformedWorkerPicker
-                candidates={candidates ?? []}
+                candidates={candidates}
                 selected={selected}
                 setSelected={setSelected}
               />
@@ -90,7 +99,10 @@ export function JobCompensation({ jobId }: { jobId: Id<"jobs"> }) {
       {data.evidence && (
         <p className="text-xs text-gray-500">
           {t(`compensation.${data.evidence.provenance}`)} ·{" "}
-          {new Date(data.evidence.confirmedAt).toLocaleDateString()}
+          {new Date(data.evidence.confirmedAt).toLocaleDateString()} ·{" "}
+          {t("compensation.approvedExecution", {
+            sequence: data.evidence.sequence,
+          })}
         </p>
       )}
       {data.workers.map((w) => {
@@ -141,7 +153,11 @@ export function JobCompensation({ jobId }: { jobId: Id<"jobs"> }) {
               </>
             ) : w.noCompensation ? (
               <p>
-                {t("compensation.noCompensation")} · {w.noCompensation.reason}
+                {t("compensation.noCompensation")} · {w.noCompensation.reason} ·{" "}
+                {new Date(w.noCompensation.reviewedAt).toLocaleString()}
+                <span className="block text-sm">
+                  {t("compensation.zeroLocked")}
+                </span>
               </p>
             ) : data.operationallyApproved ? (
               <>
@@ -224,6 +240,7 @@ function ReviewLine({
   const [amount, setAmount] = useState(
     suggestion === undefined ? "" : (suggestion / 100).toFixed(2),
   );
+  const amountErrorId = useId();
   const [reason, setReason] = useState("");
   const [confirming, setConfirming] = useState(false);
   return (
@@ -233,6 +250,12 @@ function ReviewLine({
         <input
           className="input-field mt-1"
           inputMode="decimal"
+          aria-invalid={amount.length > 0 && parseMoney(amount) === null}
+          aria-describedby={
+            amount.length > 0 && parseMoney(amount) === null
+              ? amountErrorId
+              : undefined
+          }
           value={amount}
           onChange={(e) => {
             setAmount(e.target.value);
@@ -240,6 +263,11 @@ function ReviewLine({
           }}
         />
       </label>
+      {amount.length > 0 && parseMoney(amount) === null && (
+        <p id={amountErrorId} role="alert">
+          {t("compensation.moneyError")}
+        </p>
+      )}
       <label className="block text-sm">
         {t("compensation.reason")}
         <input
@@ -253,14 +281,24 @@ function ReviewLine({
       </label>
       {confirming && (
         <p className="text-sm">
-          {t("compensation.approvalConfirm", {
-            amount: money(parseMoney(amount) ?? 0),
-          })}
+          {t(
+            parseMoney(amount) === 0
+              ? "compensation.zeroConfirm"
+              : "compensation.approvalConfirm",
+            {
+              amount: money(parseMoney(amount) ?? 0),
+            },
+          )}
         </p>
       )}
       <button
         className="btn-primary"
-        disabled={pending || parseMoney(amount) === null || !reason.trim()}
+        disabled={
+          pending ||
+          parseMoney(amount) === null ||
+          !reason.trim() ||
+          (parseMoney(amount) === 0 && reason.trim().length < 5)
+        }
         onClick={() =>
           confirming
             ? onApprove(parseMoney(amount)!, reason)

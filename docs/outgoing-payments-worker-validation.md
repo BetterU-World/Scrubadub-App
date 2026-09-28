@@ -1,5 +1,41 @@
 # PR C: worker compensation implementation and validation
 
+## PR D audit and hardening
+
+The audit traced execution/roster/submission/approval/rework, independent financial approval, settlement allocation/correction, worker history, navigation and permission paths. Canonical arithmetic, concurrency/version checks, owner-only writes, tenant/self isolation, frozen evidence and rework selection were correct and remain intact. No fundamental accounting redesign or product blocker was found.
+
+Confirmed gaps and fixes:
+
+- Roster loading/empty state and stale selected assignees: visible states, mobile checkbox targets, valid current selection.
+- Review clarity: approved execution sequence, final $0 confirmation with reason/time evidence, minimum five-character explanation for new $0 decisions; existing reviews remain immutable.
+- Hub: complete company owed/open/oldest summary and honest zero-balance vocabulary. Legacy worker route now provides secondary history and a return link, rather than duplicating the V2 hub.
+- Recipient views: approved totals, visible adjustments, owner-only administrative notes, and truthful payment/recording dates and outside-payment wording.
+- Payment confirmation: exact server allocation total, per-job and complete worker remainder, safe-limit unavailable state and explicit re-confirmation after stale rejection. No React allocation arithmetic.
+- Corrections: signed adjustment effect and principal floor shown before confirmation; void/reversal remain safe reasoned ledger operations. Accessible money error associations and localized retirement notice.
+- Permissions: managers previously received private administrative notes through company settlement reads. These now return redacted settlement projections; owner access and worker self-isolation remain unchanged.
+- Query safety: indexed source/terms reads and event/payment details cap at 500 with explicit failure; materialization avoids repeated per-line history scans. Settlement details supply frozen allocation labels, eliminating per-allocation full-history queries in React. Existing 500/5,000/100 bounds remain. Localized financial error boundaries prevent broken pages, raw trace exposure and partial totals.
+
+Intentionally unchanged: immutable principal and append-only ledger semantics, approval unit, USD-only money parser, operational permissions, job evidence model, worker authentication, partner source cardinality, and external payment declarations. Reopening $0 would need new audited review semantics, so it remains locked with explicit finality copy. Existing nonfinancial Worker Detail profile/onboarding copy remains outside this PR. No schema changes.
+
+Source eligibility and UTC payment-date semantics are documented in `outgoing-payments-ledger.md`. All six existing cleaning/maintenance job types support evidenced same-company labor across residential, commercial, recurring, request and owner-created origins. Shared copies can compensate their own company's performers; neither side can compensate the other company's staff or infer a partner debt. Owner self-compensation and partner recipient workflow remain excluded.
+
+Responsive QA rendered actual Owner Job Detail, Payments Hub, Worker Detail and Worker Payments page components with SCRUB styles and local fictional query/auth fixtures. All **48 page/language/width combinations** passed at 360, 390, 412, 430, 768 and 1440 px with no document overflow. Active Spanish payment confirmation, adjustment, void and reversal dialogs passed all six widths with no overflowing dialog elements; payment confirmation was visually inspected at 360 px. Accessible labels, checkbox state, dialog focus and localized financial meaning were inspected. No live database writes or deployment; authenticated deployed end-to-end QA remains a rollout check.
+
+PR D changes exactly these files (generated API edits are excluded):
+
+- `convex/workerCompensation.ts`, `convex/outgoingMutations.ts`, `convex/outgoingQueries.ts`, `convex/lib/outgoingLedger.ts`
+- `convex/lib/__tests__/outgoingLedger.test.ts`
+- `packages/frontend/src/components/payments/FinancialBoundary.tsx`, `JobCompensation.tsx`, `RecipientLedger.tsx`, `WorkerBalances.tsx`, `PerformedWorkerPicker.tsx`, `LegacyOutgoingNotice.tsx`, `LegacyWorkerHistory.tsx`, `compensationErrors.ts`
+- `packages/frontend/src/pages/owner/CleanerPaymentsPage.tsx`, `packages/frontend/src/pages/owner/JobDetailPage.tsx`
+- `packages/frontend/src/i18n/en/common.json`, `packages/frontend/src/i18n/es/common.json`
+- `docs/outgoing-payments-ledger.md`, `docs/outgoing-payments-worker-validation.md`
+
+New tests cover dates, owner-only notes/public references, server preview/result, $0 reasons, all six labor job types, aggregate failures and each PR C endpoint's session/capability boundaries. Validation passed: standalone Convex typecheck, combined frontend/Convex typecheck, **162 files / 1,049 tests**, frontend-only production build and diff whitespace checks. Existing bundle-size and stale Browserslist warnings remain.
+
+Remaining limits: large totals/details fail honestly and need future aggregate storage/paginated detail support; $0 review is final; UTC day is the server date boundary. PR E will define partner compensation UX. No electronic outgoing rail was added; legacy rails remain retired; client payment architecture remains unchanged.
+
+## PR C implementation record
+
 ## Operational → financial workflow
 
 1. The final checklist/job submission requires an explicit selection of the people who performed the work. Current assignments/team members are candidates, not historical financial evidence.

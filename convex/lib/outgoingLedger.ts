@@ -182,12 +182,15 @@ export async function targetEvents(
   payerCompanyId: Id<"companies">,
   targetKey: string,
 ) {
-  return ctx.db
+  const rows = await ctx.db
     .query("outgoingEvents")
     .withIndex("by_target", (q) =>
       q.eq("payerCompanyId", payerCompanyId).eq("targetKey", targetKey),
     )
-    .collect();
+    .take(MAX_RECIPIENT_OBLIGATIONS + 1);
+  if (rows.length > MAX_RECIPIENT_OBLIGATIONS)
+    throw new Error("Event history too large for detail query");
+  return rows;
 }
 export async function settlementReversal(
   ctx: ReadCtx,

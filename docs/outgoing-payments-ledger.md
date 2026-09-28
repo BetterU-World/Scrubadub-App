@@ -82,7 +82,21 @@ New schema fields are optional for rollout compatibility: execution history, sub
 
 New copy follows the existing EN/ES i18n system. Responsive card-based layouts and Radix dialogs were checked at 360, 390, 412, 430, 768 and 1440 px using local component fixtures; this is layout validation, not a deployed end-to-end payment test. See `outgoing-payments-worker-validation.md` for validation and changed files.
 
-## Preserved boundaries
+## Worker hardening decisions (PR D)
+
+Worker compensation supports the six existing labor job types: standard, deep clean, turnover, move in/out, post-construction and maintenance. Residential/commercial location, recurring generation, requests and owner creation do not independently grant eligibility: the same-company, operationally approved frozen performers are required. An incoming shared copy may compensate its receiving company's own performers; its original company's workers cannot become recipients. The original job may compensate only independently evidenced labor of its own company. Neither path creates partner/intercompany compensation. Partner recipients/acceptance remain the distinct `partner_shared_job` source reserved for PR E; owner self-compensation remains excluded.
+
+New outside declarations reject malformed dates and dates later than the server's current UTC calendar date. `paymentDate` is the owner's stated occurrence date; `recordedAt` is the server declaration timestamp. Existing declarations are unchanged and identical retries remain valid. Public references are explicitly worker-visible; administrative notes are now owner-only on settlement list/detail and obligation payment detail, including when managers have financial-read capability.
+
+$0 review remains a final audited operational outcome, with actor, timestamp, execution and a nontrivial reason. Reopening requires a future audited decision model; this PR does not remove or overwrite evidence. Confirmation states its finality and that it creates neither debt nor payment. Status vocabulary remains Needs approval, Owed, Partially paid, Paid, Voided, with Adjusted, Payment record reversed and No compensation as historical indicators. Aggregate zero balances use “No outstanding balance,” not an inferred Paid status.
+
+Payment confirmation displays server-calculated allocated total, per-job remainder and complete recipient remainder where it can safely be calculated. Above the recipient bound, the complete remainder is explicitly unavailable. Stale commit rejection returns to the refreshed preview and requires confirmation again; it never substitutes allocations. Adjustment previews show original principal, current principal, signed correction, resulting principal, recorded paid and outstanding; the mutation's ledger version and principal floor remain authoritative. Void and reversal wording distinguish record correction from deletion/payment/refund.
+
+The 500-recipient, 5,000-company and 100-allocation limits remain unchanged. Indexed source obligation/terms reads and event/payment details now fail explicitly above 500 records rather than collecting an indefinitely growing history. Worker-source materialization reads prior obligations once, avoiding one repeated history scan per line. Local financial error boundaries show actionable limit/access messages without partial totals or raw server traces. Financial histories remain paginated; aggregate storage and paginated exceptionally large details are future work.
+
+No schema changes were needed. Performed roster loading/empty states, stale selected candidates, meaningful $0 confirmation, hub summaries, approved totals, correction previews, owner-only notes, and localized retirement copy were hardened without changing the financial domain.
+
+### Preserved payment boundaries
 
 No reads/migration of legacy OPEN payments, planned pay, partner settlements or Stripe evidence generate V2 obligations. PR A retirement and affiliate separation remain intact. No electronic attempts, funding, payout accounts, Stripe calls, Treasury, payroll/tax calculations or company funds balance are added. Future provider evidence must use a distinct provenance and reviewed electronic extension, not reinterpret `outside_declared`.
 
