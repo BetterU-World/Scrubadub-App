@@ -33,6 +33,7 @@ export const createCompany = internalMutation({
         brandName: args.name,
         bio: "",
         serviceArea: "",
+        isPublished: false,
       });
     }
 
@@ -242,6 +243,7 @@ export const provisionPublicCheckout = internalMutation({
         brandName: args.companyName,
         bio: "",
         serviceArea: "",
+        isPublished: false,
       });
     }
 

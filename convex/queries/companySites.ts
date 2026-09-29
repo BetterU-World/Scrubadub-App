@@ -1,6 +1,7 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwnerSession } from "../lib/sessionAuth";
+import { isMiniSitePublished, normalizedAdditionalAreas, validMiniSiteSlug } from "../lib/miniSiteSeo";
 
 /**
  * Public query – load a mini-site by its slug.
@@ -15,26 +16,45 @@ export const getBySlug = query({
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .first();
 
-    if (!site) return null;
+    if (!site || !validMiniSiteSlug(args.slug) || !isMiniSitePublished(site)) return null;
 
     const company = await ctx.db.get(site.companyId);
     if (!company) return null;
 
-    // Fallback: site-level fields take priority, company profile as default
+    // Explicit public mini-site fields only. Company profile contact details
+    // may be operational or personal and must never leak through this query.
     return {
       slug: site.slug,
       templateId: site.templateId,
       brandName: site.brandName,
       bio: site.bio,
-      serviceArea: site.serviceArea || company.serviceAreaText || "",
-      logoUrl: site.logoUrl,
-      heroImageUrl: site.heroImageUrl,
+      serviceArea: site.serviceArea,
+      additionalServiceAreas: normalizedAdditionalAreas(site.additionalServiceAreas ?? [], site.serviceArea),
+      logoUrl: site.logoUrl ?? null,
+      heroImageUrl: site.heroImageUrl ?? null,
       publicRequestToken: company.publicRequestToken ?? null,
       services: site.services ?? [],
-      publicEmail: site.publicEmail || company.contactEmail || null,
-      publicPhone: site.publicPhone || company.contactPhone || null,
+      publicEmail: site.publicEmail ?? null,
+      publicPhone: site.publicPhone ?? null,
       metaDescription: site.metaDescription ?? null,
+      searchIndexEligible: !company.qaFixtureKey,
     };
+  },
+});
+
+/** Public sitemap feed with a deliberately small projection. */
+export const listPublishedSlugs = query({
+  args: { cursor: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const page = await ctx.db.query("companySites").paginate({ cursor: args.cursor ?? null, numItems: 200 });
+    const slugs: string[] = [];
+    for (const site of page.page) {
+      if (!validMiniSiteSlug(site.slug) || !isMiniSitePublished(site)) continue;
+      const company = await ctx.db.get(site.companyId);
+      if (!company || company.qaFixtureKey) continue;
+      slugs.push(site.slug);
+    }
+    return { slugs: slugs.sort(), continueCursor: page.continueCursor, isDone: page.isDone };
   },
 });
 
@@ -96,7 +116,7 @@ export const getReviewedFeedbackBySlug = query({
       .query("companySites")
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .first();
-    if (!site) return [];
+    if (!site || !isMiniSitePublished(site)) return [];
 
     // Get all company requests
     const requests = await ctx.db

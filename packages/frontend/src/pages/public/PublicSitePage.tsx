@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { encodePublicAddOnSelection, formatPublicAddOnPrice } from "@/lib/publicAddOnPresentation";
+import { miniSiteCanonical, miniSiteDescription, miniSiteTitle, safePublicImage } from "../../../../../convex/lib/miniSiteSeo";
 import {
   MapPin,
   Mail,
@@ -30,6 +31,8 @@ import {
 function usePageMeta(meta: {
   title: string;
   description: string;
+  url: string;
+  image: string;
   ogType?: string;
 } | null) {
   useEffect(() => {
@@ -42,10 +45,16 @@ function usePageMeta(meta: {
       { name: "description", content: meta.description },
       { property: "og:title", content: meta.title },
       { property: "og:description", content: meta.description },
+      { property: "og:url", content: meta.url },
+      { property: "og:image", content: meta.image },
       { property: "og:type", content: meta.ogType ?? "website" },
+      { name: "twitter:title", content: meta.title },
+      { name: "twitter:description", content: meta.description },
+      { name: "twitter:image", content: meta.image },
     ];
 
     const created: HTMLMetaElement[] = [];
+    const restored: Array<[HTMLMetaElement, string | null]> = [];
     for (const tag of tags) {
       const selector = tag.property
         ? `meta[property="${tag.property}"]`
@@ -57,15 +66,22 @@ function usePageMeta(meta: {
         if (tag.name) el.setAttribute("name", tag.name);
         document.head.appendChild(el);
         created.push(el);
+      } else {
+        restored.push([el, el.getAttribute("content")]);
       }
       el.setAttribute("content", tag.content);
     }
+    const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    const previousCanonical = canonical?.getAttribute("href") ?? null;
+    if (canonical) canonical.href = meta.url;
 
     return () => {
       document.title = prev;
       created.forEach((el) => el.remove());
+      restored.forEach(([el, value]) => value === null ? el.removeAttribute("content") : el.setAttribute("content", value));
+      if (canonical && previousCanonical !== null) canonical.setAttribute("href", previousCanonical);
     };
-  }, [meta?.title, meta?.description, meta?.ogType]);
+  }, [meta?.title, meta?.description, meta?.url, meta?.image, meta?.ogType]);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────
@@ -82,6 +98,7 @@ interface SiteData {
   brandName: string;
   bio: string;
   serviceArea: string;
+  additionalServiceAreas: string[];
   logoUrl?: string | null;
   heroImageUrl?: string | null;
   services: string[];
@@ -134,10 +151,10 @@ export function PublicSitePage() {
   usePageMeta(
     site
       ? {
-          title: `${site.brandName} — Professional Cleaning Services`,
-          description:
-            site.metaDescription ||
-            `Professional cleaning services in ${site.serviceArea}. Request a free quote today.`,
+          title: miniSiteTitle(site),
+          description: miniSiteDescription(site),
+          url: miniSiteCanonical(site.slug),
+          image: safePublicImage(site.heroImageUrl) ?? safePublicImage(site.logoUrl) ?? "https://scrubscrubscrub.com/scrub-social-preview.png",
         }
       : null
   );
@@ -233,9 +250,6 @@ export function PublicSitePage() {
         isDark={isDark}
       />
 
-      {/* ── Trust badges ───────────────────────────────────────── */}
-      <TrustBadgesSection isDark={isDark} />
-
       {/* ── Services ───────────────────────────────────────────── */}
       <ServicesSection
         services={site.services}
@@ -255,13 +269,10 @@ export function PublicSitePage() {
       <HowItWorksSection isDark={isDark} />
 
       {/* ── Service area ───────────────────────────────────────── */}
-      <ServiceAreaSection serviceArea={site.serviceArea} isDark={isDark} />
+      <ServiceAreaSection serviceArea={site.serviceArea} additionalServiceAreas={site.additionalServiceAreas} isDark={isDark} />
 
       {/* ── Reviews ────────────────────────────────────────────── */}
       <ReviewsSection reviews={reviews ?? []} isDark={isDark} />
-
-      {/* ── FAQ ────────────────────────────────────────────────── */}
-      <FAQSection isDark={isDark} />
 
       {/* ── Final CTA ──────────────────────────────────────────── */}
       <CTASection
@@ -399,20 +410,20 @@ function HeroSection({
         <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight mb-4">
           {site.brandName}
         </h1>
-        <p
+        {site.bio && <p
           className={`text-lg sm:text-xl max-w-2xl mx-auto mb-2 ${
             useLightOnDark ? "text-gray-200" : "text-gray-600"
           }`}
         >
-          {site.bio || "Professional cleaning services you can trust."}
-        </p>
+          {site.bio}
+        </p>}
         <p
           className={`flex items-center justify-center gap-1.5 mb-8 text-sm ${
             useLightOnDark ? "text-gray-300" : "text-gray-500"
           }`}
         >
           <MapPin className="w-4 h-4" />
-          Serving {site.serviceArea}
+          {site.serviceArea ? `Serving ${site.serviceArea}` : "Contact us about your area"}
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           {requestHref ? (
@@ -488,14 +499,7 @@ function TrustBadgesSection({ isDark }: { isDark: boolean }) {
 
 // ── Services ──────────────────────────────────────────────────────────
 
-const DEFAULT_SERVICES = [
-  { name: "Standard Clean", desc: "Regular cleaning to keep your space fresh and tidy.", icon: Sparkles },
-  { name: "Deep Clean", desc: "Thorough top-to-bottom cleaning for a spotless home.", icon: Home },
-  { name: "Move-In / Move-Out", desc: "Get your property move-ready with a complete clean.", icon: Truck },
-  { name: "Airbnb Turnover", desc: "Fast, reliable turnovers for your short-term rental.", icon: Building2 },
-  { name: "Post-Construction", desc: "Remove dust and debris after renovations or builds.", icon: HardHat },
-  { name: "Office Cleaning", desc: "Professional cleaning for workspaces of all sizes.", icon: ClipboardCheck },
-];
+const SERVICE_ICONS = [Sparkles, Home, Truck, Building2, HardHat, ClipboardCheck];
 
 function ServicesSection({
   services,
@@ -506,14 +510,10 @@ function ServicesSection({
   requestHref: string | null;
   isDark: boolean;
 }) {
-  const cards =
-    services.length > 0
-      ? services.slice(0, 6).map((svc, i) => ({
-          name: svc,
-          desc: "Professional service tailored to your needs.",
-          icon: DEFAULT_SERVICES[i % DEFAULT_SERVICES.length].icon,
-        }))
-      : DEFAULT_SERVICES;
+  const cards = services.slice(0, 8).map((svc, i) => ({
+    name: svc,
+    icon: SERVICE_ICONS[i % SERVICE_ICONS.length],
+  }));
 
   return (
     <section className={`py-16 sm:py-20 ${isDark ? "bg-gray-950" : ""}`}>
@@ -525,8 +525,7 @@ function ServicesSection({
             Our Services
           </h2>
           <p className={isDark ? "text-gray-400" : "text-gray-500"}>
-            From routine cleaning to specialized deep cleans, we have you
-            covered.
+            {cards.length ? "Explore the services we offer." : "Ask us about the cleaning work you need."}
           </p>
         </div>
 
@@ -554,11 +553,6 @@ function ServicesSection({
               >
                 {card.name}
               </h3>
-              <p
-                className={`text-sm mb-3 ${isDark ? "text-gray-400" : "text-gray-500"}`}
-              >
-                {card.desc}
-              </p>
               {requestHref && (
                 <a
                   href={`${requestHref}?service=${encodeURIComponent(card.name)}`}
@@ -745,9 +739,11 @@ function HowItWorksSection({ isDark }: { isDark: boolean }) {
 
 function ServiceAreaSection({
   serviceArea,
+  additionalServiceAreas,
   isDark,
 }: {
   serviceArea: string;
+  additionalServiceAreas: string[];
   isDark: boolean;
 }) {
   return (
@@ -766,9 +762,7 @@ function ServiceAreaSection({
           Service Area
         </h2>
         <p className={`text-lg ${isDark ? "text-gray-300" : "text-gray-600"}`}>
-          Proudly serving{" "}
-          <span className="font-semibold">{serviceArea}</span> and surrounding
-          areas.
+          {serviceArea ? <>Serving <span className="font-semibold">{serviceArea}</span>{additionalServiceAreas.length ? `, ${additionalServiceAreas.join(", ")}` : ""}.</> : "Contact us to confirm whether we serve your area."}
         </p>
       </div>
     </section>
@@ -1048,7 +1042,7 @@ function FooterSection({
           <div>
             <h3 className="font-bold text-white text-lg mb-2">{brandName}</h3>
             <p className="text-sm">
-              Professional cleaning services in {serviceArea}.
+              {serviceArea ? `Cleaning services in ${serviceArea}.` : "Cleaning services."}
             </p>
           </div>
 

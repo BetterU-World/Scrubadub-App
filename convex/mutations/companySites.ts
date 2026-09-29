@@ -2,6 +2,7 @@ import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwnerSession } from "../lib/sessionAuth";
 import { validateSlug } from "../lib/slugs";
+import { isMiniSitePublished, normalizedAdditionalAreas } from "../lib/miniSiteSeo";
 
 /** Generate a cryptographically random hex token (Web Crypto API). */
 function generateRandomToken(length = 40): string {
@@ -26,6 +27,8 @@ export const upsertSite = mutation({
     brandName: v.string(),
     bio: v.string(),
     serviceArea: v.string(),
+    additionalServiceAreas: v.optional(v.array(v.string())),
+    isPublished: v.optional(v.boolean()),
     logoUrl: v.optional(v.string()),
     heroImageUrl: v.optional(v.string()),
     services: v.optional(v.array(v.string())),
@@ -41,6 +44,9 @@ export const upsertSite = mutation({
 
     const slug = args.slug.trim().toLowerCase();
     validateSlug(slug);
+    if (args.isPublished && (!args.brandName.trim() || !args.bio.trim() || !args.serviceArea.trim())) {
+      throw new Error("Add a business name, description, and primary service area before publishing.");
+    }
 
     // Check slug uniqueness (exclude own site)
     const slugHolder = await ctx.db
@@ -70,6 +76,8 @@ export const upsertSite = mutation({
       brandName: args.brandName.trim(),
       bio: args.bio.trim(),
       serviceArea: args.serviceArea.trim(),
+      additionalServiceAreas: normalizedAdditionalAreas(args.additionalServiceAreas ?? existing?.additionalServiceAreas ?? [], args.serviceArea),
+      isPublished: args.isPublished ?? (existing ? isMiniSitePublished(existing) : false),
       logoUrl: args.logoUrl,
       heroImageUrl: args.heroImageUrl,
       services: services.length > 0 ? services : undefined,

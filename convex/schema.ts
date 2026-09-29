@@ -1341,10 +1341,12 @@ export default defineSchema({
   companySites: defineTable({
     companyId: v.id("companies"),
     slug: v.string(),
+    isPublished: v.optional(v.boolean()),
     templateId: v.union(v.literal("A"), v.literal("B")),
     brandName: v.string(),
     bio: v.string(),
     serviceArea: v.string(),
+    additionalServiceAreas: v.optional(v.array(v.string())),
     logoUrl: v.optional(v.string()),
     heroImageUrl: v.optional(v.string()),
     // v1 polish

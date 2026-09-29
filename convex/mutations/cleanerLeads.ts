@@ -2,6 +2,7 @@ import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwnerSession } from "../lib/sessionAuth";
 import { checkRateLimit } from "../lib/rateLimit";
+import { isMiniSitePublished } from "../lib/miniSiteSeo";
 
 /**
  * Public mutation – called by external visitors via a company's mini-site
@@ -37,7 +38,7 @@ export const createCleanerLeadBySlug = mutation({
       .withIndex("by_slug", (q) => q.eq("slug", normalizedSlug))
       .first();
 
-    if (!site) {
+    if (!site || !isMiniSitePublished(site)) {
       throw new Error("Invalid application link");
     }
 

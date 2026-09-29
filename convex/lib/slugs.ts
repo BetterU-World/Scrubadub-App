@@ -31,6 +31,14 @@ export const RESERVED_SLUGS = new Set([
   "manuals",
   "site",
   "cleaner-leads",
+  "showcase", "giveaway", "assessment", "contact", "terms", "privacy",
+  "get-started", "setup", "affiliate", "availability", "owner", "settings",
+  "payments", "internal", "clients", "commercial-accounts", "commercial-invoices",
+  "invoices", "feedback", "financials", "inventory-templates", "c", "proposal",
+  "cleaning-business-software", "airbnb-cleaning-software",
+  "cleaning-company-management-software", "cleaning-checklist-app",
+  "janitorial-software", "maid-service-software",
+  "commercial-cleaning-software", "house-cleaning-business-software",
 ]);
 
 export function validateSlug(slug: string) {
