@@ -217,7 +217,7 @@ export default function App() {
   ) : null;
 
   // --- PUBLIC ROUTES: bypass all auth guards, no layout ---
-  if (pathname === "/giveaway") return <><Analytics /><ErrorBoundary><GiveawayPage /></ErrorBoundary></>;
+  if (pathname === "/giveaway" || pathname === "/giveaway/") return <><Analytics /><ErrorBoundary><GiveawayPage /></ErrorBoundary></>;
 
   if (pathname === "/assessment" && (isOperationsAssessmentEnabled || new URLSearchParams(window.location.search).has("return"))) {
     return (

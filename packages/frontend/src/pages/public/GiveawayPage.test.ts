@@ -112,11 +112,28 @@ describe("public giveaway", () => {
     const output = giveawayHtml(index);
     expect(output).toContain(`<title>${campaign.name} | SCRUB</title>`);
     expect(output).toContain('property="og:url" content="https://scrubscrubscrub.com/giveaway"');
+    expect(output).toContain('rel="canonical" href="https://scrubscrubscrub.com/giveaway"');
     expect(output).toContain('name="twitter:title" content="SCRUB Cleaning Owner Giveaway | SCRUB"');
     expect(output).toContain(`name="description" content="${campaign.headline}"`);
     expect(output).toContain(`property="og:description" content="${campaign.headline}"`);
     expect(output).toContain("scrub-social-preview.png");
     expect(index).not.toContain("Cleaning Owner Giveaway");
+  });
+  it.each(["/giveaway", "/giveaway/"])("renders the public giveaway at %s without homepage fallthrough", (pathname) => {
+    const app = read("packages/frontend/src/App.tsx");
+    const route = app.match(/if \(([^\n]+)\) return ([^\n]*<GiveawayPage \/>[^\n]*);/)!;
+    expect(route).not.toBeNull();
+    expect(app.indexOf(route[0])).toBeLessThan(app.indexOf("// --- GUARD 1"));
+    // Execute the actual route condition, rather than duplicating its pathname checks.
+    const selectsGiveaway = new Function("pathname", `return (${route[1]});`) as (path: string) => boolean;
+    const location = { pathname, search: `?campaign=${currentGiveawayId}`, hash: "#official-rules" };
+    vi.stubGlobal("window", { location });
+    vi.spyOn(Date, "now").mockReturnValue(campaign.startsAt!);
+    const html = selectsGiveaway(pathname) ? renderToStaticMarkup(createElement(GiveawayPage)) : "homepage-fallthrough";
+    expect(html).toContain('id="giveaway-title"');
+    expect(html).toContain(`href="/assessment?campaign=${currentGiveawayId}"`);
+    expect(html).not.toContain("homepage-fallthrough");
+    expect(window.location).toEqual(location);
   });
   it("persists attribution across browser reloads without storing entry email", () => {
     const data = new Map<string, string>();
