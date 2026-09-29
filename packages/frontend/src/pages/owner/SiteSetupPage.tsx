@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { ExternalLink, Globe2, Plus, X } from "lucide-react";
 import { ShareKit } from "@/components/owner/ShareKit";
+import { isMiniSitePublished, MAX_ADDITIONAL_AREAS } from "../../../../../convex/lib/miniSiteSeo";
 
 export function SiteSetupPage() {
   const { t } = useTranslation();
@@ -43,6 +44,8 @@ export function SiteSetupPage() {
   const [brandName, setBrandName] = useState("");
   const [bio, setBio] = useState("");
   const [serviceArea, setServiceArea] = useState("");
+  const [additionalServiceAreas, setAdditionalServiceAreas] = useState<string[]>([]);
+  const [isPublished, setIsPublished] = useState(false);
   const [logoUrl, setLogoUrl] = useState("");
   const [heroImageUrl, setHeroImageUrl] = useState("");
   const [services, setServices] = useState<string[]>([]);
@@ -62,6 +65,8 @@ export function SiteSetupPage() {
       setBrandName(site.brandName);
       setBio(site.bio);
       setServiceArea(site.serviceArea);
+      setAdditionalServiceAreas(site.additionalServiceAreas ?? []);
+      setIsPublished(isMiniSitePublished(site));
       setLogoUrl(site.logoUrl ?? "");
       setHeroImageUrl(site.heroImageUrl ?? "");
       setServices(site.services ?? []);
@@ -72,6 +77,7 @@ export function SiteSetupPage() {
   }, [site]);
 
   if (!user || site === undefined) return <PageLoader />;
+  const sitePublished = site ? isMiniSitePublished(site) : false;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -89,6 +95,8 @@ export function SiteSetupPage() {
         brandName: brandName.trim(),
         bio: bio.trim(),
         serviceArea: serviceArea.trim(),
+        additionalServiceAreas: additionalServiceAreas.filter(Boolean),
+        isPublished,
         logoUrl: logoUrl.trim() || undefined,
         heroImageUrl: heroImageUrl.trim() || undefined,
         services: services.filter((s) => s.trim().length > 0),
@@ -138,22 +146,22 @@ export function SiteSetupPage() {
                 <Globe2 className="h-5 w-5" aria-hidden="true" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wide text-primary-700">{t("siteBuilder.siteLiveHint")}</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-primary-700">{sitePublished ? "Published mini-site" : "Draft mini-site"}</p>
                 <h2 id="site-overview-title" className="mt-1 break-words text-lg font-semibold text-gray-900">{site.brandName}</h2>
                 <p className="mt-1 break-all text-sm text-gray-600">{window.location.origin}/{site.slug}</p>
               </div>
             </div>
-            <a href={`/${site.slug}`} target="_blank" rel="noopener noreferrer" className="btn-primary touch-target inline-flex w-full items-center justify-center gap-2 sm:w-auto">
+            {sitePublished && <a href={`/${site.slug}`} target="_blank" rel="noopener noreferrer" className="btn-primary touch-target inline-flex w-full items-center justify-center gap-2 sm:w-auto">
               <ExternalLink className="h-4 w-4" aria-hidden="true" />
               {t("common.open")}
-            </a>
+            </a>}
           </div>
         </section>
       )}
 
-      {site && !site.bio && !site.serviceArea && (
+      {site && !site.bio && !site.serviceArea && !sitePublished && (
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm">
-          {t("siteBuilder.siteLiveHint")}
+          Add a description and primary service area before publishing.
         </div>
       )}
 
@@ -197,6 +205,20 @@ export function SiteSetupPage() {
       )}
 
       <form onSubmit={handleSubmit} className="card space-y-5">
+        <section aria-labelledby="get-found-heading" className="rounded-lg border border-primary-100 bg-primary-50/40 p-4">
+          <h2 id="get-found-heading" className="text-lg font-semibold text-gray-900">Get Found on Google</h2>
+          <p className="mt-1 text-sm text-gray-600">Add accurate details below so customers and search engines can understand your business. Publishing makes these details public; it does not guarantee search placement.</p>
+          <p className="mt-3 text-sm font-semibold text-gray-800">Setup completeness: {[
+            !!bio.trim(), !!serviceArea.trim(), services.some(value => !!value.trim()), !!(publicEmail.trim() || publicPhone.trim()), additionalServiceAreas.some(value => !!value.trim()),
+          ].filter(Boolean).length * 20}%</p>
+          <ul className="mt-1 grid gap-1 text-sm text-gray-700 sm:grid-cols-2">
+            {[["Business description added", !!bio.trim()], ["Primary service area added", !!serviceArea.trim()], ["Services confirmed", services.some(value => !!value.trim())], ["Public contact configured", !!(publicEmail.trim() || publicPhone.trim())], ["Additional service areas added", additionalServiceAreas.some(value => !!value.trim())]].map(([label, complete]) => <li key={String(label)}>{complete ? "✓" : "○"} {label}</li>)}
+          </ul>
+          <label className="mt-4 flex items-start gap-2 text-sm text-gray-800">
+            <input type="checkbox" className="mt-1" checked={isPublished} onChange={event => { setIsPublished(event.target.checked); setSaved(false); }} />
+            <span>Publish my mini-site and make these business details visible to everyone</span>
+          </label>
+        </section>
         {/* Slug */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -273,7 +295,7 @@ export function SiteSetupPage() {
             rows={3}
             value={bio}
             onChange={(e) => { setBio(e.target.value); setSaved(false); }}
-            required
+            required={isPublished}
             placeholder={t("siteBuilder.bioPlaceholder")}
           />
         </div>
@@ -287,9 +309,21 @@ export function SiteSetupPage() {
             className="input-field"
             value={serviceArea}
             onChange={(e) => { setServiceArea(e.target.value); setSaved(false); }}
-            required
+            required={isPublished}
             placeholder="Austin, TX metro area"
           />
+        </div>
+
+        {/* Services list */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Additional service areas <span className="font-normal text-gray-400">(optional, up to {MAX_ADDITIONAL_AREAS})</span></label>
+          <div className="space-y-2">
+            {additionalServiceAreas.map((area, index) => <div key={index} className="flex gap-2">
+              <input className="input-field flex-1" value={area} maxLength={80} placeholder="City, State" onChange={event => { const next = [...additionalServiceAreas]; next[index] = event.target.value; setAdditionalServiceAreas(next); setSaved(false); }} />
+              <button type="button" className="touch-target text-red-600" onClick={() => { setAdditionalServiceAreas(additionalServiceAreas.filter((_, i) => i !== index)); setSaved(false); }}>Remove</button>
+            </div>)}
+          </div>
+          {additionalServiceAreas.length < MAX_ADDITIONAL_AREAS && <button type="button" className="mt-2 text-sm text-primary-600" onClick={() => setAdditionalServiceAreas([...additionalServiceAreas, ""])}>Add an area</button>}
         </div>
 
         {/* Services list */}
@@ -433,7 +467,7 @@ export function SiteSetupPage() {
       </form>
 
       {/* Share Kit */}
-      {site && (
+      {site && sitePublished && (
         <ShareKit
           slug={site.slug}
           publicRequestToken={site.publicRequestToken}

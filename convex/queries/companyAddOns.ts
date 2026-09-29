@@ -4,6 +4,7 @@ import { canManageBusinessConfiguration } from "../lib/auth";
 import { COMPANY_ADD_ON_PRESETS } from "../lib/companyAddOnPresets";
 import { requireOwnerManagerSession } from "../lib/sessionAuth";
 import { companyAddOnSelectionVersion } from "../lib/companyAddOnSelection";
+import { isMiniSitePublished } from "../lib/miniSiteSeo";
 
 async function requireCatalogManager(ctx: any, sessionToken: string, claimedUserId?: any) {
   const user = await requireOwnerManagerSession(ctx, sessionToken, claimedUserId);
@@ -39,7 +40,7 @@ export const listPublic = query({
     let companyId;
     if (args.slug) {
       const site = await ctx.db.query("companySites").withIndex("by_slug", (q: any) => q.eq("slug", args.slug!.trim().toLowerCase())).first();
-      companyId = site?.companyId;
+      companyId = site && isMiniSitePublished(site) ? site.companyId : undefined;
     } else {
       const company = await ctx.db.query("companies").withIndex("by_publicRequestToken", (q: any) => q.eq("publicRequestToken", args.publicRequestToken!)).first();
       companyId = company?._id;
