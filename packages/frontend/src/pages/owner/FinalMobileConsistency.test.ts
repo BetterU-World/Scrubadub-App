@@ -35,10 +35,18 @@ describe("final owner mobile consistency contracts", () => {
   it("puts live site identity and its primary action before configuration", () => {
     queryResults = [{ slug: "sitio-publico-extraordinariamente-largo", templateId: "A", brandName: longName, bio: "Bio", serviceArea: longAddress, services: [], publicRequestToken: "request-token" }];
     const html = renderToStaticMarkup(createElement(SiteSetupPage));
-    expect(html.indexOf(longName)).toBeLessThan(html.indexOf("<form"));
+    const identityIndex = html.indexOf('id="site-overview-title"');
+    const actionIndex = html.indexOf('href="/sitio-publico-extraordinariamente-largo"');
+    const formIndex = html.indexOf("<form");
+    const setupHeadingIndex = html.indexOf('id="get-found-heading"');
+    expect(identityIndex).toBeGreaterThan(-1);
+    expect(actionIndex).toBeGreaterThan(identityIndex);
+    expect(formIndex).toBeGreaterThan(actionIndex);
+    expect(setupHeadingIndex).toBeGreaterThan(formIndex);
+    expect(html.indexOf(longName)).toBeLessThan(actionIndex);
     expect(html).toContain("https://example.com/sitio-publico-extraordinariamente-largo");
     expect(html).toContain("btn-primary touch-target");
-    expect(html.match(/<h2/g)?.length).toBe(1);
+    expect(html).toContain("flex-col gap-4 sm:flex-row");
   });
 
   it("keeps one request summary with wrapped identity, status, notes, and attached action", () => {
