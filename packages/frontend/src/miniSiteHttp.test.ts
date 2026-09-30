@@ -59,4 +59,11 @@ describe("raw mini-site HTTP response", () => {
     expect(result.headers["X-Robots-Tag"]).toBe("noindex");
     expect(result.body).toContain('<div id="root"></div>');
   });
+
+  it("reports unavailable if the Convex URL is missing at function runtime", async () => {
+    delete process.env.VITE_CONVEX_URL;
+    const result = await request("cleaning-example");
+    expect(result.statusCode).toBe(503);
+    expect(result.headers["X-Robots-Tag"]).toBe("noindex");
+  });
 });

@@ -1,8 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { ConvexHttpClient } from "convex/browser";
-import { api } from "../../../convex/_generated/api";
-import { RESERVED_SLUGS } from "../../../convex/lib/slugs";
-import { validMiniSiteSlug } from "../../../convex/lib/miniSiteSeo";
+import { RESERVED_SLUGS, getBySlug, validMiniSiteSlug } from "./_miniSiteRuntime";
 import { renderMiniSiteHtml } from "./_miniSiteHtml";
 
 async function appShell() {
@@ -37,7 +35,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   }
   try {
     const client = new ConvexHttpClient(convexUrl);
-    const site = await client.query(api.queries.companySites.getBySlug, { slug });
+    const site = await client.query(getBySlug, { slug });
     if (!site) {
       res.statusCode = 404;
       res.setHeader("X-Robots-Tag", "noindex");

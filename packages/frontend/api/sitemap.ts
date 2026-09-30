@@ -1,7 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { ConvexHttpClient } from "convex/browser";
-import { api } from "../../../convex/_generated/api";
-import { MINI_SITE_ORIGIN } from "../../../convex/lib/miniSiteSeo";
+import { MINI_SITE_ORIGIN, listPublishedSlugs } from "./_miniSiteRuntime";
 
 const platformPages = ["/", "/cleaning-business-software", "/airbnb-cleaning-software", "/cleaning-company-management-software", "/cleaning-checklist-app", "/janitorial-software", "/maid-service-software", "/commercial-cleaning-software", "/house-cleaning-business-software"];
 
@@ -21,7 +20,7 @@ export default async function handler(_req: IncomingMessage, res: ServerResponse
     let cursor: string | undefined;
     let complete = false;
     for (let pageNumber = 0; pageNumber < 25; pageNumber++) {
-      const page = await client.query(api.queries.companySites.listPublishedSlugs, { cursor });
+      const page = await client.query(listPublishedSlugs, { cursor });
       slugs.push(...page.slugs);
       if (page.isDone) { complete = true; break; }
       cursor = page.continueCursor;
