@@ -1,9 +1,12 @@
 {
   "rewrites": [
     { "source": "/giveaway", "destination": "/giveaway/index.html" },
+    { "source": "/giveaway/", "destination": "/giveaway/index.html" },
     { "source": "/sitemap.xml", "destination": "/api/sitemap" },
     { "source": "/([^/.]+)/cleaner", "destination": "/api/mini-site?slug=$1&subpage=cleaner" },
+    { "source": "/([^/.]+)/cleaner/", "destination": "/api/mini-site?slug=$1&subpage=cleaner" },
     { "source": "/([^/.]+)", "destination": "/api/mini-site?slug=$1" },
+    { "source": "/([^/.]+)/", "destination": "/api/mini-site?slug=$1" },
     { "source": "/((?!robots\\.txt|sitemap\\.xml|favicon\\.ico|favicon\\.svg|site\\.webmanifest|manifest\\.json|assets/.*).*)", "destination": "/index.html" }
   ],
   "headers": [

@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { ConvexHttpClient } from "convex/browser";
-import { MINI_SITE_ORIGIN, listPublishedSlugs } from "./_miniSiteRuntime";
+import { MINI_SITE_ORIGIN, listPublishedSlugs } from "./_miniSiteRuntime.js";
 
 const platformPages = ["/", "/cleaning-business-software", "/airbnb-cleaning-software", "/cleaning-company-management-software", "/cleaning-checklist-app", "/janitorial-software", "/maid-service-software", "/commercial-cleaning-software", "/house-cleaning-business-software"];
 
