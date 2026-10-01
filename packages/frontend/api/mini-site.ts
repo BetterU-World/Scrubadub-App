@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { ConvexHttpClient } from "convex/browser";
-import { RESERVED_SLUGS, getBySlug, validMiniSiteSlug } from "./_miniSiteRuntime";
-import { renderMiniSiteHtml } from "./_miniSiteHtml";
+import { RESERVED_SLUGS, getBySlug, validMiniSiteSlug } from "./_miniSiteRuntime.js";
+import { renderMiniSiteHtml } from "./_miniSiteHtml.js";
 
 async function appShell() {
   const deploymentHost = process.env.VERCEL_URL || "scrubscrubscrub.com";

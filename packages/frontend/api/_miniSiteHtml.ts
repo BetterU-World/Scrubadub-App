@@ -1,4 +1,4 @@
-import { miniSiteCanonical, miniSiteDescription, miniSiteTitle, safePublicImage, type MiniSiteFacts } from "./_miniSiteRuntime";
+import { miniSiteCanonical, miniSiteDescription, miniSiteTitle, safePublicImage, type MiniSiteFacts } from "./_miniSiteRuntime.js";
 
 const escapeHtml = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 const scrubImage = "https://scrubscrubscrub.com/scrub-social-preview.png";
