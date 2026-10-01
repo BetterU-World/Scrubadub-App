@@ -4,6 +4,10 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 
 const state = vi.hoisted(() => ({ site: null as Record<string, unknown> | null }));
 vi.mock("convex/browser", () => ({ ConvexHttpClient: class { query() { return Promise.resolve(state.site); } } }));
+vi.mock("node:fs/promises", () => ({
+  readFile: vi.fn(async () => readFileSync("packages/frontend/index.html", "utf8")
+    .replace('<script type="module" src="/src/main.tsx"></script>', '<script type="module" crossorigin src="/assets/index-test.js"></script><link rel="stylesheet" href="/assets/index-test.css">')),
+}));
 
 import handler from "../api/mini-site";
 
@@ -22,7 +26,7 @@ async function request(slug: string, subpage = "") {
 describe("raw mini-site HTTP response", () => {
   beforeEach(() => {
     process.env.VITE_CONVEX_URL = "https://example.convex.cloud";
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(readFileSync("packages/frontend/index.html", "utf8"), { status: 200 })));
+    vi.stubGlobal("fetch", vi.fn(() => { throw new Error("App shell must not use deployment HTTP"); }));
     state.site = null;
   });
 
@@ -35,6 +39,9 @@ describe("raw mini-site HTTP response", () => {
     expect(result.body).toContain("https://scrubscrubscrub.com/cleaning-example");
     expect(result.body).toContain("application/ld+json");
     expect(result.body).toContain("Clermont, FL");
+    expect(result.body).toContain('src="/assets/index-test.js"');
+    expect(result.body).toContain('href="/assets/index-test.css"');
+    expect(result.body).not.toContain("/src/main.tsx");
   });
 
   it("returns a real 404 and noindex for draft and missing sites", async () => {
@@ -50,6 +57,7 @@ describe("raw mini-site HTTP response", () => {
     const reserved = await request("showcase");
     expect(reserved.statusCode).toBe(200);
     expect(reserved.body).toContain('<div id="root"></div>');
+    expect(reserved.body).toContain('src="/assets/index-test.js"');
   });
 
   it("keeps the cleaner application working without indexing it", async () => {

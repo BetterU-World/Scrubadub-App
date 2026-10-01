@@ -1,13 +1,11 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { readFile } from "node:fs/promises";
 import { ConvexHttpClient } from "convex/browser";
 import { RESERVED_SLUGS, getBySlug, validMiniSiteSlug } from "./_miniSiteRuntime.js";
 import { renderMiniSiteHtml } from "./_miniSiteHtml.js";
 
 async function appShell() {
-  const deploymentHost = process.env.VERCEL_URL || "scrubscrubscrub.com";
-  const response = await fetch(`https://${deploymentHost}/index.html`);
-  if (!response.ok) throw new Error("Unable to load app shell");
-  return response.text();
+  return readFile(new URL("../dist/index.html", import.meta.url), "utf8");
 }
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
