@@ -1,6 +1,6 @@
 import { query, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
-import { isFounderEmail } from "./lib/founderEmails";
+import { hasPlatformAdmin } from "./lib/platformEntitlements";
 import { requireVerifiedStaffSession } from "./lib/sessionAuth";
 import { SESSION_REQUIRED_ERROR } from "./lib/sessionConstants";
 
@@ -44,7 +44,7 @@ export const getCurrentUser = query({
       phone: user.phone,
       referralCode: user.referralCode,
       referredByCode: user.referredByCode,
-      isSuperadmin: isFounderEmail(user.email),
+      isSuperadmin: await hasPlatformAdmin(ctx, user._id),
       // Manager permission flags (only meaningful when role === "manager")
       canSeeAllJobs: user.canSeeAllJobs,
       canCreateJobs: user.canCreateJobs,

@@ -26,6 +26,7 @@ async function seed(t: ReturnType<typeof convexTest>) {
       role: "owner",
       status: "active",
     });
+    await ctx.db.insert("platformAdmins", { userId: founderId, active: true, revision: 1, updatedAt: Date.now() });
     const managerId = await ctx.db.insert("users", {
       email: "manager@hardening.test",
       passwordHash: "sensitive-password-hash",
@@ -58,7 +59,6 @@ const login = (t: ReturnType<typeof convexTest>, email: string) =>
 describe("Security Hardening V1 PR 1", () => {
   beforeEach(() => {
     process.env.TOKEN_PEPPER = "test-token-pepper";
-    process.env.FOUNDER_EMAILS = CONFIGURED_FOUNDER;
     process.env.STRIPE_SECRET_KEY = "test-stripe-key";
     process.env.STRIPE_WEBHOOK_ACCOUNT_SECRET = "test-webhook-secret";
     process.env.RESEND_API_KEY = "test-resend-key";
@@ -197,7 +197,7 @@ describe("Security Hardening V1 PR 1", () => {
     expect(revoked?.inviteTokenExpiry).toBeUndefined();
   });
 
-  it("uses configured founder eligibility consistently and gates admin queries after hydration", async () => {
+  it("uses explicitly provisioned eligibility consistently and gates admin queries after hydration", async () => {
     const t = makeTest();
     const { founderId, ownerId } = await seed(t);
     const founderAuth = await login(t, CONFIGURED_FOUNDER);

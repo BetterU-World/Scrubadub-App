@@ -9,7 +9,7 @@ import { hashToken } from "../tokens";
 
 const modules = import.meta.glob("../../**/*.ts");
 const PASSWORD = "test-password-123";
-const SUPERADMIN_EMAIL = "dzbfyse@gmail.com";
+const SUPERADMIN_EMAIL = "provisioned-admin@platform.test";
 const SESSION_ERROR = "verified session is required";
 
 function backend() {
@@ -40,6 +40,7 @@ async function seed(t: ReturnType<typeof backend>) {
       email: SUPERADMIN_EMAIL, passwordHash, name: "Founder", companyId: company,
       role: "owner", status: "active", referralCode: "founder-code",
     });
+    await ctx.db.insert("platformAdmins", { userId: superadmin, active: true, revision: 1, updatedAt: Date.now() });
     const purchaser = await ctx.db.insert("users", {
       email: "purchaser@ledger.test", passwordHash, name: "Purchaser", companyId: company,
       role: "owner", status: "active",

@@ -5,7 +5,7 @@ import { api } from "../../_generated/api";
 import { hashPassword } from "../password";
 
 const modules = import.meta.glob("../../**/*.ts");
-const SUPERADMIN_EMAIL = "dzbfyse@gmail.com";
+const SUPERADMIN_EMAIL = "provisioned-admin@platform.test";
 
 async function seed(t: ReturnType<typeof convexTest>) {
   const passwordHash = await hashPassword("test-password-123");
@@ -18,6 +18,7 @@ async function seed(t: ReturnType<typeof convexTest>) {
       role: "affiliate",
       status: "active",
     });
+    await ctx.db.insert("platformAdmins", { userId: founder, active: true, revision: 1, updatedAt: Date.now() });
     const owner = await ctx.db.insert("users", {
       email: "owner@example.com",
       passwordHash,

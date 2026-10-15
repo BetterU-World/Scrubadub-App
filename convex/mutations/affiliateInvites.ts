@@ -15,8 +15,10 @@ export const createAffiliateUser = internalMutation({
     inviteTokenHash: v.string(),
     inviteTokenExpiry: v.float64(),
     affiliateInvitedBy: v.id("users"),
+    sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
+    await requireSuperadminSession(ctx, args.sessionToken, args.affiliateInvitedBy);
     return await ctx.db.insert("users", {
       email: args.email,
       passwordHash: "",
@@ -35,10 +37,15 @@ export const createAffiliateUser = internalMutation({
 export const updateAffiliateInviteToken = internalMutation({
   args: {
     userId: v.id("users"),
+    callerUserId: v.id("users"),
+    sessionToken: v.string(),
     inviteTokenHash: v.string(),
     inviteTokenExpiry: v.float64(),
   },
   handler: async (ctx, args) => {
+    await requireSuperadminSession(ctx, args.sessionToken, args.callerUserId);
+    const target = await ctx.db.get(args.userId);
+    if (!target || target.role !== "affiliate" || target.status !== "pending") throw new Error("Pending affiliate required");
     await ctx.db.patch(args.userId, {
       inviteToken: undefined,
       inviteTokenHash: args.inviteTokenHash,

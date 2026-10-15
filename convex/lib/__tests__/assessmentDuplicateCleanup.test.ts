@@ -19,7 +19,8 @@ async function backend() {
   const definition = await t.mutation((api as any).assessments.prepare, {});
   const now = Date.now();
   const founder = await t.run(async (ctx) => {
-    const userId = await ctx.db.insert("users", { email: "dzbfyse@gmail.com", passwordHash: "test", name: "Founder", role: "affiliate", status: "active" });
+    const userId = await ctx.db.insert("users", { email: "provisioned-admin@platform.test", passwordHash: "test", name: "Founder", role: "affiliate", status: "active" });
+    await ctx.db.insert("platformAdmins", { userId: userId, active: true, revision: 1, updatedAt: Date.now() });
     await ctx.db.insert("authSessions", {
       principalType: "staff", userId, tokenHash: await sessionHash(SESSION_TOKEN), version: 1,
       createdAt: now - 60_000, lastUsedAt: now - 60_000, expiresAt: now + 60_000, idleExpiresAt: now + 60_000,

@@ -136,7 +136,8 @@ describe("canonical entry qualification", () => {
     await t.run(async ctx => { const entry = (await ctx.db.query("giveawayEntries").collect())[0]; await ctx.db.patch(entry._id, { entryMethod: undefined }); });
     await t.mutation(giveawayApi.enterAlternate, alternate("second@example.com"));
     const { founder, owner } = await t.run(async ctx => {
-      const founder = await ctx.db.insert("users", { name: "Founder", passwordHash: "unused-test-password", email: "dzbfyse@gmail.com", role: "affiliate", status: "active" });
+      const founder = await ctx.db.insert("users", { name: "Founder", passwordHash: "unused-test-password", email: "provisioned-admin@platform.test", role: "affiliate", status: "active" });
+    await ctx.db.insert("platformAdmins", { userId: founder, active: true, revision: 1, updatedAt: Date.now() });
       const owner = await ctx.db.insert("users", { name: "Owner", passwordHash: "unused-test-password", email: "other@example.com", role: "owner", status: "active" });
       for (const [userId, token] of [[founder, "founder-session"], [owner, "owner-session"]] as const) await ctx.db.insert("authSessions", { userId, principalType: "staff", version: 1, tokenHash: await hashTokenForLookup(token), createdAt: now, lastUsedAt: now, expiresAt: now + 100000, idleExpiresAt: now + 100000 });
       return { founder, owner };
@@ -158,7 +159,8 @@ describe("canonical entry qualification", () => {
     await t.mutation(giveawayApi.enterAlternate, alternate("alternate@example.com"));
     await t.mutation(giveawayApi.enterAlternate, alternate());
     const { founder, owner } = await t.run(async ctx => {
-      const founder = await ctx.db.insert("users", { name: "Founder", passwordHash: "unused-test-password", email: "dzbfyse@gmail.com", role: "affiliate", status: "active" });
+      const founder = await ctx.db.insert("users", { name: "Founder", passwordHash: "unused-test-password", email: "provisioned-admin@platform.test", role: "affiliate", status: "active" });
+    await ctx.db.insert("platformAdmins", { userId: founder, active: true, revision: 1, updatedAt: Date.now() });
       const owner = await ctx.db.insert("users", { name: "Owner", passwordHash: "unused-test-password", email: "owner@example.com", role: "owner", status: "active" });
       for (const [userId, token] of [[founder, "founder-summary"], [owner, "owner-summary"]] as const) await ctx.db.insert("authSessions", { userId, principalType: "staff", version: 1, tokenHash: await hashTokenForLookup(token), createdAt: now, lastUsedAt: now, expiresAt: now + 100000, idleExpiresAt: now + 100000 });
       return { founder, owner };

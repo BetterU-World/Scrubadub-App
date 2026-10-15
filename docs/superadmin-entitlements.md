@@ -1,5 +1,10 @@
 # Superadmin entitlements — staged deployment runbook
 
+**CUTOVER HOLD:** phase 1 is Draft PR #248. This dependent phase 2 removes all
+email-derived authorization. Production IDs/exemptions have NOT been verified or
+provisioned by this work. Do not merge or deploy phase 2 until the checklist below
+has been explicitly approved and completed against the deployed phase 1 revision.
+
 ## Deployment boundary
 
 Phase 1 adds storage, internal operator provisioning, and read-only readiness only.
@@ -78,19 +83,58 @@ This change does not add a user-creation or email-update path.
 
 ## Consumer checklist for phase 2
 
-- [ ] Query/mutation `sessionAuth.requireSuperadminSession`.
-- [ ] Action `sessions.requireSuperadminSession`, with mutation-time recheck for
+- [x] Query/mutation `sessionAuth.requireSuperadminSession`.
+- [x] Action `sessions.requireSuperadminSession`, with mutation-time recheck for
       action-backed administrative writes.
-- [ ] `authQueries.getCurrentUser` and `queries.admin.isSuperAdmin` projections.
-- [ ] Direct `affiliateLedger.lockLedgerPeriod` override.
-- [ ] Platform, affiliate, payout, manuals, assessment and giveaway admin callers
+- [x] `authQueries.getCurrentUser` and `queries.admin.isSuperAdmin` projections.
+- [x] Direct `affiliateLedger.lockLedgerPeriod` override.
+- [x] Platform, affiliate, payout, manuals, assessment and giveaway admin callers
       inherited through the shared helpers, including cleanup's read-only wrapper.
-- [ ] `queries.billing` and `lib/subscriptionGating` use explicit company billing
+- [x] `queries.billing` and `lib/subscriptionGating` use explicit company billing
       exemptions, independently of administrator status.
-- [ ] Remove `founderEmails` runtime use; no env or hardcoded email fallback.
-- [ ] Update synthetic admin fixtures and cover same-session revocation, email
+- [x] Remove `founderEmails` runtime use; no env or hardcoded email fallback.
+- [x] Update synthetic admin fixtures and cover same-session revocation, email
       changes/recreation, signup/invites, audit and billing separation.
 
 Stronger admin MFA/step-up authentication remains a separate follow-up. Existing
 peppered tokens, active-user checks, session expiry/revocation, tenant/resource
 checks and operational-role rules must remain intact.
+
+### Inherited administrative endpoint coverage
+
+The common helper now covers `queries/admin` (stats/company directory),
+`queries/adminAffiliates` (candidate/ledger/batch views), `queries/affiliateInvites`,
+admin queries in `queries/affiliatePayoutRequests` and `queries/affiliatePayoutBatches`,
+`queries/assessmentAdmin`, `giveaways.entrants`/`operatorSummary`,
+`queries/manuals.exportManuals`, `mutations/manuals.seedManuals`,
+`mutations/assessmentDuplicateCleanup.cleanup`, `mutations/affiliateInvites.revokeAffiliateInvite`,
+admin writes in `mutations/affiliateLedger`, `mutations/affiliatePayoutRequests` and
+`mutations/affiliatePayoutBatches`, and `affiliateInviteActions`. The retired
+`actions/stripePayouts.payPayoutBatchViaStripe` remains retired after authorization.
+`auth.getCurrentUser` re-exports the updated hydration query. No HTTP handler used
+the removed email helper. Ordinary ledger self-service retains its existing
+principal checks. Tenant checks elsewhere are unchanged.
+
+Action authorization uses an internal entitlement query; invitation creation and
+token rotation recheck the session and grant inside the committing mutation.
+Revocation denies future authorization checks/commits after it commits. It cannot
+undo already-returned data, committed operations or emails already scheduled by a
+previously authorized operation. A revoked grant is never restored by changing an
+environment variable or email. Company billing exemptions survive admin revocation
+and account deactivation independently until explicitly revoked by an operator.
+
+## Local validation (October 15, 2026)
+
+- Phase 1: five isolated provisioning tests and backend typecheck passed.
+- Phase 2: full suite ran 1,124 tests across 173 files: 1,123 passed and one
+  service-agreement test failed. All 17 tests in that unrelated file passed on
+  a one-worker isolated rerun. The initial run is not represented as all-green.
+- After final route ordering, 17 focused authorization/frontend guard tests passed.
+- Final frontend and backend typechecks passed. Local frontend production build
+  passed; existing stale Browserslist/chunk-size warnings remain.
+- No production deployment, data read/write, grant, revoke or configuration change
+  was performed. Real administrator/company IDs and readiness remain unverified.
+
+Retarget the stacked cutover PR to main only after phase 1 is merged, deployed
+and explicitly provisioned/verified. CI currently targets PRs to main; local
+validation does not replace the final main-targeted CI or production approval.
