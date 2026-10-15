@@ -401,6 +401,30 @@ export default defineSchema({
     updatedAt: v.number(),
   }).index("by_companyId", ["companyId"]),
 
+  // Operator-only platform entitlements, deliberately separate from user roles.
+  platformAdmins: defineTable({
+    userId: v.id("users"),
+    active: v.boolean(),
+    revision: v.number(),
+    updatedAt: v.number(),
+  }).index("by_userId", ["userId"]),
+  complimentarySubscriptions: defineTable({
+    companyId: v.id("companies"),
+    active: v.boolean(),
+    revision: v.number(),
+    updatedAt: v.number(),
+  }).index("by_companyId", ["companyId"]),
+  platformProvisioningAudit: defineTable({
+    kind: v.union(v.literal("admin"), v.literal("billing")),
+    targetId: v.string(),
+    active: v.boolean(),
+    revision: v.number(),
+    operator: v.string(),
+    approvalReference: v.string(),
+    reason: v.string(),
+    createdAt: v.number(),
+  }),
+
   users: defineTable({
     email: v.string(),
     passwordHash: v.string(),
