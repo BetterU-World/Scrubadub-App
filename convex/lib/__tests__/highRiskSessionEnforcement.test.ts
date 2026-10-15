@@ -6,7 +6,7 @@ import { hashPassword } from "../password";
 import { hashToken } from "../tokens";
 
 const modules = import.meta.glob("../../**/*.ts");
-const SUPERADMIN_EMAIL = "dzbfyse@gmail.com";
+const SUPERADMIN_EMAIL = "provisioned-admin@platform.test";
 
 function makeTest() {
   return convexTest(schema, modules);
@@ -46,6 +46,7 @@ async function seed(t: ReturnType<typeof convexTest>) {
       role: "affiliate",
       status: "active",
     });
+    await ctx.db.insert("platformAdmins", { userId: superadmin, active: true, revision: 1, updatedAt: Date.now() });
     const clientUserId = await ctx.db.insert("clientUsers", {
       email: "client@example.com",
       passwordHash,

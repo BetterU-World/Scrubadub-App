@@ -10,7 +10,7 @@ import { sanitizeSecurityMetadata } from "../securityEvents";
 const modules = import.meta.glob("../../**/*.ts");
 const PASSWORD = "test-password-123";
 const NEW_PASSWORD = "new-password-456";
-const FOUNDER = "dzbfyse@gmail.com";
+const FOUNDER = "provisioned-admin@platform.test";
 const makeTest = () => convexTest(schema, modules);
 
 async function seed(t: ReturnType<typeof convexTest>) {
@@ -22,6 +22,7 @@ async function seed(t: ReturnType<typeof convexTest>) {
     const worker = await ctx.db.insert("users", { email: "worker@pr2.test", passwordHash, name: "Worker", companyId: companyA, role: "cleaner", status: "active" });
     const affiliate = await ctx.db.insert("users", { email: "affiliate@pr2.test", passwordHash, name: "Affiliate", role: "affiliate", status: "active" });
     const founder = await ctx.db.insert("users", { email: FOUNDER, passwordHash, name: "Founder", role: "affiliate", status: "active" });
+    await ctx.db.insert("platformAdmins", { userId: founder, active: true, revision: 1, updatedAt: Date.now() });
     const client = await ctx.db.insert("clientUsers", { email: "client@pr2.test", passwordHash, displayName: "Client", status: "active", createdAt: 1, updatedAt: 1 });
     const relationshipA = await ctx.db.insert("clientRelationships", { companyId: companyA, clientUserId: client, displayName: "A", clientType: "residential", email: "client@pr2.test", status: "active", createdAt: 1, updatedAt: 1 });
     const relationshipB = await ctx.db.insert("clientRelationships", { companyId: companyB, clientUserId: client, displayName: "B", clientType: "residential", email: "client@pr2.test", status: "active", createdAt: 1, updatedAt: 1 });
@@ -35,7 +36,6 @@ const clientLogin = (t: ReturnType<typeof convexTest>, password = PASSWORD) => t
 describe("Security Hardening V1 PR 2", () => {
   beforeEach(() => {
     process.env.TOKEN_PEPPER = "test-token-pepper";
-    process.env.FOUNDER_EMAILS = FOUNDER;
     process.env.STRIPE_SECRET_KEY = "test-stripe-key";
     process.env.STRIPE_WEBHOOK_ACCOUNT_SECRET = "test-webhook-secret";
     process.env.RESEND_API_KEY = "test-resend-key";

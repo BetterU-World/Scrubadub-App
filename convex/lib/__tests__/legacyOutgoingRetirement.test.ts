@@ -52,7 +52,8 @@ async function setup() {
     const worker = await user("cleaner", "worker@retirement.test");
     const manager = await user("manager", "manager@retirement.test");
     const foreign = await user("owner", "foreign@retirement.test", other);
-    const admin = await user("owner", "dzbfyse@gmail.com");
+    const admin = await user("owner", "provisioned-admin@platform.test");
+    await ctx.db.insert("platformAdmins", { userId: admin.id, active: true, revision: 1, updatedAt: Date.now() });
     const job = await ctx.db.insert("jobs", {
       companyId: company,
       cleanerIds: [worker.id],

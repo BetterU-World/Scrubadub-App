@@ -68,6 +68,7 @@ export const inviteAffiliate = action({
         inviteTokenHash: hashToken(token),
         inviteTokenExpiry: Date.now() + AFFILIATE_INVITE_EXPIRY_MS,
         affiliateInvitedBy: principal.userId,
+        sessionToken: args.sessionToken,
       }
     );
 
@@ -128,6 +129,8 @@ export const resendAffiliateInvite = action({
       internal.mutations.affiliateInvites.updateAffiliateInviteToken,
       {
         userId: args.targetUserId,
+        callerUserId: args.callerUserId,
+        sessionToken: args.sessionToken,
         inviteTokenHash: hashToken(token),
         inviteTokenExpiry: Date.now() + AFFILIATE_INVITE_EXPIRY_MS,
       }

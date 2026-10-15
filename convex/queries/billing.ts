@@ -1,7 +1,7 @@
 import { query, internalQuery } from "../_generated/server";
 import { storedSubscriptionPeriodEndMs } from "../lib/stripeSubscriptionCompatibility";
 import { v } from "convex/values";
-import { isFounderEmail } from "../lib/founderEmails";
+import { hasComplimentarySubscription } from "../lib/platformEntitlements";
 import { tierToScrubPlan, planDisplayName, planPrice, cleanerLimit } from "../lib/plans";
 import { requireVerifiedStaffSession } from "../lib/sessionAuth";
 
@@ -28,19 +28,7 @@ export const getCompanySubscription = query({
     const company = await ctx.db.get(args.companyId);
     if (!company) return EMPTY_SUB;
 
-    // Check if any owner in this company is a founder → company-level bypass
-    let hasSuperadminOwner = false;
-    try {
-      const owners = await ctx.db
-        .query("users")
-        .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
-        .collect();
-      hasSuperadminOwner = owners.some(
-        (u) => u.role === "owner" && isFounderEmail(u.email)
-      );
-    } catch {
-      // If the founder check fails, continue without bypass
-    }
+    const companyBypassed = await hasComplimentarySubscription(ctx, args.companyId);
 
     const scrubPlan = tierToScrubPlan(company.tier);
 
@@ -51,7 +39,7 @@ export const getCompanySubscription = query({
       cancelAtPeriodEnd: company.cancelAtPeriodEnd,
       subscriptionBecameInactiveAt: company.subscriptionBecameInactiveAt,
       stripeCustomerId: company.stripeCustomerId,
-      companyBypassed: hasSuperadminOwner,
+      companyBypassed,
       // Plan metadata for UI
       planName: planDisplayName(scrubPlan),
       planPrice: planPrice(scrubPlan),

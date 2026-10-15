@@ -1,6 +1,12 @@
 import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { revokeAllSessionsForPrincipal } from "./lib/sessionRevocation";
+import { hasPlatformAdmin as adminEntitlement } from "./lib/platformEntitlements";
+
+export const hasPlatformAdmin = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => adminEntitlement(ctx, args.userId),
+});
 
 const sessionPrincipal = v.union(
   v.object({ principalType: v.literal("staff"), userId: v.id("users") }),

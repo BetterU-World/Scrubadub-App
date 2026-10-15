@@ -380,6 +380,16 @@ export default function App() {
       {devBanner}
       <AppLayout>
         <Switch>
+          {user?.isSuperadmin === true && (
+            <>
+              <Route path="/admin/assessment-cleanup" component={AssessmentCleanupPage} />
+              <Route path="/admin/giveaways" component={GiveawayOperatorPage} />
+              <Route path="/admin/assessments/:attemptId" component={AssessmentResultDetailPage} />
+              <Route path="/admin/assessments" component={AssessmentResultsPage} />
+              <Route path="/admin/affiliates" component={AffiliateInvitesPage} />
+              <Route path="/admin" component={SuperAdminPage} />
+            </>
+          )}
           {isOwner ? (
             accessOk ? (
               <>
@@ -539,16 +549,6 @@ export default function App() {
           <Route path="/notifications" component={NotificationsPage} />
           <Route path="/manuals/:slug" component={ManualViewerPage} />
           <Route path="/manuals" component={ManualsPage} />
-          {user?.isSuperadmin === true && (
-            <>
-              <Route path="/admin/assessment-cleanup" component={AssessmentCleanupPage} />
-              <Route path="/admin/giveaways" component={GiveawayOperatorPage} />
-              <Route path="/admin/assessments/:attemptId" component={AssessmentResultDetailPage} />
-              <Route path="/admin/assessments" component={AssessmentResultsPage} />
-              <Route path="/admin/affiliates" component={AffiliateInvitesPage} />
-              <Route path="/admin" component={SuperAdminPage} />
-            </>
-          )}
           <Route path="/invite/:token" component={AcceptInvitePage} />
           <Route path="/terms" component={TermsPage} />
           <Route path="/privacy" component={PrivacyPage} />

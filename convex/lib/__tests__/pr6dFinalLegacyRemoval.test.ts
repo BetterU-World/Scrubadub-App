@@ -9,7 +9,7 @@ import { hashToken } from "../tokens";
 
 const modules = import.meta.glob("../../**/*.ts");
 const PASSWORD = "test-password-123";
-const SUPERADMIN_EMAIL = "dzbfyse@gmail.com";
+const SUPERADMIN_EMAIL = "provisioned-admin@platform.test";
 const SESSION_ERROR = "verified session is required";
 
 function backend() {
@@ -27,6 +27,7 @@ async function seed(t: ReturnType<typeof backend>) {
     const cleanerA = await ctx.db.insert("users", { email: "cleaner-a@pr6d.test", passwordHash, name: "Cleaner A", companyId: companyA, role: "cleaner", status: "active" });
     const affiliate = await ctx.db.insert("users", { email: "affiliate@pr6d.test", passwordHash, name: "Affiliate", role: "affiliate", status: "active" });
     const superadmin = await ctx.db.insert("users", { email: SUPERADMIN_EMAIL, passwordHash, name: "Founder", companyId: companyA, role: "owner", status: "active" });
+    await ctx.db.insert("platformAdmins", { userId: superadmin, active: true, revision: 1, updatedAt: Date.now() });
     const jobA = await ctx.db.insert("jobs", {
       companyId: companyA, cleanerIds: [cleanerA], type: "standard", status: "approved", scheduledDate: "2026-07-13",
       durationMinutes: 60, reworkCount: 0, plannedCleanerPayCents: 5000,
@@ -62,7 +63,6 @@ async function login(t: ReturnType<typeof backend>, email: string) {
 describe("PR 6D final legacy authorization removal", () => {
   beforeEach(() => {
     process.env.TOKEN_PEPPER = "test-token-pepper";
-    process.env.SUPERADMIN_EMAILS = SUPERADMIN_EMAIL;
     process.env.STRIPE_SECRET_KEY = "test-stripe-key";
     process.env.STRIPE_WEBHOOK_ACCOUNT_SECRET = "test-webhook-secret";
     process.env.RESEND_API_KEY = "test-resend-key";
