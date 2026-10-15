@@ -1,3 +1,4 @@
+import { useAttachmentUpload } from "@/hooks/useAttachmentUpload";
 import { compensationError } from "@/components/payments/compensationErrors";
 import { usePerformedWorkers, PerformedWorkerPicker } from "@/components/payments/PerformedWorkerPicker";
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -119,7 +120,7 @@ export function CleaningFormPage() {
   const updateScore = useMutation(api.mutations.forms.updateScore);
   const submitForm = useMutation(api.mutations.forms.submit);
   const createRedFlag = useMutation(api.mutations.redFlags.create);
-  const generateUploadUrl = useMutation(api.mutations.storage.generateUploadUrl);
+  const uploadAttachment = useAttachmentUpload();
   const markAllComplete = useMutation(api.mutations.forms.markAllComplete);
   const addPhoto = useMutation(api.mutations.forms.addPhoto);
 
@@ -319,14 +320,8 @@ export function CleaningFormPage() {
     if (!form) return;
     setUploadingPhoto(true);
     try {
-      const url = await generateUploadUrl({ userId: user!._id, sessionToken: getStaffSessionToken() });
-      const result = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
-      const { storageId } = await result.json();
-      await addPhoto({ formId: form._id, photoStorageId: storageId, userId: user!._id, sessionToken: getStaffSessionToken() });
+      const upload = await uploadAttachment({ kind: "formPhoto", formId: form._id }, file, getStaffSessionToken());
+      await addPhoto({ formId: form._id, photoStorageId: upload.storageId, uploadIntentId: upload.uploadIntentId, userId: user!._id, sessionToken: getStaffSessionToken() });
     } catch (err) {
       console.error(err);
     } finally {

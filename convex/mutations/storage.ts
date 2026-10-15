@@ -23,14 +23,6 @@ export const generateUploadUrl = mutation({
   },
 });
 
-export const getUrl = mutation({
-  args: { storageId: v.id("_storage"), userId: v.id("users"), sessionToken: v.string() },
-  handler: async (ctx, args) => {
-    await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
-    return await ctx.storage.getUrl(args.storageId);
-  },
-});
-
 export const validateUpload = mutation({
   args: {
     userId: v.id("users"),

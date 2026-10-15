@@ -46,6 +46,8 @@ export const getItems = query({
       .query("formItems")
       .withIndex("by_formId", (q) => q.eq("formId", args.formId))
       .collect();
-    return items.sort((a, b) => a.order - b.order);
+    return Promise.all(items.sort((a, b) => a.order - b.order).map(async item => ({
+      ...item, photoUrl: item.photoStorageId ? await ctx.storage.getUrl(item.photoStorageId) : null,
+    })));
   },
 });

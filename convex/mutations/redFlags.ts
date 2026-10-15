@@ -5,8 +5,10 @@ import { hasManagerPermission } from "../lib/auth";
 import { requireOwnerManagerSession, requireOwnerSession, requireWorkerSession } from "../lib/sessionAuth";
 import { resolvePropertyConditionRequirement } from "../lib/propertyConditionRequirements";
 import { isUserAssignedToJob } from "../lib/teams";
+import { consumeAttachmentUpload } from "../lib/attachmentUploads";
 
 export const create = mutation({
+  returns: v.id("redFlags"),
   args: {
     userId: v.optional(v.id("users")),
     sessionToken: v.string(),
@@ -29,6 +31,7 @@ export const create = mutation({
     ),
     note: v.string(),
     photoStorageId: v.optional(v.id("_storage")),
+    uploadIntentId: v.optional(v.id("attachmentUploadIntents")),
   },
   handler: async (ctx, args) => {
     const user = await requireWorkerSession(ctx, args.sessionToken, args.userId);
@@ -42,7 +45,9 @@ export const create = mutation({
       throw new Error("Not assigned to perform this job");
     }
 
-    const { userId: _uid, sessionToken: _sessionToken, ...flagData } = args;
+    if (args.photoStorageId) await consumeAttachmentUpload(ctx, args.sessionToken, { kind: "redFlagPhoto", jobId: args.jobId }, args.photoStorageId, args.uploadIntentId);
+    else if (args.uploadIntentId) throw new Error("Attachment file required");
+    const { userId: _uid, sessionToken: _sessionToken, uploadIntentId: _intentId, ...flagData } = args;
     const flagId = await ctx.db.insert("redFlags", {
       ...flagData,
       status: "open",

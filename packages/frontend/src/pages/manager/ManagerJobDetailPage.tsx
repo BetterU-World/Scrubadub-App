@@ -1,3 +1,4 @@
+import { useAttachmentUpload } from "@/hooks/useAttachmentUpload";
 import { JobCompensation } from "@/components/payments/JobCompensation";
 import { useFeedbackState } from "@/components/ui/FeedbackProvider";
 import { useState } from "react";
@@ -57,7 +58,7 @@ export function ManagerJobDetailPage() {
   );
 
   const submitInspection = useMutation(api.mutations.inspections.submit);
-  const generateUploadUrl = useMutation(api.mutations.storage.generateUploadUrl);
+  const uploadAttachment = useAttachmentUpload();
   const resolveRedFlag = useMutation(api.mutations.redFlags.managerResolveRedFlag);
   const updateLifecycle = useMutation(api.mutations.redFlags.managerUpdateLifecycle);
   const cancelJob = useMutation(api.mutations.jobs.cancel);
@@ -71,7 +72,8 @@ export function ManagerJobDetailPage() {
   const [severity, setSeverity] = useState<"none" | "low" | "medium" | "high" | "critical">("none");
   const [notes, setNotes] = useState("");
   const [issues, setIssues] = useState("");
-  const [photoIds, setPhotoIds] = useState<Id<"_storage">[]>([]);
+  const [photoUploads, setPhotoUploads] = useState<Array<{ storageId: Id<"_storage">; uploadIntentId: Id<"attachmentUploadIntents"> }>>([]);
+  const photoIds = photoUploads.map(upload => upload.storageId);
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [resolvingFlag, setResolvingFlag] = useState<string | null>(null);
@@ -93,14 +95,8 @@ export function ManagerJobDetailPage() {
     setUploading(true);
     try {
       for (const file of Array.from(e.target.files) as File[]) {
-        const url = await generateUploadUrl({ userId: user._id, sessionToken: getStaffSessionToken() });
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": file.type },
-          body: file,
-        });
-        const { storageId } = await res.json();
-        setPhotoIds((prev: Id<"_storage">[]) => [...prev, storageId]);
+        const upload = await uploadAttachment({ kind: "inspectionPhoto", jobId }, file, getStaffSessionToken());
+        setPhotoUploads(prev => [...prev, upload]);
       }
     } catch {
       setToast({ message: "Failed to upload photo", type: "error" });
@@ -126,13 +122,14 @@ export function ManagerJobDetailPage() {
         notes: notes.trim() || undefined,
         issues: issueList.length > 0 ? issueList : undefined,
         photoStorageIds: photoIds.length > 0 ? photoIds : undefined,
+        photoUploadIntentIds: photoUploads.length > 0 ? photoUploads.map(upload => upload.uploadIntentId) : undefined,
       });
       setShowForm(false);
       setScore(7);
       setSeverity("none");
       setNotes("");
       setIssues("");
-      setPhotoIds([]);
+      setPhotoUploads([]);
       setToast({ message: t("inspection.submitted"), type: "success" });
     } catch (err: any) {
       setToast({ message: err.message ?? t("common.failed"), type: "error" });
@@ -478,7 +475,7 @@ export function ManagerJobDetailPage() {
                 <button
                   onClick={() => {
                     setShowForm(false);
-                    setPhotoIds([]);
+                    setPhotoUploads([]);
                   }}
                   className="btn-secondary flex-1"
                 >

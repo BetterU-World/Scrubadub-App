@@ -42,6 +42,7 @@ export const listByCompany = query({
           const job = await ctx.db.get(flag.jobId);
           return {
             ...flag,
+            photoUrl: flag.photoStorageId ? await ctx.storage.getUrl(flag.photoStorageId) : null,
             propertyName: property?.name ?? "Unknown",
             jobDate: job?.scheduledDate ?? "Unknown",
           };
@@ -99,6 +100,7 @@ export const listForManager = query({
         const job = await ctx.db.get(flag.jobId);
         return {
           ...flag,
+          photoUrl: flag.photoStorageId ? await ctx.storage.getUrl(flag.photoStorageId) : null,
           propertyName: property?.name ?? "Unknown",
           jobDate: job?.scheduledDate ?? "Unknown",
         };
@@ -120,9 +122,12 @@ export const listByJob = query({
       if (job.assignedManagerId !== user._id && !(await isUserAssignedToJob(ctx, job, user._id))) throw new Error("Access denied");
     }
 
-    return await ctx.db
+    const flags = await ctx.db
       .query("redFlags")
       .withIndex("by_jobId", (q) => q.eq("jobId", args.jobId))
       .collect();
+    return Promise.all(flags.map(async flag => ({
+      ...flag, photoUrl: flag.photoStorageId ? await ctx.storage.getUrl(flag.photoStorageId) : null,
+    })));
   },
 });

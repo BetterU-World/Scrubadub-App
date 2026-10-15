@@ -1,3 +1,4 @@
+import { useAttachmentUpload } from "@/hooks/useAttachmentUpload";
 import { useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -39,7 +40,7 @@ export function CompanyOnboardingDocumentsPage() {
     (api as any).queries.companyOnboardingDocuments.listForOwner,
     user?._id && sessionToken ? { userId: user._id, sessionToken } : "skip"
   );
-  const generateUploadUrl = useMutation(api.mutations.storage.generateUploadUrl);
+  const uploadAttachment = useAttachmentUpload();
   const validateUpload = useMutation(api.mutations.storage.validateUpload);
   const attachPdf = useMutation((api as any).mutations.companyOnboardingDocuments.attachPdf);
   const upsertMetadata = useMutation((api as any).mutations.companyOnboardingDocuments.upsertMetadata);
@@ -88,18 +89,13 @@ export function CompanyOnboardingDocumentsPage() {
       if (file.type !== "application/pdf") {
         throw new Error("Only PDF files are supported for onboarding documents");
       }
-      const uploadUrl = await generateUploadUrl({ userId: user._id, sessionToken: getStaffSessionToken() });
-      const result = await fetch(uploadUrl, {
-        method: "POST",
-        headers: { "Content-Type": file.type },
-        body: file,
-      });
-      const { storageId } = await result.json();
+      const { storageId, uploadIntentId } = await uploadAttachment({ kind: "onboardingPdf", documentKey: document.documentKey }, file, getStaffSessionToken());
       await attachPdf({
         userId: user._id,
         sessionToken: getStaffSessionToken(),
         documentKey: document.documentKey,
         storageId,
+        uploadIntentId,
         title: document.title,
         description: document.description,
         required: document.required,
