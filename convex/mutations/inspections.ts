@@ -4,8 +4,10 @@ import { hasManagerPermission } from "../lib/auth";
 import { createNotification, logAudit } from "../lib/helpers";
 import { requireOwnerManagerSession, requireOwnerSession } from "../lib/sessionAuth";
 import { isUserAssignedToJob } from "../lib/teams";
+import { consumeAttachmentUpload } from "../lib/attachmentUploads";
 
 export const submit = mutation({
+  returns: v.id("managerInspections"),
   args: {
     userId: v.id("users"),
     sessionToken: v.string(),
@@ -21,6 +23,7 @@ export const submit = mutation({
     notes: v.optional(v.string()),
     issues: v.optional(v.array(v.string())),
     photoStorageIds: v.optional(v.array(v.id("_storage"))),
+    photoUploadIntentIds: v.optional(v.array(v.id("attachmentUploadIntents"))),
   },
   handler: async (ctx, args) => {
     const user = await requireOwnerManagerSession(ctx, args.sessionToken, args.userId);
@@ -47,6 +50,12 @@ export const submit = mutation({
       throw new Error("Readiness score must be an integer between 1 and 10");
     }
 
+    const photos = args.photoStorageIds ?? [];
+    const intents = args.photoUploadIntentIds ?? [];
+    if (photos.length !== intents.length || photos.length > 50) throw new Error("Bound upload required for every inspection photo (maximum 50)");
+    for (let index = 0; index < photos.length; index++) {
+      await consumeAttachmentUpload(ctx, args.sessionToken, { kind: "inspectionPhoto", jobId: args.jobId }, photos[index], intents[index]);
+    }
     const now = Date.now();
     const inspectionId = await ctx.db.insert("managerInspections", {
       jobId: args.jobId,

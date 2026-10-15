@@ -696,7 +696,14 @@ export function JobDetailPage() {
                             </p>
                           )}
                           {s.photoStorageIds && s.photoStorageIds.length > 0 ? (
-                            <p className="text-sm text-gray-500">{t("jobs.photosShared", { count: s.photoStorageIds.length })}</p>
+                            <div>
+                              <p className="text-sm text-gray-500">{t("jobs.photosShared", { count: s.photoStorageIds.length })}</p>
+                              <div className="mt-2 grid grid-cols-3 gap-2">
+                                {s.photoUrls.map((url: string, index: number) => <a key={url} href={url} target="_blank" rel="noopener noreferrer">
+                                  <img src={url} alt={`${t("jobs.photo")} ${index + 1}`} className="h-20 w-full rounded-lg border object-cover" />
+                                </a>)}
+                              </div>
+                            </div>
                           ) : (
                             <p className="text-sm text-gray-400">{t("jobs.noPhotosShared")}</p>
                           )}

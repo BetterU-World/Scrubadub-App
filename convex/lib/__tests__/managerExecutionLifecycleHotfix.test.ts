@@ -54,8 +54,10 @@ describe("manager execution lifecycle hotfix", () => {
 
     const form = await t.run((ctx) => ctx.db.query("forms").withIndex("by_jobId", (q) => q.eq("jobId", seeded.job)).unique());
     expect(form?.cleanerId).toBe(seeded.manager);
-    const storageId = await t.run((ctx) => ctx.storage.store(new Blob(["evidence"], { type: "text/plain" })));
-    await t.mutation(api.mutations.forms.addPhoto, { formId: form!._id, photoStorageId: storageId, userId: seeded.manager, sessionToken: managerAuth.sessionToken });
+    const upload = await t.mutation(api.attachmentUploads.begin, { sessionToken: managerAuth.sessionToken, target: { kind: "formPhoto", formId: form!._id }, mimeType: "image/jpeg" });
+    const storageId = await t.run((ctx) => ctx.storage.store(new Blob(["synthetic photo"], { type: upload.contentType })));
+    await t.run(ctx => ctx.db.patch(storageId, { contentType: upload.contentType }));
+    await t.mutation(api.mutations.forms.addPhoto, { formId: form!._id, photoStorageId: storageId, uploadIntentId: upload.intentId, userId: seeded.manager, sessionToken: managerAuth.sessionToken });
     await t.mutation(api.mutations.forms.markAllComplete, { formId: form!._id, userId: seeded.manager, sessionToken: managerAuth.sessionToken });
     await t.mutation(api.mutations.forms.submit, { performedWorkerIds: [seeded.manager], formId: form!._id, userId: seeded.manager, sessionToken: managerAuth.sessionToken });
     await expect(t.run((ctx) => ctx.db.get(seeded.job))).resolves.toMatchObject({ status: "submitted", completedAt: expect.any(Number) });

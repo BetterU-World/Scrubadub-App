@@ -165,6 +165,8 @@ export const getSharedJobStatus = query({
     const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
 
     // Shared jobs originating from this job (Owner1 view)
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.companyId !== owner.companyId) throw new Error("Access denied");
     const outgoing = await ctx.db
       .query("sharedJobs")
       .withIndex("by_originalJobId", (q) => q.eq("originalJobId", args.jobId))
@@ -174,6 +176,11 @@ export const getSharedJobStatus = query({
     for (const shared of outgoing) {
       if (shared.fromCompanyId !== owner.companyId) continue;
       const toCompany = await ctx.db.get(shared.toCompanyId);
+      const copiedJob = shared.copiedJobId ? await ctx.db.get(shared.copiedJobId) : null;
+      const canReadPackage = shared.sharePackage === true && shared.status === "completed" &&
+        copiedJob?.companyId === shared.toCompanyId && copiedJob.sharedFromJobId === args.jobId;
+      const photoStorageIds = canReadPackage ? shared.photoStorageIds : undefined;
+      const photoUrls = photoStorageIds ? (await Promise.all(photoStorageIds.map(id => ctx.storage.getUrl(id)))).filter((url): url is string => url !== null) : [];
       results.push({
         _id: shared._id,
         toCompanyId: shared.toCompanyId,
@@ -183,7 +190,8 @@ export const getSharedJobStatus = query({
         sharePackage: shared.sharePackage,
         completionNotes: shared.completionNotes,
         checklistSummary: shared.checklistSummary,
-        photoStorageIds: shared.photoStorageIds,
+        photoStorageIds,
+        photoUrls,
         completedAt: shared.completedAt,
       });
     }

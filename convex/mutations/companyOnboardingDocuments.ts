@@ -2,6 +2,7 @@ import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwnerOrManagerCapability } from "../lib/sessionAuth";
 import { standardCompanyOnboardingDocumentForKey } from "../lib/companyOnboardingDocuments";
+import { consumeAttachmentUpload } from "../lib/attachmentUploads";
 
 const roleVisibilityValidator = v.union(
   v.literal("cleaner"),
@@ -78,11 +79,13 @@ export const upsertMetadata = mutation({
 });
 
 export const attachPdf = mutation({
+  returns: v.id("companyOnboardingDocuments"),
   args: {
     userId: v.id("users"),
     sessionToken: v.string(),
     documentKey: v.string(),
     storageId: v.id("_storage"),
+    uploadIntentId: v.id("attachmentUploadIntents"),
     title: v.optional(v.string()),
     description: v.optional(v.string()),
     required: v.optional(v.boolean()),
@@ -94,6 +97,7 @@ export const attachPdf = mutation({
     const db: any = ctx.db;
     const now = Date.now();
     const documentKey = cleanString(args.documentKey, 120);
+    await consumeAttachmentUpload(ctx, args.sessionToken, { kind: "onboardingPdf", documentKey }, args.storageId, args.uploadIntentId);
     const standard = standardCompanyOnboardingDocumentForKey(documentKey);
     const existing = await getExisting({ ...ctx, db }, owner.companyId, documentKey);
 

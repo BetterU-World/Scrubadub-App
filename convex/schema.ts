@@ -735,6 +735,18 @@ export default defineSchema({
     .index("by_company_upload_request", ["companyId", "lastUploadRequestId"])
     .index("by_storageId", ["storageId"]),
 
+  attachmentUploadIntents: defineTable({
+    companyId: v.id("companies"),
+    userId: v.id("users"),
+    targetKey: v.string(),
+    nonce: v.string(),
+    mimeType: v.string(),
+    status: v.union(v.literal("pending"), v.literal("attached")),
+    storageId: v.optional(v.id("_storage")),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+  }).index("by_storageId", ["storageId"]),
+
   resourceUploadIntents: defineTable({
     companyId: v.id("companies"),
     userId: v.id("users"),

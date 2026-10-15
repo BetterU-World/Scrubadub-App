@@ -10,6 +10,7 @@ import { resolveOperationalEmailIdentity } from "../lib/operationalEmailIdentity
 import { requireAssignedJobExecutor } from "../lib/jobExecutionAuth";
 import { ensureJobExecutionForm } from "../lib/jobExecutionForm";
 import { submitJobExecution } from "../lib/jobSubmission";
+import { consumeAttachmentUpload } from "../lib/attachmentUploads";
 
 export const createFromTemplate = mutation({
   args: {
@@ -36,12 +37,14 @@ async function requireEditable(ctx: MutationCtx, formId: Id<"forms">) {
 }
 
 export const updateItem = mutation({
+  returns: v.null(),
   args: {
     itemId: v.id("formItems"),
     completed: v.optional(v.boolean()),
     note: v.optional(v.string()),
     isRedFlag: v.optional(v.boolean()),
     photoStorageId: v.optional(v.id("_storage")),
+    uploadIntentId: v.optional(v.id("attachmentUploadIntents")),
     userId: v.optional(v.id("users")),
     sessionToken: v.string(),
   },
@@ -52,7 +55,10 @@ export const updateItem = mutation({
     const form = await requireEditable(ctx, item.formId);
     await requireAssignedJobExecutor(ctx, args.sessionToken, form.jobId, args.userId);
 
-    const { itemId, userId: _uid, sessionToken: _sessionToken, ...updates } = args;
+    if (args.photoStorageId) await consumeAttachmentUpload(ctx, args.sessionToken, { kind: "formItemPhoto", itemId: args.itemId }, args.photoStorageId, args.uploadIntentId);
+    else if (args.uploadIntentId) throw new Error("Attachment file required");
+
+    const { itemId, userId: _uid, sessionToken: _sessionToken, uploadIntentId: _intentId, ...updates } = args;
     const cleanUpdates: Record<string, any> = {};
     for (const [key, val] of Object.entries(updates)) {
       if (val !== undefined) cleanUpdates[key] = val;
@@ -95,9 +101,11 @@ export const markAllComplete = mutation({
 });
 
 export const addPhoto = mutation({
+  returns: v.null(),
   args: {
     formId: v.id("forms"),
     photoStorageId: v.id("_storage"),
+    uploadIntentId: v.id("attachmentUploadIntents"),
     userId: v.optional(v.id("users")),
     sessionToken: v.string(),
   },
@@ -105,6 +113,7 @@ export const addPhoto = mutation({
     const form = await requireEditable(ctx, args.formId);
     await requireAssignedJobExecutor(ctx, args.sessionToken, form.jobId, args.userId);
 
+    await consumeAttachmentUpload(ctx, args.sessionToken, { kind: "formPhoto", formId: args.formId }, args.photoStorageId, args.uploadIntentId);
     const existing = form.photoStorageIds ?? [];
     await ctx.db.patch(args.formId, {
       photoStorageIds: [...existing, args.photoStorageId],
