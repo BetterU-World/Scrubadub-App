@@ -8,6 +8,7 @@ export default defineConfig({
     include: [
       "scripts/toolingSecurity.test.ts",
       "scripts/buildToolingSecurity.test.ts",
+      "scripts/cssToolingSecurity.test.ts",
       "convex/lib/__tests__/**/*.test.ts",
       "packages/frontend/src/**/*.test.ts",
     ],
