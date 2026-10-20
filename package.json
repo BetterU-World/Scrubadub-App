@@ -23,7 +23,7 @@
     "@types/node": "^25.3.0",
     "concurrently": "^8.2.2",
     "convex-test": "^0.0.40",
-    "vitest": "4.1.9"
+    "vitest": "4.1.11"
   },
   "dependencies": {
     "@vercel/blob": "^2.3.0",

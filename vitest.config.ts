@@ -6,6 +6,7 @@ export default defineConfig({
       TOKEN_PEPPER: "test-token-pepper",
     },
     include: [
+      "scripts/toolingSecurity.test.ts",
       "convex/lib/__tests__/**/*.test.ts",
       "packages/frontend/src/**/*.test.ts",
     ],
