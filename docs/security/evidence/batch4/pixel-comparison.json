@@ -1,0 +1,170 @@
+[
+  {
+    "file": "baseline-1440-login-es.png",
+    "width": 1440,
+    "height": 949,
+    "changedPixels": 0
+  },
+  {
+    "file": "baseline-1440-request-dialog.png",
+    "width": 1440,
+    "height": 900,
+    "changedPixels": 0
+  },
+  {
+    "file": "baseline-1440-request-review.png",
+    "width": 1440,
+    "height": 900,
+    "changedPixels": 0
+  },
+  {
+    "file": "baseline-1440-_.png",
+    "width": 1440,
+    "height": 9437,
+    "changedPixels": 21
+  },
+  {
+    "file": "baseline-1440-_internal_demo_client.png",
+    "width": 1440,
+    "height": 900,
+    "changedPixels": 0
+  },
+  {
+    "file": "baseline-1440-_internal_demo_client_requests.png",
+    "width": 1440,
+    "height": 900,
+    "changedPixels": 0
+  },
+  {
+    "file": "baseline-1440-_internal_demo_client_requests_new.png",
+    "width": 1440,
+    "height": 1297,
+    "changedPixels": 0
+  },
+  {
+    "file": "baseline-1440-_internal_demo_owner.png",
+    "width": 1440,
+    "height": 1199,
+    "changedPixels": 0
+  },
+  {
+    "file": "baseline-1440-_internal_demo_owner_calendar.png",
+    "width": 1440,
+    "height": 1128,
+    "changedPixels": 0
+  },
+  {
+    "file": "baseline-1440-_internal_demo_owner_jobs.png",
+    "width": 1440,
+    "height": 1128,
+    "changedPixels": 0
+  },
+  {
+    "file": "baseline-1440-_internal_demo_worker_jobs_riverstone-turnover.png",
+    "width": 1440,
+    "height": 900,
+    "changedPixels": 0
+  },
+  {
+    "file": "baseline-1440-_internal_demo_worker_jobs_riverstone-turnover_checklist.png",
+    "width": 1440,
+    "height": 900,
+    "changedPixels": 0
+  },
+  {
+    "file": "baseline-1440-_login.png",
+    "width": 1440,
+    "height": 949,
+    "changedPixels": 0
+  },
+  {
+    "file": "baseline-1440-_showcase.png",
+    "width": 1440,
+    "height": 1053,
+    "changedPixels": 0
+  },
+  {
+    "file": "baseline-390-login-es.png",
+    "width": 390,
+    "height": 989,
+    "changedPixels": 0
+  },
+  {
+    "file": "baseline-390-request-dialog.png",
+    "width": 390,
+    "height": 1037,
+    "changedPixels": 0
+  },
+  {
+    "file": "baseline-390-request-review.png",
+    "width": 390,
+    "height": 1037,
+    "changedPixels": 0
+  },
+  {
+    "file": "baseline-390-_.png",
+    "width": 390,
+    "height": 17591,
+    "changedPixels": 0
+  },
+  {
+    "file": "baseline-390-_internal_demo_client.png",
+    "width": 390,
+    "height": 1323,
+    "changedPixels": 0
+  },
+  {
+    "file": "baseline-390-_internal_demo_client_requests.png",
+    "width": 390,
+    "height": 975,
+    "changedPixels": 0
+  },
+  {
+    "file": "baseline-390-_internal_demo_client_requests_new.png",
+    "width": 390,
+    "height": 1495,
+    "changedPixels": 0
+  },
+  {
+    "file": "baseline-390-_internal_demo_owner.png",
+    "width": 390,
+    "height": 1977,
+    "changedPixels": 0
+  },
+  {
+    "file": "baseline-390-_internal_demo_owner_calendar.png",
+    "width": 390,
+    "height": 920,
+    "changedPixels": 0
+  },
+  {
+    "file": "baseline-390-_internal_demo_owner_jobs.png",
+    "width": 390,
+    "height": 1453,
+    "changedPixels": 0
+  },
+  {
+    "file": "baseline-390-_internal_demo_worker_jobs_riverstone-turnover.png",
+    "width": 390,
+    "height": 1037,
+    "changedPixels": 0
+  },
+  {
+    "file": "baseline-390-_internal_demo_worker_jobs_riverstone-turnover_checklist.png",
+    "width": 390,
+    "height": 1179,
+    "changedPixels": 0
+  },
+  {
+    "file": "baseline-390-_login.png",
+    "width": 390,
+    "height": 989,
+    "changedPixels": 0
+  },
+  {
+    "file": "baseline-390-_showcase.png",
+    "width": 390,
+    "height": 1945,
+    "changedPixels": 0
+  }
+]
