@@ -2,6 +2,16 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwnerSession } from "../lib/sessionAuth";
 import { isMiniSitePublished, normalizedAdditionalAreas, validMiniSiteSlug } from "../lib/miniSiteSeo";
+import type { Doc } from "../_generated/dataModel";
+
+const DEFAULT_PUBLIC_REVIEW_LIMIT = 6;
+const MAX_PUBLIC_REVIEW_LIMIT = 24;
+
+// Match the old by_status_createdAt descending index order, including ties.
+function newestFeedbackFirst(a: Doc<"clientFeedback">, b: Doc<"clientFeedback">) {
+  return b.createdAt - a.createdAt || b._creationTime - a._creationTime ||
+    (a._id === b._id ? 0 : a._id < b._id ? 1 : -1);
+}
 
 /**
  * Public query – load a mini-site by its slug.
@@ -111,46 +121,55 @@ export const isSlugAvailable = query({
  */
 export const getReviewedFeedbackBySlug = query({
   args: { slug: v.string(), limit: v.optional(v.number()) },
+  returns: v.array(v.object({
+    id: v.id("clientFeedback"),
+    rating: v.number(),
+    comment: v.union(v.string(), v.null()),
+    displayName: v.union(v.string(), v.null()),
+    createdAt: v.number(),
+  })),
   handler: async (ctx, args) => {
+    const requestedLimit = args.limit ?? DEFAULT_PUBLIC_REVIEW_LIMIT;
+    if (!Number.isFinite(requestedLimit)) throw new Error("Review limit must be a finite number");
+    const cap = Math.max(0, Math.min(MAX_PUBLIC_REVIEW_LIMIT, Math.floor(requestedLimit)));
+    if (cap === 0 || !validMiniSiteSlug(args.slug)) return [];
+
     const site = await ctx.db
       .query("companySites")
       .withIndex("by_slug", (q) => q.eq("slug", args.slug))
       .first();
     if (!site || !isMiniSitePublished(site)) return [];
+    if (!await ctx.db.get(site.companyId)) return [];
 
-    // Get all company requests
-    const requests = await ctx.db
+    // Company ownership lives on the request. Check every company request to
+    // preserve exact top-N selection; never cap requests before finding reviews.
+    // Retain at most N winners and read at most N eligible reviews per request.
+    let candidates: Array<{ feedback: Doc<"clientFeedback">; requesterName: string }> = [];
+    const requests = ctx.db
       .query("clientRequests")
-      .withIndex("by_companyId", (q) => q.eq("companyId", site.companyId))
-      .collect();
+      .withIndex("by_companyId", (q) => q.eq("companyId", site.companyId));
+    for await (const request of requests) {
+      const oldestWinner = candidates.length === cap ? candidates[cap - 1].feedback.createdAt : undefined;
+      const feedback = await ctx.db
+        .query("clientFeedback")
+        .withIndex("by_clientRequestId_status_featuredOnSite_createdAt", (q) => {
+          const range = q.eq("clientRequestId", request._id).eq("status", "reviewed").eq("featuredOnSite", true);
+          // Keep timestamp ties for the global creation-time/ID tie breakers.
+          return oldestWinner === undefined ? range : range.gte("createdAt", oldestWinner);
+        })
+        .order("desc")
+        .take(cap);
+      candidates.push(...feedback.map((entry) => ({ feedback: entry, requesterName: request.requesterName })));
+      candidates.sort((a, b) => newestFeedbackFirst(a.feedback, b.feedback));
+      candidates = candidates.slice(0, cap);
+    }
 
-    if (requests.length === 0) return [];
-
-    const requestIds = new Set(requests.map((r) => r._id));
-    const requestMap = new Map(requests.map((r) => [r._id, r]));
-
-    // Fetch reviewed feedback (newest first)
-    const allFeedback = await ctx.db
-      .query("clientFeedback")
-      .withIndex("by_status_createdAt", (q) => q.eq("status", "reviewed"))
-      .order("desc")
-      .collect();
-
-    // Filter to this company's requests AND explicitly featured on site
-    const companyFeedback = allFeedback.filter((f) =>
-      requestIds.has(f.clientRequestId) && f.featuredOnSite === true
-    );
-
-    const cap = args.limit ?? 6;
-    const limited = companyFeedback.slice(0, cap);
-
-    return limited.map((f) => {
-      const req = requestMap.get(f.clientRequestId);
+    return candidates.map(({ feedback: f, requesterName }) => {
       // Only expose first name or initial — never full email/phone
       const displayName = f.contactName
         ? f.contactName.split(" ")[0]
-        : req?.requesterName
-          ? req.requesterName.split(" ")[0]
+        : requesterName
+          ? requesterName.split(" ")[0]
           : null;
 
       return {
