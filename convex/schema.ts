@@ -2350,7 +2350,10 @@ export default defineSchema({
   })
     .index("by_clientRequestId", ["clientRequestId"])
     .index("by_clientRequestId_createdAt", ["clientRequestId", "createdAt"])
-    .index("by_status_createdAt", ["status", "createdAt"]),
+    .index("by_status_createdAt", ["status", "createdAt"])
+    .index("by_clientRequestId_status_featuredOnSite_createdAt", [
+      "clientRequestId", "status", "featuredOnSite", "createdAt",
+    ]),
 
   // Cleaner Availability (weekly recurring)
   cleanerAvailability: defineTable({
