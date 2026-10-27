@@ -232,8 +232,12 @@ describe("relationship propagation", () => {
     const propertyId = await seedProperty(t, companyId, `calendar-${linked}`, clientId);
     const connectionId = await seedCalendarSource(t, companyId, ownerId, propertyId, String(linked));
 
+    await t.mutation(internal.mutations.calendarSync.beginSyncAttempt, {
+      connectionId, attemptId: "relationship-propagation",
+    });
     await t.mutation(internal.mutations.calendarSync.processSyncResults, {
       connectionId,
+      attemptId: "relationship-propagation",
       reservations: [{
         uid: `reservation-${linked}`,
         checkIn: "2030-01-09",

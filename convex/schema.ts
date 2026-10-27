@@ -2555,6 +2555,9 @@ export default defineSchema({
     // on first sync to prevent historical job creation
     initialSyncCutoff: v.string(),
     consecutiveErrors: v.number(),
+    // Latest-result fence, not a lease: overlapping fetches are still allowed.
+    // Overlaps share one charged round and cannot extend its recovery deadline.
+    syncAttempt: v.optional(v.object({ id: v.string(), chargedAt: v.number() })),
     createdAt: v.number(),
     createdBy: v.id("users"),
   })
