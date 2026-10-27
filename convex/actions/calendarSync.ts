@@ -21,6 +21,7 @@ export const syncConnection = internalAction({
   args: {
     connectionId: v.id("calendarConnections"),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     assertExternalSideEffectsAllowed("External calendar synchronization");
     // 1. Read the connection
@@ -39,8 +40,14 @@ export const syncConnection = internalAction({
       return;
     }
 
+    const admitted = await ctx.runMutation(
+      internal.mutations.calendarSync.beginSyncAttempt,
+      { connectionId: args.connectionId },
+    );
+    if (!admitted) return;
+
     // 2. Fetch the iCal feed
-    let rawIcs: string;
+    let stage = "Fetch";
     try {
       const response = await fetch(connection.icalUrl, {
         headers: { "User-Agent": "SCRUB-CalendarSync/1.0" },
@@ -51,60 +58,43 @@ export const syncConnection = internalAction({
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
-      rawIcs = await response.text();
+      const rawIcs = await response.text();
 
       if (!rawIcs || rawIcs.trim().length === 0) {
         throw new Error("Empty response from iCal URL");
       }
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.error(`[calendarSync] Fetch failed for ${args.connectionId}: ${message}`);
+      // 3. Parse the feed
+      stage = "Parse";
+      const parseResult = parseICalFeed(rawIcs);
 
-      // Record the error
+      // 4. Processing and success recording commit together in this mutation.
+      stage = "Processing";
       await ctx.runMutation(
-        internal.mutations.calendarSync.recordSyncError,
+        internal.mutations.calendarSync.processSyncResults,
         {
           connectionId: args.connectionId,
-          errorMessage: message,
+          reservations: parseResult.reservations.map((r) => ({
+            uid: r.uid,
+            summary: r.summary,
+            checkIn: r.checkIn,
+            checkOut: r.checkOut,
+            dtStamp: r.dtStamp,
+            rawHash: r.rawHash,
+          })),
+          totalEvents: parseResult.totalEvents,
+          skipped: parseResult.skipped,
         }
       );
-      return;
-    }
-
-    // 3. Parse the feed
-    let parseResult;
-    try {
-      parseResult = parseICalFeed(rawIcs);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error(`[calendarSync] Parse failed for ${args.connectionId}: ${message}`);
-
-      await ctx.runMutation(
-        internal.mutations.calendarSync.recordSyncError,
-        {
-          connectionId: args.connectionId,
-          errorMessage: `Parse error: ${message}`,
-        }
-      );
-      return;
-    }
-
-    // 4. Pass results to the processor mutation
-    await ctx.runMutation(
-      internal.mutations.calendarSync.processSyncResults,
-      {
+      const errorMessage = `${stage} error: ${message}`.slice(0, 1000);
+      console.error(`[calendarSync] ${stage} failed for ${args.connectionId}: ${message}`);
+      // One recording attempt only. If it fails, propagate the failure; the
+      // precharged counter still prevents unlimited expensive background work.
+      await ctx.runMutation(internal.mutations.calendarSync.recordSyncError, {
         connectionId: args.connectionId,
-        reservations: parseResult.reservations.map((r) => ({
-          uid: r.uid,
-          summary: r.summary,
-          checkIn: r.checkIn,
-          checkOut: r.checkOut,
-          dtStamp: r.dtStamp,
-          rawHash: r.rawHash,
-        })),
-        totalEvents: parseResult.totalEvents,
-        skipped: parseResult.skipped,
-      }
-    );
+        errorMessage,
+      });
+    }
   },
 });

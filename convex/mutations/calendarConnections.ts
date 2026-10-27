@@ -106,6 +106,7 @@ export const setEnabled = mutation({
     connectionId: v.id("calendarConnections"),
     enabled: v.boolean(),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const connection = await ctx.db.get(args.connectionId);
     if (!connection) throw new Error("Connection not found");
@@ -113,7 +114,14 @@ export const setEnabled = mutation({
     const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     if (owner.companyId !== connection.companyId) throw new Error("Not your company");
 
-    await ctx.db.patch(args.connectionId, { enabled: args.enabled });
+    await ctx.db.patch(args.connectionId, {
+      enabled: args.enabled,
+      ...(!connection.enabled && args.enabled ? {
+        consecutiveErrors: 0,
+        lastSyncStatus: "pending" as const,
+        lastSyncError: undefined,
+      } : {}),
+    });
 
     await logAudit(ctx, {
       companyId: connection.companyId,

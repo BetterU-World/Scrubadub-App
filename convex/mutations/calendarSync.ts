@@ -13,6 +13,39 @@ const SYNC_INTERVAL_MS = 60 * 60 * 1000; // 60 minutes
 
 /** Stagger delay between scheduling sync actions to avoid burst. */
 const STAGGER_MS = 2_000; // 2 seconds
+const MAX_CONSECUTIVE_ERRORS = 3;
+
+// Also used by cron/admission when an action dies before it can record its error.
+async function suspendConnection(ctx: MutationCtx, connection: Doc<"calendarConnections">) {
+  await ctx.db.patch(connection._id, {
+    enabled: false,
+    lastSyncStatus: "error",
+    lastSyncError: connection.lastSyncError ?? "Synchronization did not complete after three attempts. Check the feed and re-enable the connection to retry.",
+  });
+}
+
+/** Reserve one attempt before external work. Success resets this counter.
+ * Charging here keeps crashes and failed error recording within the same budget.
+ * This is intentionally not an exclusive work lease; overlaps remain possible.
+ */
+export const beginSyncAttempt = internalMutation({
+  args: { connectionId: v.id("calendarConnections") },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const connection = await ctx.db.get(args.connectionId);
+    if (!connection?.enabled) return false;
+    if (connection.consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+      await suspendConnection(ctx, connection);
+      return false;
+    }
+    await ctx.db.patch(connection._id, {
+      consecutiveErrors: connection.consecutiveErrors + 1,
+      lastSyncStatus: "pending",
+      lastSyncError: undefined,
+    });
+    return true;
+  },
+});
 
 /** Valid job types from the jobs schema. */
 const VALID_JOB_TYPES = new Set([
@@ -26,6 +59,7 @@ type JobType = "standard" | "deep_clean" | "turnover" | "move_in_out" | "mainten
  */
 export const cronTick = internalMutation({
   args: {},
+  returns: v.null(),
   handler: async (ctx) => {
     if (areExternalSideEffectsDisabled()) return;
     const connections = await ctx.db
@@ -37,6 +71,10 @@ export const cronTick = internalMutation({
     let scheduled = 0;
 
     for (const connection of connections) {
+      if (connection.consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+        await suspendConnection(ctx, connection);
+        continue;
+      }
       // Skip connections that were recently synced
       if (connection.lastSyncAt && now - connection.lastSyncAt < SYNC_INTERVAL_MS) {
         continue;
@@ -264,12 +302,17 @@ export const processSyncResults = internalMutation({
     totalEvents: v.number(),
     skipped: v.number(),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const connection = await ctx.db.get(args.connectionId);
     if (!connection) {
       console.error(`[calendarSync] Connection ${args.connectionId} not found during processing`);
       return;
     }
+
+    // The owner or another failed attempt may have disabled this connection
+    // while its feed was being fetched. Do not persist or cancel reservations.
+    if (!connection.enabled) return;
 
     const now = Date.now();
     let reservationsCreated = 0;
@@ -434,25 +477,27 @@ export const processSyncResults = internalMutation({
 
 /**
  * Record a sync error for a connection.
- * Called from the sync action when fetch or parse fails.
+ * Called when fetch, parsing, processing or persistence fails. The attempt
+ * was already charged before external work; never advance the success time.
  */
 export const recordSyncError = internalMutation({
   args: {
     connectionId: v.id("calendarConnections"),
     errorMessage: v.string(),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const connection = await ctx.db.get(args.connectionId);
     if (!connection) return;
+    // A committed success may be followed by a lost action acknowledgement.
+    // Never overwrite that success (or a newly reset owner recovery state).
+    if (connection.consecutiveErrors === 0) return;
 
-    const newErrorCount = (connection.consecutiveErrors ?? 0) + 1;
-    const MAX_CONSECUTIVE_ERRORS = 3;
+    const newErrorCount = connection.consecutiveErrors;
 
     const updates: Record<string, unknown> = {
-      lastSyncAt: Date.now(),
       lastSyncStatus: "error" as const,
-      lastSyncError: args.errorMessage,
-      consecutiveErrors: newErrorCount,
+      lastSyncError: args.errorMessage.slice(0, 1000),
     };
 
     // Auto-disable after too many consecutive failures
@@ -473,7 +518,7 @@ export const recordSyncError = internalMutation({
       status: "error",
       eventsFound: 0,
       reservationsCreated: 0,
-      errorMessage: args.errorMessage,
+      errorMessage: args.errorMessage.slice(0, 1000),
     });
   },
 });
