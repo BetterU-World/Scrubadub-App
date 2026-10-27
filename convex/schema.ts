@@ -2558,9 +2558,14 @@ export default defineSchema({
     // on first sync to prevent historical job creation
     initialSyncCutoff: v.string(),
     consecutiveErrors: v.number(),
-    // Latest-result fence, not a lease: overlapping fetches are still allowed.
-    // Overlaps share one charged round and cannot extend its recovery deadline.
-    syncAttempt: v.optional(v.object({ id: v.string(), chargedAt: v.number() })),
+    // Pending leases start at their planned execution time; running leases at
+    // their one-time claim. Missing phase denotes an older in-flight attempt.
+    syncAttempt: v.optional(v.object({
+      id: v.string(), chargedAt: v.number(),
+      phase: v.optional(v.union(v.literal("pending"), v.literal("running"))),
+      scheduledFunctionId: v.optional(v.id("_scheduled_functions")),
+    })),
+    syncCooldownUntil: v.optional(v.number()),
     createdAt: v.number(),
     createdBy: v.id("users"),
   })
