@@ -5,12 +5,13 @@ import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { parseICalFeed } from "./icalParser";
 import { assertExternalSideEffectsAllowed } from "../lib/environment";
+import { randomUUID } from "node:crypto";
 
 /**
  * Fetch and parse an iCal feed for a single calendar connection.
  *
  * Flow:
- *   1. Read the connection doc (via internal query)
+ *   1. Charge the sync round and read its feed URL in an internal mutation
  *   2. HTTP fetch the iCal URL
  *   3. Parse with icalParser
  *   4. Pass normalized results to the processor mutation for persistence
@@ -21,35 +22,21 @@ export const syncConnection = internalAction({
   args: {
     connectionId: v.id("calendarConnections"),
   },
-  returns: v.null(),
-  handler: async (ctx, args) => {
+  returns: v.union(v.literal("success"), v.literal("failed"), v.literal("skipped")),
+  handler: async (ctx, args): Promise<"success" | "failed" | "skipped"> => {
     assertExternalSideEffectsAllowed("External calendar synchronization");
-    // 1. Read the connection
-    const connection = await ctx.runQuery(
-      internal.queries.calendarConnections.getConnectionInternal,
-      { connectionId: args.connectionId }
-    );
-
-    if (!connection) {
-      console.error(`[calendarSync] Connection ${args.connectionId} not found`);
-      return;
-    }
-
-    if (!connection.enabled) {
-      console.log(`[calendarSync] Connection ${args.connectionId} is disabled, skipping`);
-      return;
-    }
-
-    const admitted = await ctx.runMutation(
+    // 1. Charge the round and obtain its current feed URL atomically.
+    const attemptId = randomUUID();
+    const icalUrl = await ctx.runMutation(
       internal.mutations.calendarSync.beginSyncAttempt,
-      { connectionId: args.connectionId },
+      { connectionId: args.connectionId, attemptId },
     );
-    if (!admitted) return;
+    if (icalUrl === null) return "skipped" as const;
 
     // 2. Fetch the iCal feed
     let stage = "Fetch";
     try {
-      const response = await fetch(connection.icalUrl, {
+      const response = await fetch(icalUrl, {
         headers: { "User-Agent": "SCRUB-CalendarSync/1.0" },
         signal: AbortSignal.timeout(30_000), // 30s timeout
       });
@@ -69,10 +56,11 @@ export const syncConnection = internalAction({
 
       // 4. Processing and success recording commit together in this mutation.
       stage = "Processing";
-      await ctx.runMutation(
+      return await ctx.runMutation(
         internal.mutations.calendarSync.processSyncResults,
         {
           connectionId: args.connectionId,
+          attemptId,
           reservations: parseResult.reservations.map((r) => ({
             uid: r.uid,
             summary: r.summary,
@@ -90,9 +78,10 @@ export const syncConnection = internalAction({
       const errorMessage = `${stage} error: ${message}`.slice(0, 1000);
       console.error(`[calendarSync] ${stage} failed for ${args.connectionId}: ${message}`);
       // One recording attempt only. If it fails, propagate the failure; the
-      // precharged counter still prevents unlimited expensive background work.
-      await ctx.runMutation(internal.mutations.calendarSync.recordSyncError, {
+      // precharged round still expires and counts toward background suspension.
+      return await ctx.runMutation(internal.mutations.calendarSync.recordSyncError, {
         connectionId: args.connectionId,
+        attemptId,
         errorMessage,
       });
     }

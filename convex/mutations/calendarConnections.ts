@@ -86,6 +86,9 @@ export const update = mutation({
     if (args.icalUrl !== undefined) updates.icalUrl = args.icalUrl;
     if (args.label !== undefined) updates.label = args.label;
     if (args.platform !== undefined) updates.platform = args.platform;
+    if (args.icalUrl !== undefined && args.icalUrl !== connection.icalUrl) {
+      updates.syncAttempt = undefined;
+    }
 
     await ctx.db.patch(args.connectionId, updates);
 
@@ -116,6 +119,7 @@ export const setEnabled = mutation({
 
     await ctx.db.patch(args.connectionId, {
       enabled: args.enabled,
+      ...(!args.enabled || !connection.enabled ? { syncAttempt: undefined } : {}),
       ...(!connection.enabled && args.enabled ? {
         consecutiveErrors: 0,
         lastSyncStatus: "pending" as const,

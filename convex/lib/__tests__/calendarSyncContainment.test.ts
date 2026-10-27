@@ -4,7 +4,7 @@ import { getFunctionName } from "convex/server";
 import schema from "../../schema";
 import { api, internal } from "../../_generated/api";
 import { syncConnection } from "../../actions/calendarSync";
-import { processSyncResults } from "../../mutations/calendarSync";
+import { cronTick, processSyncResults } from "../../mutations/calendarSync";
 import { parseICalFeed } from "../../actions/icalParser";
 import { hashPassword } from "../password";
 
@@ -31,6 +31,9 @@ async function setup() {
   return {
     t, ...ids,
     state: () => t.run((ctx) => ctx.db.get(ids.connectionId)),
+    begin: (attemptId: string) => t.mutation(sync.beginSyncAttempt, { connectionId: ids.connectionId, attemptId }),
+    process: (attemptId: string, reservations = parseICalFeed(feed).reservations) => t.mutation(sync.processSyncResults, { connectionId: ids.connectionId, attemptId, reservations, totalEvents: reservations.length, skipped: 0 }),
+    fail: (attemptId: string) => t.mutation(sync.recordSyncError, { connectionId: ids.connectionId, attemptId, errorMessage: "Injected failure" }),
     // Execute the real orchestration against real in-memory transactions, with
     // one injectable boundary for processor/error-recording transport failures.
     run: (fault?: "processing" | "recording" | "ack") => (syncConnection as any)._handler({
@@ -89,7 +92,10 @@ describe("calendar sync failure containment", () => {
 
   it("keeps expensive attempts bounded even when error recording itself fails", async () => {
     const s = await setup();
-    for (let i = 0; i < 3; i++) await expect(s.run("recording")).rejects.toThrow("Error recording unavailable");
+    for (let i = 0; i < 3; i++) {
+      await expect(s.run("recording")).rejects.toThrow("Error recording unavailable");
+      vi.advanceTimersByTime(15 * 60_000);
+    }
     await s.t.mutation(sync.cronTick, {});
     await s.run();
     expect(fetch).toHaveBeenCalledTimes(3);
@@ -121,7 +127,10 @@ describe("calendar sync failure containment", () => {
 
   it("refuses external work after three interrupted attempts even before cron suspends it", async () => {
     const s = await setup();
-    for (let i = 0; i < 3; i++) expect(await s.t.mutation(sync.beginSyncAttempt, { connectionId: s.connectionId })).toBe(true);
+    for (let i = 0; i < 3; i++) {
+      expect(await s.begin(`interrupted-${i}`)).toBe("https://calendar.example/feed.ics");
+      vi.advanceTimersByTime(15 * 60_000);
+    }
     await s.run();
     expect(fetch).not.toHaveBeenCalled();
     expect(await s.state()).toMatchObject({ enabled: false, consecutiveErrors: 3, lastSyncAt: LAST_SUCCESS, lastSyncStatus: "error" });
@@ -134,7 +143,7 @@ describe("calendar sync failure containment", () => {
       await s.t.run((ctx) => ctx.db.patch(s.connectionId, { enabled: false }));
       return new Response(feed);
     });
-    await s.run();
+    expect(await s.run()).toBe("skipped");
     expect(await s.state()).toMatchObject({ enabled: false, lastSyncAt: LAST_SUCCESS });
     expect(await s.t.run((ctx) => ctx.db.query("calendarReservations").collect())).toEqual([expect.objectContaining({ _id: existingId, status: "active", lastSeenAt: NOW })]);
     expect(await s.t.run((ctx) => ctx.db.query("jobs").collect())).toEqual([]);
@@ -144,7 +153,7 @@ describe("calendar sync failure containment", () => {
   it("rolls back reservations, jobs, cancellations and success state on a late persistence failure", async () => {
     const s = await setup();
     const oldId = await s.t.run((ctx) => ctx.db.insert("calendarReservations", { companyId: s.companyId, propertyId: s.propertyId, connectionId: s.connectionId, externalUid: "keep-on-failure", checkIn: "2026-10-24", checkOut: "2026-10-25", rawHash: "old", status: "active", firstSeenAt: NOW, lastSeenAt: NOW }));
-    await s.t.mutation(sync.beginSyncAttempt, { connectionId: s.connectionId });
+    await s.begin("persistence-failure");
     await expect(s.t.run(async (ctx) => {
       const db = new Proxy(ctx.db, { get(target, key) {
         if (key === "insert") return async (table: string, value: any) => {
@@ -154,9 +163,9 @@ describe("calendar sync failure containment", () => {
         const value = Reflect.get(target, key);
         return typeof value === "function" ? value.bind(target) : value;
       } });
-      await (processSyncResults as any)._handler({ ...ctx, db }, { connectionId: s.connectionId, ...parseICalFeed(feed) });
+      await (processSyncResults as any)._handler({ ...ctx, db }, { connectionId: s.connectionId, attemptId: "persistence-failure", ...parseICalFeed(feed) });
     })).rejects.toThrow("Injected persistence failure");
-    await s.t.mutation(sync.recordSyncError, { connectionId: s.connectionId, errorMessage: "Processing error: Injected persistence failure" });
+    await s.t.mutation(sync.recordSyncError, { connectionId: s.connectionId, attemptId: "persistence-failure", errorMessage: "Processing error: Injected persistence failure" });
     expect(await s.state()).toMatchObject({ lastSyncAt: LAST_SUCCESS, lastSyncStatus: "error", consecutiveErrors: 1 });
     expect(await s.t.run((ctx) => ctx.db.query("jobs").collect())).toEqual([]);
     const reservations = await s.t.run((ctx) => ctx.db.query("calendarReservations").collect());
@@ -179,5 +188,129 @@ describe("calendar sync failure containment", () => {
     await s.run();
     expect(await s.state()).toMatchObject({ lastSyncStatus: "success", consecutiveErrors: 0 });
     expect(await s.t.run((ctx) => ctx.db.get(otherId))).toMatchObject({ enabled: false, consecutiveErrors: 3 });
+  });
+
+  it.each(["disabled", "deleted"] as const)("returns skipped rather than success when the connection is %s before persistence", async (change) => {
+    const s = await setup();
+    await s.begin("cancelled");
+    await s.t.run((ctx) => change === "deleted"
+      ? ctx.db.delete(s.connectionId)
+      : ctx.db.patch(s.connectionId, { enabled: false }));
+    expect(await s.process("cancelled")).toBe("skipped");
+    expect(await s.fail("cancelled")).toBe("skipped");
+    expect(await s.run()).toBe("skipped");
+    expect(fetch).not.toHaveBeenCalled();
+    expect(await s.t.run((ctx) => ctx.db.query("calendarSyncLogs").collect())).toEqual([]);
+    expect(await s.t.run((ctx) => ctx.db.query("calendarReservations").collect())).toEqual([]);
+  });
+
+  it("shares one charge across overlaps and fences stale success and failure after a newer attempt starts", async () => {
+    const s = await setup();
+    for (const id of ["a", "b", "c", "d"]) await s.begin(id);
+    expect(await s.state()).toMatchObject({ enabled: true, consecutiveErrors: 1, syncAttempt: { id: "d", chargedAt: NOW } });
+    const pending = await s.state();
+    expect(await s.fail("a")).toBe("skipped");
+    expect(await s.process("b")).toBe("skipped");
+    expect(await s.state()).toEqual(pending);
+    expect(await s.process("d")).toBe("success");
+    await s.begin("new-after-success");
+    const next = await s.state();
+    expect(await s.fail("d")).toBe("skipped"); // Lost success acknowledgement after a new start.
+    expect(await s.fail("c")).toBe("skipped");
+    expect(await s.process("a", [])).toBe("skipped"); // Must not cancel the newer reservation.
+    expect(await s.state()).toEqual(next);
+    const reservations = await s.t.run((ctx) => ctx.db.query("calendarReservations").collect());
+    expect(reservations).toHaveLength(1);
+    expect(reservations[0].status).toBe("active");
+    expect(await s.t.run((ctx) => ctx.db.query("calendarSyncLogs").collect())).toHaveLength(1);
+    expect(await s.process("new-after-success")).toBe("success");
+    expect(await s.t.run((ctx) => ctx.db.query("jobs").collect())).toHaveLength(1);
+  });
+
+  it("propagates skipped through overlapping actions when the older feed finishes last", async () => {
+    const s = await setup();
+    let releaseOlder!: (response: Response) => void;
+    let enteredOlder!: () => void;
+    const olderEntered = new Promise<void>(resolve => { enteredOlder = resolve; });
+    const olderResponse = new Promise<Response>(resolve => { releaseOlder = resolve; });
+    vi.mocked(fetch).mockImplementationOnce(() => { enteredOlder(); return olderResponse; });
+    const older = s.run();
+    await olderEntered;
+    expect(await s.run()).toBe("success");
+    releaseOlder(new Response("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR"));
+    expect(await older).toBe("skipped");
+    expect(await s.state()).toMatchObject({ lastSyncStatus: "success", consecutiveErrors: 0, enabled: true });
+    expect(await s.t.run((ctx) => ctx.db.query("calendarReservations").collect())).toEqual([expect.objectContaining({ externalUid: "reservation-one", status: "active" })]);
+    expect(await s.t.run((ctx) => ctx.db.query("jobs").collect())).toHaveLength(1);
+    expect(await s.t.run((ctx) => ctx.db.query("calendarSyncLogs").collect())).toHaveLength(1);
+  });
+
+  it("does not suspend the third unfinished round merely because another action or cron overlaps", async () => {
+    const s = await setup();
+    for (const id of ["failure-1", "failure-2"]) { await s.begin(id); await s.fail(id); }
+    await s.begin("third");
+    await s.begin("third-overlap");
+    const schedule = vi.fn();
+    await s.t.run((ctx) => (cronTick as any)._handler({ ...ctx, scheduler: { runAfter: schedule } }, {}));
+    expect(await s.state()).toMatchObject({ enabled: true, consecutiveErrors: 3 });
+    expect(schedule).toHaveBeenCalledTimes(1);
+    expect(await s.process("third-overlap")).toBe("success");
+    expect(await s.fail("third")).toBe("skipped");
+    expect(await s.state()).toMatchObject({ enabled: true, consecutiveErrors: 0, lastSyncStatus: "success" });
+  });
+
+  it("ignores duplicate failure callbacks even after a new round starts", async () => {
+    const s = await setup();
+    await s.begin("old");
+    expect(await s.fail("old")).toBe("failed");
+    await s.begin("current");
+    const current = await s.state();
+    expect(await s.fail("old")).toBe("skipped");
+    expect(await s.state()).toEqual(current);
+    expect(await s.t.run((ctx) => ctx.db.query("calendarSyncLogs").collect())).toHaveLength(1);
+    expect(await s.process("current")).toBe("success");
+  });
+
+  it("owner disable/re-enable invalidates old callbacks even after a recovered attempt consumes budget", async () => {
+    const s = await setup();
+    const session = await s.t.action(api.authActions.signIn, { email: "calendar@test.dev", password: "test-password-123" });
+    await s.begin("old-epoch");
+    await s.t.mutation(api.mutations.calendarConnections.setEnabled, { sessionToken: session.sessionToken, connectionId: s.connectionId, enabled: false });
+    expect(await s.fail("old-epoch")).toBe("skipped");
+    await s.t.mutation(api.mutations.calendarConnections.setEnabled, { sessionToken: session.sessionToken, connectionId: s.connectionId, enabled: true });
+    await s.begin("recovered");
+    const recovered = await s.state();
+    expect(await s.fail("old-epoch")).toBe("skipped");
+    expect(await s.process("old-epoch")).toBe("skipped");
+    expect(await s.state()).toEqual(recovered);
+    expect(await s.process("recovered")).toBe("success");
+  });
+
+  it("overlaps do not extend the unfinished-round deadline or let expired callbacks mutate current work", async () => {
+    const s = await setup();
+    await s.begin("first");
+    vi.advanceTimersByTime(5 * 60_000);
+    await s.begin("overlap");
+    expect((await s.state())?.syncAttempt?.chargedAt).toBe(NOW);
+    vi.advanceTimersByTime(5 * 60_000);
+    expect(await s.process("overlap")).toBe("skipped");
+    expect(await s.fail("overlap")).toBe("skipped");
+    await s.begin("second-round");
+    expect(await s.state()).toMatchObject({ consecutiveErrors: 2, syncAttempt: { id: "second-round", chargedAt: NOW + 10 * 60_000 } });
+    const current = await s.state();
+    expect(await s.fail("first")).toBe("skipped");
+    expect(await s.state()).toEqual(current);
+    expect(await s.process("second-round")).toBe("success");
+  });
+
+  it("an owner feed URL edit invalidates results fetched from the old URL", async () => {
+    const s = await setup();
+    const session = await s.t.action(api.authActions.signIn, { email: "calendar@test.dev", password: "test-password-123" });
+    await s.begin("old-feed");
+    await s.t.mutation(api.mutations.calendarConnections.update, { sessionToken: session.sessionToken, connectionId: s.connectionId, icalUrl: "https://calendar.example/repaired.ics" });
+    expect(await s.process("old-feed")).toBe("skipped");
+    expect(await s.fail("old-feed")).toBe("skipped");
+    expect(await s.begin("new-feed")).toBe("https://calendar.example/repaired.ics");
+    expect(await s.process("new-feed")).toBe("success");
   });
 });

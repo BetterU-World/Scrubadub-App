@@ -14,36 +14,55 @@ const SYNC_INTERVAL_MS = 60 * 60 * 1000; // 60 minutes
 /** Stagger delay between scheduling sync actions to avoid burst. */
 const STAGGER_MS = 2_000; // 2 seconds
 const MAX_CONSECUTIVE_ERRORS = 3;
+// Fixed across overlaps and shorter than the cron period, so interrupted work
+// consumes the next budget unit rather than remaining pending indefinitely.
+const UNFINISHED_ROUND_MS = 10 * 60 * 1000;
+
+function hasActiveAttempt(connection: Doc<"calendarConnections">, now: number) {
+  return connection.syncAttempt !== undefined &&
+    now - connection.syncAttempt.chargedAt < UNFINISHED_ROUND_MS;
+}
+
+function isCurrentAttempt(connection: Doc<"calendarConnections">, attemptId: string) {
+  return connection.enabled && connection.syncAttempt?.id === attemptId &&
+    hasActiveAttempt(connection, Date.now());
+}
 
 // Also used by cron/admission when an action dies before it can record its error.
 async function suspendConnection(ctx: MutationCtx, connection: Doc<"calendarConnections">) {
   await ctx.db.patch(connection._id, {
     enabled: false,
     lastSyncStatus: "error",
-    lastSyncError: connection.lastSyncError ?? "Synchronization did not complete after three attempts. Check the feed and re-enable the connection to retry.",
+    lastSyncError: connection.lastSyncError ?? "Synchronization repeatedly did not complete. Check the feed and re-enable the connection to retry.",
+    syncAttempt: undefined,
   });
 }
 
-/** Reserve one attempt before external work. Success resets this counter.
- * Charging here keeps crashes and failed error recording within the same budget.
- * This is intentionally not an exclusive work lease; overlaps remain possible.
+/** Charge one unfinished round before external work. Success resets the budget.
+ * Overlaps supersede the result fence but share the charge and original deadline,
+ * so a burst cannot suspend a healthy connection or indefinitely postpone recovery.
+ * This does not reject concurrent fetches or provide exclusive work admission.
  */
 export const beginSyncAttempt = internalMutation({
-  args: { connectionId: v.id("calendarConnections") },
-  returns: v.boolean(),
+  args: { connectionId: v.id("calendarConnections"), attemptId: v.string() },
+  returns: v.union(v.string(), v.null()),
   handler: async (ctx, args) => {
     const connection = await ctx.db.get(args.connectionId);
-    if (!connection?.enabled) return false;
-    if (connection.consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+    if (!connection?.enabled) return null;
+    const now = Date.now();
+    const overlapping = hasActiveAttempt(connection, now);
+    if (!overlapping && connection.consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
       await suspendConnection(ctx, connection);
-      return false;
+      return null;
     }
     await ctx.db.patch(connection._id, {
-      consecutiveErrors: connection.consecutiveErrors + 1,
+      consecutiveErrors: connection.consecutiveErrors + (overlapping ? 0 : 1),
       lastSyncStatus: "pending",
       lastSyncError: undefined,
+      syncAttempt: { id: args.attemptId, chargedAt: overlapping ? connection.syncAttempt!.chargedAt : now },
     });
-    return true;
+    // Read the URL in the same transaction as admission, not before an owner edit.
+    return connection.icalUrl;
   },
 });
 
@@ -71,7 +90,7 @@ export const cronTick = internalMutation({
     let scheduled = 0;
 
     for (const connection of connections) {
-      if (connection.consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+      if (connection.consecutiveErrors >= MAX_CONSECUTIVE_ERRORS && !hasActiveAttempt(connection, now)) {
         await suspendConnection(ctx, connection);
         continue;
       }
@@ -289,6 +308,7 @@ async function maybeCreateJobForReservation(
 export const processSyncResults = internalMutation({
   args: {
     connectionId: v.id("calendarConnections"),
+    attemptId: v.string(),
     reservations: v.array(
       v.object({
         uid: v.string(),
@@ -302,17 +322,12 @@ export const processSyncResults = internalMutation({
     totalEvents: v.number(),
     skipped: v.number(),
   },
-  returns: v.null(),
+  returns: v.union(v.literal("success"), v.literal("skipped")),
   handler: async (ctx, args) => {
     const connection = await ctx.db.get(args.connectionId);
-    if (!connection) {
-      console.error(`[calendarSync] Connection ${args.connectionId} not found during processing`);
-      return;
-    }
-
-    // The owner or another failed attempt may have disabled this connection
-    // while its feed was being fetched. Do not persist or cancel reservations.
-    if (!connection.enabled) return;
+    // A disabled/deleted connection, owner recovery, expired round or newer
+    // attempt cancels this result. Never persist or cancel reservations for it.
+    if (!connection || !isCurrentAttempt(connection, args.attemptId)) return "skipped" as const;
 
     const now = Date.now();
     let reservationsCreated = 0;
@@ -452,6 +467,7 @@ export const processSyncResults = internalMutation({
       lastSyncStatus: "success" as const,
       lastSyncError: undefined,
       consecutiveErrors: 0,
+      syncAttempt: undefined,
     });
 
     // ── Write sync log ─────────────────────────────────────────────────
@@ -472,6 +488,7 @@ export const processSyncResults = internalMutation({
         `${reservationsUpdated} updated, ${reservationsCancelled} cancelled, ` +
         `${jobsCreated} jobs created, ${args.skipped} skipped`
     );
+    return "success" as const;
   },
 });
 
@@ -483,21 +500,22 @@ export const processSyncResults = internalMutation({
 export const recordSyncError = internalMutation({
   args: {
     connectionId: v.id("calendarConnections"),
+    attemptId: v.string(),
     errorMessage: v.string(),
   },
-  returns: v.null(),
+  returns: v.union(v.literal("failed"), v.literal("skipped")),
   handler: async (ctx, args) => {
     const connection = await ctx.db.get(args.connectionId);
-    if (!connection) return;
-    // A committed success may be followed by a lost action acknowledgement.
-    // Never overwrite that success (or a newly reset owner recovery state).
-    if (connection.consecutiveErrors === 0) return;
+    // Only the latest still-active attempt can finish this round. This also
+    // rejects duplicate callbacks, lost success acknowledgements and old epochs.
+    if (!connection || !isCurrentAttempt(connection, args.attemptId)) return "skipped" as const;
 
     const newErrorCount = connection.consecutiveErrors;
 
     const updates: Record<string, unknown> = {
       lastSyncStatus: "error" as const,
       lastSyncError: args.errorMessage.slice(0, 1000),
+      syncAttempt: undefined,
     };
 
     // Auto-disable after too many consecutive failures
@@ -520,6 +538,7 @@ export const recordSyncError = internalMutation({
       reservationsCreated: 0,
       errorMessage: args.errorMessage.slice(0, 1000),
     });
+    return "failed" as const;
   },
 });
 
