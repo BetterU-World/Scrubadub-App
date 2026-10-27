@@ -19,6 +19,7 @@ import { scoreAssessment } from "./lib/assessmentScoring";
 import { REPORT_VERSION, generateReportSnapshot } from "./lib/assessmentReport";
 import { ROADMAP_VERSION, generateRoadmapSnapshot } from "./lib/assessmentRoadmap";
 import { ASSESSMENT_LIMITS, sameNormalizedResponse } from "./lib/assessmentRateLimits";
+import { assessmentReadBudget } from "./lib/assessmentReadBudget";
 
 const languageValidator = v.union(v.literal("en"), v.literal("es"));
 const responseInputValidator = v.object({
@@ -241,8 +242,12 @@ export const attributeGiveaway = mutation({
 export const recover = mutation({
   args: { attemptId: v.id("assessmentAttempts"), capability: v.string() },
   handler: async (ctx, args) => {
+    // Keep admission errors outside the legacy unavailable/expired catch. Old
+    // clients must stop recovery instead of interpreting throttling as deletion.
+    const chargeRead = await assessmentReadBudget(ctx, args.attemptId);
     try {
       const attempt = await requireAttempt(ctx, args.attemptId, args.capability);
+      await chargeRead();
       if (attempt.status !== "in_progress" && attempt.status !== "completed") return null;
       const definition = await ctx.db.get(attempt.definitionId);
       if (!definition) return null;
@@ -347,13 +352,14 @@ export const complete = mutation({
 export const generateReport = mutation({
   args: { attemptId: v.id("assessmentAttempts"), capability: v.string() },
   handler: async (ctx, args) => {
+    const chargeRead = await assessmentReadBudget(ctx, args.attemptId);
     const attempt = await requireAttempt(ctx, args.attemptId, args.capability);
+    await chargeRead();
     if (attempt.status !== "completed" || !attempt.completionSnapshot) throw new Error("Complete the assessment before viewing the report");
     if (attempt.reportSnapshot) return attempt.reportSnapshot;
     await checkRateLimit(ctx, { key: `assessment:report:${attempt._id}`, ...ASSESSMENT_LIMITS.reportGeneration });
     const definition = await ctx.db.get(attempt.definitionId);
     if (!definition || definition.definitionVersion !== attempt.completionSnapshot.definitionVersion) throw new Error("Assessment report is unavailable");
-    await ctx.db.query("assessmentResponses").withIndex("by_attemptId", (q) => q.eq("attemptId", attempt._id)).collect();
     const generatedAt = Date.now();
     const reportSnapshot = {
       scoringVersion: attempt.completionSnapshot.scoringVersion,
@@ -370,7 +376,9 @@ export const generateReport = mutation({
 export const generateRoadmap = mutation({
   args: { attemptId: v.id("assessmentAttempts"), capability: v.string() },
   handler: async (ctx, args) => {
+    const chargeRead = await assessmentReadBudget(ctx, args.attemptId);
     const attempt = await requireAttempt(ctx, args.attemptId, args.capability);
+    await chargeRead();
     if (attempt.status !== "completed" || !attempt.completionSnapshot || !attempt.reportSnapshot) throw new Error("Complete the assessment report before viewing the roadmap");
     if (attempt.roadmapSnapshot) return attempt.roadmapSnapshot;
     await checkRateLimit(ctx, { key: `assessment:roadmap:${attempt._id}`, ...ASSESSMENT_LIMITS.roadmapGeneration });

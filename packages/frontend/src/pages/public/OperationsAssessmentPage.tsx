@@ -93,6 +93,14 @@ export function OperationsAssessmentPage() {
   const progressRef = useRef(progress);
   const persistenceRef = useRef<Promise<boolean> | null>(null);
   const lastSavedRef = useRef("");
+  const mountedRef = useRef(false);
+  const initializingRef = useRef(true);
+  const navigationRef = useRef<Promise<void> | null>(null);
+  const snapshotsRef = useRef<{ report?: { payload: AssessmentReport }; roadmap?: { payload: AssessmentRoadmap } }>({});
+  const languageRef = useRef(i18n);
+  languageRef.current = i18n;
+  // Translation changes affect presentation, never network initialization.
+  const initializationInputs = useRef({ prepare, recover, attributeGiveaway, generateReport, generateRoadmap, openReturnLink, recordEvent, i18n, t });
   const sessionIdRef = useRef(randomHex().slice(0, 32));
   progressRef.current = progress;
 
@@ -122,82 +130,106 @@ export function OperationsAssessmentPage() {
 
   useEffect(() => {
     let active = true;
-    const returnToken = new URLSearchParams(window.location.search).get("return");
-    if (returnToken) {
-      openReturnLink({ token: returnToken }).then(async (result: any) => { if (!active) return; await i18n.changeLanguage(result.language); setReport(result.report); setRoadmap(result.roadmap); setView("report"); }).catch(() => setError(t("assessment.continuity.invalidLink")));
-      return () => { active = false; };
-    }
-    prepare({}).then(async (prepared: Definition) => {
+    mountedRef.current = true;
+    const { prepare, recover, attributeGiveaway, generateReport, generateRoadmap, openReturnLink, recordEvent, i18n, t } = initializationInputs.current;
+    const initialize = async () => {
       if (!active) return;
-      setDefinition(prepared);
-      const saved = loadProgress();
-      if (saved?.attemptId && saved.capability) {
-        const result = await recover({ attemptId: saved.attemptId as Id<"assessmentAttempts">, capability: saved.capability });
-        if (!active) return;
-        if (result) {
-          void recordEvent({
-            attemptId: saved.attemptId as Id<"assessmentAttempts">,
-            capability: saved.capability,
-            eventKey: "assessment_resumed",
-            deduplicationKey: `${saved.attemptId}:assessment_resumed:${sessionIdRef.current}`,
-            language: result.attempt.responseLanguage,
-            metadata: { sessionId: sessionIdRef.current },
-          }).catch(() => {});
-          const answers: Record<string, Answer> = {};
-          for (const row of result.responses) {
-            if (row.responseKind === "single" && row.answerValue) answers[row.questionKey] = row.answerValue;
-            if (row.responseKind === "multi" && row.answerValues) answers[row.questionKey] = row.answerValues;
-            if (row.responseKind === "qualitative" && row.qualitativeText) answers[row.questionKey] = row.qualitativeText;
-          }
-          let campaignId = result.attempt.sourceSnapshot?.utmSource === "giveaway" ? result.attempt.sourceSnapshot.utmCampaign : undefined;
-          const requested = requestedGiveaway();
-          if (requested && !campaignId && result.attempt.status === "in_progress") campaignId = await attributeGiveaway({ attemptId: saved.attemptId as Id<"assessmentAttempts">, capability: saved.capability, campaignId: requested });
-          const next = { ...saved, campaignId, answers: validatedAnswers(result.definition as Definition, { ...answers, ...saved.answers }), language: result.attempt.responseLanguage, lastActivityAt: result.attempt.lastActivityAt };
-          setProgress(next);
-          saveProgress(next);
-          setGiveawayOutcome(result.attempt.giveawayOutcome ?? (requested && result.attempt.status === "completed" ? "previous_completion" : undefined));
-          await i18n.changeLanguage(next.language);
-          setRestored(true);
-          if (result.attempt.status === "completed" && result.attempt.completionSnapshot) {
-            const frozen = await generateReport({ attemptId: saved.attemptId as Id<"assessmentAttempts">, capability: saved.capability });
-            setReport(frozen.payload as AssessmentReport);
-            const plan = await generateRoadmap({ attemptId: saved.attemptId as Id<"assessmentAttempts">, capability: saved.capability });
-            setRoadmap(plan.payload as AssessmentRoadmap);
-            setView("report");
-          } else {
-            setView("question");
-            const restoredQuestions = (result.definition as Definition).questions
-              .filter((item) => isQuestionApplicable(item, next.answers))
-              .sort((a, b) => {
-                const sectionA = (result.definition as Definition).sections.find((section) => section.key === a.sectionKey)?.order ?? 0;
-                const sectionB = (result.definition as Definition).sections.find((section) => section.key === b.sectionKey)?.order ?? 0;
-                return sectionA - sectionB || a.order - b.order;
-              });
-            const restoredKey = next.currentQuestionKey && restoredQuestions.some((item) => item.key === next.currentQuestionKey)
-              ? next.currentQuestionKey
-              : restoredQuestions.find((item) => item.required && next.answers[item.key] === undefined)?.key ?? restoredQuestions[restoredQuestions.length - 1]?.key;
-            window.history.replaceState({ scrubAssessment: true, view: "intro" } satisfies AssessmentHistoryState, "", window.location.href);
-            let restoredSection = "";
-            for (const restoredQuestion of restoredQuestions) {
-              if (restoredQuestion.sectionKey !== restoredSection) {
-                restoredSection = restoredQuestion.sectionKey;
-                window.history.pushState({ scrubAssessment: true, view: "section", questionKey: restoredQuestion.key } satisfies AssessmentHistoryState, "", window.location.href);
-              }
-              window.history.pushState({ scrubAssessment: true, view: "question", questionKey: restoredQuestion.key } satisfies AssessmentHistoryState, "", window.location.href);
-              if (restoredQuestion.key === restoredKey) break;
-            }
-          }
-        } else {
-          clearProgress();
-          setProgress({ campaignId: requestedGiveaway(), answers: {}, language: i18n.resolvedLanguage === "es" ? "es" : "en", lastActivityAt: Date.now() });
-        }
+      const returnToken = new URLSearchParams(window.location.search).get("return");
+      if (returnToken) {
+        try {
+          const result = await openReturnLink({ token: returnToken });
+          if (!active) return;
+          if (languageRef.current.resolvedLanguage !== result.language) await languageRef.current.changeLanguage(result.language);
+          if (!active) return;
+          setReport(result.report); setRoadmap(result.roadmap); setView("report");
+        } catch { if (active) setError(t("assessment.continuity.invalidLink")); }
+        return;
       }
-    }).catch(() => setError(t("assessment.errors.unavailable")));
-    if (!(window.history.state as AssessmentHistoryState | null)?.scrubAssessment) {
-      window.history.replaceState({ scrubAssessment: true, view: "intro" } satisfies AssessmentHistoryState, "", window.location.href);
-    }
-    return () => { active = false; };
-  }, [prepare, recover, attributeGiveaway, generateReport, generateRoadmap, openReturnLink, recordEvent, i18n, t]);
+      await prepare({}).then(async (prepared: Definition) => {
+        if (!active) return;
+        setDefinition(prepared);
+        const saved = loadProgress();
+        if (saved?.attemptId && saved.capability) {
+          const result = await recover({ attemptId: saved.attemptId as Id<"assessmentAttempts">, capability: saved.capability });
+          if (!active) return;
+          if (result) {
+            void recordEvent({
+              attemptId: saved.attemptId as Id<"assessmentAttempts">,
+              capability: saved.capability,
+              eventKey: "assessment_resumed",
+              deduplicationKey: `${saved.attemptId}:assessment_resumed:${sessionIdRef.current}`,
+              language: result.attempt.responseLanguage,
+              metadata: { sessionId: sessionIdRef.current },
+            }).catch(() => {});
+            const answers: Record<string, Answer> = {};
+            for (const row of result.responses) {
+              if (row.responseKind === "single" && row.answerValue) answers[row.questionKey] = row.answerValue;
+              if (row.responseKind === "multi" && row.answerValues) answers[row.questionKey] = row.answerValues;
+              if (row.responseKind === "qualitative" && row.qualitativeText) answers[row.questionKey] = row.qualitativeText;
+            }
+            let campaignId = result.attempt.sourceSnapshot?.utmSource === "giveaway" ? result.attempt.sourceSnapshot.utmCampaign : undefined;
+            const requested = requestedGiveaway();
+            if (requested && !campaignId && result.attempt.status === "in_progress") campaignId = await attributeGiveaway({ attemptId: saved.attemptId as Id<"assessmentAttempts">, capability: saved.capability, campaignId: requested });
+            if (!active) return;
+            const next = { ...saved, campaignId, answers: validatedAnswers(result.definition as Definition, { ...answers, ...saved.answers }), language: result.attempt.responseLanguage, lastActivityAt: result.attempt.lastActivityAt };
+            setProgress(next);
+            progressRef.current = next;
+            saveProgress(next);
+            setGiveawayOutcome(result.attempt.giveawayOutcome ?? (requested && result.attempt.status === "completed" ? "previous_completion" : undefined));
+            if (languageRef.current.resolvedLanguage !== next.language) await languageRef.current.changeLanguage(next.language);
+            if (!active) return;
+            setRestored(true);
+            if (result.attempt.status === "completed" && result.attempt.completionSnapshot) {
+              const frozen = result.attempt.reportSnapshot ?? await generateReport({ attemptId: saved.attemptId as Id<"assessmentAttempts">, capability: saved.capability });
+              if (!active) return;
+              snapshotsRef.current.report = frozen;
+              setReport(frozen.payload as AssessmentReport);
+              const plan = result.attempt.roadmapSnapshot ?? await generateRoadmap({ attemptId: saved.attemptId as Id<"assessmentAttempts">, capability: saved.capability });
+              if (!active) return;
+              snapshotsRef.current.roadmap = plan;
+              setRoadmap(plan.payload as AssessmentRoadmap);
+              setView("report");
+            } else {
+              setView("question");
+              const restoredQuestions = (result.definition as Definition).questions
+                .filter((item) => isQuestionApplicable(item, next.answers))
+                .sort((a, b) => {
+                  const sectionA = (result.definition as Definition).sections.find((section) => section.key === a.sectionKey)?.order ?? 0;
+                  const sectionB = (result.definition as Definition).sections.find((section) => section.key === b.sectionKey)?.order ?? 0;
+                  return sectionA - sectionB || a.order - b.order;
+                });
+              const restoredKey = next.currentQuestionKey && restoredQuestions.some((item) => item.key === next.currentQuestionKey)
+                ? next.currentQuestionKey
+                : restoredQuestions.find((item) => item.required && next.answers[item.key] === undefined)?.key ?? restoredQuestions[restoredQuestions.length - 1]?.key;
+              window.history.replaceState({ scrubAssessment: true, view: "intro" } satisfies AssessmentHistoryState, "", window.location.href);
+              let restoredSection = "";
+              for (const restoredQuestion of restoredQuestions) {
+                if (restoredQuestion.sectionKey !== restoredSection) {
+                  restoredSection = restoredQuestion.sectionKey;
+                  window.history.pushState({ scrubAssessment: true, view: "section", questionKey: restoredQuestion.key } satisfies AssessmentHistoryState, "", window.location.href);
+                }
+                window.history.pushState({ scrubAssessment: true, view: "question", questionKey: restoredQuestion.key } satisfies AssessmentHistoryState, "", window.location.href);
+                if (restoredQuestion.key === restoredKey) break;
+              }
+            }
+          } else {
+            clearProgress();
+            setProgress({ campaignId: requestedGiveaway(), answers: {}, language: i18n.resolvedLanguage === "es" ? "es" : "en", lastActivityAt: Date.now() });
+          }
+        }
+      });
+      if (!active) return;
+      if (!(window.history.state as AssessmentHistoryState | null)?.scrubAssessment) {
+        window.history.replaceState({ scrubAssessment: true, view: "intro" } satisfies AssessmentHistoryState, "", window.location.href);
+      }
+    };
+    // Strict Mode cleans up its first setup before this microtask runs. A real
+    // remount starts a new logical session; rerenders do not restart recovery.
+    void Promise.resolve().then(initialize).catch(() => {
+      if (active) setError(t("assessment.errors.unavailable"));
+    }).finally(() => { if (active) initializingRef.current = false; });
+    return () => { active = false; mountedRef.current = false; };
+  }, []);
 
   const questions = useMemo(() => definition ? definition.questions.filter((question) => isQuestionApplicable(question, progress.answers)).sort((a, b) => {
     const sectionA = definition.sections.find((section) => section.key === a.sectionKey)?.order ?? 0;
@@ -301,12 +333,14 @@ export function OperationsAssessmentPage() {
         const currentPosition = definition.questions.findIndex((item) => item.key === question.key);
         const priorResponses = definition.questions.slice(0, currentPosition).filter((item) => accepted[item.key] !== undefined && isQuestionApplicable(item, accepted)).map((item) => responseArgs(item, accepted[item.key]));
         const created = await start({ capability, campaignId: latest.campaignId, browserKey: getBrowserKey(), responseLanguage: latest.language, deviceCategory: window.innerWidth < 768 ? "mobile" : "desktop", sessionId: sessionIdRef.current, priorResponses, firstResponse: responseArgs(question, answer) });
+        if (!mountedRef.current) return false;
         attemptId = created.attemptId;
       } else {
         const response = responseArgs(question, answer);
         const submissionKey = `${attemptId}:${latest.language}:${JSON.stringify(response)}`;
         if (lastSavedRef.current !== submissionKey) {
           await saveResponse({ attemptId: attemptId as Id<"assessmentAttempts">, capability, responseLanguage: latest.language, response });
+          if (!mountedRef.current) return false;
           lastSavedRef.current = submissionKey;
         }
       }
@@ -316,11 +350,12 @@ export function OperationsAssessmentPage() {
       saveProgress(next);
       return true;
     } catch (caught) {
+      if (!mountedRef.current) return false;
       const message = caught instanceof Error ? caught.message : "";
       setError(/rate limit|too many/i.test(message) ? t("assessment.errors.rateLimit") : t("assessment.errors.save"));
       return false;
     } finally {
-      setBusy(false);
+      if (mountedRef.current) setBusy(false);
     }
   }
 
@@ -333,8 +368,18 @@ export function OperationsAssessmentPage() {
     return pending;
   }
 
-  async function goNext(giveawayContact?: GiveawayContact) {
-    if (!await persistCurrent()) return;
+  function goNext(giveawayContact?: GiveawayContact) {
+    if (initializingRef.current || !mountedRef.current) return Promise.resolve();
+    if (navigationRef.current) return navigationRef.current;
+    const pending = goNextOnce(giveawayContact).finally(() => {
+      if (navigationRef.current === pending) navigationRef.current = null;
+    });
+    navigationRef.current = pending;
+    return pending;
+  }
+
+  async function goNextOnce(giveawayContact?: GiveawayContact) {
+    if (!await persistCurrent() || !mountedRef.current) return;
     if (index === questions.length - 1) {
       if (progressRef.current.campaignId && view !== "contact") { setView("contact"); return; }
       setBusy(true);
@@ -342,19 +387,27 @@ export function OperationsAssessmentPage() {
       try {
         const latest = progressRef.current;
         await complete({ attemptId: latest.attemptId as Id<"assessmentAttempts">, capability: latest.capability, giveawayContact });
+        if (!mountedRef.current) return;
         if (latest.campaignId) {
           const completed = await recover({ attemptId: latest.attemptId as Id<"assessmentAttempts">, capability: latest.capability });
+          if (!mountedRef.current) return;
+          snapshotsRef.current = { report: completed?.attempt.reportSnapshot, roadmap: completed?.attempt.roadmapSnapshot };
           setGiveawayOutcome(completed?.attempt.giveawayOutcome);
         }
-        const frozen = await generateReport({ attemptId: latest.attemptId as Id<"assessmentAttempts">, capability: latest.capability });
+        const frozen = snapshotsRef.current.report ?? await generateReport({ attemptId: latest.attemptId as Id<"assessmentAttempts">, capability: latest.capability });
+        if (!mountedRef.current) return;
+        snapshotsRef.current.report = frozen;
         setReport(frozen.payload as AssessmentReport);
-        const plan = await generateRoadmap({ attemptId: latest.attemptId as Id<"assessmentAttempts">, capability: latest.capability });
+        const plan = snapshotsRef.current.roadmap ?? await generateRoadmap({ attemptId: latest.attemptId as Id<"assessmentAttempts">, capability: latest.capability });
+        if (!mountedRef.current) return;
+        snapshotsRef.current.roadmap = plan;
         setRoadmap(plan.payload as AssessmentRoadmap);
         setView("report");
       } catch (caught) {
+        if (!mountedRef.current) return;
         setError(caught instanceof Error ? caught.message : t("assessment.errors.complete"));
         setView(progressRef.current.campaignId ? "contact" : "question");
-      } finally { setBusy(false); }
+      } finally { if (mountedRef.current) setBusy(false); }
       return;
     }
     const nextIndex = index + 1;
@@ -377,8 +430,11 @@ export function OperationsAssessmentPage() {
   }
 
   async function startOver() {
+    if (initializingRef.current || navigationRef.current) return;
     if (!window.confirm(t("assessment.confirm.startOver"))) return;
     if (progress.attemptId && progress.capability) await abandon({ attemptId: progress.attemptId as Id<"assessmentAttempts">, capability: progress.capability }).catch(() => {});
+    if (!mountedRef.current) return;
+    snapshotsRef.current = {};
     clearProgress();
     setProgress({ campaignId: progress.campaignId ?? requestedGiveaway(), answers: {}, language: i18n.resolvedLanguage === "es" ? "es" : "en", lastActivityAt: Date.now() });
     setGiveawayOutcome(undefined);
