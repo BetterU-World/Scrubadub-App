@@ -2,7 +2,7 @@ import { useState, FormEvent } from "react";
 import { Link } from "wouter";
 import { useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
-import { STAFF_SESSION_KEY } from "../../hooks/useAuth";
+import { getStaffSessionSnapshot, setStaffSessionToken } from "@/lib/staffSession";
 import { CheckCircle } from "lucide-react";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { PasswordInput } from "@/components/ui/PasswordInput";
@@ -46,6 +46,7 @@ export function PostCheckoutSetupPage() {
       return;
     }
     setLoading(true);
+    const sessionRevision = getStaffSessionSnapshot().revision;
     try {
       const result = await completeSetup({
         stripeSessionId: sessionId,
@@ -53,7 +54,7 @@ export function PostCheckoutSetupPage() {
         password,
         companyName,
       });
-      localStorage.setItem(STAFF_SESSION_KEY, result.sessionToken);
+      setStaffSessionToken(result.sessionToken, sessionRevision);
       window.location.assign("/");
     } catch (err: any) {
       setError(err.message || "Setup failed. Please try again.");

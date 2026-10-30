@@ -21,7 +21,7 @@ export function ClientResetPasswordPage() {
     if (password !== confirm) return setError(t("auth.passwordsNoMatch"));
     setLoading(true);
     try { await resetPassword({ token, newPassword: password }); setSuccess(true); }
-    catch (err: any) { console.error("Client reset failed", err); setError(toFriendlyMessage(err, t("feedback.unexpectedError"), t)); }
+    catch (err: any) { setError(toFriendlyMessage(err, t("feedback.unexpectedError"), t)); }
     finally { setLoading(false); }
   }
 

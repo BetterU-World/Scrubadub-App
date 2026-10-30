@@ -1,10 +1,12 @@
 import { Component, ReactNode } from "react";
 import { AlertTriangle } from "lucide-react";
 import * as Sentry from "@sentry/react";
+import { isStaffSessionError } from "@/lib/staffSessionError";
 
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
+  recoverStaffSession?: boolean;
 }
 
 interface State {
@@ -23,11 +25,13 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    if (this.props.recoverStaffSession && isStaffSessionError(error)) return;
     Sentry.captureException(error, { extra: { componentStack: errorInfo.componentStack } });
   }
 
   render() {
     if (this.state.hasError) {
+      if (this.props.recoverStaffSession && isStaffSessionError(this.state.error)) throw this.state.error;
       if (this.props.fallback) return this.props.fallback;
       return (
         <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-6">

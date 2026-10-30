@@ -1,12 +1,15 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Id } from "../../../../convex/_generated/dataModel";
 import {
-  clearStaffSession,
   getStaffSessionToken,
+  getStaffSessionSnapshot,
+  invalidateStaffSession,
+  setStaffSessionToken,
   STAFF_SESSION_KEY,
 } from "@/lib/staffSession";
+import { useStaffSession } from "@/hooks/useStaffSession";
 
 const REF_KEY = "scrubadub_ref";
 // Temporary Security V2 migration credential. This remains in localStorage only
@@ -44,7 +47,7 @@ interface AuthUser {
 }
 
 export function useAuth() {
-  const [sessionToken, setSessionToken] = useState(getStaffSessionToken);
+  const { token: sessionToken } = useStaffSession();
 
   // ✅ Convex Actions
   const signUpAction = useAction(api.authActions.signUp);
@@ -63,8 +66,7 @@ export function useAuth() {
 
   useEffect(() => {
     if (sessionToken && user === null) {
-      clearStaffSession();
-      setSessionToken("");
+      invalidateStaffSession(sessionToken);
     }
   }, [user, sessionToken]);
 
@@ -94,9 +96,9 @@ export function useAuth() {
       name: string;
       companyName: string;
     }) => {
+      const sessionRevision = getStaffSessionSnapshot().revision;
       const result = await signUpAction(args);
-      localStorage.setItem(STAFF_SESSION_KEY, result.sessionToken);
-      setSessionToken(result.sessionToken);
+      setStaffSessionToken(result.sessionToken, sessionRevision);
       return result;
     },
     [signUpAction]
@@ -104,9 +106,9 @@ export function useAuth() {
 
   const signIn = useCallback(
     async (args: { email: string; password: string }) => {
+      const sessionRevision = getStaffSessionSnapshot().revision;
       const result = await signInAction(args);
-      localStorage.setItem(STAFF_SESSION_KEY, result.sessionToken);
-      setSessionToken(result.sessionToken);
+      setStaffSessionToken(result.sessionToken, sessionRevision);
       return result;
     },
     [signInAction]
@@ -114,10 +116,8 @@ export function useAuth() {
 
   const signOut = useCallback(() => {
     const tokenToRevoke = sessionToken;
-    clearStaffSession();
-    setSessionToken("");
+    invalidateStaffSession(tokenToRevoke);
     if (tokenToRevoke) void revokeSession({ sessionToken: tokenToRevoke }).catch(() => {});
-    window.location.assign("/login");
   }, [revokeSession, sessionToken]);
 
   return {

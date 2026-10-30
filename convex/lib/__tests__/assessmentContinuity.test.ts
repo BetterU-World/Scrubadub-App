@@ -208,15 +208,16 @@ describe("assessment continuity", () => {
     for (let i = 0; i < 2; i++)
       await t.mutation((api as any).assessmentContinuity.recordEvent, {
         attemptId: s.attemptId,
-        eventKey: "report_viewed",
-        deduplicationKey: `${s.attemptId}:report`,
+        capability: s.cap,
+        eventKey: "scrub_support_cta_clicked",
+        deduplicationKey: `${s.attemptId}:scrub_support_cta_clicked`,
         language: "en",
         metadata: { reportVersion: 1 },
       });
     expect(
       (
         await t.run((c: any) => c.db.query("assessmentEvents").collect())
-      ).filter((event: any) => event.eventKey === "report_viewed"),
+      ).filter((event: any) => event.eventKey === "scrub_support_cta_clicked"),
     ).toHaveLength(1);
     expect(
       (await t.run((c: any) => c.db.query("assessmentProspects").first()))

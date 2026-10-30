@@ -40,6 +40,7 @@ function rateLimitKeys(attempt: Doc<"assessmentAttempts">, includeCapability: bo
     `assessment:completion:${id}`,
     `assessment:report:${id}`,
     `assessment:roadmap:${id}`,
+    `assessment:telemetry:${id}`,
   ];
   if (includeCapability) keys.push(`assessment:delivery:${attempt.capabilityHash}`);
   return keys;
