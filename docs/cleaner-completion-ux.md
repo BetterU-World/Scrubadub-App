@@ -34,18 +34,14 @@ resume requirement. No submission mutation or authorization rule changed.
   already submitted use the same review path without attempting an editable-score
   update first.
 
-## Draft guide PR #261: do not merge unchanged
+## Guide PR #261 coordination
 
-The guide branch has not been modified. `cleaner-guide-completion-follow-up.patch`
-contains exact English and Spanish changes against guide commit
-`9f3161e916e8abfd0da4efa63b4777681e55fbf8` from draft PR #261.
-It was checked with `git apply --check` against those two original guide files.
-
-After the repair is accepted and available to the environment being documented,
-apply that patch to the guide branch, review both languages, and rerun its structural,
-render, typecheck, and build checks. If #261 changes before then, rebase/review the
-patch instead of applying it blindly. Do not merge #261 while it describes the
-removed controls. Neither PR is merged or marked ready by this task.
+`cleaner-guide-completion-follow-up.patch` records the prepared bilingual changes
+against original guide commit `9f3161e916e8abfd0da4efa63b4777681e55fbf8`.
+Those changes are now applied on #261, with simpler interrupted-entry guidance and
+without legacy-control workarounds. Its final guide commit `17fe63f` supersedes the
+patch text; do not reapply the archival patch to the updated guide. Both PRs remain
+drafts, with technical release readiness established by the checks below.
 
 The patch:
 
@@ -76,7 +72,7 @@ guards are unchanged. 125 tests across 12 completion, authorization, pause,
 accounting, and mounted staff/client authentication suites pass. Frontend build
 passes with the existing large-chunk warning. Both typechecks pass.
 
-Guide #261 is being aligned using the prepared patch; its final branch supersedes
+Guide #261 is aligned using the prepared patch; its final branch supersedes
 the patch's original draft-restoration wording. Keep both PRs separate. Release
 order: merge #262, deploy its Convex query, release its frontend, then merge/release
 #261. Alternatively merge #262 then #261 before one coordinated release, provided
@@ -86,17 +82,25 @@ against the old completion UI. No schema/data migration is needed.
 The new frontend requires `canCurrentUserSubmit`; the old frontend tolerates the
 additional query field. Therefore backend first is safe; frontend first is not.
 From the reviewed merged release checkout in Git Bash, with the existing authorized
-SCRUB production CLI context, the backend command is:
+SCRUB production CLI context, the build-and-backend command is:
 
 ```bash
-npx convex deploy --deployment-name canny-spider-91
+env -u CONVEX_DEPLOY_KEY CONVEX_DEPLOYMENT=prod:canny-spider-91 npx convex deploy --cmd 'npm run build:frontend' --cmd-url-env-var-name VITE_CONVEX_URL
 ```
 
 Only after it succeeds should the normal frontend release publish its build.
 The repository's `npm run build` already uses `convex deploy --cmd` (build locally,
 then push Convex); a hosting pipeline must publish the frontend only after that
 whole command succeeds. `npm run build:frontend` alone never deploys Convex.
-No deployment was executed during this review.
+The explicit command above uses an authenticated local Convex CLI and bypasses
+any deploy-key override; confirm the displayed target is `canny-spider-91`.
+`convex deploy` selects production by default; this CLI does not accept a
+`--deployment-name` or `--prod` flag for that command. No deployment was executed.
+
+The exact combined #262 + #261 tree was also tested using an uncommitted local
+merge, then that merge was aborted to preserve separate PRs: all 125 tests passed,
+both typechecks passed, the production frontend built successfully, and both guides
+rendered successfully.
 
 ## Future Fast Mode product requirement (not implemented)
 
