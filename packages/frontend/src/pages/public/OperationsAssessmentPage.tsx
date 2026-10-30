@@ -102,6 +102,7 @@ export function OperationsAssessmentPage() {
   // Translation changes affect presentation, never network initialization.
   const initializationInputs = useRef({ prepare, recover, attributeGiveaway, generateReport, generateRoadmap, openReturnLink, recordEvent, i18n, t });
   const sessionIdRef = useRef(randomHex().slice(0, 32));
+  const sentProgressKeysRef = useRef(new Set<string>());
   progressRef.current = progress;
 
   function applyHistoryState(state: AssessmentHistoryState) {
@@ -269,11 +270,16 @@ export function OperationsAssessmentPage() {
 
   useEffect(() => {
     if (view !== "question" || !question || !progress.attemptId) return;
+    const deduplicationKey = `${progress.attemptId}:assessment_progress:${sessionIdRef.current}:${question.key}`;
+    if (sentProgressKeysRef.current.has(deduplicationKey)) return;
+    // Mark before sending, including failures: telemetry is best effort and must
+    // never retry because of language changes, revisits, or effect replay.
+    sentProgressKeysRef.current.add(deduplicationKey);
     void recordEvent({
       attemptId: progress.attemptId as Id<"assessmentAttempts">,
       capability: progress.capability,
       eventKey: "assessment_progress",
-      deduplicationKey: `${progress.attemptId}:assessment_progress:${sessionIdRef.current}:${question.key}`,
+      deduplicationKey,
       language: progress.language,
       metadata: { sessionId: sessionIdRef.current, sectionKey: question.sectionKey, questionKey: question.key },
     }).catch(() => {});

@@ -69,6 +69,91 @@ beforeEach(async () => {
 afterEach(async () => { await act(async () => root.unmount()); host.remove(); });
 
 describe("assessment initialization with real React effects and translation events", () => {
+  const progressCalls = () => call("assessmentContinuity:recordEvent").mock.calls.map(([args]) => args).filter((args) => args.eventKey === "assessment_progress");
+  const visit = async (questionKey: string, view = "question") => {
+    await act(async () => window.dispatchEvent(new PopStateEvent("popstate", { state: { scrubAssessment: true, view, questionKey } })));
+  };
+
+  it("sends progress once through Strict Mode, idle renders, language changes and repeated visits", async () => {
+    call("assessments:recover").mockResolvedValue(recovered("in_progress", "en", false));
+    await mount(); await idle();
+    const first = progressCalls(); expect(first).toHaveLength(1);
+    for (let n = 0; n < 3; n++) {
+      await mount();
+      await act(async () => language.changeLanguage(n % 2 ? "en" : "es"));
+      await visit("business.team_size", "section");
+      await visit("business.team_size");
+    }
+    await idle();
+    expect(progressCalls()).toEqual(first);
+    expect(first[0].language).toBe("en");
+    expect(call("assessments:prepare")).toHaveBeenCalledTimes(1);
+    expect(call("assessments:recover")).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry failed telemetry on language changes or revisits", async () => {
+    call("assessmentContinuity:recordEvent").mockRejectedValue(new Error("offline"));
+    call("assessments:recover").mockResolvedValue(recovered("in_progress", "en", false));
+    await mount();
+    await act(async () => language.changeLanguage("es"));
+    await visit("business.team_size", "section"); await visit("business.team_size"); await idle();
+    expect(progressCalls()).toHaveLength(1);
+    expect(host.querySelector('input[value="solo"]:checked')).toBeTruthy();
+  });
+
+  it("records both sides of a fresh first-answer transition, then suppresses revisits", async () => {
+    localStorage.clear();
+    const twoQuestions = { ...definition, questions: INITIAL_ASSESSMENT_DEFINITION.questions.filter((q) => ["business.team_size", "business.years_operating"].includes(q.key)) };
+    call("assessments:prepare").mockResolvedValue(twoQuestions);
+    const pending = deferred<any>(); call("assessments:start").mockReturnValue(pending.promise);
+    await mount(); await click(en.assessment.actions.begin); await click(en.assessment.actions.continue);
+    expect(progressCalls()).toHaveLength(0);
+    await act(async () => host.querySelector<HTMLInputElement>('input[value="solo"]')!.click());
+    await click(en.common.next);
+    expect(call("assessments:start")).toHaveBeenCalledTimes(1);
+    await act(async () => pending.resolve({ attemptId: "new-attempt" })); await idle();
+    // React may batch attempt creation with navigation. The newly displayed
+    // question must always be tracked; a committed first question is tracked too.
+    const keys = progressCalls().map((args) => args.metadata.questionKey);
+    expect(keys).toContain("business.years_operating");
+    await visit("business.team_size");
+    expect(progressCalls().map((args) => args.metadata.questionKey).sort()).toEqual(["business.team_size", "business.years_operating"]);
+    await visit("business.years_operating"); await visit("business.team_size");
+    expect(progressCalls()).toHaveLength(2);
+    await visit("business.years_operating");
+    await act(async () => host.querySelector<HTMLInputElement>('input[value="under_1"]')!.click());
+    await click(en.assessment.actions.complete);
+    expect(call("assessments:saveResponse")).toHaveBeenCalledTimes(1);
+    expect(host.querySelector('[data-testid="report"]')).toBeTruthy();
+  });
+
+  it("retains progress on a distinct question and records a new session after remount", async () => {
+    localStorage.setItem(ASSESSMENT_PROGRESS_KEY, JSON.stringify({ ...saved, currentQuestionKey: "business.team_size" }));
+    const twoQuestions = { ...definition, questions: INITIAL_ASSESSMENT_DEFINITION.questions.filter((q) => ["business.team_size", "business.years_operating"].includes(q.key)) };
+    call("assessments:prepare").mockResolvedValue(twoQuestions);
+    call("assessments:recover").mockResolvedValue({ ...recovered("in_progress", "en", false), definition: twoQuestions });
+    await mount();
+    await click(en.common.next);
+    expect(progressCalls().map((args) => args.metadata.questionKey)).toEqual(["business.team_size", "business.years_operating"]);
+    const oldSession = progressCalls()[0].metadata.sessionId;
+    await act(async () => root.unmount()); root = createRoot(host); await mount();
+    const remounted = progressCalls().filter((args) => args.metadata.sessionId !== oldSession);
+    expect(remounted.map((args) => args.metadata.questionKey)).toContain("business.years_operating");
+    expect(new Set(remounted.map((args) => args.deduplicationKey)).size).toBe(remounted.length);
+    expect(remounted.at(-1).metadata.questionKey).toBe("business.years_operating");
+    expect(call("assessmentContinuity:recordEvent").mock.calls.filter(([args]) => args.eventKey === "assessment_resumed")).toHaveLength(2);
+  });
+
+  it("does not resend progress when completion fails and returns to the question", async () => {
+    call("assessments:recover").mockResolvedValue(recovered("in_progress", "en", false));
+    call("assessments:complete").mockRejectedValueOnce(new Error("temporary failure"));
+    await mount(); await click(en.assessment.actions.complete);
+    expect(progressCalls()).toHaveLength(1);
+    await click(en.assessment.actions.complete);
+    expect(progressCalls()).toHaveLength(1);
+    expect(host.querySelector('[data-testid="report"]')).toBeTruthy();
+  });
+
   it("recovers completed snapshots once under Strict Mode and stays idle across renders and language events", async () => {
     const change = vi.spyOn(language, "changeLanguage");
     await mount();

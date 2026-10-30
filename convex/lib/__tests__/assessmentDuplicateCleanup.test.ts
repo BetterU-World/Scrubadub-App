@@ -300,6 +300,7 @@ describe("one-time assessment duplicate cleanup", () => {
     await s.t.run(async (ctx) => {
       for (const key of [
         `assessment:response-write:${duplicate}`, `assessment:completion:${duplicate}`,
+        `assessment:telemetry:${duplicate}`, `assessment:telemetry:${survivor}`,
         `assessment:delivery:${"duplicate".padEnd(64, "a")}`,
         `assessment:response-write:${survivor}`, "assessment:event:global",
         `assessment:creation:${"shared-browser".padEnd(64, "b")}`, "unrelated:key",
@@ -311,7 +312,7 @@ describe("one-time assessment duplicate cleanup", () => {
     const result = await confirmed(s, report.proposedDeletionIds);
     expect(result.finalFunnel).toEqual({ starts: 4, completed: 3, inProgress: 1, abandoned: 0 });
     expect(result.protectedRecordsDeleted).toBe(false);
-    expect(result.deletedCounts).toMatchObject({ assessmentAttempts: 2, assessmentResponses: 2, assessmentEvents: 1, rateLimits: 3 });
+    expect(result.deletedCounts).toMatchObject({ assessmentAttempts: 2, assessmentResponses: 2, assessmentEvents: 1, rateLimits: 4 });
 
     const remaining = await s.t.run(async (ctx) => ({
       attempts: await ctx.db.query("assessmentAttempts").collect(),
@@ -326,6 +327,7 @@ describe("one-time assessment duplicate cleanup", () => {
     expect(remaining.definitions).toHaveLength(1);
     expect(new Set(remaining.rates.map((row) => row.key))).toEqual(new Set([
       `assessment:response-write:${survivor}`, "assessment:event:global",
+      `assessment:telemetry:${survivor}`,
       `assessment:creation:${"shared-browser".padEnd(64, "b")}`, "unrelated:key",
     ]));
   });
