@@ -67,3 +67,42 @@ backend query together with the frontend through the normal release process.
 
 Validation here uses local Convex tests and React DOM interactions; it does not
 claim an authenticated browser walkthrough or a deployment.
+
+## Final release revalidation (October 30, 2026)
+
+Updated this branch with main at `66ebef9`, including merged staff #263 and client
+#264 authentication repairs, without conflicts. The submission transaction and
+guards are unchanged. 125 tests across 12 completion, authorization, pause,
+accounting, and mounted staff/client authentication suites pass. Frontend build
+passes with the existing large-chunk warning. Both typechecks pass.
+
+Guide #261 is being aligned using the prepared patch; its final branch supersedes
+the patch's original draft-restoration wording. Keep both PRs separate. Release
+order: merge #262, deploy its Convex query, release its frontend, then merge/release
+#261. Alternatively merge #262 then #261 before one coordinated release, provided
+Convex succeeds before that frontend becomes available. Do not release the guide
+against the old completion UI. No schema/data migration is needed.
+
+The new frontend requires `canCurrentUserSubmit`; the old frontend tolerates the
+additional query field. Therefore backend first is safe; frontend first is not.
+From the reviewed merged release checkout in Git Bash, with the existing authorized
+SCRUB production CLI context, the backend command is:
+
+```bash
+npx convex deploy --deployment-name canny-spider-91
+```
+
+Only after it succeeds should the normal frontend release publish its build.
+The repository's `npm run build` already uses `convex deploy --cmd` (build locally,
+then push Convex); a hosting pipeline must publish the frontend only after that
+whole command succeeds. `npm run build:frontend` alone never deploys Convex.
+No deployment was executed during this review.
+
+## Future Fast Mode product requirement (not implemented)
+
+Standard Mode should be the default. Owners should control Fast Mode eligibility;
+managers should manage eligibility only with delegated permission. Trusted cleaners
+should visually verify tasks with fewer taps while retaining required quality
+control, inventory, performed-worker confirmation, and submission obligations.
+Current Fast Mode starts enabled and has no owner eligibility gate. Neither PR
+implements or promises the future permission model.
