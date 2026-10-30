@@ -1,15 +1,17 @@
 import { FormEvent, useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
-import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
+import { LoadingSpinner, PageLoader } from "@/components/ui/LoadingSpinner";
 import { PasswordInput } from "@/components/ui/PasswordInput";
-import { useClientAuth } from "@/hooks/useClientAuth";
+import { getClientSessionToken, useClientAuth } from "@/hooks/useClientAuth";
+import { clientLoginDestination } from "@/lib/clientAuthNavigation";
 import { isValidSignInEmail, toSignInMessage } from "@/lib/friendlyError";
 
 export function ClientLoginPage() {
   const { t } = useTranslation();
-  const { signIn } = useClientAuth();
+  const { signIn, isLoading } = useClientAuth();
+  const [, navigate] = useLocation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -24,16 +26,18 @@ export function ClientLoginPage() {
     }
     setLoading(true);
     try {
-      await signIn({ email, password });
+      const result = await signIn({ email, password });
+      if (getClientSessionToken() !== result.sessionToken) return;
       const next = new URLSearchParams(window.location.search).get("next");
-      window.location.assign(next?.startsWith("/client/") ? next : "/client/home");
+      navigate(clientLoginDestination(next), { replace: true });
     } catch (err: any) {
-      console.error("Client sign-in failed", err);
       setError(toSignInMessage(err, t));
     } finally {
       setLoading(false);
     }
   };
+
+  if (isLoading) return <PageLoader />;
 
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-10">

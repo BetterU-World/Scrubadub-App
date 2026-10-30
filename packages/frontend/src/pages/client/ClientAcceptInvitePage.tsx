@@ -1,10 +1,11 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useAction } from "convex/react";
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { api } from "../../../../../convex/_generated/api";
 import { LoadingSpinner, PageLoader } from "@/components/ui/LoadingSpinner";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { useClientAuth } from "@/hooks/useClientAuth";
+import { getClientSessionSnapshot } from "@/lib/clientSession";
 import { useTranslation } from "react-i18next";
 
 export function ClientAcceptInvitePage() {
@@ -12,7 +13,8 @@ export function ClientAcceptInvitePage() {
   const params = useParams<{ token: string }>();
   const acceptInvite = useAction(api.clientAuthActions.acceptInvite);
   const getInviteInfo = useAction(api.clientAuthActions.getInviteInfo);
-  const { setSignedInClient } = useClientAuth();
+  const { setSignedInClient, isLoading } = useClientAuth();
+  const [, navigate] = useLocation();
   const [inviteInfo, setInviteInfo] = useState<null | { email: string; displayName: string } | undefined>(undefined);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -26,7 +28,7 @@ export function ClientAcceptInvitePage() {
       .catch(() => setInviteInfo(null));
   }, [getInviteInfo, params.token]);
 
-  if (inviteInfo === undefined) return <PageLoader />;
+  if (isLoading || inviteInfo === undefined) return <PageLoader />;
 
   if (!inviteInfo) {
     return (
@@ -51,10 +53,10 @@ export function ClientAcceptInvitePage() {
       return;
     }
     setLoading(true);
+    const sessionRevision = getClientSessionSnapshot().revision;
     try {
       const result = await acceptInvite({ token: params.token!, password });
-      setSignedInClient(result.sessionToken);
-      window.location.assign("/client/home");
+      if (setSignedInClient(result.sessionToken, sessionRevision)) navigate("/client/home", { replace: true });
     } catch (err: any) {
       setError(err.message || t("clientAuth.acceptFailed"));
     } finally {
