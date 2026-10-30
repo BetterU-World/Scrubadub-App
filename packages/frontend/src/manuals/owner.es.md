@@ -44,12 +44,54 @@ El registro del cliente, el contacto de servicio de la propiedad y el acceso de 
 
 ## 5. Propiedades, inventario y revisión del estado
 
-1. Abre **Propiedades → Agregar propiedad**, o edita una propiedad. Comprueba tipo, dirección, cliente asociado, habitaciones, comodidades, acceso y notas. Guarda antes de programar.
-2. En los detalles, usa **Inventario** para mantener suministros, categorías, niveles de referencia y reporte obligatorio. Usa **Plantillas de inventario** para listas reutilizables; lee la confirmación antes de aplicar una plantilla.
-3. Configura las revisiones del estado con el valor predeterminado de la empresa o la excepción de la propiedad. Determinan las secciones preparadas para los trabajos, no prueban una inspección física.
-4. Usa **Historial** para revisar trabajos anteriores. Archiva ubicaciones que ya no estén en uso activo y restáuralas desde **Configuración → Propiedades archivadas** cuando corresponda.
+### Configurar una propiedad
 
-El inventario de la propiedad define qué controlar; los reportes del trabajo registran las condiciones reales de esa asignación. Después de cambiar una propiedad, comprueba el trabajo en vez de suponer que cambió una lista o reporte ya guardado.
+1. Abre **Propiedades → Agregar propiedad**, o edita una. Comprueba tipo, dirección, cliente vinculado, habitaciones, servicios, acceso y notas. Guarda antes de programar.
+2. Configura las revisiones del estado con el valor predeterminado de la empresa o la excepción de la propiedad. Determinan las secciones preparadas para los trabajos, no prueban una inspección física.
+3. Usa **Historial** para revisar trabajos anteriores. Archiva ubicaciones que ya no estén en uso activo y restáuralas desde **Configuración → Propiedades archivadas** cuando corresponda.
+
+### Crear y mantener una plantilla de inventario
+
+**Antes de empezar:** decide qué suministros debe tener cada propiedad y quién debe reponerlos. El nivel mínimo es la cantidad objetivo de comparación, no una orden de compra.
+
+**Pasos**
+
+1. Abre **Plantillas de inventario → Nueva plantilla**. Ingresa el nombre y elige **Agregar artículo**.
+2. Para cada artículo, ingresa nombre, categoría, **Nivel mínimo**, si el reporte es **Requerido**, **Reabastecer por** y notas. Las categorías incluyen baño, cocina, dormitorio, general y exterior.
+3. Elige **Guardar plantilla**. Ábrela otra vez para comprobar los artículos. Usa **Editar plantilla** para cambiarla, **Establecer como predeterminada** para marcar la preferida o **Eliminar** después de leer la confirmación.
+
+**Comprueba el resultado:** la plantilla guardada muestra los artículos esperados y la etiqueta Predeterminada cuando corresponda. Aplícala explícitamente a cada propiedad; marcarla como predeterminada no demuestra que una propiedad nueva recibió ese inventario.
+
+**Bloqueos frecuentes:** se necesitan nombre y al menos un artículo. Eliminar la plantilla conserva el inventario ya copiado a propiedades. Editarla no actualiza automáticamente esas propiedades. No se ofrecen duplicación ni archivo de plantillas.
+
+### Aplicar una plantilla o mantener el inventario de la propiedad
+
+**Antes de empezar:** revisa el inventario actual de la propiedad y los nombres de los artículos de la plantilla.
+
+**Pasos**
+
+1. Abre **Propiedades → propiedad seleccionada → Inventario**. Selecciona la plantilla mediante **Aplicar plantilla**.
+2. Lee la advertencia y confirma **Aplicar plantilla**. **Esto reemplaza la lista de artículos de la propiedad.** Las cantidades y los datos de última revisión solo se conservan cuando el nombre coincide exactamente; los artículos ausentes de la plantilla se eliminan del inventario de esa propiedad.
+3. Usa **Agregar artículo** o los controles de edición/eliminación disponibles para ajustes específicos. Revisa nombres, categorías, cantidades objetivo, reporte obligatorio y responsable de reponer, y guarda.
+
+**Comprueba el resultado:** inspecciona la lista y cantidades resultantes, incluidos los artículos que querías conservar. Guardar una plantilla no configura por sí solo una propiedad.
+
+**Bloqueos frecuentes:** aplicar otra plantilla vuelve a reemplazar la lista; no agrega sus artículos a los actuales. Revisa qué falta antes de volver a cambiar la propiedad.
+
+### Revisar el inventario del trabajo y entender las tareas de limpieza
+
+**Antes de empezar:** configura el inventario de la propiedad antes de iniciar la ejecución. La lista de reporte se copia al iniciar el trabajo, no al programarlo por primera vez.
+
+**Pasos**
+
+1. Los trabajadores reportan **OK**, **Bajo**, **Agotado** o **Reabastecido**, con cantidad y notas cuando corresponda. Reporte obligatorio significa indicar un estado; no exige que todos los artículos tengan existencias suficientes.
+2. Abre el reporte de inventario en los detalles del trabajo para revisar artículos reportados, cantidades frente al nivel mínimo y notas. Organiza la reposición con la persona responsable.
+3. Revisa el formulario de limpieza por separado. Sus tareas proceden de plantillas incorporadas según el tipo de trabajo y, cuando corresponde, de propiedad; el formulario se crea al iniciar la ejecución. No hay un constructor general de tareas/listas para propietarios.
+4. Usa la configuración de empresa/propiedad para las secciones de revisión de estado disponibles. El modo estándar marca tareas individualmente; las personas de limpieza autorizadas confirman secciones deliberadamente en modo rápido. Consulta la Sección 7. Revisa fotos y alertas reportadas por separado; consulta la Sección 10.
+
+**Comprueba el resultado:** verifica por separado el reporte del trabajo y el formulario de limpieza. El inventario obligatorio y las tareas importan para el envío, pero son listas distintas.
+
+**Bloqueos frecuentes:** reportar no actualiza automáticamente las existencias de la propiedad ni crea órdenes de compra o tareas de reposición. Editar la propiedad tras iniciar el trabajo no reescribe automáticamente el reporte guardado. Fotos, alertas y reportes son mecanismos distintos; las fotos no son universalmente obligatorias y un reporte Bajo/Agotado no crea una alerta automáticamente. Consulta la [Guía del limpiador](/manuals/cleaner) para la ejecución.
 
 ## 6. Trabajadores, equipos, invitaciones y permisos de gerentes
 
@@ -83,12 +125,43 @@ El recorrido habitual es Programado/Confirmado → En progreso → Enviado → A
 
 ## 9. Calendario, disponibilidad y fuentes de calendario de propiedades
 
-1. Abre **Calendario**, elige mes/semana/día y comprueba fechas y filtros. Abre el trabajo para ver detalles actuales; consultarlo no cambia su asignación.
-2. Revisa disponibilidad al asignar. Los trabajadores mantienen horario semanal y excepciones por fecha. **Las excepciones requieren al menos 14 días de anticipación**; cambiar disponibilidad no cancela asignaciones existentes.
-3. Para reservas, abre la pestaña de sincronización del calendario de la propiedad. Agrega una URL compatible de Airbnb, Vrbo u otra fuente. Revisa conexión y reservas importadas; configura aparte la regla de automatización de trabajos ofrecida si la necesitas.
-4. Comprueba resultados de sincronización y trabajos resultantes. Investiga errores o reservas ausentes en vez de suponer que una reserva externa creó trabajo.
+### Usar el calendario operativo y la disponibilidad
 
-La disponibilidad informa la programación, pero no garantiza evitar conflictos. Las excepciones No disponible tienen prioridad en la vista actual de asignación; una excepción Disponible aún puede aparecer no disponible si ese día semanal no lo está. Comprueba horas y compromisos directamente. No supongas sincronización general bidireccional con Google/Outlook ni actualizaciones instantáneas. Esta pantalla conserva controles en inglés.
+1. Abre **Calendario**, elige mes/semana/día y revisa fechas y filtros. Abre el trabajo para sus detalles actuales; verlo no cambia su asignación.
+2. Comprueba disponibilidad al asignar. Los trabajadores mantienen horas semanales y excepciones por día. **Las excepciones requieren al menos 14 días de anticipación**; cambiar disponibilidad no cancela asignaciones existentes.
+
+La disponibilidad informa la programación, no garantiza evitar conflictos. Las excepciones No disponible tienen prioridad en la vista actual; una excepción Disponible puede seguir apareciendo no disponible si ese día semanal está deshabilitado. Comprueba horas y compromisos directamente.
+
+### Conectar un calendario iCal de Airbnb, Vrbo u otro proveedor
+
+**Antes de empezar:** guarda la propiedad y ten acceso de suscripción aplicable y la URL de exportación iCal del anuncio. Esto importa un calendario; no es una conexión directa con la API de Airbnb ni sincronización general bidireccional de Google/Outlook.
+
+**Pasos**
+
+1. Copia la URL de exportación del calendario en el proveedor. Para Airbnb, sigue sus [instrucciones oficiales de exportación](https://www.airbnb.com/help/article/99): abre el calendario del anuncio, luego Disponibilidad → Conectar calendarios → Conectar a otro sitio web, y copia el enlace.
+2. Abre **Propiedades → propiedad seleccionada → Calendario**. En **Calendar Feed**, elige Airbnb, Vrbo u Other, ingresa **iCal Feed URL** y una etiqueta opcional, y elige **Connect Feed** para conectar.
+3. En **Job Automation**, elige **Configure** (o **Edit** si ya existe), habilita la creación según corresponda y elige **Save Rules** para guardar. Se requiere una regla guardada y habilitada. Los valores iniciales son Turnover, 180 minutos y 16:00; revisa las opciones de hora personalizada o sin hora.
+4. Elige **Sync Now** o espera la sincronización de fondo. Guardar la conexión no descarga el calendario inmediatamente. Se revisa aproximadamente cada 15 minutos; tras una sincronización correcta, normalmente vuelve a ser elegible unos 60 minutos después. No se actualiza en tiempo real.
+5. Comprueba el estado y **Synced Reservations**. Inspecciona fechas y trabajos resultantes en **Trabajos**, y asigna una persona o equipo compatible. No se selecciona un trabajador/equipo automáticamente.
+
+**Comprueba el resultado:** verifica cinco etapas distintas: conexión guardada, sincronización correcta, reserva importada, trabajo generado y trabajador asignado. Una conexión o reserva importada no demuestra que el trabajo esté listo.
+
+**Bloqueos frecuentes:** la fecha final del evento se usa como salida/fecha de servicio. Se pueden importar reservas sin generar trabajo: la fecha de corte excluye salidas en o antes del día de creación de la conexión y también se omiten salidas pasadas. La protección de duplicados cubre trabajos no cancelados generados por calendario para esa propiedad/fecha, no trabajos manuales independientes. Revisa los eventos; los bloqueos de disponibilidad también pueden aparecer como candidatos a limpieza.
+
+### Revisar cambios, errores y desconexión
+
+**Antes de empezar:** compara la reserva del proveedor con la reserva y el trabajo guardados en SCRUB.
+
+**Pasos**
+
+1. Revisa **Dates changed** y **Review needed**. Cambiar la fecha de salida marca la reserva vinculada; no reprograma el trabajo automáticamente. Las reservas ausentes/canceladas marcan el trabajo para revisión; no lo cancelan automáticamente.
+2. Inspecciona el trabajo y decide si debes cambiar horario o cancelación. Considera las ediciones manuales. **View job** abre la lista general de trabajos; busca allí la propiedad/fecha correspondiente.
+3. Ante **Sync error**, lee el error, corrige la URL mediante **Update Feed** y reintenta con **Sync Now**. Si se deshabilitó tras tres intentos consecutivos fallidos, vuelve a habilitarla explícitamente después de corregir el problema. Los mensajes de intento en curso/espera breve indican que debes esperar.
+4. Usa **Remove feed** para desconectar después de revisar el trabajo existente. Esto detiene la sincronización de esa conexión; no elimina trabajos ni historial existentes.
+
+**Comprueba el resultado:** verifica el último resultado y el horario/asignación reales tras revisar los cambios. Si hay varios calendarios conectados, esta pantalla administra el principal; los demás pueden seguir sincronizándose.
+
+**Bloqueos frecuentes:** la ausencia de trabajos puede deberse a falta de regla guardada/habilitada, fecha de corte/salida pasada, duplicado generado o conexión fallida/deshabilitada. No crees trabajo manual repetidamente sin comprobar si ya existe uno generado.
 
 ## 10. Revisar trabajo, inspecciones, alertas y correcciones
 
@@ -101,30 +174,103 @@ El envío ordinario no reporta automáticamente cada problema como alerta. Las f
 
 ## 11. Gestionar solicitudes de trabajo de clientes existentes
 
-1. Abre **Solicitudes de trabajo** y selecciona una. Comprueba cliente, ubicación, servicio, horario preferido, notas y precio. La preferencia todavía no confirma una reserva.
-2. Elige **Aceptar y programar**, fija fecha/hora final, servicio y duración y revisa la confirmación antes de crear el trabajo vinculado.
-3. Propón otro horario si hace falta. Comprueba si espera al cliente; reemplázalo o retíralo con los controles ofrecidos. Rechaza con una explicación clara si no puedes prestar el servicio.
-4. Verifica horario final y enlace **Ver trabajo**. Comprueba o agrega la asignación operativa allí. Programar no prueba que haya una persona asignada ni un precio aceptado.
+### Decidir y verificar la solicitud de un cliente existente
 
-Se requiere relación activa con el cliente, ubicación de servicio disponible y horario futuro válido. Resuelve registros ausentes/inactivos. Los gerentes necesitan autoridad de programación. El seguimiento comercial de Solicitudes no sustituye la decisión final de la Solicitud de trabajo.
+**Antes de empezar:** usa **Solicitudes de trabajo** para solicitudes autenticadas de clientes existentes; **Solicitudes** gestiona consultas públicas y ventas. Se requieren cliente activo, ubicación vinculada disponible y horario válido que no sea pasado. Los gerentes necesitan autoridad de programación.
+
+**Pasos**
+
+1. Abre **Solicitudes de trabajo** y selecciona una. Revisa cliente, ubicación, servicio, horario preferido, notas, complementos y precio. La preferencia no confirma una reserva.
+2. Para aceptar, ingresa fecha/hora final, servicio y duración, elige **Aceptar y programar**, y revisa y confirma **Crear trabajo programado**.
+3. Para ofrecer otro horario, elige **Proponer otro horario**, ingresa fecha, inicio, duración, servicio y nota para el cliente, y **Enviar horario propuesto**. Comprueba que espera respuesta; el cliente puede aceptar o rechazar. Aceptar crea el trabajo vinculado.
+4. Mientras esté pendiente, usa **Reemplazar propuesta** para ofrecer otro horario o **Retirar propuesta** para quitar la oferta. Retirarla no rechaza la solicitud subyacente.
+5. Si no puedes prestar el servicio, elige **Rechazar solicitud**, agrega una explicación para el cliente cuando sea útil y confirma **Confirmar rechazo**. Las notas internas son distintas de esa explicación.
+6. Verifica horario final y **Ver trabajo vinculado**. Ábrelo y comprueba o agrega la asignación individual/equipo. Programar no establece precio aceptado ni persona de limpieza asignada.
+
+**Comprueba el resultado:** el horario aceptado tiene un trabajo real vinculado con fecha/hora correctas. Una propuesta pendiente sigue esperando al cliente; no es trabajo programado.
+
+**Bloqueos frecuentes:** resuelve clientes/ubicaciones inactivos o faltantes, fechas/horas inválidas y duración/servicio no admitidos antes de reintentar. Usa herramientas avanzadas de ventas solo cuando hagan falta; una propuesta o acuerdo no sustituye la decisión de programación.
 
 ## 12. Prospectos, visitas de evaluación y propuestas
 
-1. Abre **Solicitudes** para prospectos públicos o manuales. Comprueba contacto/ubicación, notas y próximo seguimiento; usa la vista de oportunidades para organizarlo.
-2. Si necesitas evaluar el servicio, usa **Recorrido** (visita de evaluación) en la Solicitud. Define fecha/hora y responsable, registra hallazgos y completa la visita. Crear una propuesta desde esa visita requiere completarla primero.
-3. Crea la propuesta desde el prospecto o visita completada. Revisa alcance, frecuencia, precio, extras y destinatario. Guarda antes de confiar en la vista de revisión.
-4. Envía con la acción de entrega ofrecida o registra el resultado enviado/aceptado/rechazado disponible. Verifica entrega y estado. Usa el control para volver a borrador antes de cambiar una propuesta enviada.
+### Recibir una consulta en Solicitudes y organizar el seguimiento
 
-Aceptar no programa trabajo automáticamente. Una entrega pendiente, destinatario incompleto o estado final puede restringir edición/envío. Mantén correctos los vínculos de cliente y ubicación antes de convertir.
+**Antes de empezar:** los formularios públicos y Mi sitio crean prospectos, no trabajos confirmados ni cuentas autenticadas de clientes. Revisa los registros existentes antes de duplicarlos.
+
+**Pasos**
+
+1. Abre **Solicitudes → Vista de lista** para consultas públicas y prospectos manuales. Para registrar uno, elige **Nuevo prospecto**, ingresa contacto/ubicación y servicio, selecciona tipo y elige **Crear prospecto**.
+2. Abre el prospecto y revisa **Detalles del prospecto**. Los tipos incluyen solicitud de reserva, residencial, STR/Airbnb, comercial, mudanza, posconstrucción y otro. Usa **Guardar detalles**; elige **Marcar contactado** después de contactar a la persona.
+3. Usa **Vista de pipeline** para ver Nuevo → Calificación → Recorrido → Propuesta → Decisión → Acuerdo → Incorporación → Convertido, además de Cerrado para resultados cerrados. La posición se calcula con la solicitud y sus registros vinculados. Abre **Próxima acción** en la tarjeta; no es un tablero para arrastrar tarjetas.
+4. Busca por nombre, correo, empresa o dirección; filtra por tipo o atención y ordena por atención, recientes o antiguos. Vencido indica que pasó la fecha de seguimiento; Inactivo indica siete días sin actividad reconocida.
+5. En los detalles, expande **Pipeline de prospectos**, ingresa **Notas del prospecto (internas)** y **Guardar notas**, y configura/guarda **Próximo seguimiento**. Separa la comunicación con el cliente de las notas internas.
+
+**Comprueba el resultado:** vuelve a abrir el prospecto y verifica detalles, notas, fecha, vínculos y próxima acción guardados.
+
+**Bloqueos frecuentes:** una fecha de seguimiento no promete recordatorio automático. Los envíos públicos/manuales no se fusionan automáticamente por coincidir en contacto. La posición del embudo no prueba que exista un trabajo programado y asignado.
+
+### Programar y completar un recorrido cuando haga falta
+
+**Antes de empezar:** abre la Solicitud correcta y ten sus datos de contacto/ubicación. El recorrido es opcional para algunas propuestas, pero una propuesta basada en un recorrido requiere completar esa evaluación.
+
+**Pasos**
+
+1. En **Recorrido** de la Solicitud, elige **Programar recorrido**. Ingresa fecha e inicio, final opcional, propietario/gerente activo apto de la empresa y notas; guarda la cita.
+2. Registra datos de propiedad, habitaciones, hallazgos de servicio/alcance, esfuerzo estimado, recomendaciones de personal/frecuencia y precio. Revisa los cambios a la propiedad vinculada antes de guardar.
+3. Guarda hallazgos y elige **Marcar completado** cuando termines. Crea explícitamente la propuesta después; completar no envía una.
+4. Para reprogramar, edita y guarda la cita. Para cancelarla, cambia el estado de cita a Cancelada y guarda. Archivar la evaluación es una acción distinta.
+
+**Comprueba el resultado:** verifica cita/asignación guardadas, evaluación completada y vínculo a propuesta. Comprueba la visita programada en el calendario.
+
+**Bloqueos frecuentes:** las citas programadas necesitan fecha/inicio y una persona apta cuando se asignan. Usa la propuesta ya vinculada en vez de crear otra desde el mismo recorrido.
+
+### Crear, revisar, enviar y modificar una propuesta
+
+**Antes de empezar:** usa el prospecto o recorrido completado correcto. Comprueba contacto y vínculos de cliente/ubicación.
+
+**Pasos**
+
+1. Elige **Crear propuesta** desde el prospecto o recorrido completado. Revisa alcance, frecuencia, precio, destinatario y complementos solicitados/de catálogo/personalizados. Guarda cada partida y finaliza precios antes de enviar.
+2. Elige **Guardar propuesta** y usa **Revisar propuesta** para inspeccionar el contenido guardado. Confirma qué recibirá el cliente.
+3. Elige **Enviar propuesta** para iniciar la entrega por correo de SCRUB o **Registrar envío externo** solo para registrar un envío fuera de SCRUB. Comprueba la entrega por separado del estado.
+4. El cliente puede aceptar/rechazar mediante la respuesta disponible. Usa **Marcar aceptada fuera de SCRUB** o **Marcar rechazada fuera de SCRUB** solo para registrar una respuesta externa real.
+5. Para modificar una propuesta enviada, usa **Hacer cambios** y vuelve a borrador antes de editar. Guarda/revisa y envía la revisión; el enlace anterior del cliente deja de ser válido. Consulta el historial de versiones emitidas.
+
+**Comprueba el resultado:** verifica contenido guardado, evidencia de entrega y estado Borrador/Enviada/Aceptada/Rechazada. Aceptar no programa un trabajo automáticamente; continúa en la Sección 13.
+
+**Bloqueos frecuentes:** entrega pendiente, destinatario faltante, precios incompletos y estados finales restringen edición/envío. Las aceptadas/rechazadas no son borradores editables comunes. Registrar respuesta externa no implica que SCRUB la entregó o verificó.
 
 ## 13. Acuerdos de servicio y conversión de ventas en trabajo
 
-1. Desde una propuesta aceptada, crea el acuerdo cuando haga falta. Revisa cliente/ubicación vinculados, alcance, horario, precio, términos y plantilla.
-2. Guarda, revisa el documento guardado y usa las acciones de preparar/enviar ofrecidas. Resuelve correo faltante o acceso requerido al portal antes de entregarlo.
-3. Sigue el flujo mostrado de respuesta del cliente o firma externa. Una copia firmada recibida fuera de SCRUB, un borrador enviado y un acuse del cliente son etapas distintas. Verifica estado e historial de versiones emitidas.
-4. Usa por separado la conversión/programación disponible en la Solicitud, o crea la cuenta comercial y horario adecuados. Verifica cliente, ubicación, asignaciones, fechas y trabajo/cuenta resultante.
+### Preparar y entregar un acuerdo de servicio
 
-La secuencia práctica es prospecto → visita cuando haga falta → propuesta → aceptación → acuerdo cuando haga falta → conversión/programación → trabajo aprobado → factura/pago. Ni aceptar una propuesta ni tener un acuerdo demuestra que exista un trabajo. Sigue los registros vinculados antes de duplicar.
+**Antes de empezar:** abre una propuesta aceptada y decide si hace falta un acuerdo. Comprueba cliente/ubicación y destinatario; configura por separado el acceso requerido al portal mediante invitación.
+
+**Pasos**
+
+1. Elige **Crear acuerdo de servicio**. Abre el borrador resultante; si ya existe uno para esa propuesta, continúa con él. Revisa plantilla, cliente/ubicación, alcance, horario de servicio, precio y términos.
+2. Elige **Guardar acuerdo** y revisa el documento/vista previa guardados. Usa **Marcar listo** donde se ofrezca y luego la acción disponible de emisión/correo o **Enviar acuerdo de servicio**. Usa **Registrar envío fuera de SCRUB** solo para entrega organizada externamente.
+3. Comprueba historial de versiones emitidas, estado y entrega. **Configuración → Documentos → Documentos de clientes** enumera el documento; vuelve a la Solicitud o Cuenta comercial original para continuar. Las plantillas allí no reescriben documentos existentes automáticamente.
+4. Revisa la confirmación/rechazo del cliente. Confirmar no es firmar electrónicamente. Los clientes firman y devuelven copias fuera de SCRUB; usa **Marcar firmado fuera de SCRUB** solo después de recibirla. Distingue **Confirmado** de **Copia firmada recibida**.
+
+**Comprueba el resultado:** verifica versión guardada/emitida, entrega, respuesta y registro de copia firmada externa. Enviar correo, recibir confirmación y recibir copia firmada son etapas distintas.
+
+**Bloqueos frecuentes:** correo faltante, vínculos, acceso requerido al portal, entrega pendiente o estado restringen acciones. Registrar envío externo no verifica recepción. Un acuerdo solo no crea trabajo programado.
+
+### Elegir la ruta correcta de configuración del servicio
+
+**Antes de empezar:** decide si es servicio residencial/único o una cuenta comercial apta. Recorridos y acuerdos son etapas opcionales cuando corresponda, no un embudo automático garantizado.
+
+**Pasos**
+
+1. Para trabajo residencial/único, comprueba el cliente vinculado en la Solicitud; usa **Crear relación de cliente** si hace falta. Clasifica el prospecto y agrega una dirección válida antes de **Crear propiedad** cuando corresponda. Verifica los vínculos guardados.
+2. Programa explícitamente mediante los controles disponibles, ingresa servicio/fecha/hora/duración finales y confirma la creación. Abre el trabajo vinculado para verificar asignación. Para Solicitudes de trabajo de clientes autenticados, sigue la Sección 11.
+3. Para trabajo comercial apto desde una propuesta aceptada, crea la cuenta vinculada y revisa cliente/clasificación de ubicación; configura horario y genera trabajos explícitamente según la Sección 14.
+4. Usa **Invitar cliente** por separado cuando haga falta acceso al portal. Verifica estado de invitación/acceso; un registro de cliente no es una cuenta de inicio de sesión.
+
+**Comprueba el resultado:** inspecciona cliente, propiedad/cuenta, fechas y trabajadores reales. La posición **Convertido** no garantiza un trabajo programado y asignado.
+
+**Bloqueos frecuentes:** resuelve registros faltantes/inactivos y clasificación residencial/comercial incorrecta antes de convertir. Sigue vínculos existentes en vez de duplicar. Aprobación, facturación y pago siguen siendo acciones posteriores separadas.
 
 ## 14. Cuentas comerciales y horarios recurrentes
 
@@ -132,6 +278,10 @@ La secuencia práctica es prospecto → visita cuando haga falta → propuesta �
 2. En **Schedule** (horario), configura recurrencia, fechas, servicio, asignación individual/equipo y gerente cuando corresponda. Guarda y verifica estado.
 3. Genera trabajos explícitamente para un rango de fechas. **Cada rango se limita a 90 días** y requiere cuenta y horario activos.
 4. Revisa el resultado y los trabajos generados. Usa pausar/reanudar/finalizar cuando cambie el servicio y revisa aparte el trabajo ya creado.
+
+### Verificar la ruta de configuración comercial
+
+Crea la cuenta desde la propuesta aceptada solo cuando el servicio vinculado sea apto para uso comercial. Comprueba cliente/cuenta, guarda el horario, genera un rango limitado y revisa trabajos y asignaciones reales. Aceptar la propuesta y tener un acuerdo no realiza estos pasos.
 
 Una regla recurrente no llena un calendario futuro ilimitado. Generación y ejecución son distintas. Usa la facturación de la cuenta para trabajo comercial, no una factura de trabajo duplicada.
 
@@ -156,12 +306,47 @@ Son declaraciones: SCRUB no envía ni verifica pagos externos. Las páginas anti
 
 ## 17. Conexiones con socios y trabajos compartidos
 
-1. Abre **Socios** para establecer la conexión entre empresas. Abre un trabajo y usa el control de compartir para seleccionar un socio conectado.
-2. Comprueba respuestas Pendiente, Aceptado o Rechazado. Tras un rechazo, usa las opciones de reasignar/compartir y verifica quién es responsable.
-3. El destinatario asigna y gestiona su copia. El trabajo usa detalles copiados de la propiedad, no acceso a tu directorio; revisa la copia e instrucciones guardadas.
-4. Revisa el paquete de finalización disponible, notas, resumen de lista y fotos compartidas. Revisa compensación por separado.
+### Conectar con otra empresa de SCRUB
 
-Compartir no aprueba compensación ni transfiere dinero. No supongas que editar la propiedad actualiza copias compartidas existentes ni que un paquete contiene fotos nunca compartidas.
+**Antes de empezar:** consigue el correo de la cuenta de propietario existente de la otra empresa. Socios no ofrece un directorio para descubrir empresas. Enviar invitaciones/compartir requiere acceso de suscripción aplicable; no supongas que ambas empresas necesitan suscripción pagada para aceptar la conexión.
+
+**Pasos**
+
+1. Abre **Socios → Enviar invitación de conexión**, ingresa el correo del otro propietario y elige **Enviar invitación**.
+2. El propietario destinatario abre **Socios → Solicitudes entrantes** y elige **Aceptar** o **Rechazar**. El remitente puede revisar **Solicitudes salientes** mientras espera.
+3. Tras aceptar, busca la empresa en **Conexiones activas**. Se agregan contactos de socios. **Agregar contacto** solo guarda una entrada de agenda; no invita ni conecta empresas.
+
+**Comprueba el resultado:** la empresa aparece Conectada en Conexiones activas. Un contacto guardado o invitación pendiente no es una conexión activa.
+
+**Bloqueos frecuentes:** comprueba el correo exacto de la cuenta de propietario si no se encuentra. No puedes invitar otra vez a tu empresa, una conexión existente o una empresa con invitación pendiente. Aquí no hay control para retirar invitaciones pendientes.
+
+### Compartir trabajo y gestionar la copia recibida
+
+**Antes de empezar:** ten una conexión activa y trabajo apto. Acuerden quién hará el trabajo antes de asignarlo.
+
+**Pasos**
+
+1. Abre el trabajo, elige **Compartir trabajo** y **Seleccionar empresa socia** entre conexiones activas. Decide si **Compartir paquete de finalización (listas/fotos)** y elige **Compartir trabajo** para enviar.
+2. El propietario destinatario abre la copia y acepta o rechaza la solicitud. Sigue este proceso de aceptar primero antes de asignar y ejecutar. Aceptar como empresa es distinto de aceptar como trabajador.
+3. Tras aceptar, el destinatario usa **Asignar limpiador** y gestiona ejecución, envío y revisión de su copia. Comprueba horario, instrucciones y trabajador guardados; compartir no asigna automáticamente.
+4. El remitente comprueba respuesta y luego estado/paquete disponibles. Revisa resumen, notas y fotos que realmente existan. Los detalles son una copia de la propiedad, no acceso al directorio original; editar la propiedad después no actualiza la copia automáticamente.
+
+**Comprueba el resultado:** verifica aceptación, asignación y estado de trabajo de la copia, y evidencia disponible. Distingue trabajo original y copia.
+
+**Bloqueos frecuentes:** rechazar cancela la copia recibida. Revisa responsabilidad y opciones permitidas de asignación/otro socio; no supongas que puedes recrear inmediatamente el envío rechazado al mismo socio. El paquete no contiene fotos nunca compartidas. Conexión, aceptación entre empresas, asignación, aprobación del trabajo, aprobación de compensación y pago son operaciones distintas; consulta la Sección 16.
+
+### Terminar una conexión
+
+**Antes de empezar:** revisa con el socio el trabajo compartido y los compromisos financieros existentes.
+
+**Pasos**
+
+1. Cualquiera de las empresas conectadas puede abrir **Socios → Conexiones activas**, elegir **Desconectar** y confirmar.
+2. Comprueba que ya no esté activa. Eliminar el contacto de agenda es distinto y no desconecta empresas.
+
+**Comprueba el resultado:** la empresa deja de ser socio activo para nuevos envíos.
+
+**Bloqueos frecuentes:** desconectar no cancela copias existentes, borra registros financieros, aprueba compensación ni transfiere dinero. Resuelve trabajo y compensación por separado.
 
 ## 18. Centro de documentos y documentos de trabajadores
 
@@ -182,7 +367,40 @@ Consulta la campana o **Notificaciones** y abre el registro relacionado para ver
 
 ## 20. Mi sitio, comentarios, prospectos de trabajadores y afiliados
 
-- **Mi sitio:** configura marca, zona, servicios, contactos y enlaces públicos. Guarda y abre el sitio/enlace mostrado para comprobarlo. Revisa las Solicitudes resultantes; una consulta no reserva ni paga trabajo automáticamente.
+### Configurar, publicar y comprobar Mi sitio
+
+**Antes de empezar:** prepara nombre comercial, descripción, área principal y contacto público. La URL pública es la dirección de este sitio de SCRUB seguida de tu slug único, por ejemplo /tu-empresa.
+
+**Pasos**
+
+1. Abre **Mi sitio**. Elige un **Slug (ruta URL)** disponible de 3–50 letras minúsculas/números/guiones y **Plantilla A** o **Plantilla B**.
+2. Ingresa **Nombre de marca**, **Biografía** y **Área de servicio**. Agrega hasta seis áreas adicionales y ocho nombres de servicios. Configura correo/teléfono públicos explícitamente; los contactos operativos no se muestran automáticamente.
+3. Opcionalmente ingresa **URL del logo** y **URL de imagen principal** HTTPS, y **Meta descripción**. Son enlaces de imágenes, no controles incorporados para subir/recortar.
+4. Deja desmarcada la publicación y elige **Crear sitio** o **Guardar cambios** para guardar un borrador. Reabre/comprueba los campos. No hay vista previa dedicada de borradores sin publicar.
+5. Confirma nombre, descripción y área principal; marca **Publish my mini-site and make these business details visible to everyone** y guarda otra vez. Guardar borrador y publicar son estados distintos. Los sitios antiguos ya configurados pueden aparecer publicados; comprueba el estado.
+6. Usa **Abierto** para inspeccionar página, contactos, servicios, imágenes y enlace de consulta, también en teléfono. Publicar hace públicos esos datos; los metadatos/mapa del sitio no garantizan posicionamiento.
+
+**Comprueba el resultado:** confirma estado Published, URL correcta y enlace de consulta funcional. El indicador de configuración no mide visitas/conversiones; no se ofrece un informe de conversiones del micrositio para propietarios.
+
+**Bloqueos frecuentes:** un slug ocupado/reservado/inválido o campos obligatorios faltantes impiden publicar. Los borradores no son vistas previas públicas. Corrige imágenes inutilizables y verifica contacto público sin depender de la configuración empresarial.
+
+### Compartir enlaces y dar seguimiento a consultas
+
+**Antes de empezar:** publica y comprueba página y enlace. Si falla la generación del enlace, usa **Reintentar** y verifica antes de distribuirlo.
+
+**Pasos**
+
+1. En **Share Kit**, usa **Website**, **Booking Link** o **Employee Application** para el público correcto. Usa **Copy** y los controles QR disponibles para distribuir el enlace deseado.
+2. Los clientes usan enlaces de servicio/cotización para enviar consultas. La selección y los complementos públicos permitidos pueden pasar al formulario; revisa lo enviado sin suponer que el servicio quedó confirmado.
+3. Abre **Solicitudes** para dar seguimiento según las Secciones 12–13. **Booking Link** es un formulario de consulta, no reserva confirmada instantánea ni pago. Enviar no crea automáticamente trabajo o cuenta autenticada.
+4. Dirige a clientes existentes a Solicitudes de trabajo del Portal del cliente autenticado para usar sus vínculos de cliente/ubicación. Usar el formulario público crea una consulta pública, no esa misma solicitud autenticada.
+
+**Comprueba el resultado:** verifica solicitud correcta, contacto, servicio y complementos. Seguimiento, precio, programación y asignación siguen requiriendo acciones propias.
+
+**Bloqueos frecuentes:** las consultas públicas van a Solicitudes, no automáticamente a Solicitudes de trabajo. Share Kit y algunos controles públicos/de configuración conservan inglés. Las futuras opciones de marca o analíticas de conversión no son capacidades actuales.
+
+### Comentarios, candidatos y afiliados
+
 - **Comentarios:** revisa comentarios de clientes y destácalos en tu sitio donde se ofrezca. Son distintos de autoevaluaciones e inspecciones.
 - **Prospectos:** revisa consultas de candidatos a limpieza, actualiza estado e invita cuando decidas contratar. No son trabajadores activos hasta completar invitación/cuenta.
 - **Afiliados:** copia tu enlace y revisa ingresos atribuidos, períodos del libro mayor y pagos. La comisión actual es 10%; los períodos bloqueados y la gestión administrativa rigen las solicitudes de pago. Stripe para afiliados es distinto de la incorporación retirada para pagos a trabajadores/socios.
@@ -195,6 +413,19 @@ Consulta la campana o **Notificaciones** y abre el registro relacionado para ver
 - **No puedes enviar:** comprueba cambios guardados, correo, cliente vinculado, acceso al portal, versión/estado y entrega pendiente. Lee el error antes de reintentar.
 - **Diferencia de pago/saldo:** distingue facturas de clientes, compensación actual e historial antiguo. Revisa evidencia y ajustes antes de registrar otro pago.
 - **Conexión interrumpida:** reconecta y abre el mismo registro. Comprueba lo guardado antes de repetir conversión, factura, envío o pago; puedes perder cambios sin guardar.
+
+### Comprobaciones de los flujos
+
+- **El socio no conecta:** verifica correo del propietario, aceptación entrante y acceso de suscripción para enviar; comprueba si es tu empresa o hay conexión/invitación pendiente. Un contacto solo no está conectado.
+- **Desapareció inventario:** aplicar plantilla reemplaza la lista. Compara plantilla y nombres exactos antes de editar; solo se conservan cantidades/revisiones coincidentes.
+- **El reporte no actualizó existencias:** los reportes son distintos de las cantidades de propiedad. Revisa el reporte y organiza/actualiza existencias mediante sus controles de inventario.
+- **Calendario conectado sin trabajos:** comprueba reglas Job Automation guardadas/habilitadas, sincronización, salidas/fecha de corte y trabajo generado existente. Asigna trabajadores por separado.
+- **Sincronización deshabilitada/con errores:** corrige el calendario, vuelve a habilitarlo explícitamente cuando corresponda y usa Sync Now. Comprueba resultado; guardar no demuestra reparación.
+- **Cambió la reserva:** compara la reserva marcada con el trabajo existente y revisa programación/cancelación explícitamente.
+- **Propuesta aceptada sin trabajo:** continúa con cliente/ubicación y programación o generación comercial explícitas. Comprueba trabajo y asignación, no solo posición del embudo.
+- **Falta cliente/propiedad:** comprueba vínculos, estado activo, clasificación y dirección antes de Crear relación de cliente/Crear propiedad o programar.
+- **Sitio guardado no visible:** comprueba nombre/descripción/área principal, casilla de publicación y guarda otra vez. Usa Abierto después de publicar.
+- **Consulta pública en otra cola:** los formularios públicos van a Solicitudes; los clientes existentes autenticados usan Solicitudes de trabajo.
 
 Consulta la [Guía del limpiador](/manuals/cleaner) para la lista. Si persiste el problema, anota trabajo/cliente/fecha y error, y contacta al administrador de tu empresa o a SCRUB en scrubadubsolutionsllc@gmail.com. No compartas contraseñas ni enlaces de invitación.
 
