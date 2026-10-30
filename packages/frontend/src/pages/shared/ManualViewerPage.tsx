@@ -8,8 +8,8 @@ import ownerMdEs from "@/manuals/owner.es.md?raw";
 import cleanerMdEs from "@/manuals/cleaner.es.md?raw";
 
 const MANUALS: Record<string, { titleKey: string; content: Record<string, string>; lastUpdated: string }> = {
-  owner: { titleKey: "manuals.ownerManual", content: { en: ownerMd, es: ownerMdEs }, lastUpdated: "March 1, 2026" },
-  cleaner: { titleKey: "manuals.cleanerManual", content: { en: cleanerMd, es: cleanerMdEs }, lastUpdated: "March 1, 2026" },
+  owner: { titleKey: "manuals.ownerManual", content: { en: ownerMd, es: ownerMdEs }, lastUpdated: "October 30, 2026" },
+  cleaner: { titleKey: "manuals.cleanerManual", content: { en: cleanerMd, es: cleanerMdEs }, lastUpdated: "October 30, 2026" },
 };
 
 export function ManualViewerPage() {

@@ -203,7 +203,7 @@ export function ManualsPage() {
         }
       />
       <div className="w-full min-w-0 max-w-2xl space-y-8">
-        <p className="text-xs text-gray-400">{t("manuals.lastUpdated", { date: "March 1, 2026" })}</p>
+        <p className="text-xs text-gray-400">{t("manuals.lastUpdated", { date: "October 30, 2026" })}</p>
 
         {/* Static in-app guides */}
         <section>
