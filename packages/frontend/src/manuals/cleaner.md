@@ -1,113 +1,109 @@
-# Cleaner Manual
+# Cleaner App Guide
 
-Welcome to SCRUB (powered by Scrubadub Solutions)! This manual covers everything you need to know about using the app for your day-to-day cleaning work.
-
----
+Welcome to SCRUB (powered by Scrubadub Solutions). This guide covers cleaning assignments and the cleaning checklist. **Maintenance workers: your screens and forms differ. These cleaning-form instructions do not apply to maintenance work; ask your owner or manager for the correct instructions.**
 
 ## Getting Started
 
-After accepting your invitation and signing in, you'll see your **My Jobs** page. This is your home base showing all your assigned jobs.
+1. Open the invitation link your company emailed or shared with you. Check the company and the email shown.
+2. Create a password with at least **10 characters**, confirm it, and accept the invitation. SCRUB signs you in and opens **Home**, the Worker Home dashboard.
+3. For later visits, use staff sign-in with your invited email and password. Use the password-reset option on that page if needed.
 
-## Viewing Your Jobs
+For an **expired**, **revoked**, or **invalid** invitation, ask your owner for a new link. If it is **already accepted**, sign in with your existing credentials. Read any error before retrying; contact the owner if the link or account needs attention.
 
-Your job list shows all assignments with their status, property name, date, and time. Use the filters to narrow down what you're looking for:
+Home shows today's work, upcoming/recent jobs, teams, notifications, and onboarding items needing attention. Review required onboarding items and ask the owner about anything awaiting their review. Home is separate from the full **Jobs** list.
 
-- **Status filter** — Show only jobs with a specific status.
-- **Date filter** — Show jobs for today, this week, or all time.
-- **Search** — Find jobs by property name.
+Use the header language switcher for English or Spanish. Some form and availability controls remain in English; their exact labels appear below. On a phone, use **More** or the navigation menu for additional pages. Find this guide under **Manuals**.
 
-## Job Lifecycle
+## Finding and Understanding Assignments
 
-Each job follows this workflow:
+Open a job from Home, **Jobs**, **Calendar**, or a job notification. Jobs has date/status filters and search by property name. Before traveling, read the address, date, start time, access instructions, notes, and service add-ons.
 
-### 1. Accepting a Job
+Jobs can be assigned individually or to a team. Team members share the workspace and checklist: coordinate changes and check the current status. **For team jobs, final submission requires the team lead or an authorized manager/owner.** Other members can help with the checklist without being allowed to submit it.
 
-When a job is assigned to you, you'll receive a notification. Open the job and **Accept** or **Deny** the assignment.
+If SCRUB says you are not assigned to perform the job, ask the owner to check the assignment or team membership. Do not use another person's account.
 
-- **Accept** — You're confirming you'll be there.
-- **Deny** — Let the owner know you can't take this job (it will be reassigned).
+## Accepting and Starting a Job
 
-### 2. Confirming the Job
+1. For a **Scheduled** job awaiting a response, choose **Accept Job** or **Deny** on job detail. A denial reason is optional. Denial notifies the owner; it does not guarantee automatic reassignment.
+2. Acceptance changes the job to **Confirmed**. Jobs created already confirmed do not need this step.
+3. At the property, use **I've Arrived** when offered to record arrival. Arrival does not start work.
+4. Tap **Start Cleaning** on a confirmed job. This starts work and the timer, prepares the cleaning form, and keeps you on job detail.
+5. Report inventory on job detail, then use **Continue Checklist** to open the cleaning form. Return to job detail for the timer and inventory.
 
-Once accepted, the job status becomes **Confirmed**. This means you're scheduled and the owner is counting on you.
+If you cannot attend an accepted, confirmed job before work starts, **Cancel Job** is available with an optional reason. Otherwise contact the owner promptly. Denying or cancelling does not find a replacement for you.
 
-### 3. Starting Work
+## Inventory, Checklist, Photos, and Red Flags
 
-When you arrive at the property:
+### Report inventory
 
-1. Tap **Arrive** to log your arrival time.
-2. Tap **Start** to begin the job timer.
+Expand the inventory checklist on job detail if present. Report every required item marked with **\*** using its actual status: **OK**, **Low**, **Out**, or **Restocked**. Required means a status must be reported, not that every item must be OK. Expand an item to enter quantity and a note, then **Save** those details. Report shortages honestly and tell the owner when supplies are needed.
 
-### 4. Completing the Job
+### Complete the cleaning checklist
 
-When you've finished cleaning:
+Open **Continue Checklist**, review every section, and save item notes where needed. **Fast Mode starts enabled and can automatically mark items complete.** Verify every item against the work actually done and clear incorrect marks. All items must be marked complete before submission. If a task cannot be finished, report it and contact the owner rather than marking unfinished work complete.
 
-1. Open the **job form** for the property.
-2. Fill out each section — check off completed tasks, add notes, and upload photos as needed.
-3. Tap **Submit** to send the completed job to the owner for review.
+### Attach photos and report issues
 
-### 5. After Submission
+- Use **Attach Photos (Optional)** → **Add Photo** to choose or take an image. Use a non-empty JPEG, PNG, WebP, or GIF file up to 10 MB. Wait for upload to finish and check the attached-photo count. Photos are optional in the current form; follow additional owner instructions.
+- Use the affected item's flag control to open **Report Red Flag**. Check **Category** (Damage, Safety, Cleanliness, Maintenance, or Other) and **Severity** (Low, Medium, High, or Critical), enter a non-empty **Description**, and choose **Report Flag**. Category/severity have defaults; check them before sending.
+- A red flag does not replace the checklist or required inventory report and does not complete the job. Contact the owner directly for urgent safety or access problems.
 
-The owner will review your submission and either:
+## Timer and Breaks
 
-- **Approve** — Great work! The job is done.
-- **Request Rework** — Something needs to be redone. Check the notes, make corrections, and resubmit.
+Job detail shows **Active**, **Paused**, and **Elapsed** time; active time excludes pauses. Leaving the page does not pause work.
 
-## Calendar
+While **In Progress**, use **Pause**, choose a reason, and confirm. Reasons include break, waiting for access, supplies, client interruption, travel between service areas, equipment issue, and other. **Other requires a note** of up to 200 characters. Use **Resume** when work continues; pause history records interruptions.
 
-The **Calendar** shows all your upcoming jobs in a weekly or monthly view. Tap any job to see its details.
+**Resume before final submission.** Job detail disables **Complete Clean** while paused. Checklist submission currently handles pauses differently, so do not rely on it to end a break. Contact the owner if pause/resume fails or the timer was administratively closed.
 
-## Notifications
+## Submitting Work and Checking Completion
 
-You'll receive notifications for:
+**Checking boxes, submitting work, and owner approval are separate milestones.** Opening the review screen is not confirmation of submission.
 
-- New job assignments
-- Schedule changes
-- Approval or rework requests from the owner
+1. Finish the cleaning, report required inventory on job detail, and resume the timer if paused.
+2. In the form, choose **Review & Complete**. Review the checklist, photos, red flags, and self-score (1–10). The screen also has a signature area; drawing there does not confirm submission.
+3. Under **Who actually worked this job?**, select every available worker who actually performed the work, including yourself if applicable. At least one is required. Do not select people just because they were assigned. This records work evidence; it does not create or send payment.
+4. The authorized submitter chooses **Complete Checklist** and waits for success. **In the current app, this submits both the form and the job for owner review**, then returns you to job detail.
+5. Verify the **job status is Submitted**. **Approved** means the owner or an authorized reviewer has accepted the work. Submitted is not approval or payment.
 
-Check the **bell icon** regularly to stay on top of your schedule.
+Job detail also has **Complete Clean**. It appears while In Progress and is enabled when the form is already submitted/approved, required inventory is reported, and the timer is not paused. **After successful Complete Checklist, a separate Complete Clean action is normally unnecessary because the job is already submitted.** The separate completion dialog currently does not show the required performed-worker selector, so do not rely on that dialog as your normal submission path. If an older job remains In Progress with a submitted form and cannot be completed, contact the owner rather than trying to bypass the missing selector.
 
-## Tips for Success
+For team work, coordinate final submission with the team lead. If a person who worked is missing from the available worker list, ask the owner to check assignments. Only current eligible assignees can be selected; do not choose an incorrect roster to bypass an error.
 
-- **Accept or deny jobs promptly** so the owner can plan accordingly.
-- **Arrive on time** and use the Arrive button to log it.
-- **Be thorough with the job form** — complete all checklists and add photos of your work.
-- **Read rework notes carefully** if a job needs corrections.
-- **Check your calendar daily** to stay prepared for upcoming jobs.
+## Owner Review and Rework
 
-## Availability
+Check the job and notifications for **Approved** or **Rework Requested**.
 
-You can set your own availability so your owner knows when you're free to work.
+1. For rework, read the owner's correction notes on job detail.
+2. Tap **Start Cleaning** while Rework Requested. This returns the job to In Progress and reopens its existing form for editing.
+3. Correct the work/checklist and update notes/photos as needed. Check inventory again: restarting rework can reset reports from property inventory, so report required items again if blank.
+4. Resume if paused, choose **Review & Complete**, confirm who performed this round of work, and choose **Complete Checklist**. Verify Submitted again.
 
-### Weekly Schedule
+If reopening or resubmission fails, contact the owner with the job and displayed error.
 
-Go to **Availability** to set your recurring weekly hours. For each day of the week, toggle whether you're available and set your start and end times. Click **Save Schedule** to save all seven days at once.
+## Calendar, Availability, and Notifications
 
-### Day Overrides
+**Calendar** has month, week, and day views. Open a job to see current details and check your schedule regularly for changes.
 
-Need to take a specific day off or mark yourself available on a day you're normally off?
+In **Availability**, set recurring hours for each enabled day under **Weekly Schedule**, with start before end, then choose **Save Schedule**. Use **Day Overrides** to mark a specific date Available or Unavailable. **Overrides require at least 14 days' notice.** Dates within that window cannot be changed through overrides, and existing overrides become read-only. Review upcoming overrides after saving. Availability changes do not cancel an existing assignment; contact the owner about urgent conflicts.
 
-- Use the **Day Overrides** section to set a date as **Unavailable** or **Available**.
-- **Overrides require at least 14 days' notice.** You cannot change availability for dates less than two weeks away.
-- Once the 14-day window passes, the override is locked and shown as read-only.
+Use the bell or **Notifications** for assignments, schedule updates, approvals, and rework messages. Open the job to check its latest state.
 
-Your upcoming overrides are listed at the bottom of the page so you can review what's coming up.
+## Payments and Worker Settings
 
----
+**Payments** shows approved amounts, outstanding balances, recorded payments, and legacy history where available. Current records declare payments made outside SCRUB; SCRUB does not send or verify them. Submission/approval does not guarantee money has been sent. Ask the owner about missing amounts, payment timing, or discrepancies.
 
-## Frequently Asked Questions
+**Settings** includes profile basics, work preferences, compliance/onboarding, account options, and payment history. Follow the displayed instructions for agreements, policies, training, and documents. Ask the owner about items awaiting review or profile corrections. Use **Edit Availability** for schedule changes. Password resets are available from sign-in. Use the header language switcher, and sign out on shared devices. New worker Stripe payment onboarding is retired; do not look for a new payout-setup flow here.
 
-**Q: What if I can't make a confirmed job?**
-A: Contact your owner as soon as possible so they can reassign the job.
+## Troubleshooting
 
-**Q: Do I need to upload photos?**
-A: Follow your owner's requirements. Photos help demonstrate quality and protect you in case of disputes.
+- **Cannot start:** check that the job is Confirmed or Rework Requested and you are still assigned. Scheduled work may need acceptance first. Arrival alone does not start work.
+- **Cannot submit:** finish all checklist items, report required inventory statuses, resume, and select the actual performed workers. For team jobs, ask the lead or an authorized manager/owner to submit. Read the error; do not mark unfinished work complete to bypass it.
+- **Complete Clean disabled:** that control also needs a submitted/approved form. Follow the checklist review/submission steps and check the job status afterward.
+- **Already Submitted or Approved:** submission succeeded. Do not restart the job looking for another completion button. Wait for review or follow rework notes.
+- **Connection lost or form interrupted:** reconnect and reopen the same job in the same browser. Check server-loaded checklist entries, notes, photos, and job status. A recent local draft may offer **Resume** or **Start fresh**, but Resume currently restores the self-score, not every cached entry. Do not assume offline edits, photos, or the signature uploaded or restored. Re-enter missing information and wait for successful submission.
+- **No available workers, missing assignment, or closed timer:** contact your owner/manager with the job date/property and error. The owner must resolve inactive company access.
 
-**Q: How do I see my performance?**
-A: Your owner tracks performance metrics. Ask them for feedback if you'd like to know how you're doing.
+*Last updated: October 30, 2026*
 
----
-
-*Last updated: March 1, 2026*
-
-*Need help? Contact your manager or reach out to support at scrubadubsolutionsllc@gmail.com*
+*Need help? Contact your owner or manager, or email scrubadubsolutionsllc@gmail.com.*
