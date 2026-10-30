@@ -2,6 +2,7 @@ import { internalMutation, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { checkRateLimit } from "./lib/rateLimit";
 import { hashTokenForLookup } from "./lib/tokenHash";
+import { telemetryEventKey, telemetryMetadata, validTelemetry, telemetryAdmission } from "./lib/assessmentTelemetry";
 
 const TOKEN_TTL_MS = 60 * 24 * 60 * 60 * 1000;
 const CONSENT_VERSION = "assessment_followup_v1";
@@ -210,47 +211,18 @@ export const submitInterest = mutation({
   },
 });
 
-const eventMetadata = v.object({
-  definitionVersion: v.optional(v.number()),
-  scoringVersion: v.optional(v.number()),
-  reportVersion: v.optional(v.number()),
-  roadmapVersion: v.optional(v.number()),
-  maturityKey: v.optional(v.string()),
-  confidenceKey: v.optional(v.string()),
-  branchType: v.optional(v.string()),
-  scoreBand: v.optional(v.string()),
-  deviceCategory: v.optional(v.union(v.literal("mobile"), v.literal("desktop"))),
-  sectionKey: v.optional(v.string()),
-  questionKey: v.optional(v.string()),
-  sessionId: v.optional(v.string()),
-});
 export const recordEvent = mutation({
   args: {
     attemptId: v.optional(v.id("assessmentAttempts")),
     capability: v.optional(v.string()),
-    eventKey: v.string(),
+    eventKey: telemetryEventKey,
     deduplicationKey: v.string(),
     language: v.union(v.literal("en"), v.literal("es")),
-    metadata: v.optional(eventMetadata),
+    metadata: v.optional(telemetryMetadata),
   },
+  returns: v.object({ recorded: v.boolean() }),
   handler: async (ctx, args) => {
-    await checkRateLimit(ctx, {
-      key: "assessment:event:global",
-      limit: 500,
-      windowMs: 60_000,
-    });
-    if (
-      !/^[a-z_]{3,40}$/.test(args.eventKey) ||
-      args.deduplicationKey.length > 160 ||
-      (args.metadata?.sectionKey && !/^[a-z0-9_.-]{1,80}$/.test(args.metadata.sectionKey)) ||
-      (args.metadata?.questionKey && !/^[a-z0-9_.-]{1,120}$/.test(args.metadata.questionKey)) ||
-      (args.metadata?.sessionId && !/^[a-f0-9]{16,64}$/i.test(args.metadata.sessionId))
-    )
-      return { recorded: false };
-    if (args.attemptId && ["assessment_resumed", "assessment_progress", "scrub_support_cta_clicked"].includes(args.eventKey)) {
-      const attempt = await ctx.db.get(args.attemptId);
-      if (!attempt || !args.capability || attempt.capabilityHash !== (await hashTokenForLookup(args.capability))) return { recorded: false };
-    }
+    if (!validTelemetry(args)) return { recorded: false };
     const existing = await ctx.db
       .query("assessmentEvents")
       .withIndex("by_deduplicationKey", (q) =>
@@ -258,6 +230,13 @@ export const recordEvent = mutation({
       )
       .unique();
     if (existing) return { recorded: false };
+    // A duplicate is a no-op, even for an invalid capability: no data is returned
+    // and no attempt/snapshot is loaded. Only new writes require verification.
+    const charge = await telemetryAdmission(ctx, args.attemptId!);
+    if (!charge) return { recorded: false };
+    const attempt = await ctx.db.get(args.attemptId!);
+    if (!attempt || attempt.capabilityHash !== (await hashTokenForLookup(args.capability!))) return { recorded: false };
+    await charge();
     await ctx.db.insert("assessmentEvents", {
       attemptId: args.attemptId,
       eventKey: args.eventKey,

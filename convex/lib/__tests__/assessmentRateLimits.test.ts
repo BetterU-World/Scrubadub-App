@@ -51,7 +51,7 @@ describe("assessment rate-limit policy", () => {
       const capability = token(seed);
       const created = await t.mutation(assessmentApi.start, { capability, browserKey: token(seed + 1), responseLanguage: "en", firstResponse: { questionKey: "business.primary_model", answerValue: "mixed" } });
       for (let index = 0; index < 20; index++) await t.mutation(assessmentApi.recover, { attemptId: created.attemptId, capability });
-      await t.mutation(continuityApi.recordEvent, { attemptId: created.attemptId, eventKey: "assessment_viewed", deduplicationKey: `test-${seed}`, language: "en" });
+      await t.mutation(continuityApi.recordEvent, { attemptId: created.attemptId, capability, eventKey: "assessment_resumed", deduplicationKey: `${created.attemptId}:assessment_resumed:${token(seed)}`, language: "en", metadata: { sessionId: token(seed) } });
       await t.mutation(assessmentApi.saveResponse, { attemptId: created.attemptId, capability, responseLanguage: "en", response: { questionKey: "business.team_size", answerValue: "5_10" } });
     }
     const rows = await t.run((ctx) => ctx.db.query("rateLimits").collect());
