@@ -1,7 +1,7 @@
 import { internalMutation, mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { logAudit } from "../lib/helpers";
-import { requireActiveWorkerProfile, requireOwnerSession } from "../lib/sessionAuth";
+import { requireActiveWorkerProfile, requireOwnerSession, requireOwnerOrManagerCapability } from "../lib/sessionAuth";
 import { revokeAllSessionsForPrincipal } from "../lib/sessionRevocation";
 import { writeSecurityEvent } from "../lib/securityEvents";
 import { cleanerLimit, planDisplayName, tierToScrubPlan } from "../lib/plans";
@@ -489,6 +489,41 @@ export const updateWorkerEligibility = mutation({
       ...(args.eligibleRoles !== undefined ? { eligibleRoles: args.eligibleRoles } : {}),
       updatedAt: Date.now(),
     });
+  },
+});
+
+/** Delegated team administration is deliberately limited to this one capability. */
+export const setFastModeEligibility = mutation({
+  args: {
+    sessionToken: v.string(),
+    userId: v.optional(v.id("users")),
+    workerUserId: v.id("users"),
+    eligible: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const actor = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageTeam");
+    const target = await ctx.db.get(args.workerUserId);
+    if (!target || target.companyId !== actor.companyId || target.role !== "cleaner" || target.status !== "active") {
+      throw new Error("Active company cleaner required");
+    }
+    let profile = await getExistingProfileForUser(ctx, target._id);
+    if (profile && (profile.companyId !== actor.companyId || profile.workerStatus !== "active")) {
+      throw new Error("Active company cleaner required");
+    }
+    if (!profile) {
+      const id = await insertDefaultProfile(ctx, target);
+      profile = await ctx.db.get(id);
+    }
+    if (!profile) throw new Error("Worker profile not found");
+    if ((profile.fastModeEligible === true) === args.eligible) return null;
+    await ctx.db.patch(profile._id, { fastModeEligible: args.eligible, updatedAt: Date.now() });
+    await logAudit(ctx, {
+      companyId: actor.companyId!, userId: actor._id, action: "set_fast_mode_eligibility",
+      entityType: "workerProfile", entityId: profile._id,
+      details: JSON.stringify({ workerUserId: target._id, eligible: args.eligible }),
+    });
+    return null;
   },
 });
 

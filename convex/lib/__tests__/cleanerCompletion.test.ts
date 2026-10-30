@@ -29,7 +29,9 @@ async function setup(team = false) {
   const cleanerArgs = { userId: ids.cleaner, sessionToken: auth.sessionToken };
   await t.mutation(api.mutations.jobs.startJob, { ...cleanerArgs, jobId: ids.job });
   const form = await t.run(ctx => ctx.db.query("forms").withIndex("by_jobId", q => q.eq("jobId", ids.job)).unique());
-  await t.mutation(api.mutations.forms.markAllComplete, { ...cleanerArgs, formId: form!._id });
+  for (const item of await t.query(api.queries.forms.getItems, { ...cleanerArgs, formId: form!._id })) {
+    await t.mutation(api.mutations.forms.updateItem, { ...cleanerArgs, itemId: item._id, completed: true });
+  }
   const submit = (workers = [ids.cleaner]) => t.mutation(api.mutations.forms.submit, { ...cleanerArgs, formId: form!._id, performedWorkerIds: workers });
   const state = () => t.run(async ctx => ({ job: await ctx.db.get(ids.job), form: await ctx.db.get(form!._id) }));
   return { t, ...ids, form: form!, cleanerArgs, ownerAuth, login, submit, state };

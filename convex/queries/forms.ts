@@ -51,3 +51,15 @@ export const getItems = query({
     })));
   },
 });
+
+/** Live, default-deny capability; grants never imply automatic checklist writes. */
+export const fastModeEligibility = query({
+  args: { sessionToken: v.string(), userId: v.optional(v.id("users")) },
+  returns: v.boolean(),
+  handler: async (ctx, args) => {
+    const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
+    if (user.role !== "cleaner") return false;
+    const profile = await ctx.db.query("workerProfiles").withIndex("by_userId", q => q.eq("userId", user._id)).first();
+    return !!profile && profile.companyId === user.companyId && profile.workerStatus === "active" && profile.fastModeEligible === true;
+  },
+});

@@ -1,4 +1,5 @@
 import { useSimpleFeedbackState } from "@/components/ui/FeedbackProvider";
+import { FastModeEligibilityControl } from "@/components/FastModeEligibilityControl";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -524,6 +525,9 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                   <td className="block p-0 pt-2 text-sm text-gray-500 sm:table-cell sm:px-4 sm:py-3">
                     <span className="mr-1 text-xs font-medium text-gray-400 sm:hidden">{t("employees.eligibility")}:</span>
                     {formatLabel(workerProfile?.jobEligibilityStatus)}
+                    {emp.role === "cleaner" && emp.status === "active" &&
+                      (isOwner || user?.canManageTeam === true) && <FastModeEligibilityControl
+                        workerUserId={emp._id} eligible={(emp as typeof emp & { fastModeEligible?: boolean }).fastModeEligible === true} />}
                   </td>
                   <td className="block p-0 pt-3 sm:table-cell sm:px-4 sm:py-3">
                     <span className="mr-1 text-xs font-medium text-gray-400 sm:hidden">{t("employees.status")}:</span>

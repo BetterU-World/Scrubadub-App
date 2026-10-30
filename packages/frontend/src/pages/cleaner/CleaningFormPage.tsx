@@ -2,6 +2,7 @@ import { useAttachmentUpload } from "@/hooks/useAttachmentUpload";
 import { cleanerSubmissionError } from "@/lib/cleanerSubmissionError";
 import { usePerformedWorkers } from "@/components/payments/PerformedWorkerPicker";
 import { CleanerSubmissionReview } from "@/components/CleanerSubmissionReview";
+import { FastModeSectionButton } from "@/components/FastModeSectionButton";
 import { useFeedback } from "@/components/ui/FeedbackProvider";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "convex/react";
@@ -125,7 +126,8 @@ export function CleaningFormPage() {
   const submitForm = useMutation(api.mutations.forms.submit);
   const createRedFlag = useMutation(api.mutations.redFlags.create);
   const uploadAttachment = useAttachmentUpload();
-  const markAllComplete = useMutation(api.mutations.forms.markAllComplete);
+  const fastModeEligible = useQuery(api.queries.forms.fastModeEligibility,
+    user ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip");
   const addPhoto = useMutation(api.mutations.forms.addPhoto);
 
   const [showNoteFor, setShowNoteFor] = useState<string | null>(null);
@@ -140,8 +142,7 @@ export function CleaningFormPage() {
   const [submitting, setSubmitting] = useState(false);
 
   // Fast mode
-  const [fastMode, setFastMode] = useState(true);
-  const fastModeInitRef = useRef(false);
+  const [fastMode, setFastMode] = useState(false);
 
   // Micro-win animation state
   const [animatingItems, setAnimatingItems] = useState<Set<string>>(new Set());
@@ -171,27 +172,13 @@ export function CleaningFormPage() {
     };
   }, []);
 
-  // Fast Mode: batch-mark all items complete on first load
+  // Losing eligibility never reverses legitimate checklist progress.
   useEffect(() => {
-    if (
-      !fastMode ||
-      fastModeInitRef.current ||
-      !form ||
-      job?.status !== "in_progress" ||
-      form.status !== "in_progress" ||
-      !formItems ||
-      formItems.length === 0 ||
-      !user
-    )
-      return;
-    const hasUncompleted = formItems.some((i) => !i.completed);
-    if (hasUncompleted) {
-      fastModeInitRef.current = true;
-      markAllComplete({ formId: form._id, userId: user._id, sessionToken: getStaffSessionToken() });
-    } else {
-      fastModeInitRef.current = true;
-    }
-  }, [fastMode, form, formItems, user, job?.status]);
+    if (fastModeEligible !== true) setFastMode(false);
+  }, [fastModeEligible]);
+
+  // A different form or rework round always starts in Standard Mode.
+  useEffect(() => { setFastMode(false); }, [form?._id, form?.status]);
 
   // Check for cached form on mount
   useEffect(() => {
@@ -369,14 +356,6 @@ export function CleaningFormPage() {
     await updateItem({ itemId, isRedFlag: true, userId: user!._id, sessionToken: getStaffSessionToken() });
     setShowRedFlag(null);
     setRfNote("");
-  };
-
-  const handleToggleFastMode = async () => {
-    const next = !fastMode;
-    setFastMode(next);
-    if (next && form) {
-      await markAllComplete({ formId: form._id, userId: user!._id, sessionToken: getStaffSessionToken() });
-    }
   };
 
   const handleSubmit = async () => {
@@ -580,20 +559,20 @@ export function CleaningFormPage() {
       <div className="mb-4 flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
         <div className="flex items-center gap-2">
           <Zap className="w-4 h-4 text-amber-600" />
-          <span className="text-sm font-medium text-amber-800">Fast Mode (Recommended)</span>
+          <span className="text-sm font-medium text-amber-800">{t(fastMode && fastModeEligible === true ? "fastMode.fast" : "fastMode.standard")}</span>
         </div>
         <button
-          onClick={handleToggleFastMode}
-          className={`relative w-11 h-6 rounded-full transition-colors ${fastMode ? "bg-amber-500" : "bg-gray-300"}`}
+          role="switch" aria-checked={fastMode && fastModeEligible === true}
+          aria-label={t("fastMode.fast")} disabled={fastModeEligible !== true}
+          onClick={() => setFastMode(previous => !previous)}
+          className={`relative min-h-11 w-14 rounded-full transition-colors disabled:opacity-50 ${fastMode && fastModeEligible === true ? "bg-amber-500" : "bg-gray-300"}`}
         >
-          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${fastMode ? "translate-x-5" : ""}`} />
+          <span className={`absolute top-3 left-1 w-5 h-5 bg-white rounded-full shadow transition-transform ${fastMode && fastModeEligible === true ? "translate-x-6" : ""}`} />
         </button>
       </div>
-      {fastMode && (
-        <p className="text-xs text-gray-500 mb-4 -mt-2 px-1">
-          All items pre-checked. Just scroll and flag exceptions.
-        </p>
-      )}
+      <p className="text-sm text-gray-600 mb-4 -mt-2 px-1">
+        {t(fastMode && fastModeEligible === true ? "fastMode.reviewHelp" : fastModeEligible === true ? "fastMode.chooseHelp" : "fastMode.unavailable")}
+      </p>
 
       {/* Progress bar */}
       <div className="mb-4">
@@ -671,6 +650,8 @@ export function CleaningFormPage() {
                   </div>
                 ))}
               </div>
+              {fastMode && fastModeEligible === true && <FastModeSectionButton
+                formId={form._id} section={section} complete={items.every(item => item.completed)} />}
             </div>
           );
         })}

@@ -53,7 +53,7 @@ export const updateItem = mutation({
     if (!item) throw new Error("Item not found");
 
     const form = await requireEditable(ctx, item.formId);
-    await requireAssignedJobExecutor(ctx, args.sessionToken, form.jobId, args.userId);
+    const { user } = await requireAssignedJobExecutor(ctx, args.sessionToken, form.jobId, args.userId);
 
     if (args.photoStorageId) await consumeAttachmentUpload(ctx, args.sessionToken, { kind: "formItemPhoto", itemId: args.itemId }, args.photoStorageId, args.uploadIntentId);
     else if (args.uploadIntentId) throw new Error("Attachment file required");
@@ -62,6 +62,11 @@ export const updateItem = mutation({
     const cleanUpdates: Record<string, any> = {};
     for (const [key, val] of Object.entries(updates)) {
       if (val !== undefined) cleanUpdates[key] = val;
+    }
+    if (args.completed !== undefined) {
+      cleanUpdates.completionConfirmation = args.completed
+        ? { method: "individual", confirmedById: user._id, confirmedAt: Date.now() }
+        : undefined;
     }
     await ctx.db.patch(itemId, cleanUpdates);
   },
@@ -84,19 +89,49 @@ export const updateScore = mutation({
 
 export const markAllComplete = mutation({
   args: { formId: v.id("forms"), userId: v.optional(v.id("users")), sessionToken: v.string() },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const form = await requireEditable(ctx, args.formId);
     await requireAssignedJobExecutor(ctx, args.sessionToken, form.jobId, args.userId);
+    // Compatibility tombstone: old clients call this automatically on mount.
+    // Resolve without writes instead of generating unhandled permission errors.
+    // Explicit confirmation is available only through confirmSection below.
+    return null;
+  },
+});
 
-    const items = await ctx.db
-      .query("formItems")
-      .withIndex("by_formId", (q) => q.eq("formId", args.formId))
-      .collect();
-    for (const item of items) {
-      if (!item.completed) {
-        await ctx.db.patch(item._id, { completed: true });
-      }
+export const confirmSection = mutation({
+  args: { formId: v.id("forms"), section: v.string(), userId: v.optional(v.id("users")), sessionToken: v.string() },
+  returns: v.object({ completedCount: v.number() }),
+  handler: async (ctx, args) => {
+    const form = await requireEditable(ctx, args.formId);
+    const { user, job } = await requireAssignedJobExecutor(ctx, args.sessionToken, form.jobId, args.userId);
+    if (form.companyId !== user.companyId || form.status !== "in_progress" || job.status !== "in_progress" || job.type === "maintenance") {
+      throw new Error("Cleaning form is not in progress");
     }
+    const profile = await ctx.db.query("workerProfiles").withIndex("by_userId", q => q.eq("userId", user._id)).first();
+    if (user.role !== "cleaner" || !profile || profile.companyId !== user.companyId ||
+        profile.workerStatus !== "active" || profile.fastModeEligible !== true) {
+      throw new Error("Fast Mode eligibility required");
+    }
+    const items = await ctx.db.query("formItems")
+      .withIndex("by_formId_section", q => q.eq("formId", form._id).eq("section", args.section)).take(1001);
+    if (items.length > 1000) throw new Error("Checklist section is too large to confirm");
+    if (!items.length) throw new Error("Checklist section not found");
+    const unfinished = items.filter(item => !item.completed);
+    const confirmedAt = Date.now();
+    for (const item of unfinished) {
+      await ctx.db.patch(item._id, { completed: true, completionConfirmation: {
+        method: "section", confirmedById: user._id, confirmedAt,
+      } });
+    }
+    if (unfinished.length) await logAudit(ctx, {
+      companyId: job.companyId, userId: user._id, action: "confirm_checklist_section",
+      entityType: "form", entityId: form._id,
+      details: JSON.stringify({ method: "section", jobId: job._id, formId: form._id,
+        section: args.section, confirmedAt, completedCount: unfinished.length }),
+    });
+    return { completedCount: unfinished.length };
   },
 });
 
