@@ -1,4 +1,5 @@
 import { AlertCircle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface JobSubmissionBlockersProps {
   remainingCleaningCount: number;
@@ -11,6 +12,7 @@ export function JobSubmissionBlockers({
   remainingInventoryCount,
   formCompleted,
 }: JobSubmissionBlockersProps) {
+  const { t } = useTranslation();
   if (remainingCleaningCount === 0 && remainingInventoryCount === 0 && formCompleted) {
     return null;
   }
@@ -20,14 +22,14 @@ export function JobSubmissionBlockers({
       <div className="flex items-start gap-2">
         <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
         <div className="text-sm text-amber-800">
-          <p className="font-medium">Cannot submit yet</p>
+          <p className="font-medium">{t("jobCompletion.blockers")}</p>
           <ul className="mt-1 space-y-0.5 text-xs text-amber-700">
             {!formCompleted && (
-              <li>Cleaning checklist not completed</li>
+              <li>{t("jobCompletion.checklist", { count: remainingCleaningCount })}</li>
             )}
             {remainingInventoryCount > 0 && (
               <li>
-                {remainingInventoryCount} required inventory item{remainingInventoryCount !== 1 ? "s" : ""} remaining
+                {t("jobCompletion.inventory", { count: remainingInventoryCount })}
               </li>
             )}
           </ul>

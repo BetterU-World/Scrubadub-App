@@ -1,5 +1,3 @@
-import { compensationError } from "@/components/payments/compensationErrors";
-import { usePerformedWorkers, PerformedWorkerPicker } from "@/components/payments/PerformedWorkerPicker";
 import { useFeedbackState } from "@/components/ui/FeedbackProvider";
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
@@ -11,14 +9,14 @@ import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { DialogShell } from "@/components/ui/DialogShell";
 import { AsyncButton } from "@/components/ui/AsyncButton";
-import { useParams, Link, useLocation } from "wouter";
+import { useParams, Link } from "wouter";
 import { JobTimeline } from "@/components/JobTimeline";
 import { JobWorkspaceProgress } from "@/components/JobWorkspaceProgress";
 import { AddOnSnapshotList } from "@/components/AddOnSnapshotList";
 import { JobSubmissionBlockers } from "@/components/JobSubmissionBlockers";
 import { StickyWorkspaceCTA } from "@/components/StickyWorkspaceCTA";
 import { JobTimingPanel } from "@/components/JobTimingPanel";
-import { Calendar, Clock, MapPin, Key, CheckCircle, XCircle, Play, ClipboardCheck, MapPinCheck, Send, Package, ChevronDown, ChevronUp } from "lucide-react";
+import { Calendar, Clock, MapPin, Key, CheckCircle, XCircle, Play, ClipboardCheck, MapPinCheck, Package, ChevronDown, ChevronUp } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   INVENTORY_CATEGORIES,
@@ -29,16 +27,13 @@ export function CleanerJobDetailPage() {
   const params = useParams<{ id: string }>();
   const { user } = useAuth();
   const { t } = useTranslation();
-  const [, setLocation] = useLocation();
   const job = useQuery(api.queries.jobs.get,
     user ? { jobId: params.id as Id<"jobs">, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
-  const roster = usePerformedWorkers(params.id as Id<"jobs">, Boolean(job?.canCurrentUserExecute));
   const acceptJob = useMutation(api.mutations.jobs.acceptJob);
   const denyJob = useMutation(api.mutations.jobs.denyJob);
   const arriveJob = useMutation(api.mutations.jobs.arriveJob);
   const startJob = useMutation(api.mutations.jobs.startJob);
-  const completeJob = useMutation(api.mutations.jobs.completeJob);
   const createForm = useMutation(api.mutations.forms.createFromTemplate);
 
   const cleanerCancelJob = useMutation(api.mutations.jobs.cleanerCancelJob);
@@ -57,10 +52,6 @@ export function CleanerJobDetailPage() {
   const [showCleanerCancel, setShowCleanerCancel] = useState(false);
   const [cleanerCancelReason, setCleanerCancelReason] = useState("");
   const [cleanerCancelling, setCleanerCancelling] = useState(false);
-  const [showComplete, setShowComplete] = useState(false);
-  const [completionNotes, setCompletionNotes] = useState("");
-  const [submissionError, setSubmissionError] = useState("");
-  const [completing, setCompleting] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [denying, setDenying] = useState(false);
   const [arriving, setArriving] = useState(false);
@@ -91,15 +82,12 @@ export function CleanerJobDetailPage() {
   const canCleanerCancel = job.status === "confirmed" && acceptance === "accepted" && !job.startedAt;
   const isInProgress = job.status === "in_progress";
   const hasForm = !!job.form;
-  const formCompleted = job.form?.status === "submitted" || job.form?.status === "approved";
 
   // Check if required inventory items are all reported
   const inventoryChecklist = job.inventoryChecklist ?? [];
   const unreportedRequired = inventoryChecklist.filter(
     (item: any) => item.required && !item.status
   );
-  const inventoryComplete = unreportedRequired.length === 0;
-  const canSubmitJob = inventoryComplete && formCompleted;
 
   // Derive progress counts for workspace components
   const requiredInventoryItems = inventoryChecklist.filter((item: any) => item.required);
@@ -127,19 +115,6 @@ export function CleanerJobDetailPage() {
     // Stay on job detail page — inventory checklist is shown inline
   };
 
-  const handleCompleteJob = async () => {
-    if (!user) return;
-    setCompleting(true);
-    setSubmissionError("");
-    try {
-      await completeJob({ performedWorkerIds: roster.selected, jobId: job._id, notes: completionNotes || undefined, userId: user._id, sessionToken: getStaffSessionToken() });
-      setShowComplete(false);
-    } catch (err: any) {
-      setSubmissionError(compensationError(err, t));
-    } finally {
-      setCompleting(false);
-    }
-  };
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -307,7 +282,7 @@ export function CleanerJobDetailPage() {
           <JobSubmissionBlockers
             remainingCleaningCount={remainingCleaning}
             remainingInventoryCount={unreportedRequired.length}
-            formCompleted={formCompleted}
+            formCompleted={remainingCleaning === 0}
           />
         )}
 
@@ -340,30 +315,11 @@ export function CleanerJobDetailPage() {
             </AsyncButton>
           )}
 
-          {isInProgress && hasForm && !formCompleted && (
-            <Link href={`/jobs/${job._id}/form`} className="btn-secondary w-full flex items-center justify-center gap-2 py-3 text-lg">
+          {isInProgress && hasForm && (
+            <Link href={`/jobs/${job._id}/form`} className="btn-primary w-full flex items-center justify-center gap-2 py-3 text-lg">
               <ClipboardCheck className="w-5 h-5" /> {t("jobs.continueChecklist")}
             </Link>
           )}
-
-          {isInProgress && hasForm && formCompleted && (
-            <Link href={`/jobs/${job._id}/form`} className="btn-secondary w-full flex items-center justify-center gap-2 py-2 text-sm text-gray-600">
-              <ClipboardCheck className="w-4 h-4" /> {t("jobs.continueChecklist")} — ✓ Done
-            </Link>
-          )}
-
-          {isInProgress && (
-            <button
-              onClick={() => setShowComplete(true)}
-              disabled={!canSubmitJob || job.currentPauseStartedAt !== undefined}
-              className={`w-full flex items-center justify-center gap-2 py-3 text-lg ${
-                canSubmitJob && job.currentPauseStartedAt === undefined ? "btn-primary" : "btn-secondary opacity-60 cursor-not-allowed"
-              }`}
-            >
-              <Send className="w-5 h-5" /> {t("jobs.completeCleaning")}
-            </button>
-          )}
-          {isInProgress && job.currentPauseStartedAt !== undefined && <p className="text-center text-xs text-amber-700">{t("jobTimer.resumeBeforeComplete")}</p>}
 
           {job.status === "rework_requested" && canStart && (
             <div className="text-center text-xs text-red-600 font-medium">
@@ -380,8 +336,6 @@ export function CleanerJobDetailPage() {
         title={t("jobs.denyJob")}
         pending={denying}
       >
-            {submissionError && <p role="alert" className="text-red-600">{submissionError}</p>}
-      <PerformedWorkerPicker {...roster} />
             <textarea
               className="input-field mb-4"
               rows={3}
@@ -453,34 +407,7 @@ export function CleanerJobDetailPage() {
         </div>
       )}
 
-      {/* Complete dialog */}
-      {showComplete && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">{t("jobs.completeCleanTitle")}</h3>
-            <p className="text-sm text-gray-500 mb-3">{t("jobs.completeCleanDesc")}</p>
-            <textarea
-              className="input-field mb-4"
-              rows={3}
-              value={completionNotes}
-              onChange={(e) => setCompletionNotes(e.target.value)}
-              placeholder={t("jobs.completeCleanPlaceholder")}
-            />
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setShowComplete(false)} className="btn-secondary">{t("common.cancel")}</button>
-              <AsyncButton
-                onClick={handleCompleteJob}
-                disabled={!roster.selected.length}
-                pending={completing}
-                pendingLabel={t("common.completing")}
-                className="btn-primary flex items-center gap-2"
-              >
-                <Send aria-hidden="true" className="w-4 h-4" /> {t("common.submit")}
-              </AsyncButton>
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }
