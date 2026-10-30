@@ -54,19 +54,19 @@ Los detalles muestran el tiempo **Activo**, **En pausa** y **Transcurrido**; el 
 
 Mientras está **En progreso**, utiliza **Pausar**, elige un motivo y confirma. Los motivos incluyen descanso, espera de acceso, suministros, interrupción del cliente, traslado entre áreas de servicio, problema de equipo y otro. **Otro requiere una nota** de hasta 200 caracteres. Utiliza **Reanudar** cuando continúes; el historial registra las interrupciones.
 
-**Reanuda antes del envío final.** Los detalles desactivan **Completar limpieza** durante una pausa. El envío de la lista actualmente trata las pausas de otra manera; no dependas de él para terminar un descanso. Contacta al propietario si falla una pausa/reanudación o el temporizador fue cerrado administrativamente.
+**Enviar el trabajo termina cualquier pausa abierta y detiene el temporizador.** Usa Reanudar si vas a continuar trabajando, o envía directamente cuando todo esté terminado. La pantalla de revisión explica que el envío termina la pausa. Contacta al propietario si falla una pausa/reanudación o el temporizador fue cerrado administrativamente.
 
 ## Enviar el trabajo y comprobar la finalización
 
 **Marcar casillas, enviar el trabajo y obtener aprobación son etapas distintas.** Abrir la pantalla de revisión no confirma el envío.
 
-1. Termina la limpieza, reporta el inventario obligatorio en los detalles y reanuda el temporizador si está en pausa.
-2. En el formulario, elige **Review & Complete** (revisar y completar). Revisa la lista, fotos, alertas y autoevaluación (1–10). También aparece un espacio de firma; dibujar allí no confirma el envío.
+1. Termina la limpieza y reporta el inventario obligatorio en los detalles.
+2. En el formulario, elige **Revisar trabajo**. Revisa la lista, fotos, alertas y autoevaluación (1–10). También aparece un espacio de firma; dibujar allí no confirma el envío.
 3. En **¿Quién trabajó en este servicio?**, selecciona a todas las personas disponibles que realmente trabajaron, incluyéndote si corresponde. Se requiere al menos una. No selecciones personas solo porque estaban asignadas. Esto registra evidencia del trabajo; no crea ni envía un pago.
-4. La persona autorizada elige **Complete Checklist** (completar lista) y espera el resultado correcto. **En la aplicación actual, esto envía tanto el formulario como el trabajo para revisión del propietario** y regresa a los detalles.
+4. La persona autorizada elige **Enviar trabajo para revisión** y espera el resultado correcto. Esto envía tanto el formulario de limpieza como el trabajo, detiene el temporizador (incluida cualquier pausa abierta) y regresa a los detalles con un mensaje de éxito.
 5. Comprueba que el **estado del trabajo sea Enviado**. **Aprobado** significa que el propietario o un revisor autorizado aceptó el trabajo. Enviado no significa aprobación ni pago.
 
-Los detalles también tienen **Completar limpieza**. Aparece mientras está En progreso y se habilita cuando el formulario ya está enviado/aprobado, el inventario obligatorio está reportado y el temporizador no está en pausa. **Tras usar Complete Checklist correctamente, normalmente no hace falta una acción adicional de Completar limpieza porque el trabajo ya se envió.** El diálogo de finalización separado actualmente no muestra el selector obligatorio de trabajadores; no dependas de él como tu vía habitual de envío. Si un trabajo anterior sigue En progreso con el formulario enviado y no puede completarse, contacta al propietario en vez de intentar evitar el selector faltante.
+Usa **Continuar lista** en los detalles, elige **Revisar trabajo**, confirma quiénes trabajaron y elige **Enviar trabajo para revisión**. Este único envío manda el formulario y el trabajo juntos. Si el envío está bloqueado, la revisión explica qué falta y ofrece un enlace al reporte de inventario cuando corresponde.
 
 En equipo, coordina el envío final con el líder. Si falta alguien que trabajó en la lista disponible, pide al propietario que revise las asignaciones. Solo se pueden seleccionar personas asignadas actualmente elegibles; no elijas una lista incorrecta para evitar un error.
 
@@ -77,7 +77,7 @@ Revisa el trabajo y las notificaciones para ver **Aprobado** o **Corrección sol
 1. Para corregir, lee las notas del propietario en los detalles.
 2. Toca **Iniciar limpieza** en Corrección solicitada. Esto devuelve el trabajo a En progreso y reabre su formulario existente para editarlo.
 3. Corrige el trabajo/lista y actualiza notas/fotos según corresponda. Comprueba el inventario: reiniciar una corrección puede restablecer los reportes con el inventario de la propiedad; vuelve a reportar los obligatorios si están en blanco.
-4. Reanuda si está en pausa, elige **Review & Complete**, confirma quién realizó esta ronda y elige **Complete Checklist**. Verifica Enviado otra vez.
+4. Elige **Revisar trabajo**, confirma quién realizó esta ronda y elige **Enviar trabajo para revisión**. Verifica Enviado otra vez.
 
 Si falla la reapertura o el reenvío, contacta al propietario e indica el trabajo y el error mostrado.
 
@@ -98,10 +98,10 @@ Utiliza la campana o **Notificaciones** para asignaciones, cambios de horario, a
 ## Solución de problemas
 
 - **No puedes iniciar:** comprueba que esté Confirmado o en Corrección solicitada y que sigas asignado. Un trabajo Programado puede necesitar aceptación. Llegar no inicia el trabajo.
-- **No puedes enviar:** completa la lista, reporta el inventario obligatorio, reanuda y selecciona a quienes trabajaron. En equipo, pide al líder o a un gerente/propietario autorizado que envíe. Lee el error; no marques trabajo pendiente como completo para evitarlo.
-- **Completar limpieza desactivado:** también necesita un formulario enviado/aprobado. Sigue los pasos de revisión/envío de la lista y comprueba el estado después.
+- **No puedes enviar:** completa la lista, reporta el inventario obligatorio, espera las cargas de fotos y selecciona a quienes trabajaron. En equipo, pide al líder o a un gerente/propietario autorizado que envíe. Lee los mensajes de revisión; no marques trabajo pendiente como completo para evitar un bloqueo.
+- **Falla el envío:** lee el mensaje y corrige el problema indicado. Las personas seleccionadas permanecen en la revisión para que puedas reintentar. Si cambió la asignación o el estado, vuelve a los detalles antes de continuar.
 - **Ya está Enviado o Aprobado:** el envío se realizó. No reinicies buscando otro botón. Espera la revisión o sigue las notas de corrección.
-- **Se perdió la conexión o se interrumpió el formulario:** vuelve a conectarte y abre el mismo trabajo en el mismo navegador. Comprueba casillas, notas, fotos y estado cargados del servidor. Un borrador local reciente puede ofrecer **Resume** (reanudar) o **Start fresh** (empezar de nuevo), pero Resume actualmente restaura la autoevaluación, no todas las entradas guardadas. No supongas que las ediciones sin conexión, fotos o firma se cargaron o restauraron. Vuelve a introducir lo que falte y espera un envío correcto.
+- **Se perdió la conexión o se interrumpió el formulario:** vuelve a conectarte y abre el mismo trabajo en el mismo navegador. Comprueba las casillas guardadas, notas, fotos adjuntas y estado del trabajo. Vuelve a introducir lo que falte, verifica el trabajo y espera un envío correcto. Si ya está Enviado o Aprobado, no lo envíes otra vez.
 - **Sin trabajadores disponibles, falta la asignación o temporizador cerrado:** contacta al propietario/gerente con la fecha/propiedad y el error. El propietario debe resolver el acceso inactivo de la empresa.
 
 *Última actualización: 30 de octubre de 2026*

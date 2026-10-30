@@ -54,19 +54,19 @@ Job detail shows **Active**, **Paused**, and **Elapsed** time; active time exclu
 
 While **In Progress**, use **Pause**, choose a reason, and confirm. Reasons include break, waiting for access, supplies, client interruption, travel between service areas, equipment issue, and other. **Other requires a note** of up to 200 characters. Use **Resume** when work continues; pause history records interruptions.
 
-**Resume before final submission.** Job detail disables **Complete Clean** while paused. Checklist submission currently handles pauses differently, so do not rely on it to end a break. Contact the owner if pause/resume fails or the timer was administratively closed.
+**Submitting the job ends any open pause and stops the timer.** Use Resume when you are continuing work, or submit directly when all work is finished. The review screen explains that submission ends the pause. Contact the owner if pause/resume fails or the timer was administratively closed.
 
 ## Submitting Work and Checking Completion
 
 **Checking boxes, submitting work, and owner approval are separate milestones.** Opening the review screen is not confirmation of submission.
 
-1. Finish the cleaning, report required inventory on job detail, and resume the timer if paused.
-2. In the form, choose **Review & Complete**. Review the checklist, photos, red flags, and self-score (1–10). The screen also has a signature area; drawing there does not confirm submission.
+1. Finish the cleaning and report required inventory on job detail.
+2. In the form, choose **Review job**. Review the checklist, photos, red flags, and self-score (1–10). The screen also has a signature area; drawing there does not confirm submission.
 3. Under **Who actually worked this job?**, select every available worker who actually performed the work, including yourself if applicable. At least one is required. Do not select people just because they were assigned. This records work evidence; it does not create or send payment.
-4. The authorized submitter chooses **Complete Checklist** and waits for success. **In the current app, this submits both the form and the job for owner review**, then returns you to job detail.
+4. The authorized submitter chooses **Submit job for review** and waits for success. This submits both the cleaning form and the job, stops the timer (including any open pause), and returns you to job detail with a success message.
 5. Verify the **job status is Submitted**. **Approved** means the owner or an authorized reviewer has accepted the work. Submitted is not approval or payment.
 
-Job detail also has **Complete Clean**. It appears while In Progress and is enabled when the form is already submitted/approved, required inventory is reported, and the timer is not paused. **After successful Complete Checklist, a separate Complete Clean action is normally unnecessary because the job is already submitted.** The separate completion dialog currently does not show the required performed-worker selector, so do not rely on that dialog as your normal submission path. If an older job remains In Progress with a submitted form and cannot be completed, contact the owner rather than trying to bypass the missing selector.
+Use **Continue Checklist** on job detail, choose **Review job**, confirm performed workers, and choose **Submit job for review**. This single submission sends the form and job together. If submission is blocked, the review screen explains what is missing and links back to inventory reporting when needed.
 
 For team work, coordinate final submission with the team lead. If a person who worked is missing from the available worker list, ask the owner to check assignments. Only current eligible assignees can be selected; do not choose an incorrect roster to bypass an error.
 
@@ -77,7 +77,7 @@ Check the job and notifications for **Approved** or **Rework Requested**.
 1. For rework, read the owner's correction notes on job detail.
 2. Tap **Start Cleaning** while Rework Requested. This returns the job to In Progress and reopens its existing form for editing.
 3. Correct the work/checklist and update notes/photos as needed. Check inventory again: restarting rework can reset reports from property inventory, so report required items again if blank.
-4. Resume if paused, choose **Review & Complete**, confirm who performed this round of work, and choose **Complete Checklist**. Verify Submitted again.
+4. Choose **Review job**, confirm who performed this round of work, and choose **Submit job for review**. Verify Submitted again.
 
 If reopening or resubmission fails, contact the owner with the job and displayed error.
 
@@ -98,10 +98,10 @@ Use the bell or **Notifications** for assignments, schedule updates, approvals, 
 ## Troubleshooting
 
 - **Cannot start:** check that the job is Confirmed or Rework Requested and you are still assigned. Scheduled work may need acceptance first. Arrival alone does not start work.
-- **Cannot submit:** finish all checklist items, report required inventory statuses, resume, and select the actual performed workers. For team jobs, ask the lead or an authorized manager/owner to submit. Read the error; do not mark unfinished work complete to bypass it.
-- **Complete Clean disabled:** that control also needs a submitted/approved form. Follow the checklist review/submission steps and check the job status afterward.
+- **Cannot submit:** finish all checklist items, report required inventory statuses, wait for photo uploads, and select the actual performed workers. For team jobs, ask the lead or an authorized manager/owner to submit. Read the review-screen messages; do not mark unfinished work complete to bypass a blocker.
+- **Submission fails:** read the message and correct the indicated issue. Your selected workers stay on the review screen so you can retry. If the assignment or status changed, return to job detail before continuing.
 - **Already Submitted or Approved:** submission succeeded. Do not restart the job looking for another completion button. Wait for review or follow rework notes.
-- **Connection lost or form interrupted:** reconnect and reopen the same job in the same browser. Check server-loaded checklist entries, notes, photos, and job status. A recent local draft may offer **Resume** or **Start fresh**, but Resume currently restores the self-score, not every cached entry. Do not assume offline edits, photos, or the signature uploaded or restored. Re-enter missing information and wait for successful submission.
+- **Connection lost or form interrupted:** reconnect and reopen the same job in the same browser. Check the saved checklist entries, notes, attached photos, and job status. Re-enter any missing information, verify the work, and wait for successful submission. If the job is already Submitted or Approved, do not submit it again.
 - **No available workers, missing assignment, or closed timer:** contact your owner/manager with the job date/property and error. The owner must resolve inactive company access.
 
 *Last updated: October 30, 2026*
