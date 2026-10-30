@@ -1,4 +1,25 @@
 {
+  "jobCompletion": {
+    "review": "Review job",
+    "submit": "Submit job for review",
+    "submitting": "Submitting job…",
+    "explanation": "Submit the checklist and job together for owner review. Check the work and confirm everyone who actually performed it. No second completion step is needed.",
+    "teamLead": "Your team lead or an authorized manager/owner must submit this team job.",
+    "checklist": "Checklist items still to complete: {{count}}.",
+    "inventory": "Required inventory items still to report: {{count}}.",
+    "reportInventory": "Report inventory on job detail",
+    "paused": "This job is paused. Submitting ends the pause and stops the job timer.",
+    "uploading": "Wait for the photo upload to finish.",
+    "selectWorkers": "Select the workers who actually performed this job. If someone is missing, ask the owner to check assignments.",
+    "success": "Job submitted for owner review.",
+    "backToJob": "Back to job",
+    "backToChecklist": "Back to checklist",
+    "inventoryError": "Report every required inventory item on job detail, then return to submit.",
+    "checklistError": "Complete all checklist items before submitting.",
+    "stateError": "This job cannot be submitted in its current state. Return to the job to check its status, assignment, or timer; contact the owner if needed.",
+    "failed": "The job could not be submitted. Check your connection and try again. If the problem continues, contact the owner.",
+    "blockers": "Before submitting"
+  },
   "auth": {
     "signIn": "Sign In",
     "signUp": "Sign up",

@@ -1,13 +1,15 @@
 import { useAttachmentUpload } from "@/hooks/useAttachmentUpload";
-import { compensationError } from "@/components/payments/compensationErrors";
-import { usePerformedWorkers, PerformedWorkerPicker } from "@/components/payments/PerformedWorkerPicker";
+import { cleanerSubmissionError } from "@/lib/cleanerSubmissionError";
+import { usePerformedWorkers } from "@/components/payments/PerformedWorkerPicker";
+import { CleanerSubmissionReview } from "@/components/CleanerSubmissionReview";
+import { useFeedback } from "@/components/ui/FeedbackProvider";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import { useParams, useLocation } from "wouter";
+import { Link, useParams, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import {
   ChevronLeft,
@@ -100,6 +102,8 @@ export function CleaningFormPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const { t } = useTranslation();
+  const feedback = useFeedback();
+  const submissionInFlight = useRef(false);
 
   const job = useQuery(api.queries.jobs.get,
     user ? { jobId: params.id as Id<"jobs">, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
@@ -173,6 +177,8 @@ export function CleaningFormPage() {
       !fastMode ||
       fastModeInitRef.current ||
       !form ||
+      job?.status !== "in_progress" ||
+      form.status !== "in_progress" ||
       !formItems ||
       formItems.length === 0 ||
       !user
@@ -185,7 +191,7 @@ export function CleaningFormPage() {
     } else {
       fastModeInitRef.current = true;
     }
-  }, [fastMode, form, formItems, user]);
+  }, [fastMode, form, formItems, user, job?.status]);
 
   // Check for cached form on mount
   useEffect(() => {
@@ -292,6 +298,23 @@ export function CleaningFormPage() {
   const progress = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
   const redFlagItems = formItems.filter((i) => i.isRedFlag);
   const photoCount = (form as any).photoStorageIds?.length ?? 0;
+  const remainingInventory = (job.inventoryChecklist ?? []).filter((item: any) => item.required && !item.status).length;
+  const canSubmit = job.canCurrentUserSubmit === true;
+  const submissionBlocked = !canSubmit || completedItems !== totalItems || remainingInventory > 0 ||
+    !roster.selected.length || uploadingPhoto;
+
+  if (job.status === "submitted" || job.status === "approved") {
+    return <div className="card space-y-3" role="status">
+      <p>{t(job.status === "approved" ? "jobs.jobApprovedCleaner" : "jobCompletion.success")}</p>
+      <Link href={`/jobs/${job._id}`} className="btn-secondary inline-block">{t("jobCompletion.backToJob")}</Link>
+    </div>;
+  }
+  if (job.status !== "in_progress") {
+    return <div className="card space-y-3" role="status">
+      <p>{t("jobCompletion.stateError")}</p>
+      <Link href={`/jobs/${job._id}`} className="btn-secondary inline-block">{t("jobCompletion.backToJob")}</Link>
+    </div>;
+  }
 
   const handleToggleItem = async (itemId: Id<"formItems">, completed: boolean) => {
     const willBeCompleted = !completed;
@@ -357,16 +380,21 @@ export function CleaningFormPage() {
   };
 
   const handleSubmit = async () => {
+    if (submissionInFlight.current || submissionBlocked) return;
+    submissionInFlight.current = true;
     setSubmitting(true);
     setSubmissionError("");
     try {
-      await updateScore({ formId: form._id, cleanerScore: selfScore, userId: user!._id, sessionToken: getStaffSessionToken() });
+      if (form.status === "in_progress") {
+        await updateScore({ formId: form._id, cleanerScore: selfScore, userId: user!._id, sessionToken: getStaffSessionToken() });
+      }
       await submitForm({ performedWorkerIds: roster.selected, formId: form._id, userId: user!._id, sessionToken: getStaffSessionToken() });
       clearFormCache();
+      feedback.success(t("jobCompletion.success"));
       setLocation(`/jobs/${job._id}`);
     } catch (err) {
-      setSubmissionError(compensationError(err, t));
-    } finally {
+      setSubmissionError(cleanerSubmissionError(err, t));
+      submissionInFlight.current = false;
       setSubmitting(false);
     }
   };
@@ -401,10 +429,10 @@ export function CleaningFormPage() {
         <style>{animationStyles}</style>
 
         <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => setShowReview(false)} className="p-2 hover:bg-gray-100 rounded-lg">
+          <button disabled={submitting} aria-label={t("jobCompletion.backToChecklist")} onClick={() => setShowReview(false)} className="p-2 hover:bg-gray-100 rounded-lg">
             <ChevronLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-xl font-bold">Review Checklist</h1>
+          <h1 className="text-xl font-bold">{t("jobCompletion.review")}</h1>
         </div>
 
         <div className="space-y-4">
@@ -434,6 +462,7 @@ export function CleaningFormPage() {
             <div className="flex items-center gap-4">
               <input
                 type="range"
+                disabled={submitting || form.status !== "in_progress"}
                 min={1}
                 max={10}
                 value={selfScore}
@@ -507,19 +536,10 @@ export function CleaningFormPage() {
             );
           })}
 
-          {submissionError && <p role="alert" className="text-red-600">{submissionError}</p>}
-          <PerformedWorkerPicker {...roster} />
-          <button
-            onClick={handleSubmit}
-            disabled={submitting || !roster.selected.length}
-            className="btn-primary w-full py-3 text-lg flex items-center justify-center gap-2"
-          >
-            {submitting ? <LoadingSpinner size="sm" /> : <Check className="w-5 h-5" />}
-            Complete Checklist
-          </button>
-          <p className="text-xs text-gray-500 text-center mt-2">
-            {t("compensation.submissionHelp")}
-          </p>
+          <CleanerSubmissionReview jobId={job._id} canSubmit={canSubmit}
+            remainingItems={totalItems - completedItems} remainingInventory={remainingInventory}
+            paused={job.currentPauseStartedAt !== undefined} uploading={uploadingPhoto}
+            pending={submitting} error={submissionError} roster={roster} onSubmit={handleSubmit} />
         </div>
       </div>
     );
@@ -688,7 +708,7 @@ export function CleaningFormPage() {
           onClick={() => setShowReview(true)}
           className="btn-primary w-full flex items-center justify-center gap-2 py-3 text-lg"
         >
-          <Check className="w-5 h-5" /> Review & Complete
+          <Check className="w-5 h-5" /> {t("jobCompletion.review")}
         </button>
       </div>
 

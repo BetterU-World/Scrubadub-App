@@ -1,4 +1,25 @@
 {
+  "jobCompletion": {
+    "review": "Revisar trabajo",
+    "submit": "Enviar trabajo para revisión",
+    "submitting": "Enviando trabajo…",
+    "explanation": "Envía la lista y el trabajo juntos para revisión del propietario. Comprueba el trabajo y confirma a todas las personas que lo realizaron. No hace falta otro paso de finalización.",
+    "teamLead": "El líder del equipo o un gerente/propietario autorizado debe enviar este trabajo de equipo.",
+    "checklist": "Artículos de la lista pendientes de completar: {{count}}.",
+    "inventory": "Artículos obligatorios del inventario pendientes de reportar: {{count}}.",
+    "reportInventory": "Reportar inventario en los detalles del trabajo",
+    "paused": "Este trabajo está en pausa. Al enviarlo, se termina la pausa y se detiene el temporizador.",
+    "uploading": "Espera a que termine la carga de la foto.",
+    "selectWorkers": "Selecciona a quienes realmente realizaron este trabajo. Si falta alguien, pide al propietario que revise las asignaciones.",
+    "success": "Trabajo enviado para revisión del propietario.",
+    "backToJob": "Volver al trabajo",
+    "backToChecklist": "Volver a la lista",
+    "inventoryError": "Reporta cada artículo obligatorio del inventario en los detalles y vuelve para enviar.",
+    "checklistError": "Completa todos los artículos de la lista antes de enviar.",
+    "stateError": "No se puede enviar este trabajo en su estado actual. Vuelve al trabajo para comprobar el estado, la asignación o el temporizador; contacta al propietario si hace falta.",
+    "failed": "No se pudo enviar el trabajo. Comprueba tu conexión e inténtalo otra vez. Si el problema continúa, contacta al propietario.",
+    "blockers": "Antes de enviar"
+  },
   "auth": {
     "signIn": "Iniciar sesión",
     "signUp": "Registrarse",

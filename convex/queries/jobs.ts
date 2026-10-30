@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import { hasManagerPermission } from "../lib/auth";
 import { requireOwnerManagerCompany, requireStaffCompany, requireVerifiedStaffSession } from "../lib/sessionAuth";
 import { withPerfLog } from "../lib/perfLog";
-import { getActiveTeamIdsForUser, isUserAssignedToJob } from "../lib/teams";
+import { canSubmitFinalJob, getActiveTeamIdsForUser, isUserAssignedToJob } from "../lib/teams";
 import { operationalAddOnSnapshots } from "../lib/acceptedProposalAddOnSnapshots";
 import { isRoleCompatibleWithJobExecution } from "../lib/jobExecutionAuth";
 import { deriveJobInspectionStatus } from "../lib/jobInspectionStatus";
@@ -279,6 +279,7 @@ export const get = query({
       assignedTeamMembers,
       assignmentType: job.assignedTeamId ? "team" : "individual",
       canCurrentUserExecute,
+      canCurrentUserSubmit: canCurrentUserExecute && await canSubmitFinalJob(ctx, job, user),
     };
     if (user.role === "owner") return decorated;
     const safe = workerSafeJob(decorated);

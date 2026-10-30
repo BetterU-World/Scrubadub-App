@@ -1,0 +1,96 @@
+diff --git a/packages/frontend/src/manuals/cleaner.md b/packages/frontend/src/manuals/cleaner.md
+--- a/packages/frontend/src/manuals/cleaner.md
++++ b/packages/frontend/src/manuals/cleaner.md
+@@ -54,19 +54,19 @@ Job detail shows **Active**, **Paused**, and **Elapsed** time; active time exclu
+
+ While **In Progress**, use **Pause**, choose a reason, and confirm. Reasons include break, waiting for access, supplies, client interruption, travel between service areas, equipment issue, and other. **Other requires a note** of up to 200 characters. Use **Resume** when work continues; pause history records interruptions.
+
+-**Resume before final submission.** Job detail disables **Complete Clean** while paused. Checklist submission currently handles pauses differently, so do not rely on it to end a break. Contact the owner if pause/resume fails or the timer was administratively closed.
++**Submitting the job ends any open pause and stops the timer.** Use Resume when you are continuing work, or submit directly when all work is finished. The review screen explains that submission ends the pause. Contact the owner if pause/resume fails or the timer was administratively closed.
+
+ ## Submitting Work and Checking Completion
+
+ **Checking boxes, submitting work, and owner approval are separate milestones.** Opening the review screen is not confirmation of submission.
+
+-1. Finish the cleaning, report required inventory on job detail, and resume the timer if paused.
+-2. In the form, choose **Review & Complete**. Review the checklist, photos, red flags, and self-score (1–10). The screen also has a signature area; drawing there does not confirm submission.
++1. Finish the cleaning and report required inventory on job detail.
++2. In the form, choose **Review job**. Review the checklist, photos, red flags, and self-score (1–10). The screen also has a signature area; drawing there does not confirm submission.
+ 3. Under **Who actually worked this job?**, select every available worker who actually performed the work, including yourself if applicable. At least one is required. Do not select people just because they were assigned. This records work evidence; it does not create or send payment.
+-4. The authorized submitter chooses **Complete Checklist** and waits for success. **In the current app, this submits both the form and the job for owner review**, then returns you to job detail.
++4. The authorized submitter chooses **Submit job for review** and waits for success. This submits both the cleaning form and the job, stops the timer (including any open pause), and returns you to job detail with a success message.
+ 5. Verify the **job status is Submitted**. **Approved** means the owner or an authorized reviewer has accepted the work. Submitted is not approval or payment.
+
+-Job detail also has **Complete Clean**. It appears while In Progress and is enabled when the form is already submitted/approved, required inventory is reported, and the timer is not paused. **After successful Complete Checklist, a separate Complete Clean action is normally unnecessary because the job is already submitted.** The separate completion dialog currently does not show the required performed-worker selector, so do not rely on that dialog as your normal submission path. If an older job remains In Progress with a submitted form and cannot be completed, contact the owner rather than trying to bypass the missing selector.
++There is no separate Complete Clean step. Use Continue Checklist on job detail, review the work, and submit from the review screen. If submission is blocked, the review screen explains what is missing and links back to inventory reporting when needed. An older In Progress job with an already-submitted form uses this same review path.
+
+ For team work, coordinate final submission with the team lead. If a person who worked is missing from the available worker list, ask the owner to check assignments. Only current eligible assignees can be selected; do not choose an incorrect roster to bypass an error.
+
+@@ -77,7 +77,7 @@ Check the job and notifications for **Approved** or **Rework Requested**.
+ 1. For rework, read the owner's correction notes on job detail.
+ 2. Tap **Start Cleaning** while Rework Requested. This returns the job to In Progress and reopens its existing form for editing.
+ 3. Correct the work/checklist and update notes/photos as needed. Check inventory again: restarting rework can reset reports from property inventory, so report required items again if blank.
+-4. Resume if paused, choose **Review & Complete**, confirm who performed this round of work, and choose **Complete Checklist**. Verify Submitted again.
++4. Choose **Review job**, confirm who performed this round of work, and choose **Submit job for review**. Verify Submitted again.
+
+ If reopening or resubmission fails, contact the owner with the job and displayed error.
+
+@@ -98,8 +98,8 @@ Use the bell or **Notifications** for assignments, schedule updates, approvals,
+ ## Troubleshooting
+
+ - **Cannot start:** check that the job is Confirmed or Rework Requested and you are still assigned. Scheduled work may need acceptance first. Arrival alone does not start work.
+-- **Cannot submit:** finish all checklist items, report required inventory statuses, resume, and select the actual performed workers. For team jobs, ask the lead or an authorized manager/owner to submit. Read the error; do not mark unfinished work complete to bypass it.
+-- **Complete Clean disabled:** that control also needs a submitted/approved form. Follow the checklist review/submission steps and check the job status afterward.
++- **Cannot submit:** finish all checklist items, report required inventory statuses, wait for photo uploads, and select the actual performed workers. For team jobs, ask the lead or an authorized manager/owner to submit. Read the review-screen messages; do not mark unfinished work complete to bypass a blocker.
++- **Submission fails:** read the message and correct the indicated issue. Your selected workers stay on the review screen so you can retry. If the assignment or status changed, return to job detail before continuing.
+ - **Already Submitted or Approved:** submission succeeded. Do not restart the job looking for another completion button. Wait for review or follow rework notes.
+ - **Connection lost or form interrupted:** reconnect and reopen the same job in the same browser. Check server-loaded checklist entries, notes, photos, and job status. A recent local draft may offer **Resume** or **Start fresh**, but Resume currently restores the self-score, not every cached entry. Do not assume offline edits, photos, or the signature uploaded or restored. Re-enter missing information and wait for successful submission.
+ - **No available workers, missing assignment, or closed timer:** contact your owner/manager with the job date/property and error. The owner must resolve inactive company access.
+diff --git a/packages/frontend/src/manuals/cleaner.es.md b/packages/frontend/src/manuals/cleaner.es.md
+--- a/packages/frontend/src/manuals/cleaner.es.md
++++ b/packages/frontend/src/manuals/cleaner.es.md
+@@ -54,19 +54,19 @@ Los detalles muestran el tiempo **Activo**, **En pausa** y **Transcurrido**; el
+
+ Mientras está **En progreso**, utiliza **Pausar**, elige un motivo y confirma. Los motivos incluyen descanso, espera de acceso, suministros, interrupción del cliente, traslado entre áreas de servicio, problema de equipo y otro. **Otro requiere una nota** de hasta 200 caracteres. Utiliza **Reanudar** cuando continúes; el historial registra las interrupciones.
+
+-**Reanuda antes del envío final.** Los detalles desactivan **Completar limpieza** durante una pausa. El envío de la lista actualmente trata las pausas de otra manera; no dependas de él para terminar un descanso. Contacta al propietario si falla una pausa/reanudación o el temporizador fue cerrado administrativamente.
++**Enviar el trabajo termina cualquier pausa abierta y detiene el temporizador.** Usa Reanudar si vas a continuar trabajando, o envía directamente cuando todo esté terminado. La pantalla de revisión explica que el envío termina la pausa. Contacta al propietario si falla una pausa/reanudación o el temporizador fue cerrado administrativamente.
+
+ ## Enviar el trabajo y comprobar la finalización
+
+ **Marcar casillas, enviar el trabajo y obtener aprobación son etapas distintas.** Abrir la pantalla de revisión no confirma el envío.
+
+-1. Termina la limpieza, reporta el inventario obligatorio en los detalles y reanuda el temporizador si está en pausa.
+-2. En el formulario, elige **Review & Complete** (revisar y completar). Revisa la lista, fotos, alertas y autoevaluación (1–10). También aparece un espacio de firma; dibujar allí no confirma el envío.
++1. Termina la limpieza y reporta el inventario obligatorio en los detalles.
++2. En el formulario, elige **Revisar trabajo**. Revisa la lista, fotos, alertas y autoevaluación (1–10). También aparece un espacio de firma; dibujar allí no confirma el envío.
+ 3. En **¿Quién trabajó en este servicio?**, selecciona a todas las personas disponibles que realmente trabajaron, incluyéndote si corresponde. Se requiere al menos una. No selecciones personas solo porque estaban asignadas. Esto registra evidencia del trabajo; no crea ni envía un pago.
+-4. La persona autorizada elige **Complete Checklist** (completar lista) y espera el resultado correcto. **En la aplicación actual, esto envía tanto el formulario como el trabajo para revisión del propietario** y regresa a los detalles.
++4. La persona autorizada elige **Enviar trabajo para revisión** y espera el resultado correcto. Esto envía tanto el formulario de limpieza como el trabajo, detiene el temporizador (incluida cualquier pausa abierta) y regresa a los detalles con un mensaje de éxito.
+ 5. Comprueba que el **estado del trabajo sea Enviado**. **Aprobado** significa que el propietario o un revisor autorizado aceptó el trabajo. Enviado no significa aprobación ni pago.
+
+-Los detalles también tienen **Completar limpieza**. Aparece mientras está En progreso y se habilita cuando el formulario ya está enviado/aprobado, el inventario obligatorio está reportado y el temporizador no está en pausa. **Tras usar Complete Checklist correctamente, normalmente no hace falta una acción adicional de Completar limpieza porque el trabajo ya se envió.** El diálogo de finalización separado actualmente no muestra el selector obligatorio de trabajadores; no dependas de él como tu vía habitual de envío. Si un trabajo anterior sigue En progreso con el formulario enviado y no puede completarse, contacta al propietario en vez de intentar evitar el selector faltante.
++No hay un paso separado de Completar limpieza. Usa Continuar lista en los detalles, revisa el trabajo y envíalo desde la pantalla de revisión. Si el envío está bloqueado, la revisión explica qué falta y ofrece un enlace al reporte de inventario cuando corresponde. Un trabajo anterior En progreso con el formulario ya enviado utiliza esta misma vía de revisión.
+
+ En equipo, coordina el envío final con el líder. Si falta alguien que trabajó en la lista disponible, pide al propietario que revise las asignaciones. Solo se pueden seleccionar personas asignadas actualmente elegibles; no elijas una lista incorrecta para evitar un error.
+
+@@ -77,7 +77,7 @@ Revisa el trabajo y las notificaciones para ver **Aprobado** o **Corrección sol
+ 1. Para corregir, lee las notas del propietario en los detalles.
+ 2. Toca **Iniciar limpieza** en Corrección solicitada. Esto devuelve el trabajo a En progreso y reabre su formulario existente para editarlo.
+ 3. Corrige el trabajo/lista y actualiza notas/fotos según corresponda. Comprueba el inventario: reiniciar una corrección puede restablecer los reportes con el inventario de la propiedad; vuelve a reportar los obligatorios si están en blanco.
+-4. Reanuda si está en pausa, elige **Review & Complete**, confirma quién realizó esta ronda y elige **Complete Checklist**. Verifica Enviado otra vez.
++4. Elige **Revisar trabajo**, confirma quién realizó esta ronda y elige **Enviar trabajo para revisión**. Verifica Enviado otra vez.
+
+ Si falla la reapertura o el reenvío, contacta al propietario e indica el trabajo y el error mostrado.
+
+@@ -98,8 +98,8 @@ Utiliza la campana o **Notificaciones** para asignaciones, cambios de horario, a
+ ## Solución de problemas
+
+ - **No puedes iniciar:** comprueba que esté Confirmado o en Corrección solicitada y que sigas asignado. Un trabajo Programado puede necesitar aceptación. Llegar no inicia el trabajo.
+-- **No puedes enviar:** completa la lista, reporta el inventario obligatorio, reanuda y selecciona a quienes trabajaron. En equipo, pide al líder o a un gerente/propietario autorizado que envíe. Lee el error; no marques trabajo pendiente como completo para evitarlo.
+-- **Completar limpieza desactivado:** también necesita un formulario enviado/aprobado. Sigue los pasos de revisión/envío de la lista y comprueba el estado después.
++- **No puedes enviar:** completa la lista, reporta el inventario obligatorio, espera las cargas de fotos y selecciona a quienes trabajaron. En equipo, pide al líder o a un gerente/propietario autorizado que envíe. Lee los mensajes de revisión; no marques trabajo pendiente como completo para evitar un bloqueo.
++- **Falla el envío:** lee el mensaje y corrige el problema indicado. Las personas seleccionadas permanecen en la revisión para que puedas reintentar. Si cambió la asignación o el estado, vuelve a los detalles antes de continuar.
+ - **Ya está Enviado o Aprobado:** el envío se realizó. No reinicies buscando otro botón. Espera la revisión o sigue las notas de corrección.
+ - **Se perdió la conexión o se interrumpió el formulario:** vuelve a conectarte y abre el mismo trabajo en el mismo navegador. Comprueba casillas, notas, fotos y estado cargados del servidor. Un borrador local reciente puede ofrecer **Resume** (reanudar) o **Start fresh** (empezar de nuevo), pero Resume actualmente restaura la autoevaluación, no todas las entradas guardadas. No supongas que las ediciones sin conexión, fotos o firma se cargaron o restauraron. Vuelve a introducir lo que falte y espera un envío correcto.
+ - **Sin trabajadores disponibles, falta la asignación o temporizador cerrado:** contacta al propietario/gerente con la fecha/propiedad y el error. El propietario debe resolver el acceso inactivo de la empresa.
