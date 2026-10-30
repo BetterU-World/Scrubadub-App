@@ -18,7 +18,7 @@ export function ClientForgotPasswordPage() {
   async function submit(event: FormEvent) {
     event.preventDefault(); setLoading(true); setError("");
     try { await requestReset({ email }); setSubmitted(true); }
-    catch (err: any) { console.error("Client reset request failed", err); setError(toFriendlyMessage(err, t("feedback.unexpectedError"), t)); }
+    catch (err: any) { setError(toFriendlyMessage(err, t("feedback.unexpectedError"), t)); }
     finally { setLoading(false); }
   }
 

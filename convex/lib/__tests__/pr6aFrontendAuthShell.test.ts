@@ -29,7 +29,7 @@ describe("Security V2 PR 6A frontend authentication shell", () => {
     const clientInvite = frontendSource("pages/client/ClientAcceptInvitePage.tsx");
     expect(staffInvite).toContain("setStaffSessionToken(result.sessionToken, sessionRevision)");
     expect(checkoutSetup).toContain("setStaffSessionToken(result.sessionToken, sessionRevision)");
-    expect(clientInvite).toContain("setSignedInClient(result.sessionToken)");
+    expect(clientInvite).toContain("setSignedInClient(result.sessionToken, sessionRevision)");
     expect(staffInvite + checkoutSetup).not.toContain("scrubadub_userId");
     expect(clientInvite).not.toContain("scrubadub_clientUserId");
   });

@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
+import { ClientSessionRecovery } from "@/components/client/ClientSessionRecovery";
 import { OfflineIndicator } from "@/components/shared/OfflineIndicator";
 import { Analytics } from "@vercel/analytics/react";
 
@@ -268,6 +269,7 @@ export default function App() {
       <>
         <Analytics />
         <ErrorBoundary>
+          <ClientSessionRecovery>
           <Switch>
             <Route path="/client/login" component={ClientLoginPage} />
             <Route path="/client/forgot-password" component={ClientForgotPasswordPage} />
@@ -287,6 +289,7 @@ export default function App() {
               <Redirect to="/client/login" />
             </Route>
           </Switch>
+          </ClientSessionRecovery>
         </ErrorBoundary>
       </>
     );

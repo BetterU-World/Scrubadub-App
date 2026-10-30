@@ -1,16 +1,19 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 import { useAction, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import {
-  clearClientSession,
   CLIENT_SESSION_KEY,
+  getClientSessionSnapshot,
   getClientSessionToken,
+  invalidateClientSession,
+  setClientSessionToken,
 } from "../lib/clientSession";
+import { useClientSession } from "./useClientSession";
 
 export { CLIENT_SESSION_KEY, getClientSessionToken };
 
 export function useClientAuth() {
-  const [sessionToken, setSessionToken] = useState(getClientSessionToken);
+  const { token: sessionToken } = useClientSession();
   const signInAction = useAction(api.clientAuthActions.signIn);
   const revokeSession = useAction((api as any).sessionActions.revokeCurrent);
   const clientUser = useQuery(
@@ -22,32 +25,28 @@ export function useClientAuth() {
 
   useEffect(() => {
     if (sessionToken && clientUser === null) {
-      clearClientSession();
-      setSessionToken("");
+      invalidateClientSession(sessionToken);
     }
   }, [clientUser, sessionToken]);
 
   const signIn = useCallback(
     async (args: { email: string; password: string }) => {
+      const sessionRevision = getClientSessionSnapshot().revision;
       const result = await signInAction(args);
-      localStorage.setItem(CLIENT_SESSION_KEY, result.sessionToken);
-      setSessionToken(result.sessionToken);
+      setClientSessionToken(result.sessionToken, sessionRevision);
       return result;
     },
     [signInAction]
   );
 
-  const setSignedInClient = useCallback((verifiedSessionToken: string) => {
-    localStorage.setItem(CLIENT_SESSION_KEY, verifiedSessionToken);
-    setSessionToken(verifiedSessionToken);
+  const setSignedInClient = useCallback((verifiedSessionToken: string, expectedRevision?: number) => {
+    return setClientSessionToken(verifiedSessionToken, expectedRevision);
   }, []);
 
   const signOut = useCallback(() => {
     const tokenToRevoke = sessionToken;
-    clearClientSession();
-    setSessionToken("");
+    invalidateClientSession(tokenToRevoke);
     if (tokenToRevoke) void revokeSession({ sessionToken: tokenToRevoke }).catch(() => {});
-    window.location.assign("/client/login");
   }, [revokeSession, sessionToken]);
 
   return {
