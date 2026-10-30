@@ -6,10 +6,13 @@ import ownerMd from "@/manuals/owner.md?raw";
 import cleanerMd from "@/manuals/cleaner.md?raw";
 import ownerMdEs from "@/manuals/owner.es.md?raw";
 import cleanerMdEs from "@/manuals/cleaner.es.md?raw";
+import managerMd from "@/manuals/manager.md?raw";
+import managerMdEs from "@/manuals/manager.es.md?raw";
 
 const MANUALS: Record<string, { titleKey: string; content: Record<string, string>; lastUpdated: string }> = {
   owner: { titleKey: "manuals.ownerManual", content: { en: ownerMd, es: ownerMdEs }, lastUpdated: "October 30, 2026" },
   cleaner: { titleKey: "manuals.cleanerManual", content: { en: cleanerMd, es: cleanerMdEs }, lastUpdated: "October 30, 2026" },
+  manager: { titleKey: "manuals.managerGuide", content: { en: managerMd, es: managerMdEs }, lastUpdated: "October 30, 2026" },
 };
 
 export function ManualViewerPage() {

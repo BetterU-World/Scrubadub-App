@@ -1521,6 +1521,8 @@
     "seedManuals": "Seed Manuals",
     "usingApp": "Using SCRUB",
     "ownerGuide": "Owner App Guide",
+    "managerGuide": "Manager App Guide",
+    "managerGuideDesc": "Assigned work and workflows within your delegated permissions",
     "ownerGuideDesc": "Managing properties, workers, jobs, and reports",
     "cleanerGuide": "Cleaner App Guide",
     "cleanerGuideDesc": "Accepting jobs, completing forms, and daily workflow",

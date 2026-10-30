@@ -4,6 +4,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import owner from "@/manuals/owner.md?raw";
 import ownerEs from "@/manuals/owner.es.md?raw";
+import manager from "@/manuals/manager.md?raw";
+import managerEs from "@/manuals/manager.es.md?raw";
 
 const route = vi.hoisted(() => ({ slug: "owner", language: "en" }));
 vi.mock("wouter", () => ({ useParams: () => ({ slug: route.slug }) }));
@@ -18,6 +20,35 @@ vi.mock("@/components/ui/PageBack", () => ({ PageBack: ({ href, label }: { href:
 import { ManualViewerPage } from "./ManualViewerPage";
 
 describe("published in-app guide rendering", () => {
+  it.each([
+    ["en", "Manager App Guide"], ["es", "Guía de la aplicación para gerentes"],
+  ])("renders the %s Manager Guide with 17 sections and no optional capability dependency", (language, title) => {
+    route.slug = "manager"; route.language = language;
+    const html = renderToStaticMarkup(createElement(ManualViewerPage));
+    expect(html).toContain(`<h1>${title}</h1>`);
+    expect(html.match(/<h2>/g)).toHaveLength(17);
+    expect(html).toContain("October 30, 2026");
+    expect(html).toContain('href="/manuals/cleaner"');
+    expect(html).not.toContain("�");
+  });
+
+  it("aligns Manager section order, numbered steps, permission blocks, lists, and links across languages", () => {
+    const structure = (text: string) => text.split(/\r?\n/).map(line => {
+      if (/^#{1,3} /.test(line)) return line.match(/^#+/)![0];
+      if (/^\d+\. /.test(line)) return line.match(/^\d+\./)![0];
+      if (line.startsWith("- ")) return "-";
+      if (line.startsWith("**")) return "permission";
+      return null;
+    }).filter(Boolean);
+    expect(structure(managerEs)).toEqual(structure(manager));
+    for (const text of [manager, managerEs]) {
+      expect([...text.matchAll(/^## (\d+)\./gm)].map(match => Number(match[1])))
+        .toEqual(Array.from({ length: 17 }, (_, index) => index + 1));
+    }
+    const links = (text: string) => [...text.matchAll(/\]\(([^)]+)\)/g)].map(match => match[1]);
+    expect(links(managerEs)).toEqual(links(manager));
+  });
+
   it.each([
     ["en", "Owner App Guide"], ["es", "Guía de la aplicación para propietarios"],
   ])("renders the complete %s Owner Guide in the existing reader", (language, title) => {

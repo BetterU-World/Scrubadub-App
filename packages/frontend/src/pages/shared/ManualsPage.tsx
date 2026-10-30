@@ -228,6 +228,18 @@ export function ManualsPage() {
                 </span>
               </Link>
             )}
+            {(user.role === "owner" || user.role === "manager") && (
+              <Link href="/manuals/manager"
+                className="card flex min-w-0 flex-col items-stretch gap-3 transition-shadow hover:shadow-md sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                <div className="w-full min-w-0">
+                  <p className="break-words font-medium text-gray-900 sm:truncate">{t("manuals.managerGuide")}</p>
+                  <p className="mt-0.5 break-words text-sm text-gray-500 sm:truncate">{t("manuals.managerGuideDesc")}</p>
+                </div>
+                <span className="btn-secondary touch-target flex w-full flex-shrink-0 items-center justify-center gap-1.5 text-sm sm:w-auto">
+                  <BookOpen className="w-4 h-4" /> {t("manuals.read")}
+                </span>
+              </Link>
+            )}
             <Link
               href="/manuals/cleaner"
               className="card flex min-w-0 flex-col items-stretch gap-3 transition-shadow hover:shadow-md sm:flex-row sm:items-center sm:justify-between sm:gap-4"

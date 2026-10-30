@@ -1522,6 +1522,8 @@
     "seedManuals": "Cargar manuales",
     "usingApp": "Usando SCRUB",
     "ownerGuide": "Guía del propietario",
+    "managerGuide": "Guía del gerente",
+    "managerGuideDesc": "Trabajo asignado y flujos según tus permisos delegados",
     "ownerGuideDesc": "Gestión de propiedades, trabajadores, trabajos e informes",
     "cleanerGuide": "Guía del limpiador",
     "cleanerGuideDesc": "Aceptar trabajos, completar formularios y flujo diario",
