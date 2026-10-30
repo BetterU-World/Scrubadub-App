@@ -171,7 +171,7 @@ export default function App() {
 
   const subscription = useQuery(
     api.queries.billing.getCompanySubscription,
-    user?.companyId && sessionToken
+    user?.companyId && sessionToken && !pathname.startsWith("/client/")
       ? { companyId: user.companyId, sessionToken }
       : "skip"
   );
@@ -375,7 +375,7 @@ export default function App() {
 
   // --- GUARD 4: Fully resolved - render app with access control ---
   return (
-    <ErrorBoundary>
+    <ErrorBoundary recoverStaffSession>
       <OfflineIndicator />
       {devBanner}
       <AppLayout>

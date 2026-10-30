@@ -1,7 +1,7 @@
 import { useState, FormEvent } from "react";
 import { useQuery, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
-import { STAFF_SESSION_KEY } from "../../hooks/useAuth";
+import { getStaffSessionSnapshot, setStaffSessionToken } from "@/lib/staffSession";
 import { useParams, useLocation } from "wouter";
 import { LoadingSpinner, PageLoader } from "@/components/ui/LoadingSpinner";
 import { PasswordInput } from "@/components/ui/PasswordInput";
@@ -54,9 +54,10 @@ export function AcceptInvitePage() {
       return;
     }
     setLoading(true);
+    const sessionRevision = getStaffSessionSnapshot().revision;
     try {
       const result = await acceptInvite({ token: params.token!, password });
-      localStorage.setItem(STAFF_SESSION_KEY, result.sessionToken);
+      setStaffSessionToken(result.sessionToken, sessionRevision);
       window.location.assign("/");
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "";

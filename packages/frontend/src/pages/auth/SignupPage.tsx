@@ -32,7 +32,6 @@ export function SignupPage() {
       await signUp({ email, password, name, companyName });
       setLocation("/");
     } catch (err: any) {
-      console.error("Sign-up failed", err);
       setError(toFriendlyMessage(err, t("feedback.unexpectedError"), t));
     } finally {
       setLoading(false);
