@@ -5,6 +5,11 @@ import { api } from "../../_generated/api";
 import { hashPassword } from "../password";
 import { readFileSync } from "node:fs";
 
+// Keep permission regression coverage independent of the email provider/network.
+vi.mock("resend", () => ({ Resend: class {
+  emails = { send: async () => ({ data: { id: "test-invite" }, error: null }) };
+} }));
+
 const modules = import.meta.glob("../../**/*.ts");
 const PASSWORD = "test-password-123";
 

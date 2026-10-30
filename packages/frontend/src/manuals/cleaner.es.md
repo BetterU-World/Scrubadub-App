@@ -40,7 +40,7 @@ Expande la lista de inventario en los detalles, si aparece. Reporta cada artícu
 
 ### Completar la lista de limpieza
 
-Abre **Continuar lista**, revisa cada sección y guarda notas cuando corresponda. **Fast Mode (modo rápido) comienza activado y puede marcar artículos completos automáticamente.** Comprueba cada artículo según el trabajo real y desmarca lo incorrecto. Todos deben estar marcados completos antes del envío. Si una tarea no puede terminarse, repórtala y contacta al propietario en vez de marcar trabajo pendiente como completo.
+Abre **Continuar lista**, revisa cada sección y guarda notas cuando corresponda. **El modo estándar es el predeterminado**: confirma cada artículo individualmente. Tu propietario o un gerente con permiso delegado para administrar el equipo puede autorizarte el **Modo rápido**. Si tienes autorización, actívalo intencionalmente, verifica visualmente cada tarea de una sección y elige **Confirmar [Sección] completada**. Esa acción completa solo los artículos pendientes de esa sección; abrir el formulario o cambiar de modo no completa nada. Si se revoca la autorización, continúa en modo estándar; el trabajo completado permanece guardado. Todos los artículos deben estar completos antes del envío. El reporte de inventario y el envío final del trabajo siguen siendo obligatorios. Si una tarea no puede terminarse, repórtala y contacta al propietario en vez de marcar trabajo pendiente como completo.
 
 ### Adjuntar fotos y reportar problemas
 

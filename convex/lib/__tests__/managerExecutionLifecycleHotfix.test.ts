@@ -58,7 +58,9 @@ describe("manager execution lifecycle hotfix", () => {
     const storageId = await t.run((ctx) => ctx.storage.store(new Blob(["synthetic photo"], { type: upload.contentType })));
     await t.run(ctx => ctx.db.patch(storageId, { contentType: upload.contentType }));
     await t.mutation(api.mutations.forms.addPhoto, { formId: form!._id, photoStorageId: storageId, uploadIntentId: upload.intentId, userId: seeded.manager, sessionToken: managerAuth.sessionToken });
-    await t.mutation(api.mutations.forms.markAllComplete, { formId: form!._id, userId: seeded.manager, sessionToken: managerAuth.sessionToken });
+    for (const item of await t.query(api.queries.forms.getItems, { formId: form!._id, userId: seeded.manager, sessionToken: managerAuth.sessionToken })) {
+      await t.mutation(api.mutations.forms.updateItem, { itemId: item._id, completed: true, userId: seeded.manager, sessionToken: managerAuth.sessionToken });
+    }
     await t.mutation(api.mutations.forms.submit, { performedWorkerIds: [seeded.manager], formId: form!._id, userId: seeded.manager, sessionToken: managerAuth.sessionToken });
     await expect(t.run((ctx) => ctx.db.get(seeded.job))).resolves.toMatchObject({ status: "submitted", completedAt: expect.any(Number) });
     await t.mutation(api.mutations.jobs.completeJob, { jobId: seeded.job, notes: "Done", userId: seeded.manager, sessionToken: managerAuth.sessionToken });
@@ -120,7 +122,9 @@ describe("manager execution lifecycle hotfix", () => {
     await t.run(async (ctx) => { await ctx.db.patch(seeded.owner, { email: "" }); await ctx.db.patch(seeded.cleaner, { email: "" }); });
     await t.mutation(api.mutations.jobs.startJob, { jobId: seeded.job, userId: seeded.cleaner, sessionToken: cleanerAuth.sessionToken });
     const form = await t.run((ctx) => ctx.db.query("forms").withIndex("by_jobId", (q) => q.eq("jobId", seeded.job)).unique());
-    await t.mutation(api.mutations.forms.markAllComplete, { formId: form!._id, userId: seeded.cleaner, sessionToken: cleanerAuth.sessionToken });
+    for (const item of await t.query(api.queries.forms.getItems, { formId: form!._id, userId: seeded.cleaner, sessionToken: cleanerAuth.sessionToken })) {
+      await t.mutation(api.mutations.forms.updateItem, { itemId: item._id, completed: true, userId: seeded.cleaner, sessionToken: cleanerAuth.sessionToken });
+    }
     await t.mutation(api.mutations.forms.submit, { performedWorkerIds: [seeded.cleaner], formId: form!._id, userId: seeded.cleaner, sessionToken: cleanerAuth.sessionToken });
     await t.mutation(api.mutations.jobs.completeJob, { jobId: seeded.job, userId: seeded.cleaner, sessionToken: cleanerAuth.sessionToken });
     await t.mutation(api.mutations.forms.approve, { formId: form!._id, userId: seeded.owner, sessionToken: ownerAuth.sessionToken });

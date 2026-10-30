@@ -1,4 +1,20 @@
 {
+  "fastMode": {
+    "standard": "Modo estándar",
+    "fast": "Modo rápido",
+    "allow": "Permitir modo rápido",
+    "eligibilityHelp": "Permite a esta persona de limpieza confirmar una sección después de verificar visualmente el trabajo. No completa artículos automáticamente.",
+    "chooseHelp": "El modo estándar está activo. Puedes elegir el modo rápido para confirmar secciones verificadas visualmente.",
+    "reviewHelp": "Verifica visualmente cada tarea de una sección antes de confirmarla. Cada confirmación completa solo los artículos pendientes de esa sección. Siguen siendo obligatorios el inventario y el envío final del trabajo.",
+    "unavailable": "El modo rápido requiere autorización de la empresa. Continúa marcando artículos individualmente en el modo estándar.",
+    "confirmSection": "Confirmar {{section}} completada",
+    "sectionComplete": "{{section}} completada",
+    "confirming": "Confirmando sección…",
+    "confirmed": "{{section}} confirmada como completada.",
+    "confirmFailed": "No se pudo confirmar la sección. Comprueba tu conexión y el estado del trabajo e inténtalo de nuevo.",
+    "saveFailed": "No se pudo guardar la autorización. Comprueba tus permisos y el estado de la persona de limpieza e inténtalo de nuevo.",
+    "saved": "Autorización del modo rápido guardada."
+  },
   "jobCompletion": {
     "review": "Revisar trabajo",
     "submit": "Enviar trabajo para revisión",

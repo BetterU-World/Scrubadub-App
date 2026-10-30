@@ -51,7 +51,9 @@ describe("assigned manager job execution", () => {
     await expect(t.query(api.queries.jobs.get, { jobId: managerJob, userId: manager, sessionToken: auth.sessionToken })).resolves.toMatchObject({ canCurrentUserExecute: true });
     await t.mutation(api.mutations.jobs.startJob, { jobId: managerJob, userId: manager, sessionToken: auth.sessionToken });
     const form = await t.run((ctx) => ctx.db.query("forms").withIndex("by_jobId", (q) => q.eq("jobId", managerJob)).unique());
-    await t.mutation(api.mutations.forms.markAllComplete, { formId: form!._id, userId: manager, sessionToken: auth.sessionToken });
+    for (const item of await t.query(api.queries.forms.getItems, { formId: form!._id, userId: manager, sessionToken: auth.sessionToken })) {
+      await t.mutation(api.mutations.forms.updateItem, { itemId: item._id, completed: true, userId: manager, sessionToken: auth.sessionToken });
+    }
     await t.mutation(api.mutations.forms.submit, { performedWorkerIds: [manager], formId: form!._id, userId: manager, sessionToken: auth.sessionToken });
     await t.mutation(api.mutations.jobs.completeJob, { jobId: managerJob, notes: "Manager completed", userId: manager, sessionToken: auth.sessionToken });
 

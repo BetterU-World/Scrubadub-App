@@ -1,4 +1,5 @@
 import { RecipientLedger } from "@/components/payments/RecipientLedger";
+import { FastModeEligibilityControl } from "@/components/FastModeEligibilityControl";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
@@ -551,6 +552,8 @@ export function WorkerDetailPage() {
           <DetailItem label="Start Date" value={formatDate(workerProfile?.createdAt ?? workerUser?._creationTime)} />
           <DetailItem label="Onboarding" value={formatLabel(workerProfile?.onboardingStatus)} />
           <DetailItem label="Eligibility" value={formatLabel(workerProfile?.jobEligibilityStatus)} />
+          {workerUser.role === "cleaner" && workerUser.status === "active" && <FastModeEligibilityControl
+            workerUserId={workerUser._id} eligible={workerProfile?.fastModeEligible === true} />}
         </div>
         <div className="mt-5 rounded-lg border border-gray-200 p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

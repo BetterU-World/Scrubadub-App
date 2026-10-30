@@ -40,7 +40,7 @@ Expand the inventory checklist on job detail if present. Report every required i
 
 ### Complete the cleaning checklist
 
-Open **Continue Checklist**, review every section, and save item notes where needed. **Fast Mode starts enabled and can automatically mark items complete.** Verify every item against the work actually done and clear incorrect marks. All items must be marked complete before submission. If a task cannot be finished, report it and contact the owner rather than marking unfinished work complete.
+Open **Continue Checklist**, review every section, and save item notes where needed. **Standard Mode is the default**: confirm each item individually. Your owner or a manager with delegated team-management permission may authorize **Fast Mode** for you. If authorized, intentionally switch it on, visually inspect every task in a section, then choose **Confirm [Section] Complete**. That action completes only the unfinished items in that section; opening the form or switching modes does not complete anything. If authorization is revoked, continue in Standard Mode; completed work stays saved. All items must be marked complete before submission. Inventory reporting and final job submission remain required. If a task cannot be finished, report it and contact the owner rather than marking unfinished work complete.
 
 ### Attach photos and report issues
 

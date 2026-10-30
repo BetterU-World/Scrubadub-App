@@ -562,6 +562,7 @@ export default defineSchema({
     .index("by_expiresAt", ["expiresAt"]),
 
   workerProfiles: defineTable({
+    fastModeEligible: v.optional(v.boolean()),
     companyId: v.id("companies"),
     userId: v.id("users"),
     workerType: v.union(
@@ -1183,6 +1184,11 @@ export default defineSchema({
     .index("by_cleanerId", ["cleanerId"]),
 
   formItems: defineTable({
+    completionConfirmation: v.optional(v.object({
+      method: v.union(v.literal("individual"), v.literal("section")),
+      confirmedById: v.id("users"),
+      confirmedAt: v.number(),
+    })),
     formId: v.id("forms"),
     section: v.string(),
     itemName: v.string(),

@@ -1,4 +1,20 @@
 {
+  "fastMode": {
+    "standard": "Standard Mode",
+    "fast": "Fast Mode",
+    "allow": "Allow Fast Mode",
+    "eligibilityHelp": "Lets this cleaner confirm one checklist section after visually reviewing the work. Does not automatically complete items.",
+    "chooseHelp": "Standard Mode is on. You may choose Fast Mode to confirm visually reviewed sections.",
+    "reviewHelp": "Visually inspect every task in a section before confirming it. Each confirmation completes only that section's unfinished items. Required inventory and final job submission still apply.",
+    "unavailable": "Fast Mode requires company authorization. Continue checking items individually in Standard Mode.",
+    "confirmSection": "Confirm {{section}} Complete",
+    "sectionComplete": "{{section}} complete",
+    "confirming": "Confirming section…",
+    "confirmed": "{{section}} confirmed complete.",
+    "confirmFailed": "Section could not be confirmed. Check your connection and current job status, then try again.",
+    "saveFailed": "Eligibility could not be saved. Check your permission and the cleaner's status, then try again.",
+    "saved": "Fast Mode eligibility saved."
+  },
   "jobCompletion": {
     "review": "Review job",
     "submit": "Submit job for review",
