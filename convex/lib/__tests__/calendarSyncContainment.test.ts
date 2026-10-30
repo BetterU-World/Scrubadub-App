@@ -106,9 +106,11 @@ describe("calendar sync failure containment", () => {
   it("resets failures on success, preserves same-day jobs and manual time overrides, and does not duplicate records", async () => {
     const s = await setup();
     await s.run("processing");
+    vi.advanceTimersByTime(60_000);
     await s.run();
-    expect(await s.state()).toMatchObject({ enabled: true, consecutiveErrors: 0, lastSyncStatus: "success", lastSyncAt: NOW });
+    expect(await s.state()).toMatchObject({ enabled: true, consecutiveErrors: 0, lastSyncStatus: "success", lastSyncAt: NOW + 60_000 });
     expect((await s.state())?.lastSyncError).toBeUndefined();
+    vi.advanceTimersByTime(60_000);
     await s.run();
     const records = await s.t.run(async (ctx) => ({ reservations: await ctx.db.query("calendarReservations").collect(), jobs: await ctx.db.query("jobs").collect() }));
     expect(records.reservations).toHaveLength(1);
@@ -175,7 +177,7 @@ describe("calendar sync failure containment", () => {
 
   it("allows explicit owner re-enable after suspension and preserves tenant authorization", async () => {
     const s = await setup();
-    for (let i = 0; i < 3; i++) await s.run("processing");
+    for (let i = 0; i < 3; i++) { await s.run("processing"); vi.advanceTimersByTime(60_000); }
     const session = await s.t.action(api.authActions.signIn, { email: "calendar@test.dev", password: "test-password-123" });
     await expect(s.t.mutation(api.mutations.calendarSync.triggerSync, { sessionToken: session.sessionToken, connectionId: s.connectionId })).rejects.toThrow("Connection is disabled");
     const otherId = await s.t.run(async (ctx) => {
@@ -204,20 +206,22 @@ describe("calendar sync failure containment", () => {
     expect(await s.t.run((ctx) => ctx.db.query("calendarReservations").collect())).toEqual([]);
   });
 
-  it("shares one charge across overlaps and fences stale success and failure after a newer attempt starts", async () => {
+  it("rejects overlaps without charging them and fences stale callbacks after a newer attempt starts", async () => {
     const s = await setup();
-    for (const id of ["a", "b", "c", "d"]) await s.begin(id);
-    expect(await s.state()).toMatchObject({ enabled: true, consecutiveErrors: 1, syncAttempt: { id: "d", chargedAt: NOW } });
+    expect(await s.begin("a")).toBe("https://calendar.example/feed.ics");
+    for (const id of ["b", "c", "d"]) expect(await s.begin(id)).toBeNull();
+    expect(await s.state()).toMatchObject({ enabled: true, consecutiveErrors: 1, syncAttempt: { id: "a", chargedAt: NOW } });
     const pending = await s.state();
-    expect(await s.fail("a")).toBe("skipped");
+    expect(await s.fail("d")).toBe("skipped");
     expect(await s.process("b")).toBe("skipped");
     expect(await s.state()).toEqual(pending);
-    expect(await s.process("d")).toBe("success");
+    expect(await s.process("a")).toBe("success");
+    vi.advanceTimersByTime(60_000);
     await s.begin("new-after-success");
     const next = await s.state();
-    expect(await s.fail("d")).toBe("skipped"); // Lost success acknowledgement after a new start.
+    expect(await s.fail("a")).toBe("skipped"); // Lost success acknowledgement after a new start.
     expect(await s.fail("c")).toBe("skipped");
-    expect(await s.process("a", [])).toBe("skipped"); // Must not cancel the newer reservation.
+    expect(await s.process("a", [])).toBe("skipped"); // Must not cancel the committed reservation.
     expect(await s.state()).toEqual(next);
     const reservations = await s.t.run((ctx) => ctx.db.query("calendarReservations").collect());
     expect(reservations).toHaveLength(1);
@@ -227,7 +231,7 @@ describe("calendar sync failure containment", () => {
     expect(await s.t.run((ctx) => ctx.db.query("jobs").collect())).toHaveLength(1);
   });
 
-  it("propagates skipped through overlapping actions when the older feed finishes last", async () => {
+  it("skips an overlapping action before fetching and keeps the admitted success authoritative", async () => {
     const s = await setup();
     let releaseOlder!: (response: Response) => void;
     let enteredOlder!: () => void;
@@ -236,9 +240,10 @@ describe("calendar sync failure containment", () => {
     vi.mocked(fetch).mockImplementationOnce(() => { enteredOlder(); return olderResponse; });
     const older = s.run();
     await olderEntered;
-    expect(await s.run()).toBe("success");
-    releaseOlder(new Response("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR"));
-    expect(await older).toBe("skipped");
+    expect(await s.run()).toBe("skipped");
+    expect(fetch).toHaveBeenCalledTimes(1);
+    releaseOlder(new Response(feed));
+    expect(await older).toBe("success");
     expect(await s.state()).toMatchObject({ lastSyncStatus: "success", consecutiveErrors: 0, enabled: true });
     expect(await s.t.run((ctx) => ctx.db.query("calendarReservations").collect())).toEqual([expect.objectContaining({ externalUid: "reservation-one", status: "active" })]);
     expect(await s.t.run((ctx) => ctx.db.query("jobs").collect())).toHaveLength(1);
@@ -247,15 +252,15 @@ describe("calendar sync failure containment", () => {
 
   it("does not suspend the third unfinished round merely because another action or cron overlaps", async () => {
     const s = await setup();
-    for (const id of ["failure-1", "failure-2"]) { await s.begin(id); await s.fail(id); }
+    for (const id of ["failure-1", "failure-2"]) { await s.begin(id); await s.fail(id); vi.advanceTimersByTime(60_000); }
     await s.begin("third");
-    await s.begin("third-overlap");
+    expect(await s.begin("third-overlap")).toBeNull();
     const schedule = vi.fn();
     await s.t.run((ctx) => (cronTick as any)._handler({ ...ctx, scheduler: { runAfter: schedule } }, {}));
     expect(await s.state()).toMatchObject({ enabled: true, consecutiveErrors: 3 });
-    expect(schedule).toHaveBeenCalledTimes(1);
-    expect(await s.process("third-overlap")).toBe("success");
-    expect(await s.fail("third")).toBe("skipped");
+    expect(schedule).not.toHaveBeenCalled();
+    expect(await s.process("third")).toBe("success");
+    expect(await s.fail("third-overlap")).toBe("skipped");
     expect(await s.state()).toMatchObject({ enabled: true, consecutiveErrors: 0, lastSyncStatus: "success" });
   });
 
@@ -263,6 +268,7 @@ describe("calendar sync failure containment", () => {
     const s = await setup();
     await s.begin("old");
     expect(await s.fail("old")).toBe("failed");
+    vi.advanceTimersByTime(60_000);
     await s.begin("current");
     const current = await s.state();
     expect(await s.fail("old")).toBe("skipped");
@@ -290,11 +296,11 @@ describe("calendar sync failure containment", () => {
     const s = await setup();
     await s.begin("first");
     vi.advanceTimersByTime(5 * 60_000);
-    await s.begin("overlap");
+    expect(await s.begin("overlap")).toBeNull();
     expect((await s.state())?.syncAttempt?.chargedAt).toBe(NOW);
     vi.advanceTimersByTime(5 * 60_000);
-    expect(await s.process("overlap")).toBe("skipped");
-    expect(await s.fail("overlap")).toBe("skipped");
+    expect(await s.process("first")).toBe("skipped");
+    expect(await s.fail("first")).toBe("skipped");
     await s.begin("second-round");
     expect(await s.state()).toMatchObject({ consecutiveErrors: 2, syncAttempt: { id: "second-round", chargedAt: NOW + 10 * 60_000 } });
     const current = await s.state();

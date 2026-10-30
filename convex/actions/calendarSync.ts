@@ -11,7 +11,7 @@ import { randomUUID } from "node:crypto";
  * Fetch and parse an iCal feed for a single calendar connection.
  *
  * Flow:
- *   1. Charge the sync round and read its feed URL in an internal mutation
+ *   1. Claim queued work (or admit older/direct work) and read its feed URL
  *   2. HTTP fetch the iCal URL
  *   3. Parse with icalParser
  *   4. Pass normalized results to the processor mutation for persistence
@@ -21,15 +21,16 @@ import { randomUUID } from "node:crypto";
 export const syncConnection = internalAction({
   args: {
     connectionId: v.id("calendarConnections"),
+    attemptId: v.optional(v.string()),
   },
   returns: v.union(v.literal("success"), v.literal("failed"), v.literal("skipped")),
   handler: async (ctx, args): Promise<"success" | "failed" | "skipped"> => {
     assertExternalSideEffectsAllowed("External calendar synchronization");
-    // 1. Charge the round and obtain its current feed URL atomically.
-    const attemptId = randomUUID();
+    // 1. Claim admission and obtain its current feed URL atomically.
+    const attemptId = args.attemptId ?? randomUUID();
     const icalUrl = await ctx.runMutation(
       internal.mutations.calendarSync.beginSyncAttempt,
-      { connectionId: args.connectionId, attemptId },
+      { connectionId: args.connectionId, attemptId, scheduled: args.attemptId !== undefined },
     );
     if (icalUrl === null) return "skipped" as const;
 

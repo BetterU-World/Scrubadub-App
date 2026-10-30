@@ -7,6 +7,7 @@ import { MutationCtx } from "../_generated/server";
 import { logAudit } from "../lib/helpers";
 import { requireOwnerSession } from "../lib/sessionAuth";
 import { resolvePropertyConditionRequirement } from "../lib/propertyConditionRequirements";
+import { CALENDAR_SYNC_COOLDOWN_MS, CALENDAR_SYNC_LEASE_MS, cancelPendingCalendarSync } from "../lib/calendarSyncAdmission";
 
 /** Sync interval: connections are eligible for sync after this many ms. */
 const SYNC_INTERVAL_MS = 60 * 60 * 1000; // 60 minutes
@@ -14,22 +15,23 @@ const SYNC_INTERVAL_MS = 60 * 60 * 1000; // 60 minutes
 /** Stagger delay between scheduling sync actions to avoid burst. */
 const STAGGER_MS = 2_000; // 2 seconds
 const MAX_CONSECUTIVE_ERRORS = 3;
-// Fixed across overlaps and shorter than the cron period, so interrupted work
-// consumes the next budget unit rather than remaining pending indefinitely.
-const UNFINISHED_ROUND_MS = 10 * 60 * 1000;
+// Shorter than the cron period. A queued lease is valid until ten minutes after
+// its planned start; a one-time running claim gets ten minutes to finish.
 
 function hasActiveAttempt(connection: Doc<"calendarConnections">, now: number) {
   return connection.syncAttempt !== undefined &&
-    now - connection.syncAttempt.chargedAt < UNFINISHED_ROUND_MS;
+    now - connection.syncAttempt.chargedAt < CALENDAR_SYNC_LEASE_MS;
 }
 
 function isCurrentAttempt(connection: Doc<"calendarConnections">, attemptId: string) {
   return connection.enabled && connection.syncAttempt?.id === attemptId &&
+    connection.syncAttempt.phase !== "pending" &&
     hasActiveAttempt(connection, Date.now());
 }
 
 // Also used by cron/admission when an action dies before it can record its error.
 async function suspendConnection(ctx: MutationCtx, connection: Doc<"calendarConnections">) {
+  await cancelPendingCalendarSync(ctx, connection);
   await ctx.db.patch(connection._id, {
     enabled: false,
     lastSyncStatus: "error",
@@ -38,28 +40,62 @@ async function suspendConnection(ctx: MutationCtx, connection: Doc<"calendarConn
   });
 }
 
-/** Charge one unfinished round before external work. Success resets the budget.
- * Overlaps supersede the result fence but share the charge and original deadline,
- * so a burst cannot suspend a healthy connection or indefinitely postpone recovery.
- * This does not reject concurrent fetches or provide exclusive work admission.
+/** Shared atomic admission for queued and legacy/direct work. */
+async function admissionStatus(ctx: MutationCtx, connection: Doc<"calendarConnections">, now: number) {
+  if (hasActiveAttempt(connection, now)) return "busy" as const;
+  if (connection.consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+    await suspendConnection(ctx, connection);
+    return "suspended" as const;
+  }
+  if ((connection.syncCooldownUntil ?? 0) > now) return "cooldown" as const;
+  await cancelPendingCalendarSync(ctx, connection);
+  return null;
+}
+
+async function scheduleSync(ctx: MutationCtx, connection: Doc<"calendarConnections">, delayMs: number) {
+  const now = Date.now();
+  const rejected = await admissionStatus(ctx, connection, now);
+  if (rejected) return rejected;
+  const attemptId = crypto.randomUUID();
+  // Scheduling and reservation commit together: neither survives a rollback.
+  const scheduledFunctionId = await ctx.scheduler.runAfter(delayMs, internal.actions.calendarSync.syncConnection, {
+    connectionId: connection._id, attemptId,
+  });
+  await ctx.db.patch(connection._id, {
+    consecutiveErrors: connection.consecutiveErrors + 1,
+    lastSyncStatus: "pending", lastSyncError: undefined,
+    syncAttempt: { id: attemptId, chargedAt: now + delayMs, phase: "pending", scheduledFunctionId },
+    syncCooldownUntil: now + delayMs + CALENDAR_SYNC_COOLDOWN_MS,
+  });
+  return "scheduled" as const;
+}
+
+/** Claim a queued lease exactly once, or atomically admit an older/direct action.
+ * Replayed or expired scheduled tokens cannot reserve a new generation.
  */
 export const beginSyncAttempt = internalMutation({
-  args: { connectionId: v.id("calendarConnections"), attemptId: v.string() },
+  args: { connectionId: v.id("calendarConnections"), attemptId: v.string(), scheduled: v.optional(v.boolean()) },
   returns: v.union(v.string(), v.null()),
   handler: async (ctx, args) => {
     const connection = await ctx.db.get(args.connectionId);
     if (!connection?.enabled) return null;
     const now = Date.now();
-    const overlapping = hasActiveAttempt(connection, now);
-    if (!overlapping && connection.consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-      await suspendConnection(ctx, connection);
-      return null;
+    if (args.scheduled) {
+      const lease = connection.syncAttempt;
+      if (!lease || lease.id !== args.attemptId || lease.phase !== "pending" ||
+          lease.chargedAt > now || !hasActiveAttempt(connection, now)) return null;
+      await ctx.db.patch(connection._id, {
+        syncAttempt: { ...lease, phase: "running", chargedAt: now },
+      });
+      return connection.icalUrl;
     }
+    if (await admissionStatus(ctx, connection, now)) return null;
     await ctx.db.patch(connection._id, {
-      consecutiveErrors: connection.consecutiveErrors + (overlapping ? 0 : 1),
+      consecutiveErrors: connection.consecutiveErrors + 1,
       lastSyncStatus: "pending",
       lastSyncError: undefined,
-      syncAttempt: { id: args.attemptId, chargedAt: overlapping ? connection.syncAttempt!.chargedAt : now },
+      syncAttempt: { id: args.attemptId, chargedAt: now, phase: "running" },
+      syncCooldownUntil: now + CALENDAR_SYNC_COOLDOWN_MS,
     });
     // Read the URL in the same transaction as admission, not before an owner edit.
     return connection.icalUrl;
@@ -90,7 +126,8 @@ export const cronTick = internalMutation({
     let scheduled = 0;
 
     for (const connection of connections) {
-      if (connection.consecutiveErrors >= MAX_CONSECUTIVE_ERRORS && !hasActiveAttempt(connection, now)) {
+      if (hasActiveAttempt(connection, now)) continue;
+      if (connection.consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
         await suspendConnection(ctx, connection);
         continue;
       }
@@ -100,12 +137,7 @@ export const cronTick = internalMutation({
       }
 
       // Stagger each sync action to avoid burst
-      await ctx.scheduler.runAfter(
-        scheduled * STAGGER_MS,
-        internal.actions.calendarSync.syncConnection,
-        { connectionId: connection._id }
-      );
-      scheduled++;
+      if (await scheduleSync(ctx, connection, scheduled * STAGGER_MS) === "scheduled") scheduled++;
     }
 
     if (scheduled > 0) {
@@ -468,6 +500,7 @@ export const processSyncResults = internalMutation({
       lastSyncError: undefined,
       consecutiveErrors: 0,
       syncAttempt: undefined,
+      syncCooldownUntil: now + CALENDAR_SYNC_COOLDOWN_MS,
     });
 
     // ── Write sync log ─────────────────────────────────────────────────
@@ -516,6 +549,7 @@ export const recordSyncError = internalMutation({
       lastSyncStatus: "error" as const,
       lastSyncError: args.errorMessage.slice(0, 1000),
       syncAttempt: undefined,
+      syncCooldownUntil: Date.now() + CALENDAR_SYNC_COOLDOWN_MS,
     };
 
     // Auto-disable after too many consecutive failures
@@ -554,6 +588,7 @@ export const triggerSync = mutation({
     sessionToken: v.string(),
     connectionId: v.id("calendarConnections"),
   },
+  returns: v.union(v.literal("scheduled"), v.literal("busy"), v.literal("cooldown"), v.literal("suspended")),
   handler: async (ctx, args) => {
     const connection = await ctx.db.get(args.connectionId);
     if (!connection) throw new Error("Connection not found");
@@ -563,12 +598,8 @@ export const triggerSync = mutation({
 
     if (!connection.enabled) throw new Error("Connection is disabled");
 
-    // Schedule the sync action immediately
-    await ctx.scheduler.runAfter(
-      0,
-      internal.actions.calendarSync.syncConnection,
-      { connectionId: args.connectionId }
-    );
+    const outcome = await scheduleSync(ctx, connection, 0);
+    if (outcome !== "scheduled") return outcome;
 
     await logAudit(ctx, {
       companyId: connection.companyId,
@@ -577,5 +608,6 @@ export const triggerSync = mutation({
       entityType: "calendarConnection",
       entityId: args.connectionId,
     });
+    return outcome;
   },
 });

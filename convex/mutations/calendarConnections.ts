@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { logAudit } from "../lib/helpers";
 import { requireOwnerSession } from "../lib/sessionAuth";
 import { requireActiveSubscription } from "../lib/subscriptionGating";
+import { cancelPendingCalendarSync, cancelledCalendarSyncFields } from "../lib/calendarSyncAdmission";
 
 export const create = mutation({
   args: {
@@ -87,7 +88,8 @@ export const update = mutation({
     if (args.label !== undefined) updates.label = args.label;
     if (args.platform !== undefined) updates.platform = args.platform;
     if (args.icalUrl !== undefined && args.icalUrl !== connection.icalUrl) {
-      updates.syncAttempt = undefined;
+      await cancelPendingCalendarSync(ctx, connection);
+      Object.assign(updates, cancelledCalendarSyncFields(connection));
     }
 
     await ctx.db.patch(args.connectionId, updates);
@@ -117,9 +119,10 @@ export const setEnabled = mutation({
     const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     if (owner.companyId !== connection.companyId) throw new Error("Not your company");
 
+    if (!args.enabled || !connection.enabled) await cancelPendingCalendarSync(ctx, connection);
     await ctx.db.patch(args.connectionId, {
       enabled: args.enabled,
-      ...(!args.enabled || !connection.enabled ? { syncAttempt: undefined } : {}),
+      ...(!args.enabled || !connection.enabled ? cancelledCalendarSyncFields(connection) : {}),
       ...(!connection.enabled && args.enabled ? {
         consecutiveErrors: 0,
         lastSyncStatus: "pending" as const,
@@ -150,6 +153,7 @@ export const remove = mutation({
     const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     if (owner.companyId !== connection.companyId) throw new Error("Not your company");
 
+    await cancelPendingCalendarSync(ctx, connection);
     await ctx.db.delete(args.connectionId);
 
     await logAudit(ctx, {

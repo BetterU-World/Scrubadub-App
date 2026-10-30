@@ -258,8 +258,11 @@ function ConnectionSection({
     setSyncing(true);
     setError("");
     try {
-      await triggerSync({ userId, sessionToken, connectionId: connection._id });
-      showToast("Sync started — results will appear shortly");
+      const outcome = await triggerSync({ userId, sessionToken, connectionId: connection._id });
+      showToast(outcome === "busy" ? "Sync is already pending or running"
+        : outcome === "cooldown" ? "Please wait a minute before syncing again"
+        : outcome === "suspended" ? "Sync disabled after repeated failures. Check the feed and re-enable."
+        : "Sync started — results will appear shortly");
     } catch (err: any) {
       setError(err.message || "Failed to trigger sync");
     } finally {
