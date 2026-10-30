@@ -27,7 +27,6 @@ export function LoginPage() {
       await signIn({ email, password });
       window.location.assign("/");
     } catch (err: any) {
-      console.error("Staff sign-in failed", err);
       setError(toSignInMessage(err, t));
     } finally {
       setLoading(false);

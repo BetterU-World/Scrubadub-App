@@ -11,6 +11,8 @@ import { DemoApp } from "./demo/DemoApp";
 import { shouldRenderDemoApp } from "./demo/demoRoute";
 import { ShowcaseEntryPage } from "./pages/demo/ShowcaseEntryPage";
 import { EnvironmentBanner } from "./components/shared/EnvironmentBanner";
+import { ErrorBoundary } from "./components/shared/ErrorBoundary";
+import { StaffSessionRecovery } from "./components/shared/StaffSessionRecovery";
 
 const showcaseEntry = window.location.pathname === "/showcase";
 const demoMode = shouldRenderDemoApp(
@@ -56,7 +58,9 @@ if (showcaseEntry) {
         <EnvironmentBanner />
         <ConvexProvider client={convex}>
           <FeedbackProvider>
-            <App />
+            <ErrorBoundary>
+              <StaffSessionRecovery><App /></StaffSessionRecovery>
+            </ErrorBoundary>
           </FeedbackProvider>
         </ConvexProvider>
       </React.StrictMode>,
