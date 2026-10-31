@@ -7,7 +7,7 @@ import { syncConnection } from "../../actions/calendarSync";
 import { cronTick, processSyncResults } from "../../mutations/calendarSync";
 import { parseICalFeed } from "../../actions/icalParser";
 import { hashPassword } from "../password";
-import { calendar, cancelledEvent, reservationEvent, unsafeSnapshots } from "./calendarSnapshotFixtures";
+import { calendar, cancelledEvent, reservationEvent, unsafeSnapshots, confirmGuestForTest } from "./calendarSnapshotFixtures";
 
 vi.mock("../../actions/icalParser", async (original) => {
   const actual = await original<typeof import("../../actions/icalParser")>();
@@ -35,6 +35,11 @@ async function setup() {
     begin: (attemptId: string) => t.mutation(sync.beginSyncAttempt, { connectionId: ids.connectionId, attemptId }),
     process: (attemptId: string, reservations = parseICalFeed(feed).reservations) => t.mutation(sync.processSyncResults, { connectionId: ids.connectionId, attemptId, snapshotStatus: "valid", reservations, totalEvents: reservations.length, skipped: 0 }),
     fail: (attemptId: string) => t.mutation(sync.recordSyncError, { connectionId: ids.connectionId, attemptId, errorMessage: "Injected failure" }),
+    confirm: async () => {
+      const session = await t.action(api.authActions.signIn, { email: "calendar@test.dev", password: "test-password-123" });
+      const reservation = await t.run((ctx) => ctx.db.query("calendarReservations").first());
+      return confirmGuestForTest(t, reservation!._id, session.sessionToken);
+    },
     // Execute the real orchestration against real in-memory transactions, with
     // one injectable boundary for processor/error-recording transport failures.
     run: (fault?: "processing" | "recording" | "ack") => (syncConnection as any)._handler({
@@ -70,6 +75,7 @@ describe("calendar sync failure containment", () => {
   it.each(unsafeSnapshots)("contains $name after a successful import without touching protected records", async ({ content, status }) => {
     const s = await setup();
     expect(await s.run()).toBe("success");
+    await s.confirm();
     const lastSuccess = (await s.state())!.lastSyncAt;
     await s.t.run(async (ctx) => {
       const job = (await ctx.db.query("jobs").collect())[0];
@@ -100,6 +106,7 @@ describe("calendar sync failure containment", () => {
   it.each(["scheduled", "in_progress", "submitted", "approved"] as const)("preserves %s linked jobs and compensation on invalid snapshots", async (status) => {
     const s = await setup();
     await s.run();
+    await s.confirm();
     const jobId = await s.t.run(async (ctx) => {
       const job = (await ctx.db.query("jobs").collect())[0];
       await ctx.db.patch(job._id, {
@@ -125,6 +132,7 @@ describe("calendar sync failure containment", () => {
     const s = await setup();
     vi.mocked(fetch).mockResolvedValueOnce(new Response(calendar(`${reservationEvent()}\r\n${reservationEvent("unrelated")}`)));
     await s.run();
+    await s.confirm();
     const jobs = await s.t.run((ctx) => ctx.db.query("jobs").collect());
     vi.advanceTimersByTime(60_000);
     vi.mocked(fetch).mockResolvedValueOnce(new Response(calendar(cancelledEvent())));
@@ -174,7 +182,8 @@ describe("calendar sync failure containment", () => {
     await s.t.finishAllScheduledFunctions(() => vi.runAllTimers());
     expect(await s.state()).toMatchObject({ enabled: true, lastSyncStatus: "success", consecutiveErrors: 0 });
     expect((await s.state())!.lastSyncAt).toBeGreaterThan(lastSuccess ?? 0);
-    expect(await s.t.run((ctx) => ctx.db.query("jobs").collect())).toHaveLength(1);
+    // The recovered import is ambiguous and must await owner classification.
+    expect(await s.t.run((ctx) => ctx.db.query("jobs").collect())).toHaveLength(0);
   });
 
   it("breaks a real failure streak with a valid empty check, but still suspends on three subsequent failures", async () => {
@@ -308,6 +317,7 @@ describe("calendar sync failure containment", () => {
     await s.run();
     expect(await s.state()).toMatchObject({ enabled: true, consecutiveErrors: 0, lastSyncStatus: "success", lastSyncAt: NOW + 60_000 });
     expect((await s.state())?.lastSyncError).toBeUndefined();
+    await s.confirm();
     vi.advanceTimersByTime(60_000);
     await s.run();
     const records = await s.t.run(async (ctx) => ({ reservations: await ctx.db.query("calendarReservations").collect(), jobs: await ctx.db.query("jobs").collect() }));
@@ -426,7 +436,7 @@ describe("calendar sync failure containment", () => {
     expect(reservations[0].status).toBe("active");
     expect(await s.t.run((ctx) => ctx.db.query("calendarSyncLogs").collect())).toHaveLength(1);
     expect(await s.process("new-after-success")).toBe("success");
-    expect(await s.t.run((ctx) => ctx.db.query("jobs").collect())).toHaveLength(1);
+    expect(await s.t.run((ctx) => ctx.db.query("jobs").collect())).toHaveLength(0);
   });
 
   it("skips an overlapping action before fetching and keeps the admitted success authoritative", async () => {
@@ -444,7 +454,7 @@ describe("calendar sync failure containment", () => {
     expect(await older).toBe("success");
     expect(await s.state()).toMatchObject({ lastSyncStatus: "success", consecutiveErrors: 0, enabled: true });
     expect(await s.t.run((ctx) => ctx.db.query("calendarReservations").collect())).toEqual([expect.objectContaining({ externalUid: "reservation-one", status: "active" })]);
-    expect(await s.t.run((ctx) => ctx.db.query("jobs").collect())).toHaveLength(1);
+    expect(await s.t.run((ctx) => ctx.db.query("jobs").collect())).toHaveLength(0);
     expect(await s.t.run((ctx) => ctx.db.query("calendarSyncLogs").collect())).toHaveLength(1);
   });
 

@@ -143,8 +143,9 @@ export function CalendarSyncTab({
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
         <p className="font-medium mb-1">How calendar sync works</p>
         <ul className="list-disc list-inside space-y-1 text-blue-700">
-          <li>SCRUB checks your calendar feed every hour for new reservations</li>
-          <li>One unassigned cleaning job is auto-created per checkout date</li>
+          <li>SCRUB checks your calendar feed every hour for events</li>
+          <li>Imported events require owner classification; titles and provider labels do not confirm a guest stay</li>
+          <li>Confirmed guest events can create one unassigned job per checkout date when automation rules allow it</li>
           <li>You still assign cleaners manually after jobs are created</li>
           <li>Missing reservations stay active and appear below for owner review; absence does not confirm cancellation</li>
           <li>Reservation changes and explicit cancellations do not modify existing cleaning jobs</li>
@@ -394,7 +395,7 @@ function ConnectionSection({
         <div className="space-y-4">
           {!connection && (
             <p className="text-sm text-gray-500">
-              Paste your Airbnb or Vrbo iCal URL to auto-create cleaning jobs from reservations.
+              Connect an iCal feed to import events for review. A cleaning job requires owner-confirmed guest classification and enabled automation.
             </p>
           )}
 
@@ -563,7 +564,7 @@ function AutomationRulesSection({
         <div className="space-y-2 text-sm">
           {!rule ? (
             <p className="text-gray-500">
-              No automation configured. Click "Configure" to set up auto-created jobs.
+              No automation configured. Confirmed guest events will not create jobs until rules are enabled.
             </p>
           ) : (
             <>
@@ -674,17 +675,24 @@ function ReservationsSection({ reservations, connections, propertyName, userId, 
 }) {
   const [expanded, setExpanded] = useState(false);
   // Keep unresolved missing episodes visible ahead of recent ordinary imports.
-  const priority = (res: any) => res.missing ? (res.missing.acknowledgedAt === undefined ? 2 : 1) : 0;
+  const priority = (res: any) => {
+    if (res.missing && res.missing.acknowledgedAt === undefined) return 4;
+    if ((res.status === "active" && res.classification?.kind === "needs_review") || res.dateConflict ||
+        res.cancellationFlagged || (res.classification?.kind === "non_guest_block" && res.linkedJobId)) return 3;
+    return res.missing ? 2 : 0;
+  };
   const ordered = [...reservations].sort((a, b) => priority(b) - priority(a));
-  const visible = expanded ? ordered : ordered.slice(0, 5);
+  const attention = ordered.filter(res => priority(res) > 0);
+  const ordinary = ordered.filter(res => priority(res) === 0);
+  const visible = expanded ? ordered : [...attention, ...ordinary.slice(0, 5)];
 
   return (
     <div className="card">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900">Synced Reservations</h3>
+        <h3 className="font-semibold text-gray-900">Synced Calendar Events</h3>
         <span className="text-xs text-gray-400">{reservations.length} total</span>
       </div>
-      <p className="text-xs text-gray-500 mb-2">Property: {propertyName}. Acknowledgement records review only; it does not cancel a reservation or change a job.</p>
+      <p className="text-xs text-gray-500 mb-2">Property: {propertyName}. Missing acknowledgement is not classification confirmation. All unresolved review items are shown; classification never changes an existing job.</p>
 
       <div className="divide-y divide-gray-100">
         {visible.map((res) => (
@@ -693,7 +701,7 @@ function ReservationsSection({ reservations, connections, propertyName, userId, 
         ))}
       </div>
 
-      {reservations.length > 5 && (
+      {(ordinary.length > 5 || expanded) && (
         <button
           onClick={() => setExpanded(!expanded)}
           className="mt-3 text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
@@ -713,6 +721,27 @@ function ReservationRow({ reservation, connection, userId, sessionToken }: {
   reservation: any; connection: any; userId: Id<"users">; sessionToken: string;
 }) {
   const acknowledge = useMutation(api.mutations.calendarSync.acknowledgeMissingReservation);
+  const classify = useMutation(api.mutations.calendarSync.confirmEventClassification);
+  const [classifying, setClassifying] = useState(false);
+  const [classificationMessage, setClassificationMessage] = useState<{ eventVersion: string; kind: string; text: string } | null>(null);
+  const [classificationError, setClassificationError] = useState("");
+  const classification = reservation.classification;
+  const canClassify = reservation.status === "active" && connection && reservation.eventVersion?.startsWith(`${connection.feedRevision ?? 0}:`);
+  const handleClassify = async (kind: "guest_reservation" | "non_guest_block") => {
+    setClassifying(true); setClassificationError(""); setClassificationMessage(null);
+    try {
+      const result = await classify({ sessionToken, userId, reservationId: reservation._id, kind,
+        expectedEventVersion: reservation.eventVersion, expectedRevision: classification?.revision ?? 0,
+        expectedFeedRevision: connection.feedRevision ?? 0, expectedMissingEpisode: reservation.missing?.episodeId });
+      const text = result.manualJobReviewRequired ? "Non-guest decision saved. Existing job retained; review that job separately."
+        : result.outcome === "created" ? "Guest confirmed. An unassigned cleaning job was created."
+        : result.outcome === "already_linked" ? "Decision saved. The existing linked job was kept unchanged."
+        : `Decision saved. No new job: ${(result.skipReason ?? "not eligible").replace(/_/g, " ")}.`;
+      setClassificationMessage({ eventVersion: reservation.eventVersion, kind, text });
+    } catch (error: any) {
+      setClassificationError(error.message || "Could not save classification. Refresh and review again.");
+    } finally { setClassifying(false); }
+  };
   const [reviewing, setReviewing] = useState(false);
   const [reviewError, setReviewError] = useState("");
   const missing = reservation.missing;
@@ -734,9 +763,9 @@ function ReservationRow({ reservation, connection, userId, sessionToken }: {
   const wasSkipped = reservation.jobCreationSkipped;
 
   return (
-    <div className={`py-3 flex items-center justify-between gap-3 ${isCancelled ? "opacity-50" : ""}`}>
+    <div className={`py-3 flex flex-col sm:flex-row sm:items-start justify-between gap-3 ${isCancelled ? "opacity-50" : ""}`}>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="text-gray-900 font-medium">
             {formatDate(reservation.checkIn)} → {formatDate(reservation.checkOut)}
           </span>
@@ -756,6 +785,30 @@ function ReservationRow({ reservation, connection, userId, sessionToken }: {
               Review needed
             </span>
           )}
+        </div>
+        <div className="mt-2 text-xs space-y-2 break-words [overflow-wrap:anywhere]">
+          <p className="font-medium">{classification?.kind === "guest_reservation" ? "Guest reservation — owner confirmed"
+            : classification?.kind === "non_guest_block" ? "Non-guest block — owner confirmed"
+            : classification?.kind === "needs_review" ? "Needs classification — no automatic job"
+            : "Legacy import — classification unconfirmed; existing jobs retained"}</p>
+          {classification?.source === "owner" ? (
+            <p>Owner {String(classification.ownerDecision?.actorId ?? "").slice(-6)} confirmed {new Date(classification.classifiedAt).toLocaleString()}.</p>
+          ) : <p>Unverified iCal evidence. Event titles, dates and provider labels cannot establish a guest booking.</p>}
+          {classification?.reason === "material_event_changed" && <p role="status">Event evidence changed. Renewed owner review is required; the prior decision has been retained.</p>}
+          {classification?.ownerDecision && classification.kind === "needs_review" && <p>Previous owner decision: {classification.ownerDecision.kind === "guest_reservation" ? "guest reservation" : "non-guest block"}, {new Date(classification.ownerDecision.confirmedAt).toLocaleString()}.</p>}
+          {reservation.eventMetadata && <p>Unverified fields: status {reservation.eventMetadata.status || "not supplied"}; transparency {reservation.eventMetadata.transparency || "not supplied"}; categories {reservation.eventMetadata.categories?.join(", ") || "not supplied"}.</p>}
+          {classification?.kind === "non_guest_block" && hasJob && <p role="status" className="text-amber-800">A cleaning job already exists. It was not canceled or deleted. Review that job separately.</p>}
+          {canClassify ? <>
+            <p>Confirming a guest can create an unassigned job if automation and eligibility allow it. {hasJob ? "A job is already linked and will be kept unchanged." : "No cleaning job is linked."}</p>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className="btn-secondary text-xs min-h-11 focus-visible:ring-2 focus-visible:ring-primary-600" disabled={classifying} onClick={() => handleClassify("guest_reservation")}>Confirm guest reservation</button>
+              <button type="button" className="btn-secondary text-xs min-h-11 focus-visible:ring-2 focus-visible:ring-primary-600" disabled={classifying} onClick={() => handleClassify("non_guest_block")}>Confirm non-guest block</button>
+            </div>
+          </> : !isCancelled && <p>{connection ? "Sync this feed before confirming classification." : "Classification unavailable: this feed was removed."}</p>}
+          {canClassify && classificationMessage?.eventVersion === reservation.eventVersion &&
+            (!classification || classification.kind === "needs_review" || classification.kind === classificationMessage?.kind) &&
+            <p role="status" aria-live="polite">{classificationMessage?.text}</p>}
+          {classificationError && <p role="alert" className="text-red-700">{classificationError}</p>}
         </div>
         <div className="text-xs text-gray-500 mt-1">
           Feed: {connection ? `${connection.label || connection.platform} (${connection.platform})` : "Removed feed"}
@@ -778,7 +831,7 @@ function ReservationRow({ reservation, connection, userId, sessionToken }: {
           </div>
         )}
         {isCancelled && reservation.cancellationEvidence && <p className="text-xs text-gray-500 mt-1">Provider explicitly canceled this reservation {new Date(reservation.cancellationEvidence.observedAt).toLocaleString()}. Linked jobs are unchanged.</p>}
-        <div className="text-xs text-gray-400 mt-0.5">
+        <div className="text-xs text-gray-400 mt-0.5 break-words [overflow-wrap:anywhere]">
           {reservation.summary && <span>{reservation.summary} · </span>}
           {wasSkipped && reservation.skipReason && (
             <span className="text-amber-600">
@@ -786,7 +839,7 @@ function ReservationRow({ reservation, connection, userId, sessionToken }: {
             </span>
           )}
           {!wasSkipped && !hasJob && !isCancelled && (
-            <span className="text-gray-400">Pending job creation</span>
+            <span className="text-gray-400">{classification?.kind === "guest_reservation" ? "Job eligibility will be checked on sync" : "No job: classification not confirmed as guest"}</span>
           )}
         </div>
       </div>

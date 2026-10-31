@@ -1,3 +1,18 @@
+import { api } from "../../_generated/api";
+
+/** Exercise the real authorized decision path in older job-focused regressions. */
+export async function confirmGuestForTest(t: any, reservationId: any, sessionToken: string) {
+  const { reservation, connection } = await t.run(async (ctx: any) => {
+    const reservation = await ctx.db.get(reservationId);
+    return { reservation, connection: await ctx.db.get(reservation.connectionId) };
+  });
+  return t.mutation(api.mutations.calendarSync.confirmEventClassification, {
+    sessionToken, reservationId, kind: "guest_reservation", expectedEventVersion: reservation.eventVersion,
+    expectedRevision: reservation.classification?.revision ?? 0,
+    expectedFeedRevision: connection.feedRevision ?? 0, expectedMissingEpisode: reservation.missing?.episodeId,
+  });
+}
+
 export const reservationEvent = (uid = "reservation-one") => [
   "BEGIN:VEVENT", `UID:${uid}`, "DTSTART;VALUE=DATE:20261026",
   "DTEND;VALUE=DATE:20261027", "SUMMARY:Reserved", "END:VEVENT",

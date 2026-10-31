@@ -2,6 +2,7 @@ import { defineSchema, defineTable } from "convex/server";
 import { executionEvidence } from "./lib/performedWorkers";
 import { outgoingTables } from "./lib/outgoingSchema";
 import { v } from "convex/values";
+import { calendarClassification, calendarEventMetadata } from "./lib/calendarClassification";
 import { bedroomsValidator } from "./lib/propertyBedrooms";
 import { proposalIssueContentValidator } from "./lib/proposalIssueContent";
 import { serviceAgreementIssueContentValidator } from "./lib/serviceAgreementIssuedContent";
@@ -2551,6 +2552,8 @@ export default defineSchema({
       v.literal("other"),
     ),
     icalUrl: v.string(),
+    // Binds owner decisions to the feed source without duplicating its URL.
+    feedRevision: v.optional(v.number()),
     label: v.optional(v.string()),
     enabled: v.boolean(),
     lastSyncAt: v.optional(v.number()),
@@ -2593,6 +2596,9 @@ export default defineSchema({
     checkOut: v.string(),
     dtStamp: v.optional(v.string()),
     rawHash: v.string(),
+    eventVersion: v.optional(v.string()),
+    eventMetadata: v.optional(calendarEventMetadata),
+    classification: v.optional(calendarClassification),
     status: v.union(v.literal("active"), v.literal("cancelled")),
     linkedJobId: v.optional(v.id("jobs")),
     firstSeenAt: v.number(),

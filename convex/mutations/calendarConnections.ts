@@ -88,6 +88,7 @@ export const update = mutation({
     if (args.label !== undefined) updates.label = args.label;
     if (args.platform !== undefined) updates.platform = args.platform;
     if (args.icalUrl !== undefined && args.icalUrl !== connection.icalUrl) {
+      updates.feedRevision = (connection.feedRevision ?? 0) + 1;
       await cancelPendingCalendarSync(ctx, connection);
       Object.assign(updates, cancelledCalendarSyncFields(connection));
     }

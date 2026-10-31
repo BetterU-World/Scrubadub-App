@@ -5,6 +5,8 @@ export interface RawCalendarEvent {
   cancelled: boolean;
   start?: Field;
   end?: Field;
+  /** Used only to hash relevant evidence; never persisted or logged as raw text. */
+  materialContent: string;
 }
 type RawSnapshot =
   | { status: "valid"; events: RawCalendarEvent[]; content: string }
@@ -69,6 +71,7 @@ function uidValue(value: string): string {
 export function validateRawCalendar(raw: string): RawSnapshot {
   const stack: string[] = [];
   const events: Map<string, Field>[] = [];
+  const material = new Map<Map<string, Field>, string[]>();
   let current: Map<string, Field> | undefined;
   let opened = false;
   let closed = false;
@@ -96,6 +99,7 @@ export function validateRawCalendar(raw: string): RawSnapshot {
         if (component === "VEVENT") {
           if (stack.length !== 1) throw new Error("Invalid event nesting");
           current = new Map();
+          material.set(current, []);
           events.push(current);
         }
         stack.push(component);
@@ -105,9 +109,12 @@ export function validateRawCalendar(raw: string): RawSnapshot {
         if (!stack.length) closed = true;
       } else {
         if (!stack.length || closed) throw new Error("Content outside calendar");
-        if (stack[stack.length - 1] === "VEVENT" && current && ["UID", "DTSTART", "DTEND", "STATUS"].includes(field.name)) {
-          if (current.has(field.name)) return { status: "degraded", diagnostic: "Duplicate required event field" };
-          current.set(field.name, field);
+        if (stack[stack.length - 1] === "VEVENT" && current) {
+          if (!["DTSTAMP", "LAST-MODIFIED", "CREATED", "SEQUENCE"].includes(field.name)) material.get(current)!.push(field.normalized);
+          if (["UID", "DTSTART", "DTEND", "STATUS"].includes(field.name)) {
+            if (current.has(field.name)) return { status: "degraded", diagnostic: "Duplicate required event field" };
+            current.set(field.name, field);
+          }
         }
       }
     }
@@ -125,7 +132,7 @@ export function validateRawCalendar(raw: string): RawSnapshot {
       if (!cancelled && (!validDate(start) || !validDate(end))) {
         return { status: "degraded", diagnostic: "Missing or invalid explicit DTSTART or DTEND" };
       }
-      result.push({ uid, cancelled, start, end });
+      result.push({ uid, cancelled, start, end, materialContent: material.get(fields)!.sort().join("\r\n") });
     }
     return { status: "valid", events: result, content: normalized.join("\r\n") };
   } catch {
