@@ -1,3 +1,4 @@
+import { requireSharedJobAccepted } from "../lib/sharedJobAuthorization";
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { logAudit, createNotification } from "../lib/helpers";
@@ -40,6 +41,7 @@ export const create = mutation({
     // Verify job belongs to this company
     const job = await ctx.db.get(args.jobId);
     if (!job || job.companyId !== user.companyId) throw new Error("Access denied");
+    await requireSharedJobAccepted(ctx, job);
     if (!job.propertyId || job.propertyId !== args.propertyId) throw new Error("Job property does not match red flag property");
     if (!(await isUserAssignedToJob(ctx, job, user._id))) {
       throw new Error("Not assigned to perform this job");
@@ -98,6 +100,9 @@ export const updateStatus = mutation({
     const flag = await ctx.db.get(args.flagId);
     if (!flag) throw new Error("Red flag not found");
     if (flag.companyId !== owner.companyId) throw new Error("Access denied");
+    const sourceJob = await ctx.db.get(flag.jobId);
+    if (!sourceJob) throw new Error("Job not found");
+    await requireSharedJobAccepted(ctx, sourceJob);
 
     // Cannot transition out of terminal states
     if (flag.status === "resolved" || flag.status === "wont_fix") {
@@ -134,6 +139,9 @@ export const managerResolveRedFlag = mutation({
     const flag = await ctx.db.get(args.flagId);
     if (!flag) throw new Error("Red flag not found");
     if (flag.companyId !== user.companyId) throw new Error("Access denied");
+    const sourceJob = await ctx.db.get(flag.jobId);
+    if (!sourceJob) throw new Error("Job not found");
+    await requireSharedJobAccepted(ctx, sourceJob);
     if (flag.status === "resolved" || flag.status === "wont_fix") {
       throw new Error("Red flag is already in a terminal state");
     }
@@ -173,6 +181,9 @@ export const managerUpdateLifecycle = mutation({
     const flag = await ctx.db.get(args.flagId);
     if (!flag) throw new Error("Red flag not found");
     if (flag.companyId !== user.companyId) throw new Error("Access denied");
+    const sourceJob = await ctx.db.get(flag.jobId);
+    if (!sourceJob) throw new Error("Job not found");
+    await requireSharedJobAccepted(ctx, sourceJob);
 
     // Cannot transition out of terminal states
     if (flag.status === "resolved" || flag.status === "wont_fix") {
@@ -210,6 +221,9 @@ export const createMaintenanceJob = mutation({
     const flag = await ctx.db.get(args.flagId);
     if (!flag) throw new Error("Red flag not found");
     if (flag.companyId !== owner.companyId) throw new Error("Access denied");
+    const sourceJob = await ctx.db.get(flag.jobId);
+    if (!sourceJob) throw new Error("Job not found");
+    await requireSharedJobAccepted(ctx, sourceJob);
 
     const property = await ctx.db.get(flag.propertyId);
     const requiresPropertyConditionCheck = await resolvePropertyConditionRequirement(ctx, {

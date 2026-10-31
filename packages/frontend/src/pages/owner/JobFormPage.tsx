@@ -1,3 +1,4 @@
+import { SharedWorkNotice } from "@/components/SharedWorkNotice";
 import { useState, FormEvent, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -164,6 +165,8 @@ export function JobFormPage() {
   }, [isEditing, companyProfile]);
 
   if (!user || (!isSharedJob && properties === undefined) || (canAssignWorkers && (jobAssignees === undefined || maintenanceWorkers === undefined || teams === undefined))) return <PageLoader />;
+
+  if (existing?.sharedWorkAccess?.allowed === false) return <div><SharedWorkNotice access={existing.sharedWorkAccess} /><Link href={`/jobs/${existing._id}`} className="btn-secondary">{t("navigation.backToJob")}</Link></div>;
 
   const isMaintenance = type === "maintenance";
   const workers = (isMaintenance ? maintenanceWorkers : jobAssignees) ?? [];

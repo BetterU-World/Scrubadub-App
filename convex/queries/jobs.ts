@@ -1,3 +1,4 @@
+import { sharedJobAccess } from "../lib/sharedJobAuthorization";
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { hasManagerPermission } from "../lib/auth";
@@ -173,6 +174,7 @@ export const list = query({
             .withIndex("by_jobId", (q) => q.eq("jobId", job._id))
             .collect();
           const inspectionStatus = deriveJobInspectionStatus(job, inspections.length);
+          const sharedAccess = await sharedJobAccess(ctx, job);
 
           const assignedManager = job.assignedManagerId
             ? userMap.get(job.assignedManagerId) ?? null
@@ -180,6 +182,7 @@ export const list = query({
 
           const decorated = {
             ...job,
+            sharedWorkAccess: sharedAccess,
             propertyName: property?.name ?? job.propertySnapshot?.name ?? "Unknown",
             propertyAddress: property?.address ?? job.propertySnapshot?.address ?? "",
             cleaners,
@@ -262,13 +265,16 @@ export const get = query({
     const assignedManager = job.assignedManagerId
       ? await ctx.db.get(job.assignedManagerId)
       : null;
-    const canCurrentUserExecute =
+
+    const sharedAccess = await sharedJobAccess(ctx, job);
+    const canCurrentUserExecute = sharedAccess.allowed &&
       job.timerStoppedAt === undefined &&
       isRoleCompatibleWithJobExecution(user.role, job.type) &&
       await isUserAssignedToJob(ctx, job, user._id);
 
     const decorated = {
       ...job,
+      sharedWorkAccess: sharedAccess,
       property: property ?? null,
       cleaners: cleaners.filter(Boolean),
       form: form ? { ...form, photoUrls } : null,
@@ -327,6 +333,7 @@ export const getForCleaner = query({
           const team = job.assignedTeamId ? await ctx.db.get(job.assignedTeamId) : null;
           return workerSafeJob({
             ...job,
+            sharedWorkAccess: await sharedJobAccess(ctx, job),
             propertyName: property?.name ?? job.propertySnapshot?.name ?? "Unknown",
             propertyAddress: property?.address ?? job.propertySnapshot?.address ?? "",
             assignedTeamName: team?.name ?? null,
@@ -390,8 +397,10 @@ export const getForManager = query({
             .withIndex("by_jobId", (q) => q.eq("jobId", job._id))
             .collect();
           const inspectionStatus = deriveJobInspectionStatus(job, inspections.length);
+          const sharedAccess = await sharedJobAccess(ctx, job);
           return workerSafeJob({
             ...job,
+            sharedWorkAccess: sharedAccess,
             propertyName: property?.name ?? job.propertySnapshot?.name ?? "Unknown",
             propertyAddress: property?.address ?? job.propertySnapshot?.address ?? "",
             cleaners: cleaners.filter(Boolean),
@@ -400,7 +409,7 @@ export const getForManager = query({
             assignedTeamName: job.assignedTeamId ? (await ctx.db.get(job.assignedTeamId))?.name ?? null : null,
             assignmentType: job.assignedTeamId ? "team" : "individual",
             isAssignedToCurrentUser: await isManagerPersonallyAssigned(ctx, job, user._id),
-            canCurrentUserExecute:
+            canCurrentUserExecute: sharedAccess.allowed &&
               job.timerStoppedAt === undefined &&
               isRoleCompatibleWithJobExecution(user.role, job.type) &&
               await isUserAssignedToJob(ctx, job, user._id),
@@ -481,6 +490,7 @@ export const getCalendarJobs = query({
                   )) ?? null;
           const decorated = {
             ...job,
+            sharedWorkAccess: await sharedJobAccess(ctx, job),
             propertyName: property?.name ?? job.propertySnapshot?.name ?? "Unknown",
             cleaners: cleaners.filter(Boolean),
             assignedTeamName: team?.name ?? null,

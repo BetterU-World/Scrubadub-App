@@ -1,3 +1,4 @@
+import { SharedWorkNotice } from "@/components/SharedWorkNotice";
 import { useAttachmentUpload } from "@/hooks/useAttachmentUpload";
 import { JobCompensation } from "@/components/payments/JobCompensation";
 import { useFeedbackState } from "@/components/ui/FeedbackProvider";
@@ -87,6 +88,7 @@ export function ManagerJobDetailPage() {
       <div className="text-center py-12 text-gray-500">{t("jobs.jobNotFound")}</div>
     );
 
+  const sharedWorkAllowed = job.sharedWorkAccess?.allowed !== false;
   const acceptance = job.acceptanceStatus ?? "pending";
   const property = job.property ?? (job as any).propertySnapshot;
 
@@ -153,6 +155,7 @@ export function ManagerJobDetailPage() {
     <div className="max-w-2xl mx-auto">
       {/* Toast */}
 
+      <SharedWorkNotice access={job?.sharedWorkAccess} />
       <PageHeader
         title={property?.name ?? t("jobs.jobDetails")}
         back={{ href: "/jobs", label: t("navigation.backToJobs") }}
@@ -162,20 +165,20 @@ export function ManagerJobDetailPage() {
               <ClipboardCheck className="h-4 w-4" /> {t("jobs.openChecklist")}
             </Link>
           )}
-          {user?.canCreateJobs && !['cancelled', 'submitted', 'approved'].includes(job.status) && (
+          {sharedWorkAllowed && user?.canCreateJobs && !['cancelled', 'submitted', 'approved'].includes(job.status) && (
             <button className="btn-danger flex items-center gap-2" onClick={() => setShowCancel(true)}>
               <XCircle className="w-4 h-4" /> {t("jobs.cancelJob")}
             </button>
           )}
-          {user?.canCreateJobs && <Link href={`/jobs/${job._id}/edit`} className="btn-secondary">Edit Job</Link>}
+          {sharedWorkAllowed && user?.canCreateJobs && <Link href={`/jobs/${job._id}/edit`} className="btn-secondary">Edit Job</Link>}
         </div>}
       />
 
       <div className="space-y-4">
-        <JobCompensation jobId={job._id} />
-        <ServicePricingPanel jobId={job._id} commercial={Boolean(job.commercialAccountId)} />
-        <JobInvoiceBillingPanel job={job} />
-        {!job.commercialAccountId && <ResidentialInvoicePanel jobId={job._id} />}
+        {sharedWorkAllowed && <JobCompensation jobId={job._id} />}
+        {sharedWorkAllowed && <ServicePricingPanel jobId={job._id} commercial={Boolean(job.commercialAccountId)} />}
+        {sharedWorkAllowed && <JobInvoiceBillingPanel job={job} />}
+        {sharedWorkAllowed && !job.commercialAccountId && <ResidentialInvoicePanel jobId={job._id} />}
         {/* Status & Type + Inspection Summary Badge */}
         <div className="card space-y-4">
           <div className="flex items-center gap-2 flex-wrap">
@@ -339,7 +342,7 @@ export function ManagerJobDetailPage() {
             </p>
           </div>
         )}
-        {job.status === "submitted" && job.form?.status === "submitted" && (user?.canApproveForms || user?.canRequestRework) && (
+        {sharedWorkAllowed && job.status === "submitted" && job.form?.status === "submitted" && (user?.canApproveForms || user?.canRequestRework) && (
           <div className="card space-y-2">
             <h3 className="font-semibold">{t("inspection.completedWorkReview")}</h3>
             <div className="flex flex-wrap gap-2">
@@ -356,7 +359,7 @@ export function ManagerJobDetailPage() {
             </div>
           </div>
         )}
-        {job.status !== "cancelled" && (!inspectionSummary || inspectionSummary.count === 0 || inspectionSummary.inspectionCycleOpen) && !showForm && (
+        {job.sharedWorkAccess?.allowed !== false && job.status !== "cancelled" && (!inspectionSummary || inspectionSummary.count === 0 || inspectionSummary.inspectionCycleOpen) && !showForm && (
           <button
             onClick={() => setShowForm(true)}
             className="btn-primary w-full flex items-center justify-center gap-2"
@@ -366,7 +369,7 @@ export function ManagerJobDetailPage() {
         )}
 
         {/* ── Inspection Form ──────────────────────────────────── */}
-        {job.status !== "cancelled" && showForm && (
+        {sharedWorkAllowed && job.status !== "cancelled" && showForm && (
           <div className="card border-blue-200">
             <h3 className="font-semibold text-blue-700 flex items-center gap-2 mb-4">
               <ClipboardCheck className="w-5 h-5" /> {t("inspection.houseCheck")}
@@ -512,7 +515,7 @@ export function ManagerJobDetailPage() {
                   </div>
                   <p className="text-sm text-gray-700">{flag.note}</p>
                   {/* Manager lifecycle actions */}
-                  {user && (user as any).canResolveRedFlags && flag.status !== "resolved" && flag.status !== "wont_fix" && (
+                  {sharedWorkAllowed && user && (user as any).canResolveRedFlags && flag.status !== "resolved" && flag.status !== "wont_fix" && (
                     <div className="mt-2">
                       {resolvingFlag === flag._id ? (
                         <div className="flex gap-2 items-center">
@@ -657,7 +660,7 @@ export function ManagerJobDetailPage() {
           </div>
         )}
       </div>
-      <CancelJobDialog open={showCancel} onOpenChange={setShowCancel} onConfirm={async (reason, notes) => {
+      <CancelJobDialog open={sharedWorkAllowed && showCancel} onOpenChange={setShowCancel} onConfirm={async (reason, notes) => {
         if (!user) return;
         await cancelJob({ jobId, reason, notes, userId: user._id, sessionToken: getStaffSessionToken() });
         setToast({ message: t("jobs.cancelledSuccess"), type: "success" });

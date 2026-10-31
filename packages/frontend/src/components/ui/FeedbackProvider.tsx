@@ -14,6 +14,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { toFriendlyMessage } from "@/lib/friendlyError";
 import { normalizeFeedbackMessage } from "@/lib/feedbackMessage";
+import { sharedWorkError } from "@/lib/partnerJobStatus";
 
 export type FeedbackTone = "success" | "error" | "warning" | "info";
 
@@ -75,8 +76,10 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
     () => ({
       success: (message) =>
         notify("success", normalizeFeedbackMessage(message, t("feedback.defaultSuccess"))),
-      error: (message) =>
-        notify("error", normalizeFeedbackMessage(message, t("feedback.unexpectedError"))),
+      error: (message) => {
+        const shared = sharedWorkError(message);
+        notify("error", shared ? t(shared.key) : normalizeFeedbackMessage(message, t("feedback.unexpectedError")));
+      },
       warning: (message) =>
         notify("warning", normalizeFeedbackMessage(message, t("feedback.defaultWarning"))),
       info: (message) =>

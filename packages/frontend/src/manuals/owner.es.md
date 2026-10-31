@@ -346,7 +346,7 @@ Son declaraciones: SCRUB no envía ni verifica pagos externos. Las páginas anti
 
 **Comprueba el resultado:** la empresa deja de ser socio activo para nuevos envíos.
 
-**Bloqueos frecuentes:** desconectar no cancela copias existentes, borra registros financieros, aprueba compensación ni transfiere dinero. Resuelve trabajo y compensación por separado.
+**Bloqueos frecuentes:** desconectar invalida solicitudes Pendientes sin asignación ni trabajo iniciado. Se conservan el trabajo Aceptado y la evidencia histórica/financiera. Las copias Pendientes con asignaciones o evidencia requieren revisión manual; no supongas que fueron canceladas o aceptadas. Resuelve trabajo y compensación por separado.
 
 ## 18. Centro de documentos y documentos de trabajadores
 

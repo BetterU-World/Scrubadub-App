@@ -1,3 +1,4 @@
+import { requireSharedJobAccepted } from "../lib/sharedJobAuthorization";
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { hasManagerPermission } from "../lib/auth";
@@ -32,6 +33,7 @@ export const submit = mutation({
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== user.companyId) throw new Error("Access denied");
+    await requireSharedJobAccepted(ctx, job);
 
     // Enforce manager visibility scope
     if (!hasManagerPermission(user, "canSeeAllJobs")) {
@@ -135,6 +137,7 @@ export const reopenInspection = mutation({
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Access denied");
+    await requireSharedJobAccepted(ctx, job);
 
     // Guard: cycle must be closed (false) — block if already open or never closed
     if (job.inspectionCycleOpen === true) {

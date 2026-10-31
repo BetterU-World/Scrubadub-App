@@ -1,8 +1,11 @@
 import type { TFunction } from "i18next";
+import { sharedWorkError } from "@/lib/partnerJobStatus";
 
 /** Translate canonical validation without exposing raw server traces in the product. */
 export function compensationError(error: unknown, t: TFunction): string {
   const message = error instanceof Error ? error.message : String(error);
+  const shared = sharedWorkError(message);
+  if (shared) return t(shared.key);
   if (/Accepted governing|Approved shared execution|Invalid shared source|Partner acceptance/.test(message))
     return t("partnerCompensation.eligibilityError");
   if (/Active partner connection/.test(message))

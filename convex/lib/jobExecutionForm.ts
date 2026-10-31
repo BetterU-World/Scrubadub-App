@@ -1,3 +1,4 @@
+import { requireSharedJobAccepted } from "./sharedJobAuthorization";
 import type { MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { getFormTemplate } from "./constants";
@@ -9,6 +10,7 @@ export async function ensureJobExecutionForm(
   job: Doc<"jobs">,
   executorId: Id<"users">,
 ) {
+  await requireSharedJobAccepted(ctx, job);
   const existing = await ctx.db
     .query("forms")
     .withIndex("by_jobId", (q) => q.eq("jobId", job._id))

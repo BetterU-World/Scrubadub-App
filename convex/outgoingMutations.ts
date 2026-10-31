@@ -1,3 +1,4 @@
+import { requireSharedJobAccepted } from "./lib/sharedJobAuthorization";
 import { planOutsideAllocation } from "./lib/outgoingAllocation";
 import { partnerEligibility } from "./lib/partnerCompensation";
 import { approvedExecution } from "./lib/performedWorkers";
@@ -210,6 +211,7 @@ export async function materializeTerms(
     const job = await ctx.db.get(terms.source.jobId);
     if (job?.status !== "approved")
       throw new Error("Approved source work required");
+    await requireSharedJobAccepted(ctx, job);
     const evidence = approvedExecution(job!);
     if (
       terms.executionSequence !== undefined &&

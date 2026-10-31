@@ -1,3 +1,4 @@
+import { requireSharedJobAccepted } from "./sharedJobAuthorization";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { requireVerifiedStaffSession } from "./sessionAuth";
@@ -25,6 +26,7 @@ export async function requireAssignedJobExecutor(
   const job = await ctx.db.get(jobId);
   if (!job) throw new Error("Job not found");
   if (!user.companyId || user.companyId !== job.companyId) throw new Error("Access denied");
+  await requireSharedJobAccepted(ctx, job);
   if (job.timerStoppedAt !== undefined) throw new Error("Job execution is unavailable");
   if (!isRoleCompatibleWithJobExecution(user.role, job.type)) {
     throw new Error("Job execution is unavailable");

@@ -1,3 +1,4 @@
+import { requireSharedJobAccepted } from "../lib/sharedJobAuthorization";
 import { mutation, MutationCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
@@ -173,6 +174,8 @@ export const approve = mutation({
     // Check job status (authoritative) — works for both forms.submit and jobs.completeJob paths
     const job = await ctx.db.get(form.jobId);
     if (!job) throw new Error("Job not found");
+    if (job.companyId !== owner.companyId) throw new Error("Access denied");
+    await requireSharedJobAccepted(ctx, job);
     if (job.status === "approved" && form.status === "approved") return;
     if (job.status !== "submitted") throw new Error("Job not submitted for review");
     if (form.status !== "submitted") throw new Error("Required cleaning form is not submitted");
@@ -266,6 +269,8 @@ export const requestRework = mutation({
     // Check job status (authoritative) — works for both forms.submit and jobs.completeJob paths
     const job = await ctx.db.get(form.jobId);
     if (!job) throw new Error("Job not found");
+    if (job.companyId !== owner.companyId) throw new Error("Access denied");
+    await requireSharedJobAccepted(ctx, job);
     if (job.status !== "submitted") throw new Error("Job not submitted for review");
 
     await ctx.db.patch(args.formId, {

@@ -1,3 +1,4 @@
+import { SharedWorkNotice } from "@/components/SharedWorkNotice";
 import { useAttachmentUpload } from "@/hooks/useAttachmentUpload";
 import { useTranslation } from "react-i18next";
 import { compensationError } from "@/components/payments/compensationErrors";
@@ -8,7 +9,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import { useParams, useLocation } from "wouter";
+import { useParams, useLocation, Link } from "wouter";
 import { Check, Send, ImagePlus, ChevronLeft, MessageSquare } from "lucide-react";
 
 export function MaintenanceFormPage() {
@@ -44,6 +45,8 @@ export function MaintenanceFormPage() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [costEstimate, setCostEstimate] = useState("");
   const [vendor, setVendor] = useState("");
+
+  if (job?.sharedWorkAccess?.allowed === false) return <div className="max-w-2xl mx-auto"><SharedWorkNotice access={job.sharedWorkAccess} /><Link href="/jobs" className="btn-secondary">{t("navigation.backToJobs")}</Link></div>;
 
   if (!user || job === undefined || form === undefined || formItems === undefined) {
     return <PageLoader />;

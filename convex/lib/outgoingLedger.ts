@@ -1,3 +1,4 @@
+import { requireSharedJobAccepted } from "./sharedJobAuthorization";
 import type { Infer } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -107,6 +108,7 @@ export async function buildTerms(
   }
   if (!job || job.companyId !== payerCompanyId)
     throw new Error("Cross-company source rejected");
+  if (source.type === "worker_job") await requireSharedJobAccepted(ctx, job);
   const seen = new Set<string>();
   let total = 0;
   const lines: Doc<"outgoingTerms">["lines"] = [];

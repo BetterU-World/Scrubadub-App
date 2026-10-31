@@ -1,4 +1,10 @@
 {
+  "sharedWork": {
+    "pending": "Awaiting company acceptance. Your company Owner must accept this shared-work request before assignment or execution. Worker acceptance is separate.",
+    "rejected": "This shared-work request was rejected. Historical information remains available; operational changes are blocked.",
+    "manualReview": "This shared-work record needs manual review. Contact your company Owner. Existing work and financial evidence have been preserved.",
+    "disconnectedReview": "Partner disconnected. {{count}} pending shared-work record(s) need manual review; their work and financial evidence were preserved."
+  },
   "fastMode": {
     "standard": "Standard Mode",
     "fast": "Fast Mode",
