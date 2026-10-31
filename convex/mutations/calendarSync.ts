@@ -131,8 +131,10 @@ export const cronTick = internalMutation({
         await suspendConnection(ctx, connection);
         continue;
       }
-      // Skip connections that were recently synced
-      if (connection.lastSyncAt && now - connection.lastSyncAt < SYNC_INTERVAL_MS) {
+      // Empty feeds are healthy checks, but not authoritative reconciliations.
+      // Old rows have no lastCheckedAt and retain their previous scheduling.
+      const lastCheck = Math.max(connection.lastSyncAt ?? 0, connection.lastCheckedAt ?? 0);
+      if (lastCheck && now - lastCheck < SYNC_INTERVAL_MS) {
         continue;
       }
 
@@ -358,12 +360,35 @@ export const processSyncResults = internalMutation({
     totalEvents: v.number(),
     skipped: v.number(),
   },
-  returns: v.union(v.literal("success"), v.literal("skipped")),
+  returns: v.union(v.literal("success"), v.literal("empty"), v.literal("skipped")),
   handler: async (ctx, args) => {
     const connection = await ctx.db.get(args.connectionId);
     // A disabled/deleted connection, owner recovery, expired round or newer
     // attempt cancels this result. Never persist or cancel reservations for it.
     if (!connection || !isCurrentAttempt(connection, args.attemptId)) return "skipped" as const;
+
+    if (args.snapshotStatus === "valid_empty") {
+      if (args.totalEvents !== 0 || args.skipped !== 0 || args.reservations.length !== 0 ||
+          (args.cancelledUids ?? []).length !== 0) {
+        throw new Error("Inconsistent empty iCalendar snapshot");
+      }
+      const now = Date.now();
+      // A valid empty feed breaks the failure streak without proving absence.
+      // Leave lastSyncAt, all reservations and all jobs completely untouched.
+      await ctx.db.patch(connection._id, {
+        lastCheckedAt: now,
+        lastSyncStatus: "empty",
+        lastSyncError: undefined,
+        consecutiveErrors: 0,
+        syncAttempt: undefined,
+        syncCooldownUntil: now + CALENDAR_SYNC_COOLDOWN_MS,
+      });
+      await ctx.db.insert("calendarSyncLogs", {
+        connectionId: connection._id, companyId: connection.companyId,
+        syncedAt: now, status: "empty", eventsFound: 0, reservationsCreated: 0,
+      });
+      return "empty" as const;
+    }
 
     const cancelledUids = new Set(args.cancelledUids ?? []);
     const reservationUids = new Set(args.reservations.map((r) => r.uid));
@@ -515,6 +540,7 @@ export const processSyncResults = internalMutation({
 
     await ctx.db.patch(args.connectionId, {
       lastSyncAt: now,
+      lastCheckedAt: now,
       lastSyncStatus: "success" as const,
       lastSyncError: undefined,
       consecutiveErrors: 0,

@@ -2554,10 +2554,14 @@ export default defineSchema({
     label: v.optional(v.string()),
     enabled: v.boolean(),
     lastSyncAt: v.optional(v.number()),
+    // Last valid feed check, including non-authoritative empty responses.
+    // lastSyncAt remains the last authoritative reconciliation time.
+    lastCheckedAt: v.optional(v.number()),
     lastSyncStatus: v.union(
       v.literal("success"),
       v.literal("error"),
       v.literal("pending"),
+      v.literal("empty"),
     ),
     lastSyncError: v.optional(v.string()),
     // ISO date string - reservations with checkOut <= this date are skipped
@@ -2610,7 +2614,7 @@ export default defineSchema({
     connectionId: v.id("calendarConnections"),
     companyId: v.id("companies"),
     syncedAt: v.number(),
-    status: v.union(v.literal("success"), v.literal("error")),
+    status: v.union(v.literal("success"), v.literal("error"), v.literal("empty")),
     eventsFound: v.number(),
     reservationsCreated: v.number(),
     errorMessage: v.optional(v.string()),

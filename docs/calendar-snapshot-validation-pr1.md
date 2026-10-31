@@ -26,9 +26,18 @@ automation rules, reschedule/cancel linked jobs, or repair historical records.
   existing UTC-date normalization; property timezone support is not added.
 - Explicit CANCELLED events require UID but not irrelevant stay dates. They are
   represented separately from malformed/skipped candidates.
-- `syncConnection` sends only valid snapshots to persistence. Invalid, degraded,
-  and valid-empty snapshots use the existing error-recording path, retain the last
+- `syncConnection` sends valid and valid-empty snapshots to persistence. Invalid
+  and degraded snapshots use the existing error-recording path, retain the last
   successful-sync timestamp, and count toward the existing three-failure suspension.
+- A valid-empty response is a distinct non-error `empty` outcome, not authoritative
+  reconciliation. It leaves every reservation/job unchanged and preserves
+  `lastSyncAt`, clears the completed attempt and error, resets consecutive failures,
+  and records `lastCheckedAt` plus an `empty` sync log. The regular hourly cron
+  interval uses the latest valid check, falling back to `lastSyncAt` for old rows.
+  Empty feeds therefore neither suspend a healthy connection nor poll every tick.
+- The property status UI distinguishes the feed check from the last authoritative
+  reconciliation, including the case where none has completed. It does not display
+  a sync error or claim reconciliation success for empty responses.
 - `processSyncResults` checks the attempt fence first, then validation status,
   candidate identity/count consistency, skip count, and increasing dates before any
   reservation write. Missing validation status from an older in-flight action is
@@ -39,8 +48,8 @@ automation rules, reschedule/cancel linked jobs, or repair historical records.
 
 ## Tests and local validation
 
-The seven-file calendar regression set passed 122 tests, including 29 parser tests
-and transactional containment cases for every shared unsafe fixture. Tests use
+The final eight-file calendar regression set passed 137 tests, including 36 parser
+tests, 59 containment tests, and three rendered empty-status UI tests. Tests use
 synthetic records, fake clocks, and mocked fetches. The action orchestration is
 invoked through its handler against real `convex-test` mutations, following the
 existing containment-test pattern; no deployed action was invoked.
@@ -50,6 +59,9 @@ lines, missing/invalid/rolled-over dates, DURATION without DTEND, reversed/equal
 ranges, duplicate/conflicting UIDs, mixed valid/invalid events, valid-empty feeds,
 date-less cancellation, parser omissions/exceptions, fetch/HTTP/blank failures,
 idempotency, rollback, stale callbacks, admission leases, and tenant boundaries.
+Empty-feed regressions cover more than three consecutive empty checks, hourly
+scheduling, never-reconciled legacy rows, recovery on a later nonempty feed,
+real failure -> empty -> real failure streaks, rollback and stale/lost callbacks.
 Protected-record assertions compare reservation/job/payment records, manual
 overrides, assignments, notifications, and audit history before/after rejection.
 Job status preservation includes scheduled, in-progress, submitted, and approved.
@@ -65,6 +77,7 @@ vitest run
   convex/lib/__tests__/pr6bOperationalDataMigration.test.ts
   convex/lib/__tests__/jobCancellationLifecycle.test.ts
   convex/lib/__tests__/relationshipPropagation.test.ts
+  packages/frontend/src/components/owner/CalendarSyncTab.test.ts
   --configLoader runner --reporter=dot
 ```
 
@@ -75,8 +88,11 @@ passed. Unrelated working-tree generated API changes are excluded from the commi
 
 ## Compatibility, limitations and release order
 
-No schema change, migration, backfill, public API change, or frontend change is
-needed. Normal valid feeds retain their hashes, deduplication and creation gates.
+Schema changes are additive: optional `calendarConnections.lastCheckedAt` and a
+new `empty` value in connection/log status unions. Existing rows remain valid;
+no migration, backfill or public API argument change is needed. The status UI has
+a compatibility reader for the new value. Normal valid feeds retain hashes,
+deduplication and creation gates.
 The attempt fence, retry accounting, cooldowns and atomic processor transaction
 remain in place. Duplicate UIDs, including recurrence overrides sharing a UID,
 are deliberately rejected rather than guessed at or silently collapsed.
@@ -86,13 +102,24 @@ An otherwise well-formed nonempty provider feed that omits events still uses the
 existing absence-based cancellation policy. Syntax checks cannot establish semantic
 completeness. Classification/review, missing-event grace policy, identity conflicts,
 SSRF/response limits, full URL redaction, timezone redesign, calendar query limits,
-and UI changes remain separate work. This does not make calendar automation fully safe.
+and broader UI changes remain separate work. This does not make calendar automation fully safe.
 
-After explicit release approval, release the Convex backend first, with action,
-parser and mutation together. No frontend release is required. Older in-flight
-unvalidated processor calls fail without writes; existing error recording can log
-that failure. Observe error counts and suspended connections before any later
-frontend work. Re-enable a corrected feed only through the existing owner workflow.
-Do not auto-retry indefinitely, clear failures, or repair historical data.
+Release review found no need to relax raw validation for the tested common provider
+formats: explicit date-only, UTC/floating date-time, IANA and Windows TZIDs, quoted
+VALUE/TZID parameters, provider metadata, folded lines, extensions, and alarms all
+pass the real parser. These are synthetic compatibility fixtures, not certification
+against live provider exports. The deliberate DURATION-only/shared-UID recurrence
+restrictions above remain release limitations under the approved safety policy.
+
+After explicit release approval, release the compatible frontend status reader
+first (it works with old backend statuses), then deploy the Convex schema/action/
+parser/processor together. This supersedes the original backend-only release note:
+the old frontend treats an unknown status as an error. An already-open old browser
+may temporarily mislabel an empty check until refreshed; data remains protected.
+Older in-flight unvalidated processor calls fail without writes; existing error
+recording can log that failure. No previously disabled connection is automatically
+re-enabled. A genuinely failed feed still requires the existing owner recovery
+workflow. Do not perform historical repair or narrow the status schema on rollback
+while `empty` records/logs exist. Retain the compatible frontend reader on rollback.
 
 No merge, deployment, real provider sync, or production data operation was performed.

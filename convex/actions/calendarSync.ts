@@ -23,8 +23,8 @@ export const syncConnection = internalAction({
     connectionId: v.id("calendarConnections"),
     attemptId: v.optional(v.string()),
   },
-  returns: v.union(v.literal("success"), v.literal("failed"), v.literal("skipped")),
-  handler: async (ctx, args): Promise<"success" | "failed" | "skipped"> => {
+  returns: v.union(v.literal("success"), v.literal("empty"), v.literal("failed"), v.literal("skipped")),
+  handler: async (ctx, args): Promise<"success" | "empty" | "failed" | "skipped"> => {
     assertExternalSideEffectsAllowed("External calendar synchronization");
     // 1. Claim admission and obtain its current feed URL atomically.
     const attemptId = args.attemptId ?? randomUUID();
@@ -54,7 +54,7 @@ export const syncConnection = internalAction({
       // 3. Parse the feed
       stage = "Parse";
       const parseResult = parseICalFeed(rawIcs);
-      if (parseResult.status !== "valid") {
+      if (parseResult.status !== "valid" && parseResult.status !== "valid_empty") {
         throw new Error(parseResult.diagnostic ?? "Unsafe iCalendar snapshot");
       }
 

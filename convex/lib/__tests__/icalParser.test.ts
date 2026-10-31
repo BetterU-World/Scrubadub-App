@@ -47,6 +47,25 @@ describe("iCalendar snapshot validation", () => {
     expect(parseICalFeed(normalSnapshot.replace("SUMMARY:Reserved", "SUMMARY:Not available")).status).toBe("valid");
   });
 
+  it.each([
+    ["floating date-time", "DTSTART:20261026T110000", "DTEND:20261027T110000"],
+    ["IANA TZID", "DTSTART;TZID=America/New_York:20261026T110000", "DTEND;TZID=America/New_York:20261027T110000"],
+    ["quoted TZID and VALUE", 'DTSTART;VALUE=DATE-TIME;TZID="America/New_York":20261026T110000', 'DTEND;VALUE=DATE-TIME;TZID="America/New_York":20261027T110000'],
+    ["Windows TZID", 'DTSTART;TZID="Pacific Standard Time":20261026T110000', 'DTEND;TZID="Pacific Standard Time":20261027T110000'],
+    ["explicit UTC date-time", "DTSTART;VALUE=DATE-TIME:20261026T110000Z", "DTEND;VALUE=DATE-TIME:20261027T110000Z"],
+    ["quoted date VALUE", 'DTSTART;VALUE="DATE":20261026', 'DTEND;VALUE="DATE":20261027'],
+  ])("accepts common provider format: %s", (_label, start, end) => {
+    const content = normalSnapshot.replace("DTSTART;VALUE=DATE:20261026", start)
+      .replace("DTEND;VALUE=DATE:20261027", end)
+      .replace("VERSION:2.0", "VERSION:2.0\r\nPRODID:-//Synthetic Provider//EN\r\nCALSCALE:GREGORIAN\r\nX-WR-CALNAME:Rental")
+      .replace("SUMMARY:Reserved", "SUMMARY:Reserved\r\nDTSTAMP:20261020T100000Z\r\nDESCRIPTION:Provider extension data\r\nTRANSP:OPAQUE\r\nSEQUENCE:1");
+    expect(parseICalFeed(content)).toMatchObject({ status: "valid", totalEvents: 1, reservations: [expect.objectContaining({ checkIn: "2026-10-26", checkOut: "2026-10-27" })] });
+  });
+
+  it("reports valid-empty for calendars containing timezone metadata only", () => {
+    expect(parseICalFeed(calendar("BEGIN:VTIMEZONE\r\nTZID:America/New_York\r\nEND:VTIMEZONE"))).toMatchObject({ status: "valid_empty", totalEvents: 0, reservations: [], cancelledUids: [] });
+  });
+
   it("detects parser omissions even when the library returns successfully", () => {
     vi.spyOn(ical.sync, "parseICS").mockReturnValue({});
     expect(parseICalFeed(normalSnapshot)).toMatchObject({ status: "degraded", diagnostic: "Parser omitted calendar events", reservations: [] });

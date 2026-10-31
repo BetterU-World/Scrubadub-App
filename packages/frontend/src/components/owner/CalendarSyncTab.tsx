@@ -319,7 +319,9 @@ function ConnectionSection({
                 {!connection.enabled ? (
                   <span className="text-gray-400">Disabled</span>
                 ) : connection.lastSyncStatus === "pending" ? (
-                  "Waiting for first sync"
+                  "Sync pending"
+                ) : connection.lastSyncStatus === "empty" ? (
+                  <>Feed checked {timeAgo(connection.lastCheckedAt)} — no events returned</>
                 ) : connection.lastSyncStatus === "success" ? (
                   <>Last synced {timeAgo(connection.lastSyncAt)}</>
                 ) : (
@@ -342,6 +344,16 @@ function ConnectionSection({
               />
             </button>
           </div>
+
+          {connection.lastSyncStatus === "empty" && (
+            <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800">
+              Reservations and jobs were kept unchanged.
+              {connection.enabled ? <> Automatic checks will continue.</> : <> Sync is disabled.</>}
+              {connection.lastSyncAt
+                ? <> Last authoritative reconciliation: {timeAgo(connection.lastSyncAt)}.</>
+                : <> No authoritative reconciliation has completed yet.</>}
+            </div>
+          )}
 
           {connection.lastSyncError && (
             <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
@@ -443,6 +455,7 @@ function ConnectionSection({
 
 function SyncStatusIcon({ status, enabled }: { status: string; enabled: boolean }) {
   if (!enabled) return <XCircle className="w-4 h-4 text-gray-300" />;
+  if (status === "empty") return <Clock className="w-4 h-4 text-blue-600" />;
   if (status === "success") return <CheckCircle2 className="w-4 h-4 text-green-500" />;
   if (status === "error") return <AlertTriangle className="w-4 h-4 text-red-500" />;
   return <Clock className="w-4 h-4 text-amber-500" />;
