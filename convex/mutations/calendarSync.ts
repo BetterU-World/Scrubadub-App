@@ -1,3 +1,4 @@
+import { sanitizeFeedDiagnostic } from "../lib/calendarFeedSecurity";
 import { internalMutation, mutation } from "../_generated/server";
 import { areExternalSideEffectsDisabled } from "../lib/environment";
 import { internal } from "../_generated/api";
@@ -320,7 +321,7 @@ async function maybeCreateJobForReservation(
     action: "calendar_sync_create_job",
     entityType: "job",
     entityId: jobId,
-    details: `Auto-created from ${connection.platform} reservation ${reservation.externalUid} for ${propertyName} on ${reservation.checkOut}`,
+    details: `Auto-created from ${connection.platform} reservation ${reservationId} on ${reservation.checkOut}`,
     timestamp: Date.now(),
   });
 
@@ -757,7 +758,7 @@ export const recordSyncError = internalMutation({
 
     const updates: Record<string, unknown> = {
       lastSyncStatus: "error" as const,
-      lastSyncError: args.errorMessage.slice(0, 1000),
+      lastSyncError: sanitizeFeedDiagnostic(args.errorMessage),
       syncAttempt: undefined,
       syncCooldownUntil: Date.now() + CALENDAR_SYNC_COOLDOWN_MS,
     };
@@ -780,7 +781,7 @@ export const recordSyncError = internalMutation({
       status: "error",
       eventsFound: 0,
       reservationsCreated: 0,
-      errorMessage: args.errorMessage.slice(0, 1000),
+      errorMessage: sanitizeFeedDiagnostic(args.errorMessage),
     });
     return "failed" as const;
   },
