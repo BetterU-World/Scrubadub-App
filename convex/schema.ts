@@ -3,6 +3,7 @@ import { executionEvidence } from "./lib/performedWorkers";
 import { outgoingTables } from "./lib/outgoingSchema";
 import { v } from "convex/values";
 import { calendarClassification, calendarEventMetadata } from "./lib/calendarClassification";
+import { calendarIdentityReview, calendarDateReview } from "./lib/calendarReconciliation";
 import { bedroomsValidator } from "./lib/propertyBedrooms";
 import { proposalIssueContentValidator } from "./lib/proposalIssueContent";
 import { serviceAgreementIssueContentValidator } from "./lib/serviceAgreementIssuedContent";
@@ -2599,6 +2600,8 @@ export default defineSchema({
     eventVersion: v.optional(v.string()),
     eventMetadata: v.optional(calendarEventMetadata),
     classification: v.optional(calendarClassification),
+    identityReview: v.optional(calendarIdentityReview),
+    dateReview: v.optional(calendarDateReview),
     status: v.union(v.literal("active"), v.literal("cancelled")),
     linkedJobId: v.optional(v.id("jobs")),
     firstSeenAt: v.number(),
