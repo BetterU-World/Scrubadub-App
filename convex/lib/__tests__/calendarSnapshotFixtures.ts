@@ -1,11 +1,32 @@
 import { api } from "../../_generated/api";
 
-/** Exercise the real authorized decision path in older job-focused regressions. */
+/** Existing job-focused fixtures represent owner-verified separate bookings.
+ * Exercise explicit identity/date review before guest confirmation; do not use
+ * this helper in ambiguity tests, which must assert that automation stays held.
+ */
 export async function confirmGuestForTest(t: any, reservationId: any, sessionToken: string) {
-  const { reservation, connection } = await t.run(async (ctx: any) => {
+  const load = () => t.run(async (ctx: any) => {
     const reservation = await ctx.db.get(reservationId);
     return { reservation, connection: await ctx.db.get(reservation.connectionId) };
   });
+  let { reservation, connection } = await load();
+  if (reservation.identityReview?.state === "pending") {
+    for (let retry = 0; retry < 2; retry++) {
+      const result = await t.mutation(api.mutations.calendarSync.reviewReservationIdentity, {
+        sessionToken, reservationId, expectedEventVersion: reservation.eventVersion,
+        expectedFeedRevision: connection.feedRevision ?? 0, expectedRevision: reservation.identityReview.revision, decision: "distinct",
+      });
+      ({ reservation, connection } = await load());
+      if (result !== "stale") break;
+    }
+  }
+  if (reservation.dateReview?.state === "pending") {
+    await t.mutation(api.mutations.calendarSync.acknowledgeReservationDates, {
+      sessionToken, reservationId, expectedEventVersion: reservation.eventVersion,
+      expectedFeedRevision: connection.feedRevision ?? 0, expectedRevision: reservation.dateReview.revision,
+    });
+    ({ reservation, connection } = await load());
+  }
   return t.mutation(api.mutations.calendarSync.confirmEventClassification, {
     sessionToken, reservationId, kind: "guest_reservation", expectedEventVersion: reservation.eventVersion,
     expectedRevision: reservation.classification?.revision ?? 0,
