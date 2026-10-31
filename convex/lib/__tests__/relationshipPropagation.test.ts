@@ -238,6 +238,7 @@ describe("relationship propagation", () => {
     await t.mutation(internal.mutations.calendarSync.processSyncResults, {
       connectionId,
       attemptId: "relationship-propagation",
+      snapshotStatus: "valid",
       reservations: [{
         uid: `reservation-${linked}`,
         checkIn: "2030-01-09",

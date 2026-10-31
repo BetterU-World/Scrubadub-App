@@ -341,6 +341,10 @@ export const processSyncResults = internalMutation({
   args: {
     connectionId: v.id("calendarConnections"),
     attemptId: v.string(),
+    // Optional at the wire boundary so old in-flight actions fail safely in the
+    // handler; unvalidated results must never become authoritative snapshots.
+    snapshotStatus: v.optional(v.union(v.literal("valid"), v.literal("valid_empty"), v.literal("invalid"), v.literal("degraded"))),
+    cancelledUids: v.optional(v.array(v.string())),
     reservations: v.array(
       v.object({
         uid: v.string(),
@@ -360,6 +364,18 @@ export const processSyncResults = internalMutation({
     // A disabled/deleted connection, owner recovery, expired round or newer
     // attempt cancels this result. Never persist or cancel reservations for it.
     if (!connection || !isCurrentAttempt(connection, args.attemptId)) return "skipped" as const;
+
+    const cancelledUids = new Set(args.cancelledUids ?? []);
+    const reservationUids = new Set(args.reservations.map((r) => r.uid));
+    if (args.snapshotStatus !== "valid" || args.skipped !== 0 ||
+        args.reservations.length + cancelledUids.size === 0 ||
+        reservationUids.size !== args.reservations.length ||
+        cancelledUids.size !== (args.cancelledUids ?? []).length ||
+        args.totalEvents !== args.reservations.length + cancelledUids.size ||
+        [...cancelledUids].some((uid) => !uid.trim() || reservationUids.has(uid)) ||
+        args.reservations.some((r) => !r.uid.trim() || r.checkOut <= r.checkIn)) {
+      throw new Error("Unsafe or unvalidated iCalendar snapshot");
+    }
 
     const now = Date.now();
     let reservationsCreated = 0;
@@ -476,7 +492,10 @@ export const processSyncResults = internalMutation({
       .collect();
 
     for (const existing of allExisting) {
-      if (!incomingUids.has(existing.externalUid)) {
+      // Cancellation-only snapshots authorize only their explicit UIDs. A feed
+      // with no active candidates is never authoritative evidence of absence.
+      if (cancelledUids.has(existing.externalUid) ||
+          (args.reservations.length > 0 && !incomingUids.has(existing.externalUid))) {
         const updates: Record<string, unknown> = {
           status: "cancelled",
           cancelledAt: now,

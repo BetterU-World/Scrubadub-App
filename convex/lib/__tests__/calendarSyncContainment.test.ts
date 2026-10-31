@@ -7,6 +7,7 @@ import { syncConnection } from "../../actions/calendarSync";
 import { cronTick, processSyncResults } from "../../mutations/calendarSync";
 import { parseICalFeed } from "../../actions/icalParser";
 import { hashPassword } from "../password";
+import { calendar, cancelledEvent, reservationEvent, unsafeSnapshots } from "./calendarSnapshotFixtures";
 
 vi.mock("../../actions/icalParser", async (original) => {
   const actual = await original<typeof import("../../actions/icalParser")>();
@@ -32,7 +33,7 @@ async function setup() {
     t, ...ids,
     state: () => t.run((ctx) => ctx.db.get(ids.connectionId)),
     begin: (attemptId: string) => t.mutation(sync.beginSyncAttempt, { connectionId: ids.connectionId, attemptId }),
-    process: (attemptId: string, reservations = parseICalFeed(feed).reservations) => t.mutation(sync.processSyncResults, { connectionId: ids.connectionId, attemptId, reservations, totalEvents: reservations.length, skipped: 0 }),
+    process: (attemptId: string, reservations = parseICalFeed(feed).reservations) => t.mutation(sync.processSyncResults, { connectionId: ids.connectionId, attemptId, snapshotStatus: "valid", reservations, totalEvents: reservations.length, skipped: 0 }),
     fail: (attemptId: string) => t.mutation(sync.recordSyncError, { connectionId: ids.connectionId, attemptId, errorMessage: "Injected failure" }),
     // Execute the real orchestration against real in-memory transactions, with
     // one injectable boundary for processor/error-recording transport failures.
@@ -66,6 +67,117 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.restoreAllMocks(); vi.mocked(parseICalFeed).mockClear(); });
 
 describe("calendar sync failure containment", () => {
+  it.each(unsafeSnapshots)("contains $name after a successful import without touching protected records", async ({ content }) => {
+    const s = await setup();
+    expect(await s.run()).toBe("success");
+    const lastSuccess = (await s.state())!.lastSyncAt;
+    await s.t.run(async (ctx) => {
+      const job = (await ctx.db.query("jobs").collect())[0];
+      const workerId = await ctx.db.insert("users", { companyId: s.companyId, email: "worker@test.dev", passwordHash: "unused-test-hash", name: "Worker", role: "cleaner", status: "active" });
+      const paymentId = await ctx.db.insert("cleanerPayments", { companyId: s.companyId, jobId: job._id, cleanerUserId: workerId, amountCents: 12500, status: "OPEN", createdAt: NOW });
+      await ctx.db.patch(job._id, { cleanerIds: [workerId], notes: "Human override", startTime: "09:15", plannedCleanerPayCents: 12500, cleanerPaymentId: paymentId });
+    });
+    const protectedRecords = () => s.t.run(async (ctx) => ({
+      reservations: await ctx.db.query("calendarReservations").collect(),
+      jobs: await ctx.db.query("jobs").collect(),
+      payments: await ctx.db.query("cleanerPayments").collect(),
+      notifications: await ctx.db.query("notifications").collect(),
+      audit: await ctx.db.query("auditLog").collect(),
+    }));
+    const before = await protectedRecords();
+    vi.advanceTimersByTime(60_000);
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(content));
+    expect(await s.run()).toBe("failed");
+    expect(await protectedRecords()).toEqual(before);
+    expect(await s.state()).toMatchObject({ lastSyncAt: lastSuccess, lastSyncStatus: "error", consecutiveErrors: 1, enabled: true });
+    const logs = await s.t.run((ctx) => ctx.db.query("calendarSyncLogs").collect());
+    expect(logs.map(log => log.status)).toEqual(["success", "error"]);
+    expect(logs[1].errorMessage).not.toContain("https://");
+  });
+
+  it.each(["scheduled", "in_progress", "submitted", "approved"] as const)("preserves %s linked jobs and compensation on invalid snapshots", async (status) => {
+    const s = await setup();
+    await s.run();
+    const jobId = await s.t.run(async (ctx) => {
+      const job = (await ctx.db.query("jobs").collect())[0];
+      await ctx.db.patch(job._id, {
+        status, plannedCleanerPayCents: 10000, notes: "Preserve history",
+        ...(["submitted", "approved"].includes(status) ? {
+          executionHistory: [{ sequence: 1, provenance: "submission_confirmed" as const,
+            confirmedById: s.ownerId, confirmedAt: NOW, scheduledDate: job.scheduledDate,
+            workers: [{ userId: s.ownerId, displayName: "Owner", role: "owner" }] }],
+          submittedExecutionSequence: 1,
+          ...(status === "approved" ? { approvedExecutionSequence: 1, approvedAt: NOW } : {}),
+        } : {}),
+      });
+      return job._id;
+    });
+    const before = await s.t.run((ctx) => ctx.db.get(jobId));
+    vi.advanceTimersByTime(60_000);
+    vi.mocked(fetch).mockResolvedValueOnce(new Response("<html>Error</html>"));
+    expect(await s.run()).toBe("failed");
+    expect(await s.t.run((ctx) => ctx.db.get(jobId))).toEqual(before);
+  });
+
+  it("recognizes date-less explicit cancellation without canceling unrelated reservations or jobs", async () => {
+    const s = await setup();
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(calendar(`${reservationEvent()}\r\n${reservationEvent("unrelated")}`)));
+    await s.run();
+    const jobs = await s.t.run((ctx) => ctx.db.query("jobs").collect());
+    vi.advanceTimersByTime(60_000);
+    vi.mocked(fetch).mockResolvedValueOnce(new Response(calendar(cancelledEvent())));
+    expect(await s.run()).toBe("success");
+    const reservations = await s.t.run((ctx) => ctx.db.query("calendarReservations").collect());
+    expect(reservations.find(r => r.externalUid === "reservation-one")).toMatchObject({ status: "cancelled", cancellationFlagged: true });
+    expect(reservations.find(r => r.externalUid === "unrelated")).toMatchObject({ status: "active" });
+    expect(await s.t.run((ctx) => ctx.db.query("jobs").collect())).toEqual(jobs);
+  });
+
+  it.each(["invalid", "degraded", "valid_empty", undefined] as const)("rejects a direct %s snapshot before persistence", async (snapshotStatus) => {
+    const s = await setup();
+    await s.run();
+    vi.advanceTimersByTime(60_000);
+    await s.begin("unsafe-direct");
+    const state = await s.state();
+    const reservations = await s.t.run((ctx) => ctx.db.query("calendarReservations").collect());
+    await expect(s.t.mutation(sync.processSyncResults, { connectionId: s.connectionId, attemptId: "unsafe-direct", snapshotStatus, reservations: [], totalEvents: 0, skipped: 0 })).rejects.toThrow("Unsafe or unvalidated");
+    expect(await s.state()).toEqual(state);
+    expect(await s.t.run((ctx) => ctx.db.query("calendarReservations").collect())).toEqual(reservations);
+  });
+
+  it("fences an invalid old response after a newer successful attempt", async () => {
+    const s = await setup();
+    let release!: (response: Response) => void;
+    let entered!: () => void;
+    const started = new Promise<void>(resolve => { entered = resolve; });
+    vi.mocked(fetch).mockImplementationOnce(() => { entered(); return new Promise(resolve => { release = resolve; }); });
+    const old = s.run();
+    await started;
+    vi.advanceTimersByTime(10 * 60_000);
+    expect(await s.run()).toBe("success");
+    const state = await s.state();
+    const reservations = await s.t.run((ctx) => ctx.db.query("calendarReservations").collect());
+    release(new Response("<html>Error</html>"));
+    expect(await old).toBe("skipped");
+    expect(await s.state()).toEqual(state);
+    expect(await s.t.run((ctx) => ctx.db.query("calendarReservations").collect())).toEqual(reservations);
+    expect(await s.t.run((ctx) => ctx.db.query("calendarSyncLogs").collect())).toHaveLength(1);
+  });
+
+  it.each(["blank", "HTTP error", "fetch exception", "parser exception"])("contains %s responses with existing records", async (failure) => {
+    const s = await setup();
+    await s.run();
+    const before = await s.t.run(async (ctx) => ({ jobs: await ctx.db.query("jobs").collect(), reservations: await ctx.db.query("calendarReservations").collect() }));
+    vi.advanceTimersByTime(60_000);
+    if (failure === "blank") vi.mocked(fetch).mockResolvedValueOnce(new Response(""));
+    if (failure === "HTTP error") vi.mocked(fetch).mockResolvedValueOnce(new Response("Unavailable", { status: 503 }));
+    if (failure === "fetch exception") vi.mocked(fetch).mockRejectedValueOnce(new Error("Injected fetch failure"));
+    if (failure === "parser exception") vi.mocked(parseICalFeed).mockImplementationOnce(() => { throw new Error("Injected parser failure"); });
+    expect(await s.run()).toBe("failed");
+    expect(await s.t.run(async (ctx) => ({ jobs: await ctx.db.query("jobs").collect(), reservations: await ctx.db.query("calendarReservations").collect() }))).toEqual(before);
+    expect(await s.state()).toMatchObject({ lastSyncAt: NOW, lastSyncStatus: "error" });
+  });
+
   it.each(["fetch", "parse", "processing"] as const)("records %s failure without advancing the last success", async (stage) => {
     const s = await setup();
     if (stage === "fetch") vi.mocked(fetch).mockRejectedValueOnce(new Error("Fetch unavailable"));
@@ -165,7 +277,7 @@ describe("calendar sync failure containment", () => {
         const value = Reflect.get(target, key);
         return typeof value === "function" ? value.bind(target) : value;
       } });
-      await (processSyncResults as any)._handler({ ...ctx, db }, { connectionId: s.connectionId, attemptId: "persistence-failure", ...parseICalFeed(feed) });
+      await (processSyncResults as any)._handler({ ...ctx, db }, { connectionId: s.connectionId, attemptId: "persistence-failure", ...parseICalFeed(feed), snapshotStatus: "valid" });
     })).rejects.toThrow("Injected persistence failure");
     await s.t.mutation(sync.recordSyncError, { connectionId: s.connectionId, attemptId: "persistence-failure", errorMessage: "Processing error: Injected persistence failure" });
     expect(await s.state()).toMatchObject({ lastSyncAt: LAST_SUCCESS, lastSyncStatus: "error", consecutiveErrors: 1 });

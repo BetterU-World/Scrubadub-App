@@ -10,6 +10,16 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 import ical from "node-ical";
 import { createHash } from "crypto";
+import { validateRawCalendar } from "../lib/icalSnapshot";
+
+export interface CalendarSnapshot {
+  status: "valid" | "valid_empty" | "invalid" | "degraded";
+  diagnostic?: string;
+  reservations: ParsedReservation[];
+  cancelledUids: string[];
+  totalEvents: number;
+  skipped: number;
+}
 
 export interface ParsedReservation {
   /** The iCal UID — primary dedup key */
@@ -30,20 +40,9 @@ export interface ParsedReservation {
  * Extract a date-only ISO string ("YYYY-MM-DD") from an ical date value.
  * Handles both VALUE=DATE (dateOnly) and VALUE=DATE-TIME formats.
  *
- * For VALUE=DATE (dateOnly === true):
- *   node-ical stores these as midnight UTC. The UTC date components are the
- *   exact calendar date from the feed. Safe to use getUTC*().
- *
- * For VALUE=DATE-TIME (dateOnly falsy):
- *   node-ical converts to a JS Date in UTC. If the original event had a
- *   timezone (e.g. America/New_York 11:00 AM → UTC 15:00), the UTC date
- *   could differ from the local date. However Airbnb and Vrbo feeds
- *   consistently use VALUE=DATE for reservations, so timed events are rare.
- *   For the uncommon timed case we still extract the UTC date — this is safe
- *   because checkout times are typically morning/midday, well before the UTC
- *   date boundary for any US timezone. A property in UTC-12 with a late-night
- *   checkout could shift by one day, but that scenario doesn't occur with
- *   real Airbnb/Vrbo feeds which always use VALUE=DATE.
+ * Used for timed events and DTSTAMP only. Date-only stay fields are preserved
+ * directly from the validated feed, independently of the server timezone.
+ * Timed events retain existing UTC-date behavior; property TZ is follow-up work.
  */
 function toDateString(d: Date | undefined | null): string | null {
   if (!d || !(d instanceof Date) || isNaN(d.getTime())) return null;
@@ -66,26 +65,30 @@ function computeHash(uid: string, checkIn: string, checkOut: string, summary: st
 /**
  * Parse raw .ics content into normalized reservation candidates.
  *
- * Parsing rules (V1, conservative):
- * - Skip VEVENTs without a UID
- * - Skip VEVENTs without DTEND (no checkout = no job possible)
- * - Skip VEVENTs where STATUS is CANCELLED
- * - Skip zero-length events where DTSTART === DTEND
- * - Normalize all dates to date-only ISO strings
- *
- * Returns only valid, parseable reservations. Invalid events are counted
- * in the `skipped` field for logging.
+ * Reject the entire snapshot for invalid structure or any malformed candidate.
+ * Account for every raw VEVENT after parsing to detect silent parser omissions.
+ * Explicit cancellations carry UIDs without requiring irrelevant stay dates.
+ * Syntactic validity does not establish provider snapshot completeness.
  */
-export function parseICalFeed(rawIcs: string): {
-  reservations: ParsedReservation[];
-  totalEvents: number;
-  skipped: number;
-} {
-  const parsed = ical.sync.parseICS(rawIcs);
+export function parseICalFeed(rawIcs: string): CalendarSnapshot {
+  const raw = validateRawCalendar(rawIcs);
+  const reject = (status: "invalid" | "degraded", diagnostic: string): CalendarSnapshot => ({
+    status, diagnostic, reservations: [], cancelledUids: [], totalEvents: 0, skipped: 0,
+  });
+  if (raw.status !== "valid") return reject(raw.status, raw.diagnostic);
+  const rawByUid = new Map(raw.events.map((event) => [event.uid, event]));
+  let parsed: ReturnType<typeof ical.sync.parseICS>;
+  try {
+    parsed = ical.sync.parseICS(raw.content);
+  } catch {
+    return reject("invalid", "iCalendar parser failed");
+  }
 
   let totalEvents = 0;
-  let skipped = 0;
+  const skipped = 0;
   const reservations: ParsedReservation[] = [];
+  const cancelledUids: string[] = [];
+  const seen = new Set<string>();
 
   for (const key of Object.keys(parsed)) {
     const event = parsed[key];
@@ -94,35 +97,35 @@ export function parseICalFeed(rawIcs: string): {
     if (!event || event.type !== "VEVENT") continue;
     totalEvents++;
 
-    // Skip: no UID
-    const uid = event.uid;
-    if (!uid || typeof uid !== "string" || uid.trim() === "") {
-      skipped++;
+    // Match parsed events to the validated raw identities.
+    const uid = typeof event.uid === "string" ? event.uid.trim() : "";
+    const source = rawByUid.get(uid);
+    if (!source || seen.has(uid)) return reject("degraded", "Parser event identity mismatch");
+    seen.add(uid);
+
+    // Explicit cancellation is not a malformed or silently skipped stay.
+    if (source.cancelled) {
+      cancelledUids.push(uid);
       continue;
     }
 
-    // Skip: STATUS is CANCELLED (case-insensitive)
-    if (
-      typeof event.status === "string" &&
-      event.status.toUpperCase() === "CANCELLED"
-    ) {
-      skipped++;
-      continue;
-    }
-
-    // Skip: no DTSTART or DTEND
-    const startDate = toDateString(event.start as Date | undefined);
-    const endDate = toDateString(event.end as Date | undefined);
+    // Raw validation already requires explicitly supplied stay dates.
+    // Preserve DATE values verbatim: node-ical represents them in the server's
+    // local timezone. Timed events retain existing UTC normalization.
+    const normalize = (value: string, date: Date | undefined) => /^\d{8}$/.test(value)
+      ? `${value.slice(0, 4)}-${value.slice(4, 6)}-${value.slice(6, 8)}` : toDateString(date);
+    const startDate = normalize(source.start!.value, event.start as Date | undefined);
+    const endDate = normalize(source.end!.value, event.end as Date | undefined);
 
     if (!startDate || !endDate) {
-      skipped++;
-      continue;
+      return reject("degraded", "Invalid event dates");
     }
 
-    // Skip: zero-length event (DTSTART === DTEND)
-    if (startDate === endDate) {
-      skipped++;
-      continue;
+    // Do not create turnovers for same-date or reversed stays.
+    if (endDate <= startDate || !(event.start instanceof Date) || !(event.end instanceof Date) ||
+        !Number.isFinite(event.start.getTime()) || !Number.isFinite(event.end.getTime()) ||
+        event.end.getTime() <= event.start.getTime()) {
+      return reject("degraded", "Checkout must be after check-in");
     }
 
     // Extract optional fields
@@ -142,5 +145,10 @@ export function parseICalFeed(rawIcs: string): {
     });
   }
 
-  return { reservations, totalEvents, skipped };
+  if (seen.size !== raw.events.length) return reject("degraded", "Parser omitted calendar events");
+  return {
+    status: totalEvents === 0 ? "valid_empty" : "valid",
+    ...(totalEvents === 0 ? { diagnostic: "Empty calendar is not authoritative cancellation evidence" } : {}),
+    reservations, cancelledUids, totalEvents, skipped,
+  };
 }

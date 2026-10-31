@@ -276,6 +276,7 @@ describe("calendar sync atomic work admission", () => {
     expect(await s.scheduled()).toEqual([]);
     expect(await s.t.mutation(sync.processSyncResults, {
       connectionId: s.connectionId, attemptId: "pre-admission", skipped: 0, totalEvents: 1,
+      snapshotStatus: "valid",
       reservations: [{ uid: "legacy", checkIn: "2026-10-26", checkOut: "2026-10-27", rawHash: "legacy" }],
     })).toBe("success");
     expect(await s.state()).toMatchObject({ consecutiveErrors: 0, lastSyncStatus: "success", lastSyncAt: NOW });

@@ -54,6 +54,9 @@ export const syncConnection = internalAction({
       // 3. Parse the feed
       stage = "Parse";
       const parseResult = parseICalFeed(rawIcs);
+      if (parseResult.status !== "valid") {
+        throw new Error(parseResult.diagnostic ?? "Unsafe iCalendar snapshot");
+      }
 
       // 4. Processing and success recording commit together in this mutation.
       stage = "Processing";
@@ -62,6 +65,8 @@ export const syncConnection = internalAction({
         {
           connectionId: args.connectionId,
           attemptId,
+          snapshotStatus: parseResult.status,
+          cancelledUids: parseResult.cancelledUids,
           reservations: parseResult.reservations.map((r) => ({
             uid: r.uid,
             summary: r.summary,
