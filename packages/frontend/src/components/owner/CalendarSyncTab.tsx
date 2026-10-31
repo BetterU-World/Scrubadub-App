@@ -134,8 +134,9 @@ export function CalendarSyncTab({
       )}
 
       {/* Reservations Section */}
-      {hasConnection && reservations && reservations.length > 0 && (
-        <ReservationsSection reservations={reservations} />
+      {reservations && reservations.length > 0 && (
+        <ReservationsSection reservations={reservations} connections={connections ?? []}
+          propertyName={propertyName} userId={userId} sessionToken={sessionToken} />
       )}
 
       {/* Explainer */}
@@ -145,7 +146,8 @@ export function CalendarSyncTab({
           <li>SCRUB checks your calendar feed every hour for new reservations</li>
           <li>One unassigned cleaning job is auto-created per checkout date</li>
           <li>You still assign cleaners manually after jobs are created</li>
-          <li>If a reservation changes or cancels, you'll be notified to review</li>
+          <li>Missing reservations stay active and appear below for owner review; absence does not confirm cancellation</li>
+          <li>Reservation changes and explicit cancellations do not modify existing cleaning jobs</li>
         </ul>
       </div>
     </div>
@@ -667,9 +669,14 @@ function AutomationRulesSection({
 
 // ── Reservations Section ────────────────────────────────────────────────
 
-function ReservationsSection({ reservations }: { reservations: any[] }) {
+function ReservationsSection({ reservations, connections, propertyName, userId, sessionToken }: {
+  reservations: any[]; connections: any[]; propertyName: string; userId: Id<"users">; sessionToken: string;
+}) {
   const [expanded, setExpanded] = useState(false);
-  const visible = expanded ? reservations : reservations.slice(0, 5);
+  // Keep unresolved missing episodes visible ahead of recent ordinary imports.
+  const priority = (res: any) => res.missing ? (res.missing.acknowledgedAt === undefined ? 2 : 1) : 0;
+  const ordered = [...reservations].sort((a, b) => priority(b) - priority(a));
+  const visible = expanded ? ordered : ordered.slice(0, 5);
 
   return (
     <div className="card">
@@ -677,10 +684,12 @@ function ReservationsSection({ reservations }: { reservations: any[] }) {
         <h3 className="font-semibold text-gray-900">Synced Reservations</h3>
         <span className="text-xs text-gray-400">{reservations.length} total</span>
       </div>
+      <p className="text-xs text-gray-500 mb-2">Property: {propertyName}. Acknowledgement records review only; it does not cancel a reservation or change a job.</p>
 
       <div className="divide-y divide-gray-100">
         {visible.map((res) => (
-          <ReservationRow key={res._id} reservation={res} />
+          <ReservationRow key={res._id} reservation={res}
+            connection={connections.find((item) => item._id === res.connectionId)} userId={userId} sessionToken={sessionToken} />
         ))}
       </div>
 
@@ -700,7 +709,24 @@ function ReservationsSection({ reservations }: { reservations: any[] }) {
   );
 }
 
-function ReservationRow({ reservation }: { reservation: any }) {
+function ReservationRow({ reservation, connection, userId, sessionToken }: {
+  reservation: any; connection: any; userId: Id<"users">; sessionToken: string;
+}) {
+  const acknowledge = useMutation(api.mutations.calendarSync.acknowledgeMissingReservation);
+  const [reviewing, setReviewing] = useState(false);
+  const [reviewError, setReviewError] = useState("");
+  const missing = reservation.missing;
+  const handleAcknowledge = async () => {
+    setReviewing(true);
+    setReviewError("");
+    try {
+      await acknowledge({ sessionToken, userId, reservationId: reservation._id, episodeId: missing.episodeId });
+    } catch (error: any) {
+      setReviewError(error.message || "Could not acknowledge this reservation");
+    } finally {
+      setReviewing(false);
+    }
+  };
   const isCancelled = reservation.status === "cancelled";
   const hasJob = !!reservation.linkedJobId;
   const hasConflict = reservation.dateConflict;
@@ -719,6 +745,7 @@ function ReservationRow({ reservation }: { reservation: any }) {
               Cancelled
             </span>
           )}
+          {missing && <span className="text-xs font-medium text-amber-800">Missing from feed — {missing.acknowledgedAt === undefined ? "review needed" : "acknowledged"}</span>}
           {hasConflict && (
             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">
               Dates changed
@@ -730,6 +757,27 @@ function ReservationRow({ reservation }: { reservation: any }) {
             </span>
           )}
         </div>
+        <div className="text-xs text-gray-500 mt-1">
+          Feed: {connection ? `${connection.label || connection.platform} (${connection.platform})` : "Removed feed"}
+          {reservation.connectionId && <> · {String(reservation.connectionId).slice(-6)}</>}
+        </div>
+        {missing && (
+          <div className="mt-2 rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900 space-y-1">
+            <p>Not confirmed canceled. The reservation remains active; any linked job is unchanged.</p>
+            <p>Last seen: {new Date(reservation.lastSeenAt).toLocaleString()}.</p>
+            <p>First missing: {new Date(missing.firstMissingAt).toLocaleString()}. Last missing: {new Date(missing.lastMissingAt).toLocaleString()}.</p>
+            <p>Absent from {missing.observations} valid nonempty sync{missing.observations === 1 ? "" : "s"}. {hasJob ? "Cleaning job linked." : "No cleaning job linked."}</p>
+            {missing.acknowledgedAt !== undefined ? (
+              <p>Acknowledged {new Date(missing.acknowledgedAt).toLocaleString()}. Still missing; future observations will continue to be counted.</p>
+            ) : (
+              <button onClick={handleAcknowledge} disabled={reviewing} className="btn-secondary text-xs">
+                {reviewing ? "Acknowledging…" : "Acknowledge missing reservation"}
+              </button>
+            )}
+            {reviewError && <p role="alert" className="text-red-700">{reviewError}</p>}
+          </div>
+        )}
+        {isCancelled && reservation.cancellationEvidence && <p className="text-xs text-gray-500 mt-1">Provider explicitly canceled this reservation {new Date(reservation.cancellationEvidence.observedAt).toLocaleString()}. Linked jobs are unchanged.</p>}
         <div className="text-xs text-gray-400 mt-0.5">
           {reservation.summary && <span>{reservation.summary} · </span>}
           {wasSkipped && reservation.skipReason && (
@@ -746,7 +794,7 @@ function ReservationRow({ reservation }: { reservation: any }) {
       <div className="flex-shrink-0">
         {hasJob ? (
           <Link
-            href={`/jobs`}
+            href={`/jobs/${reservation.linkedJobId}`}
             className="inline-flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700 font-medium"
           >
             View job <ExternalLink className="w-3 h-3" />

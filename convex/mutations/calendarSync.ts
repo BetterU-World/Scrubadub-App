@@ -335,7 +335,7 @@ async function maybeCreateJobForReservation(
  * Responsibilities:
  *   - Create or update calendarReservations
  *   - Auto-create unassigned jobs for eligible reservations
- *   - Detect cancelled reservations (UIDs that disappeared from feed)
+ *   - Record explicit cancellations and review-only missing observations
  *   - Update connection sync status
  *   - Write sync log entry
  */
@@ -406,6 +406,7 @@ export const processSyncResults = internalMutation({
     let reservationsCreated = 0;
     let reservationsUpdated = 0;
     let reservationsCancelled = 0;
+    let reservationsMissing = 0;
     let jobsCreated = 0;
 
     // Build a set of UIDs present in this sync for cancellation detection
@@ -417,10 +418,9 @@ export const processSyncResults = internalMutation({
       // Look up existing reservation by externalUid + connectionId
       const existing = await ctx.db
         .query("calendarReservations")
-        .withIndex("by_connectionId", (q) =>
-          q.eq("connectionId", args.connectionId)
+        .withIndex("by_connectionId_externalUid", (q) =>
+          q.eq("connectionId", args.connectionId).eq("externalUid", res.uid)
         )
-        .filter((q) => q.eq(q.field("externalUid"), res.uid))
         .first();
 
       if (!existing) {
@@ -463,12 +463,26 @@ export const processSyncResults = internalMutation({
         // ── Existing reservation ───────────────────────────────────────
 
         const updates: Record<string, unknown> = { lastSeenAt: now };
+        if (existing.missing) {
+          updates.missing = undefined;
+          await logAudit(ctx, {
+            companyId: connection.companyId, userId: connection.createdBy,
+            action: "calendar_reservation_missing_resolved", entityType: "calendarReservation", entityId: existing._id,
+            details: JSON.stringify({ ...existing.missing, resolution: "reappeared" }),
+          });
+        }
 
         // If reservation was previously cancelled but reappeared, reactivate
         if (existing.status === "cancelled") {
           updates.status = "active";
           updates.cancelledAt = undefined;
           updates.cancellationFlagged = undefined;
+          updates.cancellationEvidence = undefined;
+          await logAudit(ctx, {
+            companyId: connection.companyId, userId: connection.createdBy,
+            action: "calendar_reservation_reactivated", entityType: "calendarReservation", entityId: existing._id,
+            details: JSON.stringify({ previousCancellationEvidence: existing.cancellationEvidence }),
+          });
         }
 
         // If hash changed, dates or summary changed — update fields
@@ -504,9 +518,29 @@ export const processSyncResults = internalMutation({
       }
     }
 
-    // ── Detect cancellations ───────────────────────────────────────────
-    // Reservations previously seen from this connection that are no longer
-    // in the feed are marked as cancelled.
+    // Only explicit provider cancellation evidence may cancel a reservation.
+    // Include already-cancelled rows so a legacy cancellation can gain actual
+    // evidence when observed, without inferring or repairing historical state.
+    for (const uid of cancelledUids) {
+      const existing = await ctx.db.query("calendarReservations")
+        .withIndex("by_connectionId_externalUid", (q) => q.eq("connectionId", args.connectionId).eq("externalUid", uid))
+        .first();
+      if (!existing || (existing.status === "cancelled" && existing.cancellationEvidence)) continue;
+      await ctx.db.patch(existing._id, {
+        status: "cancelled", cancelledAt: existing.status === "cancelled" ? (existing.cancelledAt ?? now) : now, missing: undefined,
+        cancellationFlagged: existing.linkedJobId ? true : undefined,
+        cancellationEvidence: { source: "ical_status_cancelled", observedAt: now, attemptId: args.attemptId },
+      });
+      await logAudit(ctx, {
+        companyId: connection.companyId, userId: connection.createdBy,
+        action: "calendar_reservation_explicitly_cancelled", entityType: "calendarReservation", entityId: existing._id,
+        details: JSON.stringify({ source: "ical_status_cancelled", attemptId: args.attemptId, missingEpisode: existing.missing }),
+      });
+      reservationsCancelled++;
+    }
+
+    // Absence is an observation requiring review, never confirmation of a
+    // cancellation. The attempt fence makes each committed observation unique.
 
     const allExisting = await ctx.db
       .query("calendarReservations")
@@ -517,22 +551,20 @@ export const processSyncResults = internalMutation({
       .collect();
 
     for (const existing of allExisting) {
-      // Cancellation-only snapshots authorize only their explicit UIDs. A feed
-      // with no active candidates is never authoritative evidence of absence.
-      if (cancelledUids.has(existing.externalUid) ||
-          (args.reservations.length > 0 && !incomingUids.has(existing.externalUid))) {
-        const updates: Record<string, unknown> = {
-          status: "cancelled",
-          cancelledAt: now,
-        };
-
-        // If a job was linked, flag for owner review (do NOT auto-cancel)
-        if (existing.linkedJobId) {
-          updates.cancellationFlagged = true;
+      if (!incomingUids.has(existing.externalUid)) {
+        const missing = existing.missing
+          ? { ...existing.missing, lastMissingAt: now, observations: existing.missing.observations + 1 }
+          : { episodeId: args.attemptId, firstMissingAt: now, lastMissingAt: now, observations: 1 };
+        await ctx.db.patch(existing._id, { missing });
+        if (!existing.missing) {
+          await logAudit(ctx, {
+            companyId: connection.companyId, userId: connection.createdBy,
+            action: "calendar_reservation_missing", entityType: "calendarReservation", entityId: existing._id,
+            details: JSON.stringify({ ...missing, lastSeenAt: existing.lastSeenAt,
+              checkIn: existing.checkIn, checkOut: existing.checkOut, connectionId: existing.connectionId, propertyId: existing.propertyId }),
+          });
         }
-
-        await ctx.db.patch(existing._id, updates);
-        reservationsCancelled++;
+        reservationsMissing++;
       }
     }
 
@@ -557,16 +589,45 @@ export const processSyncResults = internalMutation({
       status: "success",
       eventsFound: args.totalEvents,
       reservationsCreated,
+      reservationsMissing,
+      reservationsCancelled,
       errorMessage: undefined,
     });
 
     console.log(
       `[calendarSync] Connection ${args.connectionId}: ` +
         `${args.totalEvents} events, ${reservationsCreated} new, ` +
-        `${reservationsUpdated} updated, ${reservationsCancelled} cancelled, ` +
+        `${reservationsUpdated} updated, ${reservationsCancelled} explicitly cancelled, ${reservationsMissing} missing, ` +
         `${jobsCreated} jobs created, ${args.skipped} skipped`
     );
     return "success" as const;
+  },
+});
+
+/** Acknowledgement records owner review, not cancellation or job resolution. */
+export const acknowledgeMissingReservation = mutation({
+  args: {
+    sessionToken: v.string(), userId: v.optional(v.id("users")),
+    reservationId: v.id("calendarReservations"), episodeId: v.string(),
+  },
+  returns: v.union(v.literal("acknowledged"), v.literal("already_acknowledged")),
+  handler: async (ctx, args) => {
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const reservation = await ctx.db.get(args.reservationId);
+    if (!reservation || reservation.companyId !== owner.companyId) throw new Error("Reservation not found");
+    if (!reservation.missing || reservation.missing.episodeId !== args.episodeId) {
+      throw new Error("Missing-reservation episode has changed. Refresh and review again.");
+    }
+    if (reservation.missing.acknowledgedAt !== undefined) return "already_acknowledged" as const;
+    await ctx.db.patch(reservation._id, {
+      missing: { ...reservation.missing, acknowledgedAt: Date.now(), acknowledgedBy: owner._id },
+    });
+    await logAudit(ctx, {
+      companyId: owner.companyId, userId: owner._id,
+      action: "acknowledge_calendar_reservation_missing", entityType: "calendarReservation", entityId: reservation._id,
+      details: JSON.stringify(reservation.missing),
+    });
+    return "acknowledged" as const;
   },
 });
 
