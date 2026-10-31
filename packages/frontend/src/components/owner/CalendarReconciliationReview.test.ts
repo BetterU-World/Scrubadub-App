@@ -50,8 +50,11 @@ describe("owner reconciliation controls", () => {
     expect(container.textContent).not.toContain("Inspect the refreshed candidates");
   });
   it("keeps incomplete scans blocked while allowing safe suppression", async () => {
-    const r = row(); r.identityReview.incomplete = true;
+    const r = row(); r.identityReview.incomplete = true; r.identityReview.reasons = ["incomplete_scan"];
     await render(r); expect(button(distinct).disabled).toBe(true); expect(button(duplicate).disabled).toBe(false);
+    expect(container.textContent).toContain("bounded review scan is incomplete");
+    expect(container.textContent).toContain("Automation stays blocked; arrange manual review");
+    expect(container.textContent).toContain("Suppression only blocks additional automation");
     await act(async () => button(distinct).click()); expect(mocks.identity).not.toHaveBeenCalled();
   });
   it.each([{ canReview: false }, { feedRevision: 3 }, { feedRevision: undefined }])("hides review controls for unavailable authorization/source %j", async extra => {

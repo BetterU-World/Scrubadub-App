@@ -71,6 +71,77 @@ beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(NOW); vi.spyOn(console, 
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
 describe("conservative reservation identity", () => {
+  it.each(["identity", "dates"])("authenticates and owner-authorizes %s review before any state change", async kind => {
+    const s = await setup(); await s.run(calendar(`${event()}\r\n${event("stay-b")}`));
+    await s.run(calendar(`${event("stay-a", "20261109")}\r\n${event("stay-b")}`));
+    const ref = kind === "identity" ? api.mutations.calendarSync.reviewReservationIdentity : api.mutations.calendarSync.acknowledgeReservationDates;
+    const args = kind === "identity" ? await s.identityArgs("stay-a", "distinct") : await s.dateArgs();
+    const before = await s.row();
+    const attempts = [{ ...args, sessionToken: "" }, { ...args, sessionToken: "invalid" },
+      { ...args, sessionToken: await s.login("manager") }, { ...args, sessionToken: await s.login("cleaner") },
+      { ...args, sessionToken: await s.login("foreign") }, { ...args, userId: s.users.second }];
+    for (const attempt of attempts) await expect(s.t.mutation(ref, attempt as any)).rejects.toThrow();
+    expect(await s.row()).toEqual(before); expect(await s.jobs()).toEqual([]);
+  });
+  it("allows complete 200-row evidence but refreshes and blocks direct classification at 201", async () => {
+    const s = await setup(); await s.run(); const raw = (await s.row())!;
+    const { _id, _creationTime, ...fields } = raw;
+    await s.t.run(async ctx => {
+      for (let i = 0; i < 199; i++) await ctx.db.insert("calendarReservations", { ...fields, connectionId: s.secondConnection,
+        externalUid: `history-${i}`, checkIn: "2025-01-01", checkOut: "2025-01-02" });
+    });
+    await s.run(); expect((await s.row())!.identityReview).toBeUndefined();
+    await s.t.run(ctx => ctx.db.insert("calendarReservations", { ...fields, connectionId: s.secondConnection,
+      externalUid: "history-overflow", checkIn: "2025-01-01", checkOut: "2025-01-02" }));
+    expect(await s.classify()).toMatchObject({ outcome: "not_eligible", skipReason: "identity_review_required" });
+    expect((await s.row())!.identityReview).toMatchObject({ state: "pending", incomplete: true, candidateIds: [] });
+    expect(await s.jobs()).toEqual([]);
+  });
+  it("permits review of exactly 20 candidates without bypassing guest approval, then invalidates at 21", async () => {
+    const s = await setup();
+    const events = Array.from({ length: 21 }, (_, i) => event(i === 0 ? "stay-a" : `candidate-${i}`));
+    await s.run(calendar(events.join("\r\n")));
+    expect((await s.row())!.identityReview).toMatchObject({ incomplete: false });
+    expect((await s.row())!.identityReview!.candidateIds).toHaveLength(20);
+    const approved = await s.identityArgs("stay-a", "distinct");
+    await s.t.mutation(api.mutations.calendarSync.reviewReservationIdentity, approved);
+    await s.run(calendar(events.join("\r\n")));
+    expect((await s.row())!.skipReason).toBe("classification_required"); expect(await s.jobs()).toEqual([]);
+    await s.run(calendar([...events, event("overflow")].join("\r\n")));
+    expect((await s.row())!.identityReview).toMatchObject({ state: "pending", incomplete: true });
+    expect(await s.t.mutation(api.mutations.calendarSync.reviewReservationIdentity, approved)).toBe("stale");
+    expect(await s.classify()).toMatchObject({ outcome: "not_eligible", skipReason: "identity_review_required" });
+    expect(await s.jobs()).toEqual([]);
+  });
+  it.each(["arriving", "disappearing", "changing", "suppressed", "cancelled"])("reopens resolved distinct evidence for a %s candidate before direct classification", async change => {
+    const s = await setup();
+    const content = calendar(`${event()}\r\n${event("stay-b")}`);
+    await s.run(content);
+    const approved = await s.identityArgs("stay-a", "distinct");
+    await s.t.mutation(api.mutations.calendarSync.reviewReservationIdentity, approved);
+    expect((await s.row())!.identityReview!.state).toBe("distinct");
+    const b = (await s.row("stay-b"))!;
+    if (change === "arriving") await s.run(calendar(`${event()}\r\n${event("stay-b")}\r\n${event("stay-c")}`));
+    if (change === "disappearing") await s.t.run(ctx => ctx.db.delete(b._id));
+    if (change === "changing") await s.t.run(ctx => ctx.db.patch(b._id, { eventVersion: "0:changed", checkOut: "2026-11-13" }));
+    if (change === "suppressed") await s.t.mutation(api.mutations.calendarSync.reviewReservationIdentity,
+      await s.identityArgs("stay-b", "duplicate", (await s.row())!._id));
+    if (change === "cancelled") await s.run(calendar(`${event()}\r\n${cancelledEvent("stay-b")}`));
+    expect(await s.t.mutation(api.mutations.calendarSync.reviewReservationIdentity, approved)).toBe("stale");
+    expect((await s.row())!.identityReview!.state).toBe("pending");
+    expect(await s.classify()).toMatchObject({ outcome: "not_eligible", skipReason: "identity_review_required" });
+    expect(await s.jobs()).toEqual([]);
+  });
+  it("reopens prior suppression for newly arriving candidates without granting automation", async () => {
+    const s = await setup(); await s.run(calendar(`${event()}\r\n${event("stay-b")}`));
+    const old = await s.identityArgs("stay-b", "duplicate", (await s.row())!._id);
+    await s.t.mutation(api.mutations.calendarSync.reviewReservationIdentity, old);
+    await s.run(calendar(`${event()}\r\n${event("stay-b")}\r\n${event("stay-c")}`));
+    expect(await s.t.mutation(api.mutations.calendarSync.reviewReservationIdentity, old)).toBe("stale");
+    expect((await s.row("stay-b"))!.identityReview!.state).toBe("pending");
+    expect(await s.classify("stay-b")).toMatchObject({ outcome: "not_eligible", skipReason: "identity_review_required" });
+    expect(await s.jobs()).toEqual([]);
+  });
   it.each([false, true])("holds both same-snapshot collisions regardless of event order (reverse=%s)", async reverse => {
     const s = await setup();
     const events = [event("stay-a"), event("stay-b")];
