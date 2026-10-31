@@ -1,4 +1,6 @@
+import type { Id } from "../_generated/dataModel";
 import { mutation } from "../_generated/server";
+import { recipientSharedJob, pendingCopyIsUntouched, requirePendingCopyResponse, rejectUntouchedCopy, requireSharedJobAccepted } from "../lib/sharedJobAuthorization";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { logAudit, createNotification } from "../lib/helpers";
@@ -273,6 +275,7 @@ export const declineConnection = mutation({
 });
 
 export const disconnectConnection = mutation({
+  returns: v.object({ invalidatedCount: v.number(), manualReviewSharedJobIds: v.array(v.id("sharedJobs")) }),
   args: {
     userId: v.optional(v.id("users")),
     sessionToken: v.string(),
@@ -288,6 +291,31 @@ export const disconnectConnection = mutation({
       throw new Error("Not authorized");
     }
 
+    // Preserve inconsistent Pending copies and report them rather than cancelling evidence.
+    const manualReviewSharedJobIds: Id<"sharedJobs">[] = [];
+    let invalidatedCount = 0;
+    for (const toCompanyId of [conn.companyAId, conn.companyBId]) {
+      const pending = await ctx.db.query("sharedJobs")
+        .withIndex("by_toCompanyId_status", q => q.eq("toCompanyId", toCompanyId).eq("status", "pending")).take(501);
+      if (pending.length > 500) throw new Error("Too many pending shared requests. Contact support to review disconnection safely.");
+      const fromCompanyId = toCompanyId === conn.companyAId ? conn.companyBId : conn.companyAId;
+      for (const share of pending.filter(row => row.fromCompanyId === fromCompanyId)) {
+        const copy = await ctx.db.get(share.copiedJobId);
+        let untouched = false;
+        try {
+          untouched = !!copy && (await recipientSharedJob(ctx, copy))?._id === share._id && await pendingCopyIsUntouched(ctx, copy);
+        } catch { /* Malformed linkage requires manual review too. */ }
+        if (untouched) {
+          await rejectUntouchedCopy(ctx, share, owner);
+          invalidatedCount++;
+        } else {
+          manualReviewSharedJobIds.push(share._id);
+          await logAudit(ctx, { companyId: share.toCompanyId, userId: owner._id,
+            action: "shared_job_manual_review_required", entityType: "sharedJobs", entityId: share._id,
+            details: JSON.stringify({ reason: "disconnected_pending_with_existing_evidence", copiedJobId: share.copiedJobId }) });
+        }
+      }
+    }
     await ctx.db.patch(args.connectionId, {
       status: "disconnected" as const,
       respondedAt: Date.now(),
@@ -300,6 +328,7 @@ export const disconnectConnection = mutation({
       entityType: "ownerConnections",
       entityId: args.connectionId,
     });
+    return { invalidatedCount, manualReviewSharedJobIds };
   },
 });
 
@@ -317,6 +346,8 @@ export const acceptSharedJob = mutation({
     if (!shared) throw new Error("Shared job not found");
     if (shared.toCompanyId !== owner.companyId) throw new Error("Not authorized");
     if (shared.status !== "pending") throw new Error("Shared job is not pending");
+
+    await requirePendingCopyResponse(ctx, shared);
 
     await ctx.db.patch(args.sharedJobId, {
       status: "accepted",
@@ -364,13 +395,9 @@ export const rejectSharedJob = mutation({
     if (shared.toCompanyId !== owner.companyId) throw new Error("Not authorized");
     if (shared.status !== "pending") throw new Error("Shared job is not pending");
 
-    await ctx.db.patch(args.sharedJobId, {
-      status: "rejected",
-      respondedAt: Date.now(),
-    });
+    await requirePendingCopyResponse(ctx, shared);
 
-    // Cancel the copied job so it leaves Owner2's active list
-    await ctx.db.patch(shared.copiedJobId, { status: "cancelled" });
+    await rejectUntouchedCopy(ctx, shared, owner);
 
     // Notify originator owners
     const fromOwners = await ctx.db
@@ -417,6 +444,7 @@ export const shareJob = mutation({
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your job");
+    await requireSharedJobAccepted(ctx, job);
 
     // Verify an active connection exists
     const connectionsA = await ctx.db

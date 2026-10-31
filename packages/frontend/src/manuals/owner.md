@@ -346,7 +346,7 @@ Records are declarations: SCRUB does not send or verify outside payments. Legacy
 
 **Check the result:** the company is no longer an active partner for new sharing.
 
-**Common blockers:** disconnection does not cancel existing copied jobs, erase financial records, approve compensation, or transfer money. Resolve existing work and compensation separately.
+**Common blockers:** disconnection invalidates untouched Pending shared-work requests. Accepted work and historical/financial evidence remain. Pending copies with assignments or work evidence require manual review; do not assume they were cancelled or accepted. Resolve existing work and compensation separately.
 
 ## 18. Documents Hub and Worker Documents
 

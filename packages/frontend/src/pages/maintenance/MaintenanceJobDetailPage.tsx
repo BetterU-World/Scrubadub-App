@@ -1,3 +1,4 @@
+import { SharedWorkNotice } from "@/components/SharedWorkNotice";
 import { compensationError } from "@/components/payments/compensationErrors";
 import { usePerformedWorkers, PerformedWorkerPicker } from "@/components/payments/PerformedWorkerPicker";
 import { useFeedbackState } from "@/components/ui/FeedbackProvider";
@@ -47,6 +48,8 @@ export function MaintenanceJobDetailPage() {
 
   if (job === undefined) return <PageLoader />;
   if (job === null) return <div className="text-center py-12 text-gray-500">Job not found</div>;
+
+  if (job?.sharedWorkAccess?.allowed === false) return <div className="max-w-2xl mx-auto"><SharedWorkNotice access={job.sharedWorkAccess} /><Link href="/jobs" className="btn-secondary">{t("navigation.backToJobs")}</Link></div>;
 
   const acceptance = job.acceptanceStatus ?? "pending";
   const canAccept = job.status === "scheduled" && acceptance === "pending";

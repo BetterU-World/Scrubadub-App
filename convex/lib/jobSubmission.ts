@@ -1,3 +1,4 @@
+import { requireSharedJobAccepted } from "./sharedJobAuthorization";
 import { freezePerformedWorkers } from "./performedWorkers";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -19,6 +20,7 @@ type SubmissionArgs = {
 /** The single transaction boundary for final operational submission. */
 export async function submitJobExecution(ctx: MutationCtx, args: SubmissionArgs) {
   const { job, user } = args;
+  await requireSharedJobAccepted(ctx, job);
   if (!(await canSubmitFinalJob(ctx, job, user))) {
     throw new Error("Only a team lead, assigned manager, or owner can submit this job");
   }

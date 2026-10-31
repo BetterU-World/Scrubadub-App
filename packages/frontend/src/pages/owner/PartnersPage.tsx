@@ -157,8 +157,8 @@ export function PartnersPage() {
     if (!uid) return;
     setActionLoading(connectionId);
     try {
-      await disconnectConnectionMut({ userId: uid, sessionToken, connectionId });
-      showToast(t("partners.partnerDisconnected"), "success");
+      const result = await disconnectConnectionMut({ userId: uid, sessionToken, connectionId });
+      showToast(result.manualReviewSharedJobIds.length ? t("sharedWork.disconnectedReview", { count: result.manualReviewSharedJobIds.length }) : t("partners.partnerDisconnected"), "success");
       setDisconnectTarget(null);
     } catch (err: any) {
       showToast(err.message ?? t("partners.failedToDisconnect"), "error");

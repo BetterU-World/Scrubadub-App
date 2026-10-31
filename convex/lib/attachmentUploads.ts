@@ -1,3 +1,4 @@
+import { requireSharedJobAccepted } from "./sharedJobAuthorization";
 import { v, type Infer } from "convex/values";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
@@ -46,6 +47,7 @@ export async function authorizeAttachment(ctx: Ctx, sessionToken: string, target
     : await requireWorkerSession(ctx, sessionToken);
   const job = await ctx.db.get(target.jobId);
   if (!job || job.companyId !== user.companyId) throw new Error("Access denied");
+  await requireSharedJobAccepted(ctx, job);
   if (target.kind === "inspectionPhoto") {
     if (user.role !== "manager") throw new Error("Manager access required");
     if (!hasManagerPermission(user, "canSeeAllJobs") && job.assignedManagerId !== user._id && !await isUserAssignedToJob(ctx, job, user._id)) throw new Error("Access denied");

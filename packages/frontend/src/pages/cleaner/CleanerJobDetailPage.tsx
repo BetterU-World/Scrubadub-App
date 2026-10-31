@@ -1,3 +1,4 @@
+import { SharedWorkNotice } from "@/components/SharedWorkNotice";
 import { useFeedbackState } from "@/components/ui/FeedbackProvider";
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
@@ -68,7 +69,7 @@ export function CleanerJobDetailPage() {
           back={{ href: "/jobs", label: t("navigation.backToJobs") }}
         />
         <div className="card text-sm text-gray-600">
-          {t("jobs.notAssignedToPerform")}
+          {job.sharedWorkAccess?.allowed === false ? <SharedWorkNotice access={job.sharedWorkAccess} /> : t("jobs.notAssignedToPerform")}
         </div>
       </div>
     );

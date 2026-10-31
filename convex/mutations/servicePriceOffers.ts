@@ -2,6 +2,7 @@ import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireActiveClientRelationship, requireOwnerManagerSession, requireVerifiedClientSession } from "../lib/sessionAuth";
 import { checkedPriceSnapshot } from "../lib/jobPricing";
+import { requireSharedJobAccepted } from "../lib/sharedJobAuthorization";
 
 const staff = { userId: v.optional(v.id("users")), sessionToken: v.string() };
 const pricedAddOns = v.array(v.object({ name: v.string(), amountCents: v.number(), quantity: v.optional(v.number()), unitLabel: v.optional(v.string()) }));
@@ -14,6 +15,7 @@ async function pricingActor(ctx: any, args: any) {
 
 async function assertNotInvoiced(ctx: any, job: any) {
   if (!job) return;
+  await requireSharedJobAccepted(ctx, job);
   const invoices = await ctx.db.query("invoices").withIndex("by_company", (q: any) => q.eq("companyId", job.companyId)).collect();
   if (invoices.some((invoice: any) => invoice.status !== "void" && invoice.jobIds.includes(job._id))) throw new Error("Void or resolve the existing invoice before changing this price");
 }
@@ -22,6 +24,7 @@ async function applyAccepted(ctx: any, offer: any, consent: any) {
   if (offer.jobId) {
     const job = await ctx.db.get(offer.jobId) as any;
     if (!job || job.companyId !== offer.companyId || job.clientRelationshipId !== offer.clientRelationshipId || job.customerPriceOfferId !== offer._id || job.customerPricingRevision !== offer.version) throw new Error("Price offer is no longer current");
+    await requireSharedJobAccepted(ctx, job);
     await ctx.db.patch(job._id, { customerChargeCents: offer.snapshot.totalCents, customerPricingStatus: "accepted", customerPricingSnapshot: offer.snapshot, customerPriceConsent: consent, customerPricingSource: offer.source });
   }
 }
@@ -84,6 +87,7 @@ export const respond = mutation({
     if (request && (request.companyId !== offer.companyId || request.clientRelationshipId !== offer.clientRelationshipId || request.currentPriceOfferId !== offer._id)) throw new Error("Price offer is no longer current");
     if (job && (job.companyId !== offer.companyId || job.clientRelationshipId !== offer.clientRelationshipId || job.customerPriceOfferId !== offer._id || job.customerPricingRevision !== offer.version)) throw new Error("Price offer is no longer current");
     if (offer.status !== "issued") throw new Error("Price offer is no longer current");
+    if (job) await requireSharedJobAccepted(ctx, job);
     const now = Date.now();
     await ctx.db.patch(offer._id, { status: args.decision, respondedAt: now, acceptedByClientUserId: args.decision === "accepted" ? client._id : undefined });
     if (args.decision === "accepted") await applyAccepted(ctx, offer, { source: "client_in_app", acceptedAt: now, acceptedAmountCents: offer.snapshot.totalCents, clientUserId: client._id, offerId: offer._id });

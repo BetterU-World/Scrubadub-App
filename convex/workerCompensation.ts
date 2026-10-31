@@ -1,3 +1,4 @@
+import { requireSharedJobAccepted } from "./lib/sharedJobAuthorization";
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import {
@@ -70,6 +71,7 @@ export const confirmHistoricalWorkers = mutation({
     const job = await ctx.db.get(args.jobId);
     if (!job || job.companyId !== owner.companyId)
       throw new Error("Access denied");
+    await requireSharedJobAccepted(ctx, job);
     if (job.status !== "approved" || job.executionHistory?.length)
       throw new Error(
         "Only historical approved work without execution evidence may be confirmed",
@@ -123,6 +125,7 @@ export const reviewCompensation = mutation({
         throw new Error("Compensation already approved: use an adjustment");
       return existing._id;
     }
+    await requireSharedJobAccepted(ctx, job);
     const evidence = approvedExecution(job);
     const worker = evidence?.workers.find((w) => w.userId === args.workerId);
     if (job.status !== "approved" || !worker || worker.role === "owner")

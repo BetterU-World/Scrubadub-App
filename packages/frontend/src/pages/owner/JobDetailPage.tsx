@@ -1,3 +1,4 @@
+import { SharedWorkNotice } from "@/components/SharedWorkNotice";
 import { JobCompensation } from "@/components/payments/JobCompensation";
 import { compensationError } from "@/components/payments/compensationErrors";
 import { usePerformedWorkers, PerformedWorkerPicker } from "@/components/payments/PerformedWorkerPicker";
@@ -142,13 +143,15 @@ export function JobDetailPage() {
   if (job === undefined) return <PageLoader />;
   if (job === null) return <div className="text-center py-12 text-gray-500">{t("jobs.jobNotFound")}</div>;
 
-  const canReview = job.status === "submitted" && job.form?.status === "submitted";
-  const canCancel = !["cancelled", "submitted", "approved"].includes(job.status);
+  const sharedWorkAllowed = job.sharedWorkAccess?.allowed !== false;
+  const canReview = sharedWorkAllowed && job.status === "submitted" && job.form?.status === "submitted";
+  const canCancel = sharedWorkAllowed && !["cancelled", "submitted", "approved"].includes(job.status);
   const detailPartnerStatus = incomingShared?.status
     ?? getPartnerResponseStatus((sharedStatus ?? []).map((status) => status.status));
 
   return (
     <div className="max-w-3xl mx-auto">
+      <SharedWorkNotice access={job.sharedWorkAccess} />
       <PageHeader
         title={job.property?.name ?? (job as any).propertySnapshot?.name ?? t("jobs.jobDetails")}
         description={t("guidance.owner.jobDetail")}
@@ -165,7 +168,7 @@ export function JobDetailPage() {
                 <Share2 className="w-4 h-4" /> {t("jobs.shareJob")}
               </button>
             )}
-            {job.status !== "cancelled" && ((job as any).acceptanceStatus === "denied" || (job as any).acceptanceStatus === "pending" || (job.sharedFromJobId && job.cleanerIds.length === 0)) && (
+            {sharedWorkAllowed && job.status !== "cancelled" && ((job as any).acceptanceStatus === "denied" || (job as any).acceptanceStatus === "pending" || (job.sharedFromJobId && job.cleanerIds.length === 0)) && (
               <button onClick={() => setShowReassign(true)} className="btn-secondary flex items-center gap-2">
                 <RefreshCw className="w-4 h-4" /> {job.sharedFromJobId && job.cleanerIds.length === 0 ? t("jobs.assignCleaner") : t("jobs.reassign")}
               </button>
@@ -185,10 +188,10 @@ export function JobDetailPage() {
       />
 
       <div className="space-y-6">
-        <JobCompensation jobId={job._id} />
-        <ServicePricingPanel jobId={job._id} commercial={Boolean(job.commercialAccountId)} />
-        <JobInvoiceBillingPanel job={job} />
-        {!job.commercialAccountId && <ResidentialInvoicePanel jobId={job._id} />}
+        {sharedWorkAllowed && <JobCompensation jobId={job._id} />}
+        {sharedWorkAllowed && <ServicePricingPanel jobId={job._id} commercial={Boolean(job.commercialAccountId)} />}
+        {sharedWorkAllowed && <JobInvoiceBillingPanel job={job} />}
+        {sharedWorkAllowed && !job.commercialAccountId && <ResidentialInvoicePanel jobId={job._id} />}
         {/* Job info card */}
         <div className="card space-y-4">
           <div className="flex items-center gap-2 flex-wrap">
@@ -267,7 +270,7 @@ export function JobDetailPage() {
         />
 
         <JobTimeline job={job as any} />
-        <JobTimingPanel job={job as any} userId={user?._id as any} controls={job.status === "in_progress" && job.assignedManagerId === user?._id} ownerMode />
+        <JobTimingPanel job={job as any} userId={user?._id as any} controls={sharedWorkAllowed && job.status === "in_progress" && job.assignedManagerId === user?._id} ownerMode />
 
         {/* Owner2: shared job accept/reject banner */}
         {incomingShared && incomingShared.status === "pending" && (
@@ -283,7 +286,7 @@ export function JobDetailPage() {
               </div>
               <div className="flex gap-2">
                 <button
-                  disabled={sharedJobAction}
+                  disabled={sharedJobAction || job.sharedWorkAccess?.status === "manual_review"}
                   onClick={async () => {
                     const uid = requireUserId(user);
                     if (!uid) return;
@@ -302,7 +305,7 @@ export function JobDetailPage() {
                   <CheckCircle className="w-4 h-4" /> {t("jobs.accept")}
                 </button>
                 <button
-                  disabled={sharedJobAction}
+                  disabled={sharedJobAction || job.sharedWorkAccess?.status === "manual_review"}
                   onClick={async () => {
                     const uid = requireUserId(user);
                     if (!uid) return;
@@ -389,7 +392,7 @@ export function JobDetailPage() {
               </div>
             )}
             {/* Re-Inspection CTA: visible when cycle is closed and inspections exist */}
-            {job.status !== "cancelled" && inspectionSummary && !inspectionSummary.inspectionCycleOpen && inspectionSummary.count > 0 && (
+            {sharedWorkAllowed && job.status !== "cancelled" && inspectionSummary && !inspectionSummary.inspectionCycleOpen && inspectionSummary.count > 0 && (
               <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between gap-3">
                 <span className="text-sm text-amber-800">{t("inspection.cycleClosed")}</span>
                 <button
@@ -729,7 +732,7 @@ export function JobDetailPage() {
       </div>
 
       {/* Owner self-execution controls — only when owner is explicitly self-assigned */}
-      {job.status !== "cancelled" && user?.role === "owner" && (job as any).assignedManagerId === user._id && (
+      {sharedWorkAllowed && job.status !== "cancelled" && user?.role === "owner" && (job as any).assignedManagerId === user._id && (
         <div className="card border-primary-200 mt-6">
           <h3 className="font-semibold text-gray-900 flex items-center gap-2 mb-3">
             <CheckCircle className="w-5 h-5 text-primary-600" /> {t("jobs.ownerExecution")}
@@ -865,7 +868,7 @@ export function JobDetailPage() {
       )}
 
       <CancelJobDialog
-        open={showCancel}
+        open={sharedWorkAllowed && showCancel}
         onOpenChange={setShowCancel}
         onConfirm={async (reason, notes) => {
           const uid = requireUserId(user);
@@ -876,7 +879,7 @@ export function JobDetailPage() {
 
 
       {/* Rework dialog */}
-      {showRework && (
+      {sharedWorkAllowed && showRework && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold mb-4">{t("jobs.requestRework")}</h3>
@@ -913,7 +916,7 @@ export function JobDetailPage() {
       )}
 
       {/* Share Job dialog */}
-      {showShare && (
+      {sharedWorkAllowed && showShare && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold mb-4">{t("jobs.shareJob")}</h3>
@@ -982,7 +985,7 @@ export function JobDetailPage() {
       )}
 
       {/* Reassign dialog */}
-      {showReassign && (
+      {sharedWorkAllowed && showReassign && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold mb-4">{t("jobs.reassignJob")}</h3>

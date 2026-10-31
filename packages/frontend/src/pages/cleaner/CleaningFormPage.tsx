@@ -1,3 +1,4 @@
+import { SharedWorkNotice } from "@/components/SharedWorkNotice";
 import { useAttachmentUpload } from "@/hooks/useAttachmentUpload";
 import { cleanerSubmissionError } from "@/lib/cleanerSubmissionError";
 import { usePerformedWorkers } from "@/components/payments/PerformedWorkerPicker";
@@ -267,7 +268,7 @@ export function CleaningFormPage() {
         <h1 className="text-xl font-semibold text-gray-900">
           {t("jobs.executionUnavailable")}
         </h1>
-        <p className="mt-2">{t("jobs.notAssignedToPerform")}</p>
+        {job?.sharedWorkAccess?.allowed === false ? <SharedWorkNotice access={job.sharedWorkAccess} /> : <p className="mt-2">{t("jobs.notAssignedToPerform")}</p>}
       </div>
     );
   }

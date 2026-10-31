@@ -1,3 +1,4 @@
+import { sharedWorkError } from "./partnerJobStatus";
 /**
  * Maps known backend error messages to user-friendly display text.
  *
@@ -38,6 +39,8 @@ export function toFriendlyMessage(
 ): string {
   const raw =
     err instanceof Error ? err.message : typeof err === "string" ? err : "";
+  const shared = sharedWorkError(raw);
+  if (shared) return translate?.(shared.key) ?? shared.fallback;
   // Convex wraps action failures in a transport message. Only recognize known
   // conditions; never display an arbitrary backend message to the user.
   if (/rate limit exceeded/i.test(raw)) return translate?.("errors.rateLimited") ?? "Too many attempts. Try again in a moment.";

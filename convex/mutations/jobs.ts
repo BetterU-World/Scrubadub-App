@@ -1,3 +1,4 @@
+import { requireSharedJobAccepted } from "../lib/sharedJobAuthorization";
 import { freezePerformedWorkers } from "../lib/performedWorkers";
 import { retireLegacyOutgoing } from "../lib/legacyOutgoingRetirement";
 import { mutation, type MutationCtx } from "../_generated/server";
@@ -349,6 +350,7 @@ export const update = mutation({
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
+    await requireSharedJobAccepted(ctx, job);
     if (args.customerChargeCents !== undefined) {
       throw new Error("Use the pricing workflow to change the customer charge");
     }
@@ -429,6 +431,7 @@ export const cancel = mutation({
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== actor.companyId) throw new Error("Access denied");
+    await requireSharedJobAccepted(ctx, job);
     if (job.status === "cancelled") throw new Error("Job is already cancelled");
     if (job.status === "approved" || job.status === "submitted") {
       throw new Error("Completed jobs cannot be cancelled");
@@ -660,6 +663,7 @@ export const reassignJob = mutation({
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
+    await requireSharedJobAccepted(ctx, job);
     if (job.status === "cancelled")
       throw new Error("Cancelled jobs cannot be reassigned");
 
@@ -915,6 +919,7 @@ export const ownerStartJob = mutation({
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
+    await requireSharedJobAccepted(ctx, job);
     if (job.assignedManagerId !== owner._id)
       throw new Error("You are not self-assigned to this job");
     if (
@@ -956,6 +961,7 @@ export const ownerPauseJob = mutation({
     const job = await ctx.db.get(args.jobId);
     if (!job || job.companyId !== owner.companyId)
       throw new Error("Job not found");
+    await requireSharedJobAccepted(ctx, job);
     if (job.assignedManagerId !== owner._id)
       throw new Error("You are not self-assigned to this job");
     if (job.status !== "in_progress")
@@ -1002,6 +1008,7 @@ export const ownerResumeJob = mutation({
     const job = await ctx.db.get(args.jobId);
     if (!job || job.companyId !== owner.companyId)
       throw new Error("Job not found");
+    await requireSharedJobAccepted(ctx, job);
     if (job.assignedManagerId !== owner._id)
       throw new Error("You are not self-assigned to this job");
     if (job.status !== "in_progress")
@@ -1055,6 +1062,7 @@ export const ownerCompleteJob = mutation({
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
+    await requireSharedJobAccepted(ctx, job);
     if (job.assignedManagerId !== owner._id)
       throw new Error("You are not self-assigned to this job");
     if (job.status !== "in_progress") throw new Error("Job not in progress");
@@ -1128,6 +1136,7 @@ export const ownerSubmitInspection = mutation({
     const job = await ctx.db.get(args.jobId);
     if (!job) throw new Error("Job not found");
     if (job.companyId !== owner.companyId) throw new Error("Not your company");
+    await requireSharedJobAccepted(ctx, job);
     if (job.assignedManagerId !== owner._id)
       throw new Error("You are not self-assigned to this job");
 

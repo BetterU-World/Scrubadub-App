@@ -1,4 +1,10 @@
 {
+  "sharedWork": {
+    "pending": "Esperando aceptación de la empresa. El propietario debe aceptar este trabajo compartido antes de asignarlo o ejecutarlo. La aceptación del trabajador es distinta.",
+    "rejected": "La solicitud de trabajo compartido fue rechazada. El historial sigue disponible; los cambios operativos están bloqueados.",
+    "manualReview": "Este trabajo compartido requiere revisión manual. Contacta al propietario. Se conservaron el trabajo y la evidencia financiera existentes.",
+    "disconnectedReview": "Socio desconectado. {{count}} solicitud(es) compartida(s) pendiente(s) requieren revisión manual; se conservaron su trabajo y evidencia financiera."
+  },
   "fastMode": {
     "standard": "Modo estándar",
     "fast": "Modo rápido",

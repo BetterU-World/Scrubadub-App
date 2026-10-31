@@ -3,10 +3,29 @@ import { ConvexError } from "convex/values";
 import en from "../i18n/en/common.json";
 import es from "../i18n/es/common.json";
 import { isValidSignInEmail, toFriendlyMessage, toSignInMessage } from "./friendlyError";
+import { compensationError } from "../components/payments/compensationErrors";
 
 function translate(dictionary: Record<string, any>) {
   return (key: string) => key.split(".").reduce<any>((value, part) => value?.[part], dictionary) as string;
 }
+
+describe("shared-work denial presentation", () => {
+  for (const [locale, dictionary] of [["en", en], ["es", es]] as const) {
+    it.each([
+      ["Your company Owner must accept this shared-work request before assignment or execution.", "sharedWork.pending"],
+      ["This shared-work request was rejected. Operational changes are unavailable.", "sharedWork.rejected"],
+      ["Shared work needs manual review. Contact your company Owner; existing work and financial evidence have been preserved.", "sharedWork.manualReview"],
+    ])(`${locale}: renders safe translated operational and financial denials: %s`, (message, key) => {
+      const t = translate(dictionary);
+      const wrapped = new Error(`[CONVEX M(test)] Server Error: Uncaught Error: ${message}`);
+      expect(toFriendlyMessage(wrapped, "fallback", t)).toBe(t(key));
+      expect(compensationError(wrapped, t as any)).toBe(t(key));
+      expect(toFriendlyMessage(wrapped)).not.toContain("Uncaught");
+      // The feedback bridge may first strip the transport wrapper without a translator.
+      expect(toFriendlyMessage(toFriendlyMessage(wrapped), "fallback", t)).toBe(t(key));
+    });
+  }
+});
 
 describe("sign-in error presentation", () => {
   it("validates email format before staff and client sign-in", () => {
