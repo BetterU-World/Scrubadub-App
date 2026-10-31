@@ -8,6 +8,7 @@ import { logAudit } from "../lib/helpers";
 import { requireOwnerSession } from "../lib/sessionAuth";
 import { resolvePropertyConditionRequirement } from "../lib/propertyConditionRequirements";
 import { CALENDAR_SYNC_COOLDOWN_MS, CALENDAR_SYNC_LEASE_MS, cancelPendingCalendarSync } from "../lib/calendarSyncAdmission";
+import { calendarEventMetadata, classifyICalEvent } from "../lib/calendarClassification";
 
 /** Sync interval: connections are eligible for sync after this many ms. */
 const SYNC_INTERVAL_MS = 60 * 60 * 1000; // 60 minutes
@@ -159,9 +160,17 @@ async function maybeCreateJobForReservation(
   reservationId: Id<"calendarReservations">,
   reservation: Doc<"calendarReservations">,
   connection: Doc<"calendarConnections">,
+  actorId: Id<"users"> = connection.createdBy,
 ): Promise<Id<"jobs"> | null> {
   // ── Gate 1: reservation already has a linked job ──────────────────
   if (reservation.linkedJobId) return null;
+
+  // The new owner-confirmation path must honor the cutoff even on legacy rows
+  // whose old skip flags are absent. Existing linked work remains untouched.
+  if (reservation.checkOut <= connection.initialSyncCutoff) {
+    await ctx.db.patch(reservationId, { jobCreationSkipped: true, skipReason: "before_initial_sync_cutoff" });
+    return null;
+  }
 
   // ── Gate 2: reservation was permanently flagged to skip ────────────
   //   Some skip reasons are permanent (historical cutoff, past checkout).
@@ -175,6 +184,22 @@ async function maybeCreateJobForReservation(
     reservation.jobCreationSkipped &&
     PERMANENT_SKIP_REASONS.has(reservation.skipReason ?? "")
   ) {
+    return null;
+  }
+
+  const classification = reservation.classification;
+  const currentFeed = !!reservation.eventVersion && reservation.eventVersion.startsWith(`${connection.feedRevision ?? 0}:`);
+  const confirmedGuest = !!reservation.eventVersion && classification?.source === "owner" &&
+    classification.kind === "guest_reservation" && classification.ownerDecision?.kind === "guest_reservation" &&
+    classification.ownerDecision.eventVersion === reservation.eventVersion;
+  const deniedReason = reservation.status !== "active" ? "reservation_cancelled"
+    : reservation.missing ? "reservation_missing"
+    : !connection.enabled ? "connection_disabled"
+    : !currentFeed ? "feed_source_changed"
+    : !confirmedGuest
+      ? classification?.kind === "non_guest_block" ? "non_guest_block" : "classification_required" : null;
+  if (deniedReason) {
+    await ctx.db.patch(reservationId, { jobCreationSkipped: true, skipReason: deniedReason });
     return null;
   }
 
@@ -291,7 +316,7 @@ async function maybeCreateJobForReservation(
   // ── Audit log ─────────────────────────────────────────────────────
   await ctx.db.insert("auditLog", {
     companyId: reservation.companyId,
-    userId: connection.createdBy,
+    userId: actorId,
     action: "calendar_sync_create_job",
     entityType: "job",
     entityId: jobId,
@@ -355,6 +380,8 @@ export const processSyncResults = internalMutation({
         checkOut: v.string(),
         dtStamp: v.optional(v.string()),
         rawHash: v.string(),
+        classificationHash: v.optional(v.string()),
+        eventMetadata: v.optional(calendarEventMetadata),
       })
     ),
     totalEvents: v.number(),
@@ -415,6 +442,7 @@ export const processSyncResults = internalMutation({
     // ── Process each incoming reservation ──────────────────────────────
 
     for (const res of args.reservations) {
+      const eventVersion = `${connection.feedRevision ?? 0}:${res.rawHash}:${res.classificationHash ?? "legacy"}`;
       // Look up existing reservation by externalUid + connectionId
       const existing = await ctx.db
         .query("calendarReservations")
@@ -437,6 +465,9 @@ export const processSyncResults = internalMutation({
           checkOut: res.checkOut,
           dtStamp: res.dtStamp,
           rawHash: res.rawHash,
+          eventVersion,
+          eventMetadata: res.eventMetadata,
+          classification: { ...classifyICalEvent({ platform: connection.platform, summary: res.summary, ...res.eventMetadata }), classifiedAt: now, revision: 1 },
           status: "active",
           firstSeenAt: now,
           lastSeenAt: now,
@@ -462,7 +493,24 @@ export const processSyncResults = internalMutation({
       } else {
         // ── Existing reservation ───────────────────────────────────────
 
-        const updates: Record<string, unknown> = { lastSeenAt: now };
+        const updates: Record<string, unknown> = { lastSeenAt: now, eventVersion, eventMetadata: res.eventMetadata };
+        const materialChanged = existing.eventVersion !== undefined
+          ? existing.eventVersion !== eventVersion : existing.rawHash !== res.rawHash;
+        // Unchanged legacy rows remain unconfirmed without mass review episodes.
+        // Every job path nevertheless requires current, explicit guest approval.
+        if (materialChanged) {
+          updates.classification = {
+            ...classifyICalEvent({ platform: connection.platform, summary: res.summary, ...res.eventMetadata }),
+            reason: "material_event_changed", classifiedAt: now,
+            revision: (existing.classification?.revision ?? 0) + 1,
+            ...(existing.classification?.ownerDecision ? { ownerDecision: existing.classification.ownerDecision } : {}),
+          };
+          await logAudit(ctx, {
+            companyId: connection.companyId, userId: connection.createdBy,
+            action: "calendar_classification_review_required", entityType: "calendarReservation", entityId: existing._id,
+            details: JSON.stringify({ previousKind: existing.classification?.kind ?? "legacy_unconfirmed", eventVersion }),
+          });
+        }
         if (existing.missing) {
           updates.missing = undefined;
           await logAudit(ctx, {
@@ -604,7 +652,63 @@ export const processSyncResults = internalMutation({
   },
 });
 
-/** Acknowledgement records owner review, not cancellation or job resolution. */
+/** A version-bound owner decision is the only positive classification source. */
+export const confirmEventClassification = mutation({
+  args: {
+    sessionToken: v.string(), userId: v.optional(v.id("users")),
+    reservationId: v.id("calendarReservations"),
+    kind: v.union(v.literal("guest_reservation"), v.literal("non_guest_block")),
+    expectedEventVersion: v.string(), expectedRevision: v.number(), expectedFeedRevision: v.number(),
+    expectedMissingEpisode: v.optional(v.string()),
+  },
+  returns: v.object({
+    outcome: v.union(v.literal("created"), v.literal("already_linked"), v.literal("not_eligible")),
+    linkedJobId: v.optional(v.id("jobs")), skipReason: v.optional(v.string()), manualJobReviewRequired: v.boolean(),
+  }),
+  handler: async (ctx, args) => {
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const reservation = await ctx.db.get(args.reservationId);
+    if (!reservation || reservation.companyId !== owner.companyId) throw new Error("Reservation not found");
+    const connection = await ctx.db.get(reservation.connectionId);
+    const property = await ctx.db.get(reservation.propertyId);
+    if (!connection || connection.companyId !== owner.companyId || connection.propertyId !== reservation.propertyId ||
+        !property || property.companyId !== owner.companyId) throw new Error("Calendar source or property is unavailable");
+    if (!reservation.eventVersion || reservation.eventVersion !== args.expectedEventVersion ||
+        (reservation.classification?.revision ?? 0) !== args.expectedRevision ||
+        (connection.feedRevision ?? 0) !== args.expectedFeedRevision ||
+        !reservation.eventVersion.startsWith(`${connection.feedRevision ?? 0}:`) ||
+        reservation.missing?.episodeId !== args.expectedMissingEpisode || reservation.status !== "active") {
+      throw new Error("Event or review state changed. Sync or refresh and review again.");
+    }
+    const previous = reservation.classification;
+    const sameDecision = previous?.source === "owner" && previous.kind === args.kind &&
+      previous.ownerDecision?.eventVersion === reservation.eventVersion;
+    if (!sameDecision) {
+      const revision = (previous?.revision ?? 0) + 1;
+      const now = Date.now();
+      await ctx.db.patch(reservation._id, { classification: {
+        kind: args.kind, source: "owner", reason: "owner_confirmed", classifiedAt: now, revision,
+        ownerDecision: { kind: args.kind, actorId: owner._id, confirmedAt: now, eventVersion: reservation.eventVersion },
+      } });
+      await logAudit(ctx, {
+        companyId: owner.companyId, userId: owner._id,
+        action: "calendar_event_classified", entityType: "calendarReservation", entityId: reservation._id,
+        details: JSON.stringify({ kind: args.kind, previousKind: previous?.kind ?? "legacy_unconfirmed", revision, eventVersion: reservation.eventVersion }),
+      });
+    }
+    const updated = (await ctx.db.get(reservation._id))!;
+    const jobId = await maybeCreateJobForReservation(ctx, updated._id, updated, connection, owner._id);
+    const final = (await ctx.db.get(reservation._id))!;
+    return {
+      outcome: jobId ? "created" as const : final.linkedJobId ? "already_linked" as const : "not_eligible" as const,
+      ...(final.linkedJobId ? { linkedJobId: final.linkedJobId } : {}),
+      ...(final.skipReason ? { skipReason: final.skipReason } : {}),
+      manualJobReviewRequired: args.kind === "non_guest_block" && !!final.linkedJobId,
+    };
+  },
+});
+
+/** Missing acknowledgement is separate from event classification. */
 export const acknowledgeMissingReservation = mutation({
   args: {
     sessionToken: v.string(), userId: v.optional(v.id("users")),

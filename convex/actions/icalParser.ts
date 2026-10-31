@@ -34,6 +34,8 @@ export interface ParsedReservation {
   dtStamp: string | undefined;
   /** SHA-256 of the key VEVENT fields — used for change detection */
   rawHash: string;
+  classificationHash?: string;
+  eventMetadata?: { status?: string; transparency?: string; categories?: string[] };
 }
 
 /**
@@ -142,6 +144,12 @@ export function parseICalFeed(rawIcs: string): CalendarSnapshot {
       checkOut: endDate,
       dtStamp,
       rawHash,
+      classificationHash: createHash("sha256").update(source.materialContent).digest("hex"),
+      eventMetadata: {
+        ...(typeof event.status === "string" ? { status: event.status } : {}),
+        ...(typeof event.transparency === "string" ? { transparency: event.transparency } : {}),
+        ...(Array.isArray(event.categories) ? { categories: event.categories.filter((value): value is string => typeof value === "string") } : {}),
+      },
     });
   }
 

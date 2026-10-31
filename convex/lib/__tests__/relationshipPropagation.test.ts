@@ -3,6 +3,7 @@ import { convexTest } from "convex-test";
 import schema from "../../schema";
 import { api, internal } from "../../_generated/api";
 import { hashPassword } from "../password";
+import { confirmGuestForTest } from "./calendarSnapshotFixtures";
 
 const modules = import.meta.glob("../../**/*.ts");
 
@@ -248,6 +249,9 @@ describe("relationship propagation", () => {
       totalEvents: 1,
       skipped: 0,
     });
+    const reservation = await t.run((ctx) => ctx.db.query("calendarReservations").first());
+    const session = await t.action(api.authActions.signIn, { email: `owner-calendar-${linked}@example.com`, password: "test-password-123" });
+    await confirmGuestForTest(t, reservation!._id, session.sessionToken);
     const job = await t.run((ctx) => ctx.db.query("jobs").first());
     expect(job).not.toBeNull();
     expect(job?.propertyId).toBe(propertyId);

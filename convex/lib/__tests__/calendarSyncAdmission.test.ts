@@ -62,7 +62,7 @@ describe("calendar sync atomic work admission", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(await s.state()).toMatchObject({ consecutiveErrors: 0, lastSyncAt: NOW, lastSyncStatus: "success" });
     expect((await s.state())?.syncAttempt).toBeUndefined();
-    expect(await s.t.run(ctx => ctx.db.query("jobs").collect())).toHaveLength(1);
+    expect(await s.t.run(ctx => ctx.db.query("jobs").collect())).toHaveLength(0);
     expect(await s.t.run(ctx => ctx.db.query("calendarSyncLogs").collect())).toHaveLength(1);
     expect(await s.manual()).toBe("cooldown");
     expect(await s.scheduled()).toHaveLength(1);
@@ -70,7 +70,7 @@ describe("calendar sync atomic work admission", () => {
     expect(await s.manual()).toBe("scheduled");
     await s.drain();
     expect(fetch).toHaveBeenCalledTimes(2);
-    expect(await s.t.run(ctx => ctx.db.query("jobs").collect())).toHaveLength(1);
+    expect(await s.t.run(ctx => ctx.db.query("jobs").collect())).toHaveLength(0);
   });
 
   it.each(["manual-first", "cron-first"] as const)("shares admission across cron and manual triggers (%s)", async order => {
@@ -280,7 +280,7 @@ describe("calendar sync atomic work admission", () => {
       reservations: [{ uid: "legacy", checkIn: "2026-10-26", checkOut: "2026-10-27", rawHash: "legacy" }],
     })).toBe("success");
     expect(await s.state()).toMatchObject({ consecutiveErrors: 0, lastSyncStatus: "success", lastSyncAt: NOW });
-    expect(await s.t.run(ctx => ctx.db.query("jobs").collect())).toHaveLength(1);
+    expect(await s.t.run(ctx => ctx.db.query("jobs").collect())).toHaveLength(0);
     expect(fetch).not.toHaveBeenCalled();
   });
 });

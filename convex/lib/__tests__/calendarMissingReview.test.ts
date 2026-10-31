@@ -4,7 +4,7 @@ import schema from "../../schema";
 import { api, internal } from "../../_generated/api";
 import { parseICalFeed } from "../../actions/icalParser";
 import { hashPassword } from "../password";
-import { calendar, cancelledEvent, reservationEvent } from "./calendarSnapshotFixtures";
+import { calendar, cancelledEvent, reservationEvent, confirmGuestForTest } from "./calendarSnapshotFixtures";
 
 const modules = import.meta.glob("../../**/*.ts");
 const sync = internal.mutations.calendarSync;
@@ -47,6 +47,8 @@ async function setup() {
   const audit = () => t.run((ctx) => ctx.db.query("auditLog").collect());
   const protectedRecords = () => t.run(async (ctx) => ({ jobs: await ctx.db.query("jobs").collect(), payments: await ctx.db.query("cleanerPayments").collect(), paymentJobs: await ctx.db.query("cleanerPaymentJobs").collect() }));
   const protectJob = async (status: "scheduled" | "in_progress" | "submitted" | "approved" = "approved") => {
+    const current = (await reservation())!;
+    if (!current.linkedJobId) await confirmGuestForTest(t, current._id, await login());
     const res = (await reservation())!;
     await t.run(async (ctx) => {
       const paymentId = await ctx.db.insert("cleanerPayments", { companyId: ids.companyId, jobId: res.linkedJobId!, cleanerUserId: ids.cleanerId, amountCents: 15000, status: "PAID", createdAt: NOW, paidAt: NOW, paidByUserId: ids.ownerId });
@@ -75,7 +77,7 @@ describe("missing reservation review lifecycle", () => {
     expect(await s.reservation()).toMatchObject({ status: "active" });
     expect((await s.reservation())?.missing).toBeUndefined();
     expect((await s.audit()).filter(row => row.action.startsWith("calendar_reservation_"))).toEqual([]);
-    expect((await s.protectedRecords()).jobs).toHaveLength(2);
+    expect((await s.protectedRecords()).jobs).toHaveLength(0);
   });
 
   it.each(["scheduled", "in_progress", "submitted", "approved"] as const)("flags disappearance without altering a linked %s job or finances", async (status) => {
@@ -146,7 +148,7 @@ describe("missing reservation review lifecycle", () => {
   });
 
   it("resolves reappearance without duplicate jobs and starts a distinct subsequent episode", async () => {
-    const s = await setup(); await s.run(full); await s.run(onlyB);
+    const s = await setup(); await s.run(full); await s.protectJob(); await s.run(onlyB);
     const first = (await s.reservation())!.missing!;
     const jobs = await s.protectedRecords();
     await s.run(full);

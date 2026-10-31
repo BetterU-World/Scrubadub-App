@@ -66,6 +66,19 @@ describe("iCalendar snapshot validation", () => {
     expect(parseICalFeed(calendar("BEGIN:VTIMEZONE\r\nTZID:America/New_York\r\nEND:VTIMEZONE"))).toMatchObject({ status: "valid_empty", totalEvents: 0, reservations: [], cancelledUids: [] });
   });
 
+  it("fingerprints material metadata without retaining raw descriptions/URLs and ignores volatile churn", () => {
+    const first = parseICalFeed(normalSnapshot).reservations[0];
+    const volatile = parseICalFeed(normalSnapshot.replace("SUMMARY:Reserved", "SUMMARY:Reserved\r\nDTSTAMP:20261027T120000Z\r\nLAST-MODIFIED:20261027T120000Z\r\nSEQUENCE:5")).reservations[0];
+    expect(volatile.classificationHash).toBe(first.classificationHash);
+    const changed = parseICalFeed(normalSnapshot.replace("SUMMARY:Reserved", "SUMMARY:Reserved\r\nDESCRIPTION:https://private.test/secret-token\r\nTRANSP:OPAQUE\r\nSTATUS:TENTATIVE\r\nCATEGORIES:Booking,Personal\r\nX-BOOKING-ID:123")).reservations[0];
+    expect(changed.classificationHash).not.toBe(first.classificationHash);
+    expect(changed.eventMetadata).toEqual({ status: "TENTATIVE", transparency: "OPAQUE", categories: ["Booking", "Personal"] });
+    expect(JSON.stringify(changed)).not.toContain("secret-token");
+    const reordered = parseICalFeed(normalSnapshot.replace("SUMMARY:Reserved", "X-BOOKING-ID:123\r\nSUMMARY:Reserved")).reservations[0];
+    const same = parseICalFeed(normalSnapshot.replace("SUMMARY:Reserved", "SUMMARY:Reserved\r\nX-BOOKING-ID:123")).reservations[0];
+    expect(reordered.classificationHash).toBe(same.classificationHash);
+  });
+
   it("detects parser omissions even when the library returns successfully", () => {
     vi.spyOn(ical.sync, "parseICS").mockReturnValue({});
     expect(parseICalFeed(normalSnapshot)).toMatchObject({ status: "degraded", diagnostic: "Parser omitted calendar events", reservations: [] });

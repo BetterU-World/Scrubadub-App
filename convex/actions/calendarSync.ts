@@ -74,6 +74,8 @@ export const syncConnection = internalAction({
             checkOut: r.checkOut,
             dtStamp: r.dtStamp,
             rawHash: r.rawHash,
+            classificationHash: r.classificationHash,
+            eventMetadata: r.eventMetadata,
           })),
           totalEvents: parseResult.totalEvents,
           skipped: parseResult.skipped,
