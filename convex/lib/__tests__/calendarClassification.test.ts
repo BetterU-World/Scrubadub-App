@@ -5,7 +5,7 @@ import { api, internal } from "../../_generated/api";
 import { classifyICalEvent } from "../calendarClassification";
 import { parseICalFeed } from "../../actions/icalParser";
 import { hashPassword } from "../password";
-import { calendar, cancelledEvent, reservationEvent } from "./calendarSnapshotFixtures";
+import { calendar, cancelledEvent, reservationEvent, confirmGuestForTest } from "./calendarSnapshotFixtures";
 
 const modules = import.meta.glob("../../**/*.ts");
 const sync = internal.mutations.calendarSync;
@@ -104,7 +104,12 @@ describe("conservative iCal classification", () => {
     if (gate === "missing") await s.run(calendar(reservationEvent("other-stay")));
     expect(await s.decide()).toMatchObject({ outcome: "not_eligible" });
     expect(await s.jobs()).toEqual([]);
-    if (gate === "missing") { await s.run(); expect(await s.jobs()).toHaveLength(1); }
+    if (gate === "missing") {
+      await s.run(); expect(await s.jobs()).toEqual([]);
+      expect((await s.reservation())!.identityReview!.state).toBe("pending");
+      await confirmGuestForTest(s.t, (await s.reservation())!._id, await s.login());
+      expect(await s.jobs()).toHaveLength(1);
+    }
     if (gate === "rules_disabled") {
       await s.t.run(ctx => ctx.db.patch(s.ruleId, { enabled: true })); await s.run(); expect(await s.jobs()).toHaveLength(1);
     }
@@ -128,7 +133,9 @@ describe("conservative iCal classification", () => {
     await expect(s.t.mutation(api.mutations.calendarSync.confirmEventClassification, old)).rejects.toThrow("changed");
     const beforeMissing = await s.decisionArgs(); await s.run(calendar(reservationEvent("other")));
     await expect(s.t.mutation(api.mutations.calendarSync.confirmEventClassification, beforeMissing)).rejects.toThrow("changed");
-    await s.run(); await s.decide(); const ownerChoice = (await s.reservation())!.classification!.ownerDecision;
+    await s.run();
+    await confirmGuestForTest(s.t, (await s.reservation())!._id, await s.login());
+    const ownerChoice = (await s.reservation())!.classification!.ownerDecision;
     const beforeUrl = await s.decisionArgs();
     await s.t.mutation(api.mutations.calendarConnections.update, { sessionToken: beforeUrl.sessionToken, connectionId: s.connectionId, icalUrl: "https://synthetic.test/replacement" });
     await expect(s.t.mutation(api.mutations.calendarSync.confirmEventClassification, beforeUrl)).rejects.toThrow("changed");
@@ -189,8 +196,12 @@ describe("conservative iCal classification", () => {
     const first = await s.decisionArgs("guest_reservation", "owner");
     const second = await s.decisionArgs("guest_reservation", "second", s.secondConnectionId);
     const results = await Promise.all([s.t.mutation(api.mutations.calendarSync.confirmEventClassification, first), s.t.mutation(api.mutations.calendarSync.confirmEventClassification, second)]);
-    expect(results.map(row => row.outcome).sort()).toEqual(["created", "not_eligible"]);
-    expect(results.find(row => row.outcome === "not_eligible")!.skipReason).toBe("duplicate_checkout_date");
+    expect(results.every(row => row.outcome === "not_eligible" && row.skipReason === "identity_review_required")).toBe(true);
+    expect(await s.jobs()).toEqual([]);
+    // Explicit owner attestations do not bypass the older checkout-date gate.
+    await confirmGuestForTest(s.t, (await s.reservation())!._id, await s.login());
+    expect(await confirmGuestForTest(s.t, (await s.reservation(s.secondConnectionId))!._id, await s.login("second")))
+      .toMatchObject({ outcome: "not_eligible", skipReason: "duplicate_checkout_date" });
     expect(await s.jobs()).toHaveLength(1);
   });
 
