@@ -2598,6 +2598,21 @@ export default defineSchema({
     firstSeenAt: v.number(),
     lastSeenAt: v.number(),
     cancelledAt: v.optional(v.number()),
+    // Absence is review evidence, never cancellation evidence. Closed episodes
+    // remain in auditLog rather than an unbounded history array on this row.
+    missing: v.optional(v.object({
+      episodeId: v.string(),
+      firstMissingAt: v.number(),
+      lastMissingAt: v.number(),
+      observations: v.number(),
+      acknowledgedAt: v.optional(v.number()),
+      acknowledgedBy: v.optional(v.id("users")),
+    })),
+    cancellationEvidence: v.optional(v.object({
+      source: v.literal("ical_status_cancelled"),
+      observedAt: v.number(),
+      attemptId: v.string(),
+    })),
     // Flags for owner review (set by sync processor, not auto-acted upon)
     jobCreationSkipped: v.optional(v.boolean()),
     skipReason: v.optional(v.string()),
@@ -2606,6 +2621,7 @@ export default defineSchema({
     cancellationFlagged: v.optional(v.boolean()),
   })
     .index("by_connectionId", ["connectionId"])
+    .index("by_connectionId_externalUid", ["connectionId", "externalUid"])
     .index("by_propertyId", ["propertyId"])
     .index("by_externalUid", ["externalUid"])
     .index("by_companyId_status", ["companyId", "status"]),
@@ -2617,6 +2633,8 @@ export default defineSchema({
     status: v.union(v.literal("success"), v.literal("error"), v.literal("empty")),
     eventsFound: v.number(),
     reservationsCreated: v.number(),
+    reservationsMissing: v.optional(v.number()),
+    reservationsCancelled: v.optional(v.number()),
     errorMessage: v.optional(v.string()),
   }).index("by_connectionId", ["connectionId"]),
 
