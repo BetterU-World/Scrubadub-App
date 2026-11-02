@@ -1,0 +1,95 @@
+{
+  "type": "Offline Edge browser render; not email-client verification",
+  "checks": [
+    {
+      "id": "winner",
+      "width": 320,
+      "noOverflow": true
+    },
+    {
+      "id": "winner",
+      "width": 375,
+      "noOverflow": true
+    },
+    {
+      "id": "winner",
+      "width": 390,
+      "noOverflow": true
+    },
+    {
+      "id": "winner",
+      "width": 768,
+      "noOverflow": true
+    },
+    {
+      "id": "winner",
+      "width": 1280,
+      "noOverflow": true
+    },
+    {
+      "id": "winner",
+      "width": 1440,
+      "noOverflow": true
+    },
+    {
+      "id": "results",
+      "width": 320,
+      "noOverflow": true
+    },
+    {
+      "id": "results",
+      "width": 375,
+      "noOverflow": true
+    },
+    {
+      "id": "results",
+      "width": 390,
+      "noOverflow": true
+    },
+    {
+      "id": "results",
+      "width": 768,
+      "noOverflow": true
+    },
+    {
+      "id": "results",
+      "width": 1280,
+      "noOverflow": true
+    },
+    {
+      "id": "results",
+      "width": 1440,
+      "noOverflow": true
+    },
+    {
+      "id": "marketing",
+      "width": 320,
+      "noOverflow": true
+    },
+    {
+      "id": "marketing",
+      "width": 375,
+      "noOverflow": true
+    },
+    {
+      "id": "marketing",
+      "width": 390,
+      "noOverflow": true
+    },
+    {
+      "id": "marketing",
+      "width": 768,
+      "noOverflow": true
+    },
+    {
+      "id": "marketing",
+      "width": 1280,
+      "noOverflow": true
+    },
+    {
+      "id": "marketing",
+      "width": 1440,
+      "noOverflow": true
+    }
+  ]
+}
