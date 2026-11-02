@@ -1,5 +1,12 @@
 {
   "type": "Offline Edge browser render; not email-client verification",
+  "campaignTemplates": [
+    "winner.html",
+    "marketing.html"
+  ],
+  "archivedTemplates": [
+    "results.html"
+  ],
   "checks": [
     {
       "id": "winner",
