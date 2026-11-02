@@ -1,0 +1,50 @@
+{
+  "url": "https://scrubscrubscrub.com/giveaway#official-rules",
+  "observedAt": "2026-11-02T23:49:39.003Z",
+  "method": "Read-only rendered public DOM; no forms submitted",
+  "rulesTextSha256": "7cadff27f7402709cc7ca430b818bb846829317f6f97b3350682e42d2919c3fb",
+  "ruleChecks": [
+    {
+      "title": "Sponsor",
+      "matchesPublished": true
+    },
+    {
+      "title": "Eligibility",
+      "matchesPublished": true
+    },
+    {
+      "title": "Insider exclusion",
+      "matchesPublished": true
+    },
+    {
+      "title": "Method A — Assessment entry",
+      "matchesPublished": true
+    },
+    {
+      "title": "Method B — free alternate online entry",
+      "matchesPublished": true
+    },
+    {
+      "title": "Entry limit and no purchase necessary",
+      "matchesPublished": true
+    },
+    {
+      "title": "Prize",
+      "matchesPublished": true
+    },
+    {
+      "title": "Selection and odds",
+      "matchesPublished": true
+    },
+    {
+      "title": "Notification, verification and alternates",
+      "matchesPublished": true
+    },
+    {
+      "title": "Privacy and email consent",
+      "matchesPublished": true
+    }
+  ],
+  "allRuleBodiesMatch": true,
+  "historicalSnapshotVerified": false
+}
