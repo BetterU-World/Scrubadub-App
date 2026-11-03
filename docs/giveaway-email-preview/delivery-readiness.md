@@ -1,6 +1,6 @@
 # Manual operation and final approval gates
 
-**Current authorization: implementation only. No deployment, merge, test email, production email, scheduling or Stripe modifications.** This supersedes earlier readiness-only plans. UI/API controls exist in code but have not been deployed or invoked against production.
+**Current authorization: code review, fixes and deployment preparation only. No deployment, merge, test email, production email, scheduling or Stripe modifications.** This supersedes earlier readiness-only plans. UI/API controls exist in code but have not been deployed or invoked against production.
 
 ## Configure privately after explicit deployment/configuration authorization
 
@@ -15,7 +15,7 @@ Use the existing Convex deployment's protected server environment; never a `VITE
 | `SCRUB_CAMPAIGN_UNSUBSCRIBE_SECRET` | Stable random secret, at least 32 characters, for HMAC opt-out tokens. Retain it so delivered links remain valid. |
 | `SCRUB_CAMPAIGN_RESEND_WEBHOOK_SECRET` | Resend webhook signing secret. Configure complaint, bounce and suppression events to the campaign webhook URL. |
 | `SCRUB_GIVEAWAY_WINNER_EMAIL` | Founder-confirmed private winner mailbox. Never hard-code it. Match privately to the authoritative entry/ledger. |
-| Existing `TOKEN_PEPPER` | Stable identity hashing used for existing sessions and campaign suppressions. Rotation requires a migration; do not rotate casually. |
+| Existing `TOKEN_PEPPER` | Existing session authentication. Campaign identity is now independently stable across auth-pepper rotation; preserve delivered opt-out signing keys. |
 | `SCRUB_CAMPAIGN_TEST_RECIPIENTS` | Comma-separated exact internal addresses explicitly approved for testing. Participant and winner addresses are rejected even if allowlisted. |
 | `SCRUB_CAMPAIGN_ALLOWED_SEND_MODE` | Leave unset/disabled. Only `test` or `production` permits the corresponding mode, in addition to a separate recorded approval. Never enable both. |
 
@@ -33,7 +33,7 @@ Use the existing superadmin Giveaway operator page. Both existing verified sessi
 4. Import all known previous opt-outs/provider suppressions using superadmin `giveawayEmailCampaign.suppress` before approval. Review consent Yes plus timestamp/version and any external withdrawals. Current entry/consent/suppression are rechecked immediately before each reservation. New webhook complaints/bounces/suppressions persist automatically when the verified endpoint is configured. Winner suppression never removes prize administration or conditions the gift card on marketing consent.
 5. Keep roster and source records private. Status and ledger views return aggregate counts/opaque record IDs and delivery metadata without participant addresses. Counts have not been run against production in this task and remain unknown.
 
-A snapshot can be approved within 24 hours of creation. Approval binds the snapshot digest, configuration and content version and expires after one hour. New approval cannot bypass prior campaign-level delivery keys. A new content version does not create permission to send an already-accepted notification again.
+Incomplete snapshot preparation cannot be paused into approval review. A snapshot can be approved within 24 hours of creation. Approval binds the snapshot digest, configuration and content version and expires after one hour. New approval cannot bypass prior campaign-level delivery keys. A new content version does not create permission to send an already-accepted notification again.
 
 ## Exact test approval
 
@@ -57,8 +57,10 @@ Winner A is attempted first; C starts only after known provider acceptance of A.
 
 A persistent unique key binds campaign + mode + template + normalized-email hash (test keys additionally include run ID). The mutation atomically reserves the key and run's in-flight slot. Resend receives the same idempotency key. Reserved, uncertain and rejected attempts cannot be resent by this implementation; no blind network/provider retry is performed. Ledger protection outlives provider idempotency retention.
 
-Known rejection pauses the run. Unknown timeout/5xx or an action interrupted after reservation also blocks progress. Do not infer acceptance/rejection from an exception. Inspect the private ledger IDs and provider records. `reconcileAccepted` requires superadmin authorization, provider message ID, private evidence reference and verified accepted timestamp; it clears the in-flight slot but returns the run to review, requiring fresh explicit approval. It never authorizes another send by itself.
+Known rejection pauses the run. Unknown timeout/5xx or an action interrupted after reservation also blocks progress. Do not infer acceptance/rejection from an exception. Inspect the private ledger IDs and provider records. `reconcileAccepted` remains usable after configuration changes and requires superadmin authorization, provider message ID, private evidence reference and a finite verified accepted timestamp; it clears the in-flight slot but returns the run to review, requiring fresh explicit approval. It never authorizes another send by itself.
 
 An operator-paused run without unresolved deliveries may return to review through **Return resolved run to approval review**, then obtain new approval. A definitely rejected or unresolved message has no retry/reset endpoint in this minimal version. Correct/reconcile the provider issue and review a separately authorized recovery change if another actual attempt is necessary; do not delete ledger records, change campaign IDs or use a new snapshot to bypass it. This deliberately conservative limit prevents duplicate notifications.
 
 Only HTTP opt-out actions and verified provider suppression events are anonymous; every campaign administration, approval, reconciliation and delivery control verifies platform-admin permission. No raw addresses, secret values, message bodies or provider error bodies are printed by campaign code.
+
+See [final review and deployment checklist](final-review.md) for the review fixes, configuration-inventory confidence, branch auto-deployment hold and internal-inbox verification steps.

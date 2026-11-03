@@ -5,8 +5,7 @@ import type { MutationCtx } from "./_generated/server";
 import type { Id, Doc } from "./_generated/dataModel";
 import { requireSuperadminSession } from "./lib/sessionAuth";
 import { normalizeGiveawayEmail, giveawayCampaigns } from "./lib/giveawayCampaigns";
-import { hashTokenForLookup } from "./lib/tokenHash";
-import { CAMPAIGN, CONTENT_VERSION, configuration, configDigest, digest, category, preview, approvalPhrase, assertSendMode } from "./lib/giveawayCampaignEmail";
+import { CAMPAIGN, CONTENT_VERSION, configuration, configDigest, digest, emailIdentity, category, preview, approvalPhrase, assertSendMode } from "./lib/giveawayCampaignEmail";
 import { countsV, templateV, runStateV, rowStateV } from "./lib/giveawayEmailSchema";
 
 const auth = { userId: v.id("users"), sessionToken: v.string() };
@@ -49,7 +48,7 @@ export const prepareNextPage = mutation({
     const page = await ctx.db.query("giveawayEntries").withIndex("by_campaign_email", q => q.eq("campaignId", CAMPAIGN)).paginate({ cursor: run.cursor, numItems: 100 });
     const counts = { ...run.counts }; let fingerprint = run.digest;
     for (const e of page.page) {
-      const emailHash = await hashTokenForLookup(e.normalizedEmail);
+      const emailHash = await emailIdentity(e.normalizedEmail);
       const group = await classify(ctx, e, c.winner, emailHash);
       counts.total++; counts[group]++;
       fingerprint = await digest(`${fingerprint}:${e._id}:${emailHash}:${group}`);
@@ -67,7 +66,7 @@ export const prepareTest = mutation({
     if (!c.testRecipients.includes(email) || email === c.winner) throw new Error("Test address is not approved");
     // No participant address may be used as a test recipient, even if accidentally allowlisted.
     if ((await ctx.db.query("giveawayEntries").withIndex("by_campaign_email", q => q.eq("campaignId", CAMPAIGN).eq("normalizedEmail", email)).take(1)).length) throw new Error("Participant test recipients are prohibited");
-    const emailHash = await hashTokenForLookup(email); const configHash = await configDigest(c);
+    const emailHash = await emailIdentity(email); const configHash = await configDigest(c);
     const runId = await ctx.db.insert("giveawayEmailRuns", { mode: "test", state: "ready", createdBy: args.userId, createdAt: Date.now(), configHash, contentVersion: CONTENT_VERSION, digest: await digest(`test:${emailHash}:${configHash}:${CONTENT_VERSION}`), cursor: null, counts: { ...emptyCounts(), total: 2, winner: 1, marketing: 1 } });
     for (const template of ["winner", "marketing"] as const) await ctx.db.insert("giveawayEmailRecipients", { runId, template, email, emailHash, state: "ready" });
     return runId;
@@ -95,7 +94,9 @@ export const approve = mutation({
 });
 export const pause = mutation({ args: runArg, returns: v.null(), handler: async (ctx, args) => {
   await requireSuperadminSession(ctx, args.sessionToken, args.userId); const run = await ctx.db.get(args.runId);
-  if (!run) throw new Error("Campaign run not found"); await ctx.db.patch(run._id, { state: "paused" }); return null;
+  if (!run) throw new Error("Campaign run not found");
+  if (run.state !== "approved" && run.state !== "paused") throw new Error("Only an approved delivery can be paused");
+  await ctx.db.patch(run._id, { state: "paused" }); return null;
 } });
 export const ledgerPage = query({
   args: { ...runArg, paginationOpts: paginationOptsValidator },
@@ -178,11 +179,14 @@ export const finish = internalMutation({
 export const reconcileAccepted = mutation({
   args: { ...runArg, recipientId: v.id("giveawayEmailRecipients"), providerId: v.string(), acceptedAt: v.number(), evidenceReference: v.string() }, returns: v.null(),
   handler: async (ctx, args) => {
-    await requireSuperadminSession(ctx, args.sessionToken, args.userId); const run = await getRun(ctx, args.runId); const row = await ctx.db.get(args.recipientId);
-    if (!row || row.runId !== run._id || !["reserved", "uncertain"].includes(row.state) || !/^[-a-zA-Z0-9_]{5,100}$/.test(args.providerId) || args.evidenceReference.length < 8 || args.evidenceReference.length > 200 || !row.reservedAt || args.acceptedAt < row.reservedAt || args.acceptedAt > Date.now()) throw new Error("Verified provider acceptance evidence required");
+    await requireSuperadminSession(ctx, args.sessionToken, args.userId);
+    // Reconcile historical provider acceptance even after key/config/content changes.
+    // Any subsequent approval still requires a current configuration-matching run.
+    const run = await ctx.db.get(args.runId); const row = await ctx.db.get(args.recipientId);
+    if (!run || !row || row.runId !== run._id || (run.inFlight && run.inFlight !== row._id) || !["reserved", "uncertain"].includes(row.state) || !/^[-a-zA-Z0-9_]{5,100}$/.test(args.providerId) || args.evidenceReference.length < 8 || args.evidenceReference.length > 200 || !row.reservedAt || !Number.isFinite(args.acceptedAt) || args.acceptedAt < row.reservedAt || args.acceptedAt > Date.now()) throw new Error("Verified provider acceptance evidence required");
     const key = `${CAMPAIGN}:${run.mode}:${run.mode === "test" ? run._id + ":" : ""}${row.template}:${row.emailHash}`;
     const delivery = await ctx.db.query("giveawayEmailDeliveries").withIndex("by_key", q => q.eq("key", key)).unique();
-    if (!delivery || delivery.recipientId !== row._id) throw new Error("Delivery not found");
+    if (!delivery || delivery.recipientId !== row._id || !["reserved", "uncertain"].includes(delivery.state)) throw new Error("Delivery not found or already resolved");
     await ctx.db.patch(delivery._id, { state: "accepted", providerId: args.providerId, acceptedAt: args.acceptedAt, reconciledBy: args.userId, evidenceReference: args.evidenceReference });
     await ctx.db.patch(row._id, { state: "accepted", providerId: args.providerId, acceptedAt: args.acceptedAt, ...(row.template === "winner" && run.mode === "production" ? { responseDeadline: args.acceptedAt + 72 * 60 * 60 * 1000 } : {}) });
     // Reconciliation never authorizes more sends: explicit approval is required again.
@@ -193,7 +197,7 @@ export const suppress = mutation({
   args: { ...auth, email: v.string(), reason: v.union(v.literal("provider"), v.literal("manual")) }, returns: v.null(),
   handler: async (ctx, args) => {
     await requireSuperadminSession(ctx, args.sessionToken, args.userId);
-    const emailHash = await hashTokenForLookup(normalizeGiveawayEmail(args.email));
+    const emailHash = await emailIdentity(normalizeGiveawayEmail(args.email));
     if (!await isSuppressed(ctx, emailHash)) await ctx.db.insert("marketingSuppressions", { emailHash, reason: args.reason, createdAt: Date.now(), createdBy: args.userId }); return null;
   },
 });

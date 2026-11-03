@@ -5,9 +5,8 @@ import { action, internalAction } from "../_generated/server";
 import { api, internal } from "../_generated/api";
 import { requireSuperadminSession } from "../lib/sessions";
 import { assertExternalSideEffectsAllowed } from "../lib/environment";
-import { configuration, assertSendMode, outgoing } from "../lib/giveawayCampaignEmail";
+import { configuration, assertSendMode, outgoing, emailIdentity } from "../lib/giveawayCampaignEmail";
 import { normalizeGiveawayEmail } from "../lib/giveawayCampaigns";
-import { hashTokenForLookup } from "../lib/tokenHash";
 
 const campaign = internal.giveawayEmailCampaign;
 export const providerSuppression = internalAction({
@@ -21,7 +20,7 @@ export const providerSuppression = internalAction({
       if (["email.bounced", "email.complained", "email.suppressed"].includes(event.type) && "to" in event.data) {
         const recipients = event.data.to;
         if (!Array.isArray(recipients) || recipients.length > 50) return false;
-        for (const email of recipients) await ctx.runMutation(campaign.providerOptOut, { emailHash: await hashTokenForLookup(normalizeGiveawayEmail(email)) });
+        for (const email of recipients) await ctx.runMutation(campaign.providerOptOut, { emailHash: await emailIdentity(normalizeGiveawayEmail(email)) });
       }
       return true;
     } catch { return false; }

@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { convexTest } from "convex-test";
+import { createHmac } from "node:crypto";
 import schema from "../../schema";
 import { api, internal } from "../../_generated/api";
 import { hashTokenForLookup } from "../tokenHash";
-import { CAMPAIGN, category, configuration, outgoing, preview, unsubscribeToken, verifyUnsubscribe, approvalPhrase } from "../giveawayCampaignEmail";
+import { CAMPAIGN, category, configuration, outgoing, preview, emailIdentity, unsubscribeToken, verifyUnsubscribe, approvalPhrase } from "../giveawayCampaignEmail";
 import { giveawayCampaigns } from "../giveawayCampaigns";
 
 const { send, verifyWebhook } = vi.hoisted(() => ({ send: vi.fn(), verifyWebhook: vi.fn() }));
@@ -75,6 +76,16 @@ describe("campaign content and configuration", () => {
     expect(category(entry, winner, 2, false)).toBe("duplicate");
     expect(category(entry, winner, 1, true)).toBe("suppressed");
     expect(category(sample(winner, false), winner, 1, true)).toBe("winner");
+    for (const time of [NaN, Infinity, -1, now + 1]) {
+      expect(category({ ...entry, marketingConsentAt: time }, winner, 1, false)).toBe("invalidConsent");
+      expect(category({ ...entry, eligibilityConfirmedAt: time }, winner, 1, false)).toBe("invalid");
+    }
+    expect(category({ ...entry, qualifiedAt: NaN }, winner, 1, false)).toBe("invalid");
+  });
+  it("keeps campaign identity stable across auth-key rotation and canonicalizes email", async () => {
+    const original = await emailIdentity(" Yes@Example.test ");
+    vi.stubEnv("TOKEN_PEPPER", "rotated-synthetic-auth-pepper");
+    expect(await emailIdentity("yes@example.test")).toBe(original);
   });
 });
 describe("private snapshot and approval", () => {
@@ -116,8 +127,72 @@ describe("private snapshot and approval", () => {
     await expect(t.action(delivery.sendBatch, { ...auth, runId: run.runId, limit: 1 })).rejects.toThrow("changed");
     expect(send).not.toHaveBeenCalled();
   });
+  it.each([undefined, "", "disabled", "true", "TEST"])("cannot approve or deliver with send mode %s", async mode => {
+    const { t, auth } = await setup(); await t.run(ctx => ctx.db.insert("giveawayEntries", sample(winner)));
+    const run = await ready(t, auth); await approve(t, auth, run);
+    vi.stubEnv("SCRUB_CAMPAIGN_ALLOWED_SEND_MODE", mode);
+    await expect(t.action(delivery.sendBatch, { ...auth, runId: run.runId, limit: 2 })).rejects.toThrow("disabled");
+    expect(send).not.toHaveBeenCalled();
+    const second = await ready(t, auth);
+    await expect(approve(t, auth, second)).rejects.toThrow("disabled");
+    expect(send).not.toHaveBeenCalled();
+  });
+  it("cannot turn an incomplete snapshot into an approvable run via pause", async () => {
+    const { t, auth } = await setup();
+    const runId = await t.mutation(functions.prepare, auth);
+    await expect(t.mutation(functions.pause, { ...auth, runId })).rejects.toThrow("approved delivery");
+    await expect(t.mutation(functions.reviewPausedRun, { ...auth, runId })).rejects.toThrow();
+    expect((await t.query(functions.status, { ...auth, runId })).state).toBe("preparing");
+  });
+  it("enforces admin permission for every public campaign control", async () => {
+    const { t, auth, owner } = await setup(); await t.run(ctx => ctx.db.insert("giveawayEntries", sample(winner)));
+    const run = await ready(t, auth);
+    const recipientId = await t.run(async ctx => (await ctx.db.query("giveawayEmailRecipients").first())!._id);
+    const bad = { userId: owner, sessionToken: "owner-token" };
+    for (const [fn, args] of [
+      [functions.status, { ...bad, runId: run.runId }],
+      [functions.designPreview, { ...bad, template: "winner" }],
+      [functions.ledgerPage, { ...bad, runId: run.runId, paginationOpts: { cursor: null, numItems: 5 } }],
+    ] as const) await expect(t.query(fn, args)).rejects.toThrow("Super admin");
+    for (const [fn, args] of [
+      [functions.prepare, bad], [functions.prepareNextPage, { ...bad, runId: run.runId }],
+      [functions.prepareTest, { ...bad, testEmail: "reviewer@example.test" }],
+      [functions.approve, { ...bad, runId: run.runId, expectedDigest: run.digest, approval: approvalPhrase("production"), confirmReadiness: true }],
+      [functions.pause, { ...bad, runId: run.runId }], [functions.reviewPausedRun, { ...bad, runId: run.runId }],
+      [functions.suppress, { ...bad, email: "synthetic@example.test", reason: "manual" }],
+      [functions.reconcileAccepted, { ...bad, runId: run.runId, recipientId, providerId: "provider-test-id", acceptedAt: now, evidenceReference: "synthetic-evidence" }],
+    ] as const) await expect(t.mutation(fn, args)).rejects.toThrow("Super admin");
+    expect(send).not.toHaveBeenCalled();
+  });
 });
 describe("persistent opt-out", () => {
+  it("uses the real Resend/Svix verifier and rejects tampered, stale or unsigned payloads", async () => {
+    const { t } = await setup();
+    const sdk = await vi.importActual<typeof import("resend")>("resend");
+    const real = new sdk.Resend("synthetic-verification-only");
+    verifyWebhook.mockImplementation(options => real.webhooks.verify(options));
+    const key = Buffer.from("synthetic-webhook-key-not-for-production");
+    vi.stubEnv("SCRUB_CAMPAIGN_RESEND_WEBHOOK_SECRET", `whsec_${key.toString("base64")}`);
+    const payload = JSON.stringify({ type: "email.complained", data: { to: ["signed@example.test"] } });
+    const id = "msg_synthetic"; const timestamp = String(now / 1000);
+    const sign = (time: string) => `v1,${createHmac("sha256", key).update(`${id}.${time}.${payload}`).digest("base64")}`;
+    const post = (body: string, time: string, signature: string) => t.fetch("/giveaway/resend-webhook", { method: "POST", body, headers: { "svix-id": id, "svix-timestamp": time, "svix-signature": signature } });
+    expect((await post(payload + " ", timestamp, sign(timestamp))).status).toBe(401);
+    const stale = String(now / 1000 - 600);
+    expect((await post(payload, stale, sign(stale))).status).toBe(401);
+    expect((await post(payload, timestamp, "")).status).toBe(401);
+    expect(await t.run(ctx => ctx.db.query("marketingSuppressions").collect())).toHaveLength(0);
+    expect((await post(payload, timestamp, sign(timestamp))).status).toBe(204);
+    expect((await post(payload, timestamp, sign(timestamp))).status).toBe(204);
+    const rows = await t.run(ctx => ctx.db.query("marketingSuppressions").collect());
+    expect(rows).toHaveLength(1); expect(rows[0].emailHash).toBe(await emailIdentity("signed@example.test"));
+    expect(send).not.toHaveBeenCalled();
+  });
+  it("bounds untrusted webhook bytes before signature verification", async () => {
+    const { t } = await setup();
+    expect((await t.fetch("/giveaway/resend-webhook", { method: "POST", body: "x".repeat(65537) })).status).toBe(413);
+    expect(verifyWebhook).not.toHaveBeenCalled();
+  });
   it("requires provider signature verification before recording bounce/complaint suppression", async () => {
     const { t } = await setup();
     vi.stubEnv("SCRUB_CAMPAIGN_RESEND_WEBHOOK_SECRET", "synthetic-webhook-secret");
@@ -132,7 +207,7 @@ describe("persistent opt-out", () => {
     expect(send).not.toHaveBeenCalled();
   });
   it("verifies signed opaque links, GET does not suppress, POST persists and is idempotent", async () => {
-    const { t } = await setup(); const hash = await hashTokenForLookup("yes@example.test");
+    const { t } = await setup(); const hash = await emailIdentity("yes@example.test");
     const token = await unsubscribeToken(hash, configuration().secret);
     expect(token).not.toContain("yes@example");
     expect(await verifyUnsubscribe(token, configuration().secret)).toBe(hash);
@@ -149,8 +224,8 @@ describe("persistent opt-out", () => {
     const { t, auth } = await setup();
     const ids = await t.run(async ctx => { await ctx.db.insert("giveawayEntries", sample(winner)); return [await ctx.db.insert("giveawayEntries", sample("optout@example.test")), await ctx.db.insert("giveawayEntries", sample("withdrawn@example.test"))]; });
     const run = await ready(t, auth); await approve(t, auth, run);
-    await t.mutation(privateFunctions.unsubscribe, { emailHash: await hashTokenForLookup(winner) });
-    await t.mutation(privateFunctions.unsubscribe, { emailHash: await hashTokenForLookup("optout@example.test") });
+    await t.mutation(privateFunctions.unsubscribe, { emailHash: await emailIdentity(winner) });
+    await t.mutation(privateFunctions.unsubscribe, { emailHash: await emailIdentity("optout@example.test") });
     await t.run(ctx => ctx.db.patch(ids[1], { marketingConsent: false }));
     for (let i = 0; i < 3; i++) await t.action(delivery.sendBatch, { ...auth, runId: run.runId, limit: 2 });
     expect(send).toHaveBeenCalledTimes(1); expect(send.mock.calls[0][0].to).toBe(winner);
@@ -165,8 +240,29 @@ describe("delivery ledger and partial failures (mocked provider only)", () => {
     expect(send.mock.calls[0][0]).toMatchObject({ from: "SCRUB Team <sender@example.test>", replyTo: "reply@example.test" });
     const rows = await t.run(ctx => ctx.db.query("giveawayEmailRecipients").collect());
     expect(rows.find(r => r.template === "winner")).toMatchObject({ acceptedAt: now, responseDeadline: now + 72 * 3600000 });
+    expect(await t.action(delivery.sendBatch, { ...auth, runId: run.runId, limit: 2 })).toEqual({ accepted: 0, stopped: true });
+    await expect(t.action(delivery.sendBatch, { ...auth, runId: run.runId, limit: 2 })).rejects.toThrow("not approved");
+    expect(send).toHaveBeenCalledTimes(2);
     const second = await ready(t, auth); await approve(t, auth, second);
     for (let i = 0; i < 3; i++) await t.action(delivery.sendBatch, { ...auth, runId: second.runId, limit: 2 });
+    expect(send).toHaveBeenCalledTimes(2);
+  });
+  it("keeps prior suppressions and production send keys valid after session-pepper rotation", async () => {
+    const { t, auth } = await setup();
+    await t.run(async ctx => { for (const email of [winner, "yes@example.test", "blocked@example.test"]) await ctx.db.insert("giveawayEntries", sample(email)); });
+    await t.mutation(functions.suppress, { ...auth, email: "blocked@example.test", reason: "manual" });
+    const run = await ready(t, auth); await approve(t, auth, run);
+    await t.action(delivery.sendBatch, { ...auth, runId: run.runId, limit: 2 });
+    vi.stubEnv("TOKEN_PEPPER", "rotated-synthetic-auth-pepper");
+    await t.run(async ctx => {
+      const sessions = await ctx.db.query("authSessions").collect();
+      for (const session of sessions) if (session.userId === auth.userId) await ctx.db.patch(session._id, { tokenHash: await hashTokenForLookup("admin-token") });
+    });
+    const second = await ready(t, auth); expect(second.counts.suppressed).toBe(1);
+    await approve(t, auth, second);
+    // Exercise the fresh V8 session/reservation boundary. The existing Node session
+    // helper captures its pepper at module initialization until its runtime restarts.
+    for (let i = 0; i < 3; i++) expect(await t.mutation(privateFunctions.reserve, { ...auth, runId: second.runId })).toBeNull();
     expect(send).toHaveBeenCalledTimes(2);
   });
   it.each(["timeout", "rejection", "server-error"])("pauses partial campaign after %s and never blindly retries", async kind => {
@@ -189,6 +285,16 @@ describe("delivery ledger and partial failures (mocked provider only)", () => {
     await expect(t.mutation(privateFunctions.reserve, { ...auth, runId: run.runId })).rejects.toThrow("unresolved");
     await t.mutation(functions.reconcileAccepted, { ...auth, runId: run.runId, recipientId: reserved.recipientId, providerId: "verified-provider-id", acceptedAt: now, evidenceReference: "private-ledger-reference" });
     expect((await t.query(functions.status, { ...auth, runId: run.runId })).state).toBe("ready");
+    expect(send).not.toHaveBeenCalled();
+  });
+  it("can reconcile an interrupted reservation after configuration drift without authorizing sends", async () => {
+    const { t, auth } = await setup(); await t.run(ctx => ctx.db.insert("giveawayEntries", sample(winner)));
+    const run = await ready(t, auth); await approve(t, auth, run);
+    const reserved = await t.mutation(privateFunctions.reserve, { ...auth, runId: run.runId });
+    vi.stubEnv("RESEND_API_KEY", "rotated-synthetic-key");
+    await t.mutation(functions.reconcileAccepted, { ...auth, runId: run.runId, recipientId: reserved.recipientId, providerId: "verified-provider-id", acceptedAt: now, evidenceReference: "synthetic-provider-evidence" });
+    expect((await t.query(functions.status, { ...auth, runId: run.runId })).state).toBe("ready");
+    await expect(approve(t, auth, run)).rejects.toThrow("changed");
     expect(send).not.toHaveBeenCalled();
   });
   it("rejects pause recovery until unresolved deliveries are reconciled", async () => {

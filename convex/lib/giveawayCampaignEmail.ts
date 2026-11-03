@@ -3,13 +3,18 @@ import { giveawayCampaigns, normalizeGiveawayEmail } from "./giveawayCampaigns";
 
 export const CAMPAIGN = "scrub-giveaway-2026-001";
 // Increment whenever content or selection requirements change. Approval binds to this version.
-export const CONTENT_VERSION = "giveaway-email-v3-freescrub";
+export const CONTENT_VERSION = "giveaway-email-v4-freescrub";
 export type Template = "winner" | "marketing";
 export type Mode = "test" | "production";
 export const approvalPhrase = (mode: Mode) => `APPROVE ${mode.toUpperCase()} SCRUB GIVEAWAY A AND C`;
 const escape = (s: string) => s.replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 export async function digest(s: string) {
   return Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s))), b => b.toString(16).padStart(2, "0")).join("");
+}
+// Stable across auth-pepper rotations: signing, rather than obscuring this identifier,
+// authorizes opt-out. Stored only privately and in the recipient's signed link.
+export async function emailIdentity(email: string) {
+  return digest(`scrub-marketing-email-v1:${normalizeGiveawayEmail(email)}`);
 }
 export function configuration(env: Record<string, string | undefined> = process.env) {
   const value = (name: string) => { const result = env[name]?.trim(); if (!result || /[\r\n]/.test(result)) throw new Error(`Missing or invalid campaign configuration: ${name}`); return result; };
@@ -19,7 +24,8 @@ export function configuration(env: Record<string, string | undefined> = process.
   const replyTo = mailbox("SCRUB_CAMPAIGN_REPLY_TO");
   const postalAddress = value("SCRUB_CAMPAIGN_POSTAL_ADDRESS");
   if (postalAddress.length > 500 || /\[|\]/.test(postalAddress)) throw new Error("Invalid campaign postal configuration");
-  const site = new URL(value("CONVEX_SITE_URL"));
+  let site: URL;
+  try { site = new URL(value("CONVEX_SITE_URL")); } catch { throw new Error("Invalid campaign HTTPS site configuration"); }
   if (site.protocol !== "https:" || site.username || site.password || site.search || site.hash || site.pathname !== "/") throw new Error("Invalid campaign HTTPS site configuration");
   const secret = value("SCRUB_CAMPAIGN_UNSUBSCRIBE_SECRET");
   if (secret.length < 32) throw new Error("Campaign unsubscribe secret must have at least 32 characters");
@@ -76,10 +82,10 @@ export function category(e: Entry, winner: string, duplicates: number, suppresse
   const rules = giveawayCampaigns[CAMPAIGN];
   let email: string;
   try { email = normalizeGiveawayEmail(e.originalEmail); } catch { return "invalid" as const; }
-  if (e.campaignId !== CAMPAIGN || email !== e.normalizedEmail || e.status !== "qualified" || e.rulesVersion !== rules.rulesVersion || !e.eligibilityConfirmedAt || e.qualifiedAt < rules.startsAt! || e.qualifiedAt >= rules.endsAt) return "invalid" as const;
+  if (e.campaignId !== CAMPAIGN || email !== e.normalizedEmail || e.status !== "qualified" || e.rulesVersion !== rules.rulesVersion || !Number.isFinite(e.eligibilityConfirmedAt) || e.eligibilityConfirmedAt <= 0 || e.eligibilityConfirmedAt > Date.now() || !Number.isFinite(e.qualifiedAt) || e.qualifiedAt < rules.startsAt! || e.qualifiedAt >= rules.endsAt) return "invalid" as const;
   if (duplicates !== 1) return "duplicate" as const;
   if (email === winner) return "winner" as const; // Prize administration remains independent of marketing suppression.
   if (e.marketingConsent !== true) return e.marketingConsent === false ? "noConsent" as const : "invalidConsent" as const;
-  if (!e.marketingConsentAt || e.consentVersion !== "giveaway_followup_v1") return "invalidConsent" as const;
+  if (!Number.isFinite(e.marketingConsentAt) || !e.marketingConsentAt || e.marketingConsentAt <= 0 || e.marketingConsentAt > Date.now() || e.consentVersion !== "giveaway_followup_v1") return "invalidConsent" as const;
   return suppressed ? "suppressed" as const : "marketing" as const;
 }

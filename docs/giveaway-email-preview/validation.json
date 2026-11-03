@@ -113,5 +113,24 @@
     "frontendOnlyBuild": "passed",
     "deployment": "not performed",
     "emailDelivery": "mocked provider only; no messages sent"
+  },
+  "finalReviewChecks": {
+    "fullSuite": {
+      "files": 204,
+      "passed": 1756
+    },
+    "finalFocused": {
+      "files": 4,
+      "passed": 72
+    },
+    "typecheckConvex": "passed",
+    "typecheckFrontend": "passed",
+    "frontendOnlyBuild": "passed",
+    "realResendSvixSignatures": "passed: signed, tampered, stale, unsigned and replay",
+    "disabledMode": "provider not called for unset, empty, disabled, true or uppercase TEST",
+    "existingCspPreview": "verified in local browser",
+    "deployment": "not performed; branch-specific Git deployment holds added",
+    "productionEnvironmentInventory": "unavailable; only local/source setting names verified",
+    "emailDelivery": "mocked only; no real test or production messages sent"
   }
 }

@@ -7,6 +7,8 @@ Draft PR #275 now implements the A/C campaign. Visual layout and branding are pr
 - [Billing requirements and optional verification](verification-update.md): founder-confirmed FREESCRUB behavior; no connector dependency.
 - [Current published rules evidence](published-rules-verification.json): all 10 public rule bodies matched the repository. This is not a historical frozen-rules audit.
 
+See [final adversarial review and deployment checklist](final-review.md) for the latest fixes, configuration inventory, no-send proofs and exact internal-inbox steps.
+
 ## Implementation
 
 `convex/giveawayEmailCampaign.ts` provides superadmin-only previews, paginated dry-run preparation, aggregate counts, snapshot/config/content-bound approval, pause, ledger review, and provider-acceptance reconciliation. New tables hold private snapshots, recipients, stable campaign-level delivery keys and persistent marketing suppressions. Existing tables receive no new required fields.
@@ -36,3 +38,5 @@ Focused tests use synthetic database records and a fully mocked Resend transport
 Run `node ../node_modules/vitest/vitest.mjs run convex/lib/__tests__/giveawayEmailCampaign.test.ts` from this worktree (or normal `npm test -- ...` after installing dependencies). Run frontend/Convex typechecks and a frontend-only build. Never use the root build script, which deploys Convex. No deployment-based verification was performed because deployment is not authorized.
 
 Final implementation validation: **204 files / 1,745 tests passed**, including the focused **4 files / 60 tests** campaign regressions. Convex and frontend TypeScript checks and the frontend-only production build passed. All 18 responsive overflow checks passed; six sample screenshots were regenerated. Existing non-failing build chunk-size and dependency source-map warnings were observed. No deployment or actual email sends were performed.
+
+Final adversarial review validation: **204 files / 1,756 tests passed**, followed by **4 files / 72 focused tests** including the added same-run/identity-rotation regressions. Both typechecks and the frontend-only build passed. No deployment, environment write or email delivery was performed.

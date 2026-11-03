@@ -15,8 +15,19 @@ export const handle = httpAction(async (ctx, request) => {
   return new Response("You are unsubscribed from SCRUB marketing. Your giveaway prize and account are unaffected.", { headers });
 });
 export const providerWebhook = httpAction(async (ctx, request) => {
-  const payload = await request.text();
-  if (payload.length > 65536) return new Response(null, { status: 413 });
+  // Bound bytes while streaming, before allocating an untrusted public request body.
+  const reader = request.body?.getReader();
+  const decoder = new TextDecoder(); let payload = ""; let bytes = 0;
+  if (reader) {
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      bytes += chunk.value.byteLength;
+      if (bytes > 65536) { await reader.cancel(); return new Response(null, { status: 413 }); }
+      payload += decoder.decode(chunk.value, { stream: true });
+    }
+    payload += decoder.decode();
+  }
   const valid = await ctx.runAction(internal.actions.giveawayCampaignDelivery.providerSuppression, { payload, id: request.headers.get("svix-id") ?? "", timestamp: request.headers.get("svix-timestamp") ?? "", signature: request.headers.get("svix-signature") ?? "" });
   return new Response(null, { status: valid ? 204 : 401, headers: { "Cache-Control": "no-store" } });
 });
