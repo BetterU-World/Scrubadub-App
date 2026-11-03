@@ -98,5 +98,20 @@
       "width": 1440,
       "noOverflow": true
     }
-  ]
+  ],
+  "implementationChecks": {
+    "fullSuite": {
+      "files": 204,
+      "passed": 1745
+    },
+    "focusedRegression": {
+      "files": 4,
+      "passed": 60
+    },
+    "typecheckConvex": "passed",
+    "typecheckFrontend": "passed",
+    "frontendOnlyBuild": "passed",
+    "deployment": "not performed",
+    "emailDelivery": "mocked provider only; no messages sent"
+  }
 }

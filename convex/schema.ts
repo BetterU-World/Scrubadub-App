@@ -1,4 +1,5 @@
 import { defineSchema, defineTable } from "convex/server";
+import { giveawayEmailTables } from "./lib/giveawayEmailSchema";
 import { executionEvidence } from "./lib/performedWorkers";
 import { outgoingTables } from "./lib/outgoingSchema";
 import { v } from "convex/values";
@@ -14,6 +15,7 @@ import {
 } from "./lib/securityEvents";
 
 export default defineSchema({
+  ...giveawayEmailTables,
   ...outgoingTables,
   assessmentDefinitions: defineTable({
     key: v.string(),

@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { TableScrollRegion } from "@/components/ui/TableScrollRegion";
+import { GiveawayCampaignPanel } from "./GiveawayCampaignPanel";
 
 type MethodFilter = "all" | "assessment" | "alternate";
 const date = (value?: number | null) => value ? new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "America/New_York" }).format(value) + " ET" : "—";
@@ -39,6 +40,7 @@ export function GiveawayOperatorPage() {
 
   return <div>
     <PageHeader title="Giveaway operator" description="Private giveaway administration data. Do not share or publish entrant information." />
+    <GiveawayCampaignPanel userId={user!._id} sessionToken={sessionToken!} />
     {summary.scanCapped && <p className="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Summary is limited to the first 10,000 records. Use the restricted export process for the canonical drawing pool.</p>}
     <section className="card mb-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><h2 className="text-lg font-semibold text-gray-900">{summary.campaign.name}</h2><p className="text-sm text-gray-500">{summary.campaign.prize} · {summary.campaign.state[0].toUpperCase() + summary.campaign.state.slice(1)}</p></div><Gift className="h-5 w-5 text-primary-600" /></div>
