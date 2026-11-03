@@ -1,4 +1,9 @@
 {
+  "git": {
+    "deploymentEnabled": {
+      "codex/giveaway-email-preview": false
+    }
+  },
   "trailingSlash": false,
   "functions": {
     "api/mini-site.ts": { "includeFiles": "dist/index.html" }

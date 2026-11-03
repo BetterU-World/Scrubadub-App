@@ -222,6 +222,12 @@ import type * as sessionActions from "../sessionActions.js";
 import type * as sessionInternal from "../sessionInternal.js";
 import type * as staleJobTimersInternal from "../staleJobTimersInternal.js";
 
+import type * as actions_giveawayCampaignDelivery from "../actions/giveawayCampaignDelivery.js";
+import type * as giveawayEmailCampaign from "../giveawayEmailCampaign.js";
+import type * as giveawayUnsubscribe from "../giveawayUnsubscribe.js";
+import type * as lib_giveawayCampaignEmail from "../lib/giveawayCampaignEmail.js";
+import type * as lib_giveawayEmailSchema from "../lib/giveawayEmailSchema.js";
+import type * as lib_giveawayEmailTemplates from "../lib/giveawayEmailTemplates.js";
 import type {
   ApiFromModules,
   FilterApi,
@@ -229,6 +235,12 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "lib/giveawayEmailTemplates": typeof lib_giveawayEmailTemplates;
+  "lib/giveawayEmailSchema": typeof lib_giveawayEmailSchema;
+  "lib/giveawayCampaignEmail": typeof lib_giveawayCampaignEmail;
+  "giveawayUnsubscribe": typeof giveawayUnsubscribe;
+  "giveawayEmailCampaign": typeof giveawayEmailCampaign;
+  "actions/giveawayCampaignDelivery": typeof actions_giveawayCampaignDelivery;
   "actions/affiliateStripeConnect": typeof actions_affiliateStripeConnect;
   "actions/billing": typeof actions_billing;
   "actions/calendarSync": typeof actions_calendarSync;

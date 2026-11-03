@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { handle as giveawayUnsubscribe, providerWebhook as giveawayProviderWebhook } from "./giveawayUnsubscribe";
 import { subscriptionPeriodEndMs, invoiceSubscriptionId } from "./lib/stripeSubscriptionCompatibility";
 import { validatePaymentEventAccount, retrievePaymentIntentForAttempt } from "./lib/invoiceStripeContext";
 import { snapshotFromStripeAccount } from "./lib/companyConnectReadiness";
@@ -11,6 +12,9 @@ import type { Id } from "./_generated/dataModel";
 declare const process: { env: Record<string, string | undefined> };
 
 const http = httpRouter();
+http.route({ path: "/giveaway/unsubscribe", method: "GET", handler: giveawayUnsubscribe });
+http.route({ path: "/giveaway/unsubscribe", method: "POST", handler: giveawayUnsubscribe });
+http.route({ path: "/giveaway/resend-webhook", method: "POST", handler: giveawayProviderWebhook });
 
 function resourceCors(request: Request) {
   const origin = request.headers.get("Origin");
