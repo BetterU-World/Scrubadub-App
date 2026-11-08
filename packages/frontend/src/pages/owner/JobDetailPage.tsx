@@ -1,4 +1,5 @@
 import { SharedWorkNotice } from "@/components/SharedWorkNotice";
+import { WorkerDeclineReviews } from "@/components/WorkerDeclineReviews";
 import { JobCompensation } from "@/components/payments/JobCompensation";
 import { compensationError } from "@/components/payments/compensationErrors";
 import { usePerformedWorkers, PerformedWorkerPicker } from "@/components/payments/PerformedWorkerPicker";
@@ -188,6 +189,7 @@ export function JobDetailPage() {
       />
 
       <div className="space-y-6">
+        {sharedWorkAllowed && <WorkerDeclineReviews jobId={job._id} />}
         {sharedWorkAllowed && <JobCompensation jobId={job._id} />}
         {sharedWorkAllowed && <ServicePricingPanel jobId={job._id} commercial={Boolean(job.commercialAccountId)} />}
         {sharedWorkAllowed && <JobInvoiceBillingPanel job={job} />}

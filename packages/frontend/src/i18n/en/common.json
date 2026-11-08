@@ -1,4 +1,25 @@
 {
+  "workerReview": {
+    "acceptedJob": "This job has been accepted.",
+    "title": "Worker availability reviews",
+    "staffHelp": "A worker requested review. Resolving acknowledges the request; it does not cancel the job, remove assignments, or change acceptance.",
+    "empty": "No worker review requests.",
+    "pending": "Pending review",
+    "resolved": "Resolved",
+    "decline": "Decline request",
+    "cancellation": "Cancellation request",
+    "resolve": "Acknowledge and resolve",
+    "resolvedHelp": "Request resolved. The job and assignments are unchanged.",
+    "failedResolve": "Could not resolve this request. Refresh and check your permissions before trying again.",
+    "resolvedBy": "Resolved by {{name}} · {{date}}",
+    "loadMore": "Load more requests",
+    "pendingWorkerHelp": "Your request is waiting for owner or manager review. You remain assigned and retain access until they make an assignment change.",
+    "resolvedWorkerHelp": "Your request was resolved. Assignments and access are unchanged unless your company changes them. You may send a new request if still needed.",
+    "workerHelp": "This sends an owner-review request. The job continues, and your assignment and access stay unchanged until an authorized owner or manager makes a change.",
+    "requestDecline": "Request decline review",
+    "requestCancellation": "Request cancellation review",
+    "sent": "Review requested. The job and assignments are unchanged."
+  },
   "sharedWork": {
     "pending": "Awaiting company acceptance. Your company Owner must accept this shared-work request before assignment or execution. Worker acceptance is separate.",
     "rejected": "This shared-work request was rejected. Historical information remains available; operational changes are blocked.",

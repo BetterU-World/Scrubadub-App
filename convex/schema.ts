@@ -1,4 +1,5 @@
 import { defineSchema, defineTable } from "convex/server";
+import { workerDeclineReviewFields } from "./lib/workerDeclineReviewModel";
 import { executionEvidence } from "./lib/performedWorkers";
 import { outgoingTables } from "./lib/outgoingSchema";
 import { v } from "convex/values";
@@ -500,6 +501,7 @@ export default defineSchema({
   })
     .index("by_email", ["email"])
     .index("by_companyId", ["companyId"])
+    .index("by_companyId_role", ["companyId", "role"])
     .index("by_inviteToken", ["inviteToken"])
     .index("by_inviteTokenHash", ["inviteTokenHash"])
     .index("by_resetToken", ["resetToken"])
@@ -863,7 +865,8 @@ export default defineSchema({
     .index("by_companyId", ["companyId"])
     .index("by_userId", ["userId"])
     .index("by_userId_active", ["userId", "active"])
-    .index("by_teamId_userId", ["teamId", "userId"]),
+    .index("by_teamId_userId", ["teamId", "userId"])
+    .index("by_teamId_active", ["teamId", "active"]),
 
   properties: defineTable({
     companyId: v.id("companies"),
@@ -1238,6 +1241,11 @@ export default defineSchema({
     .index("by_jobId", ["jobId"])
     .index("by_propertyId", ["propertyId"]),
 
+  workerDeclineReviews: defineTable(workerDeclineReviewFields)
+    .index("by_company_job_status", ["companyId", "jobId", "status"])
+    .index("by_job_worker", ["jobId", "workerId"])
+    .index("by_job_worker_status", ["jobId", "workerId", "status"]),
+
   notifications: defineTable({
     companyId: v.id("companies"),
     userId: v.id("users"),
@@ -1245,6 +1253,7 @@ export default defineSchema({
       v.literal("job_assigned"),
       v.literal("job_confirmed"),
       v.literal("job_denied"),
+      v.literal("worker_decline_review"),
       v.literal("job_cancelled"),
       v.literal("job_started"),
       v.literal("job_submitted"),

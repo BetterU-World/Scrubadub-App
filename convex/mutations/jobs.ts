@@ -25,6 +25,8 @@ import {
 } from "../lib/jobExecutionAuth";
 import { ensureJobExecutionForm } from "../lib/jobExecutionForm";
 import { submitJobExecution } from "../lib/jobSubmission";
+import { requestWorkerDeclineReview } from "../lib/workerDeclineReviews";
+import { workerDeclineResult } from "../lib/workerDeclineReviewModel";
 import { resolvePropertyConditionRequirement } from "../lib/propertyConditionRequirements";
 import { hasOwnerOrManagerPermission } from "../lib/auth";
 import { acceptedOneTimeProposalPrice, checkedPriceSnapshot } from "../lib/jobPricing";
@@ -541,6 +543,7 @@ export const acceptJob = mutation({
 });
 
 export const denyJob = mutation({
+  returns: v.union(v.null(), workerDeclineResult),
   args: {
     jobId: v.id("jobs"),
     reason: v.optional(v.string()),
@@ -551,6 +554,9 @@ export const denyJob = mutation({
     const { user, job } = await requireAssignedJobExecutor(ctx, args.sessionToken, args.jobId, args.userId);
     if (job.status !== "scheduled")
       throw new Error("Job cannot be denied in current status");
+
+    const review = await requestWorkerDeclineReview(ctx, job, user, "decline", args.reason);
+    if (review) return review;
 
     await ctx.db.patch(args.jobId, {
       status: "denied",
@@ -583,6 +589,7 @@ export const denyJob = mutation({
       entityId: args.jobId,
       details: args.reason,
     });
+    return null;
   },
 });
 
@@ -591,6 +598,7 @@ export const denyJob = mutation({
  * Resets the job so the owner can reassign.
  */
 export const cleanerCancelJob = mutation({
+  returns: v.union(v.null(), workerDeclineResult),
   args: {
     jobId: v.id("jobs"),
     reason: v.optional(v.string()),
@@ -611,6 +619,9 @@ export const cleanerCancelJob = mutation({
     if (job.status === "cancelled" || job.status === "denied") {
       throw new Error("Job is already cancelled or denied");
     }
+
+    const review = await requestWorkerDeclineReview(ctx, job, user, "cancellation", args.reason);
+    if (review) return review;
 
     await ctx.db.patch(args.jobId, {
       status: "denied",
@@ -644,6 +655,7 @@ export const cleanerCancelJob = mutation({
       entityId: args.jobId,
       details: args.reason ?? "Cleaner cancelled after accepting",
     });
+    return null;
   },
 });
 

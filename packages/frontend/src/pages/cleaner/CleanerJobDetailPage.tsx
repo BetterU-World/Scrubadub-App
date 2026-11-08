@@ -1,3 +1,4 @@
+import { useWorkerDeclineState, WorkerDeclineStatus } from "@/components/WorkerDeclineReviews";
 import { SharedWorkNotice } from "@/components/SharedWorkNotice";
 import { useFeedbackState } from "@/components/ui/FeedbackProvider";
 import { useState } from "react";
@@ -31,6 +32,7 @@ export function CleanerJobDetailPage() {
   const job = useQuery(api.queries.jobs.get,
     user ? { jobId: params.id as Id<"jobs">, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
+  const declineState = useWorkerDeclineState(job);
   const acceptJob = useMutation(api.mutations.jobs.acceptJob);
   const denyJob = useMutation(api.mutations.jobs.denyJob);
   const arriveJob = useMutation(api.mutations.jobs.arriveJob);
@@ -176,6 +178,7 @@ export function CleanerJobDetailPage() {
         <JobTimingPanel job={job as any} userId={user?._id} controls />
 
         <JobTimeline job={job as any} />
+        <WorkerDeclineStatus state={declineState} />
 
         {job.form?.ownerNotes && (
           <div className="card">
@@ -193,7 +196,7 @@ export function CleanerJobDetailPage() {
           <div className={`card text-center text-sm font-medium py-3 ${
             acceptance === "accepted" ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"
           }`}>
-            {acceptance === "accepted" ? t("jobs.youAcceptedJob") : t("jobs.youDeniedJob")}
+            {acceptance === "accepted" ? t(declineState?.reviewOnly ? "workerReview.acceptedJob" : "jobs.youAcceptedJob") : t("jobs.youDeniedJob")}
           </div>
         )}
 
@@ -222,10 +225,11 @@ export function CleanerJobDetailPage() {
                   <CheckCircle aria-hidden="true" className="w-4 h-4" /> {t("jobs.acceptJob")}
                 </AsyncButton>
                 <button
-                  onClick={() => setShowDeny(true)}
+                disabled={declineState === undefined || declineState.latest?.status === "pending"}
+                onClick={() => setShowDeny(true)}
                   className="btn-danger touch-target flex items-center justify-center gap-2"
                 >
-                  <XCircle className="w-4 h-4" /> {t("jobs.deny")}
+                  <XCircle className="w-4 h-4" /> {t(declineState?.reviewOnly ? "workerReview.requestDecline" : "jobs.deny")}
                 </button>
               </div>
             )}
@@ -250,10 +254,11 @@ export function CleanerJobDetailPage() {
 
             {canCleanerCancel && (
               <button
+                disabled={declineState === undefined || declineState.latest?.status === "pending"}
                 onClick={() => setShowCleanerCancel(true)}
                 className="btn-danger w-full flex items-center justify-center gap-2 py-2 text-sm"
               >
-                <XCircle className="w-4 h-4" /> {t("jobs.cancelJobCleaner")}
+                <XCircle className="w-4 h-4" /> {t(declineState?.reviewOnly ? "workerReview.requestCancellation" : "jobs.cancelJobCleaner")}
               </button>
             )}
           </div>
@@ -334,12 +339,14 @@ export function CleanerJobDetailPage() {
       <DialogShell
         open={showDeny}
         onOpenChange={setShowDeny}
-        title={t("jobs.denyJob")}
+        title={t(declineState?.reviewOnly ? "workerReview.requestDecline" : "jobs.denyJob")}
         pending={denying}
       >
+            {declineState?.reviewOnly && <p className="text-sm text-gray-600 mb-3">{t("workerReview.workerHelp")}</p>}
             <textarea
               className="input-field mb-4"
               rows={3}
+              maxLength={declineState?.reviewOnly ? 2000 : undefined}
               value={denyReason}
               onChange={(e) => setDenyReason(e.target.value)}
               placeholder={t("jobs.denyReasonPlaceholder")}
@@ -353,9 +360,9 @@ export function CleanerJobDetailPage() {
                   if (!user) return;
                   setDenying(true);
                   try {
-                    await denyJob({ jobId: job._id, reason: denyReason || undefined, userId: user._id, sessionToken: getStaffSessionToken() });
+                    const outcome = await denyJob({ jobId: job._id, reason: denyReason || undefined, userId: user._id, sessionToken: getStaffSessionToken() });
                     setShowDeny(false);
-                    setToast({ message: t("jobs.jobDenied"), type: "success" });
+                    setToast({ message: t(outcome?.reviewRequested ? "workerReview.sent" : "jobs.jobDenied"), type: "success" });
                   } catch (err: any) {
                     setToast({ message: err.message ?? t("common.failedToDeny"), type: "error" });
                   } finally {
@@ -364,7 +371,7 @@ export function CleanerJobDetailPage() {
                 }}
                 className="btn-danger"
               >
-                {t("jobs.denyJob")}
+                {t(declineState?.reviewOnly ? "workerReview.requestDecline" : "jobs.denyJob")}
               </AsyncButton>
             </div>
       </DialogShell>
@@ -373,11 +380,12 @@ export function CleanerJobDetailPage() {
       {showCleanerCancel && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">{t("jobs.cancelJobCleaner")}</h3>
-            <p className="text-sm text-gray-500 mb-3">{t("jobs.cancelJobCleanerConfirm")}</p>
+            <h3 className="text-lg font-semibold mb-4">{t(declineState?.reviewOnly ? "workerReview.requestCancellation" : "jobs.cancelJobCleaner")}</h3>
+            <p className="text-sm text-gray-500 mb-3">{t(declineState?.reviewOnly ? "workerReview.workerHelp" : "jobs.cancelJobCleanerConfirm")}</p>
             <textarea
               className="input-field mb-4"
               rows={3}
+              maxLength={declineState?.reviewOnly ? 2000 : undefined}
               value={cleanerCancelReason}
               onChange={(e) => setCleanerCancelReason(e.target.value)}
               placeholder={t("jobs.cancelReasonPlaceholder")}
@@ -390,9 +398,9 @@ export function CleanerJobDetailPage() {
                   if (!user) return;
                   setCleanerCancelling(true);
                   try {
-                    await cleanerCancelJob({ jobId: job._id, reason: cleanerCancelReason || undefined, userId: user._id, sessionToken: getStaffSessionToken() });
+                    const outcome = await cleanerCancelJob({ jobId: job._id, reason: cleanerCancelReason || undefined, userId: user._id, sessionToken: getStaffSessionToken() });
                     setShowCleanerCancel(false);
-                    setToast({ message: t("jobs.jobCancelled"), type: "success" });
+                    setToast({ message: t(outcome?.reviewRequested ? "workerReview.sent" : "jobs.jobCancelled"), type: "success" });
                   } catch (err: any) {
                     setToast({ message: err.message ?? t("common.failedToCancel"), type: "error" });
                   } finally {
@@ -401,7 +409,7 @@ export function CleanerJobDetailPage() {
                 }}
                 className="btn-danger"
               >
-                {cleanerCancelling ? t("jobs.cancelling") : t("jobs.cancelJobCleaner")}
+                {cleanerCancelling ? t("jobs.cancelling") : t(declineState?.reviewOnly ? "workerReview.requestCancellation" : "jobs.cancelJobCleaner")}
               </button>
             </div>
           </div>
