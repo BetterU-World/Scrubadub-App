@@ -26,7 +26,7 @@
     "submit": "Enviar trabajo para revisión",
     "submitting": "Enviando trabajo…",
     "explanation": "Envía la lista y el trabajo juntos para revisión del propietario. Comprueba el trabajo y confirma a todas las personas que lo realizaron. No hace falta otro paso de finalización.",
-    "teamLead": "El líder del equipo o un gerente/propietario autorizado debe enviar este trabajo de equipo.",
+    "teamLead": "Un trabajador asignado directamente, el líder del equipo o un gerente/propietario autorizado debe enviar este trabajo de equipo.",
     "checklist": "Artículos de la lista pendientes de completar: {{count}}.",
     "inventory": "Artículos obligatorios del inventario pendientes de reportar: {{count}}.",
     "reportInventory": "Reportar inventario en los detalles del trabajo",

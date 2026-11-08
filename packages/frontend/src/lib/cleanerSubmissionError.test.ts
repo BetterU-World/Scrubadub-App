@@ -17,6 +17,7 @@ describe("cleaner submission messages", () => {
       ["Cannot submit: 1 required inventory item(s) not reported", "inventoryError"],
       ["Cannot submit: 2 item(s) not completed. All checklist items must be marked", "checklistError"],
       ["Only a team lead, assigned manager, or owner can submit this job", "teamLead"],
+      ["Only a directly assigned worker, team lead, assigned manager, or owner can submit this job", "teamLead"],
       ["Confirm the workers who performed this job", "selectWorkers"],
       ["Performed worker must be a current available job assignee", "selectWorkers"],
       ["This job timer was administratively closed", "stateError"],

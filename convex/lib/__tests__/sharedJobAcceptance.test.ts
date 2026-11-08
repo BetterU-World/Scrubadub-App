@@ -104,6 +104,36 @@ const cases: [string, (s: S) => Promise<unknown>][] = [
 ];
 
 describe("shared-work acceptance enforcement", () => {
+  it("allows a direct non-lead on accepted combined shared work to submit without bypassing completion checks", async () => {
+    const s = await setup();
+    await s.t.run(async ctx => {
+      await ctx.db.patch(s.sharedJobId, { status: "accepted" });
+      await ctx.db.patch(s.copiedJobId, { assignedTeamId: s.team, inventoryChecklist: [{ name: "Soap", category: "bathroom", parLevel: 1, required: true, status: "ok" }] });
+      const membership = await ctx.db.query("teamMembers").withIndex("by_teamId_userId", q => q.eq("teamId", s.team).eq("userId", s.worker)).unique();
+      await ctx.db.patch(membership!._id, { role: "member" });
+      await ctx.db.patch(s.owner, { email: "" });
+    });
+    expect(await s.t.query(api.queries.jobs.get, jobArgs(s))).toMatchObject({ canCurrentUserSubmit: true });
+    await expect(s.t.mutation(api.mutations.forms.submit, { ...formArgs(s), performedWorkerIds: [s.worker] })).rejects.toThrow("not completed");
+    await s.t.mutation(api.mutations.forms.updateItem, { ...s.workerAuth, itemId: s.item!, completed: true });
+    await s.t.mutation(api.mutations.forms.submit, { ...formArgs(s), performedWorkerIds: [s.worker] });
+    expect(await s.t.run(ctx => ctx.db.get(s.copiedJobId))).toMatchObject({ status: "submitted", assignedTeamId: s.team, submittedExecutionSequence: 1 });
+  });
+
+  it.each(["pending", "rejected"] as const)("keeps %s combined shared work blocked for direct non-leads", async status => {
+    const s = await setup();
+    await s.t.run(async ctx => {
+      await ctx.db.patch(s.sharedJobId, { status });
+      await ctx.db.patch(s.copiedJobId, { assignedTeamId: s.team });
+      const membership = await ctx.db.query("teamMembers").withIndex("by_teamId_userId", q => q.eq("teamId", s.team).eq("userId", s.worker)).unique();
+      await ctx.db.patch(membership!._id, { role: "member" });
+    });
+    const before = await s.snapshot();
+    expect(await s.t.query(api.queries.jobs.get, jobArgs(s))).toMatchObject({ canCurrentUserSubmit: false });
+    await expect(s.t.mutation(api.mutations.forms.submit, { ...formArgs(s), performedWorkerIds: [s.worker] })).rejects.toThrow(status === "pending" ? SHARED_JOB_REVIEW : SHARED_JOB_REJECTED);
+    expect(await s.snapshot()).toEqual(before);
+  });
+
   it.each(cases)("Pending denies %s with no operational or financial side effects", async (_name, call) => {
     const s = await setup(); const before = await s.snapshot();
     await expect(call(s)).rejects.toThrow(SHARED_JOB_REVIEW);

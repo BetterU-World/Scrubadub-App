@@ -123,7 +123,9 @@ export async function canSubmitFinalJob(
   user: { _id: Id<"users">; role: string; companyId?: Id<"companies">; canApproveForms?: boolean },
 ): Promise<boolean> {
   if (user.companyId !== job.companyId) return false;
-  if (!job.assignedTeamId) return job.cleanerIds.includes(user._id);
+  // Direct assignment grants submission authority independently of team membership.
+  if (job.cleanerIds.includes(user._id)) return true;
+  if (!job.assignedTeamId) return false;
   if (user.role === "owner") return true;
   if (user.role === "manager" && (user.canApproveForms || job.assignedManagerId === user._id)) return true;
   return await isActiveTeamLead(ctx, job.assignedTeamId, user._id);

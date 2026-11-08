@@ -26,7 +26,7 @@
     "submit": "Submit job for review",
     "submitting": "Submitting job…",
     "explanation": "Submit the checklist and job together for owner review. Check the work and confirm everyone who actually performed it. No second completion step is needed.",
-    "teamLead": "Your team lead or an authorized manager/owner must submit this team job.",
+    "teamLead": "A directly assigned worker, your team lead, or an authorized manager/owner must submit this team job.",
     "checklist": "Checklist items still to complete: {{count}}.",
     "inventory": "Required inventory items still to report: {{count}}.",
     "reportInventory": "Report inventory on job detail",
