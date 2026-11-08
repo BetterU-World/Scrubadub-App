@@ -1,4 +1,5 @@
 import { SharedWorkNotice } from "@/components/SharedWorkNotice";
+import { WorkerDeclineReviews } from "@/components/WorkerDeclineReviews";
 import { useAttachmentUpload } from "@/hooks/useAttachmentUpload";
 import { JobCompensation } from "@/components/payments/JobCompensation";
 import { useFeedbackState } from "@/components/ui/FeedbackProvider";
@@ -156,6 +157,7 @@ export function ManagerJobDetailPage() {
       {/* Toast */}
 
       <SharedWorkNotice access={job?.sharedWorkAccess} />
+      {job.sharedWorkAccess?.allowed !== false && <WorkerDeclineReviews jobId={job._id} />}
       <PageHeader
         title={property?.name ?? t("jobs.jobDetails")}
         back={{ href: "/jobs", label: t("navigation.backToJobs") }}

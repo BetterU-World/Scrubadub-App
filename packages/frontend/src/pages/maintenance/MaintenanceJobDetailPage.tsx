@@ -1,3 +1,4 @@
+import { useWorkerDeclineState, WorkerDeclineStatus } from "@/components/WorkerDeclineReviews";
 import { SharedWorkNotice } from "@/components/SharedWorkNotice";
 import { compensationError } from "@/components/payments/compensationErrors";
 import { usePerformedWorkers, PerformedWorkerPicker } from "@/components/payments/PerformedWorkerPicker";
@@ -27,6 +28,7 @@ export function MaintenanceJobDetailPage() {
     user ? { jobId: params.id as Id<"jobs">, userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
   );
   const roster = usePerformedWorkers(params.id as Id<"jobs">, Boolean(job?.canCurrentUserExecute));
+  const declineState = useWorkerDeclineState(job);
   const acceptJob = useMutation(api.mutations.jobs.acceptJob);
   const denyJob = useMutation(api.mutations.jobs.denyJob);
   const arriveJob = useMutation(api.mutations.jobs.arriveJob);
@@ -138,6 +140,7 @@ export function MaintenanceJobDetailPage() {
         <AddOnSnapshotList items={(job as any).requiredAddOns} audience="worker" />
 
         <JobTimeline job={job as any} />
+        <WorkerDeclineStatus state={declineState} />
         <JobTimingPanel job={job as any} userId={user?._id} controls />
 
         {job.form?.ownerNotes && (
@@ -181,10 +184,11 @@ export function MaintenanceJobDetailPage() {
                 <CheckCircle aria-hidden="true" className="w-4 h-4" /> Accept Job
               </AsyncButton>
               <button
+                disabled={declineState === undefined || declineState.latest?.status === "pending"}
                 onClick={() => setShowDeny(true)}
                 className="btn-danger touch-target flex items-center justify-center gap-2"
               >
-                <XCircle className="w-4 h-4" /> Deny
+                <XCircle className="w-4 h-4" /> {t(declineState?.reviewOnly ? "workerReview.requestDecline" : "jobs.deny")}
               </button>
             </div>
           )}
@@ -258,12 +262,12 @@ export function MaintenanceJobDetailPage() {
       {showDeny && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">Deny Job</h3>
-            {submissionError && <p role="alert" className="text-red-600">{submissionError}</p>}
-      <PerformedWorkerPicker {...roster} />
+            <h3 className="text-lg font-semibold mb-4">{t(declineState?.reviewOnly ? "workerReview.requestDecline" : "jobs.denyJob")}</h3>
+            {declineState?.reviewOnly && <p className="text-sm text-gray-600 mb-3">{t("workerReview.workerHelp")}</p>}
             <textarea
               className="input-field mb-4"
               rows={3}
+              maxLength={declineState?.reviewOnly ? 2000 : undefined}
               value={denyReason}
               onChange={(e) => setDenyReason(e.target.value)}
               placeholder="Reason for denying (optional)"
@@ -277,9 +281,9 @@ export function MaintenanceJobDetailPage() {
                   if (!user) return;
                   setDenying(true);
                   try {
-                    await denyJob({ jobId: job._id, reason: denyReason || undefined, userId: user._id, sessionToken: getStaffSessionToken() });
+                    const outcome = await denyJob({ jobId: job._id, reason: denyReason || undefined, userId: user._id, sessionToken: getStaffSessionToken() });
                     setShowDeny(false);
-                    setToast({ message: "Job denied", type: "success" });
+                    setToast({ message: t(outcome?.reviewRequested ? "workerReview.sent" : "jobs.jobDenied"), type: "success" });
                   } catch (err: any) {
                     setToast({ message: err.message ?? "Failed to deny", type: "error" });
                   } finally {
@@ -288,7 +292,7 @@ export function MaintenanceJobDetailPage() {
                 }}
                 className="btn-danger"
               >
-                Deny Job
+                {t(declineState?.reviewOnly ? "workerReview.requestDecline" : "jobs.denyJob")}
               </AsyncButton>
             </div>
           </div>

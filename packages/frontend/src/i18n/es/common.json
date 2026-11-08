@@ -1,4 +1,25 @@
 {
+  "workerReview": {
+    "acceptedJob": "Este trabajo ha sido aceptado.",
+    "title": "Revisión de disponibilidad del personal",
+    "staffHelp": "Un trabajador solicitó una revisión. Resolver confirma la solicitud; no cancela el trabajo, elimina asignaciones ni cambia la aceptación.",
+    "empty": "No hay solicitudes de revisión.",
+    "pending": "Revisión pendiente",
+    "resolved": "Resuelta",
+    "decline": "Solicitud de rechazo",
+    "cancellation": "Solicitud de cancelación",
+    "resolve": "Confirmar y resolver",
+    "resolvedHelp": "Solicitud resuelta. El trabajo y las asignaciones no han cambiado.",
+    "failedResolve": "No se pudo resolver la solicitud. Actualiza y comprueba tus permisos antes de reintentar.",
+    "resolvedBy": "Resuelta por {{name}} · {{date}}",
+    "loadMore": "Cargar más solicitudes",
+    "pendingWorkerHelp": "Tu solicitud espera la revisión del propietario o gerente. Sigues asignado y conservas el acceso hasta que cambien la asignación.",
+    "resolvedWorkerHelp": "Tu solicitud fue resuelta. Las asignaciones y el acceso no cambian salvo que tu empresa los modifique. Puedes enviar otra solicitud si aún la necesitas.",
+    "workerHelp": "Esto envía una solicitud de revisión al propietario. El trabajo continúa y tu asignación y acceso no cambian hasta que un propietario o gerente autorizado los modifique.",
+    "requestDecline": "Solicitar revisión del rechazo",
+    "requestCancellation": "Solicitar revisión de cancelación",
+    "sent": "Revisión solicitada. El trabajo y las asignaciones no han cambiado."
+  },
   "sharedWork": {
     "pending": "Esperando aceptación de la empresa. El propietario debe aceptar este trabajo compartido antes de asignarlo o ejecutarlo. La aceptación del trabajador es distinta.",
     "rejected": "La solicitud de trabajo compartido fue rechazada. El historial sigue disponible; los cambios operativos están bloqueados.",

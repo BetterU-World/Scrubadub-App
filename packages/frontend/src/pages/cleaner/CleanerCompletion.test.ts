@@ -6,8 +6,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import en from "../../i18n/en/common.json";
 import es from "../../i18n/es/common.json";
 
-const mocks = vi.hoisted(() => ({ navigate: vi.fn(), success: vi.fn(), mutations: new Map<string, ReturnType<typeof vi.fn>>() }));
+const mocks = vi.hoisted(() => ({ navigate: vi.fn(), success: vi.fn(), setToast: vi.fn(), mutations: new Map<string, ReturnType<typeof vi.fn>>() }));
 let job: any;
+let workerReviewState: any;
 let form: any;
 let items: any[];
 let fastModeEligible = false;
@@ -15,7 +16,7 @@ let actor: any;
 let language: "en" | "es" = "en";
 const candidates = [{ userId: "cleaner", displayName: "Maya" }];
 vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: actor }), getStaffSessionToken: () => "verified" }));
-vi.mock("@/components/ui/FeedbackProvider", () => ({ useFeedback: () => ({ success: mocks.success }), useFeedbackState: () => [null, vi.fn()] }));
+vi.mock("@/components/ui/FeedbackProvider", () => ({ useFeedback: () => ({ success: mocks.success }), useFeedbackState: () => [null, mocks.setToast] }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string, args?: Record<string, string>) => {
   if (!key.startsWith("fastMode.")) return key;
   let value = (language === "es" ? es : en).fastMode[key.slice(9) as keyof typeof en.fastMode] ?? key;
@@ -28,6 +29,7 @@ vi.mock("convex/react", () => ({
     if (args === "skip") return undefined;
     switch (getFunctionName(reference)) {
       case "queries/jobs:get": return job;
+      case "workerDeclineReviews:workerState": return workerReviewState;
       case "queries/forms:getByJob": return form;
       case "queries/forms:getItems": return items;
       case "queries/forms:fastModeEligibility": return fastModeEligible;
@@ -60,6 +62,8 @@ describe("cleaner completion interface", () => {
   beforeEach(() => {
     (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
     mocks.navigate.mockReset(); mocks.success.mockReset(); mocks.mutations.clear(); localStorage.clear();
+    workerReviewState = { reviewOnly: false, latest: null };
+    mocks.setToast.mockReset();
     fastModeEligible = false;
     language = "en";
     actor = { _id: "cleaner", companyId: "company", role: "cleaner" };
@@ -288,5 +292,39 @@ describe("cleaner completion interface", () => {
     await act(async () => button("jobs.deny").click());
     expect(host.querySelector('[role="dialog"]')).not.toBeNull();
     expect(host.textContent).not.toContain("compensation.performed");
+  });
+
+  it.each(["decline", "cancellation"])("reports %s review submission without claiming the job was denied or cancelled", async kind => {
+    job.status = kind === "decline" ? "scheduled" : "confirmed";
+    job.acceptanceStatus = kind === "decline" ? "pending" : "accepted";
+    workerReviewState = { reviewOnly: true, latest: null };
+    await render(CleanerJobDetailPage);
+    const label = kind === "decline" ? "workerReview.requestDecline" : "workerReview.requestCancellation";
+    await act(async () => button(label).click());
+    expect(host.textContent).toContain("workerReview.workerHelp");
+    expect(host.textContent).not.toContain("compensation.performed");
+    const ref = kind === "decline" ? "mutations/jobs:denyJob" : "mutations/jobs:cleanerCancelJob";
+    mocks.mutations.get(ref)!.mockResolvedValue({ reviewRequested: true, reviewId: "review", replayed: false });
+    const buttons = Array.from(host.querySelectorAll("button")).filter(b => b.textContent?.includes(label));
+    await act(async () => buttons[buttons.length - 1].click());
+    expect(mocks.setToast).toHaveBeenCalledWith({ message: "workerReview.sent", type: "success" });
+    expect(mocks.setToast).not.toHaveBeenCalledWith({ message: "jobs.jobDenied", type: "success" });
+    expect(mocks.setToast).not.toHaveBeenCalledWith({ message: "jobs.jobCancelled", type: "success" });
+  });
+
+  it("shows a pending review and disables another request while it is unresolved", async () => {
+    job.status = "scheduled"; job.acceptanceStatus = "pending";
+    workerReviewState = { reviewOnly: true, latest: { status: "pending", reason: "Unavailable" } };
+    await render(CleanerJobDetailPage);
+    expect(host.textContent).toContain("workerReview.pendingWorkerHelp");
+    expect(button("workerReview.requestDecline").disabled).toBe(true);
+  });
+
+  it("describes job-wide acceptance without claiming the requesting worker accepted", async () => {
+    job.status = "confirmed"; job.acceptanceStatus = "accepted";
+    workerReviewState = { reviewOnly: true, latest: { status: "pending" } };
+    await render(CleanerJobDetailPage);
+    expect(host.textContent).toContain("workerReview.acceptedJob");
+    expect(host.textContent).not.toContain("jobs.youAcceptedJob");
   });
 });
