@@ -22,7 +22,7 @@ export async function submitJobExecution(ctx: MutationCtx, args: SubmissionArgs)
   const { job, user } = args;
   await requireSharedJobAccepted(ctx, job);
   if (!(await canSubmitFinalJob(ctx, job, user))) {
-    throw new Error("Only a team lead, assigned manager, or owner can submit this job");
+    throw new Error("Only a directly assigned worker, team lead, assigned manager, or owner can submit this job");
   }
 
   const form = await ctx.db
