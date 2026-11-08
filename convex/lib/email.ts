@@ -350,12 +350,12 @@ export async function sendPasswordResetEmail(
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
           <div style="text-align: center; margin-bottom: 24px;">
-            <img src="${getAppUrl()}/logo-icon.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
+            <img src="${escapeHtml(`${getAppUrl()}/logo-icon.png`)}" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
           </div>
           <h2 style="text-align: center; color: #111; font-size: 22px; margin: 0 0 16px;">Reset your password</h2>
           <p style="color: #374151; font-size: 15px; line-height: 1.6;">You requested a password reset for your SCRUB account. Click the button below to set a new password:</p>
           <p style="text-align: center; margin: 28px 0;">
-            <a href="${resetLink}" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
+            <a href="${escapeHtml(resetLink)}" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
               Reset Password
             </a>
           </p>
@@ -387,7 +387,7 @@ export async function sendClientPasswordResetEmail(email: string, token: string)
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
           <h2 style="text-align: center; color: #111;">Reset your Client Portal password</h2>
           <p style="color: #374151; font-size: 15px; line-height: 1.6;">Use the secure link below to reset the password for your SCRUB Client Portal access.</p>
-          <p style="text-align: center; margin: 28px 0;"><a href="${resetLink}" style="background-color: #111; color: #fff; padding: 12px 18px; border-radius: 6px; text-decoration: none;">Reset Client Portal Password</a></p>
+          <p style="text-align: center; margin: 28px 0;"><a href="${escapeHtml(resetLink)}" style="background-color: #111; color: #fff; padding: 12px 18px; border-radius: 6px; text-decoration: none;">Reset Client Portal Password</a></p>
           <p style="color: #9ca3af; font-size: 13px;">This link expires in 1 hour. If you did not request it, you can safely ignore this email.</p>
         </div>`,
     });
@@ -428,16 +428,16 @@ export async function sendJobAssignedEmail(
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
           <div style="text-align: center; margin-bottom: 24px;">
-            <img src="${appUrl}/logo-icon.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
+            <img src="${escapeHtml(`${appUrl}/logo-icon.png`)}" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
           </div>
           <h2 style="text-align: center; color: #111; font-size: 22px; margin: 0 0 16px;">New Cleaning Job Assigned</h2>
           <p style="color: #374151; font-size: 15px; line-height: 1.6;">You've been assigned a new cleaning job:</p>
           <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
-            <tr><td style="color: #6b7280; font-size: 14px; padding: 6px 0;">Property</td><td style="color: #111; font-size: 14px; padding: 6px 0; text-align: right; font-weight: 500;">${propertyName}</td></tr>
-            <tr><td style="color: #6b7280; font-size: 14px; padding: 6px 0;">Date</td><td style="color: #111; font-size: 14px; padding: 6px 0; text-align: right; font-weight: 500;">${scheduledDate}${timeInfo}</td></tr>
+            <tr><td style="color: #6b7280; font-size: 14px; padding: 6px 0;">Property</td><td style="color: #111; font-size: 14px; padding: 6px 0; text-align: right; font-weight: 500;">${escapeHtml(propertyName)}</td></tr>
+            <tr><td style="color: #6b7280; font-size: 14px; padding: 6px 0;">Date</td><td style="color: #111; font-size: 14px; padding: 6px 0; text-align: right; font-weight: 500;">${escapeHtml(scheduledDate)}${escapeHtml(timeInfo)}</td></tr>
           </table>
           <p style="text-align: center; margin: 28px 0;">
-            <a href="${appUrl}" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
+            <a href="${escapeHtml(appUrl)}" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
               Open SCRUB
             </a>
           </p>
@@ -482,18 +482,18 @@ export async function sendJobCompletedEmail(
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
           <div style="text-align: center; margin-bottom: 24px;">
-            <img src="${appUrl}/logo-icon.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
+            <img src="${escapeHtml(`${appUrl}/logo-icon.png`)}" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
           </div>
           <h2 style="text-align: center; color: #111; font-size: 22px; margin: 0 0 16px;">Cleaning Job Completed</h2>
           <p style="color: #374151; font-size: 15px; line-height: 1.6;">A cleaning job has been completed and is ready for your review.</p>
           <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
-            <tr><td style="color: #6b7280; font-size: 14px; padding: 6px 0;">Property</td><td style="color: #111; font-size: 14px; padding: 6px 0; text-align: right; font-weight: 500;">${propertyName}</td></tr>
-            <tr><td style="color: #6b7280; font-size: 14px; padding: 6px 0;">Cleaner</td><td style="color: #111; font-size: 14px; padding: 6px 0; text-align: right; font-weight: 500;">${cleanerName}</td></tr>
-            <tr><td style="color: #6b7280; font-size: 14px; padding: 6px 0;">Completed</td><td style="color: #111; font-size: 14px; padding: 6px 0; text-align: right; font-weight: 500;">${completionTime}</td></tr>
+            <tr><td style="color: #6b7280; font-size: 14px; padding: 6px 0;">Property</td><td style="color: #111; font-size: 14px; padding: 6px 0; text-align: right; font-weight: 500;">${escapeHtml(propertyName)}</td></tr>
+            <tr><td style="color: #6b7280; font-size: 14px; padding: 6px 0;">Cleaner</td><td style="color: #111; font-size: 14px; padding: 6px 0; text-align: right; font-weight: 500;">${escapeHtml(cleanerName)}</td></tr>
+            <tr><td style="color: #6b7280; font-size: 14px; padding: 6px 0;">Completed</td><td style="color: #111; font-size: 14px; padding: 6px 0; text-align: right; font-weight: 500;">${escapeHtml(completionTime)}</td></tr>
           </table>
           <p style="color: #374151; font-size: 14px; line-height: 1.6;">Photos and checklist details are available in SCRUB.</p>
           <p style="text-align: center; margin: 28px 0;">
-            <a href="${appUrl}" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
+            <a href="${escapeHtml(appUrl)}" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
               Review in SCRUB
             </a>
           </p>
@@ -531,12 +531,12 @@ export async function sendJobApprovedEmail(
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
           <div style="text-align: center; margin-bottom: 24px;">
-            <img src="${appUrl}/logo-icon.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
+            <img src="${escapeHtml(`${appUrl}/logo-icon.png`)}" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
           </div>
           <h2 style="text-align: center; color: #111; font-size: 22px; margin: 0 0 16px;">Cleaning Job Approved</h2>
-          <p style="color: #374151; font-size: 15px; line-height: 1.6;">Great work! Your cleaning job at <strong>${propertyName}</strong> has been reviewed and approved by the owner.</p>
+          <p style="color: #374151; font-size: 15px; line-height: 1.6;">Great work! Your cleaning job at <strong>${escapeHtml(propertyName)}</strong> has been reviewed and approved by the owner.</p>
           <p style="text-align: center; margin: 28px 0;">
-            <a href="${appUrl}" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
+            <a href="${escapeHtml(appUrl)}" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
               Open SCRUB
             </a>
           </p>
@@ -575,12 +575,12 @@ export async function sendStripeConnectInviteEmail(
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
           <div style="text-align: center; margin-bottom: 24px;">
-            <img src="${appUrl}/logo-icon.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
+            <img src="${escapeHtml(`${appUrl}/logo-icon.png`)}" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
           </div>
           <h2 style="text-align: center; color: #111; font-size: 22px; margin: 0 0 16px;">Connect Stripe to Get Paid</h2>
-          <p style="color: #374151; font-size: 15px; line-height: 1.6;">${from} wants to pay you for jobs through SCRUB. To receive payments, connect your Stripe account:</p>
+          <p style="color: #374151; font-size: 15px; line-height: 1.6;">${escapeHtml(from)} wants to pay you for jobs through SCRUB. To receive payments, connect your Stripe account:</p>
           <p style="text-align: center; margin: 28px 0;">
-            <a href="${appUrl}" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
+            <a href="${escapeHtml(appUrl)}" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
               Open SCRUB &amp; Connect Stripe
             </a>
           </p>
@@ -625,14 +625,14 @@ export async function sendSupportEmail(
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
           <h2 style="color: #111; font-size: 22px; margin: 0 0 16px;">New Contact Form Submission</h2>
           <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
-            <tr><td style="color: #6b7280; font-size: 14px; padding: 6px 0;">Name</td><td style="color: #111; font-size: 14px; padding: 6px 0; text-align: right; font-weight: 500;">${name}</td></tr>
-            <tr><td style="color: #6b7280; font-size: 14px; padding: 6px 0;">Email</td><td style="color: #111; font-size: 14px; padding: 6px 0; text-align: right; font-weight: 500;">${email}</td></tr>
-            <tr><td style="color: #6b7280; font-size: 14px; padding: 6px 0;">Subject</td><td style="color: #111; font-size: 14px; padding: 6px 0; text-align: right; font-weight: 500;">${subject}</td></tr>
+            <tr><td style="color: #6b7280; font-size: 14px; padding: 6px 0;">Name</td><td style="color: #111; font-size: 14px; padding: 6px 0; text-align: right; font-weight: 500;">${escapeHtml(name)}</td></tr>
+            <tr><td style="color: #6b7280; font-size: 14px; padding: 6px 0;">Email</td><td style="color: #111; font-size: 14px; padding: 6px 0; text-align: right; font-weight: 500;">${escapeHtml(email)}</td></tr>
+            <tr><td style="color: #6b7280; font-size: 14px; padding: 6px 0;">Subject</td><td style="color: #111; font-size: 14px; padding: 6px 0; text-align: right; font-weight: 500;">${escapeHtml(subject)}</td></tr>
           </table>
           <div style="background: #f9fafb; border-radius: 8px; padding: 16px; margin: 16px 0;">
-            <p style="color: #374151; font-size: 15px; line-height: 1.6; margin: 0; white-space: pre-wrap;">${message}</p>
+            <p style="color: #374151; font-size: 15px; line-height: 1.6; margin: 0; white-space: pre-wrap;">${escapeHtml(message)}</p>
           </div>
-          <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">Reply directly to this email to respond to ${name} at ${email}.</p>
+          <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">Reply directly to this email to respond to ${escapeHtml(name)} at ${escapeHtml(email)}.</p>
         </div>
       `,
     });
@@ -671,13 +671,13 @@ export async function sendAffiliateInviteEmail(
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
           <div style="text-align: center; margin-bottom: 24px;">
-            <img src="${getAppUrl()}/logo-icon.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
+            <img src="${escapeHtml(`${getAppUrl()}/logo-icon.png`)}" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
           </div>
           <h2 style="text-align: center; color: #111; font-size: 22px; margin: 0 0 16px;">SCRUB Affiliate Program</h2>
-          <p style="color: #374151; font-size: 15px; line-height: 1.6;">${greeting} been invited to join the SCRUB Affiliate Program. Set up your affiliate account to start earning referral commissions.</p>
+          <p style="color: #374151; font-size: 15px; line-height: 1.6;">${escapeHtml(greeting)} been invited to join the SCRUB Affiliate Program. Set up your affiliate account to start earning referral commissions.</p>
           <p style="color: #374151; font-size: 15px; line-height: 1.6;">No subscription or payment required.</p>
           <p style="text-align: center; margin: 28px 0;">
-            <a href="${inviteLink}" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
+            <a href="${escapeHtml(inviteLink)}" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
               Accept Invite
             </a>
           </p>
@@ -717,12 +717,12 @@ export async function sendPartnerInviteEmail(
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
           <div style="text-align: center; margin-bottom: 24px;">
-            <img src="${appUrl}/logo-icon.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
+            <img src="${escapeHtml(`${appUrl}/logo-icon.png`)}" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
           </div>
           <h2 style="text-align: center; color: #111; font-size: 22px; margin: 0 0 16px;">Partner Connection Request</h2>
-          <p style="color: #374151; font-size: 15px; line-height: 1.6;"><strong>${fromCompanyName}</strong> wants to connect with you on SCRUB for job sharing. Log in to accept or decline the request.</p>
+          <p style="color: #374151; font-size: 15px; line-height: 1.6;"><strong>${escapeHtml(fromCompanyName)}</strong> wants to connect with you on SCRUB for job sharing. Log in to accept or decline the request.</p>
           <p style="text-align: center; margin: 28px 0;">
-            <a href="${appUrl}/partners" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
+            <a href="${escapeHtml(`${appUrl}/partners`)}" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
               View Request
             </a>
           </p>
@@ -795,7 +795,7 @@ export function renderPartnerSharedJobEmail(args: PartnerSharedJobEmailArgs) {
       : `New shared job from ${safeSubjectCompany} — ${safeSubjectProperty}`,
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px 12px; color: #111827;">
-        <div style="text-align: center; margin-bottom: 24px;"><img src="${appUrl}/logo-icon.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" /></div>
+        <div style="text-align: center; margin-bottom: 24px;"><img src="${escapeHtml(`${appUrl}/logo-icon.png`)}" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" /></div>
         <h2 style="font-size: 22px; line-height: 1.3; margin: 0 0 16px; text-align: center;">${spanish ? `${fromCompanyName} compartió un trabajo con tu empresa` : `${fromCompanyName} shared a job with your company`}</h2>
         <p style="font-size: 15px; line-height: 1.6; color: #374151;">${spanish ? `${toCompanyName} recibió un trabajo compartido de ${serviceType} en <strong>${propertyName}</strong>. Revisa los detalles y acepta o rechaza el trabajo en SCRUB.` : `${toCompanyName} received a shared ${serviceType} job at <strong>${propertyName}</strong>. Review the details and accept or decline the job in SCRUB.`}</p>
         <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin: 20px 0; font-size: 14px; line-height: 1.7;">
@@ -806,8 +806,8 @@ export function renderPartnerSharedJobEmail(args: PartnerSharedJobEmailArgs) {
           ${notes ? `<div style="margin-top: 8px;"><strong>Job notes:</strong><br />${notes.replace(/\r?\n/g, "<br />")}</div>` : ""}
         </div>
         <p style="font-size: 14px; font-weight: 600; color: #991b1b;">${spanish ? "Respuesta requerida" : "Response required"}</p>
-        <p style="text-align: center; margin: 28px 0;"><a href="${jobUrl}" style="background-color: #111; color: #fff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 600;">${spanish ? "Revisar trabajo compartido" : "Review Shared Job"}</a></p>
-        <p style="color: #6b7280; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere;">${fallbackLabel}<br /><a href="${jobUrl}" style="color: #374151;">${jobUrl}</a></p>
+        <p style="text-align: center; margin: 28px 0;"><a href="${escapeHtml(jobUrl)}" style="background-color: #111; color: #fff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 600;">${spanish ? "Revisar trabajo compartido" : "Review Shared Job"}</a></p>
+        <p style="color: #6b7280; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere;">${fallbackLabel}<br /><a href="${escapeHtml(jobUrl)}" style="color: #374151;">${escapeHtml(jobUrl)}</a></p>
         <p style="text-align: center; color: #9ca3af; font-size: 12px;">Powered by SCRUB</p>
       </div>`,
     text,
@@ -852,12 +852,12 @@ export async function sendInviteEmail(
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
           <div style="text-align: center; margin-bottom: 24px;">
-            <img src="${getAppUrl()}/logo-icon.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
+            <img src="${escapeHtml(`${getAppUrl()}/logo-icon.png`)}" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
           </div>
           <h2 style="text-align: center; color: #111; font-size: 22px; margin: 0 0 16px;">You've been invited to SCRUB</h2>
-          <p style="color: #374151; font-size: 15px; line-height: 1.6;">You've been invited${invitedBy} to join a team on SCRUB. Click the button below to set up your account:</p>
+          <p style="color: #374151; font-size: 15px; line-height: 1.6;">You've been invited${escapeHtml(invitedBy)} to join a team on SCRUB. Click the button below to set up your account:</p>
           <p style="text-align: center; margin: 28px 0;">
-            <a href="${inviteLink}" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
+            <a href="${escapeHtml(inviteLink)}" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
               Accept Invite
             </a>
           </p>
@@ -895,12 +895,12 @@ export async function sendClientInviteEmail(
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
           <div style="text-align: center; margin-bottom: 24px;">
-            <img src="${getAppUrl()}/logo-icon.png" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
+            <img src="${escapeHtml(`${getAppUrl()}/logo-icon.png`)}" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
           </div>
           <h2 style="text-align: center; color: #111; font-size: 22px; margin: 0 0 16px;">Set up your SCRUB client access</h2>
-          <p style="color: #374151; font-size: 15px; line-height: 1.6;">${greeting} you've been invited to view your cleaning service records in SCRUB. Click below to set your password.</p>
+          <p style="color: #374151; font-size: 15px; line-height: 1.6;">${escapeHtml(greeting)} you've been invited to view your cleaning service records in SCRUB. Click below to set your password.</p>
           <p style="text-align: center; margin: 28px 0;">
-            <a href="${inviteLink}" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
+            <a href="${escapeHtml(inviteLink)}" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
               Accept Invite
             </a>
           </p>
