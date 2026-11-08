@@ -37,7 +37,8 @@ async function setup() {
 }
 
 beforeEach(() => {
-  vi.useFakeTimers(); vi.setSystemTime(NOW);
+  // clearAllTimers resets the clock to its installation time; freeze that too.
+  vi.useFakeTimers({ now: NOW });
   vi.stubEnv("APP_URL", "https://scrub.example");
   vi.stubEnv("SCRUB_DISABLE_EXTERNAL_SIDE_EFFECTS", "false");
   vi.stubGlobal("fetch", vi.fn().mockImplementation(async () => new Response(feed)));
@@ -251,6 +252,7 @@ describe("calendar sync atomic work admission", () => {
     // A rolled-back row leaves an orphan timer in this simulator, unlike the
     // real transactional scheduler. Remove it before running subsequent work.
     vi.clearAllTimers();
+    expect(Date.now()).toBe(NOW);
     expect(await s.manual()).toBe("scheduled");
     await s.drain();
     expect(fetch).toHaveBeenCalledTimes(1);
