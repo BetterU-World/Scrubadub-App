@@ -672,6 +672,10 @@ export const reassignJob = mutation({
       throw new Error("Cleaner not found in your company");
     await assertValidJobExecutionAssignees(ctx, owner.companyId, job.type, [args.newCleanerId]);
 
+    // This mutation replaces the individual list and preserves the team. A retry
+    // of that exact assignment must preserve acceptance and execution state too.
+    if (job.cleanerIds.length === 1 && job.cleanerIds[0] === args.newCleanerId) return;
+
     await ctx.db.patch(args.jobId, {
       cleanerIds: [args.newCleanerId],
       status: "scheduled",
