@@ -89,9 +89,10 @@ in-app records remain historical; later access changes do not erase them. Real i
 receipt and production verification require separate authorization. No deployment
 or real email send is part of this PR.
 
-The root and frontend `vercel.json` files hold automatic Git deployments for the
-exact `codex/notification-recipient-safety` branch using `git.deploymentEnabled`.
-Other branches retain their normal behavior. This is a source-controlled branch
-hold, not a project/environment setting change. A future merge to main may deploy
-and requires separate founder approval. The existing GitHub Actions workflow runs
-tests, typechecks and frontend-only build; it contains no deployment step.
+The temporary branch-specific Vercel deployment holds were removed at founder
+request before review. Frontend Vercel configuration matches main and no root
+`vercel.json` is added by this PR. Pushing updates may trigger automatic previews;
+no deployment is manually triggered and no Vercel project settings are changed.
+A future merge to main requires separate founder approval. The existing GitHub
+Actions workflow runs tests, typechecks and frontend-only build; it contains no
+deployment step.
