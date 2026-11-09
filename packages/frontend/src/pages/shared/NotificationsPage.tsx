@@ -1,3 +1,4 @@
+import { formatScheduleWindow } from "@/lib/jobSchedulePresentation";
 import { useEffect, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { useTranslation } from "react-i18next";
@@ -11,7 +12,7 @@ import { Bell, CheckCheck } from "lucide-react";
 
 export function NotificationsPage() {
   const { user } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const notifications = useQuery(
     api.queries.notifications.list,
     user ? { userId: user._id, sessionToken: getStaffSessionToken() } : "skip"
@@ -70,27 +71,35 @@ export function NotificationsPage() {
                 n.read ? "opacity-60 border-transparent bg-white" : "border-primary-200 bg-primary-50/20"
               }`}
             >
-              <div className="flex items-start gap-3">
+              <div className="flex flex-wrap sm:flex-nowrap items-start gap-3">
                 <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 transition-opacity duration-500 ease-out ${n.read ? "opacity-0" : "opacity-100 bg-primary-500"}`} />
-                <div className="flex-1">
-                  <p className="font-medium text-sm">{n.title}</p>
-                  <p className="text-sm text-gray-500 mt-0.5">{n.message}</p>
+                <div className="min-w-0 flex-1 break-words">
+                  <p className="font-medium text-sm">{n.type === "job_schedule_changed" ? t("scheduleChange.title") : n.title}</p>
+                  <p className="text-sm text-gray-500 mt-0.5">{n.type === "job_schedule_changed" ? t("scheduleChange.description") : n.message}</p>
+                  {n.type === "job_schedule_changed" && n.scheduleChange && (
+                    <div className="mt-2 space-y-1 text-sm text-gray-700">
+                      {n.scheduleLabel && <p className="font-medium">{n.scheduleLabel}</p>}
+                      <p>{t("scheduleChange.previous")}: {formatScheduleWindow(n.scheduleChange.before, i18n.language, t("scheduleChange.timeUnknown"), t("scheduleChange.minutes"))}</p>
+                      <p>{t("scheduleChange.updated")}: {formatScheduleWindow(n.scheduleChange.after, i18n.language, t("scheduleChange.timeUnknown"), t("scheduleChange.minutes"))}</p>
+                      <p className="text-xs">{t("scheduleChange.timezone", { timezone: n.scheduleChange.timezone })}</p>
+                    </div>
+                  )}
                   <p className="text-xs text-gray-400 mt-1">
                     {new Date(n._creationTime).toLocaleString()}
                   </p>
                 </div>
                 {n.relatedJobId && (
-                  <Link href={user.role === "manager" ? `/manager/jobs/${n.relatedJobId}` : `/jobs/${n.relatedJobId}`} className="text-xs text-primary-600 hover:text-primary-700 whitespace-nowrap">
+                  <Link href={n.type === "job_schedule_changed" ? `/jobs/${n.relatedJobId}` : user.role === "manager" ? `/manager/jobs/${n.relatedJobId}` : `/jobs/${n.relatedJobId}`} className="touch-target inline-flex items-center rounded text-xs text-primary-700 hover:text-primary-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-600 whitespace-nowrap">
                       {t("notifications.viewJob")}
                   </Link>
                 )}
                 {n.relatedClientRequestId && (user.role === "owner" || user.canManageSalesAndCommercial) && (
-                  <Link href={`/requests/${n.relatedClientRequestId}`} className="text-xs text-primary-600 hover:text-primary-700 whitespace-nowrap">
+                  <Link href={`/requests/${n.relatedClientRequestId}`} className="touch-target inline-flex items-center rounded text-xs text-primary-700 hover:text-primary-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-600 whitespace-nowrap">
                       {t("notifications.viewRequest")}
                   </Link>
                 )}
                 {n.relatedCommercialAccountId && user.role === "owner" && (
-                  <Link href={`/commercial-accounts/${n.relatedCommercialAccountId}`} className="text-xs text-primary-600 hover:text-primary-700 whitespace-nowrap">
+                  <Link href={`/commercial-accounts/${n.relatedCommercialAccountId}`} className="touch-target inline-flex items-center rounded text-xs text-primary-700 hover:text-primary-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-600 whitespace-nowrap">
                     {t("notifications.viewCommercialAccount")}
                   </Link>
                 )}

@@ -1,4 +1,13 @@
 {
+  "scheduleChange": {
+    "title": "Job schedule changed",
+    "description": "Your assigned job has a new schedule. Review it before attending.",
+    "previous": "Previous",
+    "updated": "Updated",
+    "timeUnknown": "Start time not set",
+    "minutes": "min",
+    "timezone": "Job company time zone: {{timezone}}"
+  },
   "assignment": {
     "reassignHelp": "This replaces directly assigned workers with one worker. The team and job acceptance stay unchanged. Use Edit Job to manage multiple direct workers.",
     "team": "Team",

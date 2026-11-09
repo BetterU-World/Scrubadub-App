@@ -1,3 +1,4 @@
+import { jobScheduleChange } from "./lib/jobScheduleModel";
 import { defineSchema, defineTable } from "convex/server";
 import { workerDeclineReviewFields } from "./lib/workerDeclineReviewModel";
 import { executionEvidence } from "./lib/performedWorkers";
@@ -978,6 +979,7 @@ export default defineSchema({
       v.literal("rework_requested"),
       v.literal("cancelled"),
     ),
+    scheduleRevision: v.optional(v.number()),
     scheduledDate: v.string(),
     startTime: v.optional(v.string()),
     durationMinutes: v.number(),
@@ -1264,9 +1266,11 @@ export default defineSchema({
     .index("by_state_claimExpiresAt", ["state", "claimExpiresAt"]),
 
   notifications: defineTable({
+    scheduleChange: v.optional(jobScheduleChange),
     companyId: v.id("companies"),
     userId: v.id("users"),
     type: v.union(
+      v.literal("job_schedule_changed"),
       v.literal("job_assigned"),
       v.literal("job_confirmed"),
       v.literal("job_denied"),
@@ -1303,6 +1307,7 @@ export default defineSchema({
     relatedClientRequestId: v.optional(v.id("clientRequests")),
     relatedCommercialAccountId: v.optional(v.id("commercialAccounts")),
   })
+    .index("by_userId_created", ["userId"])
     .index("by_userId_read", ["userId", "read"])
     .index("by_companyId", ["companyId"]),
 

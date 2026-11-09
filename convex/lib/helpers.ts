@@ -1,3 +1,5 @@
+import type { Infer } from "convex/values";
+import { jobScheduleChange } from "./jobScheduleModel";
 import { MutationCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
 
@@ -24,6 +26,7 @@ export async function createNotification(
     companyId: Id<"companies">;
     userId: Id<"users">;
     type:
+      | "job_schedule_changed"
       | "job_assigned"
       | "job_confirmed"
       | "job_denied"
@@ -54,6 +57,7 @@ export async function createNotification(
       | "commercial_account_ended";
     title: string;
     message: string;
+    scheduleChange?: Infer<typeof jobScheduleChange>;
     relatedJobId?: Id<"jobs">;
     relatedClientRequestId?: Id<"clientRequests">;
     relatedCommercialAccountId?: Id<"commercialAccounts">;
