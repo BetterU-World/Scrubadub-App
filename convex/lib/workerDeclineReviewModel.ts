@@ -9,6 +9,7 @@ export const workerDeclineReviewFields = {
   reason: v.optional(v.string()),
   requestedAt: v.number(),
   status: v.union(v.literal("pending"), v.literal("resolved")),
+  resolutionReason: v.optional(v.literal("assignment_removed")),
   resolvedAt: v.optional(v.number()),
   resolvedBy: v.optional(v.id("users")),
   resolvedByName: v.optional(v.string()),

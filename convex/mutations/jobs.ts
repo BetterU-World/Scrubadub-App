@@ -15,7 +15,6 @@ import {
   assertTeamInCompany,
   getJobRecipientUserIds,
 } from "../lib/teams";
-import { resolveOperationalEmailIdentity } from "../lib/operationalEmailIdentity";
 import { MAX_JOB_PAUSE_CYCLES, normalizePauseNote } from "../lib/jobTiming";
 import { copyAcceptedProposalAddOnSnapshots } from "../lib/acceptedProposalAddOnSnapshots";
 import { createJobFromClientRequest } from "../lib/clientRequestScheduling";
@@ -26,6 +25,7 @@ import {
 import { ensureJobExecutionForm } from "../lib/jobExecutionForm";
 import { submitJobExecution } from "../lib/jobSubmission";
 import { requestWorkerDeclineReview } from "../lib/workerDeclineReviews";
+import { applyJobAssignmentChange, notifyInitialJobAssignment, normalizeWorkerIds } from "../lib/jobAssignments";
 import { workerDeclineResult } from "../lib/workerDeclineReviewModel";
 import { resolvePropertyConditionRequirement } from "../lib/propertyConditionRequirements";
 import { hasOwnerOrManagerPermission } from "../lib/auth";
@@ -150,16 +150,16 @@ async function createCanonicalJob(ctx: MutationCtx, args: CanonicalJobCreation) 
     await requireActiveSubscription(ctx, args.companyId);
     if (args.assignedTeamId) {
       await assertTeamInCompany(ctx, args.assignedTeamId, args.companyId, { requireActive: true });
-      if (args.cleanerIds.length > 0) throw new Error("Choose either individual cleaners or a team");
     }
-    await assertValidJobExecutionAssignees(ctx, args.companyId, args.type, args.cleanerIds);
+    const cleanerIds = normalizeWorkerIds(args.cleanerIds);
+    await assertValidJobExecutionAssignees(ctx, args.companyId, args.type, cleanerIds);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(args.scheduledDate) || !Number.isInteger(args.durationMinutes) || args.durationMinutes <= 0 || (args.startTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(args.startTime))) throw new Error("Invalid job schedule");
     if (args.customerChargeCents !== undefined && (!Number.isSafeInteger(args.customerChargeCents) || args.customerChargeCents < 0)) throw new Error("Invalid customer charge");
     const property = await ctx.db.get(args.propertyId);
     if (!property || property.companyId !== args.companyId) throw new Error("Property not found");
     const requiresPropertyConditionCheck = await resolvePropertyConditionRequirement(ctx, { companyId: args.companyId, propertyId: args.propertyId });
     const jobId = await ctx.db.insert("jobs", {
-      companyId: args.companyId, propertyId: args.propertyId, cleanerIds: args.cleanerIds,
+      companyId: args.companyId, propertyId: args.propertyId, cleanerIds, assignmentRevision: 0,
       assignedTeamId: args.assignedTeamId, assignedManagerId: args.assignedManagerId,
       type: args.type, scheduledDate: args.scheduledDate, startTime: args.startTime,
       durationMinutes: args.durationMinutes, notes: args.notes,
@@ -169,18 +169,13 @@ async function createCanonicalJob(ctx: MutationCtx, args: CanonicalJobCreation) 
       status: args.requireConfirmation === false ? "confirmed" : "scheduled",
       acceptanceStatus: args.requireConfirmation === false ? "accepted" : "pending", reworkCount: 0,
     });
-    const recipientIds = args.assignedTeamId ? await getJobRecipientUserIds(ctx, { companyId: args.companyId, cleanerIds: args.cleanerIds, assignedTeamId: args.assignedTeamId }) : args.cleanerIds;
-    const emailIdentity = await resolveOperationalEmailIdentity(ctx, args.companyId);
-    for (const cleanerId of recipientIds) {
-      await createNotification(ctx, { companyId: args.companyId, userId: cleanerId, type: "job_assigned", title: "New Job Assigned", message: `You've been assigned to clean ${property.name} on ${args.scheduledDate}`, relatedJobId: jobId });
-      const cleaner = await ctx.db.get(cleanerId);
-      if (cleaner?.email) await ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendJobAssigned, { email: cleaner.email, propertyName: property.name, scheduledDate: args.scheduledDate, startTime: args.startTime, ...emailIdentity });
-    }
+    await notifyInitialJobAssignment(ctx, (await ctx.db.get(jobId))!);
     await logAudit(ctx, { companyId: args.companyId, userId: owner._id, action: "create_job", entityType: "job", entityId: jobId });
     return jobId;
 }
 
 export const create = mutation({
+  returns: v.id("jobs"),
   args: {
     userId: v.optional(v.id("users")),
     sessionToken: v.string(),
@@ -247,6 +242,7 @@ export const create = mutation({
 });
 
 export const createQuick = mutation({
+  returns: v.id("jobs"),
   args: {
     userId: v.optional(v.id("users")), sessionToken: v.string(), companyId: v.id("companies"),
     propertyId: v.optional(v.id("properties")),
@@ -313,6 +309,7 @@ export const createQuick = mutation({
 });
 
 export const update = mutation({
+  returns: v.null(),
   args: {
     userId: v.optional(v.id("users")),
     sessionToken: v.string(),
@@ -357,21 +354,10 @@ export const update = mutation({
       throw new Error("Use the pricing workflow to change the customer charge");
     }
 
-    if (args.assignedTeamId) {
-      await assertTeamInCompany(ctx, args.assignedTeamId, owner.companyId, {
-        requireActive: true,
-      });
-      if (args.cleanerIds && args.cleanerIds.length > 0)
-        throw new Error("Choose either individual cleaners or a team");
-    }
-    if (args.cleanerIds) {
-      await assertValidJobExecutionAssignees(
-        ctx,
-        owner.companyId,
-        args.type ?? job.type,
-        args.cleanerIds,
-      );
-    }
+    await applyJobAssignmentChange(ctx, job, owner, {
+      cleanerIds: args.cleanerIds, assignedTeamId: args.assignedTeamId,
+      clearAssignedTeam: args.clearAssignedTeam, type: args.type,
+    });
 
     const {
       jobId,
@@ -379,6 +365,8 @@ export const update = mutation({
       sessionToken: _sessionToken,
       clearAssignedManager,
       clearAssignedTeam,
+      cleanerIds: _cleanerIds,
+      assignedTeamId: _assignedTeamId,
       ...updates
     } = args;
     // Remove undefined values
@@ -390,12 +378,6 @@ export const update = mutation({
     if (clearAssignedManager) {
       cleanUpdates.assignedManagerId = undefined;
     }
-    if (
-      clearAssignedTeam ||
-      (updates.cleanerIds && updates.cleanerIds.length > 0)
-    ) {
-      cleanUpdates.assignedTeamId = undefined;
-    }
     if (updates.propertyId && updates.propertyId !== job.propertyId) {
       const property = await ctx.db.get(updates.propertyId);
       if (!property || property.companyId !== owner.companyId) {
@@ -403,6 +385,7 @@ export const update = mutation({
       }
       cleanUpdates.clientRelationshipId = property.clientRelationshipId;
     }
+    if (Object.keys(cleanUpdates).length === 0) return null;
     await ctx.db.patch(jobId, cleanUpdates);
 
     await logAudit(ctx, {
@@ -412,6 +395,7 @@ export const update = mutation({
       entityType: "job",
       entityId: jobId,
     });
+    return null;
   },
 });
 
@@ -660,6 +644,7 @@ export const cleanerCancelJob = mutation({
 });
 
 export const reassignJob = mutation({
+  returns: v.null(),
   args: {
     jobId: v.id("jobs"),
     newCleanerId: v.id("users"),
@@ -679,64 +664,9 @@ export const reassignJob = mutation({
     if (job.status === "cancelled")
       throw new Error("Cancelled jobs cannot be reassigned");
 
-    const newCleaner = await ctx.db.get(args.newCleanerId);
-    if (!newCleaner || newCleaner.companyId !== owner.companyId)
-      throw new Error("Cleaner not found in your company");
-    await assertValidJobExecutionAssignees(ctx, owner.companyId, job.type, [args.newCleanerId]);
-
-    // This mutation replaces the individual list and preserves the team. A retry
-    // of that exact assignment must preserve acceptance and execution state too.
-    if (job.cleanerIds.length === 1 && job.cleanerIds[0] === args.newCleanerId) return;
-
-    await ctx.db.patch(args.jobId, {
-      cleanerIds: [args.newCleanerId],
-      status: "scheduled",
-      acceptanceStatus: "pending",
-      acceptedAt: undefined,
-      deniedAt: undefined,
-      denyReason: undefined,
-    });
-
-    // Notify the new cleaner
-    const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
-    const propertyName =
-      property?.name ?? job.propertySnapshot?.name ?? "a property";
-    const emailIdentity = await resolveOperationalEmailIdentity(
-      ctx,
-      job.companyId,
-    );
-    await createNotification(ctx, {
-      companyId: job.companyId,
-      userId: args.newCleanerId,
-      type: "job_reassigned",
-      title: "Job Assigned to You",
-      message: `You've been assigned to clean ${propertyName} on ${job.scheduledDate}`,
-      relatedJobId: args.jobId,
-    });
-
-    // Send job assigned email to new cleaner
-    if (newCleaner.email) {
-      await ctx.scheduler.runAfter(
-        0,
-        internal.actions.emailNotifications.sendJobAssigned,
-        {
-          email: newCleaner.email,
-          propertyName,
-          scheduledDate: job.scheduledDate,
-          startTime: job.startTime,
-          ...emailIdentity,
-        },
-      );
-    }
-
-    await logAudit(ctx, {
-      companyId: owner.companyId,
-      userId: owner._id,
-      action: "reassign_job",
-      entityType: "job",
-      entityId: args.jobId,
-      details: `Reassigned to ${newCleaner.name}`,
-    });
+    // Legacy singleton replacement preserves the team and job lifecycle.
+    await applyJobAssignmentChange(ctx, job, owner, { cleanerIds: [args.newCleanerId] }, "reassign_job");
+    return null;
   },
 });
 

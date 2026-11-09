@@ -69,7 +69,7 @@ describe("reassignment idempotency", () => {
     const args = { ...s.args, newCleanerId: s.replacement };
     await s.t.mutation(api.mutations.jobs.reassignJob, args);
     const changed = await s.snapshot();
-    expect(changed.job).toMatchObject({ cleanerIds: [s.replacement], assignedTeamId: s.team, status: "scheduled", acceptanceStatus: "pending" });
+    expect(changed.job).toMatchObject({ cleanerIds: [s.replacement], assignedTeamId: s.team, status: "confirmed", acceptanceStatus: "accepted" });
     expect(changed.notifications).toHaveLength(1);
     expect(changed.notifications[0]).toMatchObject({ userId: s.replacement, type: "job_reassigned" });
     expect(changed.scheduled).toHaveLength(1);
@@ -94,7 +94,7 @@ describe("reassignment idempotency", () => {
     await s.t.run(ctx => ctx.db.patch(s.job, { cleanerIds: [s.cleaner, s.replacement] }));
     await s.t.mutation(api.mutations.jobs.reassignJob, s.args);
     const state = await s.snapshot();
-    expect(state.job).toMatchObject({ cleanerIds: [s.cleaner], assignedTeamId: s.team, acceptanceStatus: "pending" });
+    expect(state.job).toMatchObject({ cleanerIds: [s.cleaner], assignedTeamId: s.team, acceptanceStatus: "accepted" });
     expect(state.notifications).toHaveLength(1);
   });
 

@@ -956,6 +956,8 @@ export default defineSchema({
     clientRelationshipId: v.optional(v.id("clientRelationships")),
     propertyId: v.optional(v.id("properties")),
     cleanerIds: v.array(v.id("users")),
+    // Monotonic assignment source revision; absent legacy rows start at zero.
+    assignmentRevision: v.optional(v.number()),
     requiresPropertyConditionCheck: v.optional(v.boolean()),
     type: v.union(
       v.literal("standard"),
