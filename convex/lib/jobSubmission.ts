@@ -6,6 +6,7 @@ import type { MutationCtx } from "../_generated/server";
 import { createNotification, logAudit } from "./helpers";
 import { resolveOperationalEmailIdentity } from "./operationalEmailIdentity";
 import { canSubmitFinalJob } from "./teams";
+import { completionOwners } from "./jobReviewRecipients";
 
 type SubmissionArgs = {
   job: Doc<"jobs">;
@@ -74,7 +75,7 @@ export async function submitJobExecution(ctx: MutationCtx, args: SubmissionArgs)
     }
   }
 
-  await freezePerformedWorkers(ctx, job, user, args.performedWorkerIds);
+  const execution = await freezePerformedWorkers(ctx, job, user, args.performedWorkerIds);
   const now = Date.now();
   let pauseHistory = job.pauseHistory;
   if (job.currentPauseStartedAt !== undefined) {
@@ -108,12 +109,9 @@ export async function submitJobExecution(ctx: MutationCtx, args: SubmissionArgs)
 
   const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
   const propertyName = property?.name ?? job.propertySnapshot?.name ?? "a property";
-  const owners = await ctx.db
-    .query("users")
-    .withIndex("by_companyId", (q) => q.eq("companyId", job.companyId))
-    .collect();
+  const owners = await completionOwners(ctx, job.companyId);
   const emailIdentity = await resolveOperationalEmailIdentity(ctx, job.companyId);
-  for (const owner of owners.filter((candidate) => candidate.role === "owner")) {
+  for (const owner of owners) {
     await createNotification(ctx, {
       companyId: job.companyId,
       userId: owner._id,
@@ -128,6 +126,8 @@ export async function submitJobExecution(ctx: MutationCtx, args: SubmissionArgs)
         propertyName,
         cleanerName: user.name,
         completedAt: now,
+        completionContext: { companyId: job.companyId, jobId: job._id, formId: form._id,
+          recipientId: owner._id, completedAt: now, executionSequence: execution.sequence },
         ...emailIdentity,
       });
     }

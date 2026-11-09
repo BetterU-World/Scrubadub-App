@@ -152,6 +152,7 @@ import type * as mutations_teams from "../mutations/teams.js";
 import type * as mutations_walkthroughs from "../mutations/walkthroughs.js";
 import type * as mutations_workers from "../mutations/workers.js";
 import type * as jobAssignmentNotifications from "../jobAssignmentNotifications.js";
+import type * as jobReviewNotifications from "../jobReviewNotifications.js";
 import type * as workerDeclineReviews from "../workerDeclineReviews.js";
 import type * as workerCompensation from "../workerCompensation.js";
 import type * as outgoingMutations from "../outgoingMutations.js";
@@ -375,6 +376,7 @@ declare const fullApi: ApiFromModules<{
   "mutations/walkthroughs": typeof mutations_walkthroughs;
   "mutations/workers": typeof mutations_workers;
   jobAssignmentNotifications: typeof jobAssignmentNotifications;
+  jobReviewNotifications: typeof jobReviewNotifications;
   workerDeclineReviews: typeof workerDeclineReviews;
   workerCompensation: typeof workerCompensation;
   outgoingMutations: typeof outgoingMutations;

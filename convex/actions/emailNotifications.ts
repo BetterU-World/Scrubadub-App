@@ -3,6 +3,7 @@
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
+import { completionContext, approvalContext } from "../lib/jobReviewEmailContext";
 import {
   sendJobAssignedEmail,
   sendJobCompletedEmail,
@@ -57,7 +58,9 @@ export const sendJobAssigned = internalAction({
  * Scheduled from mutations via ctx.scheduler.runAfter(0, ...).
  */
 export const sendJobCompleted = internalAction({
+  returns: v.null(),
   args: {
+    completionContext: v.optional(completionContext),
     email: v.string(),
     propertyName: v.string(),
     cleanerName: v.string(),
@@ -65,7 +68,11 @@ export const sendJobCompleted = internalAction({
     companyName: v.string(),
     replyTo: v.optional(v.string()),
   },
-  handler: async (_ctx, args) => {
+  handler: async (ctx, queued) => {
+    // Legacy payloads have no trustworthy job/recipient identity. Accept but skip.
+    if (!queued.completionContext) return null;
+    const args = await ctx.runQuery(internal.jobReviewNotifications.completionEmailState, queued.completionContext);
+    if (!args) return null;
     const sent = await sendJobCompletedEmail(
       args.email,
       args.propertyName,
@@ -74,8 +81,9 @@ export const sendJobCompleted = internalAction({
       { companyName: args.companyName, replyTo: args.replyTo }
     );
     if (!sent) {
-      console.error("[emailNotifications] Job completed email failed for", args.email);
+      console.error("[emailNotifications] Job completed email failed");
     }
+    return null;
   },
 });
 
@@ -84,20 +92,26 @@ export const sendJobCompleted = internalAction({
  * Scheduled from mutations via ctx.scheduler.runAfter(0, ...).
  */
 export const sendJobApproved = internalAction({
+  returns: v.null(),
   args: {
+    approvalContext: v.optional(approvalContext),
     email: v.string(),
     propertyName: v.string(),
     companyName: v.string(),
     replyTo: v.optional(v.string()),
   },
-  handler: async (_ctx, args) => {
+  handler: async (ctx, queued) => {
+    if (!queued.approvalContext) return null;
+    const args = await ctx.runQuery(internal.jobReviewNotifications.approvalEmailState, queued.approvalContext);
+    if (!args) return null;
     const sent = await sendJobApprovedEmail(args.email, args.propertyName, {
       companyName: args.companyName,
       replyTo: args.replyTo,
     });
     if (!sent) {
-      console.error("[emailNotifications] Job approved email failed for", args.email);
+      console.error("[emailNotifications] Job approved email failed");
     }
+    return null;
   },
 });
 
