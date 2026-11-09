@@ -61,6 +61,19 @@ that skips or fails before any external call. `sendStartedAt` marks entry into t
 send stage, not proof of provider acceptance. Attempt summaries preserve each
 claim's times and outcome; retrying does not erase earlier failures. A provider
 message ID is recorded only when returned and matching a bounded ID format.
+New Resend acceptance requires `error === null`, a non-array data object and a
+nonempty ID matching the existing 1–128-character ASCII letter/digit/underscore/
+hyphen policy. Missing/null data, invalid IDs and malformed or contradictory
+envelopes are unknown, never inferred accepted or definitely retryable. The SDK's
+`CreateEmailResponseSuccess` requires `id: string`; its runtime `fetchRequest`
+passes through successful JSON without validating it. The official
+[send response](https://resend.com/docs/api-reference/emails/send-email) includes an
+email ID. The official [OpenAPI send response](https://github.com/resend/resend-openapi/blob/main/resend.yaml)
+also defines it as a string without a UUID format restriction. No UUID-only
+restriction is invented beyond that contract.
+The existing finish-stage ID sanitizer only protects stored metadata; it does not
+prove provider acceptance and remains unchanged. Optional ID storage is retained
+for compatibility, while all newly accepted Resend responses supply that evidence.
 
 Each claim schedules a watchdog. `beginSend` fences an action resuming after
 expiry and permits the external stage only once per claim. Expiry sets `unknown`
@@ -173,6 +186,13 @@ Both frontend/Convex typechecks, `npm run build:frontend`, and `git diff --check
 passed. Existing TypeScript source-map/deprecation and bundle-size warnings were
 nonblocking. Local Node 24 differs from GitHub CI's Node 20; CI is a separate gate.
 No dependencies, lockfiles or deployment configuration were changed.
+
+Provider-evidence correction: 361 focused/regression tests across 12 files passed,
+including missing/null data, malformed envelopes, invalid/trailing-newline IDs,
+explicit rejection/throttling and ambiguous network/5xx outcomes. Both typechecks,
+the frontend-only build and whitespace checks passed. This correction changes
+only the classifier, transport tests and this documentation; it does not change
+templates, recipients, ledger transitions or retry policy.
 
 There is a race between eligibility reads and external delivery. Already delivered
 mail cannot be recalled. Provider visibility may be lost after a successful send

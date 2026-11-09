@@ -10,20 +10,41 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllEnvs());
 const send = () => deliverJobAssignedEmail("private@example.test", "Private property", "2030-01-02");
+const validId = "49a3999c-0ce1-4ea6-ab68-afcd6dc2e794";
 
 describe("operational provider outcome classification", () => {
   it.each(["assignment", "completion", "approval"] as const)("returns acceptance and actual message ID for %s", async kind => {
-    provider.mockResolvedValue({ data: { id: "actual-message-id" }, error: null });
+    provider.mockResolvedValue({ data: { id: validId }, error: null });
     const result = kind === "assignment" ? await send() : kind === "completion"
       ? await deliverJobCompletedEmail("private@example.test", "Private property", "Worker", 1800000000000)
       : await deliverJobApprovedEmail("private@example.test", "Private property");
-    expect(result).toEqual({ status: "provider_accepted", providerMessageId: "actual-message-id" });
+    expect(result).toEqual({ status: "provider_accepted", providerMessageId: validId });
     expect(provider).toHaveBeenCalledTimes(1);
   });
-  it("records acceptance without inventing a missing provider ID and preserves boolean wrappers", async () => {
-    provider.mockResolvedValue({ data: {}, error: null });
-    expect(await send()).toEqual({ status: "provider_accepted" });
+  it("preserves boolean wrappers for positively evidenced acceptance", async () => {
+    provider.mockResolvedValue({ data: { id: validId }, error: null });
     expect(await sendJobAssignedEmail("private@example.test", "Private", "2030-01-02")).toBe(true);
+  });
+  it.each([
+    null, undefined, {}, [], "not-a-data-object", { id: undefined }, { id: null }, { id: 123 },
+    { id: {} }, { id: [] }, { id: "" }, { id: "   " }, { id: " invalid " }, { id: "id\r\nvalue" },
+    { id: "id\n" }, { id: "id\r\n" }, { id: "private@example.test" }, { id: "<invalid>" }, { id: "id.with.dots" }, { id: "x".repeat(129) },
+  ])("requires a valid message ID even with error:null: %j", async data => {
+    provider.mockResolvedValue({ data, error: null });
+    expect(await send()).toEqual({ status: "unknown", category: "provider_uncertain" });
+    expect(await sendJobAssignedEmail("private@example.test", "Private", "2030-01-02")).toBe(false);
+  });
+  it.each([
+    { error: null }, { data: { id: validId } }, { data: { id: validId }, error: undefined },
+    { data: { id: validId }, error: {} }, { data: { id: validId }, error: false },
+    { data: { id: validId }, error: { name: "rate_limit_exceeded", statusCode: 429 } },
+    { error: { name: "rate_limit_exceeded", statusCode: 429 } },
+    { data: null, error: { name: "validation_error", statusCode: "422" } },
+    { data: null, error: { name: "rate_limit_exceeded", statusCode: "429" } },
+    { data: null, error: [] }, { data: null, error: "malformed" }, [], "malformed", undefined,
+  ])("does not interpret a malformed or contradictory response as acceptance/retryable failure: %j", async response => {
+    provider.mockResolvedValue(response);
+    expect(await send()).toEqual({ status: "unknown", category: "provider_uncertain" });
   });
   it("recognizes only an explicit rate_limit_exceeded rejection as retryable", async () => {
     provider.mockResolvedValue({ data: null, error: { name: "rate_limit_exceeded", statusCode: 429, message: "Private error text" } });
