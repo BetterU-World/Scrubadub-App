@@ -3024,6 +3024,19 @@
       "notes": "Notas"
     }
   },
+  "invoiceDelivery": {
+    "title": "Evidencia del correo de la factura",
+    "not_sent": "No hay un intento de correo registrado. Emitir una factura no la envía por correo.",
+    "unverified": "Existe una fecha histórica de envío, pero la aceptación del proveedor no está verificada.",
+    "pending": "Hay un intento de correo en curso. No reenvíes mientras el resultado esté pendiente.",
+    "provider_accepted": "El proveedor de correo aceptó este mensaje. La entrega al buzón no está confirmada.",
+    "failed": "El correo fue rechazado o no se pudo preparar. Revisa la causa antes de volver a intentarlo deliberadamente.",
+    "unknown": "El resultado es incierto. El proveedor puede haberlo aceptado. Revisa sus registros con soporte antes de reenviar; el reenvío inmediato está bloqueado.",
+    "skipped": "No se envió el correo porque cambió el acceso a la factura o la elegibilidad del destinatario.",
+    "sendAnother": "Enviar otro correo de esta factura",
+    "confirmAnother": "Esta acción envía deliberadamente otro correo de la factura existente. Revisa primero la evidencia. No crea otra factura ni otro cargo.",
+    "legacyTime": "Fecha histórica de envío (sin verificar)"
+  },
   "invoices": {
     "jobBillingTitle": "Factura del servicio",
     "readyForInvoicing": "Listo para facturar",

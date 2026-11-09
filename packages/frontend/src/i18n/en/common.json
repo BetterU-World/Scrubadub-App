@@ -3023,6 +3023,19 @@
       "notes": "Notes"
     }
   },
+  "invoiceDelivery": {
+    "title": "Invoice email evidence",
+    "not_sent": "No invoice email attempt recorded. Issuing an invoice does not email it.",
+    "unverified": "A historical send timestamp exists, but provider acceptance is unverified.",
+    "pending": "An email attempt is in progress. Do not resend while its outcome is pending.",
+    "provider_accepted": "The email provider accepted this invoice email. Mailbox delivery is not confirmed.",
+    "failed": "The email was definitely rejected or could not be prepared. Review the cause before deliberately trying again.",
+    "unknown": "Email outcome is uncertain. It may have been accepted. Review provider records with support before any resend; immediate resend is blocked.",
+    "skipped": "The email was not sent because invoice access or recipient eligibility changed.",
+    "sendAnother": "Send another invoice email",
+    "confirmAnother": "This deliberately sends another email for the existing invoice. Check the email evidence first. It does not create another invoice or charge.",
+    "legacyTime": "Historical send timestamp (unverified)"
+  },
   "invoices": {
     "jobBillingTitle": "Service invoice",
     "readyForInvoicing": "Ready for invoicing",
