@@ -1,4 +1,18 @@
 {
+  "assignment": {
+    "reassignHelp": "Esta acción reemplaza al personal asignado directamente por una sola persona. El equipo y la aceptación del trabajo se conservan. Usa Editar trabajo para gestionar varias asignaciones directas.",
+    "team": "Equipo",
+    "direct": "Personal asignado directamente",
+    "noTeam": "Sin equipo",
+    "help": "Elige un equipo, personas, ambos o deja el trabajo sin asignar. Cada opción es independiente.",
+    "alsoOnTeam": "También pertenece al equipo seleccionado",
+    "overlapHelp": "Una persona asignada directamente y por el equipo cuenta una sola vez. Quitar una asignación no elimina la otra.",
+    "noWorkers": "No hay personal disponible para la asignación directa.",
+    "unavailableTeam": "Equipo asignado no disponible",
+    "retainedTeam": "Asignación actual",
+    "unavailableWorker": "Persona asignada no disponible",
+    "retainedWorker": "No disponible para este tipo de trabajo. La asignación se conserva hasta que la quites o reemplaces explícitamente."
+  },
   "workerReview": {
     "acceptedJob": "Este trabajo ha sido aceptado.",
     "title": "Revisión de disponibilidad del personal",

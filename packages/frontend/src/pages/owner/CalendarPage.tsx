@@ -1,3 +1,4 @@
+import { AssignmentSummary } from "@/components/AssignmentSummary";
 import { useState, useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -470,8 +471,9 @@ function MonthView({ days, currentDate, today, jobsByDate, getJobColor, isJobStr
             </div>
             <div className="space-y-1">
               {dayJobs.slice(0, 3).map((job) => (
-                <Link key={`${job.eventType}-${job._id}`} href={job.href} className={`block text-xs p-1 rounded truncate ${getJobColor(job)} ${isJobStrikethrough(job) ? "line-through" : ""}`}>
-                    {job.eventType === "walkthrough" && <ClipboardCheck className="mr-1 inline h-3 w-3" aria-hidden="true" />}{job.propertyName}{(job as any).assignedTeamName ? ` · ${(job as any).assignedTeamName}` : ""}
+                <Link key={`${job.eventType}-${job._id}`} href={job.href} className={`block text-xs p-1 rounded min-w-0 break-words ${getJobColor(job)} ${isJobStrikethrough(job) ? "line-through" : ""}`}>
+                    {job.eventType === "walkthrough" && <ClipboardCheck className="mr-1 inline h-3 w-3" aria-hidden="true" />}{job.propertyName}
+                    {job.eventType !== "walkthrough" && <AssignmentSummary job={job} className="text-[10px]" />}
                 </Link>
               ))}
               {dayJobs.length > 3 && (
@@ -561,8 +563,8 @@ function WeekView({ days, today, jobsByDate, getJobColor, isJobStrikethrough, t 
                       {job.eventType === "walkthrough" && <ClipboardCheck className="mr-1 inline h-3 w-3 text-purple-600" aria-hidden="true" />}{job.propertyName}
                     </div>
                     {((job as any).assignedTeamName || (job.cleaners && job.cleaners.length > 0)) && (
-                      <div className={`text-xs truncate mt-0.5 ${isCancelled || isCompleted ? "text-gray-400" : "text-gray-500"}`}>
-                        {(job as any).assignedTeamName ? `Team: ${(job as any).assignedTeamName}` : job.cleaners.map((c: any) => c.name).join(", ")}
+                      <div className={`text-xs min-w-0 mt-0.5 ${isCancelled || isCompleted ? "text-gray-400" : "text-gray-500"}`}>
+                        <AssignmentSummary job={job} />
                       </div>
                     )}
                     <div className="mt-1 flex gap-1">
@@ -650,9 +652,7 @@ function DayView({ date, today, jobs, formatJobType, isJobStrikethrough, t }: Da
                     {((job as any).assignedTeamName || (job.cleaners && job.cleaners.length > 0)) && (
                       <div className={`flex items-center gap-1.5 text-sm mb-2 ${isCancelled || isCompleted ? "text-gray-400" : "text-gray-600"}`}>
                         <Users className={`w-4 h-4 flex-shrink-0 ${isCancelled || isCompleted ? "text-gray-300" : "text-gray-400"}`} />
-                        <span>
-                          {(job as any).assignedTeamName ? `Team: ${(job as any).assignedTeamName}` : job.cleaners.map((c: any) => c.name).join(", ")}
-                        </span>
+                        <AssignmentSummary job={job} />
                       </div>
                     )}
                     {/* Job type */}

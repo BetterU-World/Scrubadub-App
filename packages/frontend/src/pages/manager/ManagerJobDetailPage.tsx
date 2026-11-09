@@ -1,3 +1,4 @@
+import { AssignmentSummary } from "@/components/AssignmentSummary";
 import { SharedWorkNotice } from "@/components/SharedWorkNotice";
 import { WorkerDeclineReviews } from "@/components/WorkerDeclineReviews";
 import { useAttachmentUpload } from "@/hooks/useAttachmentUpload";
@@ -245,21 +246,7 @@ export function ManagerJobDetailPage() {
 
         <AddOnSnapshotList items={(job as any).requiredAddOns} audience="worker" />
 
-        {/* Assigned Cleaners */}
-        {job.cleaners.length > 0 && (
-          <div className="card">
-            <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-              <Users className="w-4 h-4" /> {t("inspection.assignedCleaners")}
-            </h3>
-            <div className="space-y-1">
-              {job.cleaners.map((c: any) => (
-                <div key={c!._id} className="text-sm text-gray-600">
-                  {c!.name}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <div className="card text-sm text-gray-600"><AssignmentSummary job={job} /></div>
 
         {/* Timeline */}
         <JobTimeline job={job as any} />

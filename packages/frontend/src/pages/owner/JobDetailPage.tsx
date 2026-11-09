@@ -1,3 +1,4 @@
+import { AssignmentSummary } from "@/components/AssignmentSummary";
 import { SharedWorkNotice } from "@/components/SharedWorkNotice";
 import { WorkerDeclineReviews } from "@/components/WorkerDeclineReviews";
 import { JobCompensation } from "@/components/payments/JobCompensation";
@@ -225,9 +226,6 @@ export function JobDetailPage() {
             {(job as any).sharedFromCompanyName && (
               <span className="badge bg-blue-100 text-blue-700">{t("jobs.sharedFrom", { name: (job as any).sharedFromCompanyName })}</span>
             )}
-            {(job as any).assignedTeamName && (
-              <span className="badge bg-blue-100 text-blue-700">Team: {(job as any).assignedTeamName}</span>
-            )}
           </div>
 
           {(job as any).acceptanceStatus === "denied" && (job as any).denyReason && (
@@ -250,7 +248,7 @@ export function JobDetailPage() {
             </div>
             <div className="flex items-center gap-2 text-gray-600">
               <Users className="w-4 h-4 text-gray-400" />
-              {(job.cleaners as any[]).map((c: any) => c.name).join(", ") || t("common.unassigned")}
+              <AssignmentSummary job={job} />
             </div>
           </div>
 
@@ -990,7 +988,8 @@ export function JobDetailPage() {
       {sharedWorkAllowed && showReassign && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">{t("jobs.reassignJob")}</h3>
+            <h3 className="text-lg font-semibold mb-2">{t("jobs.reassignJob")}</h3>
+            <p className="mb-4 text-sm text-gray-600">{t("assignment.reassignHelp")}</p>
             <select
               className="input-field mb-2"
               value={reassignCleanerId}

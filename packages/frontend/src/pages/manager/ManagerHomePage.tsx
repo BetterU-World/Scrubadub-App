@@ -1,3 +1,4 @@
+import { AssignmentSummary } from "@/components/AssignmentSummary";
 import { useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -133,15 +134,10 @@ export function ManagerHomePage() {
                         {job.propertyName}
                       </span>
                     </div>
-                    <div className="flex items-center gap-3 text-xs text-gray-500">
+                    <div className="flex flex-wrap items-start gap-3 text-xs text-gray-500">
                       <span>{job.scheduledDate === today ? "Today" : job.scheduledDate}</span>
                       {job.startTime && <span>{job.startTime}</span>}
-                      {job.cleaners.length > 0 && (
-                        <span className="flex items-center gap-1">
-                          <Users className="w-3 h-3" />
-                          {job.cleaners.map((c: any) => c.name).join(", ")}
-                        </span>
-                      )}
+                      <AssignmentSummary job={job} />
                     </div>
                   </div>
                   <StatusBadge status={job.status} className="text-[10px] ml-2 flex-shrink-0" />
