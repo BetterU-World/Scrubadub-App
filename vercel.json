@@ -1,0 +1,7 @@
+{
+  "git": {
+    "deploymentEnabled": {
+      "codex/notification-recipient-safety": false
+    }
+  }
+}

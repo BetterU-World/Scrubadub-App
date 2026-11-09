@@ -1,4 +1,9 @@
 {
+  "git": {
+    "deploymentEnabled": {
+      "codex/notification-recipient-safety": false
+    }
+  },
   "trailingSlash": false,
   "functions": {
     "api/mini-site.ts": { "includeFiles": "dist/index.html" }

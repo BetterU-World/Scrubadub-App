@@ -6,7 +6,7 @@ import { Id } from "../_generated/dataModel";
 import { logAudit, createNotification } from "../lib/helpers";
 import { requireOwnerManagerSession } from "../lib/sessionAuth";
 import { hasOwnerOrManagerPermission } from "../lib/auth";
-import { getJobRecipientUserIds } from "../lib/teams";
+import { currentReviewWorkers } from "../lib/jobReviewRecipients";
 import { resolveOperationalEmailIdentity } from "../lib/operationalEmailIdentity";
 import { requireAssignedJobExecutor } from "../lib/jobExecutionAuth";
 import { ensureJobExecutionForm } from "../lib/jobExecutionForm";
@@ -184,16 +184,17 @@ export const approve = mutation({
       status: "approved",
       ownerNotes: args.notes,
     });
-    await ctx.db.patch(form.jobId, { status: "approved", approvedAt: Date.now(), approvedExecutionSequence: job.submittedExecutionSequence });
+    const approvedAt = Date.now();
+    await ctx.db.patch(form.jobId, { status: "approved", approvedAt, approvedExecutionSequence: job.submittedExecutionSequence });
 
     const approveProperty = job.propertyId ? await ctx.db.get(job.propertyId) : null;
     const approvePropertyName = approveProperty?.name ?? job.propertySnapshot?.name ?? "a property";
     const emailIdentity = await resolveOperationalEmailIdentity(ctx, form.companyId);
 
-    for (const cid of await getJobRecipientUserIds(ctx, job)) {
+    for (const cleaner of await currentReviewWorkers(ctx, job)) {
       await createNotification(ctx, {
         companyId: form.companyId,
-        userId: cid,
+        userId: cleaner._id,
         type: "job_approved",
         title: "Job Approved",
         message: `Completed work was approved for ${job.scheduledDate}`,
@@ -201,11 +202,13 @@ export const approve = mutation({
       });
 
       // Send job approved email to cleaner
-      const cleaner = await ctx.db.get(cid);
-      if (cleaner?.email) {
+      if (cleaner.email) {
         await ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendJobApproved, {
           email: cleaner.email,
           propertyName: approvePropertyName,
+          approvalContext: { companyId: job.companyId, jobId: job._id, formId: form._id,
+            recipientId: cleaner._id, approvedAt, reworkCount: job.reworkCount,
+            executionSequence: job.submittedExecutionSequence },
           ...emailIdentity,
         });
       }
@@ -282,10 +285,10 @@ export const requestRework = mutation({
       reworkCount: (job.reworkCount ?? 0) + 1,
     });
 
-    for (const cid of await getJobRecipientUserIds(ctx, job)) {
+    for (const cleaner of await currentReviewWorkers(ctx, job)) {
       await createNotification(ctx, {
         companyId: form.companyId,
-        userId: cid,
+        userId: cleaner._id,
         type: "rework_requested",
         title: "Rework Requested",
         message: `Owner requested rework for ${job.scheduledDate}: ${args.notes}`,
