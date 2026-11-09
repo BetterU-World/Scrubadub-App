@@ -57,8 +57,8 @@ describe("email identity and reply routing", () => {
       "sendSupportEmail", "sendAffiliateInviteEmail", "sendInviteEmail",
     ];
     const operational = [
-      "sendProposalEmail", "sendServiceAgreementEmail", "sendJobAssignedEmail",
-      "sendJobCompletedEmail", "sendJobApprovedEmail", "sendPartnerInviteEmail",
+      "sendProposalEmail", "sendServiceAgreementEmail", "deliverJobAssignedEmail",
+      "deliverJobCompletedEmail", "deliverJobApprovedEmail", "sendPartnerInviteEmail",
       "sendPartnerSharedJobEmail", "sendClientInviteEmail",
     ];
     const body = (name: string) => source.slice(source.indexOf(`function ${name}`), source.indexOf("\nexport ", source.indexOf(`function ${name}`) + 10));

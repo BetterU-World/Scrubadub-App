@@ -5,12 +5,12 @@ import schema from "../../schema";
 import { api, internal } from "../../_generated/api";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { hashToken } from "../tokens";
-import { sendJobCompletedEmail, sendJobApprovedEmail } from "../email";
+import { deliverJobCompletedEmail, deliverJobApprovedEmail } from "../email";
 
 vi.mock("../email", async importOriginal => ({
   ...await importOriginal<typeof import("../email")>(),
-  sendJobCompletedEmail: vi.fn().mockResolvedValue(true),
-  sendJobApprovedEmail: vi.fn().mockResolvedValue(true),
+  deliverJobCompletedEmail: vi.fn().mockResolvedValue({ status: "provider_accepted" }),
+  deliverJobApprovedEmail: vi.fn().mockResolvedValue({ status: "provider_accepted" }),
 }));
 const modules = import.meta.glob("../../**/*.ts");
 const NOW = Date.parse("2030-01-01T12:00:00Z");
@@ -69,7 +69,7 @@ describe("job review recipient safety", () => {
     expect((await s.completion()).completionContext).toMatchObject({ companyId: s.companyId, jobId: s.job,
       formId: s.form, recipientId: s.owner, completedAt: NOW, executionSequence: 1 });
     await s.t.action(internal.actions.emailNotifications.sendJobCompleted, await s.completion());
-    expect(sendJobCompletedEmail).toHaveBeenCalledExactlyOnceWith("owner@review.test", "Current property", "worker", NOW,
+    expect(deliverJobCompletedEmail).toHaveBeenCalledExactlyOnceWith("owner@review.test", "Current property", "worker", NOW,
       { companyName: "Review company", replyTo: "reply@review.test" });
   });
 
@@ -121,9 +121,9 @@ describe("delayed review email dispatch", () => {
     });
     await s.t.action(internal.actions.emailNotifications.sendJobCompleted, completed);
     await s.t.action(internal.actions.emailNotifications.sendJobApproved, approved);
-    expect(sendJobCompletedEmail).toHaveBeenCalledExactlyOnceWith("new-owner@review.test", "Renamed property", "worker", NOW,
+    expect(deliverJobCompletedEmail).toHaveBeenCalledExactlyOnceWith("new-owner@review.test", "Renamed property", "worker", NOW,
       { companyName: "Renamed company", replyTo: "new-reply@review.test" });
-    expect(sendJobApprovedEmail).toHaveBeenCalledExactlyOnceWith("new-worker@review.test", "Renamed property",
+    expect(deliverJobApprovedEmail).toHaveBeenCalledExactlyOnceWith("new-worker@review.test", "Renamed property",
       { companyName: "Renamed company", replyTo: "new-reply@review.test" });
   });
 
@@ -135,7 +135,7 @@ describe("delayed review email dispatch", () => {
         { companyId: s.foreignCompany } : change === "role" ? { role: "manager" } : { email: "" });
     });
     await s.t.action(internal.actions.emailNotifications.sendJobCompleted, args);
-    expect(sendJobCompletedEmail).not.toHaveBeenCalled();
+    expect(deliverJobCompletedEmail).not.toHaveBeenCalled();
   });
 
   it.each(["inactive", "foreign", "role", "removed", "missing", "no-email"] as const)("suppresses approval for a now %s worker", async change => {
@@ -147,7 +147,7 @@ describe("delayed review email dispatch", () => {
         { companyId: s.foreignCompany } : change === "role" ? { role: "affiliate" } : { email: "" });
     });
     await s.t.action(internal.actions.emailNotifications.sendJobApproved, args);
-    expect(sendJobApprovedEmail).not.toHaveBeenCalled();
+    expect(deliverJobApprovedEmail).not.toHaveBeenCalled();
   });
 
   it("rechecks team membership but preserves an overlapping direct assignment", async () => {
@@ -158,25 +158,25 @@ describe("delayed review email dispatch", () => {
       await ctx.db.patch(overlap!._id, { active: false });
     });
     await s.t.action(internal.actions.emailNotifications.sendJobApproved, teamArgs);
-    expect(sendJobApprovedEmail).not.toHaveBeenCalled();
+    expect(deliverJobApprovedEmail).not.toHaveBeenCalled();
     await s.t.action(internal.actions.emailNotifications.sendJobApproved, overlapArgs);
-    expect(sendJobApprovedEmail).toHaveBeenCalledTimes(1);
+    expect(deliverJobApprovedEmail).toHaveBeenCalledTimes(1);
   });
 
   it("suppresses obsolete completions through rework/resubmission and sends only the new submission", async () => {
     const s = await setup(); await s.submit(); const old = await s.completion();
     await s.rework();
     await s.t.action(internal.actions.emailNotifications.sendJobCompleted, old);
-    expect(sendJobCompletedEmail).not.toHaveBeenCalled();
+    expect(deliverJobCompletedEmail).not.toHaveBeenCalled();
     await s.t.mutation(api.mutations.jobs.startJob, { ...s.workerAuth, jobId: s.job });
     // Keep the same wall clock: execution identity, not timestamp alone, must distinguish rounds.
     await s.submit();
     await s.t.action(internal.actions.emailNotifications.sendJobCompleted, old);
-    expect(sendJobCompletedEmail).not.toHaveBeenCalled();
+    expect(deliverJobCompletedEmail).not.toHaveBeenCalled();
     const latest = (await s.queued()).filter(row => row.name.includes("sendJobCompleted")).at(-1)!.args[0] as CompletionArgs;
     expect(latest.completionContext?.executionSequence).toBe(2);
     await s.t.action(internal.actions.emailNotifications.sendJobCompleted, latest);
-    expect(sendJobCompletedEmail).toHaveBeenCalledTimes(1);
+    expect(deliverJobCompletedEmail).toHaveBeenCalledTimes(1);
   });
 
   it.each(["cancelled", "denied", "in_progress", "rework_requested"] as const)("suppresses review emails when job is %s", async status => {
@@ -184,7 +184,7 @@ describe("delayed review email dispatch", () => {
     await s.t.run(ctx => ctx.db.patch(s.job, { status }));
     await s.t.action(internal.actions.emailNotifications.sendJobCompleted, completed);
     await s.t.action(internal.actions.emailNotifications.sendJobApproved, approved);
-    expect(sendJobCompletedEmail).not.toHaveBeenCalled(); expect(sendJobApprovedEmail).not.toHaveBeenCalled();
+    expect(deliverJobCompletedEmail).not.toHaveBeenCalled(); expect(deliverJobApprovedEmail).not.toHaveBeenCalled();
   });
 
   it.each(["approvedAt", "reworkCount", "executionSequence"] as const)("suppresses a superseded approval when %s changes", async field => {
@@ -192,7 +192,7 @@ describe("delayed review email dispatch", () => {
     await s.t.run(ctx => ctx.db.patch(s.job, field === "approvedAt" ? { approvedAt: NOW + 1 } :
       field === "reworkCount" ? { reworkCount: 1 } : { submittedExecutionSequence: 2, approvedExecutionSequence: 2 }));
     await s.t.action(internal.actions.emailNotifications.sendJobApproved, args);
-    expect(sendJobApprovedEmail).not.toHaveBeenCalled();
+    expect(deliverJobApprovedEmail).not.toHaveBeenCalled();
   });
 
   it.each(["property", "form", "job-company", "missing-job"] as const)("fails closed on invalid %s linkage", async change => {
@@ -205,7 +205,7 @@ describe("delayed review email dispatch", () => {
     });
     await s.t.action(internal.actions.emailNotifications.sendJobCompleted, completed);
     await s.t.action(internal.actions.emailNotifications.sendJobApproved, approved);
-    expect(sendJobCompletedEmail).not.toHaveBeenCalled(); expect(sendJobApprovedEmail).not.toHaveBeenCalled();
+    expect(deliverJobCompletedEmail).not.toHaveBeenCalled(); expect(deliverJobApprovedEmail).not.toHaveBeenCalled();
   });
 
   it("supports a newly queued approval of legacy submitted work without inventing execution evidence", async () => {
@@ -213,7 +213,7 @@ describe("delayed review email dispatch", () => {
     await s.t.run(async ctx => { await ctx.db.patch(s.job, { status: "submitted" }); await ctx.db.patch(s.form, { status: "submitted" }); });
     await s.approve();
     await s.t.action(internal.actions.emailNotifications.sendJobApproved, await s.approval());
-    expect(sendJobApprovedEmail).toHaveBeenCalledTimes(1);
+    expect(deliverJobApprovedEmail).toHaveBeenCalledTimes(1);
     expect((await s.t.run(ctx => ctx.db.get(s.job)))?.executionHistory).toBeUndefined();
   });
 
@@ -222,7 +222,7 @@ describe("delayed review email dispatch", () => {
     try {
       expect(await s.t.action(internal.actions.emailNotifications.sendJobCompleted, { email: "legacy@review.test", propertyName: "Private", cleanerName: "Worker", completedAt: NOW, companyName: "Private" })).toBeNull();
       expect(await s.t.action(internal.actions.emailNotifications.sendJobApproved, { email: "legacy@review.test", propertyName: "Private", companyName: "Private" })).toBeNull();
-      expect(sendJobCompletedEmail).not.toHaveBeenCalled(); expect(sendJobApprovedEmail).not.toHaveBeenCalled();
+      expect(deliverJobCompletedEmail).not.toHaveBeenCalled(); expect(deliverJobApprovedEmail).not.toHaveBeenCalled();
       expect(warn).not.toHaveBeenCalled(); expect(error).not.toHaveBeenCalled();
     } finally { warn.mockRestore(); error.mockRestore(); }
   });
@@ -240,7 +240,7 @@ describe("delayed review email dispatch", () => {
     await s.t.action(internal.actions.emailNotifications.sendJobCompleted, completed);
     await s.t.action(internal.actions.emailNotifications.sendJobApproved, approved);
     const allowed = ["accepted", "in_progress", "completed"].includes(status);
-    expect(sendJobCompletedEmail).toHaveBeenCalledTimes(allowed ? 1 : 0);
-    expect(sendJobApprovedEmail).toHaveBeenCalledTimes(allowed ? 1 : 0);
+    expect(deliverJobCompletedEmail).toHaveBeenCalledTimes(allowed ? 1 : 0);
+    expect(deliverJobApprovedEmail).toHaveBeenCalledTimes(allowed ? 1 : 0);
   });
 });

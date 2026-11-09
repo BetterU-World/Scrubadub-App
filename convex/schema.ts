@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { workerDeclineReviewFields } from "./lib/workerDeclineReviewModel";
 import { executionEvidence } from "./lib/performedWorkers";
+import { operationalEmailEvent, deliveryState, errorCategory, attemptSummary } from "./lib/operationalEmailModel";
 import { outgoingTables } from "./lib/outgoingSchema";
 import { v } from "convex/values";
 import { calendarClassification, calendarEventMetadata } from "./lib/calendarClassification";
@@ -1247,6 +1248,20 @@ export default defineSchema({
     .index("by_company_job_status", ["companyId", "jobId", "status"])
     .index("by_job_worker", ["jobId", "workerId"])
     .index("by_job_worker_status", ["jobId", "workerId", "status"]),
+
+  operationalEmailDeliveries: defineTable({
+    companyId: v.id("companies"), jobId: v.id("jobs"), recipientId: v.id("users"),
+    eventKey: v.string(), event: operationalEmailEvent, state: deliveryState,
+    attemptCount: v.number(), attempts: v.array(attemptSummary),
+    createdAt: v.number(), updatedAt: v.number(), nextAttemptAt: v.optional(v.number()),
+    claimExpiresAt: v.optional(v.number()), sendStartedAt: v.optional(v.number()),
+    category: v.optional(errorCategory), providerMessageId: v.optional(v.string()),
+    scheduledFunctionId: v.optional(v.id("_scheduled_functions")),
+  })
+    .index("by_company_event_recipient", ["companyId", "eventKey", "recipientId"])
+    .index("by_company_createdAt", ["companyId", "createdAt"])
+    .index("by_state_nextAttemptAt", ["state", "nextAttemptAt"])
+    .index("by_state_claimExpiresAt", ["state", "claimExpiresAt"]),
 
   notifications: defineTable({
     companyId: v.id("companies"),

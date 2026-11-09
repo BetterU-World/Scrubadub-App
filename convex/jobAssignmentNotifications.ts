@@ -6,12 +6,13 @@ import { resolveOperationalEmailIdentity } from "./lib/operationalEmailIdentity"
 
 /** Re-read immediately before external delivery; stale queued assignment invitations are suppressed. */
 export const assignmentEmailState = internalQuery({
-  args: { jobId: v.id("jobs"), workerId: v.id("users"), revision: v.number() },
+  args: { jobId: v.id("jobs"), workerId: v.id("users"), revision: v.number(), companyId: v.optional(v.id("companies")) },
   returns: v.union(v.null(), v.object({ email: v.string(), propertyName: v.string(), scheduledDate: v.string(),
     startTime: v.optional(v.string()), companyName: v.string(), replyTo: v.optional(v.string()) })),
   handler: async (ctx, args) => {
     const job = await ctx.db.get(args.jobId);
-    if (!job || (job.assignmentRevision ?? 0) !== args.revision || job.startedAt !== undefined ||
+    if (!job || (args.companyId !== undefined && job.companyId !== args.companyId) ||
+      (job.assignmentRevision ?? 0) !== args.revision || job.startedAt !== undefined ||
       job.timerStoppedAt !== undefined || !["scheduled", "confirmed"].includes(job.status)) return null;
     try { await requireSharedJobAccepted(ctx, job); } catch { return null; }
     const worker = (await effectiveDeclineWorkers(ctx, job)).find(user => user._id === args.workerId);
