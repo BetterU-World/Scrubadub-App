@@ -2,6 +2,7 @@
 
 import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
+import { internal } from "../_generated/api";
 import {
   sendJobAssignedEmail,
   sendJobCompletedEmail,
@@ -20,7 +21,9 @@ import {
  * Scheduled from mutations via ctx.scheduler.runAfter(0, ...).
  */
 export const sendJobAssigned = internalAction({
+  returns: v.null(),
   args: {
+    assignmentContext: v.optional(v.object({ jobId: v.id("jobs"), workerId: v.id("users"), revision: v.number() })),
     email: v.string(),
     propertyName: v.string(),
     scheduledDate: v.string(),
@@ -28,7 +31,13 @@ export const sendJobAssigned = internalAction({
     companyName: v.string(),
     replyTo: v.optional(v.string()),
   },
-  handler: async (_ctx, args) => {
+  handler: async (ctx, queued) => {
+    // Older already-queued calls retain their historical argument contract. New calls
+    // carry job/worker/revision identity and use fresh delivery-time details.
+    const args = queued.assignmentContext
+      ? await ctx.runQuery(internal.jobAssignmentNotifications.assignmentEmailState, queued.assignmentContext)
+      : queued;
+    if (!args) return null;
     const sent = await sendJobAssignedEmail(
       args.email,
       args.propertyName,
@@ -39,6 +48,7 @@ export const sendJobAssigned = internalAction({
     if (!sent) {
       console.error("[emailNotifications] Job assigned email failed for", args.email);
     }
+    return null;
   },
 });
 

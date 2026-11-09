@@ -1,5 +1,7 @@
 # Combined assignments: review and staged implementation
 
+Phase 3 backend follow-up: see [Independent backend assignment mutations](independent-assignment-mutations.md) for the implemented API contract, compatibility handling, review resolution and notification rules. The architecture below records the earlier baseline; #279 and #280 are now merged. Combined-assignment UI and membership reconciliation remain deferred.
+
 Reviewed main: `06830b0` (includes PRs #276, #277, #278). Investigation and local tests establish code behavior, not production behavior.
 
 ## Release boundary
