@@ -1,5 +1,5 @@
 import { useFeedbackState } from "@/components/ui/FeedbackProvider";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "wouter";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -11,7 +11,8 @@ import { Check, FileText, Receipt, Save, Send, XCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AddOnSnapshotList } from "@/components/AddOnSnapshotList";
 import { InvoicePaymentRecord } from "../../components/owner/InvoicePaymentRecord";
-import { invoiceEmailActionKey } from "@/lib/invoiceWorkflowPresentation";
+import { invoiceEmailPresentation } from "@/lib/invoiceWorkflowPresentation";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 function formatCents(cents: number | undefined) {
   if (cents == null) return "$0.00";
@@ -39,6 +40,10 @@ export function CommercialInvoiceDetailPage() {
   const [paymentDueDays, setPaymentDueDays] = useState("30");
   const [saving, setSaving] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [resendOpen, setResendOpen] = useState(false);
+  const [resendTarget, setResendTarget] = useState<Id<"transactionalDocumentDeliveryAttempts"> | undefined>();
+  const [sendUncertain, setSendUncertain] = useState(false);
+  const sendingRef = useRef(false);
   const [toast, setToast] = useFeedbackState<{ message: string; type: "success" | "error" }>();
 
   const invoice = useQuery(
@@ -54,7 +59,7 @@ export function CommercialInvoiceDetailPage() {
   const sendInvoice = useAction((api as any).invoiceActions.sendInvoice);
 
   useEffect(() => {
-    if (invoice) { setNotes(invoice.notes ?? ""); setPaymentDueDays(String(invoice.paymentDueDays ?? 30)); }
+    if (invoice) { setNotes(invoice.notes ?? ""); setPaymentDueDays(String(invoice.paymentDueDays ?? 30)); setSendUncertain(false); setResendOpen(false); }
   }, [invoice?._id]);
 
   if (!user || invoice === undefined) return <PageLoader />;
@@ -62,6 +67,8 @@ export function CommercialInvoiceDetailPage() {
     return <div className="py-12 text-center text-gray-500">{t("invoices.notFound")}</div>;
   }
   const canManageInvoices = user.role === "owner" || user.canManageInvoices === true;
+  const emailState = sendUncertain ? "unknown" : invoice.emailDelivery?.status ?? (invoice.sentAt ? "unverified" : "not_sent");
+  const emailPresentation = invoiceEmailPresentation(emailState);
 
   const showToast = (message: string, type: "success" | "error") => {
     setToast({ message, type });
@@ -97,15 +104,28 @@ export function CommercialInvoiceDetailPage() {
     }
   };
 
-  const handleSend = async () => {
+  const handleSend = async (resend = false, previousAttemptId?: Id<"transactionalDocumentDeliveryAttempts">) => {
+    if (sendingRef.current || emailPresentation.blocked || !canManageInvoices) return;
+    sendingRef.current = true;
     setActionLoading("send");
-    try { await sendInvoice({ userId: user._id, sessionToken, invoiceId: invoice._id }); showToast(t("invoices.sentSuccess"), "success"); }
-    catch (err: any) { showToast(err.message || t("invoices.sendFailed"), "error"); }
-    finally { setActionLoading(null); }
+    try {
+      const result = await sendInvoice({ userId: user._id, sessionToken, invoiceId: invoice._id,
+        requestKey: crypto.randomUUID(), resend, previousAttemptId });
+      const status = result?.status ?? "unknown";
+      if (status === "unknown") setSendUncertain(true);
+      showToast(t(invoiceEmailPresentation(status).messageKey), status === "provider_accepted" ? "success" : "error");
+    } catch {
+      // An action/network exception cannot prove the email was not sent.
+      setSendUncertain(true);
+      showToast(t("invoiceDelivery.unknown"), "error");
+    } finally { sendingRef.current = false; setActionLoading(null); }
   };
 
   return (
     <div>
+      <ConfirmDialog open={resendOpen} onOpenChange={setResendOpen} title={t("invoiceDelivery.sendAnother")}
+        description={t("invoiceDelivery.confirmAnother")} confirmLabel={t("invoiceDelivery.sendAnother")}
+        loading={actionLoading === "send"} onConfirm={async () => { await handleSend(true, resendTarget); setResendOpen(false); }} />
       <PageHeader
         title={`${t("invoices.invoice")} ${invoice.invoiceNumber}`}
         description={invoice.title}
@@ -162,7 +182,9 @@ export function CommercialInvoiceDetailPage() {
                   {formatDate(invoice.issueDate)} / {formatDate(invoice.dueDate)}
                 </p>
               </div>
-              {invoice.sentAt && <div><p className="text-xs font-medium text-gray-500">{t("invoices.lastEmailed")}</p><p className="mt-1 text-sm text-gray-900">{formatTimestamp(invoice.sentAt)}</p></div>}
+              <div className="sm:col-span-2"><p className="text-xs font-medium text-gray-500">{t("invoiceDelivery.title")}</p><p role="status" className="mt-1 text-sm text-gray-900">{t(emailPresentation.messageKey)}</p>
+                {invoice.sentAt && !invoice.emailDelivery?.attemptId && <p className="mt-1 text-xs text-gray-500">{t("invoiceDelivery.legacyTime")}: {formatTimestamp(invoice.sentAt)}</p>}
+              </div>
               {invoice.invoiceType === "job" && <div><p className="text-xs font-medium text-gray-500">{t("invoices.paymentDueDays")}</p><p className="mt-1 text-sm text-gray-900">{t("invoices.daysAfterIssue", { count: invoice.paymentDueDays })}</p></div>}
             </div>
           </section>
@@ -267,7 +289,10 @@ export function CommercialInvoiceDetailPage() {
             {invoice.status === "issued" && (
               <>
                 {(!invoice.clientRelationship || !invoice.clientRelationship.hasPortalAccess || !invoice.clientRelationship.hasEmail) && <p className="text-sm text-amber-700">{!invoice.clientRelationship ? t("invoices.missingRelationship") : !invoice.clientRelationship.hasPortalAccess ? t("invoices.missingPortalAccess") : t("invoices.missingEmail")}</p>}
-                <button type="button" onClick={handleSend} disabled={actionLoading === "send" || !invoice.clientRelationship?.hasPortalAccess || !invoice.clientRelationship?.hasEmail} className="btn-secondary flex w-full items-center justify-center gap-2 text-sm"><Send className="h-4 w-4" />{t(invoiceEmailActionKey(invoice.sentAt))}</button>
+                <button type="button" onClick={() => {
+                  if (emailPresentation.resend) { setResendTarget(invoice.emailDelivery?.attemptId ?? undefined); setResendOpen(true); }
+                  else void handleSend();
+                }} disabled={actionLoading === "send" || emailPresentation.blocked || !invoice.clientRelationship?.hasPortalAccess || !invoice.clientRelationship?.hasEmail} className="btn-secondary flex w-full items-center justify-center gap-2 text-sm"><Send className="h-4 w-4" />{t(emailPresentation.actionKey)}</button>
               </>
             )}
             {invoice.status === "issued" && (

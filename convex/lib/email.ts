@@ -316,7 +316,7 @@ export async function sendServiceAgreementEmail(
 }
 
 export type InvoiceEmailArgs = {
-  recipientEmail: string; clientName: string; companyName: string; viewUrl: string;
+  recipientEmail: string; clientName: string; companyName: string; viewUrl: string; replyTo?: string;
   invoice: { invoiceNumber: string; title: string; dueDate: string; invoiceType?: "commercial" | "job"; baseSubtotalCents: number; addOnSubtotalCents: number; totalCents: number; addOnLineItems: Array<{ name: string; quantity?: number; unitLabel?: string; lineTotalCents: number }> };
 };
 
@@ -326,11 +326,19 @@ export function renderInvoiceEmail(args: InvoiceEmailArgs) {
   return { subject: `Invoice ${args.invoice.invoiceNumber} from ${args.companyName}`, html: `<div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:24px"><h1>${escapeHtml(args.invoice.title)}</h1><p>Hello ${escapeHtml(args.clientName)},</p><p>${escapeHtml(args.companyName)} sent invoice ${escapeHtml(args.invoice.invoiceNumber)}, due ${escapeHtml(args.invoice.dueDate)}.</p><table style="width:100%;border-collapse:collapse">${detailRow("Base service", money(args.invoice.baseSubtotalCents))}${lines}${detailRow("Add-on subtotal", money(args.invoice.addOnSubtotalCents))}${detailRow("Total", money(args.invoice.totalCents))}</table><p style="margin:24px 0"><a href="${escapeHtml(args.viewUrl)}" style="background:#111827;color:#fff;padding:12px 20px;border-radius:7px;text-decoration:none">${args.invoice.invoiceType === "job" ? "View invoice" : "View and pay invoice"}</a></p></div>`, text: `Invoice ${args.invoice.invoiceNumber}\nBase service: ${money(args.invoice.baseSubtotalCents)}\nAdd-ons: ${money(args.invoice.addOnSubtotalCents)}\nTotal: ${money(args.invoice.totalCents)}\n${args.viewUrl}` };
 }
 
-export async function sendInvoiceEmail(args: InvoiceEmailArgs) {
+export async function deliverInvoiceEmail(args: InvoiceEmailArgs): Promise<OperationalEmailOutcome> {
+  let providerStarted = false;
   try {
-    const { error } = await getResendClient().emails.send({ ...getOperationalEmailHeaders({ companyName: args.companyName }), to: args.recipientEmail, ...renderInvoiceEmail(args) });
-    return !error;
-  } catch (error) { console.error("[email] Error sending invoice email", error); return false; }
+    const client = getResendClient();
+    const payload = { ...getOperationalEmailHeaders({ companyName: args.companyName, replyTo: args.replyTo }), to: args.recipientEmail, ...renderInvoiceEmail(args) };
+    providerStarted = true;
+    return operationalEmailResult(await client.emails.send(payload));
+  } catch {
+    return providerStarted ? { status: "unknown", category: "provider_uncertain" } : { status: "failed", category: "configuration" };
+  }
+}
+export async function sendInvoiceEmail(args: InvoiceEmailArgs): Promise<boolean> {
+  return (await deliverInvoiceEmail(args)).status === "provider_accepted";
 }
 
 /**

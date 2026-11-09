@@ -1,23 +1,46 @@
 "use node";
 import { action, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import { requireClientSession, requireOwnerOrManagerCapability } from "./lib/sessions";
 import { getStripeClientOrNull } from "./lib/stripe";
-import { sendInvoiceEmail } from "./lib/email";
+import { deliverInvoiceEmail } from "./lib/email";
+import { invoiceEmailResponse } from "./lib/invoiceEmailDelivery";
+import type { OperationalEmailOutcome } from "./lib/operationalEmailModel";
 import { requireAppUrl, assertInvoicePaymentsEnabled } from "./lib/environment";
 import { retrieveCompanyMerchantReadiness } from "./lib/companyStripeMerchant";
 import { retrieveCheckoutSessionForAttempt, expireCheckoutSessionForAttempt } from "./lib/invoiceStripeContext";
 import { invoiceCheckoutParameters } from "./lib/invoiceCheckoutConfig";
 
 export const sendInvoice = action({
-  args: { userId: v.id("users"), sessionToken: v.string(), invoiceId: v.id("invoices") },
-  handler: async (ctx, args): Promise<{ sentAt: number }> => {
-    const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageInvoices");
-    const payload: any = await ctx.runQuery((internal as any).invoiceDeliveryInternal.getForOwnerDelivery, { companyId: owner.companyId, invoiceId: args.invoiceId });
-    const viewUrl = `${requireAppUrl()}/client/billing`;
-    if (!await sendInvoiceEmail({ ...payload, viewUrl })) throw new Error("Invoice email could not be sent");
-    return await ctx.runMutation((internal as any).invoiceDeliveryInternal.markSent, { companyId: owner.companyId, invoiceId: args.invoiceId });
+  args: { userId: v.id("users"), sessionToken: v.string(), invoiceId: v.id("invoices"),
+    requestKey: v.optional(v.string()), resend: v.optional(v.boolean()), previousAttemptId: v.optional(v.id("transactionalDocumentDeliveryAttempts")) },
+  returns: invoiceEmailResponse,
+  handler: async (ctx, args): Promise<Infer<typeof invoiceEmailResponse>> => {
+    const prepared = await ctx.runMutation(internal.invoiceDeliveryInternal.prepareEmail, args);
+    if (!prepared.claimed) return prepared.response;
+    const attemptId = prepared.response.attemptId;
+    let outcome: OperationalEmailOutcome;
+    let providerMayHaveStarted = false;
+    try {
+      const payload = await ctx.runMutation(internal.invoiceDeliveryInternal.authorizeDispatch,
+        { attemptId, userId: args.userId, sessionToken: args.sessionToken });
+      if (!payload) outcome = { status: "skipped", category: "ineligible" };
+      else {
+        const viewUrl = `${requireAppUrl()}/client/billing`;
+        // Sender owns the preflight/provider boundary and never labels a network exception unsent.
+        providerMayHaveStarted = true;
+        outcome = await deliverInvoiceEmail({ ...payload, viewUrl });
+      }
+    } catch {
+      outcome = providerMayHaveStarted ? { status: "unknown", category: "provider_uncertain" }
+        : { status: "failed", category: "pre_send_unavailable" };
+    }
+    try { return await ctx.runMutation(internal.invoiceDeliveryInternal.finishEmail, { attemptId, outcome }); }
+    catch {
+      // No second provider call. The durable claim watchdog will mark unknown.
+      return { attemptId, status: "unknown" as const, sentAt: null };
+    }
   },
 });
 

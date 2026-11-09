@@ -7,6 +7,7 @@ import { getActiveTeamIdsForUser } from "../lib/teams";
 import { assertInvoiceInvariant, invoiceDisplayLines, invoicePlatformFeeCents } from "../lib/invoiceModel";
 import { ownerInvoicePaymentRecord } from "../lib/invoicePaymentExperience";
 import { resolveJobInvoiceablePricing } from "../lib/jobPricing";
+import { invoiceEmailSummary } from "../lib/invoiceEmailDelivery";
 
 async function decorateInvoice(ctx: any, invoice: any, diagnostics?: boolean) {
   const type = assertInvoiceInvariant(invoice);
@@ -25,6 +26,7 @@ async function decorateInvoice(ctx: any, invoice: any, diagnostics?: boolean) {
   ))).flat();
   return {
     ...invoice,
+    emailDelivery: await invoiceEmailSummary(ctx, invoice),
     ...(diagnostics === undefined ? {} : { paymentRecord: ownerInvoicePaymentRecord(invoice, paymentAttempts, paymentExceptions, financialEvents, diagnostics) }),
     invoiceType: type,
     displayLines,

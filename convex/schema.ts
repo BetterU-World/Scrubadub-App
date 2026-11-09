@@ -1653,18 +1653,25 @@ export default defineSchema({
 
   transactionalDocumentDeliveryAttempts: defineTable({
     companyId: v.id("companies"),
-    documentKind: v.union(v.literal("proposal"), v.literal("service_agreement")),
+    documentKind: v.union(v.literal("proposal"), v.literal("service_agreement"), v.literal("invoice")),
     documentId: v.string(),
     issueId: v.string(),
     channel: v.union(v.literal("email"), v.literal("owner_reported_outside_send")),
     recipientEmail: v.optional(v.string()),
     attemptedAt: v.number(),
     resultAt: v.optional(v.number()),
-    result: v.union(v.literal("pending"), v.literal("provider_accepted"), v.literal("failed"), v.literal("unknown"), v.literal("owner_reported")),
+    result: v.union(v.literal("pending"), v.literal("provider_accepted"), v.literal("failed"), v.literal("unknown"), v.literal("owner_reported"), v.literal("skipped")),
+    requestKey: v.optional(v.string()),
+    actorUserId: v.optional(v.id("users")),
+    relationshipId: v.optional(v.id("clientRelationships")),
+    clientUserId: v.optional(v.id("clientUsers")),
+    claimExpiresAt: v.optional(v.number()),
+    sendStartedAt: v.optional(v.number()),
     errorCategory: v.optional(v.string()),
     providerMessageId: v.optional(v.string()),
   })
-    .index("by_document", ["documentKind", "documentId", "attemptedAt"]),
+    .index("by_document", ["documentKind", "documentId", "attemptedAt"])
+    .index("by_document_request", ["documentKind", "documentId", "requestKey"]),
 
   walkthroughs: defineTable({
     companyId: v.id("companies"),
@@ -2150,6 +2157,7 @@ export default defineSchema({
     paymentSource: v.optional(v.union(v.literal("online"), v.literal("outside"))),
     paidRecordedByUserId: v.optional(v.id("users")),
     canonicalPaymentAttemptId: v.optional(v.id("invoicePaymentAttempts")),
+    latestEmailAttemptId: v.optional(v.id("transactionalDocumentDeliveryAttempts")),
   })
     .index("by_company", ["companyId"])
     .index("by_companyId_clientRelationshipId_updatedAt", [

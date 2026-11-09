@@ -10,6 +10,9 @@ import {
 
 declare const process: { env: Record<string, string | undefined> };
 
+// Explicit denial, distinct from storage/verification infrastructure failures.
+export class StaffAuthorizationDenied extends Error {}
+
 type DbCtx = QueryCtx | MutationCtx;
 type ActiveStaff = Doc<"users"> & { status: "active" };
 type ActiveCompanyStaff = ActiveStaff & { companyId: Id<"companies"> };
@@ -39,7 +42,7 @@ export async function requireVerifiedStaffSession(
 ): Promise<ActiveStaff> {
   if (!sessionToken || sessionToken.length > 256) {
     console.warn("[security] rejected legacy-only high-risk request");
-    throw new Error(SESSION_REQUIRED_ERROR);
+    throw new StaffAuthorizationDenied(SESSION_REQUIRED_ERROR);
   }
   const now = Date.now();
   const tokenHash = await hashSessionToken(sessionToken);
@@ -54,13 +57,13 @@ export async function requireVerifiedStaffSession(
     verifiedSession.expiresAt <= now ||
     verifiedSession.idleExpiresAt <= now
   ) {
-    throw new Error(SESSION_REQUIRED_ERROR);
+    throw new StaffAuthorizationDenied(SESSION_REQUIRED_ERROR);
   }
   const user = await ctx.db.get(verifiedSession.userId);
-  if (!user || user.status !== "active") throw new Error(SESSION_REQUIRED_ERROR);
+  if (!user || user.status !== "active") throw new StaffAuthorizationDenied(SESSION_REQUIRED_ERROR);
   if (claimedUserId && claimedUserId !== user._id) {
     console.warn("[security] session principal mismatch rejected");
-    throw new Error("Session principal does not match the requested user");
+    throw new StaffAuthorizationDenied("Session principal does not match the requested user");
   }
   if (
     "patch" in ctx.db &&
@@ -202,7 +205,7 @@ export async function requireOwnerManagerSession(
 ): Promise<ActiveOwnerManager> {
   const user = await requireVerifiedStaffSession(ctx, sessionToken, claimedUserId);
   if ((user.role !== "owner" && user.role !== "manager") || !user.companyId) {
-    throw new Error("Owner or manager session required");
+    throw new StaffAuthorizationDenied("Owner or manager session required");
   }
   return user as ActiveOwnerManager;
 }
@@ -214,7 +217,7 @@ export async function requireOwnerManagerCompany(
   claimedUserId?: Id<"users">
 ): Promise<ActiveOwnerManager> {
   const user = await requireOwnerManagerSession(ctx, sessionToken, claimedUserId);
-  if (user.companyId !== companyId) throw new Error("Access denied");
+  if (user.companyId !== companyId) throw new StaffAuthorizationDenied("Access denied");
   return user;
 }
 
@@ -225,7 +228,7 @@ export async function requireOwnerOrManagerCapability(
   permission: Parameters<typeof hasOwnerOrManagerPermission>[1],
 ): Promise<ActiveOwnerManager> {
   const user = await requireOwnerManagerSession(ctx, sessionToken, claimedUserId);
-  if (!hasOwnerOrManagerPermission(user, permission)) throw new Error(`${permission} permission required`);
+  if (!hasOwnerOrManagerPermission(user, permission)) throw new StaffAuthorizationDenied(`${permission} permission required`);
   return user;
 }
 
