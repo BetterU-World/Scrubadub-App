@@ -1,3 +1,4 @@
+import { AssignmentSummary } from "@/components/AssignmentSummary";
 import { useState } from "react";
 import { Link } from "wouter";
 import { useQuery } from "convex/react";
@@ -147,9 +148,7 @@ export function CommercialAccountListPage() {
                       <span className="mb-1 block text-xs font-medium text-gray-500 sm:hidden">{t("commercialAccounts.assignment")}</span>
                       <div>{account.assignedManagerName ?? t("common.unassigned")}</div>
                       <div className="text-xs text-gray-500">
-                        {account.assignedTeamName ??
-                          account.assignedCleanerName ??
-                          t("common.unassigned")}
+                        <AssignmentSummary job={{ assignedTeamId: account.assignedTeamId, assignedTeamName: account.assignedTeamName, cleaners: account.assignedCleanerName ? [{ _id: account.assignedCleanerId ?? "direct", name: account.assignedCleanerName }] : [] }} />
                       </div>
                     </td>
                     <td className="block border-t border-gray-100 pt-3 text-sm text-gray-700 sm:table-cell sm:border-0 sm:px-4 sm:py-3">

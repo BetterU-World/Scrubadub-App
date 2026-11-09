@@ -1,3 +1,6 @@
+import { AssignmentControls } from "@/components/AssignmentControls";
+import { AssignmentSummary } from "@/components/AssignmentSummary";
+import { assignmentPayload } from "@/lib/jobAssignment";
 import { SharedWorkNotice } from "@/components/SharedWorkNotice";
 import { useState, FormEvent, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
@@ -8,7 +11,7 @@ import { requireUserId } from "@/lib/requireUserId";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useLocation, useParams, Link } from "wouter";
-import { Building2, Users, Handshake, AlertCircle } from "lucide-react";
+import { Building2, Users, Handshake } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useFeedback } from "@/components/ui/FeedbackProvider";
 import { JobCreationModeSelector } from "@/components/owner/JobCreationModeSelector";
@@ -71,7 +74,7 @@ export function JobFormPage() {
     user?.companyId && sessionToken && canAssignWorkers ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
   const teams = useQuery(
-    (api as any).queries.teams.listActiveForAssignment,
+    api.queries.teams.listActiveForAssignment,
     user?.companyId && canAssignWorkers ? { companyId: user.companyId, userId: user._id, sessionToken } : "skip"
   );
   const companyProfile = useQuery(
@@ -91,7 +94,6 @@ export function JobFormPage() {
 
   const [propertyId, setPropertyId] = useState("");
   const [selectedCleaners, setSelectedCleaners] = useState<string[]>([]);
-  const [assignmentType, setAssignmentType] = useState<"individual" | "team">("individual");
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const [type, setType] = useState("standard");
   const [scheduledDate, setScheduledDate] = useState("");
@@ -137,17 +139,15 @@ export function JobFormPage() {
     }
   }, [isEditing]);
 
+  const initializedJobId = useRef<string>();
+  const initialAssignment = useRef<{ cleanerIds: string[]; assignedTeamId?: string }>();
   useEffect(() => {
-    if (existing) {
+    if (existing && initializedJobId.current !== existing._id) {
+      initializedJobId.current = existing._id;
+      initialAssignment.current = { cleanerIds: [...existing.cleanerIds], assignedTeamId: existing.assignedTeamId };
       setPropertyId(existing.propertyId ?? "");
       setSelectedCleaners(existing.cleanerIds);
-      if ((existing as any).assignedTeamId) {
-        setAssignmentType("team");
-        setSelectedTeamId((existing as any).assignedTeamId);
-      } else {
-        setAssignmentType("individual");
-        setSelectedTeamId("");
-      }
+      setSelectedTeamId(existing.assignedTeamId ?? "");
       setType(existing.type);
       setScheduledDate(existing.scheduledDate);
       setStartTime(existing.startTime ?? "");
@@ -171,18 +171,9 @@ export function JobFormPage() {
   const isMaintenance = type === "maintenance";
   const workers = (isMaintenance ? maintenanceWorkers : jobAssignees) ?? [];
   const workerLabel = isMaintenance ? t("jobForm.myMaintenanceWorkers") : t("jobForm.assignedWorkers");
-  const emptyWorkerMsg = isMaintenance
-    ? <>{t("jobForm.noMaintenanceWorkers")} <a href="/employees" className="text-primary-600">{t("jobForm.inviteFirst")}</a>.</>
-    : <>{t("jobForm.noCleaners")} <a href="/employees" className="text-primary-600">{t("jobForm.inviteFirst")}</a>.</>;
   if (isEditing && existing === undefined) return <PageLoader />;
 
   const activeProperties = (properties ?? []).filter((p) => p.active);
-
-  const toggleCleaner = (id: string) => {
-    setSelectedCleaners((prev) =>
-      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
-    );
-  };
 
   const isPartnerMode = !isEditing && assignMode === "partner";
 
@@ -199,8 +190,7 @@ export function JobFormPage() {
     try {
       const data = {
         ...(!isSharedJob && propertyId ? { propertyId: propertyId as Id<"properties"> } : {}),
-        ...(!isEditing || canAssignWorkers ? { cleanerIds: (isPartnerMode || assignmentType === "team" ? [] : selectedCleaners) as Id<"users">[] } : {}),
-        ...(canAssignWorkers && !isPartnerMode && assignmentType === "team" && selectedTeamId ? { assignedTeamId: selectedTeamId as Id<"teams"> } : {}),
+        ...assignmentPayload(canAssignWorkers, selectedCleaners, selectedTeamId, isEditing ? initialAssignment.current : undefined, isPartnerMode),
         type: type as any,
         scheduledDate,
         startTime: startTime || undefined,
@@ -216,7 +206,6 @@ export function JobFormPage() {
           ...data,
           // Clear manager if user explicitly unset it (was previously assigned)
           ...(canAssignWorkers && !managerId && (existing as any)?.assignedManagerId ? { clearAssignedManager: true } : {}),
-          ...(canAssignWorkers && assignmentType === "individual" && (existing as any)?.assignedTeamId ? { clearAssignedTeam: true } : {}),
         });
         feedback.success(t("jobs.jobUpdated"));
         setLocation(`/jobs/${params.id}`);
@@ -265,7 +254,7 @@ export function JobFormPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto min-w-0">
       <PageHeader
         title={isEditing ? t("jobs.editJob") : t("jobs.scheduleJob")}
         back={backDestination}
@@ -327,14 +316,14 @@ export function JobFormPage() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.jobType")} <span className="text-red-500">*</span></label>
-          <select className="input-field" value={type} onChange={(e) => { setType(e.target.value); setSelectedCleaners([]); setSelectedTeamId(""); }}>
+          <select className="input-field" value={type} onChange={(e) => setType(e.target.value)}>
             {JOB_TYPES.map((jt) => (
               <option key={jt.value} value={jt.value}>{t(jt.labelKey)}</option>
             ))}
           </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t("jobForm.date")} <span className="text-red-500">*</span></label>
             <input type="date" className="input-field" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} required />
@@ -368,7 +357,7 @@ export function JobFormPage() {
               </button>
               <button
                 type="button"
-                onClick={() => { setAssignMode("partner"); setSelectedCleaners([]); }}
+                onClick={() => { setAssignMode("partner"); }}
                 className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
                   assignMode === "partner"
                     ? "bg-primary-600 text-white"
@@ -404,79 +393,12 @@ export function JobFormPage() {
           </div>
         )}
 
-        {/* Cleaner/team assignment (my_cleaner mode or editing) */}
-        {!isPartnerMode && canAssignWorkers && (
-          <div className="space-y-3">
-            <label className="block text-sm font-medium text-gray-700">Assignment</label>
-            <div className="flex rounded-lg border border-gray-200 overflow-hidden">
-              <button
-                type="button"
-                onClick={() => { setAssignmentType("individual"); setSelectedTeamId(""); }}
-                className={`flex-1 px-4 py-2 text-sm font-medium ${assignmentType === "individual" ? "bg-primary-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
-              >
-                {t("jobForm.individualWorkers")}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setAssignmentType("team"); setSelectedCleaners([]); }}
-                className={`flex-1 px-4 py-2 text-sm font-medium ${assignmentType === "team" ? "bg-primary-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}
-              >
-                Team
-              </button>
-            </div>
-            {assignmentType === "team" ? (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Assign Team</label>
-                <select className="input-field" value={selectedTeamId} onChange={(e) => setSelectedTeamId(e.target.value)} required>
-                  <option value="">Select team</option>
-                  {teams.map((team: any) => (
-                    <option key={team._id} value={team._id}>{team.name}</option>
-                  ))}
-                </select>
-                {teams.length === 0 && <p className="text-sm text-gray-500 mt-1">Create a team under Employees first.</p>}
-              </div>
-            ) : (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{isMaintenance ? t("jobForm.assignMaintenanceWorkers") : t("jobForm.assignedWorkers")}</label>
-                <p className="mb-2 text-xs text-gray-500">{t("jobForm.assignedWorkersHelp")}</p>
-                {workers.length === 0 ? (
-                  <p className="text-sm text-gray-500">{emptyWorkerMsg}</p>
-                ) : (
-                  <div className="space-y-2">
-                    {workers.map((c) => {
-                      const isOff = scheduledDate && unavailableSet.has(c._id);
-                      return (
-                        <label
-                          key={c._id}
-                          className={`flex items-center gap-3 p-2 rounded-lg ${isOff ? "opacity-50 cursor-not-allowed bg-gray-50" : "hover:bg-gray-50 cursor-pointer"}`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={selectedCleaners.includes(c._id)}
-                            onChange={() => {
-                              if (isOff) return;
-                              toggleCleaner(c._id);
-                            }}
-                            disabled={!!isOff}
-                            className="w-4 h-4 text-primary-600 rounded border-gray-300"
-                          />
-                          <span className="text-sm">{c.name}</span>
-                          <span className="text-xs text-gray-400">{c.email}</span>
-                          {isOff && (
-                            <span className="ml-auto flex items-center gap-1 text-xs text-amber-600">
-                              <AlertCircle className="w-3.5 h-3.5" />
-                              {t("common.unavailable")}
-                            </span>
-                          )}
-                        </label>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+        {!isPartnerMode && canAssignWorkers && <AssignmentControls
+          teams={teams ?? []} workers={workers} selectedWorkerIds={selectedCleaners} teamId={selectedTeamId}
+          onTeamChange={setSelectedTeamId} onWorkersChange={setSelectedCleaners}
+          previousTeam={existing?.assignedTeam} previousWorkers={[...(existing?.cleaners ?? []), ...(jobAssignees ?? []), ...(maintenanceWorkers ?? [])]}
+          unavailableIds={unavailableSet} maintenance={isMaintenance} />}
+        {!canAssignWorkers && existing && <AssignmentSummary job={existing} className="text-sm text-gray-600" />}
 
         {!isPartnerMode && (
           <div>
@@ -516,7 +438,7 @@ export function JobFormPage() {
 
         <div className="flex justify-end gap-3 pt-4">
           <button type="button" onClick={() => setLocation(backDestination.href)} className="btn-secondary">{t("common.cancel")}</button>
-          <button type="submit" disabled={loading || (!isSharedJob && !propertyId) || (isPartnerMode && !partnerCompanyId) || (!isPartnerMode && assignmentType === "team" && !selectedTeamId)} className="btn-primary flex items-center gap-2">
+          <button type="submit" disabled={loading || (!isSharedJob && !propertyId) || (isPartnerMode && !partnerCompanyId)} className="btn-primary flex items-center gap-2">
             {loading && <LoadingSpinner size="sm" />}
             {isEditing ? t("jobs.saveChanges") : isPartnerMode ? t("jobs.shareToPartnerBtn") : t("jobs.scheduleJob")}
           </button>

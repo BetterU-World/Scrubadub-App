@@ -1,3 +1,4 @@
+import { AssignmentSummary } from "@/components/AssignmentSummary";
 import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -101,7 +102,7 @@ export function JobListPage() {
         } else if (assignmentFilter === "unassigned") {
           // Truly unassigned: no cleaners, no manager, not shared to/from partners
           if (
-            (job.cleaners as any[]).length > 0 ||
+            (job.cleaners as any[]).length > 0 || job.assignedTeamId ||
             (job as any).assignedManagerId ||
             (job as any).sharedFromCompanyName ||
             (job as any).hasActiveShare
@@ -291,9 +292,9 @@ export function JobListPage() {
                       <span>{job.durationMinutes}min</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 text-sm text-gray-500">
+                  <div className="flex items-start gap-1 text-sm text-gray-500 min-w-0">
                     <Users className="w-3.5 h-3.5" />
-                    {(job as any).assignedTeamName ? `Team: ${(job as any).assignedTeamName}` : ((job.cleaners as any[]).map((c: any) => c.name).join(", ") || t("common.unassigned"))}
+                    <AssignmentSummary job={job} />
                   </div>
                 </div>
             </Link>

@@ -1,4 +1,18 @@
 {
+  "assignment": {
+    "reassignHelp": "This replaces directly assigned workers with one worker. The team and job acceptance stay unchanged. Use Edit Job to manage multiple direct workers.",
+    "team": "Team",
+    "direct": "Directly assigned workers",
+    "noTeam": "No team",
+    "help": "Choose a team, individual workers, both, or leave the job unassigned. Each choice is independent.",
+    "alsoOnTeam": "Also on selected team",
+    "overlapHelp": "Workers assigned directly and through the team count once. Removing one source does not remove the other.",
+    "noWorkers": "No eligible individual workers available.",
+    "unavailableTeam": "Assigned team unavailable",
+    "retainedTeam": "Current assignment",
+    "unavailableWorker": "Assigned worker unavailable",
+    "retainedWorker": "Not available for this job type. Retained until you explicitly remove or replace this assignment."
+  },
   "workerReview": {
     "acceptedJob": "This job has been accepted.",
     "title": "Worker availability reviews",

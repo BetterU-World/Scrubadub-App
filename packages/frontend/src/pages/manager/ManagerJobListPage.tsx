@@ -1,3 +1,4 @@
+import { AssignmentSummary } from "@/components/AssignmentSummary";
 import { useState, useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
@@ -44,7 +45,7 @@ export function ManagerJobListPage() {
       const q = search.toLowerCase();
       result = result.filter(
         (j) =>
-          j.propertyName.toLowerCase().includes(q) ||
+          j.propertyName.toLowerCase().includes(q) || (j.assignedTeamName ?? "").toLowerCase().includes(q) ||
           j.cleaners.some((c: any) => c.name.toLowerCase().includes(q))
       );
     }
@@ -157,12 +158,7 @@ export function ManagerJobListPage() {
                     {job.startTime && ` at ${job.startTime}`}
                   </span>
                   <span>{job.durationMinutes} min</span>
-                  {job.cleaners.length > 0 && (
-                    <span className="flex items-center gap-1">
-                      <Users className="w-3 h-3" />
-                      {job.cleaners.map((c: any) => c.name).join(", ")}
-                    </span>
-                  )}
+                  <AssignmentSummary job={job} />
                   {job.formStatus && (
                     <span className="text-xs">
                       Form: <span className="capitalize">{job.formStatus}</span>
