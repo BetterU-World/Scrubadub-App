@@ -7,6 +7,7 @@ import { createNotification, logAudit } from "./helpers";
 import { resolveOperationalEmailIdentity } from "./operationalEmailIdentity";
 import { canSubmitFinalJob } from "./teams";
 import { completionOwners } from "./jobReviewRecipients";
+import { ensureOperationalEmail } from "./operationalEmailQueue";
 
 type SubmissionArgs = {
   job: Doc<"jobs">;
@@ -121,7 +122,10 @@ export async function submitJobExecution(ctx: MutationCtx, args: SubmissionArgs)
       relatedJobId: job._id,
     });
     if (owner.email) {
-      await ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendJobCompleted, {
+      await ensureOperationalEmail(ctx, { kind: "completion", companyId: job.companyId, jobId: job._id, formId: form._id,
+        recipientId: owner._id, completedAt: now, executionSequence: execution.sequence }, deliveryId =>
+        ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendJobCompleted, {
+        deliveryId,
         email: owner.email,
         propertyName,
         cleanerName: user.name,
@@ -129,7 +133,7 @@ export async function submitJobExecution(ctx: MutationCtx, args: SubmissionArgs)
         completionContext: { companyId: job.companyId, jobId: job._id, formId: form._id,
           recipientId: owner._id, completedAt: now, executionSequence: execution.sequence },
         ...emailIdentity,
-      });
+      }));
     }
   }
 

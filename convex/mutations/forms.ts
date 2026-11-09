@@ -7,6 +7,7 @@ import { logAudit, createNotification } from "../lib/helpers";
 import { requireOwnerManagerSession } from "../lib/sessionAuth";
 import { hasOwnerOrManagerPermission } from "../lib/auth";
 import { currentReviewWorkers } from "../lib/jobReviewRecipients";
+import { ensureOperationalEmail } from "../lib/operationalEmailQueue";
 import { resolveOperationalEmailIdentity } from "../lib/operationalEmailIdentity";
 import { requireAssignedJobExecutor } from "../lib/jobExecutionAuth";
 import { ensureJobExecutionForm } from "../lib/jobExecutionForm";
@@ -203,14 +204,18 @@ export const approve = mutation({
 
       // Send job approved email to cleaner
       if (cleaner.email) {
-        await ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendJobApproved, {
+        await ensureOperationalEmail(ctx, { kind: "approval", companyId: job.companyId, jobId: job._id, formId: form._id,
+          recipientId: cleaner._id, approvedAt, reworkCount: job.reworkCount,
+          executionSequence: job.submittedExecutionSequence }, deliveryId =>
+          ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendJobApproved, {
+          deliveryId,
           email: cleaner.email,
           propertyName: approvePropertyName,
           approvalContext: { companyId: job.companyId, jobId: job._id, formId: form._id,
             recipientId: cleaner._id, approvedAt, reworkCount: job.reworkCount,
             executionSequence: job.submittedExecutionSequence },
           ...emailIdentity,
-        });
+        }));
       }
     }
 

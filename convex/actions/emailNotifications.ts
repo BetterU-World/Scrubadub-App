@@ -6,8 +6,6 @@ import { internal } from "../_generated/api";
 import { completionContext, approvalContext } from "../lib/jobReviewEmailContext";
 import {
   sendJobAssignedEmail,
-  sendJobCompletedEmail,
-  sendJobApprovedEmail,
   sendPasswordResetEmail,
   sendClientPasswordResetEmail,
   sendInviteEmail,
@@ -24,6 +22,7 @@ import {
 export const sendJobAssigned = internalAction({
   returns: v.null(),
   args: {
+    deliveryId: v.optional(v.id("operationalEmailDeliveries")),
     assignmentContext: v.optional(v.object({ jobId: v.id("jobs"), workerId: v.id("users"), revision: v.number() })),
     email: v.string(),
     propertyName: v.string(),
@@ -33,12 +32,18 @@ export const sendJobAssigned = internalAction({
     replyTo: v.optional(v.string()),
   },
   handler: async (ctx, queued) => {
-    // Older already-queued calls retain their historical argument contract. New calls
-    // carry job/worker/revision identity and use fresh delivery-time details.
-    const args = queued.assignmentContext
-      ? await ctx.runQuery(internal.jobAssignmentNotifications.assignmentEmailState, queued.assignmentContext)
-      : queued;
-    if (!args) return null;
+    const deliveryId = queued.deliveryId ?? (queued.assignmentContext
+      ? await ctx.runMutation(internal.operationalEmailDelivery.adoptQueued, { event: { kind: "assignment",
+        jobId: queued.assignmentContext.jobId, recipientId: queued.assignmentContext.workerId, revision: queued.assignmentContext.revision } })
+      : null);
+    if (deliveryId) {
+      await ctx.runAction(internal.operationalEmailActions.dispatch, { deliveryId });
+      return null;
+    }
+    if (queued.assignmentContext) return null;
+    // Unidentifiable legacy assignments keep their one-shot historical contract.
+    // No guessed tenant/event identity, durable recovery, or automatic retry.
+    const args = queued;
     const sent = await sendJobAssignedEmail(
       args.email,
       args.propertyName,
@@ -47,7 +52,7 @@ export const sendJobAssigned = internalAction({
       { companyName: args.companyName, replyTo: args.replyTo }
     );
     if (!sent) {
-      console.error("[emailNotifications] Job assigned email failed for", args.email);
+      console.error("[emailNotifications] Legacy job assigned email failed");
     }
     return null;
   },
@@ -60,6 +65,7 @@ export const sendJobAssigned = internalAction({
 export const sendJobCompleted = internalAction({
   returns: v.null(),
   args: {
+    deliveryId: v.optional(v.id("operationalEmailDeliveries")),
     completionContext: v.optional(completionContext),
     email: v.string(),
     propertyName: v.string(),
@@ -70,19 +76,10 @@ export const sendJobCompleted = internalAction({
   },
   handler: async (ctx, queued) => {
     // Legacy payloads have no trustworthy job/recipient identity. Accept but skip.
-    if (!queued.completionContext) return null;
-    const args = await ctx.runQuery(internal.jobReviewNotifications.completionEmailState, queued.completionContext);
-    if (!args) return null;
-    const sent = await sendJobCompletedEmail(
-      args.email,
-      args.propertyName,
-      args.cleanerName,
-      args.completedAt,
-      { companyName: args.companyName, replyTo: args.replyTo }
-    );
-    if (!sent) {
-      console.error("[emailNotifications] Job completed email failed");
-    }
+    const deliveryId = queued.deliveryId ?? (queued.completionContext
+      ? await ctx.runMutation(internal.operationalEmailDelivery.adoptQueued,
+        { event: { kind: "completion", ...queued.completionContext } }) : null);
+    if (deliveryId) await ctx.runAction(internal.operationalEmailActions.dispatch, { deliveryId });
     return null;
   },
 });
@@ -94,6 +91,7 @@ export const sendJobCompleted = internalAction({
 export const sendJobApproved = internalAction({
   returns: v.null(),
   args: {
+    deliveryId: v.optional(v.id("operationalEmailDeliveries")),
     approvalContext: v.optional(approvalContext),
     email: v.string(),
     propertyName: v.string(),
@@ -101,16 +99,10 @@ export const sendJobApproved = internalAction({
     replyTo: v.optional(v.string()),
   },
   handler: async (ctx, queued) => {
-    if (!queued.approvalContext) return null;
-    const args = await ctx.runQuery(internal.jobReviewNotifications.approvalEmailState, queued.approvalContext);
-    if (!args) return null;
-    const sent = await sendJobApprovedEmail(args.email, args.propertyName, {
-      companyName: args.companyName,
-      replyTo: args.replyTo,
-    });
-    if (!sent) {
-      console.error("[emailNotifications] Job approved email failed");
-    }
+    const deliveryId = queued.deliveryId ?? (queued.approvalContext
+      ? await ctx.runMutation(internal.operationalEmailDelivery.adoptQueued,
+        { event: { kind: "approval", ...queued.approvalContext } }) : null);
+    if (deliveryId) await ctx.runAction(internal.operationalEmailActions.dispatch, { deliveryId });
     return null;
   },
 });

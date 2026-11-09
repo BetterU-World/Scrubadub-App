@@ -3,6 +3,8 @@
 import { Resend } from "resend";
 import { assertExternalSideEffectsAllowed, requireAppUrl } from "./environment";
 import { requireResendEnv } from "./validateEnv";
+import { operationalEmailResult } from "./operationalEmailResult";
+import type { OperationalEmailOutcome } from "./operationalEmailModel";
 
 function getResendClient(): Resend {
   assertExternalSideEffectsAllowed("Email delivery");
@@ -409,19 +411,19 @@ export async function sendClientPasswordResetEmail(email: string, token: string)
 /**
  * Send a "job assigned" email to a cleaner.
  */
-export async function sendJobAssignedEmail(
+export async function deliverJobAssignedEmail(
   email: string,
   propertyName: string,
   scheduledDate: string,
   startTime?: string,
   identity: OperationalEmailIdentity = { companyName: "Your Cleaning Company" }
-): Promise<boolean> {
-  const resend = getResendClient();
-  const appUrl = getAppUrl();
-  const timeInfo = startTime ? ` at ${startTime}` : "";
-
+): Promise<OperationalEmailOutcome> {
+  let providerStarted = false;
   try {
-    const { error } = await resend.emails.send({
+    const resend = getResendClient();
+    const appUrl = getAppUrl();
+    const timeInfo = startTime ? ` at ${startTime}` : "";
+    const payload = {
       ...getOperationalEmailHeaders(identity),
       to: email,
       subject: "New Cleaning Job Assigned",
@@ -444,38 +446,34 @@ export async function sendJobAssignedEmail(
           <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">Log in to SCRUB to view job details and get started.</p>
         </div>
       `,
-    });
-
-    if (error) {
-      console.error("[email] Failed to send job assigned email:", error);
-      return false;
-    }
-    return true;
-  } catch (err) {
-    console.error("[email] Error sending job assigned email:", err);
-    return false;
+    };
+    providerStarted = true;
+    return operationalEmailResult(await resend.emails.send(payload));
+  } catch {
+    return providerStarted ? { status: "unknown", category: "provider_uncertain" }
+      : { status: "failed", category: "configuration" };
   }
 }
 
 /**
  * Send a "job completed" email to the owner.
  */
-export async function sendJobCompletedEmail(
+export async function deliverJobCompletedEmail(
   email: string,
   propertyName: string,
   cleanerName: string,
   completedAt: number,
   identity: OperationalEmailIdentity = { companyName: "Your Cleaning Company" }
-): Promise<boolean> {
-  const resend = getResendClient();
-  const appUrl = getAppUrl();
-  const completionTime = new Date(completedAt).toLocaleString("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-
+): Promise<OperationalEmailOutcome> {
+  let providerStarted = false;
   try {
-    const { error } = await resend.emails.send({
+    const resend = getResendClient();
+    const appUrl = getAppUrl();
+    const completionTime = new Date(completedAt).toLocaleString("en-US", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    });
+    const payload = {
       ...getOperationalEmailHeaders(identity),
       to: email,
       subject: "Cleaning Job Completed",
@@ -499,32 +497,28 @@ export async function sendJobCompletedEmail(
           </p>
         </div>
       `,
-    });
-
-    if (error) {
-      console.error("[email] Failed to send job completed email:", error);
-      return false;
-    }
-    return true;
-  } catch (err) {
-    console.error("[email] Error sending job completed email:", err);
-    return false;
+    };
+    providerStarted = true;
+    return operationalEmailResult(await resend.emails.send(payload));
+  } catch {
+    return providerStarted ? { status: "unknown", category: "provider_uncertain" }
+      : { status: "failed", category: "configuration" };
   }
 }
 
 /**
  * Send a "job approved" email to the cleaner.
  */
-export async function sendJobApprovedEmail(
+export async function deliverJobApprovedEmail(
   email: string,
   propertyName: string,
   identity: OperationalEmailIdentity = { companyName: "Your Cleaning Company" }
-): Promise<boolean> {
-  const resend = getResendClient();
-  const appUrl = getAppUrl();
-
+): Promise<OperationalEmailOutcome> {
+  let providerStarted = false;
   try {
-    const { error } = await resend.emails.send({
+    const resend = getResendClient();
+    const appUrl = getAppUrl();
+    const payload = {
       ...getOperationalEmailHeaders(identity),
       to: email,
       subject: "Cleaning Job Approved",
@@ -542,16 +536,12 @@ export async function sendJobApprovedEmail(
           </p>
         </div>
       `,
-    });
-
-    if (error) {
-      console.error("[email] Failed to send job approved email:", error);
-      return false;
-    }
-    return true;
-  } catch (err) {
-    console.error("[email] Error sending job approved email:", err);
-    return false;
+    };
+    providerStarted = true;
+    return operationalEmailResult(await resend.emails.send(payload));
+  } catch {
+    return providerStarted ? { status: "unknown", category: "provider_uncertain" }
+      : { status: "failed", category: "configuration" };
   }
 }
 
@@ -918,4 +908,15 @@ export async function sendClientInviteEmail(
     console.error("[email] Error sending client invite email:", err);
     return false;
   }
+}
+
+// Boolean compatibility wrappers for existing non-ledger callers and template tests.
+export async function sendJobAssignedEmail(...args: Parameters<typeof deliverJobAssignedEmail>): Promise<boolean> {
+  return (await deliverJobAssignedEmail(...args)).status === "provider_accepted";
+}
+export async function sendJobCompletedEmail(...args: Parameters<typeof deliverJobCompletedEmail>): Promise<boolean> {
+  return (await deliverJobCompletedEmail(...args)).status === "provider_accepted";
+}
+export async function sendJobApprovedEmail(...args: Parameters<typeof deliverJobApprovedEmail>): Promise<boolean> {
+  return (await deliverJobApprovedEmail(...args)).status === "provider_accepted";
 }

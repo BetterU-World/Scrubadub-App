@@ -6,6 +6,7 @@ import { assertTeamInCompany } from "./teams";
 import { effectiveDeclineWorkers } from "./workerDeclineReviews";
 import { createNotification, logAudit } from "./helpers";
 import { resolveOperationalEmailIdentity } from "./operationalEmailIdentity";
+import { ensureOperationalEmail } from "./operationalEmailQueue";
 
 export function normalizeWorkerIds(ids: Id<"users">[]) {
   if (ids.length > 1000) throw new Error("Too many job assignees");
@@ -24,11 +25,14 @@ async function notifyAdded(ctx: MutationCtx, job: Doc<"jobs">, workers: Doc<"use
     });
     // Only send invitations for planned work, never suggest restarting historical work.
     if (worker.email && identity) {
-      await ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendJobAssigned, {
+      await ensureOperationalEmail(ctx, { kind: "assignment", companyId: job.companyId, jobId: job._id,
+        recipientId: worker._id, revision: job.assignmentRevision ?? 0 }, deliveryId =>
+        ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendJobAssigned, {
+        deliveryId,
         email: worker.email, propertyName: property?.name ?? job.propertySnapshot?.name ?? "a property",
         scheduledDate: job.scheduledDate, startTime: job.startTime, ...identity,
         assignmentContext: { jobId: job._id, workerId: worker._id, revision: job.assignmentRevision ?? 0 },
-      });
+      }));
     }
   }
 }

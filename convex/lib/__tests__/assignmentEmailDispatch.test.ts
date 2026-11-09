@@ -2,8 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { convexTest } from "convex-test";
 import schema from "../../schema";
 import { internal } from "../../_generated/api";
-import { sendJobAssignedEmail } from "../email";
-vi.mock("../email", async importOriginal => ({ ...await importOriginal<typeof import("../email")>(), sendJobAssignedEmail: vi.fn().mockResolvedValue(true) }));
+import { sendJobAssignedEmail, deliverJobAssignedEmail } from "../email";
+vi.mock("../email", async importOriginal => ({ ...await importOriginal<typeof import("../email")>(), sendJobAssignedEmail: vi.fn().mockResolvedValue(true), deliverJobAssignedEmail: vi.fn().mockResolvedValue({ status: "provider_accepted" }) }));
 const modules = import.meta.glob("../../**/*.ts");
 afterEach(() => vi.clearAllMocks());
 
@@ -18,12 +18,12 @@ describe("assignment email dispatch", () => {
     });
     const args = { email: "old@worker.test", propertyName: "Old location", scheduledDate: "2030-01-01", companyName: "Old company", assignmentContext: { jobId: ids.job, workerId: ids.worker, revision: 1 } };
     await t.action(internal.actions.emailNotifications.sendJobAssigned, args);
-    expect(sendJobAssignedEmail).not.toHaveBeenCalled();
+    expect(deliverJobAssignedEmail).not.toHaveBeenCalled();
     await t.action(internal.actions.emailNotifications.sendJobAssigned, { ...args, assignmentContext: { ...args.assignmentContext, revision: 2 } });
-    expect(sendJobAssignedEmail).toHaveBeenCalledExactlyOnceWith("current@worker.test", "a property", "2030-02-01", undefined, { companyName: "Current Company", replyTo: "reply@current.test" });
+    expect(deliverJobAssignedEmail).toHaveBeenCalledExactlyOnceWith("current@worker.test", "a property", "2030-02-01", undefined, { companyName: "Current Company", replyTo: "reply@current.test" });
     await t.run(ctx => ctx.db.patch(ids.job, { cleanerIds: [] }));
     await t.action(internal.actions.emailNotifications.sendJobAssigned, { ...args, assignmentContext: { ...args.assignmentContext, revision: 2 } });
-    expect(sendJobAssignedEmail).toHaveBeenCalledTimes(1);
+    expect(deliverJobAssignedEmail).toHaveBeenCalledTimes(1);
   });
   it("retains the validator contract of already-queued legacy payloads", async () => {
     const t = convexTest(schema, modules);
