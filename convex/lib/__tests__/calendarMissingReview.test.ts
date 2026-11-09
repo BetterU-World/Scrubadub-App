@@ -109,6 +109,15 @@ describe("missing reservation review lifecycle", () => {
     expect(await s.state()).toMatchObject({ enabled: true, consecutiveErrors: 0 });
   });
 
+  it("flags a changed iCal checkout without rescheduling or notifying assigned workers", async () => {
+    const s = await setup(); await s.run(full); await s.protectJob("scheduled");
+    const before = await s.protectedRecords();
+    await s.run(calendar(a.replace("DTEND;VALUE=DATE:20261027", "DTEND;VALUE=DATE:20261029") + "\r\n" + b));
+    expect(await s.reservation()).toMatchObject({ dateConflict: true });
+    expect(await s.protectedRecords()).toEqual(before);
+    expect(await s.t.run(async ctx => (await ctx.db.query("notifications").collect()).filter(n => n.type === "job_schedule_changed"))).toHaveLength(0);
+  });
+
   it("cannot count the same committed attempt twice", async () => {
     const s = await setup(); await s.run(full); vi.advanceTimersByTime(60_000);
     await s.t.mutation(sync.beginSyncAttempt, { connectionId: s.connectionId, attemptId: "once" });

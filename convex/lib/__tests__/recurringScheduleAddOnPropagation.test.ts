@@ -76,6 +76,7 @@ describe("recurring schedule and shared-job add-on propagation", () => {
     const schedule: any = await s.t.run((ctx) => ctx.db.get(scheduleId));
     expect(schedule.firstJobAddOnsAppliedToJobId).toBe(firstJobs[0]._id);
     expect(schedule.acceptedProposalAddOnSnapshots).toHaveLength(2);
+    expect(await s.t.run(async ctx => (await ctx.db.query("notifications").collect()).filter(n => n.type === "job_schedule_changed"))).toHaveLength(0);
   });
 
   it("keeps legacy schedules empty and requires deliberate, valid applicability", async () => {

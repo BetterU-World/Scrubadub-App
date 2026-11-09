@@ -1,3 +1,5 @@
+import { notifyJobScheduleChange } from "../lib/jobScheduleNotifications";
+import { assertSchedule, sameSchedule } from "../lib/jobScheduleModel";
 import { requireSharedJobAccepted } from "../lib/sharedJobAuthorization";
 import { freezePerformedWorkers } from "../lib/performedWorkers";
 import { retireLegacyOutgoing } from "../lib/legacyOutgoingRetirement";
@@ -328,6 +330,7 @@ export const update = mutation({
         v.literal("post_construction"),
       ),
     ),
+    expectedScheduleRevision: v.optional(v.number()),
     scheduledDate: v.optional(v.string()),
     startTime: v.optional(v.string()),
     durationMinutes: v.optional(v.number()),
@@ -354,6 +357,15 @@ export const update = mutation({
       throw new Error("Use the pricing workflow to change the customer charge");
     }
 
+    const nextSchedule = { scheduledDate: args.scheduledDate ?? job.scheduledDate, startTime: args.startTime ?? job.startTime, durationMinutes: args.durationMinutes ?? job.durationMinutes };
+    const scheduleSupplied = args.scheduledDate !== undefined || args.startTime !== undefined || args.durationMinutes !== undefined;
+    if (scheduleSupplied) {
+      assertSchedule(nextSchedule);
+      // Equivalent retries are harmless; stale clients cannot overwrite a different newer schedule.
+      if (!sameSchedule(job, nextSchedule) && args.expectedScheduleRevision !== undefined && args.expectedScheduleRevision !== (job.scheduleRevision ?? 0)) {
+        throw new Error("Job schedule changed. Refresh before rescheduling.");
+      }
+    }
     await applyJobAssignmentChange(ctx, job, owner, {
       cleanerIds: args.cleanerIds, assignedTeamId: args.assignedTeamId,
       clearAssignedTeam: args.clearAssignedTeam, type: args.type,
@@ -363,6 +375,7 @@ export const update = mutation({
       jobId,
       userId: _uid,
       sessionToken: _sessionToken,
+      expectedScheduleRevision: _expectedScheduleRevision,
       clearAssignedManager,
       clearAssignedTeam,
       cleanerIds: _cleanerIds,
@@ -387,6 +400,8 @@ export const update = mutation({
     }
     if (Object.keys(cleanUpdates).length === 0) return null;
     await ctx.db.patch(jobId, cleanUpdates);
+    const updatedJob = await ctx.db.get(jobId);
+    if (updatedJob) await notifyJobScheduleChange(ctx, job, updatedJob);
 
     await logAudit(ctx, {
       companyId: owner.companyId,

@@ -1,4 +1,13 @@
 {
+  "scheduleChange": {
+    "title": "Cambió el horario del trabajo",
+    "description": "Tu trabajo asignado tiene un nuevo horario. Revísalo antes de asistir.",
+    "previous": "Anterior",
+    "updated": "Actualizado",
+    "timeUnknown": "Hora de inicio sin definir",
+    "minutes": "min",
+    "timezone": "Zona horaria de la empresa del trabajo: {{timezone}}"
+  },
   "assignment": {
     "reassignHelp": "Esta acción reemplaza al personal asignado directamente por una sola persona. El equipo y la aceptación del trabajo se conservan. Usa Editar trabajo para gestionar varias asignaciones directas.",
     "team": "Equipo",

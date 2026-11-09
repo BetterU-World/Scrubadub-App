@@ -140,10 +140,12 @@ export function JobFormPage() {
   }, [isEditing]);
 
   const initializedJobId = useRef<string>();
+  const initialScheduleRevision = useRef(0);
   const initialAssignment = useRef<{ cleanerIds: string[]; assignedTeamId?: string }>();
   useEffect(() => {
     if (existing && initializedJobId.current !== existing._id) {
       initializedJobId.current = existing._id;
+      initialScheduleRevision.current = existing.scheduleRevision ?? 0;
       initialAssignment.current = { cleanerIds: [...existing.cleanerIds], assignedTeamId: existing.assignedTeamId };
       setPropertyId(existing.propertyId ?? "");
       setSelectedCleaners(existing.cleanerIds);
@@ -202,6 +204,7 @@ export function JobFormPage() {
         await updateJob({
           sessionToken,
           jobId: params.id as Id<"jobs">,
+          expectedScheduleRevision: initialScheduleRevision.current,
           userId: uid,
           ...data,
           // Clear manager if user explicitly unset it (was previously assigned)
