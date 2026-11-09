@@ -3,8 +3,8 @@ import { v } from "convex/values";
 import { calculateInvoiceTotals } from "./lib/invoiceAddOnLineItems";
 import { assertInvoiceInvariant, invoiceDisplayLines } from "./lib/invoiceModel";
 import { internal } from "./_generated/api";
-import { requireOwnerOrManagerCapability } from "./lib/sessionAuth";
-import { invoiceEmailPayload, invoiceEmailPayloadValidator, invoiceEmailResponse, invoiceAttemptResponse, INVOICE_EMAIL_CLAIM_MS } from "./lib/invoiceEmailDelivery";
+import { StaffAuthorizationDenied, requireOwnerOrManagerCapability } from "./lib/sessionAuth";
+import { InvoiceEmailIneligible, invoiceEmailPayload, invoiceEmailPayloadValidator, invoiceEmailResponse, invoiceAttemptResponse, INVOICE_EMAIL_CLAIM_MS } from "./lib/invoiceEmailDelivery";
 import { sendOutcome } from "./lib/operationalEmailModel";
 import { operationalEmailResult } from "./lib/operationalEmailResult";
 
@@ -114,7 +114,12 @@ export const authorizeDispatch = internalMutation({
       if (payload.relationshipId !== attempt.relationshipId || payload.clientUserId !== attempt.clientUserId) return null;
       await ctx.db.patch(attempt._id, { sendStartedAt: Date.now() });
       return payload;
-    } catch { return null; }
+    } catch (error) {
+      // Only explicit eligibility denials are skips. Unexpected failures reach
+      // the action's pre-provider failure boundary; the transaction rolls back.
+      if (error instanceof StaffAuthorizationDenied || error instanceof InvoiceEmailIneligible) return null;
+      throw error;
+    }
   },
 });
 

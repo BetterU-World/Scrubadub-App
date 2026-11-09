@@ -121,6 +121,35 @@ describe("invoice email delivery safety", () => {
     expect(provider).not.toHaveBeenCalled(); expect((await s.attempts())[0].result).toBe("skipped");
   });
 
+  it.each(["invoice-read", "session-query", "send-fence-write", "verification-config"] as const)("records unexpected %s failure as definitely pre-send without retry", async failure => {
+    const s = await setup();
+    const target = authorizeDispatch as unknown as { _handler: (ctx: any, args: any) => Promise<unknown> };
+    const original = target._handler;
+    vi.spyOn(target, "_handler").mockImplementationOnce(async (ctx, args) => {
+      if (failure === "verification-config") vi.stubEnv("TOKEN_PEPPER", "");
+      const db = new Proxy(ctx.db, { get(db, key) {
+        if (key === "get" && failure === "invoice-read") return async (id: unknown) => {
+          if (id === s.invoice) throw new Error("Access denied"); // Message matching must not imply eligibility.
+          return db.get(id);
+        };
+        if (key === "query" && failure === "session-query") return () => { throw new Error("database unavailable"); };
+        if (key === "patch" && failure === "send-fence-write") return async (id: unknown, value: any) => {
+          if (value.sendStartedAt !== undefined) throw new Error("write unavailable");
+          return db.patch(id, value);
+        };
+        const value = Reflect.get(db, key); return typeof value === "function" ? value.bind(db) : value;
+      } });
+      return original({ ...ctx, db }, args);
+    });
+    const result = await s.send();
+    expect(result.status).toBe("failed"); expect(provider).not.toHaveBeenCalled();
+    expect((await s.attempts())[0]).toMatchObject({ result: "failed", errorCategory: "pre_send_unavailable" });
+    expect((await s.attempts())[0].sendStartedAt).toBeUndefined();
+    expect((await s.row())?.sentAt).toBeUndefined();
+    await s.t.finishAllScheduledFunctions(() => { vi.runAllTimers(); });
+    expect(provider).not.toHaveBeenCalled(); expect(await s.attempts()).toHaveLength(1);
+  });
+
   it("authorizes invoice managers and denies readers/foreign owners, including diagnostic access boundaries", async () => {
     const s = await setup();
     for (const name of ["reader", "foreignOwner"] as const) await expect(s.send(s.auth(name))).rejects.toThrow();

@@ -14,19 +14,21 @@ export const invoiceEmailPayloadValidator = v.object({
     baseSubtotalCents: v.number(), addOnSubtotalCents: v.number(), subtotalCents: v.number(), taxCents: v.number(), totalCents: v.number(),
     addOnLineItems: v.array(v.object({ name: v.string(), quantity: v.optional(v.number()), unitLabel: v.optional(v.string()), lineTotalCents: v.number() })) }),
 });
+export class InvoiceEmailIneligible extends Error {}
+
 type Ctx = QueryCtx | MutationCtx;
 
 export async function invoiceEmailPayload(ctx: Ctx, companyId: Id<"companies">, invoiceId: Id<"invoices">) {
   const invoice = await ctx.db.get(invoiceId);
-  if (!invoice || invoice.companyId !== companyId) throw new Error("Access denied");
+  if (!invoice || invoice.companyId !== companyId) throw new InvoiceEmailIneligible("Access denied");
   const type = assertInvoiceInvariant(invoice);
-  if (invoice.status !== "issued") throw new Error("Only issued invoices can be sent");
+  if (invoice.status !== "issued") throw new InvoiceEmailIneligible("Only issued invoices can be sent");
   const relationship = invoice.clientRelationshipId ? await ctx.db.get(invoice.clientRelationshipId) : null;
-  if (!relationship || relationship.companyId !== companyId) throw new Error("A linked client relationship is required");
+  if (!relationship || relationship.companyId !== companyId) throw new InvoiceEmailIneligible("A linked client relationship is required");
   const client = relationship.clientUserId ? await ctx.db.get(relationship.clientUserId) : null;
-  if (relationship.status !== "active" || !client || client.status !== "active") throw new Error("Client portal access is required before emailing this invoice");
+  if (relationship.status !== "active" || !client || client.status !== "active") throw new InvoiceEmailIneligible("Client portal access is required before emailing this invoice");
   const email = relationship.email?.trim();
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("A valid client email is required");
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new InvoiceEmailIneligible("A valid client email is required");
   const company = await ctx.db.get(companyId);
   if (!company) throw new Error("Company unavailable");
   const validEmail = (value?: string): value is string => !!value && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());

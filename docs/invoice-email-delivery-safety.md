@@ -107,7 +107,7 @@ Already-running pre-release provider calls cannot be recalled or reconstructed.
 
 ## Validation, rollout and limitations
 
-Local validation passed: 2,042 tests across 215 files, frontend and Convex
+Local validation passed: 2,046 tests across 215 files, frontend and Convex
 typechecks, frontend-only build, and `git diff --check`. External email delivery
 is mocked in tests; no real emails or production mutations were performed.
 The root deploy-capable build command was not run. Existing source-map,
@@ -140,3 +140,18 @@ Conservative unknown handling can block a mail that was never sent. No global ra
 controller, automatic retry, payment reminder, new charge or exactly-once external
 delivery guarantee is introduced. Financial semantics require no founder decision
 change for this slice. Keep the PR draft for founder review; do not merge/deploy.
+
+### Dispatch authorization classification correction
+
+Explicit staff authorization denials and invoice/recipient eligibility denials use
+typed errors caught inside authorizeDispatch. Unexpected reads, session-verification
+configuration failures and send-stage fence write errors propagate to the action,
+which records failed/pre_send_unavailable before any provider call. Error text is
+never used to infer eligibility. The send-stage write remains in the same atomic
+mutation; a thrown failure rolls it back. Provider/post-provider uncertainty and
+finalization fallback remain unknown, with no automatic retries. Existing denial
+messages and external argument/return contracts are unchanged.
+
+Correction validation: all 36 focused invoice delivery tests and all 2,046 tests
+across 215 files passed, along with both typechecks, frontend-only build and
+`git diff --check`. Four new injected failure cases make no provider calls.
