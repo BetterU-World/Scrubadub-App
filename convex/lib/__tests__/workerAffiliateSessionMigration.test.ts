@@ -73,6 +73,13 @@ describe("worker and affiliate session migration", () => {
   it("blocks inactive users and inactive worker profiles", async () => {
     const t = makeTest(); const s = await seed(t);
     await expect(login(t, "inactive@pr4.test")).rejects.toThrow("Invalid email or password");
+    await expect(login(t, "other@pr4.test")).rejects.toThrow("Invalid email or password");
+    // Pending profiles retain ordinary login compatibility, but self-onboarding
+    // still uses the existing stricter active-profile rule.
+    await t.run(async ctx => {
+      const profile = await ctx.db.query("workerProfiles").withIndex("by_userId", q => q.eq("userId", s.other)).unique();
+      await ctx.db.patch(profile!._id, { workerStatus: "pending" });
+    });
     const auth = await login(t, "other@pr4.test");
     await expect(t.mutation((api as any).mutations.workers.completeMyOnboardingItem, { userId: s.other, sessionToken: auth.sessionToken, onboardingItemId: s.onboardingItem })).rejects.toThrow("Active worker profile required");
   });

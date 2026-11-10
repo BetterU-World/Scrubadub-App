@@ -93,7 +93,7 @@ describe("team membership assignment safety", () => {
       return ctx.db.insert("workerProfiles", { companyId: s.company, userId: s.worker, workerType: "contractor_1099", workerStatus: "inactive", primaryRole: "cleaner", eligibleRoles: ["cleaner"], onboardingStatus: "complete", jobEligibilityStatus: "eligible", createdAt: 1, updatedAt: 1 });
     });
     expect(await s.t.query(internal.jobAssignmentNotifications.assignmentEmailState, { jobId: s.job, workerId: s.worker, revision: 0 })).toBeNull();
-    expect(await s.t.query(api.queries.notifications.unreadCount, s.workerAuth)).toBe(0);
+    await expect(s.t.query(api.queries.notifications.unreadCount, s.workerAuth)).rejects.toThrow("verified session");
     // Evidence candidates retain assignment eligibility independently of notices.
     expect(await s.t.run(async ctx => getJobRecipientUserIds(ctx, (await ctx.db.get(s.job))!))).toEqual([s.worker]);
     const cancelled = await s.t.run(ctx => ctx.db.insert("jobs", { companyId: s.company, cleanerIds: [s.worker], type: "standard", status: "confirmed", scheduledDate: "2030-01-03", durationMinutes: 60, reworkCount: 0 }));

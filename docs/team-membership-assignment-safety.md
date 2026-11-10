@@ -1,5 +1,7 @@
 # PR6: membership and assignment safety
 
+**PR7 policy update:** This document records the PR6 investigation. The founder subsequently approved persistent denial for inactive/archived worker profiles. See [worker offboarding security](worker-offboarding-operational-access-security.md) for the implemented authorization policy; the historical unresolved question below is superseded.
+
 Base: origin/main 82ac576, including merged #284 (operational email ledger), #286 (worker schedule notices), and #287 (client commitments). No AGENTS.md is tracked in this repository or present at the workspace parent. Work is isolated on codex/team-membership-safety; original checkout changes and stashes are untouched.
 
 ## Established behavior and precise before/after matrix

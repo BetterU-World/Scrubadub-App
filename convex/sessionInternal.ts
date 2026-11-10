@@ -1,5 +1,7 @@
 import { internalMutation, internalQuery } from "./_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
+import schema from "./schema";
+import { workerProfileAllowsStaffAccess } from "./lib/workerProfileAccess";
 import { revokeAllSessionsForPrincipal } from "./lib/sessionRevocation";
 import { hasPlatformAdmin as adminEntitlement } from "./lib/platformEntitlements";
 
@@ -22,7 +24,16 @@ export const create = internalMutation({
     idleExpiresAt: v.number(),
     deviceLabel: v.optional(v.string()),
   },
+  returns: v.id("authSessions"),
   handler: async (ctx, args) => {
+    // The check and insert share a transaction, including absence/duplicate reads.
+    // A concurrent profile disable either wins first or revokes this new session.
+    if (args.principal.principalType === "staff") {
+      const user = await ctx.db.get(args.principal.userId);
+      if (!user || user.status !== "active" || !await workerProfileAllowsStaffAccess(ctx, user)) {
+        throw new ConvexError({ code: "INVALID_CREDENTIALS", message: "Invalid email or password" });
+      }
+    }
     return await ctx.db.insert("authSessions", {
       ...args.principal,
       tokenHash: args.tokenHash,
@@ -47,7 +58,12 @@ export const getByTokenHash = internalQuery({
 
 export const getStaffPrincipal = internalQuery({
   args: { userId: v.id("users") },
-  handler: async (ctx, args) => await ctx.db.get(args.userId),
+  returns: v.union(v.null(), v.object({ ...schema.tables.users.validator.fields,
+    _id: v.id("users"), _creationTime: v.number() })),
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    return user && await workerProfileAllowsStaffAccess(ctx, user) ? user : null;
+  },
 });
 
 export const getClientPrincipal = internalQuery({

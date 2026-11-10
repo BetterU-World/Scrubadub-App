@@ -2,6 +2,7 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { hasPlatformAdmin } from "./platformEntitlements";
 import { hasOwnerOrManagerPermission } from "./auth";
+import { workerProfileAllowsStaffAccess } from "./workerProfileAccess";
 import {
   SESSION_IDLE_EXPIRY_MS,
   SESSION_REQUIRED_ERROR,
@@ -61,6 +62,7 @@ export async function requireVerifiedStaffSession(
   }
   const user = await ctx.db.get(verifiedSession.userId);
   if (!user || user.status !== "active") throw new StaffAuthorizationDenied(SESSION_REQUIRED_ERROR);
+  if (!await workerProfileAllowsStaffAccess(ctx, user)) throw new StaffAuthorizationDenied(SESSION_REQUIRED_ERROR);
   if (claimedUserId && claimedUserId !== user._id) {
     console.warn("[security] session principal mismatch rejected");
     throw new StaffAuthorizationDenied("Session principal does not match the requested user");
