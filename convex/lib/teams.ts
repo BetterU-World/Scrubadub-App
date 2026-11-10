@@ -1,5 +1,6 @@
 import { QueryCtx, MutationCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
+import { operationalWorkerAvailable } from "./operationalWorkerEligibility";
 
 export type TeamAssignmentRole = "lead" | "member";
 
@@ -122,8 +123,10 @@ export async function getJobRecipientUserIds(
     }
   }
   const users = await Promise.all([...ids].map(id => ctx.db.get(id)));
-  return users.filter(user => user?.companyId === job.companyId && user.status === "active")
-    .map(user => user!._id);
+  const eligible = users.filter((user): user is NonNullable<typeof user> =>
+    !!user && user.companyId === job.companyId && user.status === "active");
+  const available = await Promise.all(eligible.map(user => operationalWorkerAvailable(ctx, user)));
+  return eligible.filter((_, i) => available[i]).map(user => user._id);
 }
 
 export async function assertTeamInCompany(

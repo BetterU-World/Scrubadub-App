@@ -94,6 +94,7 @@ describe("team membership assignment safety", () => {
     });
     expect(await s.t.query(internal.jobAssignmentNotifications.assignmentEmailState, { jobId: s.job, workerId: s.worker, revision: 0 })).toBeNull();
     expect(await s.t.query(api.queries.notifications.unreadCount, s.workerAuth)).toBe(0);
+    expect(await s.t.run(async ctx => getJobRecipientUserIds(ctx, (await ctx.db.get(s.job))!))).toEqual([]);
     await s.t.run(ctx => ctx.db.patch(profile, { workerStatus: "active" }));
     expect(await s.t.query(api.queries.notifications.unreadCount, s.workerAuth)).toBe(1);
     await s.t.run(ctx => ctx.db.patch(s.worker, { role: "maintenance" }));
