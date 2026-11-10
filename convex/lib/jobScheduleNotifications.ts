@@ -1,3 +1,4 @@
+import { operationalWorkerAvailable } from "./operationalWorkerEligibility";
 import { createNotification } from "./helpers";
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -33,7 +34,7 @@ export async function notifyJobScheduleChange(ctx: MutationCtx, before: Doc<"job
 /** Fail closed before returning any schedule snapshot or property label to the caller. */
 export async function visibleScheduleNotification(ctx: Ctx, notification: Doc<"notifications">, user: Doc<"users">) {
   if (notification.type !== "job_schedule_changed") return true;
-  if (user.role !== "cleaner" || user.status !== "active" || user.companyId !== notification.companyId ||
+  if (!await operationalWorkerAvailable(ctx, user) || user.role !== "cleaner" || user.status !== "active" || user.companyId !== notification.companyId ||
       notification.userId !== user._id || !notification.relatedJobId || !notification.scheduleChange) return false;
   const job = await ctx.db.get(notification.relatedJobId);
   if (!job || job.companyId !== user.companyId || job.type === "maintenance" || !actionable(job) ||

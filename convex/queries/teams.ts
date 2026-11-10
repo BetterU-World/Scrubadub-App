@@ -5,11 +5,12 @@ import { hasOwnerOrManagerPermission } from "../lib/auth";
 import { isActiveTeamMember } from "../lib/teams";
 
 async function withMembers(ctx: any, team: any) {
-  const memberships = await ctx.db
+  const rows = await ctx.db
     .query("teamMembers")
     .withIndex("by_teamId", (q: any) => q.eq("teamId", team._id))
     .collect();
-  const users = await Promise.all(memberships.map((m: any) => ctx.db.get(m.userId)));
+  const memberships = rows.filter((m: any) => m.companyId === team.companyId);
+  const users = await Promise.all(memberships.map(async (m: any) => { const user = await ctx.db.get(m.userId); return user?.companyId === team.companyId ? user : null; }));
   return {
     ...team,
     members: memberships.map((m: any, idx: number) => ({
@@ -71,10 +72,11 @@ export const listMyTeams = query({
   handler: async (ctx, args) => {
     const user = await requireVerifiedStaffSession(ctx, args.sessionToken, args.userId);
     if (!user.companyId) return [];
-    const memberships = await ctx.db
+    const rows = await ctx.db
       .query("teamMembers")
       .withIndex("by_userId_active", (q) => q.eq("userId", user._id).eq("active", true))
       .collect();
+    const memberships = rows.filter(m => m.companyId === user.companyId);
     const teams = await Promise.all(memberships.map((m) => ctx.db.get(m.teamId)));
     return teams
       .filter((team): team is NonNullable<typeof team> => !!team && team.companyId === user.companyId && team.active)

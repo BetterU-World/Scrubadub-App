@@ -14,6 +14,7 @@ export const create = mutation({
     name: v.string(),
     description: v.optional(v.string()),
   },
+  returns: v.id("teams"),
   handler: async (ctx, args) => {
     const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageTeam");
     if (!owner.companyId || owner.companyId !== args.companyId) throw new Error("Not your company");
@@ -46,6 +47,7 @@ export const update = mutation({
     name: v.string(),
     description: v.optional(v.string()),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageTeam");
     if (!owner.companyId) throw new Error("Owner company required");
@@ -67,6 +69,7 @@ export const update = mutation({
 
 export const setActive = mutation({
   args: { userId: v.id("users"), sessionToken: v.string(), teamId: v.id("teams"), active: v.boolean() },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageTeam");
     if (!owner.companyId) throw new Error("Owner company required");
@@ -90,6 +93,7 @@ export const addMember = mutation({
     memberUserId: v.id("users"),
     role: memberRole,
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageTeam");
     if (!owner.companyId) throw new Error("Owner company required");
@@ -121,27 +125,37 @@ export const addMember = mutation({
       });
     }
     await ctx.db.patch(args.teamId, { updatedAt: Date.now() });
+    await logAudit(ctx, { companyId: owner.companyId, userId: owner._id, action: "add_team_member", entityType: "team", entityId: args.teamId,
+      details: JSON.stringify({ memberUserId: args.memberUserId, previousActive: existing?.active ?? false, previousRole: existing?.role ?? null, role: args.role }) });
   },
 });
 
 export const removeMember = mutation({
   args: { userId: v.id("users"), sessionToken: v.string(), membershipId: v.id("teamMembers") },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageTeam");
     const membership = await ctx.db.get(args.membershipId);
     if (!membership || membership.companyId !== owner.companyId) throw new Error("Team member not found");
+    await assertTeamInCompany(ctx, membership.teamId, owner.companyId);
     await ctx.db.patch(args.membershipId, { active: false, removedAt: Date.now() });
     await ctx.db.patch(membership.teamId, { updatedAt: Date.now() });
+    await logAudit(ctx, { companyId: owner.companyId, userId: owner._id, action: "remove_team_member", entityType: "team", entityId: membership.teamId,
+      details: JSON.stringify({ membershipId: membership._id, memberUserId: membership.userId, previousActive: membership.active }) });
   },
 });
 
 export const setMemberRole = mutation({
   args: { userId: v.id("users"), sessionToken: v.string(), membershipId: v.id("teamMembers"), role: memberRole },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const owner = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageTeam");
     const membership = await ctx.db.get(args.membershipId);
     if (!membership || membership.companyId !== owner.companyId) throw new Error("Team member not found");
+    await assertTeamInCompany(ctx, membership.teamId, owner.companyId);
     await ctx.db.patch(args.membershipId, { role: args.role });
     await ctx.db.patch(membership.teamId, { updatedAt: Date.now() });
+    await logAudit(ctx, { companyId: owner.companyId, userId: owner._id, action: "set_team_member_role", entityType: "team", entityId: membership.teamId,
+      details: JSON.stringify({ membershipId: membership._id, memberUserId: membership.userId, previousRole: membership.role, role: args.role }) });
   },
 });
