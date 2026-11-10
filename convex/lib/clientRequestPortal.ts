@@ -18,7 +18,8 @@ export type ClientRequestDisplayStatus =
   | "scheduled"
   | "in_progress"
   | "completed"
-  | "declined";
+  | "declined"
+  | "cancelled";
 
 export function deriveClientRequestStatus(input: {
   requestStatus: string;
@@ -30,6 +31,7 @@ export function deriveClientRequestStatus(input: {
   const jobs = input.jobs ?? [];
   if (jobs.some((job) => job.status === "in_progress")) return "in_progress";
   if (jobs.some((job) => !["cancelled", "approved"].includes(job.status) && job.scheduledDate >= input.today)) return "scheduled";
+  if (jobs.length > 0 && jobs.every(job => job.status === "cancelled")) return "cancelled";
   if (jobs.length > 0 && jobs.every((job) => job.status === "approved" || job.completedAt)) return "completed";
   if ((input.agreements ?? []).some((agreement) => agreement.status === "sent")) return "agreement_available";
   if ((input.proposals ?? []).some((proposal) => proposal.status === "sent")) return "proposal_available";

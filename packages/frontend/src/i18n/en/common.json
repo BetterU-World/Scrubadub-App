@@ -1,4 +1,27 @@
 {
+  "clientScheduling": {
+    "cancelledStatusDescription": "This service is cancelled and is no longer scheduled.",
+    "title": "Scheduling updates",
+    "service_confirmed": {
+      "label": "Service confirmed",
+      "description": "Your cleaning company confirmed this service schedule."
+    },
+    "service_rescheduled": {
+      "label": "Service rescheduled",
+      "description": "Your cleaning company changed the schedule of this confirmed service."
+    },
+    "service_cancelled": {
+      "label": "Service cancelled",
+      "description": "Your cleaning company cancelled this service. It is no longer scheduled."
+    },
+    "previous": "Previous",
+    "updated": "Schedule",
+    "cancelledWindow": "Cancelled service window",
+    "timeUnknown": "Start time not set",
+    "minutes": "min",
+    "timezone": "Company time zone: {{timezone}}",
+    "viewRequest": "View service request"
+  },
   "scheduleChange": {
     "title": "Job schedule changed",
     "description": "Your assigned job has a new schedule. Review it before attending.",
@@ -2374,6 +2397,7 @@
     "serviceStatus": "Service status",
     "awaitingConfirmation": "Awaiting confirmation from your cleaning company.",
     "statusSummary": {
+      "cancelled": {"meaning":"The company cancelled this service. It is no longer a confirmed appointment.","next":"Contact your company if you need a different service date."},
       "new_time_proposed": {
         "meaning": "{{provider}} proposed a different service time.",
         "next": "Accept or decline the proposed time above."
@@ -2500,6 +2524,7 @@
       "Other": "Other"
     },
     "statuses": {
+      "cancelled": "Service cancelled",
       "new_time_proposed": "New time proposed",
       "awaiting_business_response": "Awaiting business response",
       "submitted": "Submitted",

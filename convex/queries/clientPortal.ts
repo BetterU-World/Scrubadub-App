@@ -1,3 +1,4 @@
+import { clientSchedulingEvents, currentClientLocation, clientVisibleService } from "../lib/clientSchedulingEvents";
 import { query } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
@@ -136,6 +137,8 @@ export const getClientServices = query({
     const accountById = new Map(
       commercialAccounts.map((item: any) => [String(item._id), item]),
     );
+    const visibleJobs = [];
+    for (const job of jobs) if (await clientVisibleService(ctx, job, context.clientUser._id)) visibleJobs.push(job);
     const project = (job: any) => {
       const property: any = job.propertyId
         ? propertyById.get(String(job.propertyId))
@@ -146,7 +149,8 @@ export const getClientServices = query({
       return {
         _id: job._id,
         type: job.type,
-        status: job.status,
+        // A worker refusal does not revoke the company's canonical request commitment.
+        status: job.status === "denied" && job.sourceClientRequestId ? "confirmed" : job.status,
         scheduledDate: job.scheduledDate,
         startTime: job.startTime,
         completedAt: job.completedAt,
@@ -158,10 +162,11 @@ export const getClientServices = query({
     const today = new Date().toISOString().slice(0, 10);
     return {
       clientName: context.clientUser.displayName,
-      current: jobs
+      schedulingUpdates: await clientSchedulingEvents(ctx, context.clientUser),
+      current: visibleJobs
         .filter((job: any) => job.status === "in_progress")
         .map(project),
-      upcoming: jobs
+      upcoming: visibleJobs
         .filter(
           (job: any) =>
             job.scheduledDate >= today &&
@@ -171,7 +176,7 @@ export const getClientServices = query({
           a.scheduledDate.localeCompare(b.scheduledDate),
         )
         .map(project),
-      recent: jobs
+      recent: visibleJobs
         .filter((job: any) => job.completedAt || job.status === "approved")
         .sort((a: any, b: any) => (b.completedAt ?? 0) - (a.completedAt ?? 0))
         .slice(0, 50)
@@ -332,36 +337,38 @@ export const getClientAccount = query({
   },
 });
 
-async function requestLinkedRecords(ctx: any, request: any) {
+async function requestLinkedRecords(ctx: any, request: any, clientUserId: Id<"clientUsers">) {
   const [proposals, agreements, scheduleProposals] = await Promise.all([
     ctx.db
       .query("proposals")
       .withIndex("by_clientRequestId", (q: any) =>
         q.eq("clientRequestId", request._id),
       )
-      .collect(),
+      .take(CAP),
     ctx.db
       .query("serviceAgreements")
       .withIndex("by_clientRequest", (q: any) =>
         q.eq("clientRequestId", request._id),
       )
-      .collect(),
+      .take(CAP),
     ctx.db
       .query("clientRequestScheduleProposals")
       .withIndex("by_clientRequestId_createdAt", (q: any) =>
         q.eq("clientRequestId", request._id),
       )
-      .collect(),
+      .order("desc")
+      .take(CAP),
   ]);
+  const safeProposals = proposals.filter((item: any) => item.companyId === request.companyId && item.clientRelationshipId === request.clientRelationshipId);
   const proposalIds = new Set(
-    proposals.map((proposal: any) => String(proposal._id)),
+    safeProposals.map((proposal: any) => String(proposal._id)),
   );
   const directJobs = await ctx.db
     .query("jobs")
     .withIndex("by_sourceClientRequestId", (q: any) =>
       q.eq("sourceClientRequestId", request._id),
     )
-    .collect();
+    .take(CAP);
   const companyJobs = await ctx.db
     .query("jobs")
     .withIndex("by_companyId_scheduledDate", (q: any) =>
@@ -378,6 +385,13 @@ async function requestLinkedRecords(ctx: any, request: any) {
     (job, index, all) =>
       all.findIndex((item) => item._id === job._id) === index,
   );
+  const safeJobs = [];
+  for (const job of jobs) {
+    if (job.sourceClientRequestId === request._id &&
+        (job.propertyId !== request.propertyId || job.commercialAccountId !== request.commercialAccountId)) continue;
+    if (job.companyId === request.companyId && job.clientRelationshipId === request.clientRelationshipId &&
+        await clientVisibleService(ctx, job, clientUserId)) safeJobs.push(job);
+  }
   const visibleAgreements = (await Promise.all(agreements
     .filter((agreement: any) =>
       agreement.companyId === request.companyId &&
@@ -389,10 +403,11 @@ async function requestLinkedRecords(ctx: any, request: any) {
     })))
     .filter(Boolean);
   return {
-    proposals,
+    proposals: safeProposals,
     agreements: visibleAgreements,
-    jobs,
-    scheduleProposals,
+    jobs: safeJobs,
+    scheduleProposals: scheduleProposals.filter((item: any) => item.companyId === request.companyId && item.clientRelationshipId === request.clientRelationshipId),
+    location: await currentClientLocation(ctx, request),
   };
 }
 
@@ -455,8 +470,8 @@ function projectClientRequest(context: any, request: any, linked: any) {
     _id: request._id,
     requestedService: request.requestedService,
     providerName: providerName(context, request),
-    locationName: request.propertySnapshot?.name,
-    locationAddress: request.propertySnapshot?.address,
+    locationName: linked.location?.name,
+    locationAddress: linked.location?.address,
     submittedAt: request.createdAt,
     declinedAt: request.declinedAt,
     clientFacingDecisionNote: request.clientFacingDecisionNote,
@@ -595,15 +610,18 @@ export const listClientRequests = query({
         .order("desc")
         .take(100);
       requests.push(
-        ...related.filter((request: any) => request.status !== "archived"),
+        ...related.filter((request: any) => request.status !== "archived" &&
+          (!request.originClientUserId || request.originClientUserId === context.clientUser._id)),
       );
     }
+    const authorizedRequests = [];
+    for (const request of requests) if ((!request.propertyId && !request.commercialAccountId) || await currentClientLocation(ctx, request)) authorizedRequests.push(request);
     const projected = await Promise.all(
-      requests.map(async (request) =>
+      authorizedRequests.map(async (request) =>
         projectClientRequest(
           context,
           request,
-          await requestLinkedRecords(ctx, request),
+          await requestLinkedRecords(ctx, request, context.clientUser._id),
         ),
       ),
     );
@@ -626,14 +644,16 @@ export const getClientRequestDetail = query({
         item._id === request.clientRelationshipId &&
         item.companyId === request.companyId,
     );
-    if (!relationship || request.status === "archived")
+    if (!relationship || (request.originClientUserId && request.originClientUserId !== context.clientUser._id) ||
+        request.status === "archived" || ((request.propertyId || request.commercialAccountId) && !await currentClientLocation(ctx, request)))
       return { clientName: context.clientUser.displayName, request: null };
-    const linked = await requestLinkedRecords(ctx, request);
+    const linked = await requestLinkedRecords(ctx, request, context.clientUser._id);
     const summary = projectClientRequest(context, request, linked);
     return {
       clientName: context.clientUser.displayName,
       request: {
         ...summary,
+        schedulingEvents: await clientSchedulingEvents(ctx, context.clientUser, request._id),
         notes: request.notes,
         requestedAddOns: request.requestedAddOnSnapshots ?? [],
         proposals: (await Promise.all(linked.proposals.filter(isClientVisibleProposal).map(async (item: any) => {

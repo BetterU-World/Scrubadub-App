@@ -1,3 +1,4 @@
+import { recordClientSchedulingEvent } from "./clientSchedulingEvents";
 import { logAudit } from "./helpers";
 import { resolvePropertyConditionRequirement } from "./propertyConditionRequirements";
 import { isExistingClientServiceRequest } from "./requestContext";
@@ -187,5 +188,7 @@ export async function createJobFromClientRequest(
     entityId: jobId,
     details: JSON.stringify({ requestId: request._id, ...audit.details }),
   });
-  return { job: await ctx.db.get(jobId), replayed: false };
+  const committedJob = await ctx.db.get(jobId);
+  if (committedJob) await recordClientSchedulingEvent(ctx, committedJob, "service_confirmed");
+  return { job: committedJob, replayed: false };
 }

@@ -1,3 +1,4 @@
+import { clientSchedulingEventFields } from "./lib/clientSchedulingEventModel";
 import { jobScheduleChange } from "./lib/jobScheduleModel";
 import { defineSchema, defineTable } from "convex/server";
 import { workerDeclineReviewFields } from "./lib/workerDeclineReviewModel";
@@ -1264,6 +1265,11 @@ export default defineSchema({
     .index("by_company_createdAt", ["companyId", "createdAt"])
     .index("by_state_nextAttemptAt", ["state", "nextAttemptAt"])
     .index("by_state_claimExpiresAt", ["state", "claimExpiresAt"]),
+
+  clientSchedulingEvents: defineTable(clientSchedulingEventFields)
+    .index("by_job_kind_revision", ["jobId", "kind", "revision"])
+    .index("by_client_created", ["clientUserId"])
+    .index("by_client_request", ["clientUserId", "requestId"]),
 
   notifications: defineTable({
     scheduleChange: v.optional(jobScheduleChange),

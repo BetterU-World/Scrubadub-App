@@ -1,4 +1,27 @@
 {
+  "clientScheduling": {
+    "cancelledStatusDescription": "Este servicio está cancelado y ya no está programado.",
+    "title": "Actualizaciones de horario",
+    "service_confirmed": {
+      "label": "Servicio confirmado",
+      "description": "Tu empresa de limpieza confirmó este horario de servicio."
+    },
+    "service_rescheduled": {
+      "label": "Servicio reprogramado",
+      "description": "Tu empresa de limpieza cambió el horario de este servicio confirmado."
+    },
+    "service_cancelled": {
+      "label": "Servicio cancelado",
+      "description": "Tu empresa de limpieza canceló este servicio. Ya no está programado."
+    },
+    "previous": "Anterior",
+    "updated": "Horario",
+    "cancelledWindow": "Horario del servicio cancelado",
+    "timeUnknown": "Hora de inicio sin definir",
+    "minutes": "min",
+    "timezone": "Zona horaria de la empresa: {{timezone}}",
+    "viewRequest": "Ver solicitud de servicio"
+  },
   "scheduleChange": {
     "title": "Cambió el horario del trabajo",
     "description": "Tu trabajo asignado tiene un nuevo horario. Revísalo antes de asistir.",
@@ -2375,6 +2398,7 @@
     "serviceStatus": "Estado del servicio",
     "awaitingConfirmation": "Esperando la confirmación de tu empresa de limpieza.",
     "statusSummary": {
+      "cancelled": {"meaning":"La empresa canceló este servicio. Ya no es una cita confirmada.","next":"Contacta a tu empresa si necesitas otra fecha de servicio."},
       "new_time_proposed": {
         "meaning": "{{provider}} propuso otro horario de servicio.",
         "next": "Acepta o rechaza el horario propuesto arriba."
@@ -2501,6 +2525,7 @@
       "Other": "Otro"
     },
     "statuses": {
+      "cancelled": "Servicio cancelado",
       "new_time_proposed": "Nuevo horario propuesto",
       "awaiting_business_response": "Esperando respuesta de la empresa",
       "submitted": "Enviada",
