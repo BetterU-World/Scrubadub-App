@@ -1,3 +1,4 @@
+import { recordClientSchedulingEvent } from "../lib/clientSchedulingEvents";
 import { notifyJobScheduleChange } from "../lib/jobScheduleNotifications";
 import { assertSchedule, sameSchedule } from "../lib/jobScheduleModel";
 import { requireSharedJobAccepted } from "../lib/sharedJobAuthorization";
@@ -402,6 +403,10 @@ export const update = mutation({
     await ctx.db.patch(jobId, cleanUpdates);
     const updatedJob = await ctx.db.get(jobId);
     if (updatedJob) await notifyJobScheduleChange(ctx, job, updatedJob);
+    if (updatedJob && !sameSchedule(job, updatedJob)) {
+      const committedJob = await ctx.db.get(jobId);
+      if (committedJob) await recordClientSchedulingEvent(ctx, committedJob, "service_rescheduled", job);
+    }
 
     await logAudit(ctx, {
       companyId: owner.companyId,
@@ -465,6 +470,8 @@ export const cancel = mutation({
       pauseHistory,
     });
 
+    const cancelledJob = await ctx.db.get(job._id);
+    if (cancelledJob) await recordClientSchedulingEvent(ctx, cancelledJob, "service_cancelled");
     const recipientIds = new Set(await getJobRecipientUserIds(ctx, job));
     if (actor.role === "manager") {
       const companyUsers = await ctx.db

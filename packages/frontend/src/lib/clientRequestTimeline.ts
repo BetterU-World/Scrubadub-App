@@ -1,5 +1,9 @@
+import type { ClientSchedulingEvent } from "../components/client/ClientSchedulingUpdates";
 export type ClientRequestTimelineState = "complete" | "current" | "terminal";
 export type ClientRequestTimelineKind =
+  | "service_confirmed"
+  | "service_rescheduled"
+  | "service_cancelled"
   | "submitted"
   | "under_review"
   | "schedule_proposed"
@@ -15,6 +19,7 @@ export type ClientRequestTimelineKind =
   | "declined";
 
 export interface ClientRequestTimelineEvent {
+  scheduling?: ClientSchedulingEvent;
   id: string;
   kind: ClientRequestTimelineKind;
   occurredAt?: number;
@@ -139,13 +144,18 @@ export function deriveClientRequestTimeline(
     facts.jobs.find(
       (item: any) => item.status === "approved" || item.completedAt,
     );
-  if (job)
+  if (job && !request.schedulingEvents?.some((event: ClientSchedulingEvent) => event.kind === "service_confirmed"))
     events.push(
       complete("scheduled", "scheduled", undefined, {
         labelKey: "clientRequests.timeline.actions.services",
         href: "/client/services",
       }),
     );
+  for (const event of [...(request.schedulingEvents ?? [])].reverse() as ClientSchedulingEvent[]) {
+    events.push({ id: event.id, kind: event.kind, occurredAt: event.occurredAt,
+      state: event.kind === "service_cancelled" ? "terminal" : "complete", scheduling: event,
+      destination: { labelKey: "clientRequests.timeline.actions.services", href: "/client/services" } });
+  }
   if (job?.status === "in_progress")
     events.push(
       complete("in-progress", "in_progress", job.startedAt, {
@@ -171,7 +181,7 @@ export function deriveClientRequestTimeline(
     });
   const lastEvent = events[events.length - 1];
   const currentKind =
-    request.status === "processing" ? undefined : request.status;
+    request.status === "cancelled" ? "service_cancelled" : request.status === "processing" ? undefined : request.status;
   const current =
     request.status === "processing"
       ? [...events]
