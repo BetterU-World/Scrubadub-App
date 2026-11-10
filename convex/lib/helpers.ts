@@ -2,6 +2,7 @@ import type { Infer } from "convex/values";
 import { jobScheduleChange } from "./jobScheduleModel";
 import { MutationCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
+import { operationalWorkerAvailable } from "./operationalWorkerEligibility";
 
 export async function logAudit(
   ctx: MutationCtx,
@@ -63,6 +64,10 @@ export async function createNotification(
     relatedCommercialAccountId?: Id<"commercialAccounts">;
   }
 ) {
+  if (params.type !== "invite") {
+    const recipient = await ctx.db.get(params.userId);
+    if (!recipient || !await operationalWorkerAvailable(ctx, recipient)) return;
+  }
   await ctx.db.insert("notifications", {
     ...params,
     read: false,

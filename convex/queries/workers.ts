@@ -1,14 +1,25 @@
-import { query } from "../_generated/server";
+import { query, type QueryCtx } from "../_generated/server";
+import type { Doc } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { requireOwnerSession, requireVerifiedStaffSession } from "../lib/sessionAuth";
 
 const workerRoleValues = ["cleaner", "manager", "maintenance"] as const;
 
 async function getProfileForUser(ctx: any, userId: any) {
-  return await ctx.db
+  const profiles = await ctx.db
     .query("workerProfiles")
     .withIndex("by_userId", (q: any) => q.eq("userId", userId))
-    .first();
+    .take(2);
+  if (profiles.length > 1) throw new Error("Worker profile requires owner review");
+  const profile = profiles[0];
+  if (profile) await assertProfileUserCompany(ctx, profile);
+  return profile ?? null;
+}
+
+async function assertProfileUserCompany(ctx: QueryCtx, profile: Doc<"workerProfiles">) {
+  const user = await ctx.db.get(profile.userId);
+  if (!user || user.companyId !== profile.companyId) throw new Error("Worker profile requires owner review");
+  return user;
 }
 
 async function getOwnedProfile(ctx: any, profileId: any, ownerCompanyId: any) {
@@ -16,11 +27,12 @@ async function getOwnedProfile(ctx: any, profileId: any, ownerCompanyId: any) {
   if (!profile || profile.companyId !== ownerCompanyId) {
     throw new Error("Worker profile not found");
   }
+  await assertProfileUserCompany(ctx, profile);
   return profile;
 }
 
 async function enrichProfile(ctx: any, profile: any) {
-  const user = await ctx.db.get(profile.userId);
+  const user = await assertProfileUserCompany(ctx, profile);
   return {
     ...profile,
     user: user
@@ -106,7 +118,8 @@ export const getWorkerDetail = query({
     ]);
 
     const teamDocs: any[] = await Promise.all(memberships.map((m: any) => ctx.db.get(m.teamId)));
-    const teams = memberships.map((m: any, idx: number) => ({
+    const teams = memberships.flatMap((m: any, idx: number) =>
+      m.companyId === profile.companyId && teamDocs[idx]?.companyId === profile.companyId ? [{
       ...m,
       team: teamDocs[idx]
         ? {
@@ -115,7 +128,7 @@ export const getWorkerDetail = query({
             active: teamDocs[idx]!.active,
           }
         : null,
-    }));
+    }] : []);
 
     return {
       ...profile,

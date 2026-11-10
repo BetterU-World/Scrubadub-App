@@ -157,10 +157,16 @@ function cleanPayProfile(payProfile: any | undefined) {
 }
 
 async function getExistingProfileForUser(ctx: any, userId: any) {
-  return await ctx.db
+  const profiles = await ctx.db
     .query("workerProfiles")
     .withIndex("by_userId", (q: any) => q.eq("userId", userId))
-    .first();
+    .take(2);
+  if (profiles.length > 1) throw new Error("Worker profile requires owner review");
+  const profile = profiles[0];
+  if (!profile) return null;
+  const user = await ctx.db.get(userId);
+  if (!user || profile.companyId !== user.companyId) throw new Error("Worker profile requires owner review");
+  return profile;
 }
 
 async function requireOwnedProfile(ctx: any, owner: any, workerProfileId: any) {
@@ -168,6 +174,8 @@ async function requireOwnedProfile(ctx: any, owner: any, workerProfileId: any) {
   if (!profile || profile.companyId !== owner.companyId) {
     throw new Error("Worker profile not found");
   }
+  // Validate the referenced user and uniqueness before any write or revocation.
+  await getExistingProfileForUser(ctx, profile.userId);
   return profile;
 }
 
@@ -335,6 +343,7 @@ export const changeOperationalRole = mutation({
 });
 
 export const upsertWorkerProfile = mutation({
+  returns: v.id("workerProfiles"),
   args: {
     userId: v.id("users"),
     sessionToken: v.string(),
@@ -402,6 +411,8 @@ export const upsertWorkerProfile = mutation({
     if (args.workerStatus !== undefined && args.workerStatus !== existing.workerStatus) {
       if (args.workerStatus !== "active") {
         await revokeAllSessionsForPrincipal(ctx, { principalType: "staff", userId: target._id }, now, "worker_profile_disabled");
+      } else if (existing.workerStatus === "inactive" || existing.workerStatus === "archived") {
+        await revokeAllSessionsForPrincipal(ctx, { principalType: "staff", userId: target._id }, now, "worker_profile_reactivated");
       }
       await writeSecurityEvent(ctx, {
         eventType: args.workerStatus === "active" ? "account_reactivated" : "account_disabled",
@@ -445,6 +456,7 @@ export const updateWorkerProfile = mutation({
 });
 
 export const setWorkerStatus = mutation({
+  returns: v.null(),
   args: {
     userId: v.id("users"),
     sessionToken: v.string(),
@@ -455,6 +467,8 @@ export const setWorkerStatus = mutation({
     const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     const db: any = ctx.db;
     const profile = await requireOwnedProfile({ ...ctx, db }, owner, args.workerProfileId);
+    const worker = await db.get(profile.userId);
+    if (worker.role === "owner") throw new Error("Owner account lifecycle is independent of worker profiles");
     await db.patch(args.workerProfileId, {
       workerStatus: args.workerStatus,
       updatedAt: Date.now(),
@@ -462,6 +476,8 @@ export const setWorkerStatus = mutation({
     if (args.workerStatus !== profile.workerStatus) {
       if (args.workerStatus !== "active") {
         await revokeAllSessionsForPrincipal(ctx, { principalType: "staff", userId: profile.userId }, Date.now(), "worker_profile_disabled");
+      } else if (profile.workerStatus === "inactive" || profile.workerStatus === "archived") {
+        await revokeAllSessionsForPrincipal(ctx, { principalType: "staff", userId: profile.userId }, Date.now(), "worker_profile_reactivated");
       }
       await writeSecurityEvent(ctx, {
         eventType: args.workerStatus === "active" ? "account_reactivated" : "account_disabled",

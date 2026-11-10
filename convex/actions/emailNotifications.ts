@@ -5,7 +5,6 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { completionContext, approvalContext } from "../lib/jobReviewEmailContext";
 import {
-  sendJobAssignedEmail,
   sendPasswordResetEmail,
   sendClientPasswordResetEmail,
   sendInviteEmail,
@@ -41,19 +40,9 @@ export const sendJobAssigned = internalAction({
       return null;
     }
     if (queued.assignmentContext) return null;
-    // Unidentifiable legacy assignments keep their one-shot historical contract.
-    // No guessed tenant/event identity, durable recovery, or automatic retry.
-    const args = queued;
-    const sent = await sendJobAssignedEmail(
-      args.email,
-      args.propertyName,
-      args.scheduledDate,
-      args.startTime,
-      { companyName: args.companyName, replyTo: args.replyTo }
-    );
-    if (!sent) {
-      console.error("[emailNotifications] Legacy job assigned email failed");
-    }
+    // An email address alone cannot prove current worker/profile authorization.
+    // Suppress unidentified legacy work invitations; do not guess tenant identity
+    // or synthesize/rewrite delivery ledger records.
     return null;
   },
 });

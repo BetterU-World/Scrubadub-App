@@ -196,11 +196,16 @@ describe("operational email ledger and dispatch", () => {
     expect(await s.row()).toMatchObject({ state: "unknown", category: "claim_expired" });
   });
 
-  it.each(["inactive", "removed", "foreign-worker", "foreign-job", "cancelled", "superseded"] as const)("revalidates %s between attempts", async change => {
+  it.each(["inactive", "removed", "foreign-worker", "foreign-job", "cancelled", "superseded", "profile-inactive", "profile-archived", "duplicate-profile", "foreign-profile"] as const)("revalidates %s between attempts", async change => {
     const s = await setup(); vi.mocked(deliverJobAssignedEmail).mockResolvedValueOnce({ status: "failed", category: "rate_limited" });
     await s.dispatch(); const next = (await s.row())!.nextAttemptAt!;
     await s.t.run(async ctx => {
       if (change === "inactive") await ctx.db.patch(s.worker, { status: "inactive" });
+      if (change.startsWith("profile-") || change === "duplicate-profile" || change === "foreign-profile") {
+        const profile = { companyId: change === "foreign-profile" ? s.foreignCompany : s.companyId, userId: s.worker, workerType: "w2_employee" as const, workerStatus: change === "profile-inactive" ? "inactive" as const : change === "profile-archived" ? "archived" as const : "active" as const, primaryRole: "cleaner" as const, eligibleRoles: ["cleaner" as const], onboardingStatus: "complete" as const, jobEligibilityStatus: "eligible" as const, createdAt: NOW, updatedAt: NOW };
+        await ctx.db.insert("workerProfiles", profile);
+        if (change === "duplicate-profile") await ctx.db.insert("workerProfiles", profile);
+      }
       if (change === "foreign-worker") await ctx.db.patch(s.worker, { companyId: s.foreignCompany });
       if (change === "foreign-job") await ctx.db.patch(s.job, { companyId: s.foreignCompany });
       if (change === "removed") { await ctx.db.patch(s.job, { cleanerIds: [] }); const m = await ctx.db.query("teamMembers").withIndex("by_teamId_userId", q => q.eq("teamId", s.team).eq("userId", s.worker)).unique(); await ctx.db.patch(m!._id, { active: false }); }

@@ -25,9 +25,10 @@ describe("assignment email dispatch", () => {
     await t.action(internal.actions.emailNotifications.sendJobAssigned, { ...args, assignmentContext: { ...args.assignmentContext, revision: 2 } });
     expect(deliverJobAssignedEmail).toHaveBeenCalledTimes(1);
   });
-  it("retains the validator contract of already-queued legacy payloads", async () => {
+  it("accepts legacy payloads but fails closed without current recipient identity", async () => {
     const t = convexTest(schema, modules);
     await t.action(internal.actions.emailNotifications.sendJobAssigned, { email: "legacy@worker.test", propertyName: "Place", scheduledDate: "2030-01-01", companyName: "Legacy" });
-    expect(sendJobAssignedEmail).toHaveBeenCalledExactlyOnceWith("legacy@worker.test", "Place", "2030-01-01", undefined, { companyName: "Legacy", replyTo: undefined });
+    expect(sendJobAssignedEmail).not.toHaveBeenCalled();
+    expect(deliverJobAssignedEmail).not.toHaveBeenCalled();
   });
 });
