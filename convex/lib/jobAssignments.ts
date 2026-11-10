@@ -7,6 +7,7 @@ import { effectiveDeclineWorkers } from "./workerDeclineReviews";
 import { createNotification, logAudit } from "./helpers";
 import { resolveOperationalEmailIdentity } from "./operationalEmailIdentity";
 import { ensureOperationalEmail } from "./operationalEmailQueue";
+import { operationalWorkerAvailable } from "./operationalWorkerEligibility";
 
 export function normalizeWorkerIds(ids: Id<"users">[]) {
   if (ids.length > 1000) throw new Error("Too many job assignees");
@@ -14,6 +15,8 @@ export function normalizeWorkerIds(ids: Id<"users">[]) {
 }
 
 async function notifyAdded(ctx: MutationCtx, job: Doc<"jobs">, workers: Doc<"users">[], initial: boolean) {
+  const available = await Promise.all(workers.map(worker => operationalWorkerAvailable(ctx, worker)));
+  workers = workers.filter((_, i) => available[i]);
   const planned = (job.status === "scheduled" || job.status === "confirmed") && job.startedAt === undefined;
   const property = planned && workers.some(worker => worker.email) && job.propertyId ? await ctx.db.get(job.propertyId) : null;
   const identity = planned && workers.some(worker => worker.email) ? await resolveOperationalEmailIdentity(ctx, job.companyId) : null;
@@ -86,7 +89,7 @@ export async function applyJobAssignmentChange(ctx: MutationCtx, before: Doc<"jo
   const added = nextWorkers.filter(worker => !previousIds.has(worker._id));
   const removed = previousWorkers.filter(worker => !nextIds.has(worker._id));
   await notifyAdded(ctx, after, added, false);
-  for (const worker of removed) await createNotification(ctx, {
+  for (const worker of removed) if (await operationalWorkerAvailable(ctx, worker)) await createNotification(ctx, {
     companyId: before.companyId, userId: worker._id, type: "job_reassigned", title: "Job Assignment Removed",
     // No job link or current property details after access revocation.
     message: `Your assignment to the job scheduled for ${before.scheduledDate} was removed. Contact your company for details.`,

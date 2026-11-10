@@ -1,5 +1,6 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { operationalWorkerAvailable } from "./operationalWorkerEligibility";
 import { isRoleCompatibleWithJobExecution } from "./jobExecutionAuth";
 
 type Ctx = MutationCtx | QueryCtx;
@@ -30,6 +31,8 @@ export async function currentReviewWorkers(ctx: Ctx, job: Doc<"jobs">) {
   }
   if (ids.size > MAX_RECIPIENTS) throw new Error("Too many review recipients");
   const users = await Promise.all([...ids].map(id => ctx.db.get(id)));
-  return users.filter((user): user is Doc<"users"> => !!user && user.companyId === job.companyId &&
+  const eligible = users.filter((user): user is Doc<"users"> => !!user && user.companyId === job.companyId &&
     user.status === "active" && isRoleCompatibleWithJobExecution(user.role, job.type));
+  const available = await Promise.all(eligible.map(user => operationalWorkerAvailable(ctx, user)));
+  return eligible.filter((_, i) => available[i]);
 }

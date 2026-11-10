@@ -1,5 +1,6 @@
 import { sharedJobAccess } from "../lib/sharedJobAuthorization";
-import { query } from "../_generated/server";
+import { query, type QueryCtx } from "../_generated/server";
+import type { Doc } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { hasManagerPermission } from "../lib/auth";
 import { requireOwnerManagerCompany, requireStaffCompany, requireVerifiedStaffSession } from "../lib/sessionAuth";
@@ -26,6 +27,11 @@ function workerSafeJob(job: any) {
 
 async function isManagerPersonallyAssigned(ctx: any, job: any, userId: any) {
   return job.assignedManagerId === userId || await isUserAssignedToJob(ctx, job, userId);
+}
+
+async function teamNameForJob(ctx: QueryCtx, job: Doc<"jobs">) {
+  const team = job.assignedTeamId ? await ctx.db.get(job.assignedTeamId) : null;
+  return team?.companyId === job.companyId ? team.name : null;
 }
 
 // Hard cap for company-scoped job queries
@@ -133,7 +139,7 @@ export const list = query({
       const teamDocs = await Promise.all(teamIds.map((id) => ctx.db.get(id!)));
       const teamMap = new Map<string, any>();
       for (const t of teamDocs) {
-        if (t) teamMap.set(t._id, t);
+        if (t?.companyId === args.companyId) teamMap.set(t._id, t);
       }
 
       return Promise.all(
@@ -142,7 +148,7 @@ export const list = query({
           const cleaners = job.cleanerIds
             .map((id) => {
               const user = userMap.get(id);
-              return user ? { _id: user._id, name: user.name } : null;
+              return user?.companyId === job.companyId ? { _id: user._id, name: user.name } : null;
             })
             .filter(Boolean);
 
@@ -224,12 +230,13 @@ export const get = query({
     const cleaners = await Promise.all(
       job.cleanerIds.map(async (id) => {
         const u = await ctx.db.get(id);
-        return u ? { _id: u._id, name: u.name, email: u.email } : null;
+        return u?.companyId === job.companyId ? { _id: u._id, name: u.name, email: u.email } : null;
       })
     );
 
-    const assignedTeam = job.assignedTeamId ? await ctx.db.get(job.assignedTeamId) : null;
-    const teamMemberships = job.assignedTeamId
+    const teamDoc = job.assignedTeamId ? await ctx.db.get(job.assignedTeamId) : null;
+    const assignedTeam = teamDoc?.companyId === job.companyId ? teamDoc : null;
+    const teamMemberships = assignedTeam
       ? await ctx.db
           .query("teamMembers")
           .withIndex("by_teamId", (q) => q.eq("teamId", job.assignedTeamId!))
@@ -239,7 +246,7 @@ export const get = query({
     const teamUsers = await Promise.all(teamMemberships.map((m) => ctx.db.get(m.userId)));
     const assignedTeamMembers = teamMemberships.map((m, idx) => {
       const u = teamUsers[idx];
-      return u ? { _id: u._id, name: u.name, email: u.email, role: m.role, userRole: u.role } : null;
+      return u?.companyId === job.companyId && m.companyId === job.companyId ? { _id: u._id, name: u.name, email: u.email, role: m.role, userRole: u.role } : null;
     }).filter(Boolean);
 
     const form = await ctx.db
@@ -336,7 +343,7 @@ export const getForCleaner = query({
             sharedWorkAccess: await sharedJobAccess(ctx, job),
             propertyName: property?.name ?? job.propertySnapshot?.name ?? "Unknown",
             propertyAddress: property?.address ?? job.propertySnapshot?.address ?? "",
-            assignedTeamName: team?.name ?? null,
+            assignedTeamName: team?.companyId === job.companyId ? team.name : null,
             assignmentType: job.assignedTeamId ? "team" : "individual",
           });
         })
@@ -384,7 +391,7 @@ export const getForManager = query({
           const cleaners = await Promise.all(
             job.cleanerIds.map(async (id) => {
               const u = await ctx.db.get(id);
-              return u ? { _id: u._id, name: u.name } : null;
+              return u?.companyId === job.companyId ? { _id: u._id, name: u.name } : null;
             })
           );
           const form = await ctx.db
@@ -406,7 +413,7 @@ export const getForManager = query({
             cleaners: cleaners.filter(Boolean),
             formStatus: form ? form.status : null,
             inspectionStatus,
-            assignedTeamName: job.assignedTeamId ? (await ctx.db.get(job.assignedTeamId))?.name ?? null : null,
+            assignedTeamName: await teamNameForJob(ctx, job),
             assignmentType: job.assignedTeamId ? "team" : "individual",
             isAssignedToCurrentUser: await isManagerPersonallyAssigned(ctx, job, user._id),
             canCurrentUserExecute: sharedAccess.allowed &&
@@ -467,7 +474,7 @@ export const getCalendarJobs = query({
           const cleaners = await Promise.all(
             job.cleanerIds.map(async (id) => {
               const u = await ctx.db.get(id);
-              return u ? { _id: u._id, name: u.name } : null;
+              return u?.companyId === job.companyId ? { _id: u._id, name: u.name } : null;
             })
           );
           const team = job.assignedTeamId ? await ctx.db.get(job.assignedTeamId) : null;
@@ -493,7 +500,7 @@ export const getCalendarJobs = query({
             sharedWorkAccess: await sharedJobAccess(ctx, job),
             propertyName: property?.name ?? job.propertySnapshot?.name ?? "Unknown",
             cleaners: cleaners.filter(Boolean),
-            assignedTeamName: team?.name ?? null,
+            assignedTeamName: team?.companyId === job.companyId ? team.name : null,
             assignmentType: job.assignedTeamId ? "team" : "individual",
             partnerResponseStatus,
             isAssignedToCurrentUser: user.role === "manager"

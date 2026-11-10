@@ -1,3 +1,4 @@
+import { operationalWorkerAvailable } from "./operationalWorkerEligibility";
 import { createNotification } from "./helpers";
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -9,7 +10,9 @@ type Ctx = MutationCtx | QueryCtx;
 const actionable = (job: Doc<"jobs">) => ["scheduled", "confirmed", "in_progress", "rework_requested"].includes(job.status);
 // V1 is cleaner awareness; executor/manager/owner audiences are not expanded.
 async function workers(ctx: Ctx, job: Doc<"jobs">) {
-  return (await effectiveDeclineWorkers(ctx, job)).filter(user => user.role === "cleaner");
+  const candidates = (await effectiveDeclineWorkers(ctx, job)).filter(user => user.role === "cleaner");
+  const available = await Promise.all(candidates.map(user => operationalWorkerAvailable(ctx, user)));
+  return candidates.filter((_, i) => available[i]);
 }
 
 /** Called once inside the successful schedule update transaction, after assignment changes. */
@@ -33,7 +36,7 @@ export async function notifyJobScheduleChange(ctx: MutationCtx, before: Doc<"job
 /** Fail closed before returning any schedule snapshot or property label to the caller. */
 export async function visibleScheduleNotification(ctx: Ctx, notification: Doc<"notifications">, user: Doc<"users">) {
   if (notification.type !== "job_schedule_changed") return true;
-  if (user.role !== "cleaner" || user.status !== "active" || user.companyId !== notification.companyId ||
+  if (!await operationalWorkerAvailable(ctx, user) || user.role !== "cleaner" || user.status !== "active" || user.companyId !== notification.companyId ||
       notification.userId !== user._id || !notification.relatedJobId || !notification.scheduleChange) return false;
   const job = await ctx.db.get(notification.relatedJobId);
   if (!job || job.companyId !== user.companyId || job.type === "maintenance" || !actionable(job) ||

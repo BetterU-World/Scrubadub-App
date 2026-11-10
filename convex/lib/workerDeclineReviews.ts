@@ -1,5 +1,6 @@
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { operationalWorkerAvailable } from "./operationalWorkerEligibility";
 import { isRoleCompatibleWithJobExecution } from "./jobExecutionAuth";
 import { isUserAssignedToJob } from "./teams";
 import { requireOwnerManagerSession } from "./sessionAuth";
@@ -75,7 +76,7 @@ export async function requestWorkerDeclineReview(ctx: MutationCtx, job: Doc<"job
       .take(MAX_REVIEWERS_PER_ROLE + 1);
     if (candidates.length > MAX_REVIEWERS_PER_ROLE) throw new Error("Too many review recipients; contact support");
     for (const recipient of candidates) {
-      if (await canReviewWorkerDecline(ctx, recipient, job)) {
+      if (await canReviewWorkerDecline(ctx, recipient, job) && await operationalWorkerAvailable(ctx, recipient)) {
         await createNotification(ctx, {
           companyId: job.companyId, userId: recipient._id, type: "worker_decline_review",
           title: "Worker availability needs review",

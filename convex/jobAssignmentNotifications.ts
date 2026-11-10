@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { effectiveDeclineWorkers } from "./lib/workerDeclineReviews";
 import { requireSharedJobAccepted } from "./lib/sharedJobAuthorization";
 import { resolveOperationalEmailIdentity } from "./lib/operationalEmailIdentity";
+import { operationalWorkerAvailable } from "./lib/operationalWorkerEligibility";
 
 /** Re-read immediately before external delivery; stale queued assignment invitations are suppressed. */
 export const assignmentEmailState = internalQuery({
@@ -16,7 +17,7 @@ export const assignmentEmailState = internalQuery({
       job.timerStoppedAt !== undefined || !["scheduled", "confirmed"].includes(job.status)) return null;
     try { await requireSharedJobAccepted(ctx, job); } catch { return null; }
     const worker = (await effectiveDeclineWorkers(ctx, job)).find(user => user._id === args.workerId);
-    if (!worker?.email) return null;
+    if (!worker?.email || !await operationalWorkerAvailable(ctx, worker)) return null;
     const property = job.propertyId ? await ctx.db.get(job.propertyId) : null;
     if (property && property.companyId !== job.companyId) return null;
     return { email: worker.email, propertyName: property?.name ?? job.propertySnapshot?.name ?? "a property",
