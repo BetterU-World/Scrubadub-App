@@ -179,6 +179,10 @@ export function deriveClientRequestTimeline(
         ? { occurredAt: facts.request.declinedAt }
         : {}),
     });
+  if (request.status === "cancelled" && !events.some(event => event.kind === "service_cancelled")) {
+    // Current status, not invented historical evidence: no timestamp or window.
+    events.push({ id: "service-cancelled-status", kind: "service_cancelled", state: "terminal" });
+  }
   const lastEvent = events[events.length - 1];
   const currentKind =
     request.status === "cancelled" ? "service_cancelled" : request.status === "processing" ? undefined : request.status;

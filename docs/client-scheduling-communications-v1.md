@@ -25,6 +25,17 @@ rescheduler or multi-contact recipient fanout was found in the inspected paths.
 Walkthroughs are separate appointments. Untouched shared-copy rejection is not a
 client service cancellation. Historical fixtures/backfills are not producers.
 
+Commercial account pause/end is operational lifecycle, not access revocation.
+`commercialAccounts.transition` records lifecycle history and reports future jobs;
+it neither revokes the client relationship nor automatically cancels those jobs.
+Existing `getClientLocations`/client-home projections retain paused/ended accounts
+and their status. Accordingly, `currentClientLocation` intentionally retains
+authorized scheduling history for active, paused and ended commercial accounts.
+Current tenant, relationship ownership and session checks still apply; missing,
+moved or revoked relationships suppress that history. New request scheduling
+continues to require an active account through its existing validation. This does
+not change generation, cancellation or commercial lifecycle policy.
+
 ## Durable facts and event identity
 
 The existing timeline derives milestones from current records and has no durable
@@ -104,6 +115,12 @@ replaces, rather than duplicates, the legacy synthetic scheduled milestone.
 Company cancellation has a distinct terminal timeline/status summary and is not
 worded as a request merely awaiting confirmation.
 
+When current request status is cancelled but no durable cancellation fact is
+visible, the timeline adds an undated terminal status marker. It carries no actor,
+window or delivery claim and is not stored as a historical event. A real visible
+cancellation keeps its original identity/timestamp and is never duplicated by
+this marker. Earlier milestones remain completed rather than becoming current.
+
 `/client/services` gains a small Scheduling updates section linking back to the
 existing request route. Current, upcoming and recent inventory remain separate.
 There is no new navigation route or unread badge; existing mobile client navigation
@@ -133,13 +150,16 @@ production reconciliation is included.
 
 ## Validation
 
-Local validation passed: 2,108 tests across 219 files, including 24 focused client
-scheduling backend cases and 6 new rendered presentation cases. The focused
-scheduling/portal selection passed 42 tests. Full regressions include worker
+Local validation passed: 2,115 tests across 219 files, including 26 focused client
+scheduling backend cases and 8 rendered presentation cases. The targeted
+cancellation/lifecycle selection passed 44 tests. Full regressions include worker
 schedule changes, assignments, decline review, shared acceptance, completion,
 approval and invoice email safety. Both Convex/frontend typechecks,
 frontend-only build and `git diff --check` passed. Existing source-map, Node
 deprecation/timer and frontend bundle-size warnings remain nonblocking.
+The final full-suite run used four workers; an earlier run alongside concurrent
+checks hit an unrelated resource test's five-second timeout. No tests were skipped
+or timeout limits changed.
 
 No authenticated browser or production smoke test was run. Portal presentation is
 verified through rendered component tests, existing mobile navigation and the

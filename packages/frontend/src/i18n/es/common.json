@@ -1,5 +1,6 @@
 {
   "clientScheduling": {
+    "cancelledStatusDescription": "Este servicio está cancelado y ya no está programado.",
     "title": "Actualizaciones de horario",
     "service_confirmed": {
       "label": "Servicio confirmado",

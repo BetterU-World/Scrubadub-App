@@ -68,6 +68,20 @@ describe("client scheduling communications presentation", () => {
     expect(html).toContain(en.clientScheduling.timeUnknown);
     expect(renderToStaticMarkup(createElement(ClientSchedulingUpdates, { events: [] }))).toBe("");
   });
+  it.each(["en", "es"])("renders a status-only cancellation without inventing historical evidence in %s", language => {
+    state.language = language;
+    const copy = language === "es" ? es : en;
+    const data = request("cancelled", []);
+    const html = renderToStaticMarkup(createElement(ClientRequestTimeline, { request: data }));
+    const currentStep = html.slice(html.indexOf('aria-current="step"')).split("</li>")[0];
+    expect(currentStep).toContain(copy.clientScheduling.service_cancelled.label);
+    expect(currentStep).toContain(copy.clientScheduling.cancelledStatusDescription);
+    expect(currentStep).not.toContain(copy.clientScheduling.service_cancelled.description);
+    expect(currentStep).not.toContain("<time");
+    expect(currentStep).not.toContain("America/New_York");
+    expect(deriveClientRequestTimeline(data).filter(event => event.kind === "service_cancelled")).toHaveLength(1);
+    expect(deriveClientRequestTimeline(request("cancelled", [cancelled])).filter(event => event.kind === "service_cancelled").map(event => event.id)).toEqual(["cancel-1"]);
+  });
   it("keeps the EN/ES event and status structures aligned", () => {
     expect(Object.keys(en.clientScheduling).sort()).toEqual(Object.keys(es.clientScheduling).sort());
     expect(Object.keys(en.clientRequests.statusSummary.cancelled).sort()).toEqual(Object.keys(es.clientRequests.statusSummary.cancelled).sort());

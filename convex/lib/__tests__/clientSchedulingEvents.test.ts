@@ -113,6 +113,18 @@ describe("client scheduling communications", () => {
     const recurring = await s.t.run(async ctx => { const job = (await ctx.db.get(jobId))!; const { _id, _creationTime, ...fields } = job; return ctx.db.insert("jobs", { ...fields, sourceClientRequestId: undefined, generatedFromCommercialSchedule: true }); });
     await s.t.mutation(api.mutations.jobs.update, { ...s.staff(), jobId: recurring, startTime: "10:00" }); expect(await s.events()).toHaveLength(1);
   });
+  it.each(["paused", "ended"] as const)("retains authorized commercial service history when the account is %s", async status => {
+    const s = await setup(true); const { jobId } = await s.confirm();
+    await s.t.mutation(api.mutations.jobs.cancel, { ...s.staff(), jobId, reason: "other", notes: "Service cancelled" });
+    const transition = status === "paused" ? api.mutations.commercialAccounts.pauseCommercialAccount : api.mutations.commercialAccounts.endCommercialAccount;
+    await s.t.mutation(transition, { ...s.staff(), commercialAccountId: s.account, reason: "other", notes: "Operational lifecycle change" });
+    expect((await s.services()).schedulingUpdates.map((event: any) => event.kind).sort()).toEqual(["service_cancelled", "service_confirmed"]);
+    expect((await s.detail()).request.status).toBe("cancelled");
+    expect((await s.t.query(api.queries.clientPortal.getClientLocations, s.auth())).commercialAccounts[0].status).toBe(status);
+    await s.t.run(ctx => ctx.db.patch(s.relationship, { status: "inactive" }));
+    expect((await s.services()).schedulingUpdates).toHaveLength(0);
+    expect((await s.detail()).request).toBeNull();
+  });
   it("does not turn staffing refusal into a client service cancellation", async () => {
     const s = await setup(); const { jobId } = await s.confirm(); await s.t.run(ctx => ctx.db.patch(jobId, { status: "denied", acceptanceStatus: "denied" }));
     expect((await s.services()).schedulingUpdates.map((e: any) => e.kind)).toEqual(["service_confirmed"]); expect((await s.services()).upcoming[0].status).toBe("confirmed");

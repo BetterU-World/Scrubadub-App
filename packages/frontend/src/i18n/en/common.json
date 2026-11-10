@@ -1,5 +1,6 @@
 {
   "clientScheduling": {
+    "cancelledStatusDescription": "This service is cancelled and is no longer scheduled.",
     "title": "Scheduling updates",
     "service_confirmed": {
       "label": "Service confirmed",

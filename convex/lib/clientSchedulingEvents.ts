@@ -11,6 +11,8 @@ export async function currentClientLocation(ctx: Ctx, record: LocationRecord) {
       ? { name: property.name, address: property.address } : null;
   }
   if (record.commercialAccountId) {
+    // Pause/end controls commercial operations, not relationship authorization.
+    // Keep authorized service history; revoked/moved relationships still deny it.
     const account = await ctx.db.get(record.commercialAccountId);
     return account && account.companyId === record.companyId && account.clientRelationshipId === record.clientRelationshipId
       ? { name: account.clientName, address: account.serviceAddress } : null;
