@@ -1,6 +1,5 @@
 import { QueryCtx, MutationCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
-import { operationalWorkerAvailable } from "./operationalWorkerEligibility";
 
 export type TeamAssignmentRole = "lead" | "member";
 
@@ -52,7 +51,11 @@ export async function getActiveTeamMembers(
     .withIndex("by_teamId_active", (q) => q.eq("teamId", teamId).eq("active", true))
     .take(1001);
   if (members.length > 1000) throw new Error("Team is too large");
-  return members.filter(m => m.companyId === team.companyId);
+  const tenantMembers = members.filter(m => m.companyId === team.companyId);
+  const users = await Promise.all(tenantMembers.map(m => ctx.db.get(m.userId)));
+  // Membership metadata alone cannot establish ownership of the referenced user.
+  // Preserve roster status/archive semantics; operational eligibility is separate.
+  return tenantMembers.filter((_, i) => users[i]?.companyId === team.companyId);
 }
 
 export async function getActiveTeamMemberUserIds(
@@ -125,8 +128,9 @@ export async function getJobRecipientUserIds(
   const users = await Promise.all([...ids].map(id => ctx.db.get(id)));
   const eligible = users.filter((user): user is NonNullable<typeof user> =>
     !!user && user.companyId === job.companyId && user.status === "active");
-  const available = await Promise.all(eligible.map(user => operationalWorkerAvailable(ctx, user)));
-  return eligible.filter((_, i) => available[i]).map(user => user._id);
+  // Also used for performed-worker candidates; communication eligibility belongs
+  // at the notification boundary, not in evidence/assignment selection.
+  return eligible.map(user => user._id);
 }
 
 export async function assertTeamInCompany(

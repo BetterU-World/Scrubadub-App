@@ -70,3 +70,63 @@ No schema, indexes, migration, backfill, package or environment changes. No depl
 Rollback: revert this PR and deploy through the normal separately approved release process. Stored membership audit entries are additive and remain valid. No historical data repair is necessary; reverting would restore the prior access/notification weaknesses. Newly suppressed ledger outcomes are not replayed automatically.
 
 Final test counts and CI state are recorded in the draft PR description.
+
+## Focused review of a70fa15: disabled-profile authorization and user ownership
+
+**Pre-merge policy question remains open:** worker-profile disablement is not currently a persistent job-access or account-disable boundary. The review below demonstrates the gap; it does not declare this access safe or intentional. This correction does not change shared assignment or general session authorization. Founder review must choose the desired disablement semantics before relying on profile status for offboarding.
+
+### Concern 1: exact authenticated behavior
+
+| Boundary after profile becomes inactive/archived while users.status stays active | Actual behavior (unchanged by this correction) |
+| --- | --- |
+| setWorkerStatus transition | Revokes all existing staff sessions and emits account_disabled with source worker_profile; does not change users.status |
+| upsertWorkerProfile transition | Same revocation and security event on status transition; creating a non-active profile also revokes existing sessions |
+| Repeating the same disabled status | Existing-profile paths only revoke on transition; a newly issued session is not revoked by an unchanged-status call |
+| Password login | authActions.signIn validates password and users.status, not workerProfiles; can issue a fresh session |
+| Session creation | sessionInternal.create inserts the principal binding without a profile check, including if issuance races after revocation |
+| Action session validation | lib/sessions.getPrincipalFromSessionToken checks expiry/revocation and active users.status; no profile status check |
+| Query/mutation session validation | lib/sessionAuth.requireVerifiedStaffSession checks the same account/session boundary; no profile status check |
+| Hydration | authQueries.getCurrentUser uses the general staff guard; a fresh session hydrates an active account despite disabled profile |
+| Direct or current-team assignment | Fresh login can still read job details/list/calendar and forms, start compatible jobs, and issue bound form-photo upload intents; shared-job/lifecycle/role/tenant checks continue to apply |
+| Operational communications | PR288 suppresses explicitly inactive/archived profile recipients and assignment/schedule inbox reads independently of job-access policy |
+| Explicit active-profile guard | requireActiveWorkerProfile rejects missing/non-active profiles, but its production caller is completeMyOnboardingItem; it is not used by general login, job execution, form reads or attachments |
+| Own financial history | A fresh active-account session can use outgoingQueries.listRecipientHistory under its frozen recipient/company rules, irrespective of assignment/profile status |
+| Account inactive | Canonical updateEmployeeStatus revokes sessions; password login fails and staff queries/mutations deny access |
+
+Evidence of intent is conflicting: profile transitions revoke sessions and label security events account_disabled, but they deliberately store a separate administrative status without changing the account or checking it at login/session use. No repository policy resolves whether this is a one-time lifecycle logout, persistent workforce execution disablement, or account-wide offboarding. Therefore it is a demonstrated policy/authorization gap, not evidence that continued access is founder-approved. Introducing any of the following rules without a decision would invent policy:
+
+- Deny all staff login/session access for inactive/archived worker profiles: would also remove Manager administrative grants and own historical financial access.
+- Deny execution/worker operational access only: would need a clear distinction between current job details, historic evidence, Manager administrative job reads and financial reads.
+- Preserve current separation: users.status controls account access, profile status controls administrative lifecycle and communications; product copy and offboarding guidance would need to make this explicit.
+
+A disabled Manager currently has no special profile exemption or restriction: after re-login, existing canSeeAllJobs or assignedManagerId grants still work; assignment is still separately required for execution. A directly assigned compatible Manager can execute even with a disabled profile. Maintenance workers have the same profile gap for maintenance jobs. Owners cannot be given a worker profile through canonical upsert; Owner access is independently role-based. Legacy users without profiles remain valid. The shared assignment helper is intentionally not changed to collapse these distinct grants.
+
+Authenticated characterization tests in disabledProfileAuthorizationAudit.test.ts cover both disablement mutations, inactive and archived states, direct/team-only paths, old-session rejection, real fresh password login, action-session validation, job execution, form reads, bound attachment issuance, own-history authorization, independent Manager/Owner grants, maintenance, legacy users, account disablement and the missing-profile upsert branch. They are explicitly named as characterization of the unresolved gap, not a security guarantee. No actual upload, email or payment is sent.
+
+### Concern 2: complete helper caller trace and correction
+
+Production call graph (searched across convex/):
+
+- getActiveTeamMembers -> getActiveTeamMemberUserIds -> getJobRecipientUserIds.
+- getJobRecipientUserIds -> mutations/jobs.cancel (cancellation notices), lib/performedWorkers.freezePerformedWorkers (submission/historical candidates), and workerCompensation.submissionCandidates (roster display).
+- Execution and team-lead authority do not call this roster helper: isUserAssignedToJob -> isActiveTeamMember -> getActiveTeamMembership, and canSubmitFinalJob -> isActiveTeamLead -> getActiveTeamMembership. The per-user helper already checks the referenced user company/status.
+- Explicit assignment deltas use effectiveDeclineWorkers; review recipients use currentReviewWorkers; both separately validate loaded user company/status/role. Job/team roster decorations also have their own tenant checks.
+
+At a70fa15 the roster helper's exported IDs could include a foreign user when the membership.companyId matched the team but the referenced user belonged elsewhere. The known recipient/candidate callers already rechecked user company, so this audit did not prove an end-to-end foreign-user execution or notification exploit through those callers. Nevertheless the shared helper violated its tenant contract and could mislead any consumer trusting those rows/IDs. The correction filters referenced users to the team's company inside getActiveTeamMembers, before either exported rows or IDs leave it. Missing users are also excluded. Account status is not filtered here, preserving roster semantics; operational status/role/profile checks remain downstream.
+
+The existing by_teamId_active index and 1001-row take remain; the cap is checked before filtering. Archived teams remain valid for existing access. No schema/index, stored membership, stored assignment, lead grant, financial calculation or client-commitment changes are introduced by the ownership filter.
+
+### Performance and policy-change review
+
+The helper adds one bounded user lookup per tenant-matching membership (maximum 1000) and no table scan, write, scheduler or background repair. Its current downstream recipient/candidate path also resolves users, so this adds bounded repeated reads there; this is the explicit cost of enforcing the shared helper's ownership contract, not a claim of zero overhead. Per-user execution/lead checks are unchanged. Assignment deltas now again use account-active assignment eligibility without the profile communications filter, restoring the pre-PR semantics described below. No broad profile reads were added to login/session/job/form/attachment/financial guards. The indexed profile checks now run at communication boundaries, bounded by existing recipient/inbox caps; no new unbounded query or global session/job-access policy is introduced. Live load benchmarking was not performed.
+
+### Unintended shared-helper effects corrected during review
+
+Tracing all callers also proved that the prior profile-communications filter had been placed too broadly:
+
+1. getJobRecipientUserIds supplies freezePerformedWorkers and workerCompensation.submissionCandidates, not only cancellation notifications. Filtering disabled profiles there could prevent recording a current assignee who was still authorized to work. Restore its account-active, same-company assignment union and apply operationalWorkerAvailable at mutations/jobs.cancel instead. Disabled recipients still get no cancellation notice; performer/history policy is not changed by a communications predicate.
+2. effectiveDeclineWorkers supplies assignment deltas, worker review eligibility and the single-vs-multi-worker decision, in addition to communications. Excluding disabled profiles could turn a multi-worker decline into legacy single-worker whole-job denial/cancellation even while those users remained authorized to execute. Restore its pre-PR active-account/compatible-role union; filter profiles only in assignment notice creation/removal, schedule notice audience selection, delivery-time assignment state and decline-review notification recipients. currentReviewWorkers remains a communications-only helper and keeps its filter.
+
+Regression tests prove that a disabled-profile current assignee remains a performed-worker candidate and can be recorded in immutable completion evidence under existing authorization; that an active worker's multi-worker decline with another disabled-profile assignee remains a review request, preserves scheduled status and creates no client scheduling event; and that cancellation/assignment communications remain suppressed. These corrections preserve the established access/lifecycle policy while the broader profile-disable question remains unresolved.
+
+Final local validation counts, commit and current CI state are recorded in the same Draft PR #288 description.

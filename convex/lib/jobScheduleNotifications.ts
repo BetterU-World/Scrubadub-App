@@ -10,7 +10,9 @@ type Ctx = MutationCtx | QueryCtx;
 const actionable = (job: Doc<"jobs">) => ["scheduled", "confirmed", "in_progress", "rework_requested"].includes(job.status);
 // V1 is cleaner awareness; executor/manager/owner audiences are not expanded.
 async function workers(ctx: Ctx, job: Doc<"jobs">) {
-  return (await effectiveDeclineWorkers(ctx, job)).filter(user => user.role === "cleaner");
+  const candidates = (await effectiveDeclineWorkers(ctx, job)).filter(user => user.role === "cleaner");
+  const available = await Promise.all(candidates.map(user => operationalWorkerAvailable(ctx, user)));
+  return candidates.filter((_, i) => available[i]);
 }
 
 /** Called once inside the successful schedule update transaction, after assignment changes. */

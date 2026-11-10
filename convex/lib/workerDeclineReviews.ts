@@ -28,10 +28,8 @@ export async function effectiveDeclineWorkers(ctx: Ctx, job: Doc<"jobs">) {
   }
   if (ids.size > MAX_ROSTER) throw new Error("Assignment is too large for worker review; contact the owner");
   const users = await Promise.all([...ids].map(id => ctx.db.get(id)));
-  const eligible = users.filter((user): user is Doc<"users"> => !!user && user.companyId === job.companyId &&
+  return users.filter((user): user is Doc<"users"> => !!user && user.companyId === job.companyId &&
     user.status === "active" && isRoleCompatibleWithJobExecution(user.role, job.type));
-  const available = await Promise.all(eligible.map(user => operationalWorkerAvailable(ctx, user)));
-  return eligible.filter((_, i) => available[i]);
 }
 
 export async function canReviewWorkerDecline(ctx: Ctx, user: Doc<"users">, job: Doc<"jobs">) {
@@ -78,7 +76,7 @@ export async function requestWorkerDeclineReview(ctx: MutationCtx, job: Doc<"job
       .take(MAX_REVIEWERS_PER_ROLE + 1);
     if (candidates.length > MAX_REVIEWERS_PER_ROLE) throw new Error("Too many review recipients; contact support");
     for (const recipient of candidates) {
-      if (await canReviewWorkerDecline(ctx, recipient, job)) {
+      if (await canReviewWorkerDecline(ctx, recipient, job) && await operationalWorkerAvailable(ctx, recipient)) {
         await createNotification(ctx, {
           companyId: job.companyId, userId: recipient._id, type: "worker_decline_review",
           title: "Worker availability needs review",

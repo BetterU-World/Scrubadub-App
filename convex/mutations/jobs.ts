@@ -1,4 +1,5 @@
 import { recordClientSchedulingEvent } from "../lib/clientSchedulingEvents";
+import { operationalWorkerAvailable } from "../lib/operationalWorkerEligibility";
 import { notifyJobScheduleChange } from "../lib/jobScheduleNotifications";
 import { assertSchedule, sameSchedule } from "../lib/jobScheduleModel";
 import { requireSharedJobAccepted } from "../lib/sharedJobAuthorization";
@@ -483,6 +484,8 @@ export const cancel = mutation({
     }
     recipientIds.delete(actor._id);
     for (const recipientId of recipientIds) {
+      const recipient = await ctx.db.get(recipientId);
+      if (!recipient || recipient.companyId !== job.companyId || !await operationalWorkerAvailable(ctx, recipient)) continue;
       await createNotification(ctx, {
         companyId: job.companyId,
         userId: recipientId,
