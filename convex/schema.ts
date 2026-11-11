@@ -1,3 +1,4 @@
+import { billingSnapshot, noticeKind, noticeStatus } from "./lib/subscriptionNoticeModel";
 import { clientSchedulingEventFields } from "./lib/clientSchedulingEventModel";
 import { jobScheduleChange } from "./lib/jobScheduleModel";
 import { defineSchema, defineTable } from "convex/server";
@@ -23,7 +24,17 @@ export default defineSchema({
     stripeCheckoutSessionId: v.string(), stripeCustomerId: v.string(), stripeSubscriptionId: v.string(),
     termsVersion: v.string(), disclosure: v.string(), consentText: v.string(),
     stripeEventId: v.string(), completedEventAt: v.number(), recordedAt: v.number(),
-  }).index("by_session", ["stripeCheckoutSessionId"]),
+  }).index("by_session", ["stripeCheckoutSessionId"]).index("by_subscription", ["stripeSubscriptionId"]),
+  subscriptionNoticeAccounts: defineTable({
+    companyId: v.optional(v.id("companies")), snapshot: billingSnapshot, fingerprint: v.string(), updatedAt: v.number(),
+  }).index("by_subscription", ["snapshot.subscriptionId"]),
+  subscriptionNotices: defineTable({
+    accountId: v.id("subscriptionNoticeAccounts"), eventKey: v.string(), kind: noticeKind,
+    targetAt: v.number(), dueAt: v.number(), expiresAt: v.number(), status: noticeStatus,
+    fingerprint: v.string(), attempts: v.number(), firstAttemptAt: v.optional(v.number()),
+    leaseUntil: v.optional(v.number()), providerId: v.optional(v.string()), updatedAt: v.number(),
+  }).index("by_key", ["eventKey"]).index("by_account", ["accountId"])
+    .index("by_status_due", ["status", "dueAt"]).index("by_status_lease", ["status", "leaseUntil"]),
   assessmentDefinitions: defineTable({
     key: v.string(),
     definitionVersion: v.number(),
@@ -353,6 +364,7 @@ export default defineSchema({
     subscriptionStatus: v.optional(v.string()),
     currentPeriodEnd: v.optional(v.number()),
     cancelAtPeriodEnd: v.optional(v.boolean()),
+    subscriptionCancelAt: v.optional(v.number()),
     subscriptionBecameInactiveAt: v.optional(v.number()),
     // Stripe event ordering guard. Older webhook deliveries must not overwrite
     // state from a newer subscription lifecycle event.

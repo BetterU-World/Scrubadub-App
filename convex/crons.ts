@@ -20,4 +20,7 @@ crons.interval("expired-resource-upload-intents", { minutes: 15 }, (internal as 
 
 crons.interval("operational-email-recovery", { minutes: 5 }, internal.operationalEmailDelivery.recover);
 
+crons.interval("subscription-notice-reconciliation", { hours: 4 }, internal.actions.subscriptionNotices.scan, {});
+crons.interval("subscription-notice-delivery", { minutes: 5 }, internal.subscriptionNotices.tick, {});
+
 export default crons;

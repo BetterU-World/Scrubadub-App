@@ -58,6 +58,7 @@ export const syncSubscription = internalMutation({
     status: v.string(),
     currentPeriodEnd: v.optional(v.number()),
     cancelAtPeriodEnd: v.boolean(),
+    subscriptionCancelAt: v.optional(v.number()),
     eventCreated: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -100,6 +101,7 @@ export const syncSubscription = internalMutation({
       subscriptionStatus: args.status,
       currentPeriodEnd: args.currentPeriodEnd,
       cancelAtPeriodEnd: args.cancelAtPeriodEnd,
+      subscriptionCancelAt: args.subscriptionCancelAt,
       subscriptionBecameInactiveAt,
       ...(args.eventCreated !== undefined
         ? { stripeSubscriptionEventCreatedAt: args.eventCreated }

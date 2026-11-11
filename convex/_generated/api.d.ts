@@ -9,6 +9,8 @@
  */
 
 import type * as actions_affiliateStripeConnect from "../actions/affiliateStripeConnect.js";
+import type * as subscriptionNotices from "../subscriptionNotices.js";
+import type * as actions_subscriptionNotices from "../actions/subscriptionNotices.js";
 import type * as actions_billing from "../actions/billing.js";
 import type * as actions_calendarSync from "../actions/calendarSync.js";
 import type * as actions_cleanerPayments from "../actions/cleanerPayments.js";
@@ -235,6 +237,8 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "actions/affiliateStripeConnect": typeof actions_affiliateStripeConnect;
+  subscriptionNotices: typeof subscriptionNotices;
+  "actions/subscriptionNotices": typeof actions_subscriptionNotices;
   "actions/billing": typeof actions_billing;
   "actions/calendarSync": typeof actions_calendarSync;
   "actions/cleanerPayments": typeof actions_cleanerPayments;

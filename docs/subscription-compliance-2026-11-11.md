@@ -1,6 +1,8 @@
 # Subscription compliance review — November 11, 2026
 
-Status: **incomplete draft; release blocked**. No deployment, email, promotion creation, or live billing changes were performed. This is an engineering assessment, not a legal compliance opinion.
+Historical initial investigation. **The implementation and current release requirements are now documented in `subscription-release-readiness.md`, which supersedes the unimplemented-work/blocker lists below.**
+
+Initial status: **incomplete draft; release blocked**. No deployment, email, promotion creation, or live billing changes were performed. This is an engineering assessment, not a legal compliance opinion.
 
 ## Repository findings
 

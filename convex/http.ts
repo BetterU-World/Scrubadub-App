@@ -188,10 +188,14 @@ const stripeWebhook = httpAction(async (ctx, request) => {
           stripePriceId: priceId,
           status: subscription.status,
           currentPeriodEnd,
-          cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
+          cancelAtPeriodEnd: !!(subscription.cancel_at_period_end || subscription.cancel_at),
+          subscriptionCancelAt: subscription.cancel_at ? subscription.cancel_at * 1000 : undefined,
           eventCreated: verifiedEvent.created,
         });
 
+        if (process.env.SCRUB_ENABLE_SUBSCRIPTION_NOTICES === "true" && process.env.SCRUB_SUBSCRIPTION_EMAIL_OWNER === "scrub") {
+          await ctx.scheduler.runAfter(0, internal.actions.subscriptionNotices.refresh, { subscriptionId: subscription.id, customerId: subCustomerId });
+        }
         // Record affiliate attribution on new subscription
         if (verifiedEvent.type === "customer.subscription.created") {
           await ctx.runMutation(internal.mutations.billing.recordAttribution, {
@@ -251,6 +255,9 @@ const stripeWebhook = httpAction(async (ctx, request) => {
             termsVersion: meta.subscriptionTermsVersion, disclosure: session.custom_text?.submit?.message, consentText: session.custom_text?.terms_of_service_acceptance?.message,
             stripeEventId: verifiedEvent.id, completedEventAt: verifiedEvent.created * 1000,
           });
+          if (process.env.SCRUB_ENABLE_SUBSCRIPTION_NOTICES === "true" && process.env.SCRUB_SUBSCRIPTION_EMAIL_OWNER === "scrub") {
+            await ctx.scheduler.runAfter(0, internal.actions.subscriptionNotices.refresh, { subscriptionId, customerId, confirmation: true });
+          }
         }
         // Handle settlement payments
         if (

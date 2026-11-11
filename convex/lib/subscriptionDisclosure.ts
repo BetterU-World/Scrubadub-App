@@ -12,7 +12,7 @@ export function subscriptionDisclosure(price: Stripe.Price, plan: ScrubPlan, app
   }
   const amount = new Intl.NumberFormat("en-US", { style: "currency", currency: price.currency }).format(price.unit_amount / 100);
   const renewal = `SCRUB ${planDisplayName(plan)} automatically renews monthly at ${amount} USD after the 14-day free trial unless canceled. Any applied promotion changes the charges and duration as shown in the order summary; the regular monthly rate resumes after it expires.`;
-  const cancellation = "Cancel automatic renewal before the next charge through Settings > Billing > Manage Billing. Access continues through the subscription end date shown there. Contact scrubadubsolutionsllc@gmail.com for help.";
+  const cancellation = "Cancel automatic renewal before the next charge using Cancel automatic renewal in Settings > Billing, or Settings > Billing > Manage Billing. Access continues through the subscription end date shown there. Contact scrubadubsolutionsllc@gmail.com for help.";
   return {
     consent_collection: { terms_of_service: "required" as const },
     custom_text: {

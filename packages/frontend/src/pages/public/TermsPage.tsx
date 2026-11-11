@@ -8,7 +8,7 @@ export function TermsPage() {
           Terms of Service
         </h1>
         <p className="text-sm text-gray-400 mb-8">
-          Effective November 11, 2026
+          Effective March 1, 2026
         </p>
 
         <p>
@@ -87,6 +87,7 @@ export function TermsPage() {
         </p>
 
         <h2 id="subscriptions">Subscription billing and cancellation</h2>
+        <p className="text-sm text-gray-500">Subscription terms updated November 11, 2026 (version scrub-recurring-2026-11-11-v1).</p>
         <p>
           SCRUB subscriptions include a standard 14-day free trial and automatically
           renew monthly unless canceled. Your selected plan, recurring price, applicable
