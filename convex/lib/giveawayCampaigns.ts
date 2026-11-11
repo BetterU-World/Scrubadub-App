@@ -29,8 +29,8 @@ export interface GiveawayCampaign {
 }
 
 export const firstGiveawayId = "scrub-giveaway-2026-001";
-// Only change this default after approval; historical keys remain independent.
-export const currentGiveawayId = firstGiveawayId;
+// Prepared approved default; historical keys remain independent. Deployment is separately authorized.
+export const currentGiveawayId = giveawayTwoId;
 export const giveawayCampaigns: Record<string, GiveawayCampaign> = {
   [giveawayTwoId]: giveawayTwo,
   [firstGiveawayId]: {

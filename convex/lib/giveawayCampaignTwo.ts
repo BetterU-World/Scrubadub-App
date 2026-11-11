@@ -2,12 +2,12 @@ import type { GiveawayCampaign } from "./giveawayCampaigns";
 
 export const giveawayTwoId = "scrub-giveaway-2026-002";
 
-/** Approval gates deliberately closed. Set the approved actual opening before enabling. */
+/** Founder-approved release configuration; production deployment/activation needs separate authorization. */
 export const giveawayTwo: GiveawayCampaign = {
   campaignId: giveawayTwoId,
-  enabled: false,
-  rulesApproved: false,
-  startsAt: null,
+  enabled: true,
+  rulesApproved: true,
+  startsAt: Date.parse("2026-11-12T09:00:00-05:00"),
   endsAt: Date.parse("2026-12-16T00:00:00-05:00"),
   timezone: "America/New_York",
   name: "SCRUB Giveaway #2",
