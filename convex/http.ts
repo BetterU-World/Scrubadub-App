@@ -188,10 +188,14 @@ const stripeWebhook = httpAction(async (ctx, request) => {
           stripePriceId: priceId,
           status: subscription.status,
           currentPeriodEnd,
-          cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
+          cancelAtPeriodEnd: !!(subscription.cancel_at_period_end || subscription.cancel_at),
+          subscriptionCancelAt: subscription.cancel_at ? subscription.cancel_at * 1000 : undefined,
           eventCreated: verifiedEvent.created,
         });
 
+        if (process.env.SCRUB_ENABLE_SUBSCRIPTION_NOTICES === "true" && process.env.SCRUB_SUBSCRIPTION_EMAIL_OWNER === "scrub") {
+          await ctx.scheduler.runAfter(0, internal.actions.subscriptionNotices.refresh, { subscriptionId: subscription.id, customerId: subCustomerId });
+        }
         // Record affiliate attribution on new subscription
         if (verifiedEvent.type === "customer.subscription.created") {
           await ctx.runMutation(internal.mutations.billing.recordAttribution, {
@@ -238,6 +242,23 @@ const stripeWebhook = httpAction(async (ctx, request) => {
       case "checkout.session.completed": {
         const session = verifiedEvent.data.object as Stripe.Checkout.Session;
         const meta = session.metadata ?? {};
+        if (matchedSecret === "account" && !verifiedEvent.account && session.mode === "subscription" &&
+            meta.subscriptionTermsVersion && session.status === "complete") {
+          const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id;
+          const subscriptionId = typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
+          if (session.consent?.terms_of_service !== "accepted" || !customerId || !subscriptionId ||
+              !session.custom_text?.submit?.message || !session.custom_text?.terms_of_service_acceptance?.message) {
+            throw new Error("Subscription Checkout consent evidence is incomplete");
+          }
+          await ctx.runMutation(internal.mutations.billing.recordCheckoutConsent, {
+            stripeCheckoutSessionId: session.id, stripeCustomerId: customerId, stripeSubscriptionId: subscriptionId,
+            termsVersion: meta.subscriptionTermsVersion, disclosure: session.custom_text?.submit?.message, consentText: session.custom_text?.terms_of_service_acceptance?.message,
+            stripeEventId: verifiedEvent.id, completedEventAt: verifiedEvent.created * 1000,
+          });
+          if (process.env.SCRUB_ENABLE_SUBSCRIPTION_NOTICES === "true" && process.env.SCRUB_SUBSCRIPTION_EMAIL_OWNER === "scrub") {
+            await ctx.scheduler.runAfter(0, internal.actions.subscriptionNotices.refresh, { subscriptionId, customerId, confirmation: true });
+          }
+        }
         // Handle settlement payments
         if (
           meta.type === "settlement_payment" &&

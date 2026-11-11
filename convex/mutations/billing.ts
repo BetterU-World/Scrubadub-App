@@ -58,6 +58,7 @@ export const syncSubscription = internalMutation({
     status: v.string(),
     currentPeriodEnd: v.optional(v.number()),
     cancelAtPeriodEnd: v.boolean(),
+    subscriptionCancelAt: v.optional(v.number()),
     eventCreated: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -100,6 +101,7 @@ export const syncSubscription = internalMutation({
       subscriptionStatus: args.status,
       currentPeriodEnd: args.currentPeriodEnd,
       cancelAtPeriodEnd: args.cancelAtPeriodEnd,
+      subscriptionCancelAt: args.subscriptionCancelAt,
       subscriptionBecameInactiveAt,
       ...(args.eventCreated !== undefined
         ? { stripeSubscriptionEventCreatedAt: args.eventCreated }
@@ -264,5 +266,20 @@ export const recordAttribution = internalMutation({
       currency: args.currency,
       createdAt: Date.now(),
     });
+  },
+});
+
+/** Only signature-verified platform Checkout events may record acceptance. */
+export const recordCheckoutConsent = internalMutation({
+  args: {
+    stripeCheckoutSessionId: v.string(), stripeCustomerId: v.string(), stripeSubscriptionId: v.string(),
+    termsVersion: v.string(), disclosure: v.string(), consentText: v.string(), stripeEventId: v.string(), completedEventAt: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const existing = await ctx.db.query("subscriptionCheckoutConsents")
+      .withIndex("by_session", q => q.eq("stripeCheckoutSessionId", args.stripeCheckoutSessionId)).unique();
+    if (!existing) await ctx.db.insert("subscriptionCheckoutConsents", { ...args, recordedAt: Date.now() });
+    return null;
   },
 });

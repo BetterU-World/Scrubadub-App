@@ -11,6 +11,15 @@ function getResendClient(): Resend {
   return new Resend(requireResendEnv().apiKey);
 }
 
+/** Billing uses the platform transport, with a stable provider key for bounded retries. */
+export async function deliverSubscriptionNotice(args: { email: string; subject: string; text: string; idempotencyKey: string }): Promise<OperationalEmailOutcome> {
+  try {
+    return operationalEmailResult(await getResendClient().emails.send({ ...getPlatformEmailHeaders(),
+      to: args.email, subject: args.subject, text: args.text,
+    }, { idempotencyKey: args.idempotencyKey }));
+  } catch { return { status: "unknown", category: "provider_uncertain" }; }
+}
+
 function getFromEmail(): string {
   return requireResendEnv().fromEmail;
 }

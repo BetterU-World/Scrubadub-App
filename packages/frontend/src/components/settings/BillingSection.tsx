@@ -84,6 +84,7 @@ export function BillingSection() {
     api.actions.billing.createBillingPortalSession,
   );
 
+  const cancelRenewal = useAction(api.actions.billing.cancelAutomaticRenewal);
   const [loading, setLoading] = useState<string | null>(null);
   const [toast, setToast] = useFeedbackState<{ message: string; type: "success" | "error" }>();
 
@@ -204,7 +205,7 @@ export function BillingSection() {
                 {isCanceledInPeriod ? "Access Until" : "Next Billing Date"}
               </span>
               <span className="font-medium text-gray-900">
-                {formatDate(subscription.currentPeriodEnd)}
+                {formatDate(isCanceledInPeriod ? subscription.subscriptionCancelAt ?? subscription.currentPeriodEnd : subscription.currentPeriodEnd)}
               </span>
             </div>
           )}
@@ -212,13 +213,16 @@ export function BillingSection() {
           {/* Cancellation notice */}
           {isCanceledInPeriod && (
             <p className="text-xs text-yellow-600 bg-yellow-50 px-3 py-2 rounded-lg">
-              Your subscription is set to cancel at the end of the current
-              period. You can resubscribe from the billing portal.
+              Your automatic renewal is canceled. Access continues until the date shown above.
             </p>
           )}
         </div>
 
         <div className="flex flex-wrap gap-2">
+          {isActive && !isCanceledInPeriod && <button type="button" disabled={loading !== null} className="btn-secondary text-sm"
+            onClick={async () => { setLoading("cancel"); try { await cancelRenewal({ userId: user._id, sessionToken: sessionToken || getStaffSessionToken() || "" }); showToast("Automatic renewal canceled. Your access continues through the scheduled end date.", "success"); } catch (error) { showToast(error instanceof Error ? error.message : "Cancellation could not be completed. Please try again.", "error"); } finally { setLoading(null); } }}>
+            {loading === "cancel" ? "Canceling…" : "Cancel automatic renewal"}
+          </button>}
           <button
             onClick={handleManageBilling}
             disabled={loading !== null}

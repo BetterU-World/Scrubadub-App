@@ -11,6 +11,7 @@ const EMPTY_SUB = {
   tier: undefined as string | undefined,
   currentPeriodEnd: undefined as number | undefined,
   cancelAtPeriodEnd: undefined as boolean | undefined,
+  subscriptionCancelAt: undefined as number | undefined,
   subscriptionBecameInactiveAt: undefined as number | undefined,
   stripeCustomerId: undefined as string | undefined,
   companyBypassed: false,
@@ -37,6 +38,7 @@ export const getCompanySubscription = query({
       tier: company.tier,
       currentPeriodEnd: storedSubscriptionPeriodEndMs(company.currentPeriodEnd),
       cancelAtPeriodEnd: company.cancelAtPeriodEnd,
+      subscriptionCancelAt: company.subscriptionCancelAt,
       subscriptionBecameInactiveAt: company.subscriptionBecameInactiveAt,
       stripeCustomerId: company.stripeCustomerId,
       companyBypassed,
@@ -60,6 +62,7 @@ export const getCompanyForBilling = internalQuery({
       companyId: user.companyId,
       role: user.role,
       email: user.email,
+      stripeSubscriptionId: company.stripeSubscriptionId,
       stripeCustomerId: company.stripeCustomerId,
     };
   },

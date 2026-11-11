@@ -86,6 +86,23 @@ export function TermsPage() {
           confirm any payment.
         </p>
 
+        <h2 id="subscriptions">Subscription billing and cancellation</h2>
+        <p className="text-sm text-gray-500">Subscription terms updated November 11, 2026 (version scrub-recurring-2026-11-11-v1).</p>
+        <p>
+          SCRUB subscriptions include a standard 14-day free trial and automatically
+          renew monthly unless canceled. Your selected plan, recurring price, applicable
+          promotion and billing dates are displayed in Stripe Checkout before you subscribe.
+          Promotion codes have their own duration and restrictions. The regular monthly
+          rate resumes when the applicable promotion expires.
+        </p>
+        <p>
+          Cancel automatic renewal before your next charge through Settings &gt; Billing
+          &gt; Manage Billing. Your subscription end date is shown in the billing portal.
+          Canceling renewal does not immediately end an active subscription; access
+          continues through its scheduled end. Contact scrubadubsolutionsllc@gmail.com
+          if you need help accessing subscription management.
+        </p>
+
         <h2>5. Intellectual Property</h2>
         <p>
           All content, trademarks, and technology comprising the Service are
