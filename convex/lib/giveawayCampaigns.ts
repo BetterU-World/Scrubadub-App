@@ -1,3 +1,4 @@
+import { giveawayTwo, giveawayTwoId } from "./giveawayCampaignTwo";
 /** Public content and server eligibility share this registry. Retain old campaigns/rules. */
 export interface GiveawayCampaign {
   campaignId: string;
@@ -29,6 +30,7 @@ export interface GiveawayCampaign {
 
 export const currentGiveawayId = "scrub-giveaway-2026-001";
 export const giveawayCampaigns: Record<string, GiveawayCampaign> = {
+  [giveawayTwoId]: giveawayTwo,
   [currentGiveawayId]: {
     campaignId: currentGiveawayId,
     enabled: true,

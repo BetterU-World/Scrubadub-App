@@ -17,7 +17,7 @@ function entryName(value: string) {
 export const enterAlternate = mutation({
   args: {
     campaignId: v.string(), browserKey: v.string(), firstName: v.string(), lastName: v.string(), email: v.string(),
-    eligibilityConfirmed: v.boolean(), rulesAcknowledged: v.boolean(), marketingConsent: v.optional(v.boolean()),
+    eligibilityConfirmed: v.boolean(), rulesAcknowledged: v.boolean(), rulesVersion: v.optional(v.string()), marketingConsent: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();

@@ -3735,6 +3735,7 @@
   },
   "assessment": {
     "giveaway": {
+      "eligibilityCurrent": "I meet this campaign’s eligibility requirements above, including age, residence, cleaning-business ownership or operation, no existing SCRUB account at entry, and the insider exclusion. I have read and agree to this campaign’s Official Rules.",
       "title": "Finish your giveaway entry",
       "emailHelp": "We need your email so we can contact you if you win. Marketing emails are optional.",
       "email": "Contact email",

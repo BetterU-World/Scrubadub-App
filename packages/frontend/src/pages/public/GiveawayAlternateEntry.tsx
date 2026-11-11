@@ -30,7 +30,7 @@ export function GiveawayAlternateEntry({ campaign, active }: { campaign: Giveawa
       if (!browserKey.current) {
         try { browserKey.current = getBrowserKey(); } catch { browserKey.current = randomHex(); }
       }
-      await enter({ campaignId: campaign.campaignId, browserKey: browserKey.current, firstName, lastName, email, eligibilityConfirmed, rulesAcknowledged, marketingConsent });
+      await enter({ campaignId: campaign.campaignId, browserKey: browserKey.current, firstName, lastName, email, eligibilityConfirmed, rulesAcknowledged, rulesVersion: campaign.rulesVersion, marketingConsent });
       setReceived(true); setFirstName(""); setLastName(""); setEmail("");
     } catch (caught) {
       setError(caught instanceof Error && /rate limit/i.test(caught.message)

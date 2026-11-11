@@ -3736,6 +3736,7 @@
   },
   "assessment": {
     "giveaway": {
+      "eligibilityCurrent": "Cumplo los requisitos de elegibilidad de esta campaña indicados arriba, incluidos edad, residencia, ser propietario u operador de un negocio de limpieza, no tener una cuenta SCRUB al participar y la exclusión de personas vinculadas. He leído y acepto las Reglas Oficiales de esta campaña.",
       "title": "Finaliza tu participación en el sorteo",
       "emailHelp": "Necesitamos tu correo para contactarte si ganas. Los correos de marketing son opcionales.",
       "email": "Correo de contacto",
