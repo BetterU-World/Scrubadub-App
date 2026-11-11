@@ -14,16 +14,18 @@ const original = { ...giveawayTwo };
 afterEach(() => { Object.assign(giveawayTwo, original); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("Giveaway #2 Spanish presentation", () => {
-  it("translates entry fields and material summary while identifying the English official rules", async () => {
+  it("keeps Spanish entry fields and the language switcher without the redundant summary", async () => {
     const i18n = createInstance();
     await i18n.init({ lng: "es", fallbackLng: "en", resources: { es: { translation: es }, en: { translation: en } } });
     Object.assign(giveawayTwo, { startsAt: Date.parse("2026-11-12T09:00:00-05:00"), enabled: true, rulesApproved: true });
     vi.stubGlobal("window", { location: { search: `?campaign=${giveawayTwoId}` } });
     vi.spyOn(Date, "now").mockReturnValue(giveawayTwo.startsAt!);
     const html = renderToStaticMarkup(createElement(I18nextProvider, { i18n }, createElement(GiveawayPage)));
-    expect(html).toContain("Información del sorteo en español");
+    expect(html).not.toContain("Información del sorteo en español");
+    expect(html).not.toContain("<details");
+    expect(html).toContain(">EN</button>");
+    expect(html).toContain(">ES</button>");
     expect(html).toContain("Reglas Oficiales (en inglés)");
-    expect(html).toContain("seis meses gratis");
     expect(html).toContain("de 18 años o más");
     expect(html).toContain("$949.94");
     expect(html).toContain("Enviar participación alternativa gratuita");
