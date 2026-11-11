@@ -266,3 +266,18 @@ export const recordAttribution = internalMutation({
     });
   },
 });
+
+/** Only signature-verified platform Checkout events may record acceptance. */
+export const recordCheckoutConsent = internalMutation({
+  args: {
+    stripeCheckoutSessionId: v.string(), stripeCustomerId: v.string(), stripeSubscriptionId: v.string(),
+    termsVersion: v.string(), disclosure: v.string(), consentText: v.string(), stripeEventId: v.string(), completedEventAt: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const existing = await ctx.db.query("subscriptionCheckoutConsents")
+      .withIndex("by_session", q => q.eq("stripeCheckoutSessionId", args.stripeCheckoutSessionId)).unique();
+    if (!existing) await ctx.db.insert("subscriptionCheckoutConsents", { ...args, recordedAt: Date.now() });
+    return null;
+  },
+});

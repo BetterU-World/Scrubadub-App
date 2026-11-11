@@ -20,6 +20,7 @@ import { planToEnvVar, planToTier, type ScrubPlan } from "../lib/plans";
 import { issueSession } from "../lib/sessions";
 import { getStripeClientOrNull } from "../lib/stripe";
 import { requireAppUrl } from "../lib/environment";
+import { subscriptionDisclosure, SUBSCRIPTION_TERMS_VERSION } from "../lib/subscriptionDisclosure";
 
 function getPriceIdForPlan(plan: ScrubPlan): string {
   const envVar = planToEnvVar(plan);
@@ -78,6 +79,7 @@ export const createPublicCheckoutSession = action({
     const APP_URL = requireAppUrl();
 
     const priceId = getPriceIdForPlan(selectedPlan);
+    const disclosure = subscriptionDisclosure(await stripe.prices.retrieve(priceId), selectedPlan, APP_URL);
     const session = await stripe.checkout.sessions.create({
       customer: customer.id,
       mode: "subscription",
@@ -87,9 +89,11 @@ export const createPublicCheckoutSession = action({
         metadata: { source: "public_checkout", tier: internalTier },
       },
       allow_promotion_codes: true,
+      ...disclosure,
       success_url: `${APP_URL}/setup?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${APP_URL}/get-started?canceled=true`,
       metadata: {
+        subscriptionTermsVersion: SUBSCRIPTION_TERMS_VERSION,
         source: "public_checkout",
         customerEmail: email,
         tier: internalTier,

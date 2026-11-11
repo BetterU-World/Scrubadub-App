@@ -19,6 +19,11 @@ import {
 
 export default defineSchema({
   ...outgoingTables,
+  subscriptionCheckoutConsents: defineTable({
+    stripeCheckoutSessionId: v.string(), stripeCustomerId: v.string(), stripeSubscriptionId: v.string(),
+    termsVersion: v.string(), disclosure: v.string(), consentText: v.string(),
+    stripeEventId: v.string(), completedEventAt: v.number(), recordedAt: v.number(),
+  }).index("by_session", ["stripeCheckoutSessionId"]),
   assessmentDefinitions: defineTable({
     key: v.string(),
     definitionVersion: v.number(),
