@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { GiveawayPage } from "./GiveawayPage";
 import { GiveawayAssessmentContact } from "./GiveawayAssessmentContact";
 import { GiveawayAlternateEntry } from "./GiveawayAlternateEntry";
-import { currentGiveawayId, giveawayCampaigns } from "../../../../../convex/lib/giveawayCampaigns";
+import { firstGiveawayId as currentGiveawayId, currentGiveawayId as defaultGiveawayId, giveawayCampaigns } from "../../../../../convex/lib/giveawayCampaigns";
 import { giveawayHtml } from "../../../build/giveawayMetadata";
 import { loadProgress, saveProgress } from "../../lib/assessmentPersistence";
 
@@ -16,7 +16,7 @@ const campaign = giveawayCampaigns[currentGiveawayId];
 const original = { ...campaign };
 const read = (file: string) => readFileSync(file, "utf8");
 function render(time: number) {
-  vi.stubGlobal("window", { location: { search: "" } });
+  vi.stubGlobal("window", { location: { search: `?campaign=${currentGiveawayId}` } });
   vi.spyOn(Date, "now").mockReturnValue(time);
   return renderToStaticMarkup(createElement(GiveawayPage));
 }
@@ -110,12 +110,13 @@ describe("public giveaway", () => {
     expect(app).toContain('"/assessment", "/giveaway"');
     const index = read("packages/frontend/index.html");
     const output = giveawayHtml(index);
-    expect(output).toContain(`<title>${campaign.name} | SCRUB</title>`);
+    const defaultCampaign = giveawayCampaigns[defaultGiveawayId];
+    expect(output).toContain(`<title>${defaultCampaign.name} | SCRUB</title>`);
     expect(output).toContain('property="og:url" content="https://scrubscrubscrub.com/giveaway"');
     expect(output).toContain('rel="canonical" href="https://scrubscrubscrub.com/giveaway"');
-    expect(output).toContain('name="twitter:title" content="SCRUB Cleaning Owner Giveaway | SCRUB"');
-    expect(output).toContain(`name="description" content="${campaign.headline}"`);
-    expect(output).toContain(`property="og:description" content="${campaign.headline}"`);
+    expect(output).toContain(`name="twitter:title" content="${defaultCampaign.name} | SCRUB"`);
+    expect(output).toContain(`name="description" content="${defaultCampaign.headline}"`);
+    expect(output).toContain(`property="og:description" content="${defaultCampaign.headline}"`);
     expect(output).toContain("scrub-social-preview.png");
     expect(index).not.toContain("Cleaning Owner Giveaway");
   });

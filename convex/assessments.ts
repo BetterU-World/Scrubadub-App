@@ -289,7 +289,7 @@ export const saveResponse = mutation({
 });
 
 export const complete = mutation({
-  args: { attemptId: v.id("assessmentAttempts"), capability: v.string(), giveawayContact: v.optional(v.object({ email: v.string(), eligibilityConfirmed: v.boolean(), marketingConsent: v.boolean() })) },
+  args: { attemptId: v.id("assessmentAttempts"), capability: v.string(), giveawayContact: v.optional(v.object({ email: v.string(), eligibilityConfirmed: v.boolean(), marketingConsent: v.boolean(), rulesVersion: v.optional(v.string()) })) },
   handler: async (ctx, args) => {
     const attempt = await requireAttempt(ctx, args.attemptId, args.capability);
     if (attempt.status === "completed") {

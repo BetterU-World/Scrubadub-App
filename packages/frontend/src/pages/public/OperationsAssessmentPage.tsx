@@ -450,7 +450,7 @@ export function OperationsAssessmentPage() {
     setError("");
   }
 
-  if (view === "report" && report && roadmap) return <AssessmentShell>{giveawayOutcome && <p role="status" className="mb-6 rounded-2xl border border-primary-200 bg-primary-50 p-4 text-primary-900">{t(`assessment.giveaway.${giveawayOutcome}`)}</p>}<OperationsAssessmentReport report={report} roadmap={roadmap} attemptId={progress.attemptId} capability={progress.capability} /></AssessmentShell>;
+  if (view === "report" && report && roadmap) return <AssessmentShell>{giveawayOutcome && (!requestedGiveaway() || requestedGiveaway() === progress.campaignId) && <p role="status" className="mb-6 rounded-2xl border border-primary-200 bg-primary-50 p-4 text-primary-900">{t(`assessment.giveaway.${giveawayOutcome}`)}</p>}<OperationsAssessmentReport report={report} roadmap={roadmap} attemptId={progress.attemptId} capability={progress.capability} /></AssessmentShell>;
   if (view === "contact" && progress.campaignId && Object.prototype.hasOwnProperty.call(giveawayCampaigns, progress.campaignId)) return <AssessmentShell><GiveawayAssessmentContact campaignId={progress.campaignId} busy={busy} error={error} onComplete={contact => void goNext(contact)} onBack={() => setView("question")} /></AssessmentShell>;
   if (!definition && error) return <AssessmentShell><div role="alert" className="mx-auto max-w-xl rounded-2xl bg-white p-6 text-center text-gray-700">{error}</div></AssessmentShell>;
   if (!definition) return <AssessmentShell><p className="text-center text-gray-600">{t("common.loading")}</p></AssessmentShell>;
@@ -575,5 +575,8 @@ export function OperationsAssessmentPage() {
 
 function AssessmentShell({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
-  return <div className="min-h-dvh min-w-0 overflow-x-hidden bg-gray-50"><header className="border-b border-gray-200 bg-white"><div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6"><a href="/" className="flex min-h-11 items-center gap-2"><img src="/logo-icon.png" alt="" className="h-8 w-8"/><span className="font-bold text-gray-900">SCRUB</span><span className="hidden text-sm text-gray-500 sm:inline">{t("assessment.headerLabel")}</span></a><LanguageSwitcher/></div></header><div className="mx-auto w-full max-w-6xl min-w-0 px-4 py-6 sm:px-6 sm:py-10">{children}</div></div>;
+  const campaignId = requestedGiveaway();
+  const campaign = campaignId ? giveawayCampaigns[campaignId] : undefined;
+  const entryNotice = campaignId === "scrub-giveaway-2026-002" && campaign ? <p role="status" className="mb-6 rounded-2xl border border-primary-200 bg-primary-50 p-4 text-primary-900">{campaign.name}: {t("giveawayLaunch.prior")} <a href={`/giveaway?campaign=${encodeURIComponent(campaignId)}#alternate-entry`} className="underline">{t("giveawayLaunch.useAlternate")}</a> {t("giveawayLaunch.independent")}</p> : null;
+  return <div className="min-h-dvh min-w-0 overflow-x-hidden bg-gray-50"><header className="border-b border-gray-200 bg-white"><div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6"><a href="/" className="flex min-h-11 items-center gap-2"><img src="/logo-icon.png" alt="" className="h-8 w-8"/><span className="font-bold text-gray-900">SCRUB</span><span className="hidden text-sm text-gray-500 sm:inline">{t("assessment.headerLabel")}</span></a><LanguageSwitcher/></div></header><div className="mx-auto w-full max-w-6xl min-w-0 px-4 py-6 sm:px-6 sm:py-10">{entryNotice}{children}</div></div>;
 }

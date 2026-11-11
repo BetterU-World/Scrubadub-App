@@ -5,7 +5,8 @@ import type { GiveawayContact } from "../../../../../convex/lib/giveawayEntries"
 import { useGiveawayState } from "./GiveawayPage";
 
 export function GiveawayAssessmentContact({ campaignId, busy, error, onComplete, onBack }: { campaignId: string; busy: boolean; error: string; onComplete: (contact?: GiveawayContact) => void; onBack: () => void }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const spanish = campaignId === "scrub-giveaway-2026-002" && i18n?.resolvedLanguage?.startsWith("es");
   const campaign = giveawayCampaigns[campaignId];
   const state = useGiveawayState(campaign);
   const [email, setEmail] = useState("");
@@ -14,12 +15,14 @@ export function GiveawayAssessmentContact({ campaignId, busy, error, onComplete,
   const [invalid, setInvalid] = useState(false);
   return <main className="mx-auto max-w-xl rounded-3xl border border-gray-200 bg-white p-6 sm:p-8">
     <h1 className="text-2xl font-bold">{t("assessment.giveaway.title")}</h1>
-    {state !== "active" ? <><p className="mt-4 leading-7">{t("assessment.giveaway.closed")}</p><button disabled={busy} className="btn-primary mt-6" onClick={() => onComplete()}>{t("assessment.actions.complete")}</button></> : <form onSubmit={event => { event.preventDefault(); try { normalizeGiveawayEmail(email); setInvalid(false); onComplete({ email, eligibilityConfirmed, marketingConsent }); } catch { setInvalid(true); } }}>
+    {state !== "active" ? <><p className="mt-4 leading-7">{t("assessment.giveaway.closed")}</p><button disabled={busy} className="btn-primary mt-6" onClick={() => onComplete()}>{t("assessment.actions.complete")}</button></> : <form onSubmit={event => { event.preventDefault(); try { normalizeGiveawayEmail(email); setInvalid(false); onComplete({ email, eligibilityConfirmed, marketingConsent, rulesVersion: campaign.rulesVersion }); } catch { setInvalid(true); } }}>
+      <p className="mt-4 leading-7 text-gray-700">{spanish ? t("giveawayLaunch.eligibility") : campaign.eligibility}</p>
+      <p className="mt-2 text-sm text-gray-600">{spanish ? t("giveawayLaunch.deadline") : campaign.deadlineLabel} · {campaign.prize.title}</p>
       <p id="giveaway-email-help" className="mt-4 leading-7 text-gray-600">{t("assessment.giveaway.emailHelp")}</p>
       <label className="mt-5 block font-medium" htmlFor="giveaway-email">{t("assessment.giveaway.email")}</label><input id="giveaway-email" name="email" type="email" autoComplete="email" required maxLength={254} value={email} onChange={event => setEmail(event.target.value)} aria-describedby="giveaway-email-help" aria-invalid={invalid} className="input-field mt-2"/>
       {invalid && <p role="alert" className="mt-2 text-red-700">{t("assessment.giveaway.invalidEmail")}</p>}
-      <label className="mt-5 flex items-start gap-3 text-sm leading-6"><input type="checkbox" required checked={eligibilityConfirmed} onChange={event => setEligibilityConfirmed(event.target.checked)} className="mt-1 h-5 w-5 shrink-0 accent-primary-600"/>{t("assessment.giveaway.eligibility")}</label>
-      <a href={`/giveaway?campaign=${encodeURIComponent(campaignId)}#official-rules`} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-sm text-primary-700 underline">{t("assessment.giveaway.rules")}</a>
+      <label className="mt-5 flex items-start gap-3 text-sm leading-6"><input type="checkbox" required checked={eligibilityConfirmed} onChange={event => setEligibilityConfirmed(event.target.checked)} className="mt-1 h-5 w-5 shrink-0 accent-primary-600"/>{t(campaignId === "scrub-giveaway-2026-002" ? "assessment.giveaway.eligibilityCurrent" : "assessment.giveaway.eligibility")}</label>
+      <a href={`/giveaway?campaign=${encodeURIComponent(campaignId)}#official-rules`} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-sm text-primary-700 underline">{spanish ? t("giveawayLaunch.rulesEnglish") : t("assessment.giveaway.rules")}</a>
       <p className="mt-3"><a href={`/giveaway?campaign=${encodeURIComponent(campaignId)}#alternate-entry`} target="_blank" rel="noopener noreferrer" className="text-primary-700 underline">{t("assessment.giveaway.alternate")}</a></p>
       <label className="mt-5 flex items-start gap-3 text-sm leading-6"><input type="checkbox" checked={marketingConsent} onChange={event => setMarketingConsent(event.target.checked)} className="mt-1 h-5 w-5 shrink-0 accent-primary-600"/>{t("assessment.giveaway.marketing")}</label>
       <p className="mt-4 text-sm text-gray-600">{t("assessment.giveaway.limit")}</p><a href="/privacy" target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-sm text-primary-700 underline">{t("assessment.giveaway.privacy")}</a>

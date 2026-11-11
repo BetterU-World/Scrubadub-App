@@ -1,3 +1,4 @@
+import { giveawayTwo, giveawayTwoId } from "./giveawayCampaignTwo";
 /** Public content and server eligibility share this registry. Retain old campaigns/rules. */
 export interface GiveawayCampaign {
   campaignId: string;
@@ -27,10 +28,13 @@ export interface GiveawayCampaign {
   rules: { title: string; body: string }[];
 }
 
-export const currentGiveawayId = "scrub-giveaway-2026-001";
+export const firstGiveawayId = "scrub-giveaway-2026-001";
+// Prepared approved default; historical keys remain independent. Deployment is separately authorized.
+export const currentGiveawayId = giveawayTwoId;
 export const giveawayCampaigns: Record<string, GiveawayCampaign> = {
-  [currentGiveawayId]: {
-    campaignId: currentGiveawayId,
+  [giveawayTwoId]: giveawayTwo,
+  [firstGiveawayId]: {
+    campaignId: firstGiveawayId,
     enabled: true,
     rulesApproved: true,
     name: "SCRUB Cleaning Owner Giveaway",

@@ -2,7 +2,7 @@ import type { MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { giveawayCampaigns, giveawayState, normalizeGiveawayEmail } from "./giveawayCampaigns";
 
-export type GiveawayContact = { email: string; eligibilityConfirmed: boolean; marketingConsent: boolean };
+export type GiveawayContact = { email: string; eligibilityConfirmed: boolean; marketingConsent: boolean; rulesVersion?: string };
 
 type EntryOrigin =
   | { entryMethod: "assessment"; attemptId: Id<"assessmentAttempts"> }
@@ -12,6 +12,7 @@ type EntryOrigin =
 export async function recordGiveawayEntry(ctx: MutationCtx, campaignId: string, now: number, contact: GiveawayContact & { rulesAcknowledged: boolean }, origin: EntryOrigin) {
   const campaign = Object.prototype.hasOwnProperty.call(giveawayCampaigns, campaignId) ? giveawayCampaigns[campaignId] : undefined;
   if (!campaign || giveawayState(campaign, now) !== "active") throw new Error("Giveaway entries are not open");
+  if (campaignId === "scrub-giveaway-2026-002" && contact.rulesVersion !== campaign.rulesVersion) throw new Error("Review the current campaign Official Rules before entering");
   const normalizedEmail = normalizeGiveawayEmail(contact.email);
   if (!contact.eligibilityConfirmed) throw new Error("Confirm giveaway eligibility before entering");
   if (!contact.rulesAcknowledged) throw new Error("Acknowledge the Official Rules before entering");

@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { usePaginatedQuery, useQuery } from "convex/react";
 import { Download, Gift, ShieldCheck, Users } from "lucide-react";
 import { api } from "../../../../../convex/_generated/api";
-import { currentGiveawayId } from "../../../../../convex/lib/giveawayCampaigns";
+import { currentGiveawayId, giveawayCampaigns } from "../../../../../convex/lib/giveawayCampaigns";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
@@ -13,14 +13,17 @@ const date = (value?: number | null) => value ? new Intl.DateTimeFormat("en-US",
 const percent = (part: number, total: number) => total ? `${Math.round(part * 100 / total)}%` : "0%";
 
 function csvCell(value: unknown) {
-  return `"${String(value ?? "").replace(/"/g, '""')}"`;
+  const text = String(value ?? "");
+  const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+  return `"${safe.replace(/"/g, '""')}"`;
 }
 
 export function GiveawayOperatorPage() {
   const { user, sessionToken, isLoading } = useAuth();
+  const [campaignId, setCampaignId] = useState(currentGiveawayId);
   const [method, setMethod] = useState<MethodFilter>("all");
   const canAccess = user?.isSuperadmin === true && Boolean(sessionToken);
-  const args = canAccess ? { userId: user!._id, sessionToken, campaignId: currentGiveawayId } : "skip";
+  const args = canAccess ? { userId: user!._id, sessionToken, campaignId } : "skip";
   const summary = useQuery(api.giveaways.operatorSummary, args);
   const { results, status, loadMore } = usePaginatedQuery(api.giveaways.entrants, args, { initialNumItems: 50 });
   const filtered = useMemo(() => results.filter(entry => method === "all" || (entry.entryMethod ?? "assessment") === method), [results, method]);
@@ -30,8 +33,8 @@ export function GiveawayOperatorPage() {
   if (!summary) return <PageLoader />;
 
   const exportEntries = () => {
-    const header = ["Entry timestamp", "Entry method", "Email", "Name", "Status", "Rules version", "Eligibility confirmed", "Marketing consent", "Assessment reference"];
-    const rows = results.map(entry => [date(entry.qualifiedAt), entry.entryMethod ?? "assessment", entry.originalEmail, entry.firstName || entry.lastName ? `${entry.firstName ?? ""} ${entry.lastName ?? ""}`.trim() : "—", entry.status, entry.rulesVersion, entry.eligibilityConfirmedAt ? "Yes" : "No", entry.marketingConsent ? "Yes" : "No", entry.attemptId ?? "—"]);
+    const header = ["Entry ID", "Campaign ID", "Entry timestamp", "Entry method", "Email", "Name", "Status", "Rules version", "Eligibility confirmed", "Marketing consent", "Assessment reference"];
+    const rows = results.map(entry => [entry._id, entry.campaignId, date(entry.qualifiedAt), entry.entryMethod ?? "assessment", entry.originalEmail, entry.firstName || entry.lastName ? `${entry.firstName ?? ""} ${entry.lastName ?? ""}`.trim() : "—", entry.status, entry.rulesVersion, entry.eligibilityConfirmedAt ? "Yes" : "No", entry.marketingConsent ? "Yes" : "No", entry.attemptId ?? "—"]);
     const blob = new Blob([[header, ...rows].map(row => row.map(csvCell).join(",")).join("\n")], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob); const link = document.createElement("a");
     link.href = url; link.download = `${summary.campaign.campaignId}-entrants.csv`; link.click(); URL.revokeObjectURL(url);
@@ -39,10 +42,12 @@ export function GiveawayOperatorPage() {
 
   return <div>
     <PageHeader title="Giveaway operator" description="Private giveaway administration data. Do not share or publish entrant information." />
+    <label className="mb-5 block font-medium">Campaign<select value={campaignId} onChange={event => { setCampaignId(event.target.value); setMethod("all"); }} className="input-field mt-2">{Object.values(giveawayCampaigns).map(campaign => <option key={campaign.campaignId} value={campaign.campaignId}>{campaign.name} ({campaign.campaignId})</option>)}</select></label>
+    <p className="mb-5 text-sm text-gray-600">Selection, verification, notification, 72-hour responses, alternates and fulfillment are recorded in the restricted manual drawing ledger. This page never sends winner emails or creates offers.</p>
     {summary.scanCapped && <p className="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Summary is limited to the first 10,000 records. Use the restricted export process for the canonical drawing pool.</p>}
     <section className="card mb-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"><div><h2 className="text-lg font-semibold text-gray-900">{summary.campaign.name}</h2><p className="text-sm text-gray-500">{summary.campaign.prize} · {summary.campaign.state[0].toUpperCase() + summary.campaign.state.slice(1)}</p></div><Gift className="h-5 w-5 text-primary-600" /></div>
-      <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-3"><div><dt className="text-gray-500">Opening</dt><dd className="font-medium text-gray-800">September 21, 2026 at 12:00 AM ET</dd></div><div><dt className="text-gray-500">Closing</dt><dd className="font-medium text-gray-800">{summary.campaign.deadlineLabel}</dd></div><div><dt className="text-gray-500">Drawing</dt><dd className="font-medium text-gray-800">{summary.campaign.drawingLabel}</dd></div></dl>
+      <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-3"><div><dt className="text-gray-500">Opening</dt><dd className="font-medium text-gray-800">{summary.campaign.startsAt === null ? "Opening date not approved" : date(summary.campaign.startsAt)}</dd></div><div><dt className="text-gray-500">Closing</dt><dd className="font-medium text-gray-800">{summary.campaign.deadlineLabel}</dd></div><div><dt className="text-gray-500">Drawing</dt><dd className="font-medium text-gray-800">{summary.campaign.drawingLabel}</dd></div></dl>
     </section>
     <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
       <Metric label="Qualifying unique entries" value={summary.entries.total} icon={Users} detail={summary.entries.latestQualifiedAt ? `Latest: ${date(summary.entries.latestQualifiedAt)}` : "No entries yet"} />

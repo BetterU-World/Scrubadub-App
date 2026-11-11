@@ -1,4 +1,31 @@
 {
+  "giveawayLaunch": {
+  "summary": "Información del sorteo en español",
+  "summaryBody": "Gana una tarjeta de regalo Visa de $50. Por separado, el ganador puede aceptar seis meses gratis de su plan SCRUB elegido, más la prueba estándar de 14 días. Valor máximo anunciado: $949.94. No se requiere compra, suscripción, tarjeta de pago ni consentimiento de marketing para participar o recibir la tarjeta de regalo. Ambos métodos gratuitos tienen las mismas probabilidades. Pueden participar propietarios u operadores de negocios de limpieza de EE. UU. y DC, de 18 años o más, excepto residentes de Rhode Island, titulares de cuentas SCRUB y personas vinculadas excluidas. Una participación por persona/correo elegible. Abre el 12 de noviembre de 2026 a las 9:00 a. m. ET y cierra el 15 de diciembre a las 11:59 p. m. ET. Sorteo: 17 de diciembre; respuesta dentro de 72 horas; entrega prevista de la tarjeta: 25 de diciembre; canje de la oferta opcional hasta el 5 de enero de 2027.",
+  "rulesEnglish": "Reglas Oficiales (en inglés)",
+  "prior": "Haber completado antes la evaluación no te descalifica ni te inscribe automáticamente en esta campaña.",
+  "useAlternate": "Usa el formulario gratuito de participación alternativa de esta campaña mientras esté abierta.",
+  "independent": "Recibir la tarjeta de regalo no requiere aceptar la oferta opcional de SCRUB.",
+  "eligibility": "Residentes legales de EE. UU. y DC, excepto Rhode Island, de 18 años o más, propietarios u operadores de un negocio de limpieza elegible y sin cuenta SCRUB al participar. Se aplican la exclusión de personas vinculadas y las Reglas Oficiales.",
+  "deadline": "Cierra el 15 de diciembre de 2026 a las 11:59 p. m. ET",
+  "title": "Participación alternativa gratuita",
+  "intro": "No se requiere evaluación, cuenta, prueba, suscripción, pago, compra, seguimiento, publicación ni consentimiento de marketing. Ambos métodos tienen las mismas probabilidades. Una participación por persona/correo entre ambos métodos.",
+  "received": "Recibimos tu solicitud, sujeta a verificación de elegibilidad. Las solicitudes duplicadas no agregan participaciones. Contactaremos al participante seleccionado por correo.",
+  "closed": "La participación alternativa no está abierta. Consulta las fechas y el estado del sorteo arriba.",
+  "first": "Nombre",
+  "last": "Apellido",
+  "email": "Correo de contacto",
+  "emailHelp": "Necesitamos tu correo para contactarte si resultas seleccionado. No te suscribe a marketing.",
+  "eligible": "Cumplo los requisitos de elegibilidad anteriores y de las Reglas Oficiales, incluida la exclusión de personas vinculadas.",
+  "agree": "He leído y acepto las Reglas Oficiales.",
+  "marketing": "Opcional: Deseo recibir novedades, recursos y ofertas ocasionales de SCRUB. Mi elección no afecta mi participación ni mis probabilidades.",
+  "privacyHelp": "Los datos se usan para administrar el sorteo, verificar la elegibilidad, contactar al ganador y entregar el premio.",
+  "privacy": "Política de Privacidad (se abre en otra pestaña)",
+  "sending": "Enviando…",
+  "submit": "Enviar participación alternativa gratuita",
+  "rate": "Demasiadas solicitudes. Espera e inténtalo de nuevo. Una solicitud duplicada no agrega una participación.",
+  "error": "No pudimos registrar esta solicitud. Confirma que el sorteo esté abierto y revisa tus datos y aceptaciones."
+},
   "clientScheduling": {
     "cancelledStatusDescription": "Este servicio está cancelado y ya no está programado.",
     "title": "Actualizaciones de horario",
@@ -3736,6 +3763,7 @@
   },
   "assessment": {
     "giveaway": {
+      "eligibilityCurrent": "Cumplo los requisitos de elegibilidad de esta campaña indicados arriba, incluidos edad, residencia, ser propietario u operador de un negocio de limpieza, no tener una cuenta SCRUB al participar y la exclusión de personas vinculadas. He leído y acepto las Reglas Oficiales de esta campaña.",
       "title": "Finaliza tu participación en el sorteo",
       "emailHelp": "Necesitamos tu correo para contactarte si ganas. Los correos de marketing son opcionales.",
       "email": "Correo de contacto",
