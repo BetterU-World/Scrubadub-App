@@ -28,11 +28,13 @@ export interface GiveawayCampaign {
   rules: { title: string; body: string }[];
 }
 
-export const currentGiveawayId = "scrub-giveaway-2026-001";
+export const firstGiveawayId = "scrub-giveaway-2026-001";
+// Only change this default after approval; historical keys remain independent.
+export const currentGiveawayId = firstGiveawayId;
 export const giveawayCampaigns: Record<string, GiveawayCampaign> = {
   [giveawayTwoId]: giveawayTwo,
-  [currentGiveawayId]: {
-    campaignId: currentGiveawayId,
+  [firstGiveawayId]: {
+    campaignId: firstGiveawayId,
     enabled: true,
     rulesApproved: true,
     name: "SCRUB Cleaning Owner Giveaway",

@@ -23,7 +23,10 @@ describe("Giveaway #2 preview", () => {
     expect(html).toContain("December 25, 2026");
     expect(html).toContain("January 5, 2027");
     expect(html).toContain("72 hours");
-    expect(html).toContain("Draft — owner/legal review required");
+    expect(html).toContain("$949.94");
+    expect(html).toContain("NO PURCHASE OR PAYMENT OF ANY KIND");
+    expect(giveawayTwo.rules.map(rule => rule.body).join(" ")).not.toMatch(/requires final approval|must be approved|this draft|engineering|legal review|test-mode validation/i);
+    expect(html).toContain("Proposed rules. Entries are not open.");
     expect(html).toContain("decline the optional SCRUB offer and still receive");
     expect(html).not.toContain('id="alternate-email"');
     expect(html).not.toContain(`/assessment?campaign=${giveawayTwoId}`);
