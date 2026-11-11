@@ -10,7 +10,9 @@ if (!chrome) throw new Error("Set SCRUB_QA_CHROME to an installed headless Chrom
 const artifacts = process.env.SCRUB_QA_ARTIFACT_DIR ?? await mkdtemp(path.join(os.tmpdir(), "scrub-giveaway-launch-"));
 await mkdir(artifacts, { recursive: true });
 const root = path.join(repo, "packages/frontend");
+process.chdir(root); // Tailwind content globs are relative to the frontend package.
 const server = await createServer({ configFile: path.join(root, "vite.config.ts"), root,
+  optimizeDeps: { entries: [path.join(repo, "scripts/fixtures/giveaway-launch/entry.tsx")] },
   resolve: { alias: { "convex/react": path.join(repo, "scripts/fixtures/giveaway-launch/convex.ts") } },
   plugins: [{ name: "isolated-giveaway-qa", configureServer(dev) {
     dev.middlewares.use(async (req, res, next) => {
@@ -44,7 +46,7 @@ const send = (method, params = {}) => new Promise((resolve, reject) => {
 socket.addEventListener("message", async event => {
   const message = JSON.parse(String(event.data));
   if (message.id) { const task = pending.get(message.id); if (task) { pending.delete(message.id); message.error ? task.reject(new Error(message.error.message)) : task.resolve(message.result); } }
-  if (message.method === "Runtime.exceptionThrown") failures.push(message.params.exceptionDetails.text);
+  if (message.method === "Runtime.exceptionThrown") failures.push(message.params.exceptionDetails.exception?.description ?? message.params.exceptionDetails.text);
   if (message.method === "Fetch.requestPaused") {
     const { requestId, request } = message.params;
     if (request.url.startsWith(origin) || request.url.startsWith("data:")) await send("Fetch.continueRequest", { requestId });
@@ -58,7 +60,7 @@ const evaluate = async expression => {
 };
 const wait = async expression => {
   for (let attempt = 0; attempt < 100; attempt++) { if (await evaluate(expression)) return; await new Promise(resolve => setTimeout(resolve, 100)); }
-  throw new Error(`Page condition failed: ${expression}`);
+  throw new Error(`Page condition failed: ${expression}; browser: ${JSON.stringify(failures)}; body: ${await evaluate("document.body.innerText.slice(0, 600)")}`);
 };
 const results = [];
 try {
@@ -71,8 +73,8 @@ try {
     if (await evaluate('Boolean(document.querySelector("#alternate-email"))')) throw new Error("Alternate form visible before approved opening");
     await send("Page.navigate", { url: `${origin}/giveaway?when=open&lang=${language}` });
     await wait('Boolean(document.querySelector("#alternate-email"))');
-    const facts = await evaluate('({ headline: document.querySelector("#giveaway-title").textContent, overflow: document.documentElement.scrollWidth > innerWidth, boxes: Array.from(document.querySelectorAll("#alternate-entry input[type=checkbox]")).map(x => ({required:x.required, checked:x.checked})), fields: Array.from(document.querySelectorAll("#alternate-entry input")).map(x => x.type), spanish: document.querySelector("#alternate-entry").lang })');
-    if (!facts.headline.includes("$50") || facts.overflow || facts.boxes.length !== 3 || facts.boxes[2].required || facts.boxes.some(x => x.checked)) throw new Error(`Layout/consent failure: ${JSON.stringify(facts)}`);
+    const facts = await evaluate('({ headline: document.querySelector("#giveaway-title").textContent, overflow: document.documentElement.scrollWidth > innerWidth, styled: getComputedStyle(document.querySelector("#giveaway-title")).fontSize === "36px" || getComputedStyle(document.querySelector("#giveaway-title")).fontSize === "48px", boxes: Array.from(document.querySelectorAll("#alternate-entry input[type=checkbox]")).map(x => ({required:x.required, checked:x.checked})), fields: Array.from(document.querySelectorAll("#alternate-entry input")).map(x => x.type), spanish: document.querySelector("#alternate-entry").lang })');
+    if (!facts.headline.includes("$50") || !facts.styled || facts.overflow || facts.boxes.length !== 3 || facts.boxes[2].required || facts.boxes.some(x => x.checked)) throw new Error(`Layout/consent failure: ${JSON.stringify(facts)}`);
     if (language === "es" && facts.spanish !== "es") throw new Error("Spanish entry presentation missing");
     if (facts.fields.some(field => !["text", "email", "checkbox"].includes(field))) throw new Error("Unexpected payment or account field");
     await evaluate('document.querySelector("#alternate-entry").scrollIntoView()');

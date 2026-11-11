@@ -36,6 +36,7 @@ describe("Giveaway #2 Spanish presentation", () => {
     expect(html).not.toMatch(/type="(?:password|tel|file)"/);
     const contact = renderToStaticMarkup(createElement(I18nextProvider, { i18n }, createElement(GiveawayAssessmentContact,
       { campaignId: giveawayTwoId, busy: false, error: "", onComplete: () => {}, onBack: () => {} })));
+    expect(contact).toContain("Reglas Oficiales (en inglés)");
     expect(contact).toContain("sin cuenta SCRUB");
     expect(contact).toContain("Rhode Island");
     expect(contact).toContain("15 de diciembre");

@@ -50,3 +50,14 @@ After that authorization only:
 ## Validation boundaries
 
 Backend/data regressions use `convex-test` and synthetic entries only. Browser layout/interaction QA uses a localhost-only harness, actual page components and a captured mutation transport; external HTTP requests are blocked. It proves presentation/payload/receipt behavior, not a production Convex round trip. The actual mutations and stored rows are exercised separately in isolated backend tests. English official rules are retained as approved; a Spanish material-terms summary, alternate form and assessment presentation identify the official rules as English. No automated drawing, winner email, card issuance or subscription activation is added.
+
+## Recorded launch-preparation results
+
+- Final focused giveaway/activation/frontend/admin checks: 8 files, 74 tests passed.
+- Broader assessment and giveaway regressions: 25 files, 209 tests passed.
+- Backend and frontend typechecks passed; complete-app frontend production build passed with the existing bundle-size warning.
+- Actual headless Chromium, localhost-only QA: 320, 390 and 1280 CSS-pixel widths × English/Spanish; six cases passed with production styling, no horizontal overflow or runtime exceptions. Forms were absent before opening, present at opening, and synthetic payloads retained the approved rules version and optional marketing opt-out. Browser mutation transport was captured; actual backend/data behavior was tested separately with convex-test.
+- Static generated metadata contains SCRUB Giveaway #2 and the $50 headline, with no old $100 giveaway headline. The existing generic SCRUB social image was visually reviewed and retained.
+- No production request/entry, email, drawing, card issuance, subscription enrollment, Stripe promotion or deployment was performed.
+
+No unresolved code or fulfillment-related blocker to accepting free entries was identified. The remaining entry-launch steps are explicit founder deployment/activation authorization, the ordinary production feature-flag/environment check, and the pinned approved release before the opening time. Stripe work remains an outstanding subscription-fulfillment task, not an entry gate.

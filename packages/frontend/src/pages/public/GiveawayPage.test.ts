@@ -116,7 +116,7 @@ describe("public giveaway", () => {
     expect(output).toContain('rel="canonical" href="https://scrubscrubscrub.com/giveaway"');
     expect(output).toContain(`name="twitter:title" content="${defaultCampaign.name} | SCRUB"`);
     expect(output).toContain(`name="description" content="${defaultCampaign.headline}"`);
-    expect(output).toContain(`property="og:description" content="${campaign.headline}"`);
+    expect(output).toContain(`property="og:description" content="${defaultCampaign.headline}"`);
     expect(output).toContain("scrub-social-preview.png");
     expect(index).not.toContain("Cleaning Owner Giveaway");
   });
