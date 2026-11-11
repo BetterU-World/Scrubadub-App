@@ -1,3 +1,5 @@
+> Current founder-approved launch/deferral decisions: see `giveaway-two-launch.md`. It supersedes the preliminary entry-launch blocker and disabled-configuration descriptions below.
+
 # Giveaway #2 — proposed final rules and remaining release actions
 
 November 11, 2026 follow-up to PR #291. Supersedes the generic legal-review blockers in the original preparation runbook. Proposed public rules are in `convex/lib/giveawayCampaignTwo.ts`, version `scrub-giveaway-2026-002-rules-v1`. Both approval gates remain false; opening remains unset. No publication or activation occurred.

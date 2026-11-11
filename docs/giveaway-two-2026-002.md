@@ -1,3 +1,5 @@
+> Current founder-approved launch/deferral decisions: see `giveaway-two-launch.md`. It supersedes the preliminary entry-launch blocker and disabled-configuration descriptions below.
+
 # SCRUB Giveaway #2 — release and operator runbook
 
 Prepared November 11, 2026. **Follow-up: see `giveaway-two-release-decisions.md`, which supersedes the preliminary blocker list and records the proposed final rules/address findings.** **Disabled draft, not launch-ready until the decisions below are resolved.** This branch is independent of the subscription-compliance PR. It does not merge, deploy, activate, draw a live winner, send messages, issue a gift card or create a Stripe promotion.

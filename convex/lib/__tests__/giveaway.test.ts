@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { convexTest } from "convex-test";
 import schema from "../../schema";
 import { api } from "../../_generated/api";
-import { currentGiveawayId, giveawayCampaigns, giveawayState, giveawayAssessmentUrl } from "../giveawayCampaigns";
+import { firstGiveawayId as currentGiveawayId, giveawayCampaigns, giveawayState, giveawayAssessmentUrl } from "../giveawayCampaigns";
 import { INITIAL_ASSESSMENT_DEFINITION, isApplicable } from "../assessmentDefinition";
 import { hashTokenForLookup } from "../tokenHash";
 

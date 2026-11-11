@@ -13,7 +13,9 @@ const date = (value?: number | null) => value ? new Intl.DateTimeFormat("en-US",
 const percent = (part: number, total: number) => total ? `${Math.round(part * 100 / total)}%` : "0%";
 
 function csvCell(value: unknown) {
-  return `"${String(value ?? "").replace(/"/g, '""')}"`;
+  const text = String(value ?? "");
+  const safe = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text;
+  return `"${safe.replace(/"/g, '""')}"`;
 }
 
 export function GiveawayOperatorPage() {

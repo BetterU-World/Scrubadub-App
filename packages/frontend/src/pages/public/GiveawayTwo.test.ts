@@ -12,12 +12,14 @@ const original = { ...giveawayTwo };
 afterEach(() => { Object.assign(giveawayTwo, original); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("Giveaway #2 preview", () => {
-  it("previews the new campaign with closed entries, independent gift card and optional offer", () => {
+  it("shows the approved future opening, independent gift card and optional offer before entries open", () => {
+    Object.assign(giveawayTwo, { startsAt: Date.parse("2026-11-12T09:00:00-05:00"), enabled: true, rulesApproved: true });
     vi.stubGlobal("window", { location: { search: `?campaign=${giveawayTwoId}` } });
     vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-11-11T12:00:00-05:00"));
     const html = renderToStaticMarkup(createElement(GiveawayPage));
     expect(html).toContain("Win a $50 Visa Gift Card + an Exclusive SCRUB Offer");
-    expect(html).toContain("Opening date to be announced");
+    expect(html).toContain("November 12, 2026");
+    expect(html).toContain("9:00 AM");
     expect(html).toContain("December 15, 2026");
     expect(html).toContain("December 17, 2026");
     expect(html).toContain("December 25, 2026");
@@ -26,7 +28,8 @@ describe("Giveaway #2 preview", () => {
     expect(html).toContain("$949.94");
     expect(html).toContain("NO PURCHASE OR PAYMENT OF ANY KIND");
     expect(giveawayTwo.rules.map(rule => rule.body).join(" ")).not.toMatch(/requires final approval|must be approved|this draft|engineering|legal review|test-mode validation/i);
-    expect(html).toContain("Proposed rules. Entries are not open.");
+    expect(html).not.toContain("Proposed rules.");
+    expect(html).toContain("This giveaway has not opened");
     expect(html).toContain("decline the optional SCRUB offer and still receive");
     expect(html).not.toContain('id="alternate-email"');
     expect(html).not.toContain(`/assessment?campaign=${giveawayTwoId}`);

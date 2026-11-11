@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+import { LanguageSwitcher } from "../../components/shared/LanguageSwitcher";
 import { useEffect, useState } from "react";
 import { track } from "@vercel/analytics";
 import { Gift, ArrowRight, CheckCircle2 } from "lucide-react";
@@ -46,16 +48,19 @@ function useGiveawayMeta(campaign: GiveawayCampaign) {
 }
 
 export function GiveawayPage() {
+  const { t, i18n } = useTranslation();
   const requested = new URLSearchParams(window.location.search).get("campaign");
   const campaign = requested && Object.prototype.hasOwnProperty.call(giveawayCampaigns, requested) ? giveawayCampaigns[requested] : giveawayCampaigns[currentGiveawayId];
+  const spanish = campaign.campaignId === "scrub-giveaway-2026-002" && i18n?.resolvedLanguage?.startsWith("es");
   const state = useGiveawayState(campaign);
   const active = state === "active" && isOperationsAssessmentEnabled;
   useGiveawayMeta(campaign);
   useEffect(() => { track("giveaway_page_viewed", { campaignId: campaign.campaignId }); }, [campaign.campaignId]);
   const opening = campaign.startsAt === null ? "Opening date to be announced." : `Scheduled opening: ${new Intl.DateTimeFormat("en-US", { dateStyle: "long", timeStyle: "short", timeZone: campaign.timezone }).format(campaign.startsAt)} ET.`;
   return <div lang="en" className="min-h-dvh bg-gray-50 text-gray-900 [&_a]:focus-visible:outline [&_a]:focus-visible:outline-2 [&_a]:focus-visible:outline-offset-4 [&_a]:focus-visible:outline-primary-600">
-    <header className="border-b border-gray-200 bg-white"><div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6"><a href="/" className="flex min-h-11 items-center gap-2 font-bold"><img src="/logo-icon.png" alt="" className="h-8 w-8"/>SCRUB</a><a href="#official-rules" className="py-3 text-sm font-semibold text-primary-700">Official Rules</a></div></header>
+    <header className="border-b border-gray-200 bg-white"><div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6"><a href="/" className="flex min-h-11 items-center gap-2 font-bold"><img src="/logo-icon.png" alt="" className="h-8 w-8"/>SCRUB</a><a href="#official-rules" className="py-3 text-sm font-semibold text-primary-700">Official Rules</a>{campaign.campaignId === "scrub-giveaway-2026-002" && i18n && <LanguageSwitcher/>}</div></header>
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16">
+      {campaign.campaignId === "scrub-giveaway-2026-002" && <details lang="es" open={Boolean(spanish)} className="mb-8 rounded-2xl border border-primary-200 bg-white p-5"><summary className="min-h-11 cursor-pointer font-semibold">Información del sorteo en español</summary><p className="mt-3 leading-7">{t("giveawayLaunch.summaryBody", { lng: "es" })}</p><a className="mt-3 inline-block min-h-11 text-primary-700 underline" href="#official-rules">Reglas Oficiales (en inglés)</a><p className="text-sm">El resumen y el formulario alternativo están disponibles en español; las Reglas Oficiales aprobadas se presentan en inglés.</p></details>}
       <section className="grid gap-8 lg:grid-cols-[1.3fr_1fr] lg:items-center" aria-labelledby="giveaway-title">
         <div><p className="text-sm font-semibold uppercase tracking-widest text-primary-700">{campaign.eyebrow}</p><h1 id="giveaway-title" className="mt-4 text-4xl font-bold leading-tight tracking-tight sm:text-5xl">{campaign.headline}</h1><p className="mt-5 text-lg leading-8 text-gray-600">{campaign.description}</p>
           <div role="status" className="mt-6 rounded-2xl border border-primary-200 bg-primary-50 p-4 font-medium text-primary-900">
