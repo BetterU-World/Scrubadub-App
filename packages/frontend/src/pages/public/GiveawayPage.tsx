@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { LanguageSwitcher } from "../../components/shared/LanguageSwitcher";
 import { useEffect, useState } from "react";
 import { track } from "@vercel/analytics";
-import { Gift, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Gift, ArrowRight, CheckCircle2, Instagram, Music2 } from "lucide-react";
 import { currentGiveawayId, giveawayCampaigns, giveawayState, giveawayAssessmentUrl, type GiveawayCampaign } from "../../../../../convex/lib/giveawayCampaigns";
 import { isOperationsAssessmentEnabled } from "../../lib/assessmentFeature";
 import { GiveawayAlternateEntry } from "./GiveawayAlternateEntry";
@@ -48,7 +48,7 @@ function useGiveawayMeta(campaign: GiveawayCampaign) {
 }
 
 export function GiveawayPage() {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const requested = new URLSearchParams(window.location.search).get("campaign");
   const campaign = requested && Object.prototype.hasOwnProperty.call(giveawayCampaigns, requested) ? giveawayCampaigns[requested] : giveawayCampaigns[currentGiveawayId];
   const state = useGiveawayState(campaign);
@@ -73,6 +73,15 @@ export function GiveawayPage() {
       <section className="mt-14 rounded-3xl border border-gray-200 bg-white p-6 sm:p-10"><h2 className="text-2xl font-bold">How to enter</h2><p className="mt-4 leading-7 text-gray-600">{campaign.entryMethod}</p><h3 className="mt-6 text-lg font-semibold">Method A — Assessment entry</h3><ol className="mt-4 grid gap-5 sm:grid-cols-3">{["Use the giveaway entry link while entries are open.", "Complete the existing SCRUB Cleaning Business Assessment.", "Provide your contact email so we can reach you if you win."].map((item, index) => <li key={item} className="rounded-2xl bg-gray-50 p-5"><span className="font-bold text-primary-700">0{index + 1}</span><p className="mt-3 leading-7">{item}</p></li>)}</ol><p className="mt-5 text-sm leading-6 text-gray-600">No account, subscription, payment information, trial, follow, post, or share required. Repeating the assessment or using both methods does not add entries.</p><h3 className="mt-6 text-lg font-semibold">Method B — free alternate entry</h3><p className="mt-3 leading-7 text-gray-600">Assessment completion is not required to enter. Use the short alternate form during the same promotion period for the same chance of winning.</p><a href="#alternate-entry" className="mt-4 inline-flex min-h-11 items-center font-semibold text-primary-700 underline">Go to free alternate entry</a></section>
       <div className="mt-14 grid gap-10 sm:grid-cols-2"><section><h2 className="text-2xl font-bold">A clearer view of your business</h2><p className="mt-4 leading-7 text-gray-600">The free Cleaning Business Assessment helps you reflect on scheduling, team coordination, quality, clients, finances, and growth. Get your operations score, a practical diagnosis, and a roadmap for what to improve next.</p><p className="mt-4 flex items-start gap-2 font-medium text-primary-800"><CheckCircle2 className="mt-1 h-5 w-5 shrink-0" aria-hidden="true"/>Your answers and score never affect your odds.</p></section><section><h2 className="text-2xl font-bold">Who can enter</h2><p className="mt-4 leading-7 text-gray-600">{campaign.eligibility}</p><p className="mt-4 leading-7 text-gray-600">Drawing: {campaign.drawingLabel}. The winner is selected randomly from eligible unique entries from both methods and contacted by email, with 72 hours to respond. Odds depend on the number of eligible unique entries.</p></section></div>
       <GiveawayAlternateEntry key={campaign.campaignId} campaign={campaign} active={state === "active"} />
+      {campaign.campaignId === "scrub-giveaway-2026-002" && <section id="stay-connected" className="mt-14 rounded-3xl border border-primary-100 bg-primary-50 p-6 sm:p-10" aria-labelledby="social-title">
+        <h2 id="social-title" className="text-2xl font-bold">{t("giveawayLaunch.socialTitle")}</h2>
+        <p className="mt-3 max-w-2xl leading-7 text-gray-600">{t("giveawayLaunch.socialDescription")}</p>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <a href="https://www.instagram.com/scrub.ops/" target="_blank" rel="noopener noreferrer" className="flex min-h-16 items-center gap-4 rounded-2xl border border-gray-200 bg-white p-5 transition-colors hover:border-primary-400 hover:bg-primary-50"><Instagram className="h-6 w-6 shrink-0 text-primary-700" aria-hidden="true"/><span><span className="block font-semibold">Instagram</span><span className="text-sm text-gray-600">@scrub.ops</span></span><span className="sr-only">{t("giveawayLaunch.socialNewTab")}</span></a>
+          <a href="https://www.tiktok.com/@scrub.ops" target="_blank" rel="noopener noreferrer" className="flex min-h-16 items-center gap-4 rounded-2xl border border-gray-200 bg-white p-5 transition-colors hover:border-primary-400 hover:bg-primary-50"><Music2 className="h-6 w-6 shrink-0 text-primary-700" aria-hidden="true"/><span><span className="block font-semibold">TikTok</span><span className="text-sm text-gray-600">@scrub.ops</span></span><span className="sr-only">{t("giveawayLaunch.socialNewTab")}</span></a>
+        </div>
+        <p className="mt-5 max-w-3xl text-sm leading-6 text-gray-700">{t("giveawayLaunch.socialDisclaimer")}</p>
+      </section>}
       <section id="official-rules" className="mt-14 scroll-mt-6 rounded-3xl border border-gray-200 bg-white p-6 sm:p-10" aria-labelledby="rules-title"><h2 id="rules-title" className="text-2xl font-bold">Official Rules — {campaign.name}</h2>{!campaign.rulesApproved && <p className="mt-4 rounded-xl bg-amber-50 p-4 text-amber-900">{campaign.campaignId === "scrub-giveaway-2026-002" ? "Proposed rules. Entries are not open." : "Draft — owner/legal review required before launch. Entries are not open."}</p>}<h3 className="mt-6 text-lg font-semibold">Promotion period and prize</h3><p className="mt-2 leading-7 text-gray-600">{opening} Ends {campaign.deadlineLabel}. One {campaign.prize.title}. Approximate retail value: {campaign.prize.arv}. Drawing: {campaign.drawingLabel}.</p>{campaign.rules.map(rule => <div key={rule.title} className="mt-6"><h3 className="text-lg font-semibold">{rule.title}</h3><p className="mt-2 whitespace-pre-line leading-7 text-gray-600">{rule.body}</p></div>)}<p className="mt-6"><a href="/privacy" className="font-medium text-primary-700 underline">Privacy Policy</a> · <a href="/terms" className="font-medium text-primary-700 underline">Terms of Service</a></p></section>
     </main><footer className="border-t border-gray-200 px-4 py-8 text-center text-sm text-gray-600">SCRUB · Built for cleaning businesses. <a href="/privacy" className="underline">Privacy Policy</a></footer>
   </div>;

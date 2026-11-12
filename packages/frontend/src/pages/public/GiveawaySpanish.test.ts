@@ -43,4 +43,25 @@ describe("Giveaway #2 Spanish presentation", () => {
     expect(contact).toContain("Rhode Island");
     expect(contact).toContain("15 de diciembre");
   });
+  it.each(["en", "es"])("shows optional social links only for Giveaway #2 in %s", async language => {
+    const i18n = createInstance();
+    await i18n.init({ lng: language, fallbackLng: "en", resources: { es: { translation: es }, en: { translation: en } } });
+    vi.stubGlobal("window", { location: { search: "" } });
+    const render = () => renderToStaticMarkup(createElement(I18nextProvider, { i18n }, createElement(GiveawayPage)));
+    const html = render();
+    const social = html.slice(html.indexOf('<section id="stay-connected"'), html.indexOf('<section id="official-rules"'));
+    const copy = language === "es" ? es.giveawayLaunch : en.giveawayLaunch;
+    expect(social).toContain(copy.socialTitle);
+    expect(social).toContain(copy.socialDescription);
+    expect(social).toContain(copy.socialDisclaimer);
+    expect(social).toContain('href="https://www.instagram.com/scrub.ops/" target="_blank" rel="noopener noreferrer"');
+    expect(social).toContain('href="https://www.tiktok.com/@scrub.ops" target="_blank" rel="noopener noreferrer"');
+    expect(social.match(/@scrub.ops<\/span>/g)).toHaveLength(2);
+    expect(social).not.toContain("<input");
+    expect(html.indexOf('id="alternate-entry"')).toBeLessThan(html.indexOf('id="stay-connected"'));
+    expect(html.indexOf('id="stay-connected"')).toBeLessThan(html.indexOf('id="official-rules"'));
+    vi.stubGlobal("window", { location: { search: "?campaign=scrub-giveaway-2026-001" } });
+    expect(render()).not.toContain('id="stay-connected"');
+  });
+
 });
