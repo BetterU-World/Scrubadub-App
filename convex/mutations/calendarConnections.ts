@@ -1,3 +1,4 @@
+import { validateCalendarUrl } from "../lib/calendarFeedSecurity";
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { logAudit } from "../lib/helpers";
@@ -19,6 +20,7 @@ export const create = mutation({
     icalUrl: v.string(),
     label: v.optional(v.string()),
   },
+  returns: v.id("calendarConnections"),
   handler: async (ctx, args) => {
     const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     if (owner.companyId !== args.companyId) throw new Error("Not your company");
@@ -29,6 +31,8 @@ export const create = mutation({
     if (!property || property.companyId !== args.companyId) {
       throw new Error("Property not found");
     }
+
+    validateCalendarUrl(args.icalUrl);
 
     // Compute today in ISO format for first-sync cutoff.
     // Reservations with checkOut <= this date will not generate jobs on first sync.
@@ -76,6 +80,7 @@ export const update = mutation({
       )
     ),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const connection = await ctx.db.get(args.connectionId);
     if (!connection) throw new Error("Connection not found");
@@ -83,6 +88,7 @@ export const update = mutation({
     const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     if (owner.companyId !== connection.companyId) throw new Error("Not your company");
 
+    if (args.icalUrl !== undefined) validateCalendarUrl(args.icalUrl);
     const updates: Record<string, unknown> = {};
     if (args.icalUrl !== undefined) updates.icalUrl = args.icalUrl;
     if (args.label !== undefined) updates.label = args.label;
@@ -147,6 +153,7 @@ export const remove = mutation({
     sessionToken: v.string(),
     connectionId: v.id("calendarConnections"),
   },
+  returns: v.null(),
   handler: async (ctx, args) => {
     const connection = await ctx.db.get(args.connectionId);
     if (!connection) throw new Error("Connection not found");

@@ -1,3 +1,9 @@
+// Lifecycle tests mock only the network boundary; transport policy has its own suite.
+vi.mock("../../actions/calendarFeedFetch", () => ({ fetchCalendarFeed: async (url: string) => {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("Synthetic HTTP failure");
+  return response.text();
+} }));
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { convexTest } from "convex-test";
 import schema from "../../schema";

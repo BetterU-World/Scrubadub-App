@@ -5,6 +5,8 @@ import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { parseICalFeed } from "./icalParser";
 import { assertExternalSideEffectsAllowed } from "../lib/environment";
+import { fetchCalendarFeed } from "./calendarFeedFetch";
+import { CalendarFeedError, safeFeedError } from "../lib/calendarFeedSecurity";
 import { randomUUID } from "node:crypto";
 
 /**
@@ -37,25 +39,12 @@ export const syncConnection = internalAction({
     // 2. Fetch the iCal feed
     let stage = "Fetch";
     try {
-      const response = await fetch(icalUrl, {
-        headers: { "User-Agent": "SCRUB-CalendarSync/1.0" },
-        signal: AbortSignal.timeout(30_000), // 30s timeout
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const rawIcs = await response.text();
-
-      if (!rawIcs || rawIcs.trim().length === 0) {
-        throw new Error("Empty response from iCal URL");
-      }
+      const rawIcs = await fetchCalendarFeed(icalUrl);
       // 3. Parse the feed
       stage = "Parse";
       const parseResult = parseICalFeed(rawIcs);
       if (parseResult.status !== "valid" && parseResult.status !== "valid_empty") {
-        throw new Error(parseResult.diagnostic ?? "Unsafe iCalendar snapshot");
+        throw new CalendarFeedError("invalid_calendar");
       }
 
       // 4. Processing and success recording commit together in this mutation.
@@ -82,7 +71,7 @@ export const syncConnection = internalAction({
         }
       );
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = safeFeedError(error, stage === "Processing" ? "processing" : stage === "Parse" ? "invalid_calendar" : "unavailable");
       const errorMessage = `${stage} error: ${message}`.slice(0, 1000);
       console.error(`[calendarSync] ${stage} failed for ${args.connectionId}: ${message}`);
       // One recording attempt only. If it fails, propagate the failure; the
