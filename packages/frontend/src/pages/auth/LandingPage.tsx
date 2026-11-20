@@ -1,5 +1,7 @@
 import { Link } from "wouter";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { getHolidayPhase, holidayCampaign } from "./holidayCampaign";
 import {
   ArrowRight,
   BarChart3,
@@ -238,6 +240,36 @@ function AnchorLink({
 }
 
 export function LandingPage() {
+  const { t, i18n } = useTranslation();
+  const [phase, setPhase] = useState(() => getHolidayPhase());
+  const [copyStatus, setCopyStatus] = useState<"copied" | "copyFailed">();
+  const promo = { percent: holidayCampaign.percentOff, months: holidayCampaign.months };
+  const currency = new Intl.NumberFormat(i18n.resolvedLanguage === "es" ? "es-US" : "en-US", {
+    style: "currency",
+    currency: "USD",
+  });
+
+  useEffect(() => {
+    const refreshPhase = () => setPhase(getHolidayPhase());
+    window.addEventListener("pageshow", refreshPhase);
+    window.addEventListener("focus", refreshPhase);
+    document.addEventListener("visibilitychange", refreshPhase);
+    return () => {
+      window.removeEventListener("pageshow", refreshPhase);
+      window.removeEventListener("focus", refreshPhase);
+      document.removeEventListener("visibilitychange", refreshPhase);
+    };
+  }, []);
+
+  async function copyHolidayCode() {
+    try {
+      await navigator.clipboard.writeText(holidayCampaign.code);
+      setCopyStatus("copied");
+    } catch {
+      setCopyStatus("copyFailed");
+    }
+  }
+
   return (
     <div className="min-h-screen overflow-x-hidden bg-white text-gray-900">
       <header className="sticky top-0 z-40 border-b border-gray-200/80 bg-white/95 backdrop-blur">
@@ -670,12 +702,36 @@ export function LandingPage() {
               title="Choose the plan that fits your operation"
               copy="Every plan includes a 14-day free trial. Start with the team size and operational depth your business needs today."
             />
+            {phase && (
+              <div className="mx-auto mt-8 max-w-xl rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-5 text-center sm:px-6">
+                <h3 className="text-2xl font-bold text-gray-900">{t("holidayCampaign." + phase.name)}</h3>
+                <p className="mt-1 font-semibold text-emerald-900">{t("holidayCampaign.offer", promo)}</p>
+                <p className="mt-2 text-sm text-gray-700">{t("holidayCampaign.eligibility")}</p>
+                <p className="mt-1 text-sm text-gray-700">{t("holidayCampaign.publicEnd")}</p>
+                <p className="mt-3 text-sm font-medium text-gray-800">{t("holidayCampaign.enterAtCheckout")}</p>
+                <button
+                  type="button"
+                  onClick={copyHolidayCode}
+                  aria-label={t("holidayCampaign.copy", { code: holidayCampaign.code })}
+                  className="touch-target mt-2 inline-flex max-w-full flex-wrap items-center justify-center gap-x-2 rounded-lg border border-emerald-700 bg-white px-3 py-2 text-emerald-900 hover:bg-emerald-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"
+                >
+                  <span className="text-sm font-medium">{t("holidayCampaign.copyLabel")}</span>
+                  <code className="break-all font-bold">{holidayCampaign.code}</code>
+                </button>
+                <p role="status" className="mt-1 min-h-5 text-sm text-emerald-900">
+                  {copyStatus && t("holidayCampaign." + copyStatus, { code: holidayCampaign.code })}
+                </p>
+              </div>
+            )}
             <div className="mt-12 grid gap-6 lg:grid-cols-3">
               {plans.map((plan) => (
                 <article
                   key={plan.planKey}
                   className={`relative flex flex-col rounded-2xl border bg-white p-6 shadow-sm ${plan.popular ? "border-primary-500 ring-1 ring-primary-500" : "border-gray-200"}`}
                 >
+                  {phase && (
+                    <span aria-hidden="true" className={"absolute inset-x-6 top-0 h-1 rounded-b-full " + phase.accent} />
+                  )}
                   {plan.popular && (
                     <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary-600 px-3 py-1 text-xs font-semibold text-white">
                       Most Popular
@@ -687,25 +743,39 @@ export function LandingPage() {
                   <p className="mt-2 min-h-12 text-sm leading-6 text-gray-600">
                     {plan.description}
                   </p>
-                  <p className="mt-5">
-                    <span className="text-4xl font-bold text-gray-900">
-                      {plan.price}
-                    </span>
-                    <span className="text-gray-500">{plan.period}</span>
-                  </p>
-                  <div className="mt-4 rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-center">
-                    <p className="text-sm font-semibold text-gray-800">
-                      <span className="text-green-700">50% OFF</span> first 3
-                      months
+                  {phase ? (
+                    <div className="mt-5">
+                      <p className="text-sm text-gray-700">
+                        {t("holidayCampaign.regularPrice")}{" "}
+                        <span className="relative inline-block font-semibold">
+                          {plan.price}
+                          <span
+                            aria-hidden="true"
+                            className="pointer-events-none absolute -inset-x-1 top-1/2 h-1 -rotate-12 rounded-full border border-red-700 bg-[repeating-linear-gradient(135deg,#b91c1c_0_4px,#fff_4px_7px)]"
+                          />
+                        </span>
+                        {t("holidayCampaign.perMonth")}
+                      </p>
+                      <p className="mt-1 text-sm font-semibold text-emerald-900">
+                        {t("holidayCampaign.promotionalPrice")}
+                      </p>
+                      <p className="mt-1 font-bold text-emerald-900">
+                        <span className="text-4xl">
+                          {currency.format(Number(plan.price.slice(1)) * (1 - holidayCampaign.percentOff / 100))}
+                        </span>
+                        {t("holidayCampaign.perMonth")}
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-gray-800">{t("holidayCampaign.offer", promo)}</p>
+                      <p className="mt-1 text-sm text-gray-700">{t("holidayCampaign.renewal")}</p>
+                    </div>
+                  ) : (
+                    <p className="mt-5">
+                      <span className="text-4xl font-bold text-gray-900">
+                        {plan.price}
+                      </span>
+                      <span className="text-gray-500">{plan.period}</span>
                     </p>
-                    <p className="mt-0.5 text-xs text-gray-500">
-                      Use code{" "}
-                      <span className="font-mono font-semibold text-gray-700">
-                        50OFF3
-                      </span>{" "}
-                      at checkout
-                    </p>
-                  </div>
+                  )}
                   <ul className="mt-6 flex-1 space-y-3">
                     {plan.features.map((feature) => (
                       <li
