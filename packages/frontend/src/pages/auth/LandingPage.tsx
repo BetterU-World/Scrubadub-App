@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getHolidayPhase, holidayCampaign } from "./holidayCampaign";
+import "./holidayPricing.css";
 import {
   ArrowRight,
   BarChart3,
@@ -18,6 +19,7 @@ import {
   Inbox,
   Menu,
   ShieldCheck,
+  Snowflake,
   Sparkles,
   UserCheck,
   Users,
@@ -703,70 +705,76 @@ export function LandingPage() {
               copy="Every plan includes a 14-day free trial. Start with the team size and operational depth your business needs today."
             />
             {phase && (
-              <div className="mx-auto mt-8 max-w-xl rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-5 text-center sm:px-6">
-                <h3 className="text-2xl font-bold text-gray-900">{t("holidayCampaign." + phase.name)}</h3>
-                <p className="mt-1 font-semibold text-emerald-900">{t("holidayCampaign.offer", promo)}</p>
-                <p className="mt-2 text-sm text-gray-700">{t("holidayCampaign.eligibility")}</p>
-                <p className="mt-1 text-sm text-gray-700">{t("holidayCampaign.publicEnd")}</p>
-                <p className="mt-3 text-sm font-medium text-gray-800">{t("holidayCampaign.enterAtCheckout")}</p>
-                <button
-                  type="button"
-                  onClick={copyHolidayCode}
-                  aria-label={t("holidayCampaign.copy", { code: holidayCampaign.code })}
-                  className="touch-target mt-2 inline-flex max-w-full flex-wrap items-center justify-center gap-x-2 rounded-lg border border-emerald-700 bg-white px-3 py-2 text-emerald-900 hover:bg-emerald-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"
-                >
-                  <span className="text-sm font-medium">{t("holidayCampaign.copyLabel")}</span>
-                  <code className="break-all font-bold">{holidayCampaign.code}</code>
-                </button>
-                <p role="status" className="mt-1 min-h-5 text-sm text-emerald-900">
-                  {copyStatus && t("holidayCampaign." + copyStatus, { code: holidayCampaign.code })}
-                </p>
+              <div className="holiday-pricing-banner relative mx-auto mt-10 max-w-4xl overflow-hidden rounded-3xl border border-emerald-900 px-5 py-7 text-center text-white shadow-lg sm:px-12 sm:py-9">
+                <Snowflake aria-hidden="true" className="pointer-events-none absolute -left-7 top-7 h-28 w-28 -rotate-12 text-white/10 sm:left-6 sm:top-8 sm:h-36 sm:w-36" />
+                <Snowflake aria-hidden="true" className="pointer-events-none absolute -right-5 bottom-0 h-24 w-24 rotate-12 text-white/10 sm:bottom-3 sm:right-8 sm:h-32 sm:w-32" />
+                <div className="relative mx-auto max-w-xl">
+                  <div aria-hidden="true" className="mb-3 flex items-center justify-center gap-2">
+                    <span className={"h-0.5 w-8 rounded-full ring-1 ring-white/50 " + phase.accent} />
+                    <Sparkles className="h-5 w-5 text-emerald-200" />
+                    <span className={"h-0.5 w-8 rounded-full ring-1 ring-white/50 " + phase.accent} />
+                  </div>
+                  <h3 className="text-4xl font-extrabold tracking-tight sm:text-5xl">{t("holidayCampaign." + phase.name)}</h3>
+                  <p className="mt-3 text-lg font-semibold text-emerald-200 sm:text-xl">{t("holidayCampaign.offer", promo)}</p>
+                  <p className="mt-3 text-sm leading-6 text-emerald-50">{t("holidayCampaign.eligibility")}</p>
+                  <p className="text-sm leading-6 text-emerald-50">{t("holidayCampaign.publicEnd")}</p>
+                  <p className="mt-4 text-sm font-medium text-white">{t("holidayCampaign.enterAtCheckout")}</p>
+                  <button
+                    type="button"
+                    onClick={copyHolidayCode}
+                    aria-label={t("holidayCampaign.copy", { code: holidayCampaign.code })}
+                    className="touch-target mt-2 inline-flex max-w-full flex-wrap items-center justify-center gap-x-2 rounded-xl border border-white bg-white px-4 py-2 text-emerald-950 hover:bg-emerald-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
+                  >
+                    <span className="text-sm font-medium">{t("holidayCampaign.copyLabel")}</span>
+                    <code className="break-all font-bold">{holidayCampaign.code}</code>
+                  </button>
+                  <p role="status" className="mt-2 min-h-5 text-sm text-emerald-100">
+                    {copyStatus && t("holidayCampaign." + copyStatus, { code: holidayCampaign.code })}
+                  </p>
+                </div>
               </div>
             )}
             <div className="mt-12 grid gap-6 lg:grid-cols-3">
               {plans.map((plan) => (
                 <article
                   key={plan.planKey}
-                  className={`relative flex flex-col rounded-2xl border bg-white p-6 shadow-sm ${plan.popular ? "border-primary-500 ring-1 ring-primary-500" : "border-gray-200"}`}
+                  className={`relative flex min-w-0 flex-col rounded-2xl border bg-white p-6 ${phase ? "holiday-pricing-card pt-10" : "shadow-sm"} ${plan.popular ? "border-primary-500 ring-1 ring-primary-500" : "border-gray-200"}`}
                 >
-                  {phase && (
-                    <span aria-hidden="true" className={"absolute inset-x-6 top-0 h-1 rounded-b-full " + phase.accent} />
-                  )}
-                  {plan.popular && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary-600 px-3 py-1 text-xs font-semibold text-white">
-                      Most Popular
-                    </span>
-                  )}
-                  <h3 className="text-xl font-semibold text-gray-900">
-                    {plan.name}
-                  </h3>
+                  {phase && <span aria-hidden="true" className="holiday-pricing-snow" />}
+                  <div className={phase ? "flex flex-wrap items-center justify-between gap-2" : undefined}>
+                    <h3 className="text-xl font-semibold text-gray-900">{plan.name}</h3>
+                    {plan.popular && (
+                      <span className={`rounded-full bg-primary-600 px-3 py-1 text-xs font-semibold text-white ${phase ? "" : "absolute -top-3 left-1/2 -translate-x-1/2"}`}>
+                        Most Popular
+                      </span>
+                    )}
+                  </div>
                   <p className="mt-2 min-h-12 text-sm leading-6 text-gray-600">
                     {plan.description}
                   </p>
                   {phase ? (
-                    <div className="mt-5">
-                      <p className="text-sm text-gray-700">
-                        {t("holidayCampaign.regularPrice")}{" "}
-                        <span className="relative inline-block font-semibold">
+                    <div className="mt-5 rounded-xl border border-emerald-100 bg-emerald-50/70 p-4">
+                      <p className="text-sm font-medium text-gray-700">{t("holidayCampaign.regularPrice")}</p>
+                      <p className="mt-1 font-semibold text-gray-700">
+                        <span className="relative inline-block px-1 text-2xl tabular-nums">
                           {plan.price}
-                          <span
-                            aria-hidden="true"
-                            className="pointer-events-none absolute -inset-x-1 top-1/2 h-1 -rotate-12 rounded-full border border-red-700 bg-[repeating-linear-gradient(135deg,#b91c1c_0_4px,#fff_4px_7px)]"
-                          />
+                          <span aria-hidden="true" className="holiday-pricing-candy-slash" />
                         </span>
-                        {t("holidayCampaign.perMonth")}
+                        <span className="ml-1 text-sm">{t("holidayCampaign.perMonth")}</span>
                       </p>
-                      <p className="mt-1 text-sm font-semibold text-emerald-900">
+                      <p className="mt-3 text-sm font-semibold text-emerald-900">
                         {t("holidayCampaign.promotionalPrice")}
                       </p>
-                      <p className="mt-1 font-bold text-emerald-900">
-                        <span className="text-4xl">
+                      <p className="mt-1 font-bold text-emerald-950">
+                        <span className="text-5xl tracking-tight tabular-nums">
                           {currency.format(Number(plan.price.slice(1)) * (1 - holidayCampaign.percentOff / 100))}
                         </span>
-                        {t("holidayCampaign.perMonth")}
+                        <span className="ml-1 text-sm">{t("holidayCampaign.perMonth")}</span>
                       </p>
-                      <p className="mt-2 text-sm font-semibold text-gray-800">{t("holidayCampaign.offer", promo)}</p>
-                      <p className="mt-1 text-sm text-gray-700">{t("holidayCampaign.renewal")}</p>
+                      <p className="mt-3 inline-block rounded-lg bg-emerald-900 px-2.5 py-1.5 text-sm font-semibold leading-5 text-white">
+                        {t("holidayCampaign.offer", promo)}
+                      </p>
+                      <p className="mt-2 text-sm leading-5 text-gray-700">{t("holidayCampaign.renewal")}</p>
                     </div>
                   ) : (
                     <p className="mt-5">
