@@ -1,4 +1,21 @@
 {
+  "holidayCampaign": {
+    "blackFriday": "Oferta de Black Friday",
+    "holiday": "Oferta de fiestas",
+    "newYear": "Oferta de Año Nuevo",
+    "offer": "{{percent}} % de descuento durante tus primeros {{months}} meses",
+    "regularPrice": "Precio habitual",
+    "promotionalPrice": "Precio promocional estimado",
+    "perMonth": "/mes",
+    "renewal": "Después se aplica el precio mensual habitual. Consulta los importes y las fechas de cobro en la página de pago de Stripe.",
+    "eligibility": "Para nuevas suscripciones de pago a Solo, Team y Pro, incluso si cambias desde una cuenta gratuita.",
+    "publicEnd": "Oferta válida hasta el final del 17 de enero de 2027, hora del Este.",
+    "enterAtCheckout": "Ingresa este código en la página de pago de Stripe.",
+    "copyLabel": "Copiar código promocional",
+    "copy": "Copiar código promocional {{code}}",
+    "copied": "Código promocional copiado.",
+    "copyFailed": "No se pudo copiar. Ingresa {{code}} en la página de pago de Stripe."
+  },
   "giveawayLaunch": {
   "socialTitle": "Mantente en contacto con SCRUB",
   "socialDescription": "Síguenos para ver consejos para negocios de limpieza, novedades detrás de cámaras y más formas de mejorar tus operaciones.",

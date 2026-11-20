@@ -1,4 +1,21 @@
 {
+  "holidayCampaign": {
+    "blackFriday": "Black Friday Sale",
+    "holiday": "Holiday Sale",
+    "newYear": "New Year's Sale",
+    "offer": "{{percent}}% off your first {{months}} months",
+    "regularPrice": "Regular price",
+    "promotionalPrice": "Estimated promotional price",
+    "perMonth": "/mo",
+    "renewal": "Regular monthly pricing resumes afterward. See Stripe Checkout for final amounts and billing dates.",
+    "eligibility": "For new paid Solo, Team, and Pro subscriptions, including upgrades from a free account.",
+    "publicEnd": "Sale runs through January 17, 2027, Eastern Time.",
+    "enterAtCheckout": "Enter this code in Stripe Checkout.",
+    "copyLabel": "Copy promotion code",
+    "copy": "Copy promotion code {{code}}",
+    "copied": "Promotion code copied.",
+    "copyFailed": "Copy unavailable. Enter {{code}} in Stripe Checkout."
+  },
   "giveawayLaunch": {
   "socialTitle": "Stay connected with SCRUB",
   "socialDescription": "Follow along for cleaning-business tips, behind-the-scenes updates, and more ways to improve your operations.",
