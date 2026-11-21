@@ -87,6 +87,7 @@ import type * as lib_operationalEmailIdentity from "../lib/operationalEmailIdent
 import type * as lib_outgoingLedger from "../lib/outgoingLedger.js";
 import type * as lib_outgoingSchema from "../lib/outgoingSchema.js";
 import type * as lib_outgoingValidators from "../lib/outgoingValidators.js";
+import type * as lib_ownerOnboarding from "../lib/ownerOnboarding.js";
 import type * as lib_password from "../lib/password.js";
 import type * as lib_perfLog from "../lib/perfLog.js";
 import type * as lib_plans from "../lib/plans.js";
@@ -166,6 +167,7 @@ import type * as workerDeclineReviews from "../workerDeclineReviews.js";
 import type * as workerCompensation from "../workerCompensation.js";
 import type * as outgoingMutations from "../outgoingMutations.js";
 import type * as outgoingQueries from "../outgoingQueries.js";
+import type * as ownerOnboarding from "../ownerOnboarding.js";
 import type * as partnerCompensation from "../partnerCompensation.js";
 import type * as platformProvisioning from "../platformProvisioning.js";
 import type * as proposalDeliveryActions from "../proposalDeliveryActions.js";
@@ -320,6 +322,7 @@ declare const fullApi: ApiFromModules<{
   "lib/outgoingLedger": typeof lib_outgoingLedger;
   "lib/outgoingSchema": typeof lib_outgoingSchema;
   "lib/outgoingValidators": typeof lib_outgoingValidators;
+  "lib/ownerOnboarding": typeof lib_ownerOnboarding;
   "lib/password": typeof lib_password;
   "lib/perfLog": typeof lib_perfLog;
   "lib/plans": typeof lib_plans;
@@ -399,6 +402,7 @@ declare const fullApi: ApiFromModules<{
   workerCompensation: typeof workerCompensation;
   outgoingMutations: typeof outgoingMutations;
   outgoingQueries: typeof outgoingQueries;
+  ownerOnboarding: typeof ownerOnboarding;
   partnerCompensation: typeof partnerCompensation;
   platformProvisioning: typeof platformProvisioning;
   proposalDeliveryActions: typeof proposalDeliveryActions;

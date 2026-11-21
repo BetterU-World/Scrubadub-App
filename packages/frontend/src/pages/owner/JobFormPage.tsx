@@ -248,7 +248,9 @@ export function JobFormPage() {
         }
 
         feedback.success(t("jobs.jobScheduled"));
-        setLocation(`/jobs/${id}`);
+        setLocation(`/jobs/${id}`, {
+          state: user.role === "owner" && type !== "maintenance" ? { ownerFirstWin: "schedule", ownerId: user._id } : undefined,
+        });
       }
     } catch (err: any) {
       setError(err.message || t("jobs.failedToSave"));

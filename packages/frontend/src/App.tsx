@@ -91,6 +91,7 @@ import { GiveawayOperatorPage } from "@/pages/admin/GiveawayOperatorPage";
 
 // Shared pages
 import { NotificationsPage } from "@/pages/shared/NotificationsPage";
+import { OwnerOnboardingEntry } from "@/components/owner/OwnerOnboarding";
 import { ManualsPage } from "@/pages/shared/ManualsPage";
 import { ManualViewerPage } from "@/pages/shared/ManualViewerPage";
 import { PayoutRequestPage } from "@/pages/shared/PayoutRequestPage";
@@ -382,6 +383,7 @@ export default function App() {
       <OfflineIndicator />
       {devBanner}
       <AppLayout>
+        {isOwner && accessOk && <OwnerOnboardingEntry key={user?._id} />}
         <Switch>
           {user?.isSuperadmin === true && (
             <>

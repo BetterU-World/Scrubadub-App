@@ -3,6 +3,7 @@ import { FastModeEligibilityControl } from "@/components/FastModeEligibilityCont
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
+import type { Id } from "../../../../../convex/_generated/dataModel";
 import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { OwnerGuideLink } from "@/components/owner/OwnerGuideLink";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -106,6 +107,7 @@ export function EmployeeListPage() {
   const [inviteWorkerType, setInviteWorkerType] = useState<"w2_employee" | "contractor_1099" | "maintenance_contractor">("contractor_1099");
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteLink, setInviteLink] = useState("");
+  const [invitedUserId, setInvitedUserId] = useState<Id<"users">>();
   const [inviteEmailSent, setInviteEmailSent] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
@@ -186,6 +188,9 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
     cleanerUsage &&
     cleanerUsage.limit !== null &&
     cleanerUsage.activeCleaners >= cleanerUsage.limit;
+  const ownerCleanerInvite = isOwner && inviteRole === "cleaner";
+  const invitee = employees.find((employee) => employee._id === invitedUserId);
+  const cleanerEmailConfirmed = invitee?.cleanerInviteEmailSentAt !== undefined;
 
   const handleInvite = async () => {
     if (!user.companyId) return;
@@ -205,9 +210,11 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
         Object.assign(inviteArgs, mgrPerms);
       }
       const result = await inviteCleaner(inviteArgs as any);
+      setInvitedUserId(result.userId);
       setInviteLink(`${window.location.origin}/invite/${result.token}`);
       setInviteEmailSent(result.emailSent);
-      setToast(result.emailSent ? t("employees.inviteCreatedAndEmailed") : t("employees.inviteCreatedCopyLink"));
+      setToast(t(ownerCleanerInvite ? "ownerOnboarding.inviteCreated"
+        : result.emailSent ? "employees.inviteCreatedAndEmailed" : "employees.inviteCreatedCopyLink"));
     } catch (err: any) {
       setError(err.message || "Failed to invite");
     } finally {
@@ -255,6 +262,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
     setInviteRole("cleaner");
     setInviteWorkerType("contractor_1099");
     setInviteLink("");
+    setInvitedUserId(undefined);
     setInviteEmailSent(false);
     setError("");
     setMgrPerms({
@@ -610,7 +618,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                                 companyId: user.companyId!,
                                 employeeId: emp._id,
                               });
-                              setToast(t("employees.emailResentSuccess"));
+                              setToast(t(isOwner && emp.role === "cleaner" ? "ownerOnboarding.inviteEmailQueued" : "employees.emailResentSuccess"));
                             } catch {
                               setToast(t("employees.inviteActionFailed"));
                             }
@@ -668,7 +676,14 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
             {isOwner && <OwnerGuideLink topic="cleaner-invitations" newTab />}
             {inviteLink ? (
               <div>
-                {inviteEmailSent ? (
+                {ownerCleanerInvite ? (
+                  <div role="status" className="mb-3 rounded-lg bg-gray-50 p-3 text-sm text-gray-800">
+                    <p className="font-medium">{t(invitee?.cleanerInvitationAccepted && invitee.status === "active"
+                      ? "ownerOnboarding.cleanerJoined" : "ownerOnboarding.inviteCreated")}</p>
+                    {cleanerEmailConfirmed && <p>{t("ownerOnboarding.inviteEmailSent")}</p>}
+                    {inviteEmailSent && !cleanerEmailConfirmed && <p>{t("ownerOnboarding.inviteEmailQueued")}</p>}
+                  </div>
+                ) : inviteEmailSent ? (
                   <div className="p-3 bg-green-50 border border-green-200 rounded-lg mb-3">
                     <p className="text-sm font-medium text-green-800">{t("employees.emailSentConfirm", { email: inviteEmail })}</p>
                     <p className="text-xs text-green-600 mt-1">{t("employees.emailSentDesc")}</p>
@@ -700,7 +715,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
                         if (result.emailSent) {
                           setInviteLink(`${window.location.origin}/invite/${result.token}`);
                           setInviteEmailSent(true);
-                          setToast(t("employees.emailResentSuccess"));
+                          setToast(t(ownerCleanerInvite ? "ownerOnboarding.inviteEmailQueued" : "employees.emailResentSuccess"));
                         } else {
                           setToast(t("employees.emailNotSent"));
                         }

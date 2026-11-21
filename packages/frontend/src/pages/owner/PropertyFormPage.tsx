@@ -196,7 +196,9 @@ export function PropertyFormPage() {
           t("properties.propertyCreated"),
           t("properties.failedToSave"),
         );
-        setLocation(`/properties/${id}`);
+        setLocation(`/properties/${id}`, {
+          state: user.role === "owner" ? { ownerFirstWin: "property", ownerId: user._id } : undefined,
+        });
       }
     } catch (err: any) {
       setError(toFriendlyMessage(err, t("properties.failedToSave")));

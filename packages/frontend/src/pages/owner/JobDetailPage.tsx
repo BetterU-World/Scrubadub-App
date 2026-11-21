@@ -14,6 +14,7 @@ import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { toFriendlyMessage } from "@/lib/friendlyError";
 import { requireUserId } from "@/lib/requireUserId";
 import { OwnerGuideLink } from "@/components/owner/OwnerGuideLink";
+import { OwnerFirstWinNextAction } from "@/components/owner/OwnerOnboarding";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -190,6 +191,8 @@ export function JobDetailPage() {
         }
       />
       {user?.role === "owner" && canReview && <OwnerGuideLink topic="quality-review" />}
+      {user?.role === "owner" && job.status !== "cancelled" && job.status !== "denied" && job.type !== "maintenance" &&
+        <OwnerFirstWinNextAction goal="schedule" ownerId={user._id} />}
 
       <div className="space-y-6">
         {sharedWorkAllowed && <WorkerDeclineReviews jobId={job._id} />}
