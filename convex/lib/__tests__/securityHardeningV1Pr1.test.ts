@@ -222,7 +222,8 @@ describe("Security Hardening V1 PR 1", () => {
     const app = normalize("packages/frontend/src/App.tsx");
     expect(adminPage).toContain("user?.isSuperadmin === true && Boolean(sessionToken)");
     expect(invitesPage).toContain("user?.isSuperadmin === true && Boolean(sessionToken)");
-    expect(adminPage.match(/: \"skip\"/g)).toHaveLength(2);
+    // V2 adds separately guarded directory, company and people queries.
+    expect(adminPage.match(/: \"skip\"/g)?.length).toBeGreaterThanOrEqual(3);
     expect(invitesPage).toContain(': "skip"');
     expect(sidebar).toContain("user?.isSuperadmin === true");
     expect(sidebar).not.toContain("queries.admin.isSuperAdmin");

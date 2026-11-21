@@ -390,6 +390,10 @@ export default function App() {
               <Route path="/admin/assessments/:attemptId" component={AssessmentResultDetailPage} />
               <Route path="/admin/assessments" component={AssessmentResultsPage} />
               <Route path="/admin/affiliates" component={AffiliateInvitesPage} />
+              <Route path="/admin/companies/:companyId" component={SuperAdminPage} />
+              <Route path="/admin/companies" component={SuperAdminPage} />
+              <Route path="/admin/engagement" component={SuperAdminPage} />
+              <Route path="/admin/billing" component={SuperAdminPage} />
               <Route path="/admin" component={SuperAdminPage} />
             </>
           )}
