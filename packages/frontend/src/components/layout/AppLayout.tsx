@@ -1,5 +1,6 @@
-import { ReactNode, useState, useCallback, useRef } from "react";
+import { ReactNode, useState, useCallback, useLayoutEffect, useRef } from "react";
 import { clsx } from "clsx";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Sidebar } from "./Sidebar";
 import { MobileNav } from "./MobileNav";
@@ -17,6 +18,9 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const { user } = useAuth();
+  const [pathname] = useLocation();
+  const previousPathname = useRef(pathname);
+  const workspaceRef = useRef<HTMLDivElement>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const menuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const hasMobileNavigation = getMobileNavItemsForRole(
@@ -43,13 +47,22 @@ export function AppLayout({ children }: AppLayoutProps) {
   }, []);
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
 
+  useLayoutEffect(() => {
+    if (previousPathname.current !== pathname && window.matchMedia("(min-width: 768px)").matches) {
+      const workspace = workspaceRef.current;
+      if (workspace) workspace.scrollTop = 0;
+    }
+    previousPathname.current = pathname;
+  }, [pathname]);
+
   return (
-    <div className="flex min-h-screen min-h-[100dvh] w-full min-w-0 max-w-full pt-[var(--safe-area-top)]">
+    <div className="flex min-h-screen min-h-[100dvh] w-full min-w-0 max-w-full pt-[var(--safe-area-top)] md:h-[100dvh] md:min-h-0">
       <ForegroundPresence />
       <Sidebar mobileOpen={sidebarOpen} onMobileClose={closeSidebar} triggerRef={menuTriggerRef} />
       <div
+        ref={workspaceRef}
         className={clsx(
-          "flex min-h-0 min-w-0 max-w-full flex-1 flex-col md:pb-0",
+          "flex min-h-0 min-w-0 max-w-full flex-1 flex-col md:overflow-x-hidden md:overflow-y-auto md:overscroll-y-contain md:pb-0",
           hasMobileNavigation && "pb-[var(--mobile-bottom-occlusion)]"
         )}
       >
