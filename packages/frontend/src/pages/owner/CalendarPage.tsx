@@ -3,6 +3,7 @@ import { useState, useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
+import { OwnerGuideLink } from "@/components/owner/OwnerGuideLink";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -248,6 +249,7 @@ export function CalendarPage() {
   return (
     <div>
       <PageHeader title={t("calendar.title")} description={t("guidance.owner.calendar")} />
+      {user?.role === "owner" && <OwnerGuideLink topic="calendar" />}
 
       {user.role === "manager" && user.canSeeAllJobs && (
         <div className="mb-4 flex w-fit items-center gap-1 rounded-lg bg-gray-100 p-1" aria-label="Calendar scope">

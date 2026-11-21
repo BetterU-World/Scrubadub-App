@@ -1635,6 +1635,28 @@
     "settlementDate": "Settlement date",
     "totalOwed": "Total: {{amount}}"
   },
+  "learningCenter": {
+    "title": "Learning Center",
+    "gettingStarted": "Getting Started",
+    "manuals": "Manuals & Guides",
+    "explore": "Explore Features",
+    "support": "Help & Support",
+    "schedule": "Schedule a cleaning",
+    "fullScheduling": "Open full scheduling",
+    "invite": "Invite a cleaner",
+    "property": "Add a property",
+    "calendar": "Open calendar",
+    "jobs": "View jobs",
+    "showcase": "Explore the fictional Showcase",
+    "contact": "Contact SCRUB support",
+    "troubleshooting": "Troubleshooting guide",
+    "propertiesGuide": "Property setup guide",
+    "teamGuide": "Cleaner invitation guide",
+    "jobsGuide": "Job scheduling guide",
+    "calendarGuide": "Calendar guide",
+    "reviewGuide": "Quality review guide",
+    "back": "Back to Learning Center"
+  },
   "manuals": {
     "title": "Manuals",
     "description": "Role-gated guides and reference documents",

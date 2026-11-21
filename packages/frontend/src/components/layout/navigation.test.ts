@@ -44,6 +44,10 @@ describe("role mobile navigation", () => {
     expect(hrefs(getMoreNavItemsForRole("owner"))).toContain("/clients");
     expect(hrefs(getMoreNavItemsForRole("cleaner"))).toContain("/payments");
     expect(hrefs(getMoreNavItemsForRole("cleaner"))).toContain("/calendar");
+    expect(getMoreNavItemsForRole("owner").find((item) => item.href === "/manuals")?.labelKey).toBe("learningCenter.title");
+    for (const role of ["manager", "cleaner", "maintenance"]) {
+      expect(getMoreNavItemsForRole(role).find((item) => item.href === "/manuals")?.labelKey).toBe("nav.manuals");
+    }
 
     const withoutCapability = getNavSectionsForRole("manager", false).flatMap(
       (section) => hrefs(section.items)

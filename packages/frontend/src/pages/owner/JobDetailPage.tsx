@@ -13,6 +13,7 @@ import { Id } from "../../../../../convex/_generated/dataModel";
 import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { toFriendlyMessage } from "@/lib/friendlyError";
 import { requireUserId } from "@/lib/requireUserId";
+import { OwnerGuideLink } from "@/components/owner/OwnerGuideLink";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -188,6 +189,7 @@ export function JobDetailPage() {
           </div>
         }
       />
+      {user?.role === "owner" && canReview && <OwnerGuideLink topic="quality-review" />}
 
       <div className="space-y-6">
         {sharedWorkAllowed && <WorkerDeclineReviews jobId={job._id} />}
