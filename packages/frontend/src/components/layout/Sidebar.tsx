@@ -129,7 +129,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose, triggerRef }: Sideb
         <p className="text-sm text-gray-500 mt-1">{user?.companyName || (user?.role === "affiliate" ? "Affiliate Program" : "")}</p>
       </div>
 
-      <nav className="flex-1 p-4 space-y-4 overflow-y-auto">
+      <nav className="flex-1 p-4 space-y-4 overflow-y-auto md:overscroll-y-contain">
         {sections.map((section) => (
           <CollapsibleSection
             key={section.titleKey}
@@ -217,7 +217,7 @@ export function Sidebar({ mobileOpen = false, onMobileClose, triggerRef }: Sideb
   return (
     <>
       {/* Desktop sidebar — always visible at md+ */}
-      <aside className="hidden md:flex md:flex-col md:w-64 bg-white border-r border-gray-200 min-h-screen">
+      <aside className="hidden md:flex md:min-h-0 md:w-64 md:shrink-0 md:flex-col bg-white border-r border-gray-200">
         {sidebarContent}
       </aside>
 
