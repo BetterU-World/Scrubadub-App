@@ -61,7 +61,7 @@ export function QuickJobPage() {
         cleanerIds: canAssign ? [...new Set(workerIds)] as Id<"users">[] : [],
         type, scheduledDate: date, startTime: time || undefined, durationMinutes: duration, notes: notes || undefined,
       });
-      feedback.success(t("jobs.jobScheduled"));
+      if (user.role === "owner") feedback.success(t("jobs.jobScheduled"));
       navigate(`/jobs/${id}`, {
         state: user.role === "owner" && type !== "maintenance" ? { ownerFirstWin: "schedule", ownerId: user._id } : undefined,
       });
