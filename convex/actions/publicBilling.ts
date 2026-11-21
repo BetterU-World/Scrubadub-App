@@ -197,7 +197,7 @@ export const completePublicSetup = action({
         stripeSubscriptionId: subscription?.id,
         stripePriceId: subscription?.items?.data?.[0]?.price?.id,
         subscriptionStatus: subscription?.status,
-        founderAccess: subscription ? founderAccess(subscription, session.created) : undefined,
+        founderAccess: subscription ? founderAccess(subscription, subscription.created) : undefined,
         currentPeriodEnd: subscription
           ? subscriptionPeriodEndMs(subscription)
           : undefined,

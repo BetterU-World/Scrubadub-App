@@ -1,3 +1,4 @@
+import { eligibleFounderStripeDetails } from "./founderLaunch";
 import type { MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 
@@ -13,10 +14,16 @@ export type FounderKind = keyof typeof subjects;
 /** Outbox creation shares the producer transaction; cron schedules after commit. */
 export async function queueFounder(ctx: MutationCtx, key: string, kind: FounderKind, details: Record<string, string>) {
   const existing = await ctx.db.query("founderNotifications").withIndex("by_key", q => q.eq("key", key)).unique();
+  // Discard unsent evidence from the earlier draft without reopening an ambiguous send.
+  if (existing && (kind === "access" || kind === "paid") && ["pending", "skipped"].includes(existing.state) &&
+      !eligibleFounderStripeDetails(kind, existing.details) && eligibleFounderStripeDetails(kind, details)) {
+    await ctx.db.patch(existing._id, { details, state: "pending", createdAt: Date.now() });
+    return;
+  }
   if (!existing) await ctx.db.insert("founderNotifications", { key, kind, details, state: "pending", createdAt: Date.now() });
 }
 
-export async function reconcileFounderBilling(ctx: MutationCtx, companyId: Id<"companies">) {
+export async function reconcileFounderBilling(ctx: MutationCtx, companyId: Id<"companies">, verifiedPayment?: Record<string, string>) {
   const company = await ctx.db.get(companyId);
   if (!company?.stripeCustomerId || !company.stripeSubscriptionId) return;
   // Require a real owner; worker/client/affiliate accounts cannot qualify.
@@ -26,7 +33,7 @@ export async function reconcileFounderBilling(ctx: MutationCtx, companyId: Id<"c
   const owner = await ctx.db.query("users").withIndex("by_companyId_role", q => q.eq("companyId", companyId).eq("role", "owner")).first();
   if (!owner || owner.status !== "active") return;
   const base = { Company: company.name, Name: owner?.name ?? "Unavailable", Email: owner?.email ?? "Unavailable", Plan: company.tier ?? company.stripePriceId ?? "Unavailable" };
-  if (fact?.access) await queueFounder(ctx, `access:${companyId}:${company.stripeSubscriptionId}`, "access", { ...base, ...fact.access });
-  else if (["active", "trialing"].includes(company.subscriptionStatus ?? "")) await queueFounder(ctx, `access:${companyId}:${company.stripeSubscriptionId}`, "access", { ...base, Status: company.subscriptionStatus!, Timestamp: new Date(provisioning?.completedAt ?? Date.now()).toISOString() });
-  if (fact?.payment) await queueFounder(ctx, `paid:${companyId}`, "paid", { ...base, ...fact.payment });
+  if (fact?.access && eligibleFounderStripeDetails("access", fact.access)) await queueFounder(ctx, `access:${companyId}:${company.stripeSubscriptionId}`, "access", { ...base, ...fact.access });
+  const payment = verifiedPayment ?? fact?.payment;
+  if (payment && eligibleFounderStripeDetails("paid", payment)) await queueFounder(ctx, `paid:${companyId}`, "paid", { ...base, ...payment });
 }

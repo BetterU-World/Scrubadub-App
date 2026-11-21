@@ -11,10 +11,11 @@ const provider = vi.hoisted(() => vi.fn());
 vi.mock("resend", () => ({ Resend: class { emails = { send: provider }; } }));
 const modules = import.meta.glob("../../**/*.ts");
 const backend = () => convexTest(schema, modules);
-const checkout = { stripeCheckoutSessionId: "cs_founder", stripeCustomerId: "cus_founder", stripeSubscriptionId: "sub_founder", stripePriceId: "price_founder", subscriptionStatus: "trialing", email: "owner@example.com", passwordHash: "hash", name: "Owner", companyName: "Cleaning", timezone: "America/New_York" };
+const checkout = { stripeCheckoutSessionId: "cs_founder", stripeCustomerId: "cus_founder", stripeSubscriptionId: "sub_founder", stripePriceId: "price_founder", subscriptionStatus: "trialing", founderAccess: { Status: "trialing", "Subscription created": "1" }, email: "owner@example.com", passwordHash: "hash", name: "Owner", companyName: "Cleaning", timezone: "America/New_York" };
 const rows = (t: ReturnType<typeof backend>) => t.run(ctx => ctx.db.query("founderNotifications").collect());
 
 beforeEach(() => {
+  vi.stubEnv("SCRUB_FOUNDER_STRIPE_LAUNCH_AT", "1970-01-01T00:00:01Z");
   provider.mockReset().mockResolvedValue({ data: { id: "email_123" }, error: null });
   vi.stubEnv("SCRUB_FOUNDER_EMAIL", "founder@example.com");
   vi.stubEnv("RESEND_API_KEY", "test"); vi.stubEnv("RESEND_FROM_EMAIL", "verified@example.com");
@@ -43,7 +44,7 @@ describe("founder canonical milestones", () => {
   });
   it("reconciles pre-provisioning payment/access facts and deduplicates renewals", async () => {
     const t = backend();
-    const evidence = { customerId: checkout.stripeCustomerId, subscriptionId: checkout.stripeSubscriptionId, payment: { Invoice: "in_first", Amount: "1000" }, access: { Status: "active", "Coupon/promotion": "promo_half" } };
+    const evidence = { customerId: checkout.stripeCustomerId, subscriptionId: checkout.stripeSubscriptionId, payment: { Invoice: "in_first", Amount: "1000", "Paid at": "1" }, access: { "Subscription created": "1", Status: "active", "Coupon/promotion": "promo_half" } };
     await t.mutation(internal.founderNotifications.billing, evidence);
     expect(await rows(t)).toEqual([]);
     await t.mutation(internal.authInternal.provisionPublicCheckout, { ...checkout, subscriptionStatus: "active" });
@@ -86,7 +87,7 @@ const invoice = (id = "in_first", amount = 1000, created = 1) => ({ id, customer
 function stripeMock(invoices: Stripe.Invoice[], allocations: Record<string, unknown[]> = {}) {
   return { invoices: { list: () => invoices }, invoicePayments: { list: ({ invoice: id }: { invoice: string }) => allocations[id] ?? [] }, paymentIntents: { retrieve: vi.fn(async () => ({ status: "succeeded", amount_received: 1000, currency: "usd", customer: "cus_founder" })) } } as unknown as Stripe;
 }
-const cash = (amount = 1000) => ({ amount_paid: amount, status: "paid", payment: { type: "payment_intent", payment_intent: "pi_first" } });
+const cash = (amount = 1000) => ({ amount_paid: amount, status: "paid", status_transitions: { paid_at: 1 }, payment: { type: "payment_intent", payment_intent: "pi_first" } });
 describe("verified positive subscription collection", () => {
   it("runs successful asynchronous Stripe verification before company provisioning", async () => {
     vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_founder");
@@ -100,7 +101,7 @@ describe("verified positive subscription collection", () => {
     await t.action(internal.founderNotificationActions.checkPayment, { id: check._id });
     expect((await t.run(ctx => ctx.db.get(check._id)))?.state).toBe("done");
     expect(await rows(t)).toEqual([]);
-    await t.mutation(internal.authInternal.provisionPublicCheckout, { ...checkout, founderAccess: { Status: "trialing", "Trial end": "2026-12-01", "Coupon/promotion": "promo_test" } });
+    await t.mutation(internal.authInternal.provisionPublicCheckout, { ...checkout, founderAccess: { "Subscription created": "1", Status: "trialing", "Trial end": "2026-12-01", "Coupon/promotion": "promo_test" } });
     expect((await rows(t)).find(r => r.kind === "paid")?.details).toMatchObject({ Invoice: "in_first", Amount: "1000" });
     expect((await rows(t)).find(r => r.kind === "access")?.details).toMatchObject({ "Coupon/promotion": "promo_test" });
   });
@@ -130,7 +131,7 @@ describe("verified positive subscription collection", () => {
     expect(retrieve).toHaveBeenCalledTimes(4);
     expect((await t.run(ctx => ctx.db.get(check._id)))?.state).toBe("failed");
     expect((await rows(t)).filter(r => r.kind === "paid")).toHaveLength(0);
-    await t.mutation(internal.founderNotifications.billing, { customerId: checkout.stripeCustomerId, subscriptionId: checkout.stripeSubscriptionId!, payment: { Invoice: "in_first", Amount: "1000" } });
+    await t.mutation(internal.founderNotifications.billing, { customerId: checkout.stripeCustomerId, subscriptionId: checkout.stripeSubscriptionId!, payment: { Invoice: "in_first", Amount: "1000", "Paid at": "1" } });
     await t.mutation(internal.founderNotifications.recordPaymentCheck, { customerId: checkout.stripeCustomerId, subscriptionId: checkout.stripeSubscriptionId!, invoiceId: "in_renewal", eventId: "evt_renewal" });
     const renewal = (await t.run(ctx => ctx.db.query("founderPaymentChecks").collect())).find(r => r.invoiceId === "in_renewal")!;
     await t.action(internal.founderNotificationActions.checkPayment, { id: renewal._id });
@@ -152,7 +153,7 @@ describe("verified positive subscription collection", () => {
     expect(await firstCompanyPayment(stripe, "cus_founder", renewal)).toMatchObject({ Invoice: "in_first", Amount: "1000" });
   });
   it("distinguishes active promotional access from a Stripe trial", () => {
-    const sub = { status: "active", items: { data: [{ price: { id: "price_test" } }] }, discounts: ["di_promo"], trial_end: null } as unknown as Stripe.Subscription;
+    const sub = { created: 1, status: "active", items: { data: [{ price: { id: "price_test" } }] }, discounts: ["di_promo"], trial_end: null } as unknown as Stripe.Subscription;
     expect(founderAccess(sub, 1)).toMatchObject({ Status: "active", "Stripe discounts": "di_promo" });
     expect(founderAccess(sub, 1)).not.toHaveProperty("Trial end");
     expect(founderAccess({ ...sub, status: "trialing", trial_end: 100 }, 1)).toHaveProperty("Trial end");

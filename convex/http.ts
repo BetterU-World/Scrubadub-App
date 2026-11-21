@@ -1,3 +1,4 @@
+import { bestEffortFounder } from "./lib/founderLaunch";
 import { founderAccess } from "./lib/founderStripe";
 import Stripe from "stripe";
 import { subscriptionPeriodEndMs, invoiceSubscriptionId } from "./lib/stripeSubscriptionCompatibility";
@@ -197,8 +198,6 @@ const stripeWebhook = httpAction(async (ctx, request) => {
         if (process.env.SCRUB_ENABLE_SUBSCRIPTION_NOTICES === "true" && process.env.SCRUB_SUBSCRIPTION_EMAIL_OWNER === "scrub") {
           await ctx.scheduler.runAfter(0, internal.actions.subscriptionNotices.refresh, { subscriptionId: subscription.id, customerId: subCustomerId });
         }
-        const access = founderAccess(subscription, verifiedEvent.created);
-        if (access) await ctx.runMutation(internal.founderNotifications.billing, { customerId: subCustomerId, subscriptionId: subscription.id, access });
         // Record affiliate attribution on new subscription
         if (verifiedEvent.type === "customer.subscription.created") {
           await ctx.runMutation(internal.mutations.billing.recordAttribution, {
@@ -208,6 +207,14 @@ const stripeWebhook = httpAction(async (ctx, request) => {
           });
         }
 
+        await bestEffortFounder(async () => {
+          const previous = verifiedEvent.data.previous_attributes as { status?: string } | undefined;
+          // Creation or initial incomplete-to-access only; edits/renewals are not starts.
+          if (verifiedEvent.type !== "customer.subscription.created" &&
+              !(verifiedEvent.type === "customer.subscription.updated" && previous?.status === "incomplete")) return;
+          const access = founderAccess(subscription, verifiedEvent.created);
+          if (access) await ctx.runMutation(internal.founderNotifications.billing, { customerId: subCustomerId, subscriptionId: subscription.id, access });
+        });
         break;
       }
       case "invoice.paid": {
@@ -221,7 +228,6 @@ const stripeWebhook = httpAction(async (ctx, request) => {
         const invoiceSubscription = invoiceSubscriptionId(invoice);
 
         if (invoiceCustomerId && invoiceSubscription) {
-          await ctx.runMutation(internal.founderNotifications.recordPaymentCheck, { customerId: invoiceCustomerId, subscriptionId: invoiceSubscription, invoiceId: invoice.id, eventId: verifiedEvent.id });
           const attrArgs = {
             stripeCustomerId: invoiceCustomerId,
             stripeSubscriptionId: invoiceSubscription,
@@ -234,6 +240,9 @@ const stripeWebhook = httpAction(async (ctx, request) => {
             internal.mutations.billing.recordAttribution,
             attrArgs,
           );
+          await bestEffortFounder(() => ctx.runMutation(internal.founderNotifications.recordPaymentCheck, {
+            customerId: invoiceCustomerId, subscriptionId: invoiceSubscription, invoiceId: invoice.id, eventId: verifiedEvent.id,
+          }));
         } else {
           console.warn("[STRIPE-WEBHOOK] skipping recordAttribution — missing customerId or subscriptionId", {
             eventId: verifiedEvent.id,
