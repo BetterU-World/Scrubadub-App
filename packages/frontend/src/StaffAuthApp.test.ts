@@ -76,6 +76,10 @@ describe("real App staff-auth boundary wiring", () => {
     expect(host.querySelector('a[href="/manuals/manager"]') !== null).toBe(role === "owner" || role === "manager");
     expect(host.querySelector('a[href="/manuals/owner"]') !== null).toBe(role === "owner");
     expect(host.querySelector('a[href="/manuals/cleaner"]')).not.toBeNull();
+    expect(host.querySelector("h1")?.textContent).toBe(role === "owner" ? en.learningCenter.title : en.manuals.title);
+    for (const href of ["/jobs/quick", "/jobs/new", "/employees?invite=true", "/properties/new", "/manuals/owner#troubleshooting"]) {
+      expect(host.querySelector(`a[href="${href}"]`) !== null).toBe(role === "owner");
+    }
     expect(calls).toContain("queries/manuals:getVisibleManuals");
     expect(calls).not.toContain("queries/manuals:exportManuals");
   });

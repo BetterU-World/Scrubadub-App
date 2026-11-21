@@ -4,6 +4,7 @@ import { useQuery, useAction, useMutation } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
+import { OwnerLearningLinks } from "./OwnerLearningLinks";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -159,6 +160,7 @@ export function ManualsPage() {
 
   if (!user || manuals === undefined) return <PageLoader />;
 
+  const isOwner = user.role === "owner";
   const grouped: Record<string, typeof manuals> = {};
   for (const m of manuals) {
     (grouped[m.category] ??= []).push(m);
@@ -179,8 +181,8 @@ export function ManualsPage() {
   return (
     <div className="min-w-0 max-w-full">
       <PageHeader
-        title={t("manuals.title")}
-        description={t("guidance.worker.manuals")}
+        title={t(isOwner ? "learningCenter.title" : "manuals.title")}
+        description={isOwner ? undefined : t("guidance.worker.manuals")}
         action={
           user.isSuperadmin && (
             <div className="flex w-full min-w-0 flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
@@ -203,6 +205,12 @@ export function ManualsPage() {
         }
       />
       <div className="w-full min-w-0 max-w-2xl space-y-8">
+        {isOwner && (
+          <>
+            <OwnerLearningLinks />
+            <h2 className="text-lg font-semibold">{t("learningCenter.manuals")}</h2>
+          </>
+        )}
         <p className="text-xs text-gray-400">{t("manuals.lastUpdated", { date: "October 30, 2026" })}</p>
 
         {/* Static in-app guides */}

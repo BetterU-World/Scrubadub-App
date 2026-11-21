@@ -85,8 +85,8 @@ export const ownerSections: NavSection[] = [
   {
     titleKey: "nav.company",
     items: [
+      { href: "/manuals", labelKey: "learningCenter.title", icon: BookOpen },
       { href: "/site", labelKey: "nav.mySite", icon: Globe },
-      { href: "/manuals", labelKey: "nav.manuals", icon: BookOpen },
       { href: "/audit-log", labelKey: "nav.auditLog", icon: ScrollText },
       { href: "/owner/settings/add-ons", labelKey: "nav.addOns", icon: Tags },
       { href: "/owner/settings", labelKey: "nav.settings", icon: Settings },

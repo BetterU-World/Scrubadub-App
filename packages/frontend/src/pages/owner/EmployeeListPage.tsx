@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
+import { OwnerGuideLink } from "@/components/owner/OwnerGuideLink";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -664,6 +665,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
               </Dialog.Close>
             </div>
 
+            {isOwner && <OwnerGuideLink topic="cleaner-invitations" newTab />}
             {inviteLink ? (
               <div>
                 {inviteEmailSent ? (

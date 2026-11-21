@@ -8,6 +8,7 @@ import manager from "@/manuals/manager.md?raw";
 import managerEs from "@/manuals/manager.es.md?raw";
 
 const route = vi.hoisted(() => ({ slug: "owner", language: "en" }));
+vi.mock("@/hooks/useAuth", () => ({ useAuth: () => ({ user: { role: "owner" } }) }));
 vi.mock("wouter", () => ({ useParams: () => ({ slug: route.slug }) }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({
   i18n: { language: route.language },
@@ -55,7 +56,14 @@ describe("published in-app guide rendering", () => {
     route.slug = "owner"; route.language = language;
     const html = renderToStaticMarkup(createElement(ManualViewerPage));
     expect(html).toContain(`<h1>${title}</h1>`);
-    expect(html.match(/<h2>/g)).toHaveLength(21);
+    expect(html.match(/<h2(?: |>)/g)).toHaveLength(21);
+    for (const [id, chapter] of Object.entries({
+      "property-setup": 5, "cleaner-invitations": 6, "job-scheduling": 8,
+      calendar: 9, "quality-review": 10, troubleshooting: 21,
+    })) {
+      expect(html).toContain(`id="${id}" class="scroll-mt-4">${chapter}.`);
+    }
+    expect(html).toContain("learningCenter.back");
     expect(html).toContain("October 30, 2026");
     expect(html).not.toContain("March 1, 2026");
     expect(html).toContain('href="/manuals/cleaner"');

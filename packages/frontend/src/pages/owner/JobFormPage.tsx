@@ -8,6 +8,7 @@ import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { requireUserId } from "@/lib/requireUserId";
+import { OwnerGuideLink } from "@/components/owner/OwnerGuideLink";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { useLocation, useParams, Link } from "wouter";
@@ -262,6 +263,7 @@ export function JobFormPage() {
         title={isEditing ? t("jobs.editJob") : t("jobs.scheduleJob")}
         back={backDestination}
       />
+      {user?.role === "owner" && <OwnerGuideLink topic="job-scheduling" newTab />}
       {!isEditing && <JobCreationModeSelector mode="standard" />}
 
       {!isEditing && activeProperties.length === 0 && (

@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
+import { OwnerGuideLink } from "@/components/owner/OwnerGuideLink";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { JobCreationModeSelector } from "@/components/owner/JobCreationModeSelector";
 
@@ -65,6 +66,7 @@ export function QuickJobPage() {
 
   return <div className="max-w-2xl mx-auto min-w-0">
     <PageHeader title={t("quick.quickJob")} back={{ href: "/jobs", label: t("navigation.backToJobs") }} />
+    {user?.role === "owner" && <OwnerGuideLink topic="job-scheduling" newTab />}
     <JobCreationModeSelector mode="quick" />
     {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
     <form onSubmit={submit} className="card space-y-4 min-w-0">
