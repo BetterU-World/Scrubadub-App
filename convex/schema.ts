@@ -1,4 +1,5 @@
 import { billingSnapshot, noticeKind, noticeStatus } from "./lib/subscriptionNoticeModel";
+import { adminPresenceTables } from "./lib/adminPresenceSchema";
 import { clientSchedulingEventFields } from "./lib/clientSchedulingEventModel";
 import { jobScheduleChange } from "./lib/jobScheduleModel";
 import { defineSchema, defineTable } from "convex/server";
@@ -19,6 +20,7 @@ import {
 } from "./lib/securityEvents";
 
 export default defineSchema({
+  ...adminPresenceTables,
   ...outgoingTables,
   founderNotifications: defineTable({
     key: v.string(), kind: v.union(v.literal("signup"), v.literal("access"), v.literal("paid"), v.literal("assessment"), v.literal("giveaway")),
@@ -409,6 +411,7 @@ export default defineSchema({
     defaultManagerId: v.optional(v.id("users")),
   })
     .index("by_qaFixtureKey", ["qaFixtureKey"])
+    .searchIndex("search_name", { searchField: "name" })
     .index("by_stripeCustomerId", ["stripeCustomerId"])
     .index("by_stripeConnectAccountId", ["stripeConnectAccountId"])
     .index("by_publicRequestToken", ["publicRequestToken"]),

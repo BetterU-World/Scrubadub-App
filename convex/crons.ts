@@ -2,6 +2,7 @@ import { cronJobs } from "convex/server";
 import { internal } from "./_generated/api";
 
 const crons = cronJobs();
+crons.interval("hub-presence-retention", { minutes: 15 }, internal.adminPresence.prune, {});
 
 /**
  * Calendar sync tick — runs every 15 minutes.

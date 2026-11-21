@@ -9,6 +9,7 @@ import { LiveJobBanner } from "../LiveJobBanner";
 import { PageTransition } from "./PageTransition";
 import { AddToHomeScreenTip } from "../shared/AddToHomeScreenTip";
 import { getMobileNavItemsForRole } from "./navigation";
+import { ForegroundPresence } from "../shared/ForegroundPresence";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -44,6 +45,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className="flex min-h-screen min-h-[100dvh] w-full min-w-0 max-w-full pt-[var(--safe-area-top)]">
+      <ForegroundPresence />
       <Sidebar mobileOpen={sidebarOpen} onMobileClose={closeSidebar} triggerRef={menuTriggerRef} />
       <div
         className={clsx(
