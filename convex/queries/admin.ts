@@ -5,6 +5,7 @@ import { requireSuperadminSession, requireVerifiedStaffSession } from "../lib/se
 
 export const getPlatformStats = query({
   args: { userId: v.id("users"), sessionToken: v.string() },
+  returns: v.object({ totalCompanies: v.number(), totalUsers: v.number(), activeUsers: v.number(), assignedWorkerAccounts7d: v.number(), jobsCreated7d: v.number(), jobsCreated30d: v.number(), jobsCompleted7d: v.number(), jobsCompleted30d: v.number(), maintenanceCompleted7d: v.number(), maintenanceCompleted30d: v.number(), redFlags7d: v.number(), redFlags30d: v.number(), topCompanies: v.array(v.object({ name: v.string(), count: v.number() })) }),
   handler: async (ctx, args) => {
     await requireSuperadminSession(ctx, args.sessionToken, args.userId);
 
@@ -20,52 +21,50 @@ export const getPlatformStats = query({
     const SCAN_CAP = 10_000;
 
     // Companies
-    const companies = await ctx.db.query("companies").take(SCAN_CAP);
+    const companies = await ctx.db.query("companies").take(SCAN_CAP + 1);
     const totalCompanies = companies.length;
 
     // Users
-    const users = await ctx.db.query("users").take(SCAN_CAP);
+    const users = await ctx.db.query("users").take(SCAN_CAP + 1);
     const totalUsers = users.length;
     const activeUsers = users.filter((u) => u.status === "active").length;
 
-    // Jobs — only load last 30 days via scheduledDate window
-    const allJobs = await ctx.db.query("jobs").take(SCAN_CAP);
-    const recentJobs = allJobs.filter((j) => j.scheduledDate >= date30);
-    const jobsCreated7d = allJobs.filter((j) => j._creationTime >= sevenDaysAgo).length;
-    const jobsCreated30d = allJobs.filter((j) => j._creationTime >= thirtyDaysAgo).length;
-    const jobsCompleted7d = recentJobs.filter(
-      (j) => j.status === "approved" && j.scheduledDate >= date7
-    ).length;
-    const jobsCompleted30d = recentJobs.filter(
-      (j) => j.status === "approved"
-    ).length;
-    const maintenanceCompleted7d = recentJobs.filter(
-      (j) => j.status === "approved" && j.type === "maintenance" && j.scheduledDate >= date7
-    ).length;
-    const maintenanceCompleted30d = recentJobs.filter(
-      (j) => j.status === "approved" && j.type === "maintenance"
-    ).length;
+    // Legacy bounded scan; the V2 action uses complete paginated reads.
+    const allJobs = await ctx.db.query("jobs").take(SCAN_CAP + 1);
+    const recentJobs = allJobs.filter((j) => j.scheduledDate >= date30 && j.scheduledDate <= today && j.status !== "cancelled" && !j.sharedFromJobId);
+    const canonicalJobs = allJobs.filter(j => !j.sharedFromJobId);
+    const jobsCreated7d = canonicalJobs.filter((j) => j._creationTime > sevenDaysAgo && j._creationTime <= now).length;
+    const jobsCreated30d = canonicalJobs.filter((j) => j._creationTime > thirtyDaysAgo && j._creationTime <= now).length;
+    const completed7 = canonicalJobs.filter(j => j.completedAt !== undefined && j.completedAt > sevenDaysAgo && j.completedAt <= now);
+    const completed30 = canonicalJobs.filter(j => j.completedAt !== undefined && j.completedAt > thirtyDaysAgo && j.completedAt <= now);
+    const jobsCompleted7d = completed7.length;
+    const jobsCompleted30d = completed30.length;
+    const maintenanceCompleted7d = completed7.filter(j => j.type === "maintenance").length;
+    const maintenanceCompleted30d = completed30.filter(j => j.type === "maintenance").length;
 
     // Red flags
-    const allFlags = await ctx.db.query("redFlags").take(SCAN_CAP);
-    const redFlags7d = allFlags.filter((f) => f._creationTime >= sevenDaysAgo).length;
-    const redFlags30d = allFlags.filter((f) => f._creationTime >= thirtyDaysAgo).length;
+    const allFlags = await ctx.db.query("redFlags").take(SCAN_CAP + 1);
+    if ([companies, users, allJobs, allFlags].some(rows => rows.length > SCAN_CAP)) {
+      throw new Error("Legacy report exceeds its read limit. Use the paginated Hub V2 report; no partial total is available.");
+    }
+    const redFlags7d = allFlags.filter((f) => f._creationTime > sevenDaysAgo && f._creationTime <= now).length;
+    const redFlags30d = allFlags.filter((f) => f._creationTime > thirtyDaysAgo && f._creationTime <= now).length;
 
-    // Active users (approximation: users who had a job in last 7 days)
+    // Assignment evidence only, never authenticated foreground activity.
     const recentJobUserIds = new Set<string>();
     for (const j of recentJobs.filter((j) => j.scheduledDate >= date7)) {
       for (const cid of j.cleanerIds) recentJobUserIds.add(cid);
     }
-    const usersActive7d = recentJobUserIds.size;
+    const assignedWorkerAccounts7d = recentJobUserIds.size;
 
     // Top companies by jobs (30d)
     const companyJobCounts: Record<string, number> = {};
     for (const j of recentJobs) {
       companyJobCounts[j.companyId] = (companyJobCounts[j.companyId] ?? 0) + 1;
     }
-    const companyMap = new Map(companies.map((c) => [c._id, c.name]));
+    const companyMap = new Map<string, string>(companies.map((c) => [c._id, c.name]));
     const topCompanies = Object.entries(companyJobCounts)
-      .map(([id, count]) => ({ name: companyMap.get(id as any) ?? "Unknown", count }))
+      .map(([id, count]) => ({ name: companyMap.get(id) ?? "Unknown", count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
 
@@ -73,7 +72,7 @@ export const getPlatformStats = query({
       totalCompanies,
       totalUsers,
       activeUsers,
-      usersActive7d,
+      assignedWorkerAccounts7d,
       jobsCreated7d,
       jobsCreated30d,
       jobsCompleted7d,
@@ -89,12 +88,14 @@ export const getPlatformStats = query({
 
 export const getCompaniesWithUsers = query({
   args: { userId: v.id("users"), sessionToken: v.string() },
+  returns: v.array(v.object({ name: v.string(), users: v.array(v.object({ name: v.string(), email: v.string() })) })),
   handler: async (ctx, args) => {
     await requireSuperadminSession(ctx, args.sessionToken, args.userId);
 
     const SCAN_CAP = 10_000;
-    const companies = await ctx.db.query("companies").take(SCAN_CAP);
-    const users = await ctx.db.query("users").take(SCAN_CAP);
+    const companies = await ctx.db.query("companies").take(SCAN_CAP + 1);
+    const users = await ctx.db.query("users").take(SCAN_CAP + 1);
+    if (companies.length > SCAN_CAP || users.length > SCAN_CAP) throw new Error("Use the paginated Hub V2 company directory; no partial directory is available.");
 
     const usersByCompany = new Map<string, { name: string; email: string }[]>();
     for (const u of users) {
@@ -115,6 +116,7 @@ export const getCompaniesWithUsers = query({
 
 export const isSuperAdmin = query({
   args: { userId: v.id("users"), sessionToken: v.optional(v.string()) },
+  returns: v.boolean(),
   handler: async (ctx, args) => {
     // This eligibility probe is rendered in the ordinary sidebar. Legacy-only
     // users must fail closed without crashing unrelated navigation.

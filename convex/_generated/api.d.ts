@@ -26,6 +26,9 @@ import type * as actions_publicBilling from "../actions/publicBilling.js";
 import type * as actions_settlements from "../actions/settlements.js";
 import type * as actions_stripeConnect from "../actions/stripeConnect.js";
 import type * as actions_stripePayouts from "../actions/stripePayouts.js";
+import type * as adminHub from "../adminHub.js";
+import type * as adminHubData from "../adminHubData.js";
+import type * as adminPresence from "../adminPresence.js";
 import type * as affiliateInviteActions from "../affiliateInviteActions.js";
 import type * as attachmentUploads from "../attachmentUploads.js";
 import type * as legacyAttachmentInventory from "../legacyAttachmentInventory.js";
@@ -238,6 +241,9 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  adminHub: typeof adminHub;
+  adminHubData: typeof adminHubData;
+  adminPresence: typeof adminPresence;
   founderNotifications: typeof founderNotifications;
   founderNotificationActions: typeof founderNotificationActions;
   "actions/affiliateStripeConnect": typeof actions_affiliateStripeConnect;
