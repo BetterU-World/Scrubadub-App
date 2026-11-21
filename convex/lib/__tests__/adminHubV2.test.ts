@@ -350,16 +350,19 @@ describe("Hub V2 bounded reporting and authorization", () => {
     for (let start = 0; start < 10_000; start += 500)
       await s.t.run(async (ctx) => {
         for (let i = start; i < start + 500; i++)
-          await ctx.db.insert("clientUsers", {
+          await ctx.db.insert("users", {
             email: `scale-${i}@synthetic.test`,
-            displayName: "Synthetic",
+            name: "Synthetic",
+            passwordHash: "unused-synthetic",
+            role: "owner",
+            companyId: s.otherId,
             status: "pending",
-            createdAt: NOW,
-            updatedAt: NOW,
           });
       });
     const result = await s.t.action(api.adminHub.report, s.auth);
-    expect(result.counts.clientIdentities).toBe(10_001);
+    expect(result.counts.loginAccounts).toBe(10_003);
+    expect(result.counts["role:owner"]).toBe(10_001);
+    expect(result.counts.clientIdentities).toBe(1);
     expect(result.pages).toBeGreaterThan(100);
   }, 60_000);
 });
