@@ -20,6 +20,21 @@ import {
 
 export default defineSchema({
   ...outgoingTables,
+  founderNotifications: defineTable({
+    key: v.string(), kind: v.union(v.literal("signup"), v.literal("access"), v.literal("paid"), v.literal("assessment"), v.literal("giveaway")),
+    details: v.record(v.string(), v.string()), createdAt: v.number(),
+    state: v.union(v.literal("pending"), v.literal("sending"), v.literal("accepted"), v.literal("failed"), v.literal("unknown"), v.literal("skipped")),
+    claimedAt: v.optional(v.number()), providerMessageId: v.optional(v.string()),
+  }).index("by_key", ["key"]).index("by_state", ["state"]),
+  founderPaymentChecks: defineTable({
+    customerId: v.string(), subscriptionId: v.string(), invoiceId: v.string(), eventId: v.string(),
+    attempts: v.number(), dueAt: v.number(), state: v.union(v.literal("pending"), v.literal("done"), v.literal("failed")),
+  }).index("by_invoice", ["invoiceId"]).index("by_state_due", ["state", "dueAt"]),
+  founderBillingFacts: defineTable({
+    customerId: v.string(), subscriptionId: v.string(),
+    access: v.optional(v.record(v.string(), v.string())),
+    payment: v.optional(v.record(v.string(), v.string())),
+  }).index("by_customer_subscription", ["customerId", "subscriptionId"]),
   subscriptionCheckoutConsents: defineTable({
     stripeCheckoutSessionId: v.string(), stripeCustomerId: v.string(), stripeSubscriptionId: v.string(),
     termsVersion: v.string(), disclosure: v.string(), consentText: v.string(),

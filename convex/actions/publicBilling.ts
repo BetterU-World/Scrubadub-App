@@ -1,5 +1,7 @@
 "use node";
 
+import { founderAccess } from "../lib/founderStripe";
+
 declare const process: { env: Record<string, string | undefined> };
 
 import Stripe from "stripe";
@@ -195,6 +197,7 @@ export const completePublicSetup = action({
         stripeSubscriptionId: subscription?.id,
         stripePriceId: subscription?.items?.data?.[0]?.price?.id,
         subscriptionStatus: subscription?.status,
+        founderAccess: subscription ? founderAccess(subscription, session.created) : undefined,
         currentPeriodEnd: subscription
           ? subscriptionPeriodEndMs(subscription)
           : undefined,

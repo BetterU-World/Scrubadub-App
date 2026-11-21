@@ -8,6 +8,8 @@
  * @module
  */
 
+import type * as founderNotifications from "../founderNotifications.js";
+import type * as founderNotificationActions from "../founderNotificationActions.js";
 import type * as actions_affiliateStripeConnect from "../actions/affiliateStripeConnect.js";
 import type * as subscriptionNotices from "../subscriptionNotices.js";
 import type * as actions_subscriptionNotices from "../actions/subscriptionNotices.js";
@@ -236,6 +238,8 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  founderNotifications: typeof founderNotifications;
+  founderNotificationActions: typeof founderNotificationActions;
   "actions/affiliateStripeConnect": typeof actions_affiliateStripeConnect;
   subscriptionNotices: typeof subscriptionNotices;
   "actions/subscriptionNotices": typeof actions_subscriptionNotices;

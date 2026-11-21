@@ -1,3 +1,4 @@
+import { founderAccess } from "./lib/founderStripe";
 import Stripe from "stripe";
 import { subscriptionPeriodEndMs, invoiceSubscriptionId } from "./lib/stripeSubscriptionCompatibility";
 import { validatePaymentEventAccount, retrievePaymentIntentForAttempt } from "./lib/invoiceStripeContext";
@@ -196,6 +197,8 @@ const stripeWebhook = httpAction(async (ctx, request) => {
         if (process.env.SCRUB_ENABLE_SUBSCRIPTION_NOTICES === "true" && process.env.SCRUB_SUBSCRIPTION_EMAIL_OWNER === "scrub") {
           await ctx.scheduler.runAfter(0, internal.actions.subscriptionNotices.refresh, { subscriptionId: subscription.id, customerId: subCustomerId });
         }
+        const access = founderAccess(subscription, verifiedEvent.created);
+        if (access) await ctx.runMutation(internal.founderNotifications.billing, { customerId: subCustomerId, subscriptionId: subscription.id, access });
         // Record affiliate attribution on new subscription
         if (verifiedEvent.type === "customer.subscription.created") {
           await ctx.runMutation(internal.mutations.billing.recordAttribution, {
@@ -218,6 +221,7 @@ const stripeWebhook = httpAction(async (ctx, request) => {
         const invoiceSubscription = invoiceSubscriptionId(invoice);
 
         if (invoiceCustomerId && invoiceSubscription) {
+          await ctx.runMutation(internal.founderNotifications.recordPaymentCheck, { customerId: invoiceCustomerId, subscriptionId: invoiceSubscription, invoiceId: invoice.id, eventId: verifiedEvent.id });
           const attrArgs = {
             stripeCustomerId: invoiceCustomerId,
             stripeSubscriptionId: invoiceSubscription,

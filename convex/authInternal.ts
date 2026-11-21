@@ -1,3 +1,4 @@
+import { queueFounder, reconcileFounderBilling } from "./lib/founderNotifications";
 import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { slugify, SLUG_RE, RESERVED_SLUGS, randomSuffix } from "./lib/slugs";
@@ -118,7 +119,12 @@ export const createUser = internalMutation({
     canViewAnalytics: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("users", args);
+    const userId = await ctx.db.insert("users", args);
+    if (args.role === "owner" && args.status === "active") {
+      const company = await ctx.db.get(args.companyId);
+      if (company) await queueFounder(ctx, `signup:${company._id}`, "signup", { Company: company.name, Name: args.name, Email: args.email, Timestamp: new Date().toISOString(), Plan: company.tier ?? "Unavailable" });
+    }
+    return userId;
   },
 });
 
@@ -146,6 +152,7 @@ export const provisionPublicCheckout = internalMutation({
     stripeSubscriptionId: v.optional(v.string()),
     stripePriceId: v.optional(v.string()),
     subscriptionStatus: v.optional(v.string()),
+    founderAccess: v.optional(v.record(v.string(), v.string())),
     currentPeriodEnd: v.optional(v.number()),
     cancelAtPeriodEnd: v.optional(v.boolean()),
     tier: v.optional(companyTierValidator),
@@ -278,6 +285,13 @@ export const provisionPublicCheckout = internalMutation({
       completedAt: Date.now(),
     });
 
+    await queueFounder(ctx, `signup:${companyId}`, "signup", { Company: args.companyName, Name: args.name, Email: args.email, Timestamp: new Date().toISOString(), Plan: args.tier ?? args.stripePriceId ?? "Unavailable" });
+    if (args.founderAccess && args.stripeSubscriptionId) {
+      const fact = await ctx.db.query("founderBillingFacts").withIndex("by_customer_subscription", q => q.eq("customerId", args.stripeCustomerId).eq("subscriptionId", args.stripeSubscriptionId!)).unique();
+      if (!fact) await ctx.db.insert("founderBillingFacts", { customerId: args.stripeCustomerId, subscriptionId: args.stripeSubscriptionId, access: args.founderAccess });
+      else if (!fact.access) await ctx.db.patch(fact._id, { access: args.founderAccess });
+    }
+    await reconcileFounderBilling(ctx, companyId);
     return {
       userId: ownerUserId,
       companyId,
