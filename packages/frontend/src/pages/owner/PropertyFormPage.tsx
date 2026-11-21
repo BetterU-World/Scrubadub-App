@@ -240,7 +240,7 @@ export function PropertyFormPage() {
         title={isEditing ? t("properties.editProperty") : t("properties.newProperty")}
         back={backDestination}
       />
-      {user?.role === "owner" && <OwnerGuideLink topic="property-setup" />}
+      {user?.role === "owner" && <OwnerGuideLink topic="property-setup" newTab />}
 
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">

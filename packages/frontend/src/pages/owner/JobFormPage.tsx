@@ -263,7 +263,7 @@ export function JobFormPage() {
         title={isEditing ? t("jobs.editJob") : t("jobs.scheduleJob")}
         back={backDestination}
       />
-      {user?.role === "owner" && <OwnerGuideLink topic="job-scheduling" />}
+      {user?.role === "owner" && <OwnerGuideLink topic="job-scheduling" newTab />}
       {!isEditing && <JobCreationModeSelector mode="standard" />}
 
       {!isEditing && activeProperties.length === 0 && (

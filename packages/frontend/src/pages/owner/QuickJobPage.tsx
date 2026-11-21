@@ -66,7 +66,7 @@ export function QuickJobPage() {
 
   return <div className="max-w-2xl mx-auto min-w-0">
     <PageHeader title={t("quick.quickJob")} back={{ href: "/jobs", label: t("navigation.backToJobs") }} />
-    {user?.role === "owner" && <OwnerGuideLink topic="job-scheduling" />}
+    {user?.role === "owner" && <OwnerGuideLink topic="job-scheduling" newTab />}
     <JobCreationModeSelector mode="quick" />
     {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
     <form onSubmit={submit} className="card space-y-4 min-w-0">

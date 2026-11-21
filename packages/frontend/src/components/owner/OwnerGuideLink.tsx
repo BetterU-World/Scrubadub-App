@@ -9,14 +9,16 @@ const topicLabels = {
   troubleshooting: "learningCenter.troubleshooting",
 };
 
-export function OwnerGuideLink({ topic }: { topic: keyof typeof topicLabels }) {
+export function OwnerGuideLink({ topic, newTab = false }: { topic: keyof typeof topicLabels; newTab?: boolean }) {
   const { t } = useTranslation();
   return (
     <a
       href={`/manuals/owner#${topic}`}
+      target={newTab ? "_blank" : undefined}
+      rel={newTab ? "noopener" : undefined}
       className="inline-flex min-h-11 items-center text-sm font-medium text-primary-700 underline underline-offset-4"
     >
-      {t(topicLabels[topic])}
+      {t(topicLabels[topic])}{newTab && <> {t("learningCenter.opensInNewTab")}</>}
     </a>
   );
 }

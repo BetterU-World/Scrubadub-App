@@ -665,7 +665,7 @@ const [teamMemberRole, setTeamMemberRole] = useState<Record<string, "lead" | "me
               </Dialog.Close>
             </div>
 
-            {isOwner && <OwnerGuideLink topic="cleaner-invitations" />}
+            {isOwner && <OwnerGuideLink topic="cleaner-invitations" newTab />}
             {inviteLink ? (
               <div>
                 {inviteEmailSent ? (
