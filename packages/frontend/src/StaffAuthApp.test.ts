@@ -11,6 +11,7 @@ import es from "./i18n/es/common.json";
 let failure: Error | null;
 let role: "owner" | "manager" | "cleaner" | "maintenance" = "owner";
 let language: "en" | "es" = "en";
+let preferences: Record<string, unknown> | undefined;
 const calls: string[] = [];
 vi.mock("convex/react", () => ({
   useQuery: (reference: any, args: any) => {
@@ -18,6 +19,8 @@ vi.mock("convex/react", () => ({
     const name = getFunctionName(reference); calls.push(name);
     if (name === "authQueries:getCurrentUser") return { _id: "staff", companyId: "company", role, status: "active", isSuperadmin: false };
     if (name === "queries/manuals:getVisibleManuals") return [];
+    if (name === "ownerOnboarding:preferences") return preferences;
+    if (name === "ownerOnboarding:progress") return { jobId: null, propertyId: null, cleaner: null, invitation: null };
     if (name === "queries/billing:getCompanySubscription") {
       if (failure) throw failure;
       return { subscriptionStatus: "active" };
@@ -53,6 +56,7 @@ beforeEach(() => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   localStorage.clear(); setStaffSessionToken(""); failure = null; calls.length = 0;
   role = "owner"; language = "en";
+  preferences = { companyId: "company", cohort: "existing" };
   vi.spyOn(console, "error").mockImplementation(() => {});
   window.addEventListener("error", suppressExpectedError);
   host = document.createElement("div"); document.body.append(host); root = createRoot(host);
@@ -77,11 +81,40 @@ describe("real App staff-auth boundary wiring", () => {
     expect(host.querySelector('a[href="/manuals/owner"]') !== null).toBe(role === "owner");
     expect(host.querySelector('a[href="/manuals/cleaner"]')).not.toBeNull();
     expect(host.querySelector("h1")?.textContent).toBe(role === "owner" ? en.learningCenter.title : en.manuals.title);
-    for (const href of ["/jobs/quick", "/jobs/new", "/employees?invite=true", "/properties/new", "/manuals/owner#troubleshooting"]) {
-      expect(host.querySelector(`a[href="${href}"]`) !== null).toBe(role === "owner");
-    }
+    expect(host.querySelectorAll("#getting-started button")).toHaveLength(role === "owner" ? 3 : 0);
+    expect(host.querySelector('a[href="/manuals/owner#troubleshooting"]') !== null).toBe(role === "owner");
     expect(calls).toContain("queries/manuals:getVisibleManuals");
     expect(calls).not.toContain("queries/manuals:exportManuals");
+  });
+
+  it("waits for eligibility before showing either owner notice", async () => {
+    setStaffSessionToken("synthetic-session");
+    preferences = undefined;
+    await mount("/");
+    expect(host.querySelector("#owner-onboarding-entry")).toBeNull();
+  });
+
+  it("shows the welcome to a signup owner and the announcement to an established owner", async () => {
+    setStaffSessionToken("synthetic-session");
+    preferences = { companyId: "company", cohort: "signup" };
+    await mount("/");
+    expect(host.querySelector("#owner-onboarding-entry")?.textContent).toBe(en.ownerOnboarding.welcome);
+    expect(host.textContent).toContain(en.ownerOnboarding.returnPath);
+
+    preferences = { companyId: "company", cohort: "existing" };
+    setStaffSessionToken("unchanged-browser-different-account");
+    await mount("/");
+    expect(host.querySelector("#owner-onboarding-entry")?.textContent).toBe(en.ownerOnboarding.announcement);
+    expect(host.querySelector('[aria-labelledby="owner-onboarding-entry"] a[href="/manuals"]')).not.toBeNull();
+  });
+
+  it("keeps Getting Started available after dashboard and announcement dismissal", async () => {
+    setStaffSessionToken("second-device");
+    preferences = { companyId: "company", cohort: "existing", announcementDismissed: true, dashboardDismissed: true, goal: "schedule" };
+    await mount("/manuals");
+    expect(host.querySelector("#owner-onboarding-entry")).toBeNull();
+    expect(host.querySelector('#getting-started a[href="/jobs/quick"]')).not.toBeNull();
+    expect(host.querySelector('#getting-started a[href="/jobs/new"]')).not.toBeNull();
   });
 
   it.each(["en", "es"] as const)("lets a zero-capability Manager open the %s guide from its real card and route", async locale => {

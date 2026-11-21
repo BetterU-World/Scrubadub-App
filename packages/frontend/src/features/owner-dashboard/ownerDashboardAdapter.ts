@@ -28,42 +28,13 @@ interface ProductionDashboardInput {
   firstName: string;
   companyName: string;
   stats: DashboardStats | undefined;
-  manualRead: boolean;
 }
 
 export function adaptProductionOwnerDashboard({
   firstName,
   companyName,
   stats,
-  manualRead,
 }: ProductionDashboardInput): OwnerDashboardViewModel {
-  const steps = [
-    {
-      id: "first-property",
-      labelKey: "dashboard.createFirstProperty",
-      destination: "/properties",
-      completed: (stats?.propertyCount ?? 0) > 0,
-    },
-    {
-      id: "first-team-member",
-      labelKey: "dashboard.addFirstTeamMember",
-      destination: "/employees",
-      completed: (stats?.employeeCount ?? 0) > 1,
-    },
-    {
-      id: "first-job",
-      labelKey: "dashboard.scheduleFirstJob",
-      destination: "/jobs/new",
-      completed: (stats?.totalJobCount ?? 0) > 0,
-    },
-    {
-      id: "gold-standard",
-      labelKey: "dashboard.readGoldStandard",
-      destination: "/manuals",
-      completed: manualRead,
-    },
-  ];
-
   return {
     viewer: { firstName, companyName },
     metrics: [
@@ -74,13 +45,7 @@ export function adaptProductionOwnerDashboard({
       { key: "awaitingApproval", value: stats?.awaitingApprovalCount ?? "—", tone: "warning", destination: "/jobs?status=submitted" },
       { key: "openMaintenance", value: stats?.openMaintenanceCount ?? "—", tone: "default", destination: "/jobs?type=maintenance" },
     ],
-    onboarding: manualRead
-      ? null
-      : {
-          completed: steps.filter((step) => step.completed).length,
-          total: steps.length,
-          steps,
-        },
+    onboarding: null,
     upcomingJobs: (stats?.upcomingJobs ?? []).map((job) => ({
       id: job._id,
       propertyName: job.propertyName,

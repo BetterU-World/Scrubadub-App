@@ -4,6 +4,7 @@ import { internalAction } from "../_generated/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { completionContext, approvalContext } from "../lib/jobReviewEmailContext";
+import { hashToken } from "../lib/tokens";
 import {
   sendPasswordResetEmail,
   sendClientPasswordResetEmail,
@@ -201,11 +202,17 @@ export const sendInvite = internalAction({
     email: v.string(),
     inviteToken: v.string(),
   },
-  handler: async (_ctx, args) => {
+  returns: v.null(),
+  handler: async (ctx, args) => {
     const sent = await sendInviteEmail(args.email, args.inviteToken);
     if (!sent) {
       console.error("[emailNotifications] Invite email failed for", args.email);
+    } else {
+      await ctx.runMutation(internal.ownerOnboarding.recordCleanerInviteEmailSent, {
+        tokenHash: hashToken(args.inviteToken),
+      });
     }
+    return null;
   },
 });
 

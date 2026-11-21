@@ -64,7 +64,11 @@ export const list = query({
       .withIndex("by_companyId", (q) => q.eq("companyId", args.companyId))
       .collect();
     return Promise.all(users.map(async user => {
-      const entry = toEmployeeDirectoryEntry(user, actor.role === "owner");
+      const entry = {
+        ...toEmployeeDirectoryEntry(user, actor.role === "owner"),
+        cleanerInvitationAccepted: actor.role === "owner" && user.role === "cleaner" ? user.invitationStatus === "accepted" : undefined,
+        cleanerInviteEmailSentAt: actor.role === "owner" && user.role === "cleaner" ? user.cleanerInviteEmailSentAt : undefined,
+      };
       if (!hasOwnerOrManagerPermission(actor, "canManageTeam") || user.role !== "cleaner") return entry;
       const profile = await ctx.db.query("workerProfiles").withIndex("by_userId", q => q.eq("userId", user._id)).first();
       return { ...entry, fastModeEligible: !!profile && profile.companyId === actor.companyId &&

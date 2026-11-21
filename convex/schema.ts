@@ -7,6 +7,7 @@ import { workerDeclineReviewFields } from "./lib/workerDeclineReviewModel";
 import { executionEvidence } from "./lib/performedWorkers";
 import { operationalEmailEvent, deliveryState, errorCategory, attemptSummary } from "./lib/operationalEmailModel";
 import { outgoingTables } from "./lib/outgoingSchema";
+import { ownerOnboardingPreferences } from "./lib/ownerOnboarding";
 import { v } from "convex/values";
 import { calendarClassification, calendarEventMetadata } from "./lib/calendarClassification";
 import { bedroomsValidator } from "./lib/propertyBedrooms";
@@ -466,6 +467,8 @@ export default defineSchema({
   }),
 
   users: defineTable({
+    ownerOnboarding: v.optional(ownerOnboardingPreferences),
+    cleanerInviteEmailSentAt: v.optional(v.number()),
     email: v.string(),
     passwordHash: v.string(),
     name: v.string(),
@@ -540,6 +543,8 @@ export default defineSchema({
     .index("by_email", ["email"])
     .index("by_companyId", ["companyId"])
     .index("by_companyId_role", ["companyId", "role"])
+    .index("by_companyId_role_status_inviteTokenExpiry", ["companyId", "role", "status", "inviteTokenExpiry"])
+    .index("by_companyId_role_status_invitationStatus", ["companyId", "role", "status", "invitationStatus"])
     .index("by_inviteToken", ["inviteToken"])
     .index("by_inviteTokenHash", ["inviteTokenHash"])
     .index("by_resetToken", ["resetToken"])
@@ -967,7 +972,8 @@ export default defineSchema({
     .index("by_companyId_clientRelationshipId", [
       "companyId",
       "clientRelationshipId",
-    ]),
+    ])
+    .index("by_companyId_active", ["companyId", "active"]),
 
   jobs: defineTable({
     companyId: v.id("companies"),
@@ -1195,6 +1201,7 @@ export default defineSchema({
   })
     .index("by_companyId_status", ["companyId", "status"])
     .index("by_companyId_scheduledDate", ["companyId", "scheduledDate"])
+    .index("by_companyId_status_type", ["companyId", "status", "type"])
     .index("by_companyId_clientRelationshipId_scheduledDate", [
       "companyId",
       "clientRelationshipId",

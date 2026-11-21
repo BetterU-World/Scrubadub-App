@@ -9,6 +9,7 @@ import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { OwnerGuideLink } from "@/components/owner/OwnerGuideLink";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { useFeedback } from "@/components/ui/FeedbackProvider";
 import { JobCreationModeSelector } from "@/components/owner/JobCreationModeSelector";
 
 const jobTypes = ["standard", "deep_clean", "turnover", "move_in_out", "post_construction", "maintenance"] as const;
@@ -16,6 +17,7 @@ const jobTypes = ["standard", "deep_clean", "turnover", "move_in_out", "post_con
 export function QuickJobPage() {
   const { user, sessionToken } = useAuth();
   const { t } = useTranslation();
+  const feedback = useFeedback();
   const [, navigate] = useLocation();
   const canManage = user?.role === "owner" || user?.canManageClients === true;
   const canAssign = user?.role === "owner" || user?.canAssignCleaners === true;
@@ -59,7 +61,10 @@ export function QuickJobPage() {
         cleanerIds: canAssign ? [...new Set(workerIds)] as Id<"users">[] : [],
         type, scheduledDate: date, startTime: time || undefined, durationMinutes: duration, notes: notes || undefined,
       });
-      navigate(`/jobs/${id}`);
+      feedback.success(t("jobs.jobScheduled"));
+      navigate(`/jobs/${id}`, {
+        state: user.role === "owner" && type !== "maintenance" ? { ownerFirstWin: "schedule", ownerId: user._id } : undefined,
+      });
     } catch (cause) { setError(cause instanceof Error ? cause.message : t("jobs.failedToSave")); }
     finally { setBusy(false); }
   };

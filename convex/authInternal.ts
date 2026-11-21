@@ -3,6 +3,7 @@ import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { slugify, SLUG_RE, RESERVED_SLUGS, randomSuffix } from "./lib/slugs";
 import { subscriptionAllowsWrites } from "./lib/stripeSubscriptionCompatibility";
+import { signupOnboarding } from "./lib/ownerOnboarding";
 
 export const getUserByEmail = internalQuery({
   args: { email: v.string() },
@@ -119,7 +120,12 @@ export const createUser = internalMutation({
     canViewAnalytics: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const userId = await ctx.db.insert("users", args);
+    const userId = await ctx.db.insert("users", {
+      ...args,
+      ownerOnboarding: args.role === "owner" && args.status === "active"
+        ? signupOnboarding(args.companyId)
+        : undefined,
+    });
     if (args.role === "owner" && args.status === "active") {
       const company = await ctx.db.get(args.companyId);
       if (company) await queueFounder(ctx, `signup:${company._id}`, "signup", { Company: company.name, Name: args.name, Email: args.email, Timestamp: new Date().toISOString(), Plan: company.tier ?? "Unavailable" });
@@ -261,6 +267,7 @@ export const provisionPublicCheckout = internalMutation({
       companyId,
       role: "owner",
       status: "active",
+      ownerOnboarding: signupOnboarding(companyId),
     });
 
     await ctx.db.patch(companyId, {
@@ -373,6 +380,7 @@ export const rotateInviteToken = internalMutation({
       inviteTokenExpiry: args.inviteTokenExpiry,
       invitationStatus: "pending",
       invitationSentAt: Date.now(),
+      cleanerInviteEmailSentAt: undefined,
       invitationAcceptedAt: undefined,
       invitationRevokedAt: undefined,
     });

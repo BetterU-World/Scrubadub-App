@@ -1,7 +1,7 @@
+import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowRight,
-  BookOpen,
   Building2,
   CheckCircle,
   Circle,
@@ -25,7 +25,7 @@ import type {
 interface OwnerDashboardPresentationProps {
   model: OwnerDashboardViewModel;
   interactionMode: OwnerDashboardInteractionMode;
-  onMarkManualsRead?: () => void;
+  gettingStarted?: ReactNode;
 }
 
 const metricPresentation: Record<OwnerDashboardMetricKey, { icon: LucideIcon; labelKey: string }> = {
@@ -40,7 +40,7 @@ const metricPresentation: Record<OwnerDashboardMetricKey, { icon: LucideIcon; la
 export function OwnerDashboardPresentation({
   model,
   interactionMode,
-  onMarkManualsRead,
+  gettingStarted,
 }: OwnerDashboardPresentationProps) {
   const { t } = useTranslation();
   const production = interactionMode === "production";
@@ -52,11 +52,11 @@ export function OwnerDashboardPresentation({
         description={model.viewer.companyName}
       />
 
+      {gettingStarted}
       {model.onboarding && (
         <GettingStartedCard
           onboarding={model.onboarding}
           interactionMode={interactionMode}
-          onMarkManualsRead={onMarkManualsRead}
         />
       )}
 
@@ -156,11 +156,9 @@ export function OwnerDashboardPresentation({
 function GettingStartedCard({
   onboarding,
   interactionMode,
-  onMarkManualsRead,
 }: {
   onboarding: NonNullable<OwnerDashboardViewModel["onboarding"]>;
   interactionMode: OwnerDashboardInteractionMode;
-  onMarkManualsRead?: () => void;
 }) {
   const { t } = useTranslation();
   const production = interactionMode === "production";
@@ -217,13 +215,6 @@ function GettingStartedCard({
         })}
       </div>
 
-      {production && onMarkManualsRead && (
-        <div className="mt-4 border-t pt-3">
-          <button onClick={onMarkManualsRead} className="btn-primary flex w-full items-center justify-center gap-2 text-sm">
-            <BookOpen className="h-4 w-4" /> {t("dashboard.markManualsRead")}
-          </button>
-        </div>
-      )}
     </section>
   );
 }

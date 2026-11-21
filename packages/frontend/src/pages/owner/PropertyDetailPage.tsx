@@ -4,6 +4,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
+import { OwnerFirstWinNextAction } from "@/components/owner/OwnerOnboarding";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -127,6 +128,7 @@ export function PropertyDetailPage() {
           </div> : undefined
         }
       />
+      {user?.role === "owner" && property.active && <OwnerFirstWinNextAction goal="property" ownerId={user._id} />}
       <div className="card mb-4 space-y-2">
         <p className="text-sm font-medium">{t(`quick.${property.managementStatus ?? "managed"}`)}</p>
         {(property.contactName || property.contactPhone || property.contactEmail) && <p className="text-sm text-gray-600 break-words">{t("quick.currentContact")}: {[property.contactName, property.contactPhone, property.contactEmail].filter(Boolean).join(" · ")}</p>}
