@@ -9,6 +9,7 @@ import en from "./i18n/en/common.json";
 import es from "./i18n/es/common.json";
 
 let failure: Error | null;
+let onboardingFailure: { query: "preferences" | "progress"; error: Error } | undefined;
 let role: "owner" | "manager" | "cleaner" | "maintenance" = "owner";
 let language: "en" | "es" = "en";
 let preferences: Record<string, unknown> | undefined;
@@ -17,8 +18,10 @@ vi.mock("convex/react", () => ({
   useQuery: (reference: any, args: any) => {
     if (args === "skip") return undefined;
     const name = getFunctionName(reference); calls.push(name);
-    if (name === "authQueries:getCurrentUser") return { _id: "staff", companyId: "company", role, status: "active", isSuperadmin: false };
+    if (name === "authQueries:getCurrentUser") return { _id: "staff", companyId: "company", name: "Test Staff", companyName: "Test Company", role, status: "active", isSuperadmin: false };
+    if (name === "queries/dashboard:getStats") return undefined;
     if (name === "queries/manuals:getVisibleManuals") return [];
+    if (onboardingFailure && name === `ownerOnboarding:${onboardingFailure.query}`) throw onboardingFailure.error;
     if (name === "ownerOnboarding:preferences") return preferences;
     if (name === "ownerOnboarding:progress") return { jobId: null, propertyId: null, cleaner: null, invitation: null };
     if (name === "queries/billing:getCompanySubscription") {
@@ -39,7 +42,6 @@ vi.mock("@/components/layout/AppLayout", () => ({ AppLayout: ({ children }: { ch
 vi.mock("@/components/shared/OfflineIndicator", () => ({ OfflineIndicator: () => null }));
 vi.mock("@/pages/auth/LoginPage", () => ({ LoginPage: () => createElement("form", { "data-testid": "staff-sign-in" }, "Sign In") }));
 vi.mock("@/pages/auth/LandingPage", () => ({ LandingPage: () => createElement("p", null, "Public landing") }));
-vi.mock("@/pages/owner/DashboardPage", () => ({ DashboardPage: () => createElement("p", { "data-testid": "workspace" }, "Workspace") }));
 
 import App from "./App";
 import { StaffSessionRecovery } from "./components/shared/StaffSessionRecovery";
@@ -50,12 +52,14 @@ import { isStaffSessionError } from "./lib/staffSessionError";
 let root: Root;
 let host: HTMLDivElement;
 function suppressExpectedError(event: ErrorEvent) {
-  if (isStaffSessionError(event.error) || event.error?.message === "Billing unavailable") event.preventDefault();
+  if (isStaffSessionError(event.error) || event.error?.message === "Billing unavailable" ||
+      (onboardingFailure && event.error === onboardingFailure.error)) event.preventDefault();
 }
 beforeEach(() => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
   localStorage.clear(); setStaffSessionToken(""); failure = null; calls.length = 0;
   role = "owner"; language = "en";
+  onboardingFailure = undefined;
   preferences = { companyId: "company", cohort: "existing" };
   vi.spyOn(console, "error").mockImplementation(() => {});
   window.addEventListener("error", suppressExpectedError);
@@ -117,6 +121,39 @@ describe("real App staff-auth boundary wiring", () => {
     expect(host.querySelector('#getting-started a[href="/jobs/new"]')).not.toBeNull();
   });
 
+  it.each(["preferences", "progress"] as const)("keeps the workspace, manuals, and workflow links available when onboarding %s throws", async query => {
+    setStaffSessionToken("synthetic-session");
+    preferences = { companyId: "company", cohort: "existing", announcementDismissed: true, goal: "schedule" };
+    onboardingFailure = { query, error: new Error("Onboarding unavailable") };
+    const location = await mount("/");
+    expect(calls).toContain(`ownerOnboarding:${query}`);
+    expect(host.querySelector("[data-owner-dashboard-presentation]")).not.toBeNull();
+    expect(host.querySelector("#dashboard-getting-started")).toBeNull();
+    expect(host.textContent).not.toContain("Onboarding unavailable");
+
+    await act(async () => location.navigate("/manuals"));
+    expect(host.querySelector("h1")?.textContent).toBe(en.learningCenter.title);
+    expect(host.textContent).toContain(en.learningCenter.manuals);
+    for (const href of ["/jobs/quick", "/jobs/new", "/employees?invite=true", "/properties/new"]) {
+      expect(host.querySelector(`#getting-started a[href="${href}"]`)).not.toBeNull();
+    }
+    const guide = host.querySelector<HTMLAnchorElement>('a[href="/manuals/owner"]');
+    expect(guide).not.toBeNull();
+    await act(async () => guide!.click());
+    expect(location.history?.at(-1)).toBe("/manuals/owner");
+    expect(host.querySelector("article h1")?.textContent).toBe("Owner App Guide");
+    expect(getStaffSessionToken()).toBe("synthetic-session");
+  });
+
+  it("routes a genuine onboarding session rejection through staff-session recovery", async () => {
+    setStaffSessionToken("synthetic-session");
+    onboardingFailure = { query: "preferences", error: new Error("A verified session is required. Please sign in again.") };
+    const location = await mount("/");
+    expect(host.querySelector('[data-testid="staff-sign-in"]')).not.toBeNull();
+    expect(getStaffSessionToken()).toBe("");
+    expect(location.history?.at(-1)).toBe("/login");
+  });
+
   it.each(["en", "es"] as const)("lets a zero-capability Manager open the %s guide from its real card and route", async locale => {
     role = "manager"; language = locale; setStaffSessionToken("synthetic-session");
     const location = await mount("/manuals");
@@ -143,7 +180,7 @@ describe("real App staff-auth boundary wiring", () => {
     await mount("/login");
     expect(host.querySelector('[data-testid="staff-sign-in"]')).not.toBeNull();
     await act(async () => setStaffSessionToken("synthetic-new-session"));
-    expect(host.querySelector('[data-testid="workspace"]')).not.toBeNull();
+    expect(host.querySelector("[data-owner-dashboard-presentation]")).not.toBeNull();
     expect(getStaffSessionToken()).toBe("synthetic-new-session");
   });
 

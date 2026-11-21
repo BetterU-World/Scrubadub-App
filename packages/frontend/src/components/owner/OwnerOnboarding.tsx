@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { Link, useLocation } from "wouter";
@@ -8,6 +8,7 @@ import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useAuth } from "@/hooks/useAuth";
 import { getStaffSessionSnapshot } from "@/lib/staffSession";
+import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 
 type OnboardingSession = { companyId: Id<"companies">; sessionToken: string };
 type PreferenceChange = FunctionArgs<typeof api.ownerOnboarding.updatePreferences>["change"];
@@ -32,7 +33,17 @@ function useOwnerPreferences(enabled = true) {
   return { session, preferences };
 }
 
-export function OwnerFirstWinNextAction({ goal, ownerId }: { goal: "schedule" | "property"; ownerId: Id<"users"> }) {
+function OptionalOnboarding({ children, fallback = <></> }: { children: ReactNode; fallback?: ReactNode }) {
+  return <ErrorBoundary recoverStaffSession fallback={fallback}>{children}</ErrorBoundary>;
+}
+
+type FirstWinProps = { goal: "schedule" | "property"; ownerId: Id<"users"> };
+
+export function OwnerFirstWinNextAction(props: FirstWinProps) {
+  return <OptionalOnboarding><FirstWinNextAction {...props} /></OptionalOnboarding>;
+}
+
+function FirstWinNextAction({ goal, ownerId }: FirstWinProps) {
   const { t } = useTranslation();
   const state = useHistoryState<{ ownerFirstWin?: Goal; ownerId?: Id<"users"> } | null>();
   const { preferences } = useOwnerPreferences(state?.ownerFirstWin === goal && state.ownerId === ownerId);
@@ -93,6 +104,10 @@ function GoalChoices({ selected, disabled, choose }: {
 }
 
 export function OwnerOnboardingEntry() {
+  return <OptionalOnboarding><OnboardingEntry /></OptionalOnboarding>;
+}
+
+function OnboardingEntry() {
   const { t } = useTranslation();
   const { session, preferences } = useOwnerPreferences();
   const { pending, failed, save } = usePreferenceActions(session);
@@ -180,7 +195,32 @@ function GoalProgress({ goal, progress }: { goal: Goal; progress: Progress }) {
   );
 }
 
-export function OwnerGettingStarted({ surface }: { surface: "dashboard" | "learningCenter" }) {
+function GettingStartedLinks() {
+  const { t } = useTranslation();
+  return (
+    <section id="getting-started" className="card min-w-0 scroll-mt-4 sm:col-span-2">
+      <h2 className="text-lg font-semibold">{t("learningCenter.gettingStarted")}</h2>
+      <div className="flex flex-wrap gap-x-4">
+        {goalIds.map((goal) => (
+          <Link key={goal} href={goals[goal].href} className={actionLink}>{t(goals[goal].label)}</Link>
+        ))}
+        <Link href="/jobs/new" className={actionLink}>{t("learningCenter.fullScheduling")}</Link>
+      </div>
+    </section>
+  );
+}
+
+type GettingStartedProps = { surface: "dashboard" | "learningCenter" };
+
+export function OwnerGettingStarted({ surface }: GettingStartedProps) {
+  return (
+    <OptionalOnboarding fallback={surface === "learningCenter" ? <GettingStartedLinks /> : undefined}>
+      <GettingStarted surface={surface} />
+    </OptionalOnboarding>
+  );
+}
+
+function GettingStarted({ surface }: GettingStartedProps) {
   const { t } = useTranslation();
   const { session, preferences } = useOwnerPreferences();
   const dashboard = surface === "dashboard";
@@ -189,7 +229,7 @@ export function OwnerGettingStarted({ surface }: { surface: "dashboard" | "learn
   const goal = preferences?.goal;
   const progress = useQuery(api.ownerOnboarding.progress, visible && goal && session ? session : "skip");
   const { pending, failed, save } = usePreferenceActions(session);
-  if (!visible) return null;
+  if (!visible) return dashboard ? null : <GettingStartedLinks />;
 
   return (
     <section id={dashboard ? "dashboard-getting-started" : "getting-started"}
