@@ -59,10 +59,11 @@ export function AppLayout({ children }: AppLayoutProps) {
     <div className="flex min-h-screen min-h-[100dvh] w-full min-w-0 max-w-full pt-[var(--safe-area-top)] md:h-[100dvh] md:min-h-0">
       <ForegroundPresence />
       <Sidebar mobileOpen={sidebarOpen} onMobileClose={closeSidebar} triggerRef={menuTriggerRef} />
+      {/* Keep absolutely positioned content, such as screen-reader-only captions, inside the desktop scroll pane. */}
       <div
         ref={workspaceRef}
         className={clsx(
-          "flex min-h-0 min-w-0 max-w-full flex-1 flex-col md:overflow-x-hidden md:overflow-y-auto md:overscroll-y-contain md:pb-0",
+          "flex min-h-0 min-w-0 max-w-full flex-1 flex-col md:relative md:overflow-x-hidden md:overflow-y-auto md:overscroll-y-contain md:pb-0",
           hasMobileNavigation && "pb-[var(--mobile-bottom-occlusion)]"
         )}
       >
