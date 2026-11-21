@@ -36,6 +36,7 @@ Timestamp windows are `(server reference - 168/720 hours, server reference]`, UT
 - Cancelled: `cancelledAt` in window. Current cancelled-record totals are separate.
 - Scheduled: `scheduledDate` interpreted at **midnight UTC as an explicitly labeled date proxy**, bounded by the same window, excluding currently cancelled jobs. No exact scheduled-hour claim is made because the field is date-only; future dates are excluded.
 - Canonical volume excludes records with `sharedFromJobId`; partner copies are counted separately. This applies to platform and company reports consistently. A receiving company can see its partner-copy volume separately rather than mistake it for zero operational participation.
+- Overview restores **Top Companies by Jobs**: the ten highest all-time persisted canonical counts, including all job statuses and QA/internal companies. Each row links to V2 company detail. Zero-job companies do not occupy the ranking; no-job data has an explicit empty state. Equal counts sort by code-point company name, then company ID. The report uses bounded indexed job pages per company and keeps only ten candidates in memory. This adds a company-indexed pass over jobs to the existing global report, not a reactive table scan; the existing report read budget still applies.
 - Calendar-sync and generated-commercial jobs are included once in canonical counts when they are originals, and also identified as automated records. Automation is never engagement evidence.
 - Approved records without completion/approval timestamps and cancelled records without cancellation timestamps are exposed. Missing timestamps are not replaced with scheduled dates.
 
@@ -46,6 +47,8 @@ The compatibility `queries/admin` exports remain available. Their assignment met
 The recorder mounts only inside the authenticated staff `AppLayout`. A visible screen counts without requiring a click. Initial foreground mounting, eligible navigation, and return to visibility can produce observations. There is **no heartbeat, polling, reconnect listener, page-history storage, or automatic tracking based on operational writes**.
 
 The client excludes Showcase/demo, client and public/authentication surfaces. The server verifies the session, derives company/user/current role, verifies the company exists, and timestamps receipt. Client principal sessions are rejected; affiliate sessions do not record. Identity/time fields submitted by a caller are rejected by argument validation. `surface` is a fixed contract identifier, not a stored page path.
+
+Presence uses `requireReadOnlyStaffSession`, sharing the exact validity, revocation, principal, status, claimed-identity and worker-access checks with the normal staff verifier, but with session touching disabled. Recording or deduplicating analytics never creates sessions or changes `authSessions.lastUsedAt` / `idleExpiresAt`. Normal mutation session refresh behavior is unchanged.
 
 Visibility is a browser signal. The server cannot prove a human is viewing a screen or prevent an authenticated custom client from calling the endpoint. This is minimal product analytics, not attendance, timekeeping, security evidence, or surveillance.
 
@@ -93,6 +96,8 @@ Before a separately authorized release:
 This task does not authorize merge, deployment or production data changes. No Convex push/codegen that contacts a deployment is part of local validation. Frontend build, TypeScript, in-memory Convex tests and synthetic component/browser previews are local evidence; they do not replace the isolated deployment smoke test.
 
 ### Local validation results
+
+PR #297 focused review corrections: 92 targeted tests across 12 files passed, covering ranking/pagination/ties/QA, non-touching presence, normal session-refresh behavior, and existing authentication/session regressions. Frontend/Convex typechecks, frontend-only production build and diff checks passed. No new schema, migration or environment change is required for these two corrections.
 
 - `npm test -- --maxWorkers=4`: **236 files, 2,309 tests passed**. An earlier unrestricted run had a contention timeout and an obsolete source assertion; the assertion was updated, both tests passed in isolation, and the complete rerun passed.
 - Focused backend scale rerun: **15 tests passed**, including **10,003 login accounts** with 10,001 owners, beyond the former user scan cap.

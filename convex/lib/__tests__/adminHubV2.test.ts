@@ -3,6 +3,7 @@ import { convexTest } from "convex-test";
 import schema from "../../schema";
 import { api, internal } from "../../_generated/api";
 import { hashToken } from "../tokens";
+import { requireVerifiedStaffSession } from "../sessionAuth";
 import {
   countJob,
   DAY,
@@ -186,6 +187,100 @@ describe("Hub V2 evidence definitions", () => {
 });
 
 describe("Hub V2 bounded reporting and authorization", () => {
+  it("ranks all-time canonical jobs across pages, includes QA, and excludes shared automation copies", async () => {
+    const s = await setup();
+    vi.mocked(Date.now).mockReturnValue(NOW - 365 * DAY);
+    const tied = await s.t.run(async (ctx) => {
+      const sameA = await ctx.db.insert("companies", {
+        name: "Same",
+        timezone: "UTC",
+      });
+      const sameB = await ctx.db.insert("companies", {
+        name: "Same",
+        timezone: "UTC",
+      });
+      const base = {
+        cleanerIds: [],
+        type: "standard" as const,
+        status: "scheduled" as const,
+        scheduledDate: "2020-01-01",
+        durationMinutes: 60,
+        reworkCount: 0,
+      };
+      let original;
+      for (let i = 0; i < 105; i++) {
+        const id = await ctx.db.insert("jobs", {
+          ...base,
+          companyId: s.companyId,
+          ...(i === 0
+            ? {
+                source: "calendar_sync" as const,
+                generatedFromCommercialSchedule: true,
+              }
+            : {}),
+          ...(i === 1 ? { generatedFromCommercialSchedule: true } : {}),
+          ...(i === 104 ? { status: "cancelled" as const } : {}),
+        });
+        if (i === 0) original = id;
+        await ctx.db.insert("jobs", { ...base, companyId: s.otherId });
+      }
+      for (let i = 0; i < 5; i++)
+        await ctx.db.insert("jobs", {
+          ...base,
+          companyId: s.otherId,
+          sharedFromJobId: original!,
+          source: "calendar_sync",
+          generatedFromCommercialSchedule: true,
+        });
+      for (const companyId of [sameA, sameB])
+        await ctx.db.insert("jobs", { ...base, companyId });
+      return [sameA, sameB].sort();
+    });
+    vi.mocked(Date.now).mockReturnValue(NOW);
+    const result = await s.t.action(api.adminHub.report, s.auth);
+    expect(result.topCompanies).toEqual([
+      { id: s.companyId, name: "Founder QA", count: 105 },
+      { id: s.otherId, name: "Other", count: 105 },
+      ...tied.map((id) => ({ id, name: "Same", count: 1 })),
+    ]);
+    expect(result.counts.canonicalJobs).toBe(212);
+    expect(result.counts.created30d ?? 0).toBe(0);
+    expect(result.counts.sharedCopies).toBe(5);
+    expect(result.topCompanies.reduce((sum, row) => sum + row.count, 0)).toBe(
+      212,
+    );
+    expect(
+      (await s.t.action(api.adminHub.report, s.auth)).topCompanies,
+    ).toEqual(result.topCompanies);
+  });
+  it("returns an empty ranking without jobs and keeps only ten deterministic candidates", async () => {
+    const s = await setup();
+    expect(
+      (await s.t.action(api.adminHub.report, s.auth)).topCompanies,
+    ).toEqual([]);
+    const ids = await s.t.run(async (ctx) => {
+      const ids = [];
+      for (let i = 0; i < 12; i++) {
+        const companyId = await ctx.db.insert("companies", {
+          name: "Tie",
+          timezone: "UTC",
+        });
+        ids.push(companyId);
+        await ctx.db.insert("jobs", {
+          companyId,
+          cleanerIds: [],
+          type: "standard",
+          status: "scheduled",
+          scheduledDate: "2026-11-21",
+          durationMinutes: 60,
+          reworkCount: 0,
+        });
+      }
+      return ids.sort();
+    });
+    const result = await s.t.action(api.adminHub.report, s.auth);
+    expect(result.topCompanies.map((row) => row.id)).toEqual(ids.slice(0, 10));
+  });
   it("includes QA, separates populations, and preserves overlapping billing evidence", async () => {
     const s = await setup();
     await s.t.run(async (ctx) => {
@@ -368,6 +463,112 @@ describe("Hub V2 bounded reporting and authorization", () => {
 });
 
 describe("foreground presence contract", () => {
+  it("leaves normal mutation session refresh behavior unchanged", async () => {
+    const s = await setup();
+    await s.t.run((ctx) =>
+      ctx.db.patch(s.sessionId, {
+        lastUsedAt: NOW - 3_600_000,
+        idleExpiresAt: NOW + 3_600_000,
+      }),
+    );
+    await s.t.run((ctx) =>
+      requireVerifiedStaffSession(ctx, "owner-token", s.userId),
+    );
+    expect(await s.t.run((ctx) => ctx.db.get(s.sessionId))).toMatchObject({
+      lastUsedAt: NOW,
+      idleExpiresAt: NOW + 7 * DAY,
+    });
+  });
+  it("authenticates and records presence without touching or creating sessions, even past the touch interval", async () => {
+    const s = await setup();
+    await s.t.run((ctx) =>
+      ctx.db.patch(s.sessionId, {
+        lastUsedAt: NOW - 3_600_000,
+        idleExpiresAt: NOW + 3_600_000,
+      }),
+    );
+    const before = await s.t.run((ctx) =>
+      ctx.db.query("authSessions").collect(),
+    );
+    expect(
+      await s.t.mutation(api.adminPresence.observe, {
+        sessionToken: "owner-token",
+        surface: "staff_app",
+      }),
+    ).toEqual({ recorded: true });
+    expect(
+      await s.t.mutation(api.adminPresence.observe, {
+        sessionToken: "owner-token",
+        surface: "staff_app",
+      }),
+    ).toEqual({ recorded: false });
+    expect(
+      await s.t.run((ctx) => ctx.db.query("authSessions").collect()),
+    ).toEqual(before);
+    const rows = await s.t.run((ctx) =>
+      ctx.db.query("hubDailyPresence").collect(),
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      userId: s.userId,
+      companyId: s.companyId,
+      role: "owner",
+      firstSeenAt: NOW,
+      lastSeenAt: NOW,
+    });
+  });
+  it.each([
+    "revoked",
+    "absolute-expired",
+    "idle-expired",
+    "inactive-user",
+    "blocked-worker",
+  ])(
+    "rejects %s presence without changing session lifetime",
+    async (reason) => {
+      const s = await setup();
+      await s.t.run(async (ctx) => {
+        if (reason === "revoked")
+          await ctx.db.patch(s.sessionId, { revokedAt: NOW });
+        if (reason === "absolute-expired")
+          await ctx.db.patch(s.sessionId, { expiresAt: NOW });
+        if (reason === "idle-expired")
+          await ctx.db.patch(s.sessionId, { idleExpiresAt: NOW });
+        if (reason === "inactive-user")
+          await ctx.db.patch(s.userId, { status: "inactive" });
+        if (reason === "blocked-worker") {
+          await ctx.db.patch(s.userId, { role: "manager" });
+          await ctx.db.insert("workerProfiles", {
+            companyId: s.companyId,
+            userId: s.userId,
+            workerType: "w2_employee",
+            workerStatus: "inactive",
+            primaryRole: "manager",
+            eligibleRoles: ["manager"],
+            onboardingStatus: "complete",
+            jobEligibilityStatus: "ineligible",
+            createdAt: NOW,
+            updatedAt: NOW,
+          });
+        }
+      });
+      const before = await s.t.run((ctx) =>
+        ctx.db.query("authSessions").collect(),
+      );
+      await expect(
+        s.t.mutation(api.adminPresence.observe, {
+          sessionToken: "owner-token",
+          surface: "staff_app",
+        }),
+      ).rejects.toThrow("verified session");
+      expect(
+        await s.t.run((ctx) => ctx.db.query("authSessions").collect()),
+      ).toEqual(before);
+      expect(
+        await s.t.run((ctx) => ctx.db.query("hubDailyPresence").collect()),
+      ).toEqual([]);
+    },
+  );
   it.each([
     [true, true, "Both active"],
     [true, false, "Owner-only"],

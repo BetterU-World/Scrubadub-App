@@ -6,6 +6,7 @@ import type { Doc } from "./_generated/dataModel";
 import { requireSuperadminSession } from "./lib/sessionAuth";
 import {
   companyCard,
+  companyReference,
   countJob,
   DAY,
   engagement,
@@ -225,6 +226,7 @@ export const scan = internalQuery({
   },
   returns: v.object({
     counts: metricCounts,
+    companies: v.array(companyReference),
     isDone: v.boolean(),
     cursor: v.string(),
     observationStart: nullableTime,
@@ -237,6 +239,7 @@ export const scan = internalQuery({
         numItems: 100,
         maximumBytesRead: 1_000_000,
       };
+    const companies: { id: Doc<"companies">["_id"]; name: string }[] = [];
     let isDone = true,
       cursor = "";
     const finish = (result: { isDone: boolean; continueCursor: string }) => {
@@ -257,6 +260,7 @@ export const scan = internalQuery({
           : await ctx.db.query("companies").paginate(opts);
         finish(result);
         for (const c of result.page) {
+          companies.push({ id: c._id, name: c.name });
           increment(counts, "companies");
           if (c.qaFixtureKey) increment(counts, "qaCompanies");
           const row = await card(ctx, c, args.asOf);
@@ -368,6 +372,7 @@ export const scan = internalQuery({
       .unique();
     return {
       counts,
+      companies,
       isDone,
       cursor,
       observationStart: observation?.startedAt ?? null,

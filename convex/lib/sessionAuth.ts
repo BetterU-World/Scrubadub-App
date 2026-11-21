@@ -41,6 +41,24 @@ export async function requireVerifiedStaffSession(
   sessionToken: string,
   claimedUserId?: Id<"users">
 ): Promise<ActiveStaff> {
+  return verifyStaffSession(ctx, sessionToken, claimedUserId, true);
+}
+
+/** Analytics may authenticate a caller, but must never refresh authentication lifetime. */
+export async function requireReadOnlyStaffSession(
+  ctx: DbCtx,
+  sessionToken: string,
+  claimedUserId?: Id<"users">
+): Promise<ActiveStaff> {
+  return verifyStaffSession(ctx, sessionToken, claimedUserId, false);
+}
+
+async function verifyStaffSession(
+  ctx: DbCtx,
+  sessionToken: string,
+  claimedUserId: Id<"users"> | undefined,
+  touch: boolean,
+): Promise<ActiveStaff> {
   if (!sessionToken || sessionToken.length > 256) {
     console.warn("[security] rejected legacy-only high-risk request");
     throw new StaffAuthorizationDenied(SESSION_REQUIRED_ERROR);
@@ -68,6 +86,7 @@ export async function requireVerifiedStaffSession(
     throw new StaffAuthorizationDenied("Session principal does not match the requested user");
   }
   if (
+    touch &&
     "patch" in ctx.db &&
     now - verifiedSession.lastUsedAt >= SESSION_TOUCH_INTERVAL_MS
   ) {

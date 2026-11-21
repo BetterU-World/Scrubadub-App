@@ -5,6 +5,14 @@ export const PRESENCE_VERSION = 1;
 export const PRESENCE_THROTTLE = 5 * 60_000;
 export const metricCounts = v.record(v.string(), v.number());
 export type Counts = Record<string, number>;
+export const companyReference = v.object({
+  id: v.id("companies"),
+  name: v.string(),
+});
+export const companyRanking = v.object({
+  ...companyReference.fields,
+  count: v.number(),
+});
 export function increment(counts: Counts, key: string, amount = 1) {
   counts[key] = (counts[key] ?? 0) + amount;
 }

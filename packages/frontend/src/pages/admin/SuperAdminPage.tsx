@@ -304,6 +304,7 @@ function PlatformReport({
               </h2>
               <Population counts={c} />
               <JobSummary counts={c} />
+              <TopCompanies companies={state.report!.topCompanies} />
             </>
           )}
           {section !== "billing" && (
@@ -313,7 +314,54 @@ function PlatformReport({
           <DataQuality counts={c} />
         </>
       )}
+      {section === "overview" && !c && !state.error && <TopCompanies />}
     </div>
+  );
+}
+export function TopCompanies({
+  companies,
+}: {
+  companies?: Report["topCompanies"];
+}) {
+  return (
+    <section className="card space-y-4">
+      <h2 className="flex items-center gap-2 font-semibold text-gray-900">
+        <Building2 className="h-5 w-5 text-primary-600" />
+        Top Companies by Jobs
+      </h2>
+      <p className="text-xs text-gray-600">
+        Top 10 by total persisted canonical jobs, all time. All companies,
+        including QA/internal, are eligible. Partner copies are excluded;
+        automated originals count once. Equal counts sort by company name, then
+        ID.
+      </p>
+      {companies === undefined ? (
+        <p role="status" className="text-sm text-gray-600">
+          Calculating company ranking…
+        </p>
+      ) : companies.length === 0 ? (
+        <p className="text-sm text-gray-600">No canonical jobs found.</p>
+      ) : (
+        <ol className="divide-y divide-gray-100">
+          {companies.map((company, index) => (
+            <li key={company.id}>
+              <Link
+                href={`/admin/companies/${company.id}`}
+                className="flex min-h-11 items-center justify-between gap-4 rounded-lg py-3 text-sm hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary-600"
+              >
+                <span className="min-w-0 break-words font-medium text-primary-700">
+                  <span className="mr-3 text-gray-500">{index + 1}.</span>
+                  {company.name}
+                </span>
+                <span className="shrink-0 font-semibold tabular-nums text-gray-900">
+                  {number(company.count)} {company.count === 1 ? "job" : "jobs"}
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
   );
 }
 export function JobSummary({ counts: c }: { counts: Counts }) {

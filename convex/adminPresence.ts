@@ -1,7 +1,7 @@
 import { internalMutation, mutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
-import { requireVerifiedStaffSession } from "./lib/sessionAuth";
+import { requireReadOnlyStaffSession } from "./lib/sessionAuth";
 import { DAY, PRESENCE_THROTTLE, PRESENCE_VERSION } from "./lib/adminHubModel";
 
 /** Called only by the foreground application boundary; no URL or client identity is persisted. */
@@ -9,7 +9,7 @@ export const observe = mutation({
   args: { sessionToken: v.string(), surface: v.literal("staff_app") },
   returns: v.object({ recorded: v.boolean() }),
   handler: async (ctx, args) => {
-    const user = await requireVerifiedStaffSession(ctx, args.sessionToken);
+    const user = await requireReadOnlyStaffSession(ctx, args.sessionToken);
     if (!user.companyId || user.role === "affiliate")
       return { recorded: false };
     if (!(await ctx.db.get(user.companyId))) return { recorded: false };

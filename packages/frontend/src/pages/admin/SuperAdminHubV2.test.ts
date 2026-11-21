@@ -3,7 +3,8 @@ import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { getFunctionName } from "convex/server";
-import { SuperAdminPage } from "./SuperAdminPage";
+import { SuperAdminPage, TopCompanies } from "./SuperAdminPage";
+import { renderToStaticMarkup } from "react-dom/server";
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -41,6 +42,9 @@ const evidence = {
   engagement30: "Insufficient observation",
 };
 const report = {
+  topCompanies: [
+    { id: "company-synthetic", name: "Linden Cleaning", count: 42 },
+  ],
   counts: {
     companies: 24,
     qaCompanies: 2,
@@ -143,6 +147,13 @@ it("shows distinct populations, coverage, unverified billing and existing tools"
     expect(view.element.textContent).toContain("Operational worker profiles");
     expect(view.element.textContent).toContain("Payment unverified");
     expect(view.element.textContent).toContain("Insufficient observation");
+    expect(view.element.textContent).toContain("Top Companies by Jobs");
+    expect(view.element.textContent).toContain("42 jobs");
+    expect(
+      view.element.querySelector(
+        'a[href="/admin/companies/company-synthetic"]',
+      ),
+    ).not.toBeNull();
     for (const href of [
       "/admin/assessments",
       "/admin/giveaways",
@@ -166,6 +177,14 @@ it("shows distinct populations, coverage, unverified billing and existing tools"
   } finally {
     await view.unmount();
   }
+});
+it("provides ranking loading and empty states", () => {
+  expect(renderToStaticMarkup(createElement(TopCompanies))).toContain(
+    "Calculating company ranking",
+  );
+  expect(
+    renderToStaticMarkup(createElement(TopCompanies, { companies: [] })),
+  ).toContain("No canonical jobs found");
 });
 it("preserves company owner email and worker contact/status visibility", async () => {
   state.path = "/admin/companies";
