@@ -110,4 +110,13 @@ describe("owner classification controls", () => {
     expect(container.textContent).toContain("Sync this feed before confirming classification");
     expect(button("Confirm guest reservation")).toBeUndefined();
   });
+
+  it.each(["identity", "dates"])("holds guest confirmation while %s review is pending", async kind => {
+    await render([{ ...event(), ...(kind === "identity"
+      ? { identityReview: { state: "pending", revision: 1, candidateIds: [], reasons: [], incomplete: false } }
+      : { dateReview: { state: "pending", previousCheckIn: "2026-10-25", previousCheckOut: "2026-10-26", proposedCheckIn: "2026-10-26", proposedCheckOut: "2026-10-27" } }) }]);
+    expect(button("Confirm guest reservation").disabled).toBe(true);
+    expect(button("Confirm non-guest block").disabled).toBe(false);
+    await act(async () => button("Confirm guest reservation").click()); expect(mocks.classify).not.toHaveBeenCalled();
+  });
 });
