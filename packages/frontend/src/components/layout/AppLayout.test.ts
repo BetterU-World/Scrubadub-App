@@ -41,6 +41,15 @@ describe("workspace scroll on route changes", () => {
     vi.unstubAllGlobals();
   });
 
+  it("keeps the containing block for absolute page content on the desktop scroll pane", () => {
+    const workspace = host.querySelector("main")!.parentElement!;
+
+    // A viewport-relative sr-only caption below the fold can extend the document.
+    expect(workspace.classList).toContain("md:relative");
+    expect(workspace.classList).toContain("md:overflow-y-auto");
+    expect(workspace.classList).not.toContain("relative");
+  });
+
   it("resets the desktop workspace and retains the mounted sidebar's position", async () => {
     const workspace = host.querySelector("main")!.parentElement!;
     const nav = host.querySelector("aside nav")!;
