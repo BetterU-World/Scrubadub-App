@@ -23,4 +23,6 @@ crons.interval("operational-email-recovery", { minutes: 5 }, internal.operationa
 crons.interval("subscription-notice-reconciliation", { hours: 4 }, internal.actions.subscriptionNotices.scan, {});
 crons.interval("subscription-notice-delivery", { minutes: 5 }, internal.subscriptionNotices.tick, {});
 
+crons.interval("founder-email-delivery", { minutes: 1 }, internal.founderNotifications.tick, {});
+
 export default crons;

@@ -1,3 +1,4 @@
+import { queueFounder } from "./founderNotifications";
 import type { MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { giveawayCampaigns, giveawayState, normalizeGiveawayEmail } from "./giveawayCampaigns";
@@ -26,6 +27,7 @@ export async function recordGiveawayEntry(ctx: MutationCtx, campaignId: string, 
     marketingConsentAt: contact.marketingConsent ? now : undefined,
     consentVersion: contact.marketingConsent ? "giveaway_followup_v1" : undefined,
   });
+  await queueFounder(ctx, `giveaway:${entryId}`, "giveaway", { Email: contact.email.trim(), Method: origin.entryMethod, Status: "qualified", Eligibility: "confirmed", "Marketing consent": String(contact.marketingConsent), Campaign: campaignId, Timestamp: new Date(now).toISOString(), ...(origin.entryMethod === "assessment" ? { Assessment: String(origin.attemptId) } : { Name: `${origin.firstName} ${origin.lastName}` }) });
   return { outcome: "qualified" as const, entryId };
 }
 

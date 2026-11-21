@@ -1,3 +1,4 @@
+import { queueFounder } from "./lib/founderNotifications";
 import { mutation, query } from "./_generated/server";
 import { giveawayCampaigns } from "./lib/giveawayCampaigns";
 import { qualifyGiveaway } from "./lib/giveawayEntries";
@@ -345,6 +346,8 @@ export const complete = mutation({
       completionSnapshot,
     });
     await recordMilestone(ctx, (await ctx.db.get(attempt._id))!, "assessment_completed", { definitionVersion: definition.definitionVersion, scoringVersion: definition.scoringVersion, maturityKey: scoring.maturityKey, confidenceKey: scoring.confidence, branchType: completionSnapshot.branchContext.soloOperator ? "solo" : "team", scoreBand: scoring.operationsScore < 40 ? "0_39" : scoring.operationsScore < 60 ? "40_59" : scoring.operationsScore < 75 ? "60_74" : scoring.operationsScore < 90 ? "75_89" : "90_100" });
+    const prospect = await ctx.db.query("assessmentProspects").withIndex("by_attemptId", q => q.eq("attemptId", attempt._id)).first();
+    await queueFounder(ctx, `assessment:${attempt._id}`, "assessment", { Assessment: String(attempt._id), Timestamp: new Date(now).toISOString(), Score: String(scoring.operationsScore), Result: scoring.maturityKey, ...(prospect ? { Name: prospect.firstName ?? "Unavailable", Email: prospect.normalizedEmail, Company: prospect.businessName ?? "Unavailable" } : args.giveawayContact ? { Email: args.giveawayContact.email } : {}), "Admin path": `/admin/assessments/${attempt._id}` });
     return completionSnapshot;
   },
 });

@@ -937,3 +937,12 @@ export async function sendJobCompletedEmail(...args: Parameters<typeof deliverJo
 export async function sendJobApprovedEmail(...args: Parameters<typeof deliverJobApprovedEmail>): Promise<boolean> {
   return (await deliverJobApprovedEmail(...args)).status === "provider_accepted";
 }
+
+/** Same verified platform sender; no automatic retry after an ambiguous external call. */
+export async function deliverFounderEmail(args: { email: string; subject: string; details: Record<string, string>; idempotencyKey: string }): Promise<OperationalEmailOutcome> {
+  try {
+    const text = Object.entries(args.details).map(([label, value]) => label + ": " + value).join("\n");
+    const html = '<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;padding:24px;color:#111827;overflow-wrap:anywhere"><h1 style="color:#166534;font-size:24px">' + escapeHtml(args.subject) + '</h1><table style="width:100%;border-collapse:collapse">' + Object.entries(args.details).map(([label, value]) => label === "Admin link" && /^https?:\/\//.test(value) ? `<tr><td colspan="2"><a href="${escapeHtml(value)}" style="color:#166534">View assessment in admin</a></td></tr>` : detailRow(label, value)).join("") + '</table></div>';
+    return operationalEmailResult(await getResendClient().emails.send({ ...getPlatformEmailHeaders(), to: args.email, subject: args.subject, html, text }, { idempotencyKey: args.idempotencyKey }));
+  } catch { return { status: "unknown", category: "provider_uncertain" }; }
+}
