@@ -1,7 +1,22 @@
+import { v } from "convex/values";
 import { MAX_ADD_ON_PRICE_CENTS } from "./companyAddOnValidation";
 
 export const MAX_PROPOSAL_ADD_ON_LINES = 50;
 export const MAX_PROPOSAL_TOTAL_CENTS = 1_000_000_000;
+
+export const proposalAddOnLineValidator = v.object({
+  lineItemId: v.string(),
+  sourceType: v.union(v.literal("request_snapshot"), v.literal("catalog"), v.literal("custom")),
+  sourceClientRequestId: v.optional(v.id("clientRequests")),
+  sourceCompanyAddOnId: v.optional(v.id("companyAddOns")),
+  name: v.string(),
+  pricingMethod: v.union(v.literal("flat"), v.literal("starting_at"), v.literal("per_unit")),
+  unitPriceCents: v.number(),
+  unitLabel: v.optional(v.string()),
+  quantity: v.optional(v.number()),
+  finalizedPriceCents: v.optional(v.number()),
+  billingCadence: v.union(v.literal("one_time"), v.literal("monthly")),
+});
 
 export type ProposalAddOnLine = {
   lineItemId: string;

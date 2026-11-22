@@ -55,7 +55,7 @@ function assessmentMonthlyEstimate(value: number | undefined) {
     : undefined;
 }
 
-async function getOwnedProposal(
+export async function getOwnedProposal(
   ctx: MutationCtx,
   sessionToken: string,
   userId: Id<"users">,
@@ -70,7 +70,7 @@ async function getOwnedProposal(
   return { owner, proposal: proposal as Doc<"proposals"> };
 }
 
-function requireDraft(proposal: Doc<"proposals">) {
+export function requireDraft(proposal: Doc<"proposals">) {
   if (proposal.status !== "draft") throw new Error("Return the proposal to draft before editing");
   if (proposal.pendingDeliveryAttemptId) throw new Error("Wait for the pending proposal delivery attempt before editing");
 }
@@ -189,6 +189,11 @@ export const updateProposal = mutation({
     requireDraft(proposal);
 
     const updatedAt = Math.max(Date.now(), proposal.updatedAt + 1);
+    const monthlyPriceCents = cleanPrice(args.monthlyPriceCents);
+    const oneTimePriceCents = cleanPrice(args.oneTimePriceCents);
+    const pricingChanged = monthlyPriceCents !== proposal.monthlyPriceCents ||
+      oneTimePriceCents !== proposal.oneTimePriceCents || args.serviceFrequency !== proposal.serviceFrequency ||
+      cleanOptional(args.serviceFrequencyNotes, 1000) !== proposal.serviceFrequencyNotes;
     await ctx.db.patch(args.proposalId, {
       title: cleanRequired(args.title, "Cleaning Proposal", 200),
       clientName: cleanRequired(args.clientName, "Client", 200),
@@ -197,8 +202,10 @@ export const updateProposal = mutation({
       serviceFrequency: args.serviceFrequency,
       serviceFrequencyNotes: cleanOptional(args.serviceFrequencyNotes, 1000),
       scopeOfWork: cleanOptional(args.scopeOfWork, 4000),
-      monthlyPriceCents: cleanPrice(args.monthlyPriceCents),
-      oneTimePriceCents: cleanPrice(args.oneTimePriceCents),
+      monthlyPriceCents,
+      oneTimePriceCents,
+      // Editing approved pricing through the existing editor makes the draft manually priced.
+      appliedEstimateRevisionId: pricingChanged ? undefined : proposal.appliedEstimateRevisionId,
       notes: cleanOptional(args.notes, 4000),
       updatedAt,
     });
@@ -224,6 +231,7 @@ export const markProposalSent = mutation({
       const issueId = await ctx.db.insert("proposalIssues", {
         companyId: proposal.companyId, proposalId: proposal._id,
         issueNumber: (latest?.issueNumber ?? 0) + 1,
+        appliedEstimateRevisionId: proposal.appliedEstimateRevisionId,
         content: proposalIssueContent(payload), preparedAt: now, issuedAt: now,
       });
       issue = await ctx.db.get(issueId);
@@ -280,19 +288,23 @@ export const addCatalogAddOnLine = mutation({
     const item = await ctx.db.get(args.companyAddOnId);
     if (!item || item.companyId !== owner.companyId || !item.isActive || item.archivedAt !== undefined) throw new Error("Catalog add-on is unavailable");
     const line = normalizeProposalAddOnLine({ lineItemId: newProposalLineItemId(), sourceType: "catalog", sourceCompanyAddOnId: item._id, name: item.name, pricingMethod: item.pricingMethod, unitPriceCents: item.priceCents, unitLabel: item.unitLabel, quantity: item.pricingMethod === "per_unit" ? 1 : undefined, billingCadence: args.billingCadence });
-    await ctx.db.patch(proposal._id, { addOnLineItems: validateProposalAddOnLines([...(proposal.addOnLineItems ?? []), line]), updatedAt: Date.now() });
+    await ctx.db.patch(proposal._id, { addOnLineItems: validateProposalAddOnLines([...(proposal.addOnLineItems ?? []), line]), ...manualPricingRevision(proposal) });
     return line.lineItemId;
   },
 });
 
 const editableLineArgs = { name: v.string(), pricingMethod: v.union(v.literal("flat"), v.literal("starting_at"), v.literal("per_unit")), unitPriceCents: v.number(), unitLabel: v.optional(v.string()), quantity: v.optional(v.number()), finalizedPriceCents: v.optional(v.number()), billingCadence: v.union(v.literal("one_time"), v.literal("monthly")) };
 
+function manualPricingRevision(proposal: Doc<"proposals">) {
+  return { appliedEstimateRevisionId: undefined, updatedAt: Math.max(Date.now(), proposal.updatedAt + 1) };
+}
+
 export const addCustomAddOnLine = mutation({
   args: { userId: v.id("users"), sessionToken: v.string(), proposalId: v.id("proposals"), ...editableLineArgs },
   handler: async (ctx, args) => {
     const { proposal } = await getOwnedProposal(ctx, args.sessionToken, args.userId, args.proposalId); requireDraft(proposal);
     const line = normalizeProposalAddOnLine({ lineItemId: newProposalLineItemId(), sourceType: "custom", name: args.name, pricingMethod: args.pricingMethod, unitPriceCents: args.unitPriceCents, unitLabel: args.unitLabel, quantity: args.quantity, finalizedPriceCents: args.finalizedPriceCents, billingCadence: args.billingCadence });
-    await ctx.db.patch(proposal._id, { addOnLineItems: validateProposalAddOnLines([...(proposal.addOnLineItems ?? []), line]), updatedAt: Date.now() });
+    await ctx.db.patch(proposal._id, { addOnLineItems: validateProposalAddOnLines([...(proposal.addOnLineItems ?? []), line]), ...manualPricingRevision(proposal) });
     return line.lineItemId;
   },
 });
@@ -305,7 +317,7 @@ export const updateAddOnLine = mutation({
     if (!existing) throw new Error("Proposal add-on line not found");
     const updated = normalizeProposalAddOnLine({ ...existing, name: args.name, pricingMethod: args.pricingMethod, unitPriceCents: args.unitPriceCents, unitLabel: args.unitLabel, quantity: args.quantity, finalizedPriceCents: args.finalizedPriceCents, billingCadence: args.billingCadence });
     const lines = (proposal.addOnLineItems ?? []).map((line: any) => line.lineItemId === args.lineItemId ? updated : line);
-    await ctx.db.patch(proposal._id, { addOnLineItems: validateProposalAddOnLines(lines as any), updatedAt: Date.now() });
+    await ctx.db.patch(proposal._id, { addOnLineItems: validateProposalAddOnLines(lines as any), ...manualPricingRevision(proposal) });
   },
 });
 
@@ -315,7 +327,7 @@ export const removeAddOnLine = mutation({
     const { proposal } = await getOwnedProposal(ctx, args.sessionToken, args.userId, args.proposalId); requireDraft(proposal);
     const lines = (proposal.addOnLineItems ?? []).filter((line: any) => line.lineItemId !== args.lineItemId);
     if (lines.length === (proposal.addOnLineItems ?? []).length) throw new Error("Proposal add-on line not found");
-    await ctx.db.patch(proposal._id, { addOnLineItems: lines, updatedAt: Date.now() });
+    await ctx.db.patch(proposal._id, { addOnLineItems: lines, ...manualPricingRevision(proposal) });
   },
 });
 
@@ -331,7 +343,7 @@ export const returnProposalToDraft = mutation({
       if (!issue || issue.companyId !== proposal.companyId || issue.proposalId !== proposal._id) throw new Error("Active proposal issue is invalid");
       await ctx.db.patch(issue._id, { withdrawnAt: now });
     }
-    await ctx.db.patch(proposal._id, { status: "draft", currentIssueId: undefined, sentAt: undefined, proposalTokenHash: undefined, proposalTokenCreatedAt: undefined, updatedAt: now });
+    await ctx.db.patch(proposal._id, { status: "draft", currentIssueId: undefined, sentAt: undefined, proposalTokenHash: undefined, proposalTokenCreatedAt: undefined, updatedAt: Math.max(now, proposal.updatedAt + 1) });
   },
 });
 

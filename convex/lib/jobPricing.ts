@@ -26,6 +26,29 @@ export function checkedPriceSnapshot(baseChargeCents: number, addOns: PriceLine[
   return { baseChargeCents, addOns, totalCents, currency: "usd", createdAt };
 }
 
+type ProposalPriceLine = Pick<Doc<"proposalIssues">["content"]["proposal"]["addOnLineItems"][number],
+  "billingCadence" | "name" | "lineTotalCents" | "quantity" | "unitLabel">;
+
+export function checkedOneTimeProposalSnapshot(
+  baseChargeCents: number,
+  lines: ProposalPriceLine[],
+  snapshotPrefix: string,
+): PriceSnapshot | null {
+  const addOns: PriceLine[] = [];
+  for (const line of lines) {
+    if (line.billingCadence !== "one_time") continue;
+    if (line.lineTotalCents === null) return null;
+    addOns.push({
+      snapshotId: `${snapshotPrefix}:${addOns.length}`,
+      name: line.name,
+      amountCents: line.lineTotalCents,
+      quantity: line.quantity ?? undefined,
+      unitLabel: line.unitLabel ?? undefined,
+    });
+  }
+  return checkedPriceSnapshot(baseChargeCents, addOns);
+}
+
 export function normalizedJobPrice(job: any) {
   if (job.customerPricingStatus) return job.customerPricingStatus as "pending" | "awaiting_acceptance" | "accepted" | "no_charge";
   return job.customerChargeCents === undefined || job.customerChargeCents === 0 ? "pending" : "legacy_unverified";
@@ -37,10 +60,8 @@ export async function acceptedOneTimeProposalPrice(ctx: any, proposal: any, requ
   if (!issue || issue.companyId !== request.companyId || issue.proposalId !== proposal._id || !issue.issuedAt || issue.withdrawnAt) return null;
   const content = issue.content.proposal;
   if (!content.totals.hasOneTimePricing || content.totals.hasMonthlyPricing || content.totals.hasUnfinalizedStartingAt) return null;
-  const addOns = content.addOnLineItems.filter((line: any) => line.billingCadence === "one_time").map((line: any, index: number) => ({ snapshotId: `proposal:${issue._id}:${index}`, name: line.name, amountCents: line.lineTotalCents, quantity: line.quantity ?? undefined, unitLabel: line.unitLabel ?? undefined }));
-  if (addOns.some((line: any) => line.amountCents === null)) return null;
-  const snapshot = checkedPriceSnapshot(content.totals.baseOneTimePriceCents, addOns);
-  if (snapshot.totalCents !== content.totals.oneTimeTotalCents || snapshot.totalCents <= 0) return null;
+  const snapshot = checkedOneTimeProposalSnapshot(content.totals.baseOneTimePriceCents, content.addOnLineItems, `proposal:${issue._id}`);
+  if (!snapshot || snapshot.totalCents !== content.totals.oneTimeTotalCents || snapshot.totalCents <= 0) return null;
   return { snapshot, proposalId: proposal._id, issueId: issue._id, consent: { source: proposal.responseSource === "client_token" ? "client_in_app" as const : "owner_reported_outside" as const, acceptedAt: proposal.acceptedAt ?? issue.issuedAt, acceptedAmountCents: snapshot.totalCents, recordedByUserId: proposal.responseRecordedByUserId, proposalIssueId: issue._id } };
 }
 
