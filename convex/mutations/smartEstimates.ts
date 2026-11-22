@@ -3,6 +3,8 @@ import { internalMutation, type MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { requireOwnerOrManagerCapability } from "../lib/sessionAuth";
 import { propertyTypeFromRequestLeadType } from "../lib/commercialEligibility";
+import { checkedOneTimeProposalSnapshot } from "../lib/jobPricing";
+import { proposalAddOnLineAmount } from "../lib/proposalAddOnLineItems";
 import { calculateEstimate, estimateBaseValidator, estimateOverrideValidator, estimateProposalBase } from "../lib/smartEstimatePricing";
 import { getOwnedProposal, requireDraft } from "./proposals";
 
@@ -186,9 +188,23 @@ export const applyToProposal = internalMutation({
     if (context.propertyType === "commercial" && revision.input.cadence !== "monthly") {
       throw new Error("Smart Estimate commercial handoff requires a monthly base");
     }
-    if ((context.propertyType === "residential" || context.propertyType === "vacation_rental") &&
-        calculated.approved.hasMonthlyPricing) {
-      throw new Error("Smart Estimate job billing handoff requires one-time pricing only");
+    if (context.propertyType === "residential" || context.propertyType === "vacation_rental") {
+      if (calculated.approved.hasMonthlyPricing) {
+        throw new Error("Smart Estimate job billing handoff requires one-time pricing only");
+      }
+      const resolvedLines = lines.map(line => ({
+        ...line,
+        lineTotalCents: proposalAddOnLineAmount(line),
+        quantity: line.quantity ?? null,
+        unitLabel: line.unitLabel ?? null,
+      }));
+      try {
+        // Validate the job snapshot shape without requiring a positive, invoiceable charge.
+        checkedOneTimeProposalSnapshot(calculated.approvedBaseCents, resolvedLines, `proposal:${proposal._id}`);
+      } catch (error) {
+        if (!(error instanceof Error)) throw error;
+        throw new Error(`Smart Estimate exceeds job billing constraints: ${error.message}`);
+      }
     }
     const base = estimateProposalBase(revision.input.cadence, revision.approvedBaseCents);
     if (proposal.appliedEstimateRevisionId === revision._id &&

@@ -23,7 +23,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-async function setup(type: "residential" | "commercial" = "residential") {
+async function setup(type: "residential" | "vacation_rental" | "commercial" = "residential") {
   const t = convexTest(schema, modules);
   const passwordHash = await hashPassword(password);
   const ids = await t.run(async ctx => {
@@ -32,9 +32,9 @@ async function setup(type: "residential" | "commercial" = "residential") {
     const ownerId = await ctx.db.insert("users", { companyId, role: "owner", status: "active", email: "owner@test.dev", name: "Owner", passwordHash });
     const salesId = await ctx.db.insert("users", { companyId, role: "manager", status: "active", canManageSalesAndCommercial: true, email: "sales@test.dev", name: "Sales", passwordHash });
     const viewerId = await ctx.db.insert("users", { companyId, role: "manager", status: "active", canViewFinancials: true, email: "viewer@test.dev", name: "Viewer", passwordHash });
-    const relationshipId = await ctx.db.insert("clientRelationships", { companyId, displayName: "Client", clientType: type, email: "client@test.dev", status: "active", createdAt: 1, updatedAt: 1 });
+    const relationshipId = await ctx.db.insert("clientRelationships", { companyId, displayName: "Client", clientType: type === "vacation_rental" ? "residential" : type, email: "client@test.dev", status: "active", createdAt: 1, updatedAt: 1 });
     const propertyId = await ctx.db.insert("properties", { companyId, clientRelationshipId: relationshipId, name: "Site", type, address: "1 Main", amenities: [], active: true });
-    const requestFields = { status: "new", requesterName: "Client", requesterEmail: "client@test.dev", propertySnapshot: { address: "1 Main" }, source: "manual", leadType: type, leadStage: "new", createdAt: 1 } as const;
+    const requestFields = { status: "new", requesterName: "Client", requesterEmail: "client@test.dev", propertySnapshot: { address: "1 Main" }, source: "manual", leadType: type === "vacation_rental" ? "str_airbnb" : type, leadStage: "new", createdAt: 1 } as const;
     const clientRequestId = await ctx.db.insert("clientRequests", { ...requestFields, companyId, clientRelationshipId: relationshipId, propertyId });
     const foreignRequestId = await ctx.db.insert("clientRequests", { ...requestFields, companyId: foreignCompany });
     const addOn = (name: string, priceCents: number) => ctx.db.insert("companyAddOns", {
@@ -209,5 +209,29 @@ describe("Smart Estimates Phase 1", () => {
     await expect(s.t.mutation(estimates.applyToProposal, { ...applyArgs, revisionId, expectedProposalRevision: current.updatedAt }))
       .rejects.toThrow("requires one-time pricing only");
     expect(await s.t.run(ctx => ctx.db.get(proposalId))).toEqual(current);
+  });
+
+  it.each([
+    { type: "residential", baseCents: 15000, lineCount: 21, error: "Too many priced add-ons" },
+    { type: "vacation_rental", baseCents: 100_000_000, lineCount: 1, error: "Customer charge is too large" },
+  ] as const)("rejects $error on a $type estimate and leaves the proposal untouched", async ({ type, baseCents, lineCount, error }) => {
+    const s = await setup(type);
+    const proposalId = await s.t.mutation(proposals.createProposalFromLead, { ...s.owner, clientRequestId: s.clientRequestId });
+    for (let index = 0; index < lineCount; index++) {
+      await s.t.mutation(proposals.addCustomAddOnLine, {
+        ...s.owner, proposalId, name: `Service ${index + 1}`, pricingMethod: "flat", unitPriceCents: 2500, billingCadence: "one_time",
+      });
+    }
+    const before = (await s.t.run(ctx => ctx.db.get(proposalId)))!;
+    const estimateId = await s.t.mutation(estimates.openDraft, {
+      ...s.owner, clientRequestId: s.clientRequestId, input: { strategy: "flat", cadence: "one_time", baseCents },
+    });
+    const expectedProposalRevision = before.updatedAt;
+    const revisionId = await s.t.mutation(estimates.approve, {
+      ...s.owner, estimateId, expectedDraftRevision: 1, proposal: { proposalId, expectedProposalRevision },
+    });
+    await expect(s.t.mutation(estimates.applyToProposal, { ...s.owner, estimateId, revisionId, proposalId, expectedProposalRevision }))
+      .rejects.toThrow(`Smart Estimate exceeds job billing constraints: ${error}`);
+    expect(await s.t.run(ctx => ctx.db.get(proposalId))).toEqual(before);
   });
 });
