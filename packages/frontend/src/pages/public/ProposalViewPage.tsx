@@ -4,37 +4,17 @@ import { useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import { useTranslation } from "react-i18next";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import { ProposalContentView } from "@/components/ProposalContentView";
+import { ProposalContentView, type ProposalContent } from "@/components/ProposalContentView";
 import {
   CheckCircle,
   MessageSquare,
   XCircle,
 } from "lucide-react";
 
-type ProposalPayload = {
+type ProposalPayload = ProposalContent & {
   legacyBaseOnly?: boolean;
-  company: {
-    companyName: string;
-    companyLogoUrl?: string | null;
-    companyEmail?: string | null;
-    companyPhone?: string | null;
-  };
-  clientName: string;
+  issueNumber?: number;
   proposal: {
-    title: string;
-    businessName?: string | null;
-    propertyAddress?: string | null;
-    serviceFrequencyLabel?: string | null;
-    serviceFrequencyNotes?: string | null;
-    scopeOfWork?: string | null;
-    notes?: string | null;
-    monthlyPriceLabel?: string | null;
-    oneTimePriceLabel?: string | null;
-    addOnLineItems?: Array<{
-      name: string; pricingMethod: "flat" | "starting_at" | "per_unit"; unitPriceLabel?: string | null; unitLabel?: string | null;
-      quantity?: number | null; finalizedPriceLabel?: string | null; billingCadence: "one_time" | "monthly"; lineTotalLabel?: string | null;
-    }>;
-    totals?: { monthlyTotalLabel?: string | null; oneTimeTotalLabel?: string | null };
     status: "draft" | "sent" | "accepted" | "declined";
     proposalResponseNote?: string | null;
   };
@@ -87,7 +67,7 @@ export function ProposalViewPage() {
       });
       setProposal(updated);
     } catch (err: any) {
-      setResponseError(err.message || "Unable to submit response");
+      setResponseError("responseError");
     } finally {
       setResponding(null);
     }
@@ -121,76 +101,84 @@ export function ProposalViewPage() {
 
   const status = proposal.proposal.status;
   const canRespond = status === "sent";
+  const branded = !!proposal.presentation;
+  const lng = proposal.presentation?.locale;
+  const label = (key: string) => t(`proposals.branded.${key}`, { lng });
 
   return (
     <Shell
       companyName={proposal.company.companyName}
       companyLogoUrl={proposal.company.companyLogoUrl}
+      branded={branded}
+      lang={lng}
     >
-      <section className="card space-y-5">
-        <div className="flex justify-end"><StatusPill status={status} /></div>
+      <section className={branded ? "space-y-3" : "card space-y-5"}>
+        <div className="flex justify-end print:hidden"><StatusPill status={status} lang={lng} /></div>
         {proposal.legacyBaseOnly && <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{t("proposals.v2.legacyPublicHelp")}</p>}
-        <ProposalContentView content={proposal} legacyBaseOnly={proposal.legacyBaseOnly === true} />
+        <ProposalContentView content={proposal} issueNumber={proposal.issueNumber} legacyBaseOnly={proposal.legacyBaseOnly === true} />
       </section>
 
-      <section className="card mt-4">
+      <section className={`card mt-4 print:hidden ${branded && canRespond ? "mb-24 sm:mb-0" : ""}`}>
         {status === "accepted" && (
           <Result
             icon={<CheckCircle className="h-6 w-6 text-green-600" />}
-            title="Proposal accepted"
-            message="Thank you. Your response has been shared with the provider."
+            title={label("acceptedTitle")}
+            message={label("acceptedMessage")}
           />
         )}
         {status === "declined" && (
           <Result
             icon={<XCircle className="h-6 w-6 text-red-600" />}
-            title="Proposal declined"
-            message="Your response has been shared with the provider."
+            title={label("declinedTitle")}
+            message={label("declinedMessage")}
           />
         )}
         {!canRespond && status !== "accepted" && status !== "declined" && (
           <Result
             icon={<MessageSquare className="h-6 w-6 text-gray-500" />}
-            title="Proposal not ready"
-            message="Ask your cleaning provider to send the latest proposal link."
+            title={label("notReadyTitle")}
+            message={label("notReadyMessage")}
           />
         )}
         {canRespond && (
           <form className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Response note <span className="font-normal text-gray-400">(optional)</span>
+              <label htmlFor="proposal-response-note" className="block text-sm font-medium text-gray-700">
+                {label("responseNote")}
               </label>
               <textarea
+                id="proposal-response-note"
                 className="input-field mt-1"
                 rows={3}
                 maxLength={1000}
                 value={note}
                 onChange={(event) => setNote(event.target.value)}
-                placeholder="Add a short note if helpful..."
+                placeholder={label("notePlaceholder")}
               />
             </div>
-            {responseError && <p className="text-sm text-red-600">{responseError}</p>}
-            <div className="flex flex-col gap-2 sm:flex-row">
+            {responseError && <p role="alert" className="text-sm text-red-600">{label(responseError)}</p>}
+            <div className={branded
+              ? "fixed inset-x-0 bottom-0 z-20 flex gap-2 border-t border-slate-200 bg-white px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:static sm:border-0 sm:p-0"
+              : "flex flex-col gap-2 sm:flex-row"}>
               <button
                 type="button"
                 disabled={responding !== null}
                 onClick={() => handleRespond("accepted")}
-                className="btn-primary flex flex-1 items-center justify-center gap-2"
+                className="btn-primary flex min-h-11 flex-[2] items-center justify-center gap-2 text-sm"
               >
                 {responding === "accepted" && <LoadingSpinner size="sm" />}
                 <CheckCircle className="h-4 w-4" />
-                Accept Proposal
+                {label("accept")}
               </button>
               <button
                 type="button"
                 disabled={responding !== null}
                 onClick={() => handleRespond("declined")}
-                className="btn-secondary flex flex-1 items-center justify-center gap-2"
+                className="btn-secondary flex min-h-11 flex-1 items-center justify-center gap-2 text-sm"
               >
                 {responding === "declined" && <LoadingSpinner size="sm" />}
                 <XCircle className="h-4 w-4" />
-                Decline
+                {label("decline")}
               </button>
             </div>
           </form>
@@ -220,7 +208,8 @@ function Result({
   );
 }
 
-function StatusPill({ status }: { status: ProposalPayload["proposal"]["status"] }) {
+function StatusPill({ status, lang }: { status: ProposalPayload["proposal"]["status"]; lang?: "en" | "es" }) {
+  const { t } = useTranslation();
   const styles: Record<string, string> = {
     draft: "bg-gray-100 text-gray-700",
     sent: "bg-blue-100 text-blue-700",
@@ -229,7 +218,7 @@ function StatusPill({ status }: { status: ProposalPayload["proposal"]["status"] 
   };
   return (
     <span className={`badge capitalize ${styles[status] ?? styles.draft}`}>
-      {status}
+      {t(`proposals.statuses.${status}`, { lng: lang })}
     </span>
   );
 }
@@ -237,15 +226,20 @@ function StatusPill({ status }: { status: ProposalPayload["proposal"]["status"] 
 function Shell({
   companyName,
   companyLogoUrl,
+  branded,
+  lang,
   children,
 }: {
   companyName?: string;
   companyLogoUrl?: string | null;
+  branded?: boolean;
+  lang?: "en" | "es";
   children: ReactNode;
 }) {
+  const { t } = useTranslation();
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b border-gray-200 bg-white">
+    <div lang={lang} className="min-h-screen bg-gray-50">
+      {!branded && <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-4">
           <img
             src={companyLogoUrl || "/logo-icon.png"}
@@ -253,13 +247,13 @@ function Shell({
             className="h-9 w-9 rounded-lg object-cover"
           />
           <div>
-            <p className="text-xs font-medium uppercase text-gray-500">SCRUB proposal</p>
+            <p className="text-xs font-medium uppercase text-gray-500">{t("proposals.branded.shellLabel")}</p>
             <h1 className="text-base font-semibold text-gray-900">
-              {companyName || "Cleaning Proposal"}
+              {companyName || t("proposals.branded.offer")}
             </h1>
           </div>
         </div>
-      </header>
+      </header>}
       <main className="mx-auto max-w-2xl px-4 py-6">{children}</main>
     </div>
   );

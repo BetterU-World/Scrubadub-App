@@ -7,7 +7,7 @@ import { ProposalContentView } from "../ProposalContentView";
 import { EMPTY_PROPOSAL_FORM, localProposalTotals, proposalFormFromRecord, proposalFormIsDirty } from "./proposalEditorModel";
 
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string, args?: Record<string, unknown>) => {
-  const value = key.split(".").reduce((entry: any, part) => entry?.[part], en as any) ?? key;
+  const value = key.split(".").reduce((entry: any, part) => entry?.[part], (args?.lng === "es" ? es : en) as any) ?? key;
   return typeof value === "string" ? value.replace(/\{\{(\w+)\}\}/g, (_: string, name: string) => String(args?.[name] ?? "")) : key;
 } }) }));
 vi.mock("./ProposalCatalogAddOnPicker", () => ({ ProposalCatalogAddOnPicker: () => createElement("div", { "data-testid": "catalog-picker" }) }));
@@ -82,6 +82,24 @@ describe("proposal editor V2", () => {
     const legacy = renderToStaticMarkup(createElement(ProposalContentView, { content, legacyBaseOnly: true }));
     expect(legacy).toContain("$100.00");
     expect(legacy).not.toContain("$125.00");
+  });
+
+  it("renders an issued Spanish proposal with separate cadence groups and an explicit zero base", () => {
+    const html = renderToStaticMarkup(createElement(ProposalContentView, { issueNumber: 4, content: {
+      presentation: { locale: "es", terms: "Acceso por recepción.", validThrough: "2030-01-31" },
+      company: { companyName: "Example Cleaning" }, clientName: "Client",
+      proposal: { title: "Weekly Service", serviceFrequency: "weekly", oneTimePriceLabel: "$0.00", monthlyPriceLabel: "$200.00",
+        totals: { oneTimeTotalLabel: "$35.00", monthlyTotalLabel: "$230.00" },
+        addOnLineItems: [
+          { name: "Oven", pricingMethod: "flat", billingCadence: "one_time", lineTotalLabel: "$35.00" },
+          { name: "Glass", pricingMethod: "flat", billingCadence: "monthly", lineTotalLabel: "$30.00" },
+        ] },
+    } }));
+    expect(html).toContain('lang="es"');
+    for (const value of ["Semanal", "$0.00", "$35.00", "$230.00", "Acceso por recepción.", "Imprimir / Guardar como PDF", "informativo"]) {
+      expect(html).toContain(value);
+    }
+    expect(html).not.toContain("Exclusiones");
   });
 
   it("has Spanish equivalents for every new C2 label", () => {

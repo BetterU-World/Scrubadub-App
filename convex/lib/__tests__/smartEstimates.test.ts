@@ -282,6 +282,7 @@ describe("Smart Estimates Phase 1", () => {
 
   it.each(["residential", "vacation_rental"] as const)("preserves the %s one-time price and catalog line through issue, acceptance, job and invoice", async (type) => {
     const s = await setup(type);
+    vi.stubEnv("SCRUB_BRANDED_PROPOSAL_PREVIEW_COMPANY_ID", s.companyId);
     const { proposalId, revisionId, ovenLine } = await approveAndApply(s, "one_time");
     await s.t.action(api.proposalDeliveryActions.sendProposal, { ...s.owner, proposalId });
     const issue = await s.t.run(async ctx => ctx.db.get((await ctx.db.get(proposalId))!.currentIssueId!));
@@ -289,6 +290,7 @@ describe("Smart Estimates Phase 1", () => {
     const { proposalIssueToken } = await import("../tokens");
     const token = await proposalIssueToken(issue!.tokenNonce!);
     const publicOffer = await s.t.action(api.proposalDeliveryActions.getProposalByToken, { token });
+    expect(publicOffer?.presentation).toEqual({ locale: "en" });
     expect(publicOffer?.proposal.totals).toMatchObject({ baseOneTimePriceCents: 15000, addOnOneTimeTotalCents: 2500, oneTimeTotalCents: 17500 });
     for (const value of [publicOffer, vi.mocked(fetch).mock.calls]) {
       expect(JSON.stringify(value)).not.toContain("appliedEstimateRevisionId");
@@ -318,6 +320,7 @@ describe("Smart Estimates Phase 1", () => {
 
   it("uses the confirmed monthly base once and bills a one-time add-on only once commercially", async () => {
     const s = await setup("commercial");
+    vi.stubEnv("SCRUB_BRANDED_PROPOSAL_PREVIEW_COMPANY_ID", s.companyId);
     const { proposalId, ovenLine, floorsLine } = await approveAndApply(s, "monthly");
     await s.t.mutation(proposals.markProposalSent, { ...s.owner, proposalId });
     await s.t.mutation(proposals.markProposalAccepted, { ...s.owner, proposalId });

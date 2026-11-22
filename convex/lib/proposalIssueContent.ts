@@ -1,4 +1,16 @@
 import { v } from "convex/values";
+import type { Id } from "../_generated/dataModel";
+
+export const proposalPresentationValidator = v.object({
+  locale: v.union(v.literal("en"), v.literal("es")),
+  exclusions: v.optional(v.string()),
+  terms: v.optional(v.string()),
+  validThrough: v.optional(v.string()),
+});
+
+export function brandedProposalPreviewEnabled(companyId: Id<"companies">) {
+  return process.env.SCRUB_BRANDED_PROPOSAL_PREVIEW_COMPANY_ID === companyId;
+}
 
 const nullableString = v.union(v.string(), v.null());
 const nullableNumber = v.union(v.number(), v.null());
@@ -9,6 +21,7 @@ const frequency = v.union(
 
 /** The complete immutable proposal presentation, without lifecycle or delivery metadata. */
 export const proposalIssueContentValidator = v.object({
+  presentation: v.optional(proposalPresentationValidator),
   company: v.object({
     companyName: v.string(),
     companyLogoUrl: nullableString,
@@ -65,7 +78,14 @@ export function proposalIssueContent(payload: any) {
     serviceFrequencyNotes, scopeOfWork, notes, monthlyPriceCents, monthlyPriceLabel,
     oneTimePriceCents, oneTimePriceLabel, addOnLineItems, totals,
   } = payload.proposal;
+  const presentation = payload.presentation;
   return {
+    ...(presentation ? { presentation: {
+      locale: presentation.locale,
+      exclusions: presentation.exclusions,
+      terms: presentation.terms,
+      validThrough: presentation.validThrough,
+    } } : {}),
     company: { companyName, companyLogoUrl, companyEmail, companyPhone },
     clientName: payload.clientName,
     proposal: {

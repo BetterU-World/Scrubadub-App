@@ -139,6 +139,22 @@ export function ProposalEditor({ proposal, form, onChange, sourceAssessment, dir
     <Section id="notes" title={t("proposals.v2.sections.notes")}>
       <p className="text-sm text-gray-600">{t("proposals.v2.clientNotesHelp")}</p>
       <Field label={t("proposals.v2.notesToClient")}><textarea className="input-field w-full" rows={4} value={form.notes} onChange={(event) => onChange("notes", event.target.value)} /></Field>
+      {proposal.brandedPreviewEnabled && <>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label={t("proposals.branded.documentLanguage")}>
+            <select className="input-field w-full" value={form.documentLocale} onChange={event => onChange("documentLocale", event.target.value)}>
+              <option value="en">English</option><option value="es">Español</option>
+            </select>
+          </Field>
+          <Field label={t("proposals.branded.validity")}>{input("validThrough", "date")}</Field>
+        </div>
+        <Field label={t("proposals.branded.exclusions")}>
+          <textarea className="input-field w-full" rows={3} maxLength={2000} value={form.exclusions} onChange={event => onChange("exclusions", event.target.value)} />
+        </Field>
+        <Field label={t("proposals.branded.terms")}>
+          <textarea className="input-field w-full" rows={4} maxLength={4000} value={form.terms} onChange={event => onChange("terms", event.target.value)} />
+        </Field>
+      </>}
     </Section>
     <div className="flex flex-col-reverse gap-2 border-t border-gray-100 pt-4 sm:flex-row sm:justify-between">
       <button type="button" className="btn-secondary text-sm" onClick={onCancel}>{t("common.cancel")}</button>

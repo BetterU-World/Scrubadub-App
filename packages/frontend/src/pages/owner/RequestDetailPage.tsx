@@ -709,6 +709,12 @@ export function RequestDetailPage() {
         monthlyPriceCents: centsFromPrice(proposalForm.monthlyPrice),
         oneTimePriceCents: centsFromPrice(proposalForm.oneTimePrice),
         notes: proposalForm.notes || undefined,
+        presentation: proposal.brandedPreviewEnabled ? {
+          locale: proposalForm.documentLocale === "es" ? "es" : "en",
+          exclusions: proposalForm.exclusions || undefined,
+          terms: proposalForm.terms || undefined,
+          validThrough: proposalForm.validThrough || undefined,
+        } : undefined,
       });
       setSavedProposalForm(proposalForm);
       setPendingProposalPreviewAt(typeof updatedAt === "number" ? updatedAt : (proposal.updatedAt ?? 0) + 1);
@@ -1172,7 +1178,8 @@ export function RequestDetailPage() {
                 {proposal.status === "declined" && proposal.declinedAt && <p className="mt-2 text-sm text-red-800">{t("proposals.v2.declinedAt", { date: formatTimestamp(proposal.declinedAt) })}</p>}
               </div>
               <ProposalReviewItems proposal={proposal} onEdit={() => setEditingProposal(true)} />
-              {proposal.canonicalPreview?.content && <div className="min-w-0 rounded-xl border border-gray-200 bg-white p-4 sm:p-5"><ProposalContentView content={proposal.canonicalPreview.content} legacyBaseOnly={proposal.canonicalPreview.source === "legacy_current"} /></div>}
+              {proposal.canonicalPreview?.content && <div className="min-w-0 rounded-xl border border-gray-200 bg-white p-4 sm:p-5"><ProposalContentView content={proposal.canonicalPreview.content}
+                issueNumber={proposal.canonicalPreview.issueNumber ?? undefined} legacyBaseOnly={proposal.canonicalPreview.source === "legacy_current"} /></div>}
               {proposal.latestDeliveryAttempt?.result === "unknown" && <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{t("proposals.deliveryUnknown")}</p>}
               {proposal.latestDeliveryAttempt?.result === "failed" && <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{t("proposals.deliveryFailed")}</p>}
               {proposal.latestDeliveryAttempt?.channel === "owner_reported_outside_send" && <p className="text-xs text-gray-600">{t("proposals.outsideSendRecorded")}</p>}
