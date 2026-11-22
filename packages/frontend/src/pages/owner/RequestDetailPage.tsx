@@ -15,6 +15,7 @@ import { AsyncButton } from "@/components/ui/AsyncButton";
 import { ServiceAgreementCard } from "@/components/owner/ServiceAgreementCard";
 import { WalkthroughCard } from "@/components/owner/WalkthroughCard";
 import { ProposalEditor } from "@/components/owner/ProposalEditor";
+import { SmartEstimateBuilder } from "@/components/owner/SmartEstimateBuilder";
 import { ProposalReviewItems } from "@/components/owner/ProposalReviewItems";
 import { ProposalContentView } from "@/components/ProposalContentView";
 import { EMPTY_PROPOSAL_FORM, proposalFormFromRecord, proposalFormIsDirty } from "@/components/owner/proposalEditorModel";
@@ -74,6 +75,9 @@ export function RequestDetailPage() {
   };
   const params = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
+  const estimateAuth = user && sessionToken ? { userId: user._id, sessionToken } : null;
+  const estimateAccess = useQuery(api.queries.smartEstimatePreview.access, estimateAuth ?? "skip");
+  const [estimateEntry, setEstimateEntry] = useState<{ requestId: Id<"clientRequests">; walkthroughId?: Id<"walkthroughs"> }>();
   const canAssign = user?.role === "owner" || user?.canAssignCleaners === true;
   const canManageClients = user?.role === "owner" || user?.canManageClients === true;
 
@@ -1067,11 +1071,23 @@ export function RequestDetailPage() {
           proposalExists={Boolean(proposal)}
           proposalActionLoading={creatingProposal}
           onProposalNextAction={proposal ? () => openProposalSection() : handleCreateProposal}
+          onBuildEstimate={estimateAccess?.sales ? walkthroughId => setEstimateEntry({ requestId: request._id, walkthroughId }) : undefined}
           onToast={(message, type) => {
             setToast({ message, type });
           }}
-        /></div>
+        />
+        {estimateAccess?.sales && leadWalkthroughs?.length === 0 && <button type="button" className="btn-secondary m-4" onClick={() => setEstimateEntry({ requestId: request._id })}>
+          {t("smartEstimates.build")}
+        </button>}
+        </div>
       </CollapsibleSection>
+
+      {estimateAccess?.sales && estimateAuth && estimateEntry?.requestId === request._id && <SmartEstimateBuilder
+        key={request._id} auth={estimateAuth} clientRequestId={request._id} walkthroughId={estimateEntry.walkthroughId}
+        proposalDirty={proposalDirty} onClose={() => setEstimateEntry(undefined)}
+        onReviewAddOns={() => { setEstimateEntry(undefined); openProposalSection(); setEditingProposal(true); }}
+        onApplied={updatedAt => { setEstimateEntry(undefined); openProposalSection(); setPendingProposalPreviewAt(updatedAt); }}
+      />}
 
       {/* Proposal */}
       <CollapsibleSection
@@ -1090,6 +1106,11 @@ export function RequestDetailPage() {
       >
 
         <div id="request-proposal" className="scroll-mt-24" />
+        {estimateAccess?.sales && editingProposal && proposal?.status === "draft" && !proposal.pendingDeliveryAttemptId && (
+          <button type="button" className="btn-secondary mb-3 w-full sm:w-auto" onClick={() => setEstimateEntry({ requestId: request._id, walkthroughId: proposal.sourceWalkthroughId })}>
+            {t("smartEstimates.use")}
+          </button>
+        )}
 
         {proposal?.status === "draft" && <div role="tablist" aria-label={t("proposals.v2.modeLabel")} className="mb-4 flex w-full gap-1 rounded-lg bg-gray-100 p-1 sm:w-fit">
           <button type="button" role="tab" aria-selected={editingProposal} onClick={() => setEditingProposal(true)} className={`min-w-0 flex-1 rounded-md px-4 py-2 text-sm font-medium sm:flex-none ${editingProposal ? "bg-white text-primary-700 shadow-sm" : "text-gray-600"}`}>{t("proposals.v2.editTab")}</button>

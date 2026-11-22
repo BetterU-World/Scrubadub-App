@@ -1,15 +1,22 @@
 import { v, type Infer } from "convex/values";
-import { internalMutation, type MutationCtx } from "../_generated/server";
+import { internalMutation, mutation, type MutationCtx, type QueryCtx } from "../_generated/server";
+import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { requireOwnerOrManagerCapability } from "../lib/sessionAuth";
 import { propertyTypeFromRequestLeadType } from "../lib/commercialEligibility";
-import { checkedOneTimeProposalSnapshot } from "../lib/jobPricing";
-import { proposalAddOnLineAmount } from "../lib/proposalAddOnLineItems";
-import { calculateEstimate, estimateBaseValidator, estimateOverrideValidator, estimateProposalBase } from "../lib/smartEstimatePricing";
+import { calculateEstimate, estimateBaseValidator, estimateOverrideValidator, estimateProposalBase, validateEstimateDraft, validateEstimateHandoff } from "../lib/smartEstimatePricing";
+import { requireSmartEstimatePreview } from "../lib/smartEstimateAccess";
 import { getOwnedProposal, requireDraft } from "./proposals";
 
 const authArgs = { userId: v.id("users"), sessionToken: v.string() };
-const draftInputs = { input: estimateBaseValidator, override: v.optional(estimateOverrideValidator) };
+const draftInputs = { input: estimateBaseValidator, override: v.optional(estimateOverrideValidator), profileRevisionId: v.optional(v.id("smartPricingProfileRevisions")) };
+const openArgs = { ...authArgs, clientRequestId: v.id("clientRequests"), walkthroughId: v.optional(v.id("walkthroughs")), ...draftInputs };
+const saveArgs = { ...authArgs, estimateId: v.id("smartEstimates"), expectedDraftRevision: v.number(), walkthroughId: v.optional(v.id("walkthroughs")), ...draftInputs };
+const approveArgs = {
+  ...authArgs, estimateId: v.id("smartEstimates"), expectedDraftRevision: v.number(),
+  proposal: v.optional(v.object({ proposalId: v.id("proposals"), expectedProposalRevision: v.number() })),
+};
+const applyArgs = { ...authArgs, estimateId: v.id("smartEstimates"), revisionId: v.id("smartEstimateRevisions"), proposalId: v.id("proposals"), expectedProposalRevision: v.number() };
 
 async function requireSales(ctx: MutationCtx, args: Infer<typeof authValidator>) {
   const actor = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageSalesAndCommercial");
@@ -19,7 +26,7 @@ async function requireSales(ctx: MutationCtx, args: Infer<typeof authValidator>)
 
 const authValidator = v.object(authArgs);
 
-async function estimateContext(ctx: MutationCtx, companyId: Id<"companies">, requestId: Id<"clientRequests">, walkthroughId?: Id<"walkthroughs">) {
+export async function estimateContext(ctx: MutationCtx | QueryCtx, companyId: Id<"companies">, requestId: Id<"clientRequests">, walkthroughId?: Id<"walkthroughs">) {
   const request = await ctx.db.get(requestId);
   if (!request || request.companyId !== companyId) throw new Error("Access denied");
   const walkthrough = walkthroughId ? await ctx.db.get(walkthroughId) : null;
@@ -45,7 +52,7 @@ async function estimateContext(ctx: MutationCtx, companyId: Id<"companies">, req
       throw new Error("Estimate property must match the company and client");
     }
   }
-  return { propertyId, relationshipId, propertyType: property?.type ?? propertyTypeFromRequestLeadType(request.leadType) };
+  return { propertyId, relationshipId, property, walkthrough, request, propertyType: property?.type ?? propertyTypeFromRequestLeadType(request.leadType) };
 }
 
 async function ownedEstimate(ctx: MutationCtx, args: Infer<typeof authValidator> & { estimateId: Id<"smartEstimates"> }) {
@@ -56,9 +63,17 @@ async function ownedEstimate(ctx: MutationCtx, args: Infer<typeof authValidator>
   return { estimate, ...context };
 }
 
-// Only registered as internal functions in Phase 1. Sales authorization still applies to internal calls.
+async function validateDraftProfile(ctx: MutationCtx, companyId: Id<"companies">, id?: Id<"smartPricingProfileRevisions">, previous?: Id<"smartPricingProfileRevisions">) {
+  if (!id || id === previous) return;
+  const revision = await ctx.db.get(id);
+  const profile = revision && await ctx.db.get(revision.profileId);
+  if (!revision || revision.companyId !== companyId || !profile || profile.companyId !== companyId || profile.archivedAt !== undefined) {
+    throw new Error("Pricing profile is unavailable");
+  }
+}
+
 export const openDraft = internalMutation({
-  args: { ...authArgs, clientRequestId: v.id("clientRequests"), walkthroughId: v.optional(v.id("walkthroughs")), ...draftInputs },
+  args: openArgs,
   returns: v.id("smartEstimates"),
   handler: async (ctx, args) => {
     const companyId = await requireSales(ctx, args);
@@ -73,16 +88,17 @@ export const openDraft = internalMutation({
       }
       return existing._id;
     }
-    const calculated = calculateEstimate(args.input, [], args.override);
+    validateEstimateDraft(args.input, args.override);
+    await validateDraftProfile(ctx, companyId, args.profileRevisionId);
     return await ctx.db.insert("smartEstimates", {
       companyId, clientRequestId: args.clientRequestId, walkthroughId: args.walkthroughId,
-      propertyId, draftRevision: 1, input: args.input, override: calculated.override,
+      propertyId, draftRevision: 1, input: args.input, override: args.override, profileRevisionId: args.profileRevisionId,
     });
   },
 });
 
 export const saveDraft = internalMutation({
-  args: { ...authArgs, estimateId: v.id("smartEstimates"), expectedDraftRevision: v.number(), walkthroughId: v.optional(v.id("walkthroughs")), ...draftInputs },
+  args: saveArgs,
   returns: v.number(),
   handler: async (ctx, args) => {
     const { estimate, propertyId } = await ownedEstimate(ctx, args);
@@ -93,10 +109,11 @@ export const saveDraft = internalMutation({
     const walkthrough = args.walkthroughId
       ? await estimateContext(ctx, estimate.companyId, estimate.clientRequestId, args.walkthroughId)
       : null;
-    const calculated = calculateEstimate(args.input, [], args.override);
+    validateEstimateDraft(args.input, args.override);
+    await validateDraftProfile(ctx, estimate.companyId, args.profileRevisionId, estimate.profileRevisionId);
     const draftRevision = estimate.draftRevision + 1;
     await ctx.db.patch(estimate._id, {
-      draftRevision, input: args.input, override: calculated.override,
+      draftRevision, input: args.input, override: args.override, profileRevisionId: args.profileRevisionId,
       walkthroughId: estimate.walkthroughId ?? args.walkthroughId,
       propertyId: walkthrough?.propertyId ?? propertyId,
     });
@@ -126,15 +143,12 @@ async function targetProposal(
   return proposal;
 }
 
-function fingerprintAddOns(lines: readonly object[]) {
+export function fingerprintAddOns(lines: readonly object[]) {
   return JSON.stringify(lines.map(line => Object.fromEntries(Object.entries(line).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0))));
 }
 
 export const approve = internalMutation({
-  args: {
-    ...authArgs, estimateId: v.id("smartEstimates"), expectedDraftRevision: v.number(),
-    proposal: v.optional(v.object({ proposalId: v.id("proposals"), expectedProposalRevision: v.number() })),
-  },
+  args: approveArgs,
   returns: v.id("smartEstimateRevisions"),
   handler: async (ctx, args) => {
     const context = await ownedEstimate(ctx, args);
@@ -148,7 +162,7 @@ export const approve = internalMutation({
     return await ctx.db.insert("smartEstimateRevisions", {
       companyId: estimate.companyId, estimateId: estimate._id, draftRevision: estimate.draftRevision,
       walkthroughId: estimate.walkthroughId, propertyId: context.propertyId, clientRelationshipId: context.relationshipId,
-      input: estimate.input, override: calculated.override, proposalId: proposal?._id,
+      input: estimate.input, override: calculated.override, proposalId: proposal?._id, profileRevisionId: estimate.profileRevisionId,
       addOnSnapshot: lines, engineVersion: calculated.engineVersion,
       recommendedBaseCents: calculated.recommendedBaseCents, approvedBaseCents: calculated.approvedBaseCents,
       addOnOneTimeTotalCents: calculated.approved.addOnOneTimeTotalCents,
@@ -159,7 +173,7 @@ export const approve = internalMutation({
 });
 
 export const applyToProposal = internalMutation({
-  args: { ...authArgs, estimateId: v.id("smartEstimates"), revisionId: v.id("smartEstimateRevisions"), proposalId: v.id("proposals"), expectedProposalRevision: v.number() },
+  args: applyArgs,
   returns: v.number(),
   handler: async (ctx, args) => {
     const context = await ownedEstimate(ctx, args);
@@ -185,35 +199,50 @@ export const applyToProposal = internalMutation({
         calculated.approved.addOnMonthlyTotalCents !== revision.addOnMonthlyTotalCents) {
       throw new Error("Approved estimate no longer matches its calculation");
     }
-    if (context.propertyType === "commercial" && revision.input.cadence !== "monthly") {
-      throw new Error("Smart Estimate commercial handoff requires a monthly base");
-    }
-    if (context.propertyType === "residential" || context.propertyType === "vacation_rental") {
-      if (calculated.approved.hasMonthlyPricing) {
-        throw new Error("Smart Estimate job billing handoff requires one-time pricing only");
-      }
-      const resolvedLines = lines.map(line => ({
-        ...line,
-        lineTotalCents: proposalAddOnLineAmount(line),
-        quantity: line.quantity ?? null,
-        unitLabel: line.unitLabel ?? null,
-      }));
-      try {
-        // Validate the job snapshot shape without requiring a positive, invoiceable charge.
-        checkedOneTimeProposalSnapshot(calculated.approvedBaseCents, resolvedLines, `proposal:${proposal._id}`);
-      } catch (error) {
-        if (!(error instanceof Error)) throw error;
-        throw new Error(`Smart Estimate exceeds job billing constraints: ${error.message}`);
-      }
-    }
+    validateEstimateHandoff(context.propertyType, calculated, lines);
     const base = estimateProposalBase(revision.input.cadence, revision.approvedBaseCents);
-    if (proposal.appliedEstimateRevisionId === revision._id &&
-        proposal.oneTimePriceCents === base.oneTimePriceCents && proposal.monthlyPriceCents === base.monthlyPriceCents) {
-      return proposal.updatedAt;
+    const alreadyApplied = proposal.appliedEstimateRevisionId === revision._id &&
+      proposal.oneTimePriceCents === base.oneTimePriceCents && proposal.monthlyPriceCents === base.monthlyPriceCents;
+    if (!alreadyApplied && proposal.updatedAt !== args.expectedProposalRevision) throw new Error("Proposal draft changed");
+    if (revision.draftRevision !== context.estimate.draftRevision) {
+      throw new Error("Estimate approval is stale. Approve the current draft");
     }
-    if (proposal.updatedAt !== args.expectedProposalRevision) throw new Error("Proposal draft changed");
+    if (alreadyApplied) return proposal.updatedAt;
     const updatedAt = Math.max(Date.now(), proposal.updatedAt + 1);
     await ctx.db.patch(proposal._id, { ...base, appliedEstimateRevisionId: revision._id, updatedAt });
     return updatedAt;
+  },
+});
+
+// Browser calls must pass the preview gate. Internal tests retain the original Sales-authorized path.
+export const previewOpen = mutation({
+  args: openArgs, returns: v.id("smartEstimates"),
+  handler: async (ctx, args): Promise<Id<"smartEstimates">> => {
+    const actor = await requireSmartEstimatePreview(ctx, args, "sales");
+    const existing = await ctx.db.query("smartEstimates")
+      .withIndex("by_companyId_clientRequestId", q => q.eq("companyId", actor.companyId).eq("clientRequestId", args.clientRequestId)).unique();
+    if (existing) throw new Error("Estimate draft changed. Reopen it before saving");
+    return ctx.runMutation(internal.mutations.smartEstimates.openDraft, args);
+  },
+});
+export const previewSave = mutation({
+  args: saveArgs, returns: v.number(),
+  handler: async (ctx, args): Promise<number> => {
+    await requireSmartEstimatePreview(ctx, args, "sales");
+    return ctx.runMutation(internal.mutations.smartEstimates.saveDraft, args);
+  },
+});
+export const previewApprove = mutation({
+  args: approveArgs, returns: v.id("smartEstimateRevisions"),
+  handler: async (ctx, args): Promise<Id<"smartEstimateRevisions">> => {
+    await requireSmartEstimatePreview(ctx, args, "sales");
+    return ctx.runMutation(internal.mutations.smartEstimates.approve, args);
+  },
+});
+export const previewApply = mutation({
+  args: applyArgs, returns: v.number(),
+  handler: async (ctx, args): Promise<number> => {
+    await requireSmartEstimatePreview(ctx, args, "sales");
+    return ctx.runMutation(internal.mutations.smartEstimates.applyToProposal, args);
   },
 });

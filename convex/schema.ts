@@ -1610,6 +1610,21 @@ export default defineSchema({
     .index("by_status_createdAt", ["status", "createdAt"])
     .index("by_payoutBatchId", ["payoutBatchId"]),
 
+  smartPricingProfiles: defineTable({
+    companyId: v.id("companies"),
+    currentRevisionId: v.optional(v.id("smartPricingProfileRevisions")),
+    archivedAt: v.optional(v.number()),
+  }).index("by_companyId_archivedAt", ["companyId", "archivedAt"]),
+
+  smartPricingProfileRevisions: defineTable({
+    companyId: v.id("companies"),
+    profileId: v.id("smartPricingProfiles"),
+    name: v.string(),
+    defaults: estimateBaseValidator,
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+  }),
+
   smartEstimates: defineTable({
     companyId: v.id("companies"),
     clientRequestId: v.id("clientRequests"),
@@ -1617,6 +1632,7 @@ export default defineSchema({
     propertyId: v.optional(v.id("properties")),
     draftRevision: v.number(),
     input: estimateBaseValidator,
+    profileRevisionId: v.optional(v.id("smartPricingProfileRevisions")),
     override: v.optional(estimateOverrideValidator),
   }).index("by_companyId_clientRequestId", ["companyId", "clientRequestId"]),
 
@@ -1630,6 +1646,7 @@ export default defineSchema({
     input: estimateBaseValidator,
     override: v.optional(estimateOverrideValidator),
     profileRevisionRef: v.optional(v.string()),
+    profileRevisionId: v.optional(v.id("smartPricingProfileRevisions")),
     proposalId: v.optional(v.id("proposals")),
     addOnSnapshot: v.array(proposalAddOnLineValidator),
     engineVersion: v.number(),
@@ -1639,7 +1656,7 @@ export default defineSchema({
     addOnMonthlyTotalCents: v.number(),
     approvedByUserId: v.id("users"),
     approvedAt: v.number(),
-  }),
+  }).index("by_estimateId", ["estimateId"]),
 
   proposals: defineTable({
     companyId: v.id("companies"),
