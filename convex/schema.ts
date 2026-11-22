@@ -12,6 +12,8 @@ import { v } from "convex/values";
 import { calendarClassification, calendarEventMetadata } from "./lib/calendarClassification";
 import { bedroomsValidator } from "./lib/propertyBedrooms";
 import { proposalIssueContentValidator } from "./lib/proposalIssueContent";
+import { estimateBaseValidator, estimateOverrideValidator } from "./lib/smartEstimatePricing";
+import { proposalAddOnLineValidator } from "./lib/proposalAddOnLineItems";
 import { serviceAgreementIssueContentValidator } from "./lib/serviceAgreementIssuedContent";
 import {
   securityEventTypeValidator,
@@ -1608,6 +1610,37 @@ export default defineSchema({
     .index("by_status_createdAt", ["status", "createdAt"])
     .index("by_payoutBatchId", ["payoutBatchId"]),
 
+  smartEstimates: defineTable({
+    companyId: v.id("companies"),
+    clientRequestId: v.id("clientRequests"),
+    walkthroughId: v.optional(v.id("walkthroughs")),
+    propertyId: v.optional(v.id("properties")),
+    draftRevision: v.number(),
+    input: estimateBaseValidator,
+    override: v.optional(estimateOverrideValidator),
+  }).index("by_companyId_clientRequestId", ["companyId", "clientRequestId"]),
+
+  smartEstimateRevisions: defineTable({
+    companyId: v.id("companies"),
+    estimateId: v.id("smartEstimates"),
+    draftRevision: v.number(),
+    walkthroughId: v.optional(v.id("walkthroughs")),
+    propertyId: v.optional(v.id("properties")),
+    clientRelationshipId: v.optional(v.id("clientRelationships")),
+    input: estimateBaseValidator,
+    override: v.optional(estimateOverrideValidator),
+    profileRevisionRef: v.optional(v.string()),
+    proposalId: v.optional(v.id("proposals")),
+    addOnSnapshot: v.array(proposalAddOnLineValidator),
+    engineVersion: v.number(),
+    recommendedBaseCents: v.number(),
+    approvedBaseCents: v.number(),
+    addOnOneTimeTotalCents: v.number(),
+    addOnMonthlyTotalCents: v.number(),
+    approvedByUserId: v.id("users"),
+    approvedAt: v.number(),
+  }),
+
   proposals: defineTable({
     companyId: v.id("companies"),
     clientRelationshipId: v.optional(v.id("clientRelationships")),
@@ -1631,33 +1664,10 @@ export default defineSchema({
     serviceFrequencyNotes: v.optional(v.string()),
     scopeOfWork: v.optional(v.string()),
     assessmentSuggestedMonthlyPriceCents: v.optional(v.number()),
+    appliedEstimateRevisionId: v.optional(v.id("smartEstimateRevisions")),
     monthlyPriceCents: v.optional(v.number()),
     oneTimePriceCents: v.optional(v.number()),
-    addOnLineItems: v.optional(
-      v.array(
-        v.object({
-          lineItemId: v.string(),
-          sourceType: v.union(
-            v.literal("request_snapshot"),
-            v.literal("catalog"),
-            v.literal("custom"),
-          ),
-          sourceClientRequestId: v.optional(v.id("clientRequests")),
-          sourceCompanyAddOnId: v.optional(v.id("companyAddOns")),
-          name: v.string(),
-          pricingMethod: v.union(
-            v.literal("flat"),
-            v.literal("starting_at"),
-            v.literal("per_unit"),
-          ),
-          unitPriceCents: v.number(),
-          unitLabel: v.optional(v.string()),
-          quantity: v.optional(v.number()),
-          finalizedPriceCents: v.optional(v.number()),
-          billingCadence: v.union(v.literal("one_time"), v.literal("monthly")),
-        }),
-      ),
-    ),
+    addOnLineItems: v.optional(v.array(proposalAddOnLineValidator)),
     notes: v.optional(v.string()),
     status: v.union(
       v.literal("draft"),
@@ -1693,6 +1703,7 @@ export default defineSchema({
     companyId: v.id("companies"),
     proposalId: v.id("proposals"),
     issueNumber: v.number(),
+    appliedEstimateRevisionId: v.optional(v.id("smartEstimateRevisions")),
     content: proposalIssueContentValidator,
     preparedAt: v.number(),
     issuedAt: v.optional(v.number()),

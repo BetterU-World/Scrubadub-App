@@ -183,6 +183,7 @@ export const prepareProposalEmail = internalMutation({
       const issueId = await ctx.db.insert("proposalIssues", {
         companyId: args.companyId, proposalId: proposal._id,
         issueNumber: await nextIssueNumber(ctx, proposal._id),
+        appliedEstimateRevisionId: proposal.appliedEstimateRevisionId,
         content: proposalIssueContent(currentPayload),
         preparedAt: now, tokenNonce: args.tokenNonce, tokenHash: args.tokenHash,
         tokenCreatedAt: now,
