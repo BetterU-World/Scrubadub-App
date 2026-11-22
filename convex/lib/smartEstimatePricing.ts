@@ -102,6 +102,7 @@ export function validateEstimateHandoff(
   result: ReturnType<typeof calculateEstimate>,
   lines: ProposalAddOnLine[],
 ) {
+  if (propertyType === null) throw new Error("Resolve the Smart Estimate billing destination before applying");
   if (propertyType === "commercial" && result.cadence !== "monthly") {
     throw new Error("Smart Estimate commercial handoff requires a monthly base");
   }

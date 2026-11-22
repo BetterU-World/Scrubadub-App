@@ -1,7 +1,7 @@
 import { v, type Infer } from "convex/values";
 import { internalMutation, mutation, type MutationCtx, type QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import { requireOwnerOrManagerCapability } from "../lib/sessionAuth";
 import { propertyTypeFromRequestLeadType } from "../lib/commercialEligibility";
 import { calculateEstimate, estimateBaseValidator, estimateOverrideValidator, estimateProposalBase, validateEstimateDraft, validateEstimateHandoff } from "../lib/smartEstimatePricing";
@@ -12,6 +12,7 @@ const authArgs = { userId: v.id("users"), sessionToken: v.string() };
 const draftInputs = { input: estimateBaseValidator, override: v.optional(estimateOverrideValidator), profileRevisionId: v.optional(v.id("smartPricingProfileRevisions")) };
 const openArgs = { ...authArgs, clientRequestId: v.id("clientRequests"), walkthroughId: v.optional(v.id("walkthroughs")), ...draftInputs };
 const saveArgs = { ...authArgs, estimateId: v.id("smartEstimates"), expectedDraftRevision: v.number(), walkthroughId: v.optional(v.id("walkthroughs")), ...draftInputs };
+const replaceArgs = { ...authArgs, estimateId: v.id("smartEstimates"), expectedDraftRevision: v.number(), replacementId: v.id("walkthroughs") };
 const approveArgs = {
   ...authArgs, estimateId: v.id("smartEstimates"), expectedDraftRevision: v.number(),
   proposal: v.optional(v.object({ proposalId: v.id("proposals"), expectedProposalRevision: v.number() })),
@@ -53,6 +54,22 @@ export async function estimateContext(ctx: MutationCtx | QueryCtx, companyId: Id
     }
   }
   return { propertyId, relationshipId, property, walkthrough, request, propertyType: property?.type ?? propertyTypeFromRequestLeadType(request.leadType) };
+}
+
+export async function eligibleEstimateReplacement(
+  ctx: MutationCtx | QueryCtx,
+  estimate: Doc<"smartEstimates">,
+  linked: Awaited<ReturnType<typeof estimateContext>>,
+  replacementId: Id<"walkthroughs">,
+) {
+  if (linked.walkthrough?.status !== "archived" || linked.walkthrough._id === replacementId) return null;
+  const candidate = await estimateContext(ctx, estimate.companyId, estimate.clientRequestId, replacementId);
+  if (!candidate.walkthrough || candidate.walkthrough.status === "archived" ||
+      candidate.walkthrough.appointmentStatus === "cancelled" ||
+      (estimate.propertyId !== undefined && estimate.propertyId !== candidate.propertyId) ||
+      (linked.propertyId !== undefined && linked.propertyId !== candidate.propertyId) ||
+      (linked.relationshipId !== undefined && linked.relationshipId !== candidate.relationshipId)) return null;
+  return { ...candidate, walkthrough: candidate.walkthrough };
 }
 
 async function ownedEstimate(ctx: MutationCtx, args: Infer<typeof authValidator> & { estimateId: Id<"smartEstimates"> }) {
@@ -121,6 +138,20 @@ export const saveDraft = internalMutation({
   },
 });
 
+export const replaceWalkthrough = internalMutation({
+  args: replaceArgs, returns: v.number(),
+  handler: async (ctx, args) => {
+    const context = await ownedEstimate(ctx, args);
+    const { estimate } = context;
+    if (estimate.draftRevision !== args.expectedDraftRevision) throw new Error("Estimate draft changed");
+    const replacement = await eligibleEstimateReplacement(ctx, estimate, context, args.replacementId);
+    if (!replacement) throw new Error("Walkthrough is not an eligible replacement for this estimate");
+    const draftRevision = estimate.draftRevision + 1;
+    await ctx.db.patch(estimate._id, { walkthroughId: replacement.walkthrough._id, propertyId: replacement.propertyId, draftRevision });
+    return draftRevision;
+  },
+});
+
 async function targetProposal(
   ctx: MutationCtx,
   args: Infer<typeof authValidator> & { proposalId: Id<"proposals"> },
@@ -154,6 +185,7 @@ export const approve = internalMutation({
     const context = await ownedEstimate(ctx, args);
     const { estimate } = context;
     if (estimate.draftRevision !== args.expectedDraftRevision) throw new Error("Estimate draft changed");
+    if (context.walkthrough?.status === "archived") throw new Error("Replace the archived estimate walkthrough before approving");
     if (estimate.propertyId !== context.propertyId) throw new Error("Estimate property changed. Save the draft again");
     const proposal = args.proposal && await targetProposal(ctx, { ...args, proposalId: args.proposal.proposalId }, context);
     if (proposal && proposal.updatedAt !== args.proposal?.expectedProposalRevision) throw new Error("Proposal draft changed");
@@ -177,6 +209,7 @@ export const applyToProposal = internalMutation({
   returns: v.number(),
   handler: async (ctx, args) => {
     const context = await ownedEstimate(ctx, args);
+    if (context.walkthrough?.status === "archived") throw new Error("Replace the archived estimate walkthrough before applying");
     const proposal = await targetProposal(ctx, args, context);
     const revision = await ctx.db.get(args.revisionId);
     if (!revision || revision.companyId !== proposal.companyId || revision.estimateId !== context.estimate._id ||
@@ -230,6 +263,13 @@ export const previewSave = mutation({
   handler: async (ctx, args): Promise<number> => {
     await requireSmartEstimatePreview(ctx, args, "sales");
     return ctx.runMutation(internal.mutations.smartEstimates.saveDraft, args);
+  },
+});
+export const previewReplaceWalkthrough = mutation({
+  args: replaceArgs, returns: v.number(),
+  handler: async (ctx, args): Promise<number> => {
+    await requireSmartEstimatePreview(ctx, args, "sales");
+    return ctx.runMutation(internal.mutations.smartEstimates.replaceWalkthrough, args);
   },
 });
 export const previewApprove = mutation({

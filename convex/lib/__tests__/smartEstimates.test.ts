@@ -186,8 +186,102 @@ describe("Smart Estimates Phase 1", () => {
     }
   });
 
-  it("preserves the approved one-time price and catalog line through issue, acceptance, job and residential invoice", async () => {
+  it("explicitly switches an archived walkthrough, preserving inputs and requiring approval for the replacement proposal", async () => {
     const s = await setup();
+    const schedule = { ...s.owner, clientRequestId: s.clientRequestId, scheduledDate: "2030-01-10", scheduledStartTime: "09:00" };
+    const walk = api.mutations.walkthroughs;
+    const a = await s.t.mutation(walk.createFromClientRequest, schedule);
+    await s.t.run(ctx => ctx.db.patch(a, { title: "Walkthrough A", squareFootage: 500 }));
+    const input = { strategy: "square_feet", cadence: "one_time", areaHundredths: 60_000, areaRateHundredthCents: 2500 } as const;
+    const estimateId = await s.t.mutation(estimates.openDraft, { ...s.owner, clientRequestId: s.clientRequestId, walkthroughId: a, input });
+    const oldRevision = await s.t.mutation(estimates.approve, { ...s.owner, estimateId, expectedDraftRevision: 1 });
+    const oldSnapshot = await s.t.run(ctx => ctx.db.get(oldRevision));
+    await s.t.mutation(walk.archive, { ...s.owner, walkthroughId: a });
+    const b = await s.t.mutation(walk.createFromClientRequest, { ...schedule, scheduledDate: "2030-01-11" });
+    expect(b).not.toBe(a);
+    await s.t.run(ctx => ctx.db.patch(b, { title: "Walkthrough B", squareFootage: 900, bedrooms: 2, bathrooms: 1.5 }));
+    const replace = { ...s.owner, estimateId, expectedDraftRevision: 1, replacementId: b };
+    await expect(s.t.mutation(browserEstimates.previewReplaceWalkthrough, replace)).rejects.toThrow("preview is disabled");
+    vi.stubEnv("SCRUB_SMART_ESTIMATES_PREVIEW_COMPANY_ID", s.companyId);
+    const scope = { ...s.owner, clientRequestId: s.clientRequestId, walkthroughId: b };
+    expect(await s.t.query(preview.workspace, scope)).toMatchObject({
+      draft: { walkthroughId: a, input }, replacement: { id: b, title: "Walkthrough B" }, walkthroughArchived: true,
+      approval: { id: oldRevision, stale: true },
+      facts: { areaHundredths: { value: 90_000, source: "walkthrough" }, bathHalves: { value: 3 } },
+    });
+    const foreign = await s.t.run(async ctx => {
+      const request = (await ctx.db.get(s.foreignRequestId))!;
+      return ctx.db.insert("walkthroughs", {
+        companyId: request.companyId, clientRequestId: request._id, title: "Foreign", walkthroughType: "residential",
+        status: "draft", rooms: [], photos: [], createdAt: 1, updatedAt: 1,
+      });
+    });
+    await expect(s.t.mutation(browserEstimates.previewReplaceWalkthrough, { ...replace, replacementId: foreign })).rejects.toThrow("must match the estimate request");
+    const wrongProperty = await s.t.run(ctx => ctx.db.insert("properties", {
+      companyId: s.companyId, name: "Other property", address: "99 Example", type: "residential", amenities: [], active: true,
+    }));
+    await s.t.run(ctx => ctx.db.patch(b, { propertyId: wrongProperty }));
+    await expect(s.t.mutation(browserEstimates.previewReplaceWalkthrough, replace)).rejects.toThrow("Walkthrough property must match the request");
+    await s.t.run(ctx => ctx.db.patch(b, { propertyId: s.propertyId }));
+    await expect(s.t.mutation(browserEstimates.previewReplaceWalkthrough, { ...replace, expectedDraftRevision: 0 })).rejects.toThrow("draft changed");
+    const viewer = { userId: s.viewerId, sessionToken: await s.signIn("viewer@test.dev") };
+    await expect(s.t.mutation(browserEstimates.previewReplaceWalkthrough, { ...replace, ...viewer })).rejects.toThrow("permission required");
+    expect(await s.t.mutation(browserEstimates.previewReplaceWalkthrough, replace)).toBe(2);
+    expect(await s.t.query(preview.workspace, scope)).toMatchObject({
+      draft: { walkthroughId: b, input, draftRevision: 2 }, replacement: null, approval: { id: oldRevision, stale: true },
+    });
+    await s.t.mutation(walk.complete, { ...s.owner, walkthroughId: b });
+    const proposalId = await s.t.mutation(proposals.createProposalFromLead, { ...s.owner, clientRequestId: s.clientRequestId, sourceWalkthroughId: b });
+    const before = (await s.t.run(ctx => ctx.db.get(proposalId)))!;
+    const target = { ...s.owner, estimateId, proposalId, expectedProposalRevision: before.updatedAt };
+    await expect(s.t.mutation(browserEstimates.previewApply, { ...target, revisionId: oldRevision })).rejects.toThrow("Estimate context changed");
+    expect(await s.t.run(ctx => ctx.db.get(proposalId))).toEqual(before);
+    const revisionId = await s.t.mutation(browserEstimates.previewApprove, {
+      ...s.owner, estimateId, expectedDraftRevision: 2, proposal: { proposalId, expectedProposalRevision: before.updatedAt },
+    });
+    await s.t.mutation(browserEstimates.previewApply, { ...target, revisionId });
+    expect(await s.t.run(ctx => ctx.db.get(proposalId))).toMatchObject({ sourceWalkthroughId: b, oneTimePriceCents: 15000, appliedEstimateRevisionId: revisionId });
+    expect(await s.t.run(ctx => ctx.db.get(oldRevision))).toEqual(oldSnapshot);
+
+    await s.t.mutation(proposals.markProposalSent, { ...s.owner, proposalId });
+    const issued = (await s.t.run(ctx => ctx.db.get(proposalId)))!;
+    const issue = await s.t.run(ctx => ctx.db.get(issued.currentIssueId!));
+    await s.t.mutation(walk.archive, { ...s.owner, walkthroughId: b });
+    const c = await s.t.mutation(walk.createFromClientRequest, { ...schedule, scheduledDate: "2030-01-12" });
+    await s.t.mutation(browserEstimates.previewReplaceWalkthrough, { ...replace, expectedDraftRevision: 2, replacementId: c });
+    expect(await s.t.run(ctx => ctx.db.get(proposalId))).toEqual(issued);
+    expect(await s.t.run(ctx => ctx.db.get(issued.currentIssueId!))).toEqual(issue);
+  });
+
+  it("keeps an unclassified move-out draft calculable and blocks application until a supported property is linked", async () => {
+    const s = await setup();
+    vi.stubEnv("SCRUB_SMART_ESTIMATES_PREVIEW_COMPANY_ID", s.companyId);
+    await s.t.run(ctx => ctx.db.patch(s.clientRequestId, { leadType: "move_out", propertyId: undefined }));
+    const scope = { ...s.owner, clientRequestId: s.clientRequestId };
+    const proposalId = await s.t.mutation(proposals.createProposalFromLead, scope);
+    const input = { strategy: "flat", cadence: "one_time", baseCents: 12500 } as const;
+    const estimateId = await s.t.mutation(browserEstimates.previewOpen, { ...scope, input });
+    await s.t.mutation(browserEstimates.previewSave, { ...s.owner, estimateId, expectedDraftRevision: 1, input });
+    const before = (await s.t.run(ctx => ctx.db.get(proposalId)))!;
+    const target = { ...s.owner, estimateId, proposalId, expectedProposalRevision: before.updatedAt };
+    const approve = (expectedDraftRevision: number) => s.t.mutation(browserEstimates.previewApprove, {
+      ...s.owner, estimateId, expectedDraftRevision, proposal: { proposalId, expectedProposalRevision: before.updatedAt },
+    });
+    const initialRevision = await approve(2);
+    expect(await s.t.query(preview.workspace, scope)).toMatchObject({ propertyType: null, draft: { input } });
+    expect(calculateEstimate(input, []).approved.oneTimeTotalCents).toBe(12500);
+    await expect(s.t.mutation(browserEstimates.previewApply, { ...target, revisionId: initialRevision })).rejects.toThrow("Resolve the Smart Estimate billing destination");
+    expect(await s.t.run(ctx => ctx.db.get(proposalId))).toEqual(before);
+    await s.t.run(ctx => ctx.db.patch(s.clientRequestId, { propertyId: s.propertyId }));
+    expect(await s.t.query(preview.workspace, scope)).toMatchObject({ propertyType: "residential", propertyChanged: true, approval: { stale: true } });
+    await s.t.mutation(browserEstimates.previewSave, { ...s.owner, estimateId, expectedDraftRevision: 2, input });
+    const revisionId = await approve(3);
+    await s.t.mutation(browserEstimates.previewApply, { ...target, revisionId });
+    expect(await s.t.run(ctx => ctx.db.get(proposalId))).toMatchObject({ oneTimePriceCents: 12500, appliedEstimateRevisionId: revisionId });
+  });
+
+  it.each(["residential", "vacation_rental"] as const)("preserves the %s one-time price and catalog line through issue, acceptance, job and invoice", async (type) => {
+    const s = await setup(type);
     const { proposalId, revisionId, ovenLine } = await approveAndApply(s, "one_time");
     await s.t.action(api.proposalDeliveryActions.sendProposal, { ...s.owner, proposalId });
     const issue = await s.t.run(async ctx => ctx.db.get((await ctx.db.get(proposalId))!.currentIssueId!));

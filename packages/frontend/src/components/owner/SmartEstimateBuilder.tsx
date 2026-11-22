@@ -28,6 +28,8 @@ function feedbackKey(error: unknown) {
   if (message.includes("below-minimum")) return "overrideReasonRequired";
   if (message.includes("monthly base")) return "commercialCadence";
   if (message.includes("one-time pricing only")) return "jobCadence";
+  if (message.includes("billing destination")) return "billingDestinationMissing";
+  if (message.includes("archived estimate walkthrough") || message.includes("eligible replacement")) return "archivedWalkthrough";
   if (message.includes("Too many priced add-ons")) return "jobLineLimit";
   if (message.includes("job billing constraints")) return "jobAmountLimit";
   if (message.includes("starting-at")) return "unfinishedAddOns";
@@ -66,6 +68,7 @@ function BuilderForm({ workspace, profiles, auth, clientRequestId, proposalDirty
   const [status, setStatus] = useState<string>();
   const openDraft = useMutation(api.mutations.smartEstimates.previewOpen);
   const saveDraft = useMutation(api.mutations.smartEstimates.previewSave);
+  const replaceWalkthrough = useMutation(api.mutations.smartEstimates.previewReplaceWalkthrough);
   const approve = useMutation(api.mutations.smartEstimates.previewApprove);
   const apply = useMutation(api.mutations.smartEstimates.previewApply);
 
@@ -87,8 +90,9 @@ function BuilderForm({ workspace, profiles, auth, clientRequestId, proposalDirty
   const currentDraft = draft?.draftRevision === draftRevision ? draft : null;
   const editableProposal = proposal?.editable && !proposalDirty ? proposal : null;
   const stale = !!approval && (dirty || approval.stale || !currentDraft);
-  const canApprove = !!currentDraft && !dirty && !!calculation && (!proposal || !!editableProposal);
-  const canApply = !!editableProposal && !!approval && !stale && !!calculation && !handoffError;
+  const canApprove = !!currentDraft && !dirty && !workspace.propertyChanged && !workspace.walkthroughArchived &&
+    !!calculation && (!proposal || !!editableProposal);
+  const canApply = !!editableProposal && !!approval && !stale && !!calculation && !handoffError && !workspace.walkthroughArchived;
 
   function markEdited() {
     setDirty(true);
@@ -96,7 +100,7 @@ function BuilderForm({ workspace, profiles, auth, clientRequestId, proposalDirty
     setErrorKey(undefined);
   }
 
-  async function submit(action: "save" | "approve" | "apply") {
+  async function submit(action: "save" | "approve" | "apply" | "replace") {
     if (busy) return;
     setBusy(true);
     setErrorKey(undefined);
@@ -112,6 +116,10 @@ function BuilderForm({ workspace, profiles, auth, clientRequestId, proposalDirty
         }
         setDirty(false);
         setStatus("saved");
+      } else if (action === "replace" && currentDraft && workspace.replacement) {
+        setDraftRevision(await replaceWalkthrough({ ...auth, estimateId: currentDraft.id,
+          expectedDraftRevision: currentDraft.draftRevision, replacementId: workspace.replacement.id }));
+        setStatus("walkthroughReplaced");
       } else if (action === "approve" && canApprove && currentDraft) {
         await approve({ ...auth, estimateId: currentDraft.id, expectedDraftRevision: currentDraft.draftRevision,
           proposal: editableProposal ? { proposalId: editableProposal.id, expectedProposalRevision: editableProposal.updatedAt } : undefined });
@@ -146,11 +154,28 @@ function BuilderForm({ workspace, profiles, auth, clientRequestId, proposalDirty
     description={workspace.address ? <>{t("smartEstimates.privateHelp")} <span className="mt-1 block break-words">{workspace.address}</span></> : t("smartEstimates.privateHelp")}
     className="max-w-2xl" pending={busy} closeOnOutsideClick={false}
     footer={<>
-      <button type="button" className="btn-secondary" disabled={busy || !dirty} onClick={() => void submit("save")}>{t("smartEstimates.save")}</button>
+      <button type="button" className="btn-secondary" disabled={busy || !!workspace.replacement || (!dirty && !workspace.propertyChanged)} onClick={() => void submit("save")}>{t("smartEstimates.save")}</button>
       <button type="button" className="btn-secondary" disabled={busy || !canApprove} onClick={() => void submit("approve")}>{t("smartEstimates.approve")}</button>
       <button type="button" className="btn-primary" disabled={busy || !canApply} onClick={() => void submit("apply")}>{t("smartEstimates.apply")}</button>
     </>}>
     <fieldset disabled={busy} className="min-w-0 space-y-4">
+      {workspace.replacement && <section className="space-y-2 rounded-lg bg-amber-50 p-3 text-sm">
+        <p>{t("smartEstimates.replacementHelp", { title: workspace.replacement.title })}</p>
+        <ul className="space-y-1">
+          {(["areaHundredths", "bedrooms", "bathHalves"] as const).map(field => {
+            const fact = facts[field];
+            if (!fact) return null;
+            const scale = field === "areaHundredths" ? 100 : field === "bathHalves" ? 2 : 1;
+            return <li key={field}>{t(`smartEstimates.fields.${field}`)} · {t("smartEstimates.prefill", {
+              value: new Intl.NumberFormat(i18n.language).format(fact.value / scale),
+              source: t(`smartEstimates.sources.${fact.source}`),
+            })}</li>;
+          })}
+        </ul>
+        <button type="button" className="btn-secondary" disabled={!currentDraft} onClick={() => void submit("replace")}>
+          {t("smartEstimates.replaceWalkthrough")}
+        </button>
+      </section>}
       <label className="block text-sm font-medium">{t("smartEstimates.profile")}
         <select className="input-field mt-1" value={profileRevisionId ?? ""} onChange={e => selectProfile(e.target.value)}>
           <option value="">{t("smartEstimates.manual")}</option>
@@ -195,7 +220,12 @@ function BuilderForm({ workspace, profiles, auth, clientRequestId, proposalDirty
       {propertyType === "commercial" && <p className="text-sm text-gray-600">{t("smartEstimates.commercialHelp")}</p>}
       {proposalDirty && <p className="text-sm text-amber-800">{t("smartEstimates.saveProposalFirst")}</p>}
       {status && <p role="status" className="text-sm text-green-800">{t(`smartEstimates.${status}`)}</p>}
-      {Array.from(new Set([pricingError, handoffError, errorKey, stale ? "stale" : undefined].filter(Boolean))).map(key =>
+      {Array.from(new Set([
+        pricingError, handoffError, errorKey, stale ? "stale" : undefined,
+        propertyType === null ? "billingDestinationMissing" : undefined,
+        workspace.propertyChanged && !workspace.replacement ? "propertyChanged" : undefined,
+        workspace.walkthroughArchived && !workspace.replacement ? "archivedWalkthrough" : undefined,
+      ].filter(Boolean))).map(key =>
         <p key={key} role="status" className="text-sm text-amber-800">{t(`smartEstimates.${key}`)}</p>)}
     </fieldset>
   </DialogShell>;

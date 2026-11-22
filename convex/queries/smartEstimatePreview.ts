@@ -4,7 +4,7 @@ import { requireSmartEstimatePreview, smartEstimatePermissions } from "../lib/sm
 import { StaffAuthorizationDenied } from "../lib/sessionAuth";
 import { estimateBaseValidator, estimateOverrideValidator } from "../lib/smartEstimatePricing";
 import { proposalAddOnLineValidator } from "../lib/proposalAddOnLineItems";
-import { estimateContext, fingerprintAddOns } from "../mutations/smartEstimates";
+import { eligibleEstimateReplacement, estimateContext, fingerprintAddOns } from "../mutations/smartEstimates";
 
 const auth = { userId: v.id("users"), sessionToken: v.string() };
 const noAccess = { sales: false, configuration: false };
@@ -53,6 +53,9 @@ export const workspace = query({
     facts: v.object({ areaHundredths: fact, bedrooms: fact, bathHalves: fact }),
     address: v.optional(v.string()),
     walkthroughId: v.optional(v.id("walkthroughs")),
+    walkthroughArchived: v.boolean(),
+    replacement: v.union(v.null(), v.object({ id: v.id("walkthroughs"), title: v.string() })),
+    propertyChanged: v.boolean(),
     propertyType: v.union(v.null(), v.string()),
     approval: v.union(v.null(), v.object({ id: v.id("smartEstimateRevisions"), stale: v.boolean() })),
     proposal: v.union(v.null(), v.object({
@@ -67,7 +70,10 @@ export const workspace = query({
     ]);
     if (proposal && proposal.companyId !== actor.companyId) throw new StaffAuthorizationDenied("Access denied");
     const walkthroughId = draft?.walkthroughId ?? args.walkthroughId ?? proposal?.sourceWalkthroughId;
-    const { property, walkthrough, request, propertyType, propertyId, relationshipId } = await estimateContext(ctx, actor.companyId, args.clientRequestId, walkthroughId);
+    const linked = await estimateContext(ctx, actor.companyId, args.clientRequestId, walkthroughId);
+    const candidateId = args.walkthroughId ?? proposal?.sourceWalkthroughId;
+    const replacement = draft && candidateId ? await eligibleEstimateReplacement(ctx, draft, linked, candidateId) : null;
+    const { property, walkthrough, request } = replacement ?? linked;
     const [approval, profile] = await Promise.all([
       draft ? ctx.db.query("smartEstimateRevisions").withIndex("by_estimateId", q => q.eq("estimateId", draft._id)).order("desc").first() : null,
       draft?.profileRevisionId ? ctx.db.get(draft.profileRevisionId) : null,
@@ -83,10 +89,13 @@ export const workspace = query({
       },
       address: walkthrough?.address || property?.address || request.propertySnapshot.address,
       walkthroughId,
-      propertyType,
+      walkthroughArchived: linked.walkthrough?.status === "archived",
+      replacement: replacement ? { id: replacement.walkthrough._id, title: replacement.walkthrough.title } : null,
+      propertyChanged: draft !== null && draft.propertyId !== linked.propertyId,
+      propertyType: linked.propertyType,
       approval: approval && approval.companyId === actor.companyId ? { id: approval._id, stale:
-        approval.draftRevision !== draft?.draftRevision || approval.propertyId !== propertyId ||
-        (approval.clientRelationshipId !== undefined && approval.clientRelationshipId !== relationshipId) ||
+        linked.walkthrough?.status === "archived" || approval.draftRevision !== draft?.draftRevision || approval.propertyId !== linked.propertyId ||
+        (approval.clientRelationshipId !== undefined && approval.clientRelationshipId !== linked.relationshipId) ||
         (approval.proposalId !== undefined && approval.proposalId !== proposal?._id) ||
         fingerprintAddOns(approval.addOnSnapshot) !== fingerprintAddOns(lines) } : null,
       proposal: proposal ? { id: proposal._id, updatedAt: proposal.updatedAt,
