@@ -709,7 +709,7 @@ export function RequestDetailPage() {
         monthlyPriceCents: centsFromPrice(proposalForm.monthlyPrice),
         oneTimePriceCents: centsFromPrice(proposalForm.oneTimePrice),
         notes: proposalForm.notes || undefined,
-        presentation: proposal.brandedPreviewEnabled ? {
+        presentation: proposal.brandedAuthoringEnabled ? {
           locale: proposalForm.documentLocale === "es" ? "es" : "en",
           exclusions: proposalForm.exclusions || undefined,
           terms: proposalForm.terms || undefined,

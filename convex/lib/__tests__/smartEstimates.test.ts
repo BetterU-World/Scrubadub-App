@@ -15,7 +15,9 @@ const password = "estimate-test-password";
 const privateReason = "internal below-minimum rationale";
 
 beforeEach(() => {
+  vi.stubEnv("SCRUB_SMART_ESTIMATES_RELEASE_ENABLED", undefined);
   vi.stubEnv("SCRUB_SMART_ESTIMATES_PREVIEW_COMPANY_ID", undefined);
+  vi.stubEnv("SCRUB_BRANDED_PROPOSAL_PREVIEW_COMPANY_ID", undefined);
   vi.stubEnv("TOKEN_PEPPER", "estimate-test-pepper");
   vi.stubEnv("RESEND_API_KEY", "estimate-test-key");
   vi.stubEnv("RESEND_FROM_EMAIL", "test@example.com");
@@ -120,13 +122,109 @@ describe("Smart Estimates Phase 1", () => {
       await expect(s.t.mutation(profileChanges.previewChange, { ...auth, operation: create })).rejects.toThrow(error);
     };
     expect(await s.t.query(preview.access, s.owner)).toEqual({ sales: false, configuration: false });
-    await checkDenied(s.owner, "preview is disabled");
+    await checkDenied(s.owner, "authoring is disabled");
     vi.stubEnv("SCRUB_SMART_ESTIMATES_PREVIEW_COMPANY_ID", s.companyId);
     const viewer = { userId: s.viewerId, sessionToken: await s.signIn("viewer@test.dev") };
     expect(await s.t.query(preview.access, viewer)).toEqual({ sales: false, configuration: false });
     await checkDenied(viewer, "permission required");
     await expect(s.t.query(preview.workspace, { ...scope, clientRequestId: s.foreignRequestId })).rejects.toThrow("Access denied");
     await expect(s.t.mutation(browserEstimates.previewOpen, { ...scope, clientRequestId: s.foreignRequestId, input })).rejects.toThrow("Access denied");
+  });
+
+  it("releases both authoring surfaces together without changing tenant or issued-offer access", async () => {
+    const s = await setup();
+    const hash = await hashPassword(password);
+    const { foreignCompany, foreignOwner, configurationManager, legacyRequestId } = await s.t.run(async ctx => {
+      const other = (await ctx.db.get(s.foreignRequestId))!;
+      await ctx.db.patch(other.companyId, { subscriptionStatus: "trialing" });
+      const foreignOwner = await ctx.db.insert("users", {
+        companyId: other.companyId, role: "owner", status: "active", name: "Other owner", email: "other-owner@test.dev", passwordHash: hash,
+      });
+      const configurationManager = await ctx.db.insert("users", {
+        companyId: s.companyId, role: "manager", status: "active", name: "Configuration", email: "config@test.dev",
+        passwordHash: hash, canManageBusinessConfiguration: true,
+      });
+      const legacyRequestId = await ctx.db.insert("clientRequests", {
+        companyId: s.companyId, status: "new", requesterName: "Legacy client", requesterEmail: "legacy@test.dev",
+        propertySnapshot: {}, source: "manual", leadType: "residential", createdAt: 1,
+      });
+      return { foreignCompany: other.companyId, foreignOwner, configurationManager, legacyRequestId };
+    });
+    const other = { userId: foreignOwner, sessionToken: await s.signIn("other-owner@test.dev") };
+    const configuration = { userId: configurationManager, sessionToken: await s.signIn("config@test.dev") };
+    const sales = { userId: s.salesId, sessionToken: await s.signIn("sales@test.dev") };
+    const ids = [
+      { ...s.owner, clientRequestId: s.clientRequestId },
+      { ...other, clientRequestId: s.foreignRequestId },
+      { ...s.owner, clientRequestId: legacyRequestId },
+    ];
+    const [homeProposalId, foreignProposalId, legacyProposalId] = await Promise.all(ids.map(args => s.t.mutation(proposals.createProposalFromLead, args)));
+    const input = { strategy: "flat", cadence: "one_time", baseCents: 20000 } as const;
+    const profile = { kind: "create", name: "Release profile", defaults: input } as const;
+    const edit = { title: "Test offer", clientName: "Client", oneTimePriceCents: 20000, presentation: { locale: "es" as const } };
+    const ownerOff = { sales: false, configuration: false };
+    const ownerOn = { sales: true, configuration: true };
+
+    // Unset and other truthy spellings do not release authoring.
+    expect(await s.t.query(preview.access, s.owner)).toEqual(ownerOff);
+    vi.stubEnv("SCRUB_SMART_ESTIMATES_RELEASE_ENABLED", "1");
+    await expect(s.t.mutation(browserEstimates.previewOpen, { ...ids[0], input })).rejects.toThrow("authoring is disabled");
+    await expect(s.t.mutation(proposals.updateProposal, { ...s.owner, proposalId: homeProposalId, ...edit })).rejects.toThrow("authoring is disabled");
+    const { presentation: _presentation, ...legacyEdit } = edit;
+    await s.t.mutation(proposals.updateProposal, { ...s.owner, proposalId: legacyProposalId, ...legacyEdit });
+    await s.t.action(api.proposalDeliveryActions.sendProposal, { ...s.owner, proposalId: legacyProposalId });
+    const { proposalIssueToken } = await import("../tokens");
+    const tokenFor = async (proposalId: typeof homeProposalId) => {
+      const issue = await s.t.run(async ctx => ctx.db.get((await ctx.db.get(proposalId))!.currentIssueId!));
+      return proposalIssueToken(issue!.tokenNonce!);
+    };
+    const legacyToken = await tokenFor(legacyProposalId);
+    const legacyBefore = await s.t.action(api.proposalDeliveryActions.getProposalByToken, { token: legacyToken });
+    expect(legacyBefore?.presentation).toBeUndefined();
+
+    vi.stubEnv("SCRUB_SMART_ESTIMATES_PREVIEW_COMPANY_ID", s.companyId);
+    vi.stubEnv("SCRUB_BRANDED_PROPOSAL_PREVIEW_COMPANY_ID", s.companyId);
+    expect(await s.t.query(preview.access, s.owner)).toEqual(ownerOn);
+    expect(await s.t.query(preview.access, other)).toEqual(ownerOff);
+    expect((await s.t.query(api.queries.proposals.getProposalByClientRequest, ids[0]))?.brandedAuthoringEnabled).toBe(true);
+    expect((await s.t.query(api.queries.proposals.getProposalByClientRequest, ids[1]))?.brandedAuthoringEnabled).toBe(false);
+    await expect(s.t.mutation(profileChanges.previewChange, { ...other, operation: profile })).rejects.toThrow("authoring is disabled");
+    await expect(s.t.mutation(proposals.updateProposal, { ...other, proposalId: foreignProposalId, ...edit })).rejects.toThrow("authoring is disabled");
+
+    vi.stubEnv("SCRUB_SMART_ESTIMATES_RELEASE_ENABLED", "true");
+    expect(await s.t.query(preview.access, other)).toEqual(ownerOn);
+    expect(await s.t.query(preview.access, configuration)).toEqual({ sales: false, configuration: true });
+    expect(await s.t.query(preview.access, sales)).toEqual({ sales: true, configuration: false });
+    await s.t.mutation(profileChanges.previewChange, { ...configuration, operation: profile });
+    await expect(s.t.mutation(profileChanges.previewChange, { ...sales, operation: profile })).rejects.toThrow("permission required");
+    await expect(s.t.mutation(browserEstimates.previewOpen, { ...configuration, clientRequestId: s.clientRequestId, input })).rejects.toThrow("permission required");
+    await s.t.mutation(browserEstimates.previewOpen, { ...sales, clientRequestId: s.clientRequestId, input });
+    await s.t.mutation(browserEstimates.previewOpen, { ...ids[1], input });
+    const [ownedProfile] = await s.t.query(preview.profiles, sales);
+    await expect(s.t.mutation(profileChanges.previewChange, { ...other, operation: {
+      kind: "archive", profileId: ownedProfile.profileId, expectedRevisionId: ownedProfile.revisionId,
+    } })).rejects.toThrow("unavailable");
+    await expect(s.t.query(preview.workspace, { ...sales, clientRequestId: s.foreignRequestId })).rejects.toThrow("Access denied");
+    await expect(s.t.mutation(proposals.updateProposal, { ...s.owner, proposalId: foreignProposalId, ...edit })).rejects.toThrow("Access denied");
+    await expect(s.t.mutation(proposals.updateProposal, { ...configuration, proposalId: homeProposalId, ...edit })).rejects.toThrow("canManageSalesAndCommercial");
+    await s.t.mutation(proposals.updateProposal, { ...other, proposalId: foreignProposalId, ...edit });
+    await s.t.mutation(proposals.updateProposal, { ...sales, proposalId: homeProposalId, ...edit });
+    await s.t.action(api.proposalDeliveryActions.sendProposal, { ...sales, proposalId: homeProposalId });
+    const token = await tokenFor(homeProposalId);
+    const offer = await s.t.action(api.proposalDeliveryActions.getProposalByToken, { token });
+    expect(offer).toMatchObject({ presentation: { locale: "es" }, proposal: { status: "sent", oneTimePriceCents: 20000 } });
+    await s.t.run(ctx => ctx.db.patch(foreignCompany, { subscriptionStatus: "canceled" }));
+    expect(await s.t.query(preview.access, other)).toEqual(ownerOff);
+    await expect(s.t.mutation(proposals.updateProposal, { ...other, proposalId: foreignProposalId, ...edit })).rejects.toThrow("authoring is disabled");
+
+    vi.stubEnv("SCRUB_SMART_ESTIMATES_RELEASE_ENABLED", "false");
+    vi.stubEnv("SCRUB_SMART_ESTIMATES_PREVIEW_COMPANY_ID", undefined);
+    vi.stubEnv("SCRUB_BRANDED_PROPOSAL_PREVIEW_COMPANY_ID", undefined);
+    expect(await s.t.query(preview.access, sales)).toEqual(ownerOff);
+    expect(await s.t.action(api.proposalDeliveryActions.getProposalByToken, { token })).toEqual(offer);
+    expect(await s.t.action(api.proposalDeliveryActions.getProposalByToken, { token: legacyToken })).toEqual(legacyBefore);
+    const accepted = await s.t.action(api.proposalDeliveryActions.respondToProposal, { token, decision: "accepted" });
+    expect(accepted).toMatchObject({ presentation: { locale: "es" }, proposal: { status: "accepted", oneTimePriceCents: 20000 } });
   });
 
   it("resumes a pre-proposal estimate, preserves archived profile revisions and rejects stale pricing", async () => {
@@ -201,7 +299,7 @@ describe("Smart Estimates Phase 1", () => {
     expect(b).not.toBe(a);
     await s.t.run(ctx => ctx.db.patch(b, { title: "Walkthrough B", squareFootage: 900, bedrooms: 2, bathrooms: 1.5 }));
     const replace = { ...s.owner, estimateId, expectedDraftRevision: 1, replacementId: b };
-    await expect(s.t.mutation(browserEstimates.previewReplaceWalkthrough, replace)).rejects.toThrow("preview is disabled");
+    await expect(s.t.mutation(browserEstimates.previewReplaceWalkthrough, replace)).rejects.toThrow("authoring is disabled");
     vi.stubEnv("SCRUB_SMART_ESTIMATES_PREVIEW_COMPANY_ID", s.companyId);
     const scope = { ...s.owner, clientRequestId: s.clientRequestId, walkthroughId: b };
     expect(await s.t.query(preview.workspace, scope)).toMatchObject({

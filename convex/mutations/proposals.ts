@@ -4,7 +4,8 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { requireOwnerOrManagerCapability } from "../lib/sessionAuth";
 import { ensureClientRelationshipForLead } from "../lib/clientRelationships";
 import { assertProposalReadyForDelivery, newProposalLineItemId, normalizeProposalAddOnLine, validateProposalAddOnLines } from "../lib/proposalAddOnLineItems";
-import { brandedProposalPreviewEnabled, proposalIssueContent, proposalPresentationValidator } from "../lib/proposalIssueContent";
+import { proposalIssueContent, proposalPresentationValidator } from "../lib/proposalIssueContent";
+import { smartEstimatesAuthoringEnabled } from "../lib/smartEstimatesRelease";
 import { safeProposalPayload } from "../proposalDeliveryInternal";
 import { notifyProposalDecision } from "../lib/proposalDecisionNotifications";
 
@@ -190,7 +191,9 @@ export const updateProposal = mutation({
     requireDraft(proposal);
     let presentation = proposal.presentation;
     if (args.presentation) {
-      if (!brandedProposalPreviewEnabled(proposal.companyId)) throw new Error("Branded proposal preview is disabled");
+      if (!await smartEstimatesAuthoringEnabled(ctx, proposal.companyId, "brandedProposal")) {
+        throw new Error("Branded proposal authoring is disabled");
+      }
       const validThrough = cleanOptional(args.presentation.validThrough, 10);
       if (validThrough !== undefined) {
         const date = new Date(`${validThrough}T00:00:00Z`);

@@ -10,6 +10,8 @@ const proposals = (api as any).mutations.proposals;
 const delivery = (api as any).proposalDeliveryActions;
 
 beforeEach(() => {
+  vi.stubEnv("SCRUB_SMART_ESTIMATES_RELEASE_ENABLED", undefined);
+  vi.stubEnv("SCRUB_BRANDED_PROPOSAL_PREVIEW_COMPANY_ID", undefined);
   process.env.TOKEN_PEPPER = "f3a-test-pepper";
   process.env.RESEND_API_KEY = "test-resend-key";
   process.env.RESEND_FROM_EMAIL = "test@example.com";
@@ -68,7 +70,7 @@ describe("proposal issued content", () => {
       presentation: { locale: "es", exclusions: "Ventanas exteriores", terms: "Acceso por la puerta lateral", validThrough: "2020-02-29" },
     };
     const query = { ...s.ownerAuth, clientRequestId: s.requestId };
-    await expect(s.t.mutation(proposals.updateProposal, edit)).rejects.toThrow("preview is disabled");
+    await expect(s.t.mutation(proposals.updateProposal, edit)).rejects.toThrow("authoring is disabled");
     vi.stubEnv("SCRUB_BRANDED_PROPOSAL_PREVIEW_COMPANY_ID", s.companyId);
     await expect(s.t.mutation(proposals.updateProposal, {
       ...edit, presentation: { ...edit.presentation, validThrough: "2026-02-30" },

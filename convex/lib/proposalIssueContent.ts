@@ -1,5 +1,4 @@
 import { v } from "convex/values";
-import type { Id } from "../_generated/dataModel";
 
 export const proposalPresentationValidator = v.object({
   locale: v.union(v.literal("en"), v.literal("es")),
@@ -7,10 +6,6 @@ export const proposalPresentationValidator = v.object({
   terms: v.optional(v.string()),
   validThrough: v.optional(v.string()),
 });
-
-export function brandedProposalPreviewEnabled(companyId: Id<"companies">) {
-  return process.env.SCRUB_BRANDED_PROPOSAL_PREVIEW_COMPANY_ID === companyId;
-}
 
 const nullableString = v.union(v.string(), v.null());
 const nullableNumber = v.union(v.number(), v.null());

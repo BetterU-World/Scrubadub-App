@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import { requireOwnerOrManagerCapability } from "../lib/sessionAuth";
 import { calculateProposalTotals } from "../lib/proposalAddOnLineItems";
 import { safeProposalPayload } from "../proposalDeliveryInternal";
-import { brandedProposalPreviewEnabled, proposalIssueContent } from "../lib/proposalIssueContent";
+import { proposalIssueContent } from "../lib/proposalIssueContent";
 
 async function decorateProposal(ctx: any, proposal: any) {
   const issueId = ["accepted", "declined"].includes(proposal.status)
@@ -23,7 +23,7 @@ async function decorateProposal(ctx: any, proposal: any) {
     .order("desc").first();
   return {
     ...proposal,
-    brandedPreviewEnabled: brandedProposalPreviewEnabled(proposal.companyId),
+    brandedAuthoringEnabled: Boolean(savedContent?.presentation),
     canonicalPreview: {
       source: validIssue ? "issued_snapshot" : proposal.status === "draft" ? "saved_draft" : "legacy_current",
       content: validIssue?.content ?? savedContent,

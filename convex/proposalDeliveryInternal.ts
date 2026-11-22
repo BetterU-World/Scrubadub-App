@@ -2,7 +2,8 @@ import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { resolveOperationalEmailIdentity } from "./lib/operationalEmailIdentity";
 import { assertProposalReadyForDelivery, calculateProposalTotals, proposalAddOnLineAmount } from "./lib/proposalAddOnLineItems";
-import { brandedProposalPreviewEnabled, proposalIssueContent } from "./lib/proposalIssueContent";
+import { proposalIssueContent } from "./lib/proposalIssueContent";
+import { smartEstimatesAuthoringEnabled } from "./lib/smartEstimatesRelease";
 import { getCompanyIdentity } from "./lib/companyIdentity";
 import { notifyProposalDecision } from "./lib/proposalDecisionNotifications";
 
@@ -71,7 +72,7 @@ async function companyBranding(ctx: any, companyId: any, branded: boolean) {
 }
 
 export async function safeProposalPayload(ctx: any, proposal: any) {
-  const branded = proposal.status === "draft" && brandedProposalPreviewEnabled(proposal.companyId);
+  const branded = proposal.status === "draft" && await smartEstimatesAuthoringEnabled(ctx, proposal.companyId, "brandedProposal");
   const presentation = branded ? proposal.presentation ?? { locale: "en" } : undefined;
   const money = (cents: number | undefined) => formatCents(cents, presentation?.locale ?? "en");
   const [request, relationship, branding] = await Promise.all([
