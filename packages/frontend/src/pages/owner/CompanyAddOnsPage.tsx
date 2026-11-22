@@ -5,6 +5,7 @@ import { ChevronDown, ChevronUp, Plus, RotateCcw, Search, Tags, X } from "lucide
 import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
+import { SmartPricingProfiles } from "@/components/owner/SmartPricingProfiles";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
@@ -145,6 +146,7 @@ export function CompanyAddOnsPage() {
   if (user.role !== "owner" && !user.canManageBusinessConfiguration) return <p className="card text-red-700">{t("addOns.noPermission")}</p>;
   return <div>
     <PageHeader title={t("addOns.title")} description={t("addOns.description")} back={{ href: user.role === "owner" ? "/owner/settings" : "/", label: t("addOns.back") }} />
+    {sessionToken && <div className="mb-5"><SmartPricingProfiles auth={{ userId: user._id, sessionToken }} /></div>}
     <div className="mb-5 flex flex-wrap gap-2">
       <button className="btn-primary flex items-center gap-2" onClick={() => openEditor({ kind: "create" })}><Plus className="h-4 w-4" />{t("addOns.create")}</button>
       <button className="btn-secondary flex items-center gap-2" onClick={() => setPresetOpen(true)}><Tags className="h-4 w-4" />{t("addOns.browsePresets")}</button>
