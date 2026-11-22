@@ -2063,6 +2063,7 @@
   },
   "proposals": {
     "branded": {
+      "authoringRequired": "La edición de propuestas con marca está desactivada. Vuelve a activarla antes de emitir este borrador. El contenido y los precios guardados se conservan.",
       "offer": "Propuesta de limpieza",
       "shellLabel": "Propuesta de SCRUB",
       "preparedFor": "Preparada para",

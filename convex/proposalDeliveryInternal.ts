@@ -1,8 +1,9 @@
 import { internalMutation, internalQuery } from "./_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { resolveOperationalEmailIdentity } from "./lib/operationalEmailIdentity";
 import { assertProposalReadyForDelivery, calculateProposalTotals, proposalAddOnLineAmount } from "./lib/proposalAddOnLineItems";
-import { brandedProposalPreviewEnabled, proposalIssueContent } from "./lib/proposalIssueContent";
+import { proposalIssueContent } from "./lib/proposalIssueContent";
+import { smartEstimatesAuthoringEnabled } from "./lib/smartEstimatesRelease";
 import { getCompanyIdentity } from "./lib/companyIdentity";
 import { notifyProposalDecision } from "./lib/proposalDecisionNotifications";
 
@@ -70,8 +71,14 @@ async function companyBranding(ctx: any, companyId: any, branded: boolean) {
   };
 }
 
-export async function safeProposalPayload(ctx: any, proposal: any) {
-  const branded = proposal.status === "draft" && brandedProposalPreviewEnabled(proposal.companyId);
+export async function safeProposalPayload(ctx: any, proposal: any, { forNewIssue = false } = {}) {
+  const branded = proposal.status === "draft" && await smartEstimatesAuthoringEnabled(ctx, proposal.companyId, "brandedProposal");
+  if (forNewIssue && proposal.status === "draft" && proposal.presentation && !branded) {
+    throw new ConvexError({
+      code: "BRANDED_PROPOSAL_AUTHORING_REQUIRED",
+      message: "Branded proposal authoring is disabled. Re-enable it before issuing this draft. Its saved content and pricing are unchanged.",
+    });
+  }
   const presentation = branded ? proposal.presentation ?? { locale: "en" } : undefined;
   const money = (cents: number | undefined) => formatCents(cents, presentation?.locale ?? "en");
   const [request, relationship, branding] = await Promise.all([
@@ -175,13 +182,7 @@ export const prepareProposalEmail = internalMutation({
       previousAttempt.companyId !== args.companyId || previousAttempt.documentId !== String(proposal._id))) {
       throw new Error("A proposal delivery attempt is still pending");
     }
-    if (stalePending && previousAttempt) await ctx.db.patch(previousAttempt._id, { result: "unknown", resultAt: now });
     assertProposalReadyForDelivery(proposal);
-    const currentPayload = await safeProposalPayload(ctx, proposal);
-    const recipientEmail = currentPayload.recipientEmail?.trim().toLowerCase();
-    if (!recipientEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) {
-      throw new Error("Add a valid client email before sending this proposal");
-    }
     let issue = previousAttempt
       ? await ctx.db.get(previousAttempt.issueId as any) as any
       : proposal.currentIssueId ? await ctx.db.get(proposal.currentIssueId) : null;
@@ -190,6 +191,12 @@ export const prepareProposalEmail = internalMutation({
       throw new Error("Active proposal issue is invalid");
     }
     if (proposal.status === "draft" && issue && !previousAttempt) throw new Error("Draft proposal cannot have an active issue");
+    const currentPayload = await safeProposalPayload(ctx, proposal, { forNewIssue: !issue });
+    const recipientEmail = currentPayload.recipientEmail?.trim().toLowerCase();
+    if (!recipientEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) {
+      throw new Error("Add a valid client email before sending this proposal");
+    }
+    if (stalePending && previousAttempt) await ctx.db.patch(previousAttempt._id, { result: "unknown", resultAt: now });
     if (!issue) {
       const issueId = await ctx.db.insert("proposalIssues", {
         companyId: args.companyId, proposalId: proposal._id,

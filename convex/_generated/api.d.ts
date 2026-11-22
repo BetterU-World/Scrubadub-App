@@ -96,6 +96,7 @@ import type * as lib_propertyConditionRequirements from "../lib/propertyConditio
 import type * as lib_proposalAddOnLineItems from "../lib/proposalAddOnLineItems.js";
 import type * as lib_smartEstimatePricing from "../lib/smartEstimatePricing.js";
 import type * as lib_smartEstimateAccess from "../lib/smartEstimateAccess.js";
+import type * as lib_smartEstimatesRelease from "../lib/smartEstimatesRelease.js";
 import type * as lib_qaFixture from "../lib/qaFixture.js";
 import type * as lib_rateLimit from "../lib/rateLimit.js";
 import type * as lib_relationshipDiagnostics from "../lib/relationshipDiagnostics.js";
@@ -336,6 +337,7 @@ declare const fullApi: ApiFromModules<{
   "lib/proposalAddOnLineItems": typeof lib_proposalAddOnLineItems;
   "lib/smartEstimatePricing": typeof lib_smartEstimatePricing;
   "lib/smartEstimateAccess": typeof lib_smartEstimateAccess;
+  "lib/smartEstimatesRelease": typeof lib_smartEstimatesRelease;
   "lib/qaFixture": typeof lib_qaFixture;
   "lib/rateLimit": typeof lib_rateLimit;
   "lib/relationshipDiagnostics": typeof lib_relationshipDiagnostics;

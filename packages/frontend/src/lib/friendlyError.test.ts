@@ -9,6 +9,17 @@ function translate(dictionary: Record<string, any>) {
   return (key: string) => key.split(".").reduce<any>((value, part) => value?.[part], dictionary) as string;
 }
 
+it.each([en, es])("localizes branded send denials through either Convex error transport", dictionary => {
+  const t = translate(dictionary);
+  const code = "BRANDED_PROPOSAL_AUTHORING_REQUIRED";
+  const key = "proposals.branded.authoringRequired";
+  expect(toFriendlyMessage(new ConvexError({ code }), "fallback", t)).toBe(t(key));
+  expect(toFriendlyMessage(new Error(`[CONVEX A(proposalDeliveryActions:sendProposal)] ${code}`), "fallback", t)).toBe(t(key));
+  const wrapped = new ConvexError("[CONVEX] Server Error");
+  (wrapped as ConvexError<any>).data = JSON.stringify({ code });
+  expect(toFriendlyMessage(wrapped, "fallback", t)).toBe(t(key));
+});
+
 describe("shared-work denial presentation", () => {
   for (const [locale, dictionary] of [["en", en], ["es", es]] as const) {
     it.each([

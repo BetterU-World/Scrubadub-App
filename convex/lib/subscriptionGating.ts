@@ -1,7 +1,13 @@
 import { QueryCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
+import type { Doc } from "../_generated/dataModel";
 import { hasComplimentarySubscription } from "./platformEntitlements";
 import { subscriptionAllowsWrites } from "./stripeSubscriptionCompatibility";
+
+export async function companySubscriptionAllowsWrites(ctx: QueryCtx, company: Doc<"companies">) {
+  return await hasComplimentarySubscription(ctx, company._id) ||
+    subscriptionAllowsWrites(company.subscriptionStatus, company.currentPeriodEnd);
+}
 
 /**
  * Check if a company's subscription allows write operations.
@@ -20,9 +26,7 @@ export async function requireActiveSubscription(
   const company = await ctx.db.get(companyId);
   if (!company) throw new Error("Company not found");
 
-  if (await hasComplimentarySubscription(ctx, companyId)) return;
-
-  if (subscriptionAllowsWrites(company.subscriptionStatus, company.currentPeriodEnd)) return;
+  if (await companySubscriptionAllowsWrites(ctx, company)) return;
 
   throw new Error(
     "Your subscription is inactive. Please update your billing to continue creating content."

@@ -43,6 +43,12 @@ export function toFriendlyMessage(
   if (shared) return translate?.(shared.key) ?? shared.fallback;
   // Convex wraps action failures in a transport message. Only recognize known
   // conditions; never display an arbitrary backend message to the user.
+  const data = err && typeof err === "object" && "data" in err ? err.data : undefined;
+  if ((data && typeof data === "object" && "code" in data && data.code === "BRANDED_PROPOSAL_AUTHORING_REQUIRED") ||
+      /\bBRANDED_PROPOSAL_AUTHORING_REQUIRED\b/.test(typeof data === "string" ? `${raw} ${data}` : raw)) {
+    return translate?.("proposals.branded.authoringRequired") ??
+      "Branded proposal authoring is disabled. Re-enable it before issuing this draft. Its saved content and pricing are unchanged.";
+  }
   if (/rate limit exceeded/i.test(raw)) return translate?.("errors.rateLimited") ?? "Too many attempts. Try again in a moment.";
   if (/invalid or expired reset token/i.test(raw)) return translate?.("errors.resetLinkExpired") ?? fallback;
   if (/invalid email address/i.test(raw)) return translate?.("auth.invalidEmail") ?? fallback;

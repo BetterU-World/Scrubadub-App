@@ -139,7 +139,7 @@ export function ProposalEditor({ proposal, form, onChange, sourceAssessment, dir
     <Section id="notes" title={t("proposals.v2.sections.notes")}>
       <p className="text-sm text-gray-600">{t("proposals.v2.clientNotesHelp")}</p>
       <Field label={t("proposals.v2.notesToClient")}><textarea className="input-field w-full" rows={4} value={form.notes} onChange={(event) => onChange("notes", event.target.value)} /></Field>
-      {proposal.brandedPreviewEnabled && <>
+      {proposal.brandedAuthoringEnabled && <>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t("proposals.branded.documentLanguage")}>
             <select className="input-field w-full" value={form.documentLocale} onChange={event => onChange("documentLocale", event.target.value)}>
