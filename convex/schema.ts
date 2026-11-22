@@ -11,7 +11,7 @@ import { ownerOnboardingPreferences } from "./lib/ownerOnboarding";
 import { v } from "convex/values";
 import { calendarClassification, calendarEventMetadata } from "./lib/calendarClassification";
 import { bedroomsValidator } from "./lib/propertyBedrooms";
-import { proposalIssueContentValidator } from "./lib/proposalIssueContent";
+import { proposalIssueContentValidator, proposalPresentationValidator } from "./lib/proposalIssueContent";
 import { estimateBaseValidator, estimateOverrideValidator } from "./lib/smartEstimatePricing";
 import { proposalAddOnLineValidator } from "./lib/proposalAddOnLineItems";
 import { serviceAgreementIssueContentValidator } from "./lib/serviceAgreementIssuedContent";
@@ -1681,6 +1681,7 @@ export default defineSchema({
     serviceFrequencyNotes: v.optional(v.string()),
     scopeOfWork: v.optional(v.string()),
     assessmentSuggestedMonthlyPriceCents: v.optional(v.number()),
+    presentation: v.optional(proposalPresentationValidator),
     appliedEstimateRevisionId: v.optional(v.id("smartEstimateRevisions")),
     monthlyPriceCents: v.optional(v.number()),
     oneTimePriceCents: v.optional(v.number()),

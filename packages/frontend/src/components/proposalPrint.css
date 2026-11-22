@@ -1,0 +1,52 @@
+.proposal-print-window {
+  background: #f8fafc;
+  margin: 0 auto;
+  max-width: 52rem;
+  padding: 1rem;
+}
+
+@page scrub-proposal {
+  margin: 15mm;
+}
+
+@media print {
+  .proposal-print-window {
+    background: white;
+    max-width: none;
+    padding: 0;
+  }
+
+  .proposal-print-document {
+    page: scrub-proposal;
+    border: 0 !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+    overflow-wrap: anywhere;
+    print-color-adjust: exact;
+  }
+
+  .proposal-print-document .proposal-document-header {
+    padding: 0 0 5mm;
+    background: white;
+    break-inside: avoid;
+  }
+
+  .proposal-print-document .proposal-document-body {
+    padding: 5mm 0 0;
+  }
+
+  .proposal-print-document h2,
+  .proposal-print-document h3,
+  .proposal-print-document h4 {
+    break-after: avoid;
+  }
+
+  .proposal-print-document p {
+    orphans: 3;
+    widows: 3;
+  }
+
+  .proposal-print-keep {
+    break-inside: avoid;
+  }
+}

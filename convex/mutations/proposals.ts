@@ -4,7 +4,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { requireOwnerOrManagerCapability } from "../lib/sessionAuth";
 import { ensureClientRelationshipForLead } from "../lib/clientRelationships";
 import { assertProposalReadyForDelivery, newProposalLineItemId, normalizeProposalAddOnLine, validateProposalAddOnLines } from "../lib/proposalAddOnLineItems";
-import { proposalIssueContent } from "../lib/proposalIssueContent";
+import { brandedProposalPreviewEnabled, proposalIssueContent, proposalPresentationValidator } from "../lib/proposalIssueContent";
 import { safeProposalPayload } from "../proposalDeliveryInternal";
 import { notifyProposalDecision } from "../lib/proposalDecisionNotifications";
 
@@ -183,10 +183,25 @@ export const updateProposal = mutation({
     monthlyPriceCents: v.optional(v.number()),
     oneTimePriceCents: v.optional(v.number()),
     notes: v.optional(v.string()),
+    presentation: v.optional(proposalPresentationValidator),
   },
   handler: async (ctx, args) => {
     const { proposal } = await getOwnedProposal(ctx, args.sessionToken, args.userId, args.proposalId);
     requireDraft(proposal);
+    let presentation = proposal.presentation;
+    if (args.presentation) {
+      if (!brandedProposalPreviewEnabled(proposal.companyId)) throw new Error("Branded proposal preview is disabled");
+      const validThrough = cleanOptional(args.presentation.validThrough, 10);
+      if (validThrough !== undefined) {
+        const date = new Date(`${validThrough}T00:00:00Z`);
+        if (args.presentation.validThrough !== validThrough || !/^\d{4}-\d{2}-\d{2}$/.test(validThrough) ||
+            !Number.isFinite(date.valueOf()) || date.toISOString().slice(0, 10) !== validThrough) {
+          throw new Error("Proposal validity must be a valid date");
+        }
+      }
+      presentation = { locale: args.presentation.locale, exclusions: cleanOptional(args.presentation.exclusions, 2000),
+        terms: cleanOptional(args.presentation.terms, 4000), validThrough };
+    }
 
     const updatedAt = Math.max(Date.now(), proposal.updatedAt + 1);
     const monthlyPriceCents = cleanPrice(args.monthlyPriceCents);
@@ -207,6 +222,7 @@ export const updateProposal = mutation({
       // Editing approved pricing through the existing editor makes the draft manually priced.
       appliedEstimateRevisionId: pricingChanged ? undefined : proposal.appliedEstimateRevisionId,
       notes: cleanOptional(args.notes, 4000),
+      presentation,
       updatedAt,
     });
     return updatedAt;

@@ -4,11 +4,13 @@ export type ProposalForm = {
   title: string; clientName: string; businessName: string; propertyAddress: string;
   serviceFrequency: string; serviceFrequencyNotes: string; scopeOfWork: string;
   monthlyPrice: string; oneTimePrice: string; notes: string;
+  documentLocale: string; exclusions: string; terms: string; validThrough: string;
 };
 
 export const EMPTY_PROPOSAL_FORM: ProposalForm = {
   title: "", clientName: "", businessName: "", propertyAddress: "", serviceFrequency: "",
   serviceFrequencyNotes: "", scopeOfWork: "", monthlyPrice: "", oneTimePrice: "", notes: "",
+  documentLocale: "en", exclusions: "", terms: "", validThrough: "",
 };
 
 export function proposalFormFromRecord(proposal: Record<string, any>): ProposalForm {
@@ -19,6 +21,10 @@ export function proposalFormFromRecord(proposal: Record<string, any>): ProposalF
     monthlyPrice: proposal.monthlyPriceCents == null ? "" : String(proposal.monthlyPriceCents / 100),
     oneTimePrice: proposal.oneTimePriceCents == null ? "" : String(proposal.oneTimePriceCents / 100),
     notes: proposal.notes ?? "",
+    documentLocale: proposal.presentation?.locale ?? "en",
+    exclusions: proposal.presentation?.exclusions ?? "",
+    terms: proposal.presentation?.terms ?? "",
+    validThrough: proposal.presentation?.validThrough ?? "",
   };
 }
 

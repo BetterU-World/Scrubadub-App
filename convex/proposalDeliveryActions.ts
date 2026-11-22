@@ -49,6 +49,7 @@ export const sendProposal = action({
         replyTo: prepared.replyTo ?? undefined,
         companyPhone: prepared.content.company.companyPhone ?? undefined,
         clientName: prepared.content.clientName,
+        documentLocale: prepared.content.presentation?.locale,
         proposal: prepared.content.proposal,
       });
     } catch {

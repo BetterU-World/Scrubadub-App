@@ -2,7 +2,8 @@ import { internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
 import { resolveOperationalEmailIdentity } from "./lib/operationalEmailIdentity";
 import { assertProposalReadyForDelivery, calculateProposalTotals, proposalAddOnLineAmount } from "./lib/proposalAddOnLineItems";
-import { proposalIssueContent } from "./lib/proposalIssueContent";
+import { brandedProposalPreviewEnabled, proposalIssueContent } from "./lib/proposalIssueContent";
+import { getCompanyIdentity } from "./lib/companyIdentity";
 import { notifyProposalDecision } from "./lib/proposalDecisionNotifications";
 
 const PROPOSAL_TOKEN_EXPIRY_MS = 60 * 24 * 60 * 60 * 1000;
@@ -28,9 +29,9 @@ function formatFrequency(value: string | undefined) {
   return value ? labels[value] ?? value : null;
 }
 
-function formatCents(cents: number | undefined) {
+function formatCents(cents: number | undefined, locale: "en" | "es") {
   if (cents == null) return null;
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat(locale === "es" ? "es-US" : "en-US", {
     style: "currency",
     currency: "USD",
   }).format(cents / 100);
@@ -41,7 +42,12 @@ function cleanNote(value: string | undefined, max = 1000) {
   return trimmed || undefined;
 }
 
-async function companyBranding(ctx: any, companyId: any) {
+async function companyBranding(ctx: any, companyId: any, branded: boolean) {
+  if (branded) {
+    const [identity, emailIdentity] = await Promise.all([getCompanyIdentity(ctx, companyId), resolveOperationalEmailIdentity(ctx, companyId)]);
+    return { companyName: identity.companyName, companyLogoUrl: identity.logoUrl, companyEmail: identity.email,
+      companyPhone: identity.phone, replyTo: emailIdentity.replyTo ?? null };
+  }
   const [company, site, emailIdentity] = await Promise.all([
     ctx.db.get(companyId),
     ctx.db
@@ -65,10 +71,13 @@ async function companyBranding(ctx: any, companyId: any) {
 }
 
 export async function safeProposalPayload(ctx: any, proposal: any) {
+  const branded = proposal.status === "draft" && brandedProposalPreviewEnabled(proposal.companyId);
+  const presentation = branded ? proposal.presentation ?? { locale: "en" } : undefined;
+  const money = (cents: number | undefined) => formatCents(cents, presentation?.locale ?? "en");
   const [request, relationship, branding] = await Promise.all([
     ctx.db.get(proposal.clientRequestId),
     proposal.clientRelationshipId ? ctx.db.get(proposal.clientRelationshipId) : null,
-    companyBranding(ctx, proposal.companyId),
+    companyBranding(ctx, proposal.companyId, branded),
   ]);
 
   const totals = calculateProposalTotals(proposal);
@@ -76,16 +85,17 @@ export async function safeProposalPayload(ctx: any, proposal: any) {
     name: line.name,
     pricingMethod: line.pricingMethod,
     unitPriceCents: line.unitPriceCents,
-    unitPriceLabel: formatCents(line.unitPriceCents),
+    unitPriceLabel: money(line.unitPriceCents),
     unitLabel: line.unitLabel ?? null,
     quantity: line.quantity ?? null,
     finalizedPriceCents: line.finalizedPriceCents ?? null,
-    finalizedPriceLabel: formatCents(line.finalizedPriceCents),
+    finalizedPriceLabel: money(line.finalizedPriceCents),
     billingCadence: line.billingCadence,
     lineTotalCents: proposalAddOnLineAmount(line),
-    lineTotalLabel: formatCents(proposalAddOnLineAmount(line) ?? undefined),
+    lineTotalLabel: money(proposalAddOnLineAmount(line) ?? undefined),
   }));
   return {
+    presentation,
     company: branding,
     recipientEmail:
       relationship?.companyId === proposal.companyId
@@ -102,14 +112,14 @@ export async function safeProposalPayload(ctx: any, proposal: any) {
       scopeOfWork: proposal.scopeOfWork ?? null,
       notes: proposal.notes ?? null,
       monthlyPriceCents: proposal.monthlyPriceCents ?? null,
-      monthlyPriceLabel: formatCents(proposal.monthlyPriceCents),
+      monthlyPriceLabel: money(proposal.monthlyPriceCents),
       oneTimePriceCents: proposal.oneTimePriceCents ?? null,
-      oneTimePriceLabel: formatCents(proposal.oneTimePriceCents),
+      oneTimePriceLabel: money(proposal.oneTimePriceCents),
       addOnLineItems,
       totals: {
         ...totals,
-        monthlyTotalLabel: totals.hasMonthlyPricing ? formatCents(totals.monthlyTotalCents) : null,
-        oneTimeTotalLabel: totals.hasOneTimePricing ? formatCents(totals.oneTimeTotalCents) : null,
+        monthlyTotalLabel: totals.hasMonthlyPricing ? money(totals.monthlyTotalCents) : null,
+        oneTimeTotalLabel: totals.hasOneTimePricing ? money(totals.oneTimeTotalCents) : null,
       },
       status: proposal.status,
       sentAt: proposal.sentAt ?? null,
@@ -123,6 +133,7 @@ export async function safeProposalPayload(ctx: any, proposal: any) {
 function issuedPayload(issue: any, proposal: any) {
   return {
     ...issue.content,
+    issueNumber: issue.issueNumber,
     proposal: {
       ...issue.content.proposal,
       status: proposal.status,

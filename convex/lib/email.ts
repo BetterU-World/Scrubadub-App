@@ -100,6 +100,7 @@ type ProposalEmailArgs = {
   replyTo?: string;
   companyPhone?: string;
   clientName: string;
+  documentLocale?: "en" | "es";
   proposal: {
     title: string;
     businessName?: string | null;
@@ -117,6 +118,27 @@ type ProposalEmailArgs = {
 
 export async function sendProposalEmail(args: ProposalEmailArgs): Promise<boolean> {
   const resend = getResendClient();
+  if (args.documentLocale) {
+    const spanish = args.documentLocale === "es";
+    const subject = spanish ? `Propuesta de limpieza de ${args.companyName}` : `Cleaning proposal from ${args.companyName}`;
+    try {
+      const { error } = await resend.emails.send({
+        ...getOperationalEmailHeaders({ companyName: args.companyName, replyTo: args.replyTo }),
+        to: args.email,
+        subject,
+        html: `<div lang="${args.documentLocale}" style="font-family:Arial,sans-serif;max-width:40rem;margin:auto;padding:24px;color:#0f172a">
+          <p>${escapeHtml(args.companyName)}</p>
+          <h1>${escapeHtml(args.proposal.title)}</h1>
+          <p>${spanish ? "Hola" : "Hi"} ${escapeHtml(args.clientName)},</p>
+          <p>${spanish ? "Revisa la propuesta y responde a tu proveedor de limpieza." : "Review the proposal and respond to your cleaning provider."}</p>
+          <p><a href="${escapeHtml(args.viewUrl)}" style="display:inline-block;padding:12px 18px;background:#115e59;color:#fff;border-radius:8px;text-decoration:none">${spanish ? "Ver propuesta" : "View proposal"}</a></p>
+        </div>`,
+      });
+      return !error;
+    } catch {
+      return false;
+    }
+  }
   const appUrl = getAppUrl();
   const logoUrl = args.companyLogoUrl || `${appUrl}/logo-icon.png`;
   const proposal = args.proposal;

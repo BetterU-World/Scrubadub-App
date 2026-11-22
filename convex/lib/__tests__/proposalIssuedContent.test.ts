@@ -17,7 +17,10 @@ beforeEach(() => {
   process.env.STRIPE_SECRET_KEY = "test-stripe-key";
   process.env.STRIPE_WEBHOOK_ACCOUNT_SECRET = "test-webhook-secret";
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+});
 
 async function setup() {
   const t = convexTest(schema, modules);
@@ -57,6 +60,60 @@ async function issueToken(issue: any) {
 }
 
 describe("proposal issued content", () => {
+  it("gates draft authoring, then freezes the Spanish branded review through email, resend and acceptance", async () => {
+    const s = await setup();
+    const edit = {
+      ...s.ownerAuth, proposalId: s.proposalId, title: "Limpieza semanal", clientName: "Client",
+      serviceFrequency: "weekly", scopeOfWork: "Limpiar la cocina.", monthlyPriceCents: 10000, oneTimePriceCents: 0,
+      presentation: { locale: "es", exclusions: "Ventanas exteriores", terms: "Acceso por la puerta lateral", validThrough: "2020-02-29" },
+    };
+    const query = { ...s.ownerAuth, clientRequestId: s.requestId };
+    await expect(s.t.mutation(proposals.updateProposal, edit)).rejects.toThrow("preview is disabled");
+    vi.stubEnv("SCRUB_BRANDED_PROPOSAL_PREVIEW_COMPANY_ID", s.companyId);
+    await expect(s.t.mutation(proposals.updateProposal, {
+      ...edit, presentation: { ...edit.presentation, validThrough: "2026-02-30" },
+    })).rejects.toThrow("valid date");
+    await s.t.mutation(proposals.updateProposal, edit);
+    const review = await s.t.query(api.queries.proposals.getProposalByClientRequest, query);
+    expect(review?.canonicalPreview).toMatchObject({ source: "saved_draft", content: { presentation: edit.presentation,
+      proposal: { oneTimePriceCents: 0, totals: { monthlyTotalCents: 13000, oneTimeTotalCents: 0 } } } });
+    const mail = mockEmail();
+    await s.t.action(delivery.sendProposal, { ...s.ownerAuth, proposalId: s.proposalId });
+    const issue = await s.t.run(async ctx => ctx.db.get((await ctx.db.get(s.proposalId))!.currentIssueId!));
+    const token = await issueToken(issue);
+    expect(issue?.content).toEqual(review?.canonicalPreview.content);
+    expect(mail.join("")).toContain("Ver propuesta");
+    expect(mail.join("")).not.toContain("override");
+    await s.t.run(ctx => ctx.db.patch(s.siteId, { brandName: "Later brand", logoUrl: "https://example.test/later.png" }));
+    vi.stubEnv("SCRUB_BRANDED_PROPOSAL_PREVIEW_COMPANY_ID", undefined);
+    await s.t.action(delivery.sendProposal, { ...s.ownerAuth, proposalId: s.proposalId });
+    expect(mail[1]).toContain("Original Brand");
+    const customer = await s.t.action(delivery.getProposalByToken, { token });
+    expect(customer).toMatchObject({ issueNumber: 1, presentation: edit.presentation, company: issue?.content.company });
+    const accepted = await s.t.action(delivery.respondToProposal, { token, decision: "accepted" });
+    expect(accepted).toMatchObject({ presentation: edit.presentation, proposal: { status: "accepted", scopeOfWork: edit.scopeOfWork } });
+    expect((await s.t.query(api.queries.proposals.getProposalByClientRequest, query))?.canonicalPreview.content).toEqual(issue?.content);
+  });
+
+  it("freezes outside sends using the same projection and leaves the old issue intact after withdrawal", async () => {
+    const s = await setup();
+    vi.stubEnv("SCRUB_BRANDED_PROPOSAL_PREVIEW_COMPANY_ID", s.companyId);
+    const edit = { ...s.ownerAuth, proposalId: s.proposalId, title: "First offer", clientName: "Client", monthlyPriceCents: 10000,
+      presentation: { locale: "en", terms: "First terms" } };
+    await s.t.mutation(proposals.updateProposal, edit);
+    const query = { ...s.ownerAuth, clientRequestId: s.requestId };
+    const draft = await s.t.query(api.queries.proposals.getProposalByClientRequest, query);
+    await s.t.mutation(proposals.markProposalSent, { ...s.ownerAuth, proposalId: s.proposalId });
+    const firstIssueId = (await s.t.run(ctx => ctx.db.get(s.proposalId)))!.currentIssueId!;
+    await s.t.mutation(proposals.returnProposalToDraft, { ...s.ownerAuth, proposalId: s.proposalId });
+    await s.t.mutation(proposals.updateProposal, { ...edit, title: "New offer", presentation: { locale: "es", terms: "Nuevas condiciones" } });
+    await s.t.mutation(proposals.markProposalSent, { ...s.ownerAuth, proposalId: s.proposalId });
+    expect(await s.t.run(ctx => ctx.db.get(firstIssueId))).toMatchObject({ content: draft?.canonicalPreview.content, withdrawnAt: expect.any(Number) });
+    expect((await s.t.query(api.queries.proposals.getProposalByClientRequest, query))?.canonicalPreview).toMatchObject({
+      source: "issued_snapshot", issueNumber: 2, content: { presentation: { locale: "es", terms: "Nuevas condiciones" } },
+    });
+  });
+
   it.each(["accepted", "declined"] as const)("notifies the owner and responsible manager once for a public %s decision", async (decision) => {
     const s = await setup();
     await s.t.run((ctx) => ctx.db.patch(s.proposalId, { createdByUserId: s.managerId }));
