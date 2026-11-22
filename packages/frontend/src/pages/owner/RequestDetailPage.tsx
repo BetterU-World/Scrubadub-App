@@ -1171,6 +1171,9 @@ export function RequestDetailPage() {
               <div className="rounded-lg border border-primary-100 bg-primary-50 p-4">
                 <h4 className="font-semibold text-gray-900">{t("proposals.v2.reviewHeading")}</h4>
                 <p className="mt-1 text-sm text-gray-700">{t(proposal.canonicalPreview?.source === "saved_draft" ? "proposals.v2.savedPreviewHelp" : proposal.canonicalPreview?.source === "issued_snapshot" ? "proposals.v2.issuedPreviewHelp" : "proposals.v2.legacyPreviewHelp")}</p>
+                {proposal.status === "draft" && proposal.presentation && !proposal.brandedAuthoringEnabled && !proposal.pendingDeliveryAttemptId && (
+                  <p className="mt-2 text-sm font-medium text-amber-800">{t("proposals.branded.authoringRequired")}</p>
+                )}
                 {proposal.sourceAssessment && <p className="mt-2 break-words text-xs text-gray-600">{t("proposals.v2.sourceContext", { title: proposal.sourceAssessment.title, date: proposal.sourceAssessment.completedAt ? new Date(proposal.sourceAssessment.completedAt).toLocaleDateString() : t("proposals.v2.completedAssessment") })}</p>}
                 {proposal.canonicalPreview?.issueNumber != null && <p className="mt-2 text-xs font-medium text-gray-700">{t("proposals.v2.issueNumber", { number: proposal.canonicalPreview.issueNumber })}</p>}
                 {proposal.hasPriorIssue && proposal.status === "draft" && <p className="mt-2 text-sm text-gray-700">{t("proposals.v2.revisionNote")}</p>}

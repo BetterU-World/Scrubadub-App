@@ -246,7 +246,7 @@ export const markProposalSent = mutation({
       const latest = await ctx.db.query("proposalIssues")
         .withIndex("by_proposal", (q) => q.eq("proposalId", proposal._id))
         .order("desc").first();
-      const payload = await safeProposalPayload(ctx, proposal);
+      const payload = await safeProposalPayload(ctx, proposal, { forNewIssue: true });
       const issueId = await ctx.db.insert("proposalIssues", {
         companyId: proposal.companyId, proposalId: proposal._id,
         issueNumber: (latest?.issueNumber ?? 0) + 1,

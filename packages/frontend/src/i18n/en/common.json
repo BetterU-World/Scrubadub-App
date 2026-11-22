@@ -2062,6 +2062,7 @@
   },
   "proposals": {
     "branded": {
+      "authoringRequired": "Branded proposal authoring is disabled. Re-enable it before issuing this draft. Its saved content and pricing are unchanged.",
       "offer": "Cleaning proposal",
       "shellLabel": "SCRUB proposal",
       "preparedFor": "Prepared for",

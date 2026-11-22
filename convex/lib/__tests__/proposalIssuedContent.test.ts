@@ -62,6 +62,46 @@ async function issueToken(issue: any) {
 }
 
 describe("proposal issued content", () => {
+  it.each(["email", "outside"] as const)("preserves a branded draft and blocks its first %s issue while authoring is off", async (channel) => {
+    const s = await setup();
+    const args = { ...s.ownerAuth, proposalId: s.proposalId };
+    const presentation = { locale: "es", terms: "Confirma el acceso con recepción.", exclusions: "Cristales exteriores." };
+    vi.stubEnv("SCRUB_SMART_ESTIMATES_RELEASE_ENABLED", "true");
+    await s.t.mutation(proposals.updateProposal, {
+      ...args, title: "Limpieza semanal", clientName: "Client", scopeOfWork: "Limpiar la cocina.",
+      monthlyPriceCents: 12500, oneTimePriceCents: 4000, presentation,
+    });
+    const mail = mockEmail();
+    const issue = () => channel === "email" ? s.t.action(delivery.sendProposal, args) : s.t.mutation(proposals.markProposalSent, args);
+    const before = await s.t.run(async ctx => ({ proposal: await ctx.db.get(s.proposalId), request: await ctx.db.get(s.requestId) }));
+    vi.stubEnv("SCRUB_SMART_ESTIMATES_RELEASE_ENABLED", "false");
+    await expect(issue()).rejects.toThrow("BRANDED_PROPOSAL_AUTHORING_REQUIRED");
+    const rejected = await s.t.run(async ctx => ({
+      proposal: await ctx.db.get(s.proposalId), request: await ctx.db.get(s.requestId),
+      issues: await ctx.db.query("proposalIssues").collect(),
+      attempts: await ctx.db.query("transactionalDocumentDeliveryAttempts").collect(),
+    }));
+    expect(rejected).toEqual({ ...before, issues: [], attempts: [] });
+    expect(mail).toEqual([]);
+
+    vi.stubEnv("SCRUB_SMART_ESTIMATES_RELEASE_ENABLED", "true");
+    await issue();
+    const issued = await s.t.run(async ctx => ctx.db.get((await ctx.db.get(s.proposalId))!.currentIssueId!));
+    expect(issued?.content).toMatchObject({ presentation, proposal: { scopeOfWork: "Limpiar la cocina.", oneTimePriceCents: 4000,
+      totals: { oneTimeTotalCents: 4000, monthlyTotalCents: 15500 } } });
+  });
+
+  it.each(["email", "outside"] as const)("still issues a legacy draft through %s when branded authoring is off", async (channel) => {
+    const s = await setup();
+    mockEmail();
+    const args = { ...s.ownerAuth, proposalId: s.proposalId };
+    if (channel === "email") await s.t.action(delivery.sendProposal, args);
+    else await s.t.mutation(proposals.markProposalSent, args);
+    const issue = await s.t.run(async ctx => ctx.db.get((await ctx.db.get(s.proposalId))!.currentIssueId!));
+    expect(issue?.content.presentation).toBeUndefined();
+    expect(issue?.content.proposal.totals.monthlyTotalCents).toBe(13000);
+  });
+
   it("gates draft authoring, then freezes the Spanish branded review through email, resend and acceptance", async () => {
     const s = await setup();
     const edit = {
@@ -291,6 +331,11 @@ describe("proposal issued content", () => {
 
   it("locks a prepared offer, records uncertainty, and retries the same content and link", async () => {
     const s = await setup();
+    vi.stubEnv("SCRUB_SMART_ESTIMATES_RELEASE_ENABLED", "true");
+    await s.t.mutation(proposals.updateProposal, {
+      ...s.ownerAuth, proposalId: s.proposalId, title: "Propuesta original", clientName: "Client", monthlyPriceCents: 10000,
+      presentation: { locale: "es", terms: "Términos originales", exclusions: "Exclusiones originales" },
+    });
     const { proposalIssueToken, hashToken } = await import("../tokens");
     const nonce = "prepared-nonce";
     const prepared = await s.t.mutation(internal.proposalDeliveryInternal.prepareProposalEmail, {
@@ -304,12 +349,16 @@ describe("proposal issued content", () => {
       companyId: s.companyId, proposalId: s.proposalId, attemptId: prepared.attemptId, result: "unknown",
     });
     const bodies = mockEmail();
+    vi.stubEnv("SCRUB_SMART_ESTIMATES_RELEASE_ENABLED", "false");
     await s.t.action(delivery.sendProposal, { ...s.ownerAuth, proposalId: s.proposalId });
     const state = await s.t.run(async (ctx) => ({ proposal: await ctx.db.get(s.proposalId), issues: await ctx.db.query("proposalIssues").collect(), attempts: await ctx.db.query("transactionalDocumentDeliveryAttempts").collect() }));
     expect(state.issues).toHaveLength(1);
+    expect(state.issues[0].content).toEqual(prepared.content);
+    expect(state.issues[0].content.presentation).toMatchObject({ locale: "es", terms: "Términos originales", exclusions: "Exclusiones originales" });
     expect(state.proposal).toMatchObject({ status: "sent", currentIssueId: prepared.issueId });
     expect(state.attempts.map((attempt) => attempt.result)).toEqual(["unknown", "provider_accepted"]);
     expect(bodies[0]).toContain(proposalIssueToken(nonce));
+    expect(bodies[0]).toContain("Ver propuesta");
     await expect(s.t.mutation(internal.proposalDeliveryInternal.prepareProposalEmail, {
       companyId: s.otherCompanyId, proposalId: s.proposalId,
       tokenNonce: "foreign", tokenHash: "foreign",
