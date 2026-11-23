@@ -1,8 +1,10 @@
-import { mutation } from "../_generated/server";
+import { mutation, type MutationCtx } from "../_generated/server";
+import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { requireOwnerOrManagerCapability } from "../lib/sessionAuth";
 import { ensureClientRelationshipForLead } from "../lib/clientRelationships";
 import { logAudit } from "../lib/helpers";
+import { selectRequestWalkthrough } from "../lib/walkthroughSelection";
 
 const walkthroughTypeValidator = v.union(
   v.literal("commercial"),
@@ -362,91 +364,119 @@ export const create = mutation({
   },
 });
 
+const requestWalkthroughAuth = {
+  userId: v.id("users"),
+  sessionToken: v.string(),
+  clientRequestId: v.id("clientRequests"),
+};
+
+type RequestWalkthroughAuth = {
+  userId: Id<"users">;
+  sessionToken: string;
+  clientRequestId: Id<"clientRequests">;
+};
+
+type WalkthroughSchedule = {
+  scheduledDate: string;
+  scheduledStartTime: string;
+  scheduledEndTime?: string;
+  assignedManagerId?: Id<"users">;
+  schedulingNotes?: string;
+};
+
+async function createRequestWalkthrough(ctx: MutationCtx, args: RequestWalkthroughAuth, schedule?: WalkthroughSchedule) {
+  const owner = await requireOwnerCompany(ctx, args.sessionToken, args.userId);
+  const request = await ctx.db.get(args.clientRequestId);
+  if (!request) throw new Error("Lead not found");
+  if (request.companyId !== owner.companyId) throw new Error("Access denied");
+  if (schedule) {
+    await assertLinkedRecords(ctx, owner.companyId, schedule);
+    assertScheduledFields({ ...schedule, appointmentStatus: "scheduled" });
+  }
+
+  const candidates = await Promise.all(
+    (["draft", "completed", "proposal_created"] as const).map(status => ctx.db.query("walkthroughs")
+      .withIndex("by_companyId_clientRequestId_status", q => q.eq("companyId", request.companyId)
+        .eq("clientRequestId", request._id).eq("status", status))
+      .order("desc").first())
+  );
+  const existing = selectRequestWalkthrough(candidates.filter((row): row is Doc<"walkthroughs"> => row !== null));
+  if (existing) return existing._id;
+
+  await assertLinkedRecords(ctx, request.companyId, { propertyId: request.propertyId });
+
+  const leadType = request.leadType;
+  const walkthroughType =
+    leadType === "commercial"
+      ? "commercial"
+      : leadType === "str_airbnb"
+        ? "str"
+        : leadType === "move_out"
+          ? "move_in_out"
+          : leadType === "post_construction"
+            ? "post_construction"
+            : "residential";
+  const now = Date.now();
+  const clientRelationshipId = await ensureClientRelationshipForLead(ctx, request);
+  const walkthroughId = await ctx.db.insert("walkthroughs", {
+    companyId: request.companyId,
+    clientRelationshipId,
+    clientRequestId: request._id,
+    propertyId: request.propertyId,
+    title: `${request.businessName || request.requesterName} Walkthrough`,
+    walkthroughType,
+    status: "draft",
+    ...(schedule ? {
+      scheduledDate: cleanRequired(schedule.scheduledDate, "", 50),
+      scheduledStartTime: cleanRequired(schedule.scheduledStartTime, "", 20),
+      scheduledEndTime: cleanOptional(schedule.scheduledEndTime, 20),
+      assignedManagerId: schedule.assignedManagerId,
+      appointmentStatus: "scheduled" as const,
+      schedulingNotes: cleanOptional(schedule.schedulingNotes, 2000),
+      scheduledAt: now,
+    } : { appointmentStatus: "draft" as const, startedAt: now }),
+    contactName: request.requesterName,
+    contactEmail: request.requesterEmail,
+    contactPhone: request.requesterPhone,
+    address: request.propertySnapshot?.address,
+    serviceFrequencyRecommendation: request.estimatedFrequency,
+    estimatedMonthlyValueCents: request.estimatedContractValueCents,
+    scopeNotes: request.requestedService,
+    proposalNotes: request.leadNotes ?? request.notes,
+    rooms: [],
+    photos: [],
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  const stage = request.leadStage ?? "new";
+  if (schedule && ["new", "contacted"].includes(stage)) {
+    await ctx.db.patch(request._id, {
+      leadStage: "walkthrough_scheduled",
+      lastStageChangedAt: now,
+    });
+  }
+
+  return walkthroughId;
+}
+
 export const createFromClientRequest = mutation({
   args: {
-    userId: v.id("users"),
-    sessionToken: v.string(),
-    clientRequestId: v.id("clientRequests"),
+    ...requestWalkthroughAuth,
     scheduledDate: v.string(),
     scheduledStartTime: v.string(),
     scheduledEndTime: v.optional(v.string()),
     assignedManagerId: v.optional(v.id("users")),
     schedulingNotes: v.optional(v.string()),
   },
-  handler: async (ctx, args) => {
-    const owner = await requireOwnerCompany(ctx, args.sessionToken, args.userId);
-    const request = await ctx.db.get(args.clientRequestId);
-    if (!request) throw new Error("Lead not found");
-    if (request.companyId !== owner.companyId) throw new Error("Access denied");
-    await assertLinkedRecords(ctx, owner.companyId, args);
-    assertScheduledFields({
-      appointmentStatus: "scheduled",
-      scheduledDate: args.scheduledDate,
-      scheduledStartTime: args.scheduledStartTime,
-    });
+  returns: v.id("walkthroughs"),
+  handler: async (ctx, args) => createRequestWalkthrough(ctx, args, args),
+});
 
-    const existing = await ctx.db
-      .query("walkthroughs")
-      .withIndex("by_clientRequest", (q: any) =>
-        q.eq("clientRequestId", args.clientRequestId)
-      )
-      .first();
-    if (existing && existing.companyId === owner.companyId && existing.status !== "archived") {
-      return existing._id;
-    }
-
-    const leadType = (request as any).leadType;
-    const walkthroughType =
-      leadType === "commercial"
-        ? "commercial"
-        : leadType === "str_airbnb"
-          ? "str"
-          : leadType === "move_out"
-            ? "move_in_out"
-            : leadType === "post_construction"
-              ? "post_construction"
-              : "residential";
-    const now = Date.now();
-    const clientRelationshipId = await ensureClientRelationshipForLead(ctx, request);
-    const walkthroughId = await ctx.db.insert("walkthroughs", {
-      companyId: request.companyId,
-      clientRelationshipId,
-      clientRequestId: request._id,
-      propertyId: request.propertyId,
-      title: `${request.businessName || request.requesterName} Walkthrough`,
-      walkthroughType,
-      status: "draft",
-      scheduledDate: cleanRequired(args.scheduledDate, "", 50),
-      scheduledStartTime: cleanRequired(args.scheduledStartTime, "", 20),
-      scheduledEndTime: cleanOptional(args.scheduledEndTime, 20),
-      assignedManagerId: args.assignedManagerId,
-      appointmentStatus: "scheduled",
-      schedulingNotes: cleanOptional(args.schedulingNotes, 2000),
-      scheduledAt: now,
-      contactName: request.requesterName,
-      contactEmail: request.requesterEmail,
-      contactPhone: request.requesterPhone,
-      address: request.propertySnapshot?.address,
-      serviceFrequencyRecommendation: (request as any).estimatedFrequency,
-      estimatedMonthlyValueCents: (request as any).estimatedContractValueCents,
-      scopeNotes: request.requestedService,
-      proposalNotes: (request as any).leadNotes ?? request.notes,
-      rooms: [],
-      photos: [],
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    const stage = (request as any).leadStage ?? "new";
-    if (["new", "contacted"].includes(stage)) {
-      await ctx.db.patch(request._id, {
-        leadStage: "walkthrough_scheduled",
-        lastStageChangedAt: now,
-      });
-    }
-
-    return walkthroughId;
-  },
+export const startFromClientRequest = mutation({
+  args: requestWalkthroughAuth,
+  returns: v.id("walkthroughs"),
+  handler: async (ctx, args) => createRequestWalkthrough(ctx, args),
 });
 
 export const update = mutation({
@@ -460,6 +490,7 @@ export const update = mutation({
   },
   handler: async (ctx, args) => {
     const { owner, walkthrough } = await getOwnedWalkthrough(ctx, args.sessionToken, args.userId, args.walkthroughId);
+    if (walkthrough.status === "archived") throw new Error("Archived walkthroughs cannot be edited");
     await assertLinkedRecords(ctx, owner.companyId, args);
     assertScheduledFields(args);
     if (args.linkedPropertyFacts) {
@@ -489,7 +520,11 @@ export const complete = mutation({
     walkthroughId: v.id("walkthroughs"),
   },
   handler: async (ctx, args) => {
-    await getOwnedWalkthrough(ctx, args.sessionToken, args.userId, args.walkthroughId);
+    const { walkthrough } = await getOwnedWalkthrough(ctx, args.sessionToken, args.userId, args.walkthroughId);
+    if (walkthrough.status === "completed" || walkthrough.status === "proposal_created") return;
+    if (walkthrough.status === "archived" || walkthrough.appointmentStatus === "cancelled") {
+      throw new Error("Archived or cancelled walkthroughs cannot be completed");
+    }
     const now = Date.now();
     await ctx.db.patch(args.walkthroughId, {
       status: "completed",
@@ -507,7 +542,8 @@ export const archive = mutation({
     walkthroughId: v.id("walkthroughs"),
   },
   handler: async (ctx, args) => {
-    await getOwnedWalkthrough(ctx, args.sessionToken, args.userId, args.walkthroughId);
+    const { walkthrough } = await getOwnedWalkthrough(ctx, args.sessionToken, args.userId, args.walkthroughId);
+    if (walkthrough.status === "archived") return;
     await ctx.db.patch(args.walkthroughId, {
       status: "archived",
       updatedAt: Date.now(),

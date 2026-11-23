@@ -205,6 +205,7 @@ export const listCalendarWalkthroughs = query({
         .filter((walkthrough: any) =>
           walkthrough.status !== "archived" &&
           walkthrough.appointmentStatus !== "cancelled" &&
+          !(walkthrough.startedAt != null && (walkthrough.appointmentStatus === "draft" || walkthrough.scheduledAt == null)) &&
           Boolean(walkthrough.scheduledDate && walkthrough.scheduledStartTime)
         )
         .map(async (walkthrough: any) => {

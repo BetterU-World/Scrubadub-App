@@ -1,3 +1,5 @@
+import { selectRequestWalkthrough } from "./walkthroughSelection";
+
 export type LeadPipelineStage =
   | "new"
   | "qualification"
@@ -25,6 +27,7 @@ type PipelineRecord = {
   appointmentStatus?: "draft" | "scheduled" | "completed" | "cancelled";
   scheduledDate?: string;
   scheduledStartTime?: string;
+  startedAt?: number;
 };
 
 export function acceptedProposalAgreementAction(
@@ -103,10 +106,12 @@ function lastActivity(input: LeadPipelineInput) {
 export function deriveLeadPipelineState(input: LeadPipelineInput) {
   const now = input.now ?? Date.now();
   const { request } = input;
-  const latestWalkthrough = newest(input.walkthroughs.filter((record) => record.status !== "archived"));
+  const latestWalkthrough = selectRequestWalkthrough(input.walkthroughs);
   const walkthroughIsScheduled = latestWalkthrough?.appointmentStatus === "scheduled" ||
     latestWalkthrough?.appointmentStatus === "completed" ||
     (latestWalkthrough?.appointmentStatus === undefined && Boolean(latestWalkthrough?.scheduledDate && latestWalkthrough?.scheduledStartTime));
+  const walkthroughIsStarted = latestWalkthrough?.startedAt != null &&
+    latestWalkthrough.appointmentStatus !== "cancelled" && !walkthroughIsScheduled;
   const latestProposal = newest(input.proposals);
   const latestAgreement = newest(input.agreements.filter((agreement) =>
     !latestProposal?._id || agreement.proposalId === latestProposal._id));
@@ -133,7 +138,7 @@ export function deriveLeadPipelineState(input: LeadPipelineInput) {
 
   const blockers: string[] = [];
   if (!request.requesterEmail?.trim() && !request.requesterPhone?.trim()) blockers.push("missing_contact_method");
-  if (stage === "walkthrough" && !walkthroughIsScheduled) blockers.push("walkthrough_not_scheduled");
+  if (stage === "walkthrough" && !walkthroughIsScheduled && !walkthroughIsStarted) blockers.push("walkthrough_not_scheduled");
   if (stage === "proposal" && latestProposal?.status === "draft") blockers.push("proposal_not_sent");
   if (stage === "onboarding" && !request.clientRelationshipId) blockers.push("client_relationship_missing");
 
@@ -144,7 +149,10 @@ export function deriveLeadPipelineState(input: LeadPipelineInput) {
     if (stage === "closed" || stage === "converted") return { key: "view_request", hrefSuffix: "" };
     if (blockers[0] === "missing_contact_method") return { key: "add_contact_details", hrefSuffix: "#request-contact" };
     if (stage === "new" || stage === "qualification") return { key: "qualify_lead", hrefSuffix: "#request-lead-classification" };
-    if (stage === "walkthrough") return { key: walkthroughIsScheduled ? "complete_walkthrough" : "schedule_walkthrough", hrefSuffix: "#request-walkthrough" };
+    if (stage === "walkthrough") return {
+      key: walkthroughIsStarted ? "resume_walkthrough" : walkthroughIsScheduled ? "complete_walkthrough" : "schedule_walkthrough",
+      hrefSuffix: "#request-walkthrough",
+    };
     if (stage === "proposal") return { key: latestProposal ? "send_proposal" : "create_proposal", hrefSuffix: "#request-proposal" };
     if (stage === "decision") return { key: "follow_up_proposal", hrefSuffix: "#request-proposal" };
     if (stage === "agreement") return { key: "send_agreement", hrefSuffix: "#request-agreement" };
