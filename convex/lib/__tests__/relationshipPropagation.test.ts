@@ -209,7 +209,8 @@ describe("relationship propagation", () => {
       propertyId: foreignPropertyId,
     });
 
-    await createWalkthrough(t, companyA.ownerId, leadWithForeignProperty);
+    const walkthroughId = await createWalkthrough(t, companyA.ownerId, leadWithForeignProperty);
+    expect((await t.run((ctx) => ctx.db.get(walkthroughId)))?.propertyId).toBeUndefined();
     const foreignProperty = await t.run((ctx) => ctx.db.get(foreignPropertyId));
     expect(foreignProperty?.clientRelationshipId).toBeUndefined();
 

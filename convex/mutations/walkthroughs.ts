@@ -408,7 +408,7 @@ async function createRequestWalkthrough(ctx: MutationCtx, args: RequestWalkthrou
     return existing._id;
   }
 
-  await assertLinkedRecords(ctx, request.companyId, { propertyId: request.propertyId });
+  const property = request.propertyId ? await ctx.db.get(request.propertyId) : null;
 
   const leadType = request.leadType;
   const walkthroughType =
@@ -427,7 +427,7 @@ async function createRequestWalkthrough(ctx: MutationCtx, args: RequestWalkthrou
     companyId: request.companyId,
     clientRelationshipId,
     clientRequestId: request._id,
-    propertyId: request.propertyId,
+    propertyId: property?.companyId === request.companyId ? property._id : undefined,
     title: `${request.businessName || request.requesterName} Walkthrough`,
     walkthroughType,
     status: "draft",
