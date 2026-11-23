@@ -215,7 +215,8 @@ Ordinary submission does not automatically report every problem as a red flag. P
 
 **Steps**
 
-1. In the Request's **Walkthrough** section, choose **Schedule Walkthrough**. Enter the date and start time, optional end time, eligible active same-company Owner/Manager assignee, and scheduling notes; save the appointment.
+1. In the request's **Walkthrough** section, choose **Start Now** to open findings immediately or **Schedule Walkthrough** to book a visit. For a booked visit, enter the date and start time. End time, assignee, and notes are optional. **Resume Walkthrough** opens the saved draft. To book an immediate walkthrough later, open **Appointment details**, set the appointment status to **Scheduled**, enter the date and time, and save.
+   A completed walkthrough stays on the request with its proposal actions. Start Now is available when the request has no current walkthrough.
 2. Record the supported property facts, rooms, service/scope findings, estimated effort, staffing/frequency recommendations, and pricing information. Review any linked-property changes before saving.
 3. Save findings, then choose **Mark Completed** when the assessment is finished. Explicitly create the proposal afterward; completion does not send one.
 4. To reschedule, edit and save the appointment. To cancel the appointment, change its appointment status to Cancelled and save. Archiving the assessment is a separate action.

@@ -3188,6 +3188,8 @@
     "startNow": "Start Now",
     "resume": "Resume Walkthrough",
     "startFailed": "Could not start the walkthrough. Try again.",
+    "appointmentDetails": "Appointment details",
+    "completedRequestHelp": "This request already has a completed walkthrough. Start Now is available when there is no current walkthrough.",
     "completed": "Walkthrough completed",
     "archived": "Walkthrough archived",
     "actionFailed": "Failed to update walkthrough",

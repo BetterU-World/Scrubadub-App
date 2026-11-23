@@ -3189,6 +3189,8 @@
     "startNow": "Empezar ahora",
     "resume": "Continuar recorrido",
     "startFailed": "No se pudo iniciar el recorrido. Inténtalo de nuevo.",
+    "appointmentDetails": "Detalles de la cita",
+    "completedRequestHelp": "Esta solicitud ya tiene un recorrido completado. Puedes empezar ahora si no hay un recorrido vigente.",
     "completed": "Recorrido completado",
     "archived": "Recorrido archivado",
     "actionFailed": "No se pudo actualizar el recorrido",

@@ -84,6 +84,39 @@ describe("walkthrough reliability", () => {
     expect(await t.run(ctx => ctx.db.get(proposalId))).toMatchObject({ sourceWalkthroughId: id, scopeOfWork: "Clean the kitchen" });
     await t.mutation(api.mutations.walkthroughs.complete, { ...auth, walkthroughId: id });
     expect(await t.run(ctx => ctx.db.get(id))).toMatchObject({ status: "proposal_created", completedAt: completed?.completedAt });
+    const historical = await t.run(ctx => ctx.db.get(id));
+    await expect(t.mutation(api.mutations.walkthroughs.startFromClientRequest, args)).rejects.toThrow("completed or cancelled");
+    expect(await t.run(ctx => ctx.db.get(id))).toEqual(historical);
+    expect(await t.run(ctx => ctx.db.get(proposalId))).toMatchObject({ sourceWalkthroughId: id });
+  });
+
+  it("puts a started visit on the calendar only after scheduling and reflects edits and cancellation", async () => {
+    const t = convexTest(schema, modules);
+    const s = await seed(t, "start-calendar");
+    const auth = { userId: s.ownerId, sessionToken: s.sessionToken };
+    const walkthroughId = await t.mutation(api.mutations.walkthroughs.startFromClientRequest, { ...auth, clientRequestId: s.requestId });
+    const edit = { ...auth, walkthroughId, clientRequestId: s.requestId, propertyId: s.propertyId,
+      title: "Site visit", walkthroughType: "residential" as const };
+    const calendar = () => t.query(api.queries.walkthroughs.listCalendarWalkthroughs, {
+      ...auth, companyId: s.companyId, startDate: "2030-01-01", endDate: "2030-01-31",
+    });
+    const planned = { scheduledDate: "2030-01-10", scheduledStartTime: "09:00", scheduledEndTime: "10:00" };
+    await t.mutation(api.mutations.walkthroughs.update, { ...edit, ...planned, appointmentStatus: "draft" });
+    expect(await calendar()).toEqual([]);
+    await t.mutation(api.mutations.walkthroughs.update, { ...edit, ...planned, appointmentStatus: "scheduled" });
+    expect(await calendar()).toEqual([expect.objectContaining({ _id: walkthroughId, ...planned })]);
+    const rescheduled = { ...planned, scheduledEndTime: "11:00" };
+    await t.mutation(api.mutations.walkthroughs.update, { ...edit, ...rescheduled, appointmentStatus: "scheduled" });
+    expect(await calendar()).toEqual([expect.objectContaining({ _id: walkthroughId, ...rescheduled })]);
+    const saved = await t.run(ctx => ctx.db.get(walkthroughId));
+    expect(saved?.rescheduledAt).toEqual(expect.any(Number));
+    await t.mutation(api.mutations.walkthroughs.update, { ...edit, ...rescheduled, appointmentStatus: "cancelled" });
+    expect(await calendar()).toEqual([]);
+    await expect(t.mutation(api.mutations.walkthroughs.complete, { ...auth, walkthroughId })).rejects.toThrow("cannot be completed");
+    await expect(t.mutation(api.mutations.walkthroughs.startFromClientRequest, { ...auth, clientRequestId: s.requestId })).rejects.toThrow("completed or cancelled");
+    await t.mutation(api.mutations.walkthroughs.update, { ...edit, ...planned, appointmentStatus: "scheduled" });
+    await t.mutation(api.mutations.walkthroughs.complete, { ...auth, walkthroughId });
+    expect(await calendar()).toEqual([expect.objectContaining({ _id: walkthroughId, ...planned, appointmentStatus: "completed" })]);
   });
 
   it("allows delegated sales staff and denies invalid sessions, unauthorized staff, and foreign requests", async () => {

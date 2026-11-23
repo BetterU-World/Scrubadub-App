@@ -333,10 +333,12 @@ export function WalkthroughCard({
   }, [walkthrough, loadedId]);
 
   useEffect(() => {
-    if (!openAfterStartId || loadedId !== openAfterStartId || walkthrough?._id !== loadedId) return;
+    if (!openAfterStartId || !walkthroughs?.some((item: any) => item._id === openAfterStartId)) return;
+    if (walkthrough?._id === openAfterStartId && loadedId !== openAfterStartId) return;
     setOpenAfterStartId(null);
-    if (walkthrough.status === "draft") setEditing(true);
-  }, [loadedId, openAfterStartId, walkthrough]);
+    if (walkthrough?._id === openAfterStartId && walkthrough.status === "draft" &&
+        walkthrough.appointmentStatus !== "cancelled") setEditing(true);
+  }, [loadedId, openAfterStartId, walkthrough, walkthroughs]);
 
   useEffect(() => {
     if (editing && walkthrough?.status === "draft" && walkthrough.startedAt != null &&
@@ -739,11 +741,11 @@ export function WalkthroughCard({
         ) : (
           <p className="text-sm text-gray-500">{t("walkthroughs.noneLinked")}</p>
         )
-      ) : editing ? (
+      ) : editing && loadedId === walkthrough._id ? (
         <div className="space-y-4">
-          {walkthrough.startedAt != null && !walkthrough.scheduledDate ? (
+          {walkthrough.startedAt != null && walkthrough.appointmentStatus === "draft" ? (
             <details>
-              <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium text-gray-700">{t("walkthroughs.schedule")}</summary>
+              <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium text-gray-700">{t("walkthroughs.appointmentDetails")}</summary>
               <SchedulingFields form={form} setForm={setForm} managers={walkthroughAssignees ?? []} currentUserId={user?._id} t={t} showStatus />
             </details>
           ) : (
@@ -1092,6 +1094,9 @@ export function WalkthroughCard({
             {walkthrough.scopeNotes && <div className="rounded-md bg-white/70 p-3 text-sm text-gray-700"><p className="font-medium">{t("walkthroughs.fields.scopeNotes")}</p><p className="mt-1 whitespace-pre-wrap">{walkthrough.scopeNotes}</p>{walkthrough.proposalReadyScopeText === walkthrough.scopeNotes.trim() && <p className="mt-2 text-xs text-primary-700">{t("walkthroughs.scopeProposalReadyConfirmed")}</p>}</div>}
             {walkthrough.proposalNotes && <p className="whitespace-pre-wrap rounded-md bg-white/70 p-3 text-sm text-gray-700">{walkthrough.proposalNotes}</p>}
           </div>
+          {allowCreate && (walkthrough.status === "completed" || walkthrough.status === "proposal_created") && (
+            <p className="text-sm text-gray-600">{t("walkthroughs.completedRequestHelp")}</p>
+          )}
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => {
               setForm(formFromWalkthrough(walkthrough));

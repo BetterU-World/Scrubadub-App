@@ -401,7 +401,12 @@ async function createRequestWalkthrough(ctx: MutationCtx, args: RequestWalkthrou
       .order("desc").first())
   );
   const existing = selectRequestWalkthrough(candidates.filter((row): row is Doc<"walkthroughs"> => row !== null));
-  if (existing) return existing._id;
+  if (existing) {
+    if (!schedule && (existing.status !== "draft" || existing.appointmentStatus === "cancelled")) {
+      throw new Error("This request already has a completed or cancelled walkthrough");
+    }
+    return existing._id;
+  }
 
   await assertLinkedRecords(ctx, request.companyId, { propertyId: request.propertyId });
 
@@ -501,12 +506,15 @@ export const update = mutation({
     }
 
     const wasScheduled = walkthrough.appointmentStatus === "scheduled";
-    const scheduleChanged = walkthrough.scheduledDate !== args.scheduledDate || walkthrough.scheduledStartTime !== args.scheduledStartTime;
+    const patch = buildWalkthroughPatch(args);
+    const scheduleChanged = walkthrough.scheduledDate !== patch.scheduledDate ||
+      walkthrough.scheduledStartTime !== patch.scheduledStartTime ||
+      walkthrough.scheduledEndTime !== patch.scheduledEndTime;
     await ctx.db.patch(args.walkthroughId, {
       clientRequestId: args.clientRequestId,
-      ...buildWalkthroughPatch(args),
+      ...patch,
       scheduledAt: !wasScheduled && args.appointmentStatus === "scheduled" ? Date.now() : walkthrough.scheduledAt,
-      rescheduledAt: wasScheduled && scheduleChanged ? Date.now() : walkthrough.rescheduledAt,
+      rescheduledAt: wasScheduled && args.appointmentStatus === "scheduled" && scheduleChanged ? Date.now() : walkthrough.rescheduledAt,
       cancelledAt: args.appointmentStatus === "cancelled" ? Date.now() : walkthrough.cancelledAt,
       updatedAt: Date.now(),
     });
