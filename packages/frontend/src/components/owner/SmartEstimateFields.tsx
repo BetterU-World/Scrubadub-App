@@ -38,7 +38,7 @@ export function SmartEstimateFields({ input, onChange, facts }: {
     }) : isPropertyFact && facts ? t(`smartEstimates.missingFacts.${field}`) : undefined;
     const alternative = suggestion?.alternative;
     return <div className="min-w-0" key={field}>
-      <EstimateNumber label={`smartEstimates.fields.${field}`} value={input[field]} scale={scale} hint={hint}
+      <EstimateNumber label={field === "baseCents" && input.strategy === "flat" ? "smartEstimates.fields.flatBase" : `smartEstimates.fields.${field}`} value={input[field]} scale={scale} hint={hint}
         onChange={value => onChange({ ...input, [field]: value })} />
       {suggestion && input[field] !== undefined && input[field] !== suggestion.value &&
         <p className="mt-1 text-xs text-gray-600">{t("smartEstimates.quoteFactDiffers")}</p>}

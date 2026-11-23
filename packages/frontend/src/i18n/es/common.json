@@ -17,6 +17,7 @@
     "monthly": "Mensual",
     "fields": {
       "baseCents": "Precio base (USD)",
+      "flatBase": "Tarifa fija (USD, obligatoria)",
       "minimumCents": "Base mínima (USD, opcional)",
       "areaHundredths": "Pies cuadrados que se limpiarán",
       "areaRateHundredthCents": "Precio por pie cuadrado (USD)",
@@ -26,7 +27,7 @@
       "bathHalves": "Baños (se permiten medios baños)",
       "bedroomRateCents": "Precio por habitación (USD)",
       "bathroomRateCents": "Precio por baño completo (USD)",
-      "override": "Precio base manual (USD, opcional)"
+      "override": "Ajustar el precio calculado (USD, opcional)"
     },
     "sources": {
       "walkthrough": "la visita de evaluación",
@@ -62,7 +63,11 @@
     "addOns": "Servicios adicionales de la propuesta",
     "reviewAddOns": "Revisar adicionales en la propuesta",
     "unfinishedAddOns": "Confirma los precios de los adicionales con tarifa inicial en la propuesta.",
-    "noProposal": "Puedes guardar antes de crear una propuesta. Revisa los servicios adicionales cuando esté disponible.",
+    "noProposal": "Puedes guardar y aprobar el precio ahora. Para aplicarlo, crea una propuesta en la solicitud y vuelve para revisar sus adicionales.",
+    "flatInputMissing": "Ingresa la tarifa fija antes de aprobar. Escribe 0 si la base es gratis. El ajuste opcional modifica un precio calculado.",
+    "saveBeforeApproval": "Guarda la estimación para poder aprobar el precio.",
+    "proposalNotEditable": "La propuesta debe ser un borrador editable para aprobar o aplicar su precio.",
+    "reopenDraft": "La estimación guardada cambió. Ciérrala y vuelve a abrirla para revisar el borrador actual.",
     "profile": "Perfil de precios",
     "manual": "Estimación manual",
     "savedProfile": "{{name}} (versión guardada)",
@@ -2231,7 +2236,7 @@
     "title": "Propuesta",
     "description": "Propuesta estándar de SCRUB para este prospecto",
     "emptyDesc": "Crea una propuesta simple para este prospecto.",
-    "directHelp": "Elige Crear propuesta para cotizar desde esta solicitud. El recorrido es opcional.",
+    "directHelp": "Crea una cotización desde esta solicitud. Crear estimación te ayuda a calcular el precio y Empezar ahora inicia un recorrido opcional.",
     "directSource": "Se creó desde esta solicitud sin un recorrido.",
     "createFromWalkthrough": "Crear desde el recorrido",
     "archivedCreateBlocked": "Puedes abrir propuestas existentes en una solicitud archivada. La creación de propuestas nuevas no está disponible.",
@@ -3254,6 +3259,8 @@
     "startNow": "Empezar ahora",
     "resume": "Continuar recorrido",
     "startFailed": "No se pudo iniciar el recorrido. Inténtalo de nuevo.",
+    "startUnavailable": "Empezar ahora no está disponible temporalmente en el servidor. Tu solicitud sigue igual.",
+    "startConflict": "Esta solicitud ya tiene un recorrido completado o cancelado. Vuelve a abrir la solicitud para revisarlo.",
     "appointmentDetails": "Detalles de la cita",
     "completedRequestHelp": "Esta solicitud ya tiene un recorrido completado. Puedes empezar ahora si no hay un recorrido vigente.",
     "completed": "Recorrido completado",

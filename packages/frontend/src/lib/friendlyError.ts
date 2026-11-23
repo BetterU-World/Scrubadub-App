@@ -59,6 +59,8 @@ export function toFriendlyMessage(
   if (/invalid or expired reset token/i.test(raw)) return translate?.("errors.resetLinkExpired") ?? fallback;
   if (/invalid email address/i.test(raw)) return translate?.("auth.invalidEmail") ?? fallback;
   if (/assigned manager is invalid/i.test(raw)) return translate?.("walkthroughs.invalidAssignee") ?? fallback;
+  if (/could not find public function[^\n]*startFromClientRequest/i.test(raw)) return translate?.("walkthroughs.startUnavailable") ?? fallback;
+  if (/request already has a completed or cancelled walkthrough/i.test(raw)) return translate?.("walkthroughs.startConflict") ?? fallback;
   if (/select a walkthrough date and start time|date and start time/i.test(raw)) return translate?.("walkthroughs.scheduleRequired") ?? fallback;
   if (/property address is required/i.test(raw)) return translate?.("walkthroughs.propertyAddressRequired") ?? fallback;
   if (/session required/i.test(raw)) return translate?.("walkthroughs.sessionExpired") ?? fallback;

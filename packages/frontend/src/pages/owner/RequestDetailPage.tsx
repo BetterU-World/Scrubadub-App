@@ -1215,6 +1215,8 @@ export function RequestDetailPage() {
             <p className="rounded-md bg-gray-50 p-3 text-sm text-gray-600">
               {t(canStartProposal ? "proposals.directHelp" : "proposals.archivedCreateBlocked")}
             </p>
+            {canStartProposal && <RequestProposalAction exists={false} creating={creatingProposal} secondary
+              onClick={() => void handleCreateProposal()} />}
             {canStartProposal && showAssessmentPicker && <div className="space-y-3">
               {eligibleProposalWalkthroughs.length > 1 && (
                 <label className="block text-sm font-medium text-gray-700">

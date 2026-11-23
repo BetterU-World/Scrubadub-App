@@ -17,6 +17,7 @@
     "monthly": "Monthly",
     "fields": {
       "baseCents": "Base price (USD)",
+      "flatBase": "Flat price (USD, required)",
       "minimumCents": "Minimum base (USD, optional)",
       "areaHundredths": "Cleanable square feet",
       "areaRateHundredthCents": "Price per square foot (USD)",
@@ -26,7 +27,7 @@
       "bathHalves": "Bathrooms (half baths allowed)",
       "bedroomRateCents": "Price per bedroom (USD)",
       "bathroomRateCents": "Price per full bathroom (USD)",
-      "override": "Override base (USD, optional)"
+      "override": "Override calculated price (USD, optional)"
     },
     "sources": {
       "walkthrough": "walkthrough",
@@ -62,7 +63,11 @@
     "addOns": "Proposal add-ons",
     "reviewAddOns": "Review add-ons in proposal",
     "unfinishedAddOns": "Finalize starting-at add-on prices in the proposal.",
-    "noProposal": "You can save before creating a proposal. Review add-ons once a proposal is available.",
+    "noProposal": "You can save and approve pricing now. To apply it, create a proposal on the request and return here to review its add-ons.",
+    "flatInputMissing": "Enter the flat price before approving. Enter 0 for a no-charge base. The optional override adjusts a calculated price.",
+    "saveBeforeApproval": "Save the estimate to enable price approval.",
+    "proposalNotEditable": "This proposal must be an editable draft to approve or apply pricing for it.",
+    "reopenDraft": "The saved estimate changed. Close and reopen it to review the current draft.",
     "profile": "Pricing profile",
     "manual": "Manual estimate",
     "savedProfile": "{{name}} (saved revision)",
@@ -2230,7 +2235,7 @@
     "title": "Proposal",
     "description": "SCRUB-standard proposal for this lead",
     "emptyDesc": "Create a simple proposal for this lead.",
-    "directHelp": "Choose Create Proposal to quote from this request. A walkthrough is optional.",
+    "directHelp": "Create a quote directly from this request. Build Estimate helps calculate pricing, and Start Now is for an optional walkthrough.",
     "directSource": "Started from this request without a walkthrough.",
     "createFromWalkthrough": "Create from walkthrough",
     "archivedCreateBlocked": "You can open existing proposals on an archived request. Creating a new proposal is unavailable.",
@@ -3253,6 +3258,8 @@
     "startNow": "Start Now",
     "resume": "Resume Walkthrough",
     "startFailed": "Could not start the walkthrough. Try again.",
+    "startUnavailable": "Start Now is temporarily unavailable on the server. Your request is unchanged.",
+    "startConflict": "This request already has a completed or cancelled walkthrough. Reopen the request to review it.",
     "appointmentDetails": "Appointment details",
     "completedRequestHelp": "This request already has a completed walkthrough. Start Now is available when there is no current walkthrough.",
     "completed": "Walkthrough completed",

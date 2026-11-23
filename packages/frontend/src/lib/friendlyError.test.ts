@@ -9,6 +9,14 @@ function translate(dictionary: Record<string, any>) {
   return (key: string) => key.split(".").reduce<any>((value, part) => value?.[part], dictionary) as string;
 }
 
+it.each([en, es])("explains the missing Start Now function without suggesting an appointment", dictionary => {
+  const t = translate(dictionary);
+  const unavailable = new Error("[CONVEX M(mutations/walkthroughs:startFromClientRequest)] Could not find public function for 'mutations/walkthroughs:startFromClientRequest'.");
+  expect(toFriendlyMessage(unavailable, "fallback", t)).toBe(t("walkthroughs.startUnavailable"));
+  const conflict = new Error("This request already has a completed or cancelled walkthrough");
+  expect(toFriendlyMessage(conflict, "fallback", t)).toBe(t("walkthroughs.startConflict"));
+});
+
 it.each([en, es])("localizes branded send denials through either Convex error transport", dictionary => {
   const t = translate(dictionary);
   const code = "BRANDED_PROPOSAL_AUTHORING_REQUIRED";
