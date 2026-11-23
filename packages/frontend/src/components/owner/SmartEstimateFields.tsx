@@ -1,7 +1,6 @@
 import { useTranslation } from "react-i18next";
 import type { EstimateInput } from "../../../../../convex/lib/smartEstimatePricing";
-
-export type EstimateFacts = Partial<Record<"areaHundredths" | "bedrooms" | "bathHalves", { value: number; source: "walkthrough" | "property" }>>;
+import type { EstimateFacts } from "../../../../../convex/lib/estimatePropertyFacts";
 const strategies: EstimateInput["strategy"][] = ["flat", "square_feet", "hourly", "rooms"];
 
 export function changeEstimateStrategy(input: EstimateInput, strategy: EstimateInput["strategy"]): EstimateInput {
@@ -31,10 +30,25 @@ export function SmartEstimateFields({ input, onChange, facts }: {
 }) {
   const { t, i18n } = useTranslation();
   function number(field: Exclude<keyof EstimateInput, "strategy" | "cadence">, scale: number) {
-    const prefill = field === "areaHundredths" || field === "bedrooms" || field === "bathHalves" ? facts?.[field] : undefined;
-    return <EstimateNumber key={field} label={`smartEstimates.fields.${field}`} value={input[field]} scale={scale}
-      hint={prefill ? t("smartEstimates.prefill", { value: new Intl.NumberFormat(i18n.language).format(prefill.value / scale), source: t(`smartEstimates.sources.${prefill.source}`) }) : undefined}
-      onChange={value => onChange({ ...input, [field]: value })} />;
+    const isPropertyFact = field === "areaHundredths" || field === "bedrooms" || field === "bathHalves";
+    const suggestion = isPropertyFact ? facts?.[field] : undefined;
+    const format = (value: number) => new Intl.NumberFormat(i18n.language).format(value / scale);
+    const hint = suggestion ? t("smartEstimates.prefill", {
+      value: format(suggestion.value), source: t(`smartEstimates.sources.${suggestion.source}`),
+    }) : isPropertyFact && facts ? t(`smartEstimates.missingFacts.${field}`) : undefined;
+    const alternative = suggestion?.alternative;
+    return <div className="min-w-0" key={field}>
+      <EstimateNumber label={`smartEstimates.fields.${field}`} value={input[field]} scale={scale} hint={hint}
+        onChange={value => onChange({ ...input, [field]: value })} />
+      {suggestion && input[field] !== undefined && input[field] !== suggestion.value &&
+        <p className="mt-1 text-xs text-gray-600">{t("smartEstimates.quoteFactDiffers")}</p>}
+      {field === "areaHundredths" && suggestion && <p className="mt-1 text-xs text-gray-600">{t("smartEstimates.areaHelp")}</p>}
+      {field === "bedrooms" && suggestion?.source === "property" && <p className="mt-1 text-xs text-gray-600">{t("smartEstimates.roomListHelp")}</p>}
+      {alternative && <button type="button" className="btn-secondary mt-2 w-full whitespace-normal text-xs sm:w-auto"
+        disabled={input[field] === alternative.value} onClick={() => onChange({ ...input, [field]: alternative.value })}>
+        {t("smartEstimates.useWalkthroughFact", { value: format(alternative.value) })}
+      </button>}
+    </div>;
   }
   return <div className="grid gap-3 sm:grid-cols-2">
     <label className="block text-sm font-medium">{t("smartEstimates.strategy")}

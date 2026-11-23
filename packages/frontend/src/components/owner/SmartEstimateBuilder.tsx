@@ -8,6 +8,7 @@ import { calculateEstimate, MissingEstimateInput, validateEstimateHandoff, type 
 import { calculateProposalTotals, proposalAddOnLineAmount } from "../../../../../convex/lib/proposalAddOnLineItems";
 import { DialogShell } from "@/components/ui/DialogShell";
 import { EstimateNumber, SmartEstimateFields } from "./SmartEstimateFields";
+import { estimateFactScales } from "../../../../../convex/lib/estimatePropertyFacts";
 
 export type EstimateAuth = { userId: Id<"users">; sessionToken: string };
 type Workspace = FunctionReturnType<typeof api.queries.smartEstimatePreview.workspace>;
@@ -152,7 +153,9 @@ function BuilderForm({ workspace, profiles, auth, clientRequestId, proposalDirty
   }
 
   return <DialogShell open onOpenChange={open => !open && onClose()} title={t("smartEstimates.title")}
-    description={workspace.address ? <>{t("smartEstimates.privateHelp")} <span className="mt-1 block break-words">{workspace.address}</span></> : t("smartEstimates.privateHelp")}
+    description={workspace.address ? <>{t("smartEstimates.privateHelp")} <span className="mt-1 block break-words">
+      {workspace.address} · {t(`smartEstimates.sources.${workspace.addressSource ?? "request"}`)}
+    </span></> : t("smartEstimates.privateHelp")}
     className="max-w-2xl" pending={busy} closeOnOutsideClick={false}
     footer={<>
       <button type="button" className="btn-secondary" disabled={busy || !!workspace.replacement || (!dirty && !workspace.propertyChanged)} onClick={() => void submit("save")}>{t("smartEstimates.save")}</button>
@@ -163,10 +166,10 @@ function BuilderForm({ workspace, profiles, auth, clientRequestId, proposalDirty
       {workspace.replacement && <section className="space-y-2 rounded-lg bg-amber-50 p-3 text-sm">
         <p>{t("smartEstimates.replacementHelp", { title: workspace.replacement.title })}</p>
         <ul className="space-y-1">
-          {(["areaHundredths", "bedrooms", "bathHalves"] as const).map(field => {
+          {(Object.keys(estimateFactScales) as Array<keyof typeof estimateFactScales>).map(field => {
             const fact = facts[field];
             if (!fact) return null;
-            const scale = field === "areaHundredths" ? 100 : field === "bathHalves" ? 2 : 1;
+            const scale = estimateFactScales[field];
             return <li key={field}>{t(`smartEstimates.fields.${field}`)} · {t("smartEstimates.prefill", {
               value: new Intl.NumberFormat(i18n.language).format(fact.value / scale),
               source: t(`smartEstimates.sources.${fact.source}`),
@@ -186,6 +189,15 @@ function BuilderForm({ workspace, profiles, auth, clientRequestId, proposalDirty
         </select>
       </label>
       <SmartEstimateFields input={input} facts={facts} onChange={value => { setInput(value); markEdited(); }} />
+      <p className="text-xs text-gray-600">{t("smartEstimates.quoteFactsHelp")}</p>
+      {input.strategy === "hourly" && workspace.walkthroughLabor && <div className="space-y-1 text-sm">
+        <p>{t("smartEstimates.walkthroughLabor", workspace.walkthroughLabor)}</p>
+        <button type="button" className="btn-secondary w-full whitespace-normal text-sm sm:w-auto" onClick={() => {
+          const { visitHours, cleaners } = workspace.walkthroughLabor!;
+          setInput(previous => ({ ...previous, laborMinutes: Math.round(visitHours * cleaners * 60) }));
+          markEdited();
+        }}>{t("smartEstimates.useWalkthroughLabor")}</button>
+      </div>}
       {Object.values(facts).some(Boolean) && <button type="button" className="btn-secondary text-sm" onClick={() => {
         setInput(previous => ({ ...previous, areaHundredths: facts.areaHundredths?.value ?? previous.areaHundredths,
           bedrooms: facts.bedrooms?.value ?? previous.bedrooms, bathHalves: facts.bathHalves?.value ?? previous.bathHalves }));

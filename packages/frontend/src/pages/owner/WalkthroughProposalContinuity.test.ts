@@ -59,14 +59,17 @@ describe("walkthrough to proposal continuity", () => {
     const email = "owner-walkthrough@example.com";
     const password = "walkthrough-test-password";
     const passwordHash = await hashPassword(password);
-    const { userId, clientRequestId } = await t.run(async ctx => {
+    const { userId, clientRequestId, propertyId } = await t.run(async ctx => {
       const companyId = await ctx.db.insert("companies", { name: "Walkthroughs", timezone: "America/New_York" });
       const userId = await ctx.db.insert("users", { companyId, email, passwordHash, name: "Owner", role: "owner", status: "active" });
+      const propertyId = language === "es" ? await ctx.db.insert("properties", {
+        companyId, name: "Test property", address: "11 Current Street", type: "residential", amenities: [], active: true,
+      }) : undefined;
       const clientRequestId = await ctx.db.insert("clientRequests", {
         companyId, requesterName: "Test client", requesterEmail: "client@example.com",
-        propertySnapshot: {}, status: "new", source: "manual", createdAt: Date.now(),
+        propertyId, propertySnapshot: {}, status: "new", source: "manual", createdAt: Date.now(),
       });
-      return { userId, clientRequestId };
+      return { userId, clientRequestId, propertyId };
     });
     const { sessionToken } = await t.action(api.authActions.signIn, { email, password });
     mocks.userId = userId;
@@ -92,12 +95,17 @@ describe("walkthrough to proposal continuity", () => {
         await mocks.createProposal.mock.results[0].value;
       });
       expect(mocks.createProposal).toHaveBeenCalledExactlyOnceWith(queryArgs);
+      if (propertyId) {
+        const id = await mocks.createProposal.mock.results[0].value;
+        await t.run(ctx => ctx.db.patch("walkthroughs", id, { bedrooms: 2, bathrooms: 1.5, squareFootage: 750 }));
+      }
       mocks.walkthroughs = await t.query(api.queries.walkthroughs.listByClientRequest, queryArgs);
       const started = mocks.walkthroughs[0];
       await act(async () => root.render(view()));
       const focused = document.activeElement;
       expect(focused?.textContent).toBe(labels.walkthroughs.findings);
       expect(container.querySelector("details")?.open).toBe(false);
+      if (propertyId) expect(container.textContent).toContain(labels.walkthroughs.observedFactsHelp);
       const scope = Array.from(container.querySelectorAll("label")).find(field =>
         field.textContent?.includes(labels.walkthroughs.fields.scopeNotes))!.querySelector("textarea")!;
       await act(async () => {
@@ -111,12 +119,19 @@ describe("walkthrough to proposal continuity", () => {
       });
       expect(mocks.createProposal).toHaveBeenLastCalledWith(expect.objectContaining({
         walkthroughId: started._id, appointmentStatus: "draft", scopeNotes: "Kitchen findings",
-        scheduledDate: undefined, scheduledStartTime: undefined, scheduledEndTime: undefined,
+        scheduledDate: undefined, scheduledStartTime: undefined, scheduledEndTime: undefined, linkedPropertyFacts: undefined,
       }));
       mocks.walkthroughs = await t.query(api.queries.walkthroughs.listByClientRequest, queryArgs);
       expect(mocks.walkthroughs[0]).toMatchObject({ scopeNotes: "Kitchen findings", startedAt: started.startedAt });
       expect(mocks.walkthroughs[0].scheduledDate).toBeUndefined();
       expect(mocks.walkthroughs[0].scheduledStartTime).toBeUndefined();
+      if (propertyId) {
+        const property = await t.run(ctx => ctx.db.get(propertyId));
+        expect(property?.beds).toBeUndefined();
+        expect(property?.squareFootage).toBeUndefined();
+        expect(property?.baths).toBeUndefined();
+        expect(mocks.walkthroughs[0]).toMatchObject({ bedrooms: 2, bathrooms: 1.5, squareFootage: 750 });
+      }
       await act(async () => root.render(view()));
       expect(button(labels.walkthroughs.startNow)).toBeUndefined();
       await act(async () => button(labels.walkthroughs.resume)!.click());

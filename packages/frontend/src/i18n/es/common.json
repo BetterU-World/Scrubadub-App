@@ -30,10 +30,23 @@
     },
     "sources": {
       "walkthrough": "la visita de evaluación",
-      "property": "la propiedad"
+      "property": "el registro actual de la propiedad",
+      "request": "la solicitud original"
     },
     "prefill": "Valor sugerido de {{source}}: {{value}}",
-    "useFacts": "Usar los datos sugeridos de la propiedad",
+    "useFacts": "Usar los datos sugeridos en esta cotización",
+    "useWalkthroughFact": "Usar el valor del recorrido: {{value}}",
+    "areaHelp": "Confirma que esta sea la superficie que limpiarás. Puedes ajustarla para esta cotización.",
+    "roomListHelp": "Se cuentan las habitaciones registradas. Confirma que la lista cubra las habitaciones de esta cotización.",
+    "missingFacts": {
+      "areaHundredths": "Ingresa la superficie que limpiarás si la conoces.",
+      "bedrooms": "Ingresa el número de habitaciones si lo conoces. El conteo anterior de camas se guarda por separado.",
+      "bathHalves": "Ingresa el número de baños si lo conoces. Por ejemplo, dos baños completos y un medio baño son 2,5."
+    },
+    "walkthroughLabor": "Notas del recorrido: {{visitHours}} horas y {{cleaners}} personas. Confirma que esas horas correspondan a la duración de la visita antes de usar este cálculo.",
+    "useWalkthroughLabor": "Multiplicar horas de visita por personas",
+    "quoteFactsHelp": "Los cambios aquí se aplican a esta cotización. Para corregir el registro permanente, edita la propiedad o el recorrido vinculado.",
+    "quoteFactDiffers": "Esta cotización usa un valor diferente.",
     "replacementHelp": "Esta estimación está vinculada a una visita archivada. Revisa {{title}} a continuación. El cambio conserva los valores que ingresaste y requiere una nueva aprobación.",
     "replaceWalkthrough": "Cambiar a la visita de reemplazo",
     "walkthroughReplaced": "Se cambió la visita. Revisa los datos y vuelve a aprobar el precio.",
@@ -3181,7 +3194,11 @@
   },
   "walkthroughs": {
     "propertyRecord": "Registro de la propiedad",
-    "propertyRecordHelper": "Informacion duradera de la ubicacion de servicio. Los cambios actualizan el registro de la propiedad vinculada.",
+    "propertyRecordHelper": "Guardar cambios en esta sección actualiza el registro permanente de la propiedad. Las observaciones del recorrido se guardan por separado.",
+    "observedFactsHelp": "Observaciones guardadas del recorrido. En la estimación puedes usar una observación en la cotización o conservar el dato actual de la propiedad.",
+    "observedFact": "{{field}}: {{value}}",
+    "legacyBeds": "Conteo anterior de camas",
+    "propertyFactsChanged": "La propiedad se actualizó mientras editabas. Vuelve a abrir el recorrido para revisar los datos actuales.",
     "proposalRecommendations": "Recomendaciones para la propuesta",
     "proposalRecommendationsHelper": "Recomendaciones que pueden ayudar a definir la propuesta y el plan de servicio.",
     "scopeProposalReadyHelper": "Escribe aquí un alcance de servicio apropiado para el cliente. Puede completar una propuesta después de confirmarlo.",

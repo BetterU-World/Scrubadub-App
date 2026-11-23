@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { selectRequestWalkthrough } from "../../../../../convex/lib/walkthroughSelection";
+import { estimateFactScales, resolveEstimatePropertyFacts } from "../../../../../convex/lib/estimatePropertyFacts";
 import { useAuth } from "@/hooks/useAuth";
 import { toFriendlyMessage } from "../../lib/friendlyError";
 import { Archive, Check, ClipboardCheck, Plus, Save, Trash2, X } from "lucide-react";
@@ -199,34 +200,43 @@ function formFromWalkthrough(walkthrough: any) {
   };
 }
 
-function legacyStructuredValue(walkthrough: any, key: string) {
-  const response = (walkthrough.structuredResponses ?? []).find((item: any) => item.key === key);
-  return response?.numberValue ?? response?.textValue ?? response?.stringValues;
-}
-
 function propertyFormFromWalkthrough(walkthrough: any) {
   const property = walkthrough.property;
-  const numberValue = (canonical: number | undefined, topLevel: number | undefined, key?: string) => {
-    const value = canonical ?? (key ? legacyStructuredValue(walkthrough, key) : undefined) ?? topLevel;
-    return value != null ? String(value) : "";
-  };
-  const stringValue = (canonical: string | undefined, topLevel: string | undefined, key?: string) =>
-    canonical?.trim() ? canonical : (key ? legacyStructuredValue(walkthrough, key) : undefined) || topLevel || "";
-  const canonicalAmenities = property?.amenities;
-  const legacyAmenities = legacyStructuredValue(walkthrough, "amenities");
+  const numberValue = (value?: number) => value == null ? "" : String(value);
   return {
-    address: stringValue(property?.address, walkthrough.address),
-    squareFootage: numberValue(property?.squareFootage, walkthrough.squareFootage),
-    beds: numberValue(property?.beds, walkthrough.bedrooms, "bedCount"),
-    baths: numberValue(property?.baths, walkthrough.bathrooms),
-    amenities: canonicalAmenities?.length ? canonicalAmenities : Array.isArray(legacyAmenities) ? legacyAmenities : [],
-    accessInstructions: stringValue(property?.accessInstructions, undefined, "accessInstructions"),
-    pillowCount: numberValue(property?.pillowCount, undefined, "pillowCount"),
-    sheetSets: numberValue(property?.sheetSets, undefined, "sheetSets"),
-    towelCount: numberValue(property?.towelCount, undefined, "towelCount"),
-    restroomCount: numberValue(property?.restroomCount, undefined, "restroomCount"),
-    trashCanCount: numberValue(property?.trashCanCount, undefined, "trashCanCount"),
+    address: property?.address ?? "",
+    squareFootage: numberValue(property?.squareFootage),
+    beds: numberValue(property?.beds),
+    baths: numberValue(property?.baths),
+    amenities: property?.amenities ?? [],
+    accessInstructions: property?.accessInstructions ?? "",
+    pillowCount: numberValue(property?.pillowCount),
+    sheetSets: numberValue(property?.sheetSets),
+    towelCount: numberValue(property?.towelCount),
+    restroomCount: numberValue(property?.restroomCount),
+    trashCanCount: numberValue(property?.trashCanCount),
   };
+}
+
+function StoredWalkthroughFacts({ walkthrough }: { walkthrough: any }) {
+  const { t, i18n } = useTranslation();
+  const facts = resolveEstimatePropertyFacts(walkthrough.property, walkthrough);
+  const labels = { areaHundredths: "squareFootage", bedrooms: "bedrooms", bathHalves: "bathrooms" } as const;
+  const differences = (Object.keys(estimateFactScales) as Array<keyof typeof estimateFactScales>).flatMap(field => {
+    const fact = facts[field];
+    const saved = fact?.alternative ?? (fact?.source === "walkthrough" ? fact : undefined);
+    return saved ? [t("walkthroughs.observedFact", {
+      field: t(`walkthroughs.fields.${labels[field]}`),
+      value: new Intl.NumberFormat(i18n?.language).format(saved.value / estimateFactScales[field]),
+    })] : [];
+  });
+  if (walkthrough.address?.trim() && walkthrough.address.trim() !== walkthrough.property.address?.trim()) {
+    differences.push(t("walkthroughs.observedFact", { field: t("walkthroughs.fields.address"), value: walkthrough.address }));
+  }
+  return differences.length > 0 && <div className="space-y-1 text-xs text-gray-600">
+    <p>{t("walkthroughs.observedFactsHelp")}</p>
+    <ul className="list-disc space-y-1 pl-4">{differences.map(item => <li className="break-words" key={item}>{item}</li>)}</ul>
+  </div>;
 }
 
 function SchedulingFields({ form, setForm, managers, currentUserId, t, showStatus = false }: any) {
@@ -263,6 +273,7 @@ export function WalkthroughCard({
   const findingsHeading = useRef<HTMLHeadingElement>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [propertyForm, setPropertyForm] = useState(EMPTY_PROPERTY_FORM);
+  const propertyBaseline = useRef(EMPTY_PROPERTY_FORM);
 
   const byClientRequest = useQuery(
     (api as any).queries.walkthroughs.listByClientRequest,
@@ -327,7 +338,8 @@ export function WalkthroughCard({
   useEffect(() => {
     if (!walkthrough || walkthrough._id === loadedId) return;
     setForm(formFromWalkthrough(walkthrough));
-    if (walkthrough.property) setPropertyForm(propertyFormFromWalkthrough(walkthrough));
+    propertyBaseline.current = propertyFormFromWalkthrough(walkthrough);
+    setPropertyForm(propertyBaseline.current);
     setLoadedId(walkthrough._id);
     setEditing(false);
   }, [walkthrough, loadedId]);
@@ -532,6 +544,7 @@ export function WalkthroughCard({
     );
   };
 
+  const hasPropertyChanges = linkedProperty && JSON.stringify(propertyForm) !== JSON.stringify(propertyBaseline.current);
   const payloadFromForm = (current: any) => ({
     userId: user!._id,
     sessionToken,
@@ -583,7 +596,7 @@ export function WalkthroughCard({
       caption: photo.caption || undefined,
       uploadedAt: Date.now(),
     })),
-    linkedPropertyFacts: linkedProperty ? {
+    linkedPropertyFacts: hasPropertyChanges ? {
       address: propertyForm.address,
       squareFootage: optionalNumber(propertyForm.squareFootage, t("walkthroughs.invalidNumber")),
       beds: optionalNumber(propertyForm.beds, t("walkthroughs.invalidNumber")),
@@ -602,14 +615,17 @@ export function WalkthroughCard({
     if (form.appointmentStatus === "scheduled" && (!form.scheduledDate || !form.scheduledStartTime)) {
       throw new Error(t("walkthroughs.scheduleRequired"));
     }
-    if (linkedProperty && !propertyForm.address.trim()) {
+    if (hasPropertyChanges && !propertyForm.address.trim()) {
       throw new Error(t("walkthroughs.propertyAddressRequired"));
+    }
+    if (hasPropertyChanges && JSON.stringify(propertyBaseline.current) !== JSON.stringify(propertyFormFromWalkthrough(walkthrough))) {
+      throw new Error(t("walkthroughs.propertyFactsChanged"));
     }
     return payloadFromForm(walkthrough);
   };
 
   const displayError = (error: unknown, fallback: string) => {
-    if (error instanceof Error && [t("walkthroughs.scheduleRequired"), t("walkthroughs.propertyAddressRequired")].includes(error.message)) return error.message;
+    if (error instanceof Error && [t("walkthroughs.scheduleRequired"), t("walkthroughs.propertyAddressRequired"), t("walkthroughs.propertyFactsChanged")].includes(error.message)) return error.message;
     console.error("Walkthrough action failed", error);
     return toFriendlyMessage(error, fallback, t);
   };
@@ -759,13 +775,14 @@ export function WalkthroughCard({
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="sm:col-span-2"><span className="text-xs font-medium text-gray-600">{t("walkthroughs.fields.address")}</span><input className="input-field mt-1 text-sm" value={propertyForm.address} onChange={(e) => setPropertyForm({ ...propertyForm, address: e.target.value })} /></label>
-                {(["squareFootage", "beds", "baths", "pillowCount", "sheetSets", "towelCount", "restroomCount", "trashCanCount"] as const).map((key) => (
-                  <label key={key}><span className="text-xs font-medium text-gray-600">{t(`properties.${key}`)}</span><input type="number" min="0" className="input-field mt-1 text-sm" value={propertyForm[key]} onChange={(e) => setPropertyForm({ ...propertyForm, [key]: e.target.value })} /></label>
+                {(["squareFootage", "beds", "baths", "pillowCount", "sheetSets", "towelCount", "restroomCount", "trashCanCount"] as const).filter(key => key !== "beds" || !linkedProperty.bedrooms?.length).map((key) => (
+                  <label key={key}><span className="text-xs font-medium text-gray-600">{t(key === "beds" ? "walkthroughs.legacyBeds" : `properties.${key}`)}</span><input type="number" min="0" step={key === "baths" ? "0.5" : key === "squareFootage" ? "0.01" : "1"} className="input-field mt-1 text-sm" value={propertyForm[key]} onChange={(e) => setPropertyForm({ ...propertyForm, [key]: e.target.value })} /></label>
                 ))}
                 <label className="sm:col-span-2"><span className="text-xs font-medium text-gray-600">{t("properties.accessInstructions")}</span><textarea rows={3} className="input-field mt-1 text-sm" value={propertyForm.accessInstructions} onChange={(e) => setPropertyForm({ ...propertyForm, accessInstructions: e.target.value })} /></label>
                 <label className="sm:col-span-2"><span className="text-xs font-medium text-gray-600">{t("properties.amenities")}</span><input className="input-field mt-1 text-sm" value={propertyForm.amenities.join(", ")} onChange={(e) => setPropertyForm({ ...propertyForm, amenities: e.target.value.split(",").map((value) => value.trim()).filter(Boolean) })} /></label>
               </div>
               {linkedProperty.bedrooms?.length > 0 && <div><p className="mb-2 text-xs font-medium text-gray-600">{t("properties.bedroomProfile.title")}</p><BedroomsDisplay bedrooms={linkedProperty.bedrooms} compact /></div>}
+              <StoredWalkthroughFacts walkthrough={walkthrough} />
             </div>
           )}
           <div>
@@ -809,7 +826,7 @@ export function WalkthroughCard({
                 <input
                   type={type}
                   min="0"
-                  step={key === "estimatedMonthlyValue" ? "0.01" : "1"}
+                  step={key === "bathrooms" ? "0.5" : key === "squareFootage" ? "0.01" : "1"}
                   className="input-field mt-1 text-sm"
                   value={(form as any)[key]}
                   onChange={(e) => setForm({ ...form, [key]: e.target.value })}
@@ -1018,11 +1035,12 @@ export function WalkthroughCard({
               <p className="text-xs text-gray-500">{t("walkthroughs.propertyRecordHelper")}</p>
               <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
                 <div className="sm:col-span-3"><p className="text-xs font-medium text-gray-500">{t("walkthroughs.fields.address")}</p><p>{propertyFormFromWalkthrough(walkthrough).address || t("common.unassigned")}</p></div>
-                {(["squareFootage", "beds", "baths", "pillowCount", "sheetSets", "towelCount", "restroomCount", "trashCanCount"] as const).map((key) => <div key={key}><p className="text-xs font-medium text-gray-500">{t(`properties.${key}`)}</p><p>{propertyFormFromWalkthrough(walkthrough)[key] || t("common.unassigned")}</p></div>)}
+                {(["squareFootage", "beds", "baths", "pillowCount", "sheetSets", "towelCount", "restroomCount", "trashCanCount"] as const).filter(key => key !== "beds" || !linkedProperty.bedrooms?.length).map((key) => <div key={key}><p className="text-xs font-medium text-gray-500">{t(key === "beds" ? "walkthroughs.legacyBeds" : `properties.${key}`)}</p><p>{propertyFormFromWalkthrough(walkthrough)[key] || t("common.unassigned")}</p></div>)}
                 <div className="sm:col-span-3"><p className="text-xs font-medium text-gray-500">{t("properties.accessInstructions")}</p><p className="whitespace-pre-wrap">{propertyFormFromWalkthrough(walkthrough).accessInstructions || t("common.unassigned")}</p></div>
                 <div className="sm:col-span-3"><p className="text-xs font-medium text-gray-500">{t("properties.amenities")}</p><p>{propertyFormFromWalkthrough(walkthrough).amenities.join(", ") || t("common.unassigned")}</p></div>
               </div>
               {linkedProperty.bedrooms?.length > 0 && <div className="mt-3"><p className="mb-2 text-xs font-medium text-gray-500">{t("properties.bedroomProfile.title")}</p><BedroomsDisplay bedrooms={linkedProperty.bedrooms} compact /></div>}
+              <StoredWalkthroughFacts walkthrough={walkthrough} />
             </div>
           )}
           <div><h4 className="text-sm font-semibold text-gray-900">{t("walkthroughs.findings")}</h4><p className="text-xs text-gray-500">{t("walkthroughs.findingsHelper")}</p></div>
@@ -1100,7 +1118,8 @@ export function WalkthroughCard({
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => {
               setForm(formFromWalkthrough(walkthrough));
-              if (walkthrough.property) setPropertyForm(propertyFormFromWalkthrough(walkthrough));
+              propertyBaseline.current = propertyFormFromWalkthrough(walkthrough);
+              setPropertyForm(propertyBaseline.current);
               setEditing(true);
             }} className="btn-secondary min-h-11 w-full text-sm sm:w-auto">
               {t(walkthrough.status === "draft" && walkthrough.appointmentStatus !== "cancelled" ? "walkthroughs.resume" : "walkthroughs.edit")}

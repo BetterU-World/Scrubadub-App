@@ -30,10 +30,23 @@
     },
     "sources": {
       "walkthrough": "walkthrough",
-      "property": "property"
+      "property": "current property record",
+      "request": "request intake"
     },
     "prefill": "Suggested from {{source}}: {{value}}",
-    "useFacts": "Use suggested property values",
+    "useFacts": "Use suggested values for this quote",
+    "useWalkthroughFact": "Use walkthrough value: {{value}}",
+    "areaHelp": "Confirm this is the area you will clean. Edit it here for this quote.",
+    "roomListHelp": "This counts listed bedrooms. Check that the list covers the rooms in this quote.",
+    "missingFacts": {
+      "areaHundredths": "Enter the area to clean if known.",
+      "bedrooms": "Enter the bedroom count if known. The legacy bed count is kept separately.",
+      "bathHalves": "Enter the bathroom count if known. For example, two full baths and one half bath is 2.5."
+    },
+    "walkthroughLabor": "Walkthrough planning notes: {{visitHours}} hours and {{cleaners}} cleaners. Confirm the hours describe the length of the visit before using this calculation.",
+    "useWalkthroughLabor": "Use visit hours × cleaners",
+    "quoteFactsHelp": "Changes here apply to this quote. To correct the current property record, edit the property or its linked walkthrough.",
+    "quoteFactDiffers": "This quote uses a different value.",
     "replacementHelp": "This estimate is linked to an archived walkthrough. Review {{title}} below. Switching keeps your entered values and requires a new approval.",
     "replaceWalkthrough": "Switch to replacement walkthrough",
     "walkthroughReplaced": "Walkthrough switched. Review the facts and approve the current price again.",
@@ -3180,7 +3193,11 @@
   },
   "walkthroughs": {
     "propertyRecord": "Property Record",
-    "propertyRecordHelper": "Durable service-location information. Changes here update the linked Property record.",
+    "propertyRecordHelper": "Saving changes in this section updates the permanent property record. Saved walkthrough observations are kept separately.",
+    "observedFactsHelp": "Saved walkthrough observations. In Smart Estimates you can use an observation for a quote or keep the current property value.",
+    "observedFact": "{{field}}: {{value}}",
+    "legacyBeds": "Legacy bed count",
+    "propertyFactsChanged": "The property was updated while you were editing. Reopen the walkthrough to review the current property facts.",
     "proposalRecommendations": "Proposal Recommendations",
     "proposalRecommendationsHelper": "Recommendations that can help shape the proposal and service plan.",
     "scopeProposalReadyHelper": "Write client-appropriate service scope here. It can prefill a proposal after you confirm it.",

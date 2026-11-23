@@ -341,8 +341,9 @@ export function PropertyFormPage() {
         {type !== "commercial" && type !== "office" && (
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">{t("properties.beds")}</label>
+            <label htmlFor="property-legacy-beds" className="block text-sm font-medium text-gray-700 mb-1">{t(bedrooms.length ? "properties.beds" : "walkthroughs.legacyBeds")}</label>
             <input
+              id="property-legacy-beds"
               type="number"
               min={0}
               disabled={bedrooms.length > 0}
@@ -351,6 +352,7 @@ export function PropertyFormPage() {
               onChange={(e) => setBeds(e.target.value ? parseInt(e.target.value, 10) : undefined)}
               placeholder="0"
             />
+            {!bedrooms.length && <p className="mt-1 text-xs text-gray-600">{t("smartEstimates.missingFacts.bedrooms")}</p>}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">{t("properties.baths")}</label>
