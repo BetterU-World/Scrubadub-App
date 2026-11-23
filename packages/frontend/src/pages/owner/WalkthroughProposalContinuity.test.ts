@@ -36,6 +36,7 @@ vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) =>
 }) }));
 
 import { WalkthroughCard } from "../../components/owner/WalkthroughCard";
+import { RequestProposalAction } from "../../components/owner/RequestProposalAction";
 
 const completedWalkthroughs = mocks.walkthroughs;
 const modules = import.meta.glob("../../../../../convex/**/*.ts");
@@ -50,6 +51,31 @@ afterEach(() => {
 });
 
 describe("walkthrough to proposal continuity", () => {
+  it.each([["en", en], ["es", es]] as const)("creates or opens a request proposal using the same %s mobile action", async (locale, labels) => {
+    mocks.language = locale;
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    const create = vi.fn();
+    const open = vi.fn();
+    try {
+      await act(async () => root.render(createElement(RequestProposalAction, { exists: false, creating: false, onClick: create })));
+      const button = container.querySelector("button")!;
+      expect(button.textContent).toContain(labels.proposals.create);
+      expect(button.className).toContain("min-h-11 w-full");
+      await act(async () => button.click());
+      expect(create).toHaveBeenCalledOnce();
+      await act(async () => root.render(createElement(RequestProposalAction, { exists: false, creating: true, onClick: create })));
+      expect(button.disabled).toBe(true);
+      await act(async () => root.render(createElement(RequestProposalAction, { exists: true, creating: false, onClick: open })));
+      expect(button.textContent).toContain(labels.proposals.open);
+      await act(async () => button.click());
+      expect(open).toHaveBeenCalledOnce();
+      expect(create).toHaveBeenCalledOnce();
+    } finally {
+      await act(async () => root.unmount());
+    }
+  });
   it.each([["en", en], ["es", es]] as const)("supports starting and resuming from stacked %s mobile controls", async (language, labels) => {
     mocks.language = language;
     mocks.walkthroughs = [];
@@ -143,7 +169,7 @@ describe("walkthrough to proposal continuity", () => {
     }
   });
 
-  it("offers an explicit Create Proposal action after completion", () => {
+  it("offers a walkthrough-sourced proposal action after completion", () => {
     mocks.createProposal.mockClear();
     const html = renderToStaticMarkup(createElement(WalkthroughCard, {
       clientRequestId: "request" as any,
@@ -151,7 +177,7 @@ describe("walkthrough to proposal continuity", () => {
       proposalExists: false,
       onProposalNextAction: () => {},
     }));
-    expect(html).toContain("Create Proposal");
+    expect(html).toContain(en.proposals.createFromWalkthrough);
     expect(html).toContain(en.walkthroughs.completedRequestHelp);
     const buttons = Array.from(new DOMParser().parseFromString(html, "text/html").querySelectorAll("button"),
       item => item.textContent?.trim());
@@ -168,13 +194,14 @@ describe("walkthrough to proposal continuity", () => {
       onProposalNextAction: () => {},
     }));
     expect(html).toContain("Open Proposal");
-    expect(html).not.toContain("Create Proposal");
+    expect(html).not.toContain(en.proposals.createFromWalkthrough);
   });
 
-  it("keeps existing proposal rendering ahead of walkthrough eligibility", () => {
+  it("keeps direct proposal creation separate from optional walkthrough selection", () => {
     const details = readFileSync(resolve(process.cwd(), "packages/frontend/src/pages/owner/RequestDetailPage.tsx"), "utf8");
-    expect(details).toContain("!proposal && !proposalUnlocked");
-    expect(details).toContain("onProposalNextAction={proposal ? () => openProposalSection() : handleCreateProposal}");
+    expect(details).toContain("onClick={() => void handleCreateProposal()}");
+    expect(details).toContain('if (proposal) { openProposalSection(); return; }');
+    expect(details).toContain("onProposalNextAction={!proposal && canStartProposal");
     expect(details).toContain("expanded={proposalExpanded}");
     expect(details).toContain("eligibleProposalWalkthroughs.length > 1");
     expect(details).toContain("sourceWalkthroughId });");

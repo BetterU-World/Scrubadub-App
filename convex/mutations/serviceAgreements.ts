@@ -99,6 +99,7 @@ async function getDefaultServiceAgreementTemplate(ctx: any, companyId: any) {
 }
 
 async function getAgreementWalkthrough(ctx: any, companyId: any, proposal: any) {
+  if (proposal.sourceKind === "request") return null;
   if (proposal.sourceWalkthroughId) {
     const source = await ctx.db.get(proposal.sourceWalkthroughId);
     return source?.companyId === companyId && source.clientRequestId === proposal.clientRequestId
@@ -242,10 +243,10 @@ export const createDraftFromAcceptedProposal = mutation({
 
     const [template, propertyResult, walkthrough] = await Promise.all([
       getDefaultServiceAgreementTemplate(ctx, companyId),
-      request.propertyId ? ctx.db.get(request.propertyId) : null,
+      request.propertyId ? ctx.db.get("properties", request.propertyId) : null,
       getAgreementWalkthrough(ctx, companyId, proposal),
     ]);
-    const property: any = propertyResult;
+    const property = propertyResult?.companyId === companyId ? propertyResult : null;
     const now = Date.now();
     const clientRelationshipId =
       (account as any)?.clientRelationshipId ??

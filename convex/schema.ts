@@ -1663,6 +1663,7 @@ export default defineSchema({
     clientRelationshipId: v.optional(v.id("clientRelationships")),
     clientRequestId: v.id("clientRequests"),
     sourceWalkthroughId: v.optional(v.id("walkthroughs")),
+    sourceKind: v.optional(v.union(v.literal("request"), v.literal("walkthrough"))),
     createdByUserId: v.id("users"),
     title: v.string(),
     clientName: v.string(),

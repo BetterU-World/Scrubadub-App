@@ -84,6 +84,93 @@ async function approveAndApply(s: Setup, cadence: "one_time" | "monthly") {
 }
 
 describe("Smart Estimates Phase 1", () => {
+  it("creates one manual proposal from an unlinked request, then keeps a later walkthrough separate", async () => {
+    const s = await setup();
+    await s.t.run(ctx => ctx.db.patch(s.clientRequestId, {
+      propertyId: undefined, businessName: "Local Business", propertySnapshot: { address: "Request address" },
+      requestedService: "Move-out cleaning", estimatedFrequency: "one_time",
+      notes: "Private intake note",
+      requestedAddOnSnapshots: [{ sourceCompanyAddOnId: s.ovenId, name: "Oven", pricingMethod: "flat", priceCents: 2500 }],
+    }));
+    const request = (await s.t.run(ctx => ctx.db.get(s.clientRequestId)))!;
+    const manager = { userId: s.salesId, sessionToken: await s.signIn("sales@test.dev") };
+    const args = { ...s.owner, clientRequestId: s.clientRequestId };
+    const [proposalId, managerResult] = await Promise.all([
+      s.t.mutation(proposals.createProposalFromLead, args),
+      s.t.mutation(proposals.createProposalFromLead, { ...args, ...manager }),
+    ]);
+    expect(managerResult).toBe(proposalId);
+    const read = () => s.t.run(ctx => ctx.db.get(proposalId));
+    const draft = (await read())!;
+    expect(draft).toMatchObject({ sourceKind: "request", clientRelationshipId: request.clientRelationshipId,
+      clientName: "Client", businessName: "Local Business", propertyAddress: "Request address",
+      serviceFrequency: "one_time", scopeOfWork: "Move-out cleaning", status: "draft" });
+    expect(draft.monthlyPriceCents).toBeUndefined();
+    expect(draft.oneTimePriceCents).toBeUndefined();
+    expect(draft.sourceWalkthroughId).toBeUndefined();
+    expect(draft.assessmentSuggestedMonthlyPriceCents).toBeUndefined();
+    expect(draft.notes).toBeUndefined();
+    const [line] = draft.addOnLineItems!;
+    expect(line).toMatchObject({ sourceType: "request_snapshot", sourceCompanyAddOnId: s.ovenId,
+      sourceClientRequestId: s.clientRequestId, unitPriceCents: 2500 });
+    expect(await s.t.run(ctx => ctx.db.query("walkthroughs").collect())).toHaveLength(0);
+
+    const walkthroughId = await s.t.mutation(api.mutations.walkthroughs.startFromClientRequest, args);
+    await s.t.run(ctx => ctx.db.patch(walkthroughId, { address: "Later observation", estimatedMonthlyValueCents: 90000 }));
+    await s.t.mutation(api.mutations.walkthroughs.complete, { ...s.owner, walkthroughId });
+    expect(await s.t.mutation(proposals.createProposalFromLead, { ...args, sourceWalkthroughId: walkthroughId })).toBe(proposalId);
+    expect(await read()).toEqual(draft);
+    expect((await s.t.run(ctx => ctx.db.get(walkthroughId)))?.proposalId).toBeUndefined();
+
+    await s.t.mutation(proposals.updateProposal, { ...manager, proposalId, title: draft.title,
+      clientName: draft.clientName, oneTimePriceCents: 12000, scopeOfWork: draft.scopeOfWork,
+      serviceFrequency: draft.serviceFrequency, expectedProposalRevision: draft.updatedAt });
+    const reviewed = (await s.t.query(api.queries.proposals.getProposalByClientRequest, args))!;
+    await s.t.action(api.proposalDeliveryActions.sendProposal, { ...manager, proposalId,
+      expectedRecipientEmail: reviewed.emailReview.email!, expectedProposalRevision: reviewed.updatedAt });
+    const issue = (await s.t.run(async ctx => ctx.db.get((await ctx.db.get(proposalId))!.currentIssueId!)))!;
+    const { proposalIssueToken } = await import("../tokens");
+    const token = await proposalIssueToken(issue.tokenNonce!);
+    const offer = await s.t.action(api.proposalDeliveryActions.getProposalByToken, { token });
+    expect(offer?.proposal).toMatchObject({ status: "sent", oneTimePriceCents: 12000,
+      totals: { oneTimeTotalCents: 14500 }, addOnLineItems: [{ name: "Oven", unitPriceCents: 2500 }] });
+    expect(JSON.stringify(offer)).not.toMatch(/sourceKind|sourceWalkthroughId|Private intake note/);
+    await s.t.action(api.proposalDeliveryActions.respondToProposal, { token, decision: "accepted" });
+    expect(await read()).toMatchObject({ status: "accepted", responseIssueId: issue._id });
+    expect(await s.t.run(ctx => ctx.db.get(issue._id))).toEqual(issue);
+    const agreementId = await s.t.mutation(api.mutations.serviceAgreements.createDraftFromAcceptedProposal, { ...s.owner, proposalId });
+    expect(await s.t.run(ctx => ctx.db.get(agreementId))).toMatchObject({
+      status: "draft", propertyAddress: "Request address", servicesIncluded: "Move-out cleaning",
+    });
+    expect(await s.t.run(ctx => ctx.db.query("jobs").collect())).toHaveLength(0);
+    expect(await s.t.run(ctx => ctx.db.query("invoices").collect())).toHaveLength(0);
+    expect(await s.t.run(ctx => ctx.db.query("clientUsers").collect())).toHaveLength(0);
+    expect((await read())?.addOnLineItems?.[0]?.lineItemId).toBe(line.lineItemId);
+  }, 15000);
+
+  it("lets delegated sales staff open, approve and apply a browser estimate on a direct proposal", async () => {
+    const s = await setup();
+    vi.stubEnv("SCRUB_SMART_ESTIMATES_PREVIEW_COMPANY_ID", s.companyId);
+    const sales = { userId: s.salesId, sessionToken: await s.signIn("sales@test.dev") };
+    const args = { ...sales, clientRequestId: s.clientRequestId };
+    const proposalId = await s.t.mutation(proposals.createProposalFromLead, args);
+    const workspace = await s.t.query(preview.workspace, args);
+    expect(workspace).toMatchObject({ addressSource: "property", proposal: { id: proposalId, editable: true } });
+    expect(workspace.walkthroughId).toBeUndefined();
+    const estimateId = await s.t.mutation(browserEstimates.previewOpen, {
+      ...args, input: { strategy: "flat", cadence: "one_time", baseCents: 22000 },
+    });
+    const target = { proposalId, expectedProposalRevision: workspace.proposal!.updatedAt };
+    const revisionId = await s.t.mutation(browserEstimates.previewApprove, {
+      ...sales, estimateId, expectedDraftRevision: 1, proposal: target,
+    });
+    await s.t.mutation(browserEstimates.previewApply, { ...sales, estimateId, revisionId, ...target });
+    expect(await s.t.run(ctx => ctx.db.get(proposalId))).toMatchObject({
+      sourceKind: "request", appliedEstimateRevisionId: revisionId, oneTimePriceCents: 22000,
+    });
+    expect(await s.t.run(ctx => ctx.db.query("walkthroughs").collect())).toHaveLength(0);
+  }, 15000);
+
   it.each(["residential", "vacation_rental", "commercial"] as const)("reuses scoped current %s facts without rewriting quote inputs or approvals", async (type) => {
     const s = await setup(type);
     vi.stubEnv("SCRUB_SMART_ESTIMATES_PREVIEW_COMPANY_ID", s.companyId);
@@ -505,6 +592,9 @@ describe("Smart Estimates Phase 1", () => {
     const s = await setup(type);
     vi.stubEnv("SCRUB_BRANDED_PROPOSAL_PREVIEW_COMPANY_ID", s.companyId);
     const { proposalId, revisionId, ovenLine } = await approveAndApply(s, "one_time");
+    const direct = await s.t.run(ctx => ctx.db.get(proposalId));
+    expect(direct).toMatchObject({ sourceKind: "request", propertyAddress: "1 Main", appliedEstimateRevisionId: revisionId });
+    expect(direct?.sourceWalkthroughId).toBeUndefined();
     await s.t.action(api.proposalDeliveryActions.sendProposal, { ...s.owner, proposalId });
     const issue = await s.t.run(async ctx => ctx.db.get((await ctx.db.get(proposalId))!.currentIssueId!));
     expect(issue?.appliedEstimateRevisionId).toBe(revisionId);
@@ -543,6 +633,7 @@ describe("Smart Estimates Phase 1", () => {
     const s = await setup("commercial");
     vi.stubEnv("SCRUB_BRANDED_PROPOSAL_PREVIEW_COMPANY_ID", s.companyId);
     const { proposalId, ovenLine, floorsLine } = await approveAndApply(s, "monthly");
+    expect(await s.t.run(ctx => ctx.db.get(proposalId))).toMatchObject({ sourceKind: "request", propertyAddress: "1 Main" });
     await s.t.mutation(proposals.markProposalSent, { ...s.owner, proposalId });
     await s.t.mutation(proposals.markProposalAccepted, { ...s.owner, proposalId });
     const serviceAgreementId = await s.t.mutation(api.mutations.serviceAgreements.createDraftFromAcceptedProposal, { ...s.owner, proposalId });

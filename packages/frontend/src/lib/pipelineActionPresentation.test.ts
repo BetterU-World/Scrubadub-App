@@ -13,8 +13,8 @@ describe("request copy and agreement action presentation", () => {
     expect(es.walkthroughs.helper).toContain("puedes usarlo para iniciar una propuesta");
     expect(en.walkthroughs.photoTodo).toBe("Add a link to each photo you want to keep with this walkthrough.");
     expect(es.walkthroughs.photoTodo).toBe("Agrega un enlace a cada foto que quieras guardar con este recorrido.");
-    expect(en.proposals.completeWalkthroughToStart).toBe("Complete a walkthrough to start a proposal.");
-    expect(es.proposals.completeWalkthroughToStart).toBe("Completa un recorrido para iniciar una propuesta.");
+    expect(en.proposals.directHelp).toContain("A walkthrough is optional.");
+    expect(es.proposals.directHelp).toContain("El recorrido es opcional.");
   });
 
   it("labels acknowledged and signed agreement setup as optional without commercial wording", () => {
@@ -28,7 +28,7 @@ describe("request copy and agreement action presentation", () => {
     expect(detail).toContain('isOptionalAgreementSetupAction((request as any).pipeline.nextAction.key) ? "btn-secondary" : "btn-primary"');
     expect(detail).toContain('max-w-full whitespace-normal text-sm');
     expect(detail).toContain('className="btn-primary text-sm"'); // Residential Schedule Service remains primary.
-    expect(detail).toContain('t("proposals.completeWalkthroughToStart")');
+    expect(detail).toContain('t(canStartProposal ? "proposals.directHelp" : "proposals.archivedCreateBlocked")');
   });
 
   it("keeps commercial account creation language in the eligible account panel", () => {
