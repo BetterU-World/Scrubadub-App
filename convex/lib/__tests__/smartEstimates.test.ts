@@ -84,6 +84,79 @@ async function approveAndApply(s: Setup, cadence: "one_time" | "monthly") {
 }
 
 describe("Smart Estimates Phase 1", () => {
+  it.each(["residential", "vacation_rental", "commercial"] as const)("reuses scoped current %s facts without rewriting quote inputs or approvals", async (type) => {
+    const s = await setup(type);
+    vi.stubEnv("SCRUB_SMART_ESTIMATES_PREVIEW_COMPANY_ID", s.companyId);
+    const args = { ...s.owner, clientRequestId: s.clientRequestId };
+    const walkthroughId = await s.t.mutation(api.mutations.walkthroughs.startFromClientRequest, args);
+    await s.t.run(async ctx => {
+      await ctx.db.patch(s.propertyId, { address: "Current property", beds: 7, bedrooms: [],
+        squareFootage: 1200, baths: 2.5 });
+      await ctx.db.patch(walkthroughId, { address: "Older walkthrough", squareFootage: 900, bedrooms: 2,
+        bathrooms: 1.5, estimatedHours: 3, recommendedCleanerCount: 2 });
+    });
+    const requestOnly = await s.t.query(preview.workspace, args);
+    expect(requestOnly.facts.bedrooms).toBeUndefined();
+    expect(requestOnly).toMatchObject({ address: "Current property", addressSource: "property", propertyType: type });
+    const scope = { ...args, walkthroughId };
+    const linked = await s.t.query(preview.workspace, scope);
+    expect(linked).toMatchObject({
+      facts: {
+        areaHundredths: { value: 120000, source: "property", alternative: { value: 90000, source: "walkthrough" } },
+        bedrooms: { value: 2, source: "walkthrough" },
+        bathHalves: { value: 5, source: "property", alternative: { value: 3, source: "walkthrough" } },
+      },
+      walkthroughLabor: { visitHours: 3, cleaners: 2 },
+    });
+    const input = { strategy: "square_feet", cadence: type === "commercial" ? "monthly" : "one_time",
+      areaHundredths: 85000, areaRateHundredthCents: 2000 } as const;
+    const estimateId = await s.t.mutation(browserEstimates.previewOpen, { ...scope, input });
+    const revisionId = await s.t.mutation(browserEstimates.previewApprove, { ...s.owner, estimateId, expectedDraftRevision: 1 });
+    const approved = await s.t.run(ctx => ctx.db.get(revisionId));
+    await s.t.mutation(api.mutations.walkthroughs.update, {
+      ...scope, propertyId: s.propertyId, title: "Observed", walkthroughType: type === "vacation_rental" ? "str" : type,
+      appointmentStatus: "draft", squareFootage: 900, bedrooms: 2, bathrooms: 1.5,
+      linkedPropertyFacts: { address: "Corrected property", squareFootage: 1350, baths: 2.5, amenities: [] },
+    });
+    expect(await s.t.query(preview.workspace, scope)).toMatchObject({
+      address: "Corrected property",
+      draft: { input },
+      facts: { areaHundredths: { value: 135000, alternative: { value: 90000 } } },
+      approval: { id: revisionId, stale: false },
+    });
+    expect(await s.t.run(ctx => ctx.db.get(revisionId))).toEqual(approved);
+    expect(await s.t.run(ctx => ctx.db.get(walkthroughId))).toMatchObject({ squareFootage: 900, bedrooms: 2, bathrooms: 1.5 });
+    await s.t.run(ctx => ctx.db.patch(s.propertyId, { bedrooms: [{
+      id: "room", label: "Guest room", beds: [{ id: "bunk", type: "bunk_bed", size: "twin", quantity: 3, sheetSets: 1, sleepingPillows: 1 }],
+    }] }));
+    expect((await s.t.query(preview.workspace, scope)).facts.bedrooms).toEqual({
+      value: 1, source: "property", alternative: { value: 2, source: "walkthrough" },
+    });
+    await expect(s.t.query(preview.workspace, { ...scope, clientRequestId: s.foreignRequestId }))
+      .rejects.toThrow("Access denied");
+  });
+
+  it("keeps unlinked observations available after the request gets a new property", async () => {
+    const s = await setup();
+    vi.stubEnv("SCRUB_SMART_ESTIMATES_PREVIEW_COMPANY_ID", s.companyId);
+    const args = { ...s.owner, clientRequestId: s.clientRequestId };
+    await s.t.run(ctx => ctx.db.patch(s.clientRequestId, { propertyId: undefined }));
+    expect(await s.t.query(preview.workspace, args)).toMatchObject({ address: "1 Main", addressSource: "request" });
+    const walkthroughId = await s.t.mutation(api.mutations.walkthroughs.startFromClientRequest, args);
+    await s.t.run(ctx => ctx.db.patch(walkthroughId, { bathrooms: 0.5, squareFootage: 700, bedrooms: 0 }));
+    const scope = { ...args, walkthroughId };
+    expect(await s.t.query(preview.workspace, scope)).toMatchObject({
+      facts: { bathHalves: { value: 1, source: "walkthrough" }, bedrooms: { value: 0, source: "walkthrough" } },
+    });
+    const created = await s.t.mutation(api.mutations.clientRequests.createPropertyFromRequest, { ...s.owner, requestId: s.clientRequestId });
+    expect(created.created).toBe(true);
+    await s.t.run(ctx => ctx.db.patch(created.propertyId, { squareFootage: 1000, baths: 1.25, beds: 4 }));
+    expect(await s.t.query(preview.workspace, scope)).toMatchObject({
+      addressSource: "property",
+      facts: { areaHundredths: { value: 100000, alternative: { value: 70000 } }, bathHalves: { value: 1, source: "walkthrough" } },
+    });
+  });
+
   it("requires a current revision-specific confirmation for budget, frequency and add-on edits", async () => {
     const s = await setup();
     const { proposalId, revisionId, appliedAt, ovenLine, applyArgs } = await approveAndApply(s, "one_time");

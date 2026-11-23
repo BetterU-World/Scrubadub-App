@@ -5,6 +5,7 @@ import { StaffAuthorizationDenied } from "../lib/sessionAuth";
 import { estimateBaseValidator, estimateOverrideValidator } from "../lib/smartEstimatePricing";
 import { proposalAddOnLineValidator } from "../lib/proposalAddOnLineItems";
 import { eligibleEstimateReplacement, estimateContext, fingerprintAddOns } from "../mutations/smartEstimates";
+import { resolveEstimatePropertyFacts } from "../lib/estimatePropertyFacts";
 
 const auth = { userId: v.id("users"), sessionToken: v.string() };
 const noAccess = { sales: false, configuration: false };
@@ -34,13 +35,8 @@ export const profiles = query({
   },
 });
 
-const fact = v.optional(v.object({ value: v.number(), source: v.union(v.literal("walkthrough"), v.literal("property")) }));
-
-function propertyFact(measured: number | undefined, stored: number | undefined, scale: number) {
-  const value = measured ?? stored;
-  if (value === undefined || !Number.isFinite(value) || value < 0 || value * scale > 1e9) return undefined;
-  return { value: Math.round(value * scale), source: measured === undefined ? "property" as const : "walkthrough" as const };
-}
+const observation = { value: v.number(), source: v.union(v.literal("walkthrough"), v.literal("property")) };
+const fact = v.optional(v.object({ ...observation, alternative: v.optional(v.object(observation)) }));
 
 export const workspace = query({
   args: { ...auth, clientRequestId: v.id("clientRequests"), walkthroughId: v.optional(v.id("walkthroughs")) },
@@ -52,6 +48,8 @@ export const workspace = query({
     })),
     facts: v.object({ areaHundredths: fact, bedrooms: fact, bathHalves: fact }),
     address: v.optional(v.string()),
+    addressSource: v.optional(v.union(v.literal("property"), v.literal("walkthrough"), v.literal("request"))),
+    walkthroughLabor: v.optional(v.object({ visitHours: v.number(), cleaners: v.number() })),
     walkthroughId: v.optional(v.id("walkthroughs")),
     walkthroughArchived: v.boolean(),
     replacement: v.union(v.null(), v.object({ id: v.id("walkthroughs"), title: v.string() })),
@@ -80,15 +78,22 @@ export const workspace = query({
       draft?.profileRevisionId ? ctx.db.get(draft.profileRevisionId) : null,
     ]);
     const lines = proposal?.addOnLineItems ?? [];
+    const propertyAddress = property?.address?.trim();
+    const walkthroughAddress = walkthrough?.address?.trim();
+    const address = propertyAddress || walkthroughAddress || request.propertySnapshot.address?.trim();
+    const addressSource = propertyAddress ? "property" as const : walkthroughAddress ? "walkthrough" as const : address ? "request" as const : undefined;
+    const visitHours = walkthrough?.estimatedHours;
+    const cleaners = walkthrough?.recommendedCleanerCount;
+    const walkthroughLabor = visitHours !== undefined && Number.isFinite(visitHours) && visitHours >= 0 &&
+      cleaners !== undefined && Number.isInteger(cleaners) && cleaners > 0 &&
+      visitHours * cleaners * 60 <= 1e9 ? { visitHours, cleaners } : undefined;
     return {
       draft: draft ? { id: draft._id, draftRevision: draft.draftRevision, input: draft.input, override: draft.override,
         profileRevisionId: draft.profileRevisionId, profileName: profile?.companyId === actor.companyId ? profile.name : undefined, walkthroughId: draft.walkthroughId } : null,
-      facts: {
-        areaHundredths: propertyFact(walkthrough?.squareFootage, property?.squareFootage, 100),
-        bedrooms: propertyFact(walkthrough?.bedrooms, property?.bedrooms?.length, 1),
-        bathHalves: propertyFact(walkthrough?.bathrooms, property?.baths, 2),
-      },
-      address: walkthrough?.address || property?.address || request.propertySnapshot.address,
+      facts: resolveEstimatePropertyFacts(property, walkthrough),
+      address,
+      addressSource,
+      walkthroughLabor,
       walkthroughId,
       walkthroughArchived: linked.walkthrough?.status === "archived",
       replacement: replacement ? { id: replacement.walkthrough._id, title: replacement.walkthrough.title } : null,

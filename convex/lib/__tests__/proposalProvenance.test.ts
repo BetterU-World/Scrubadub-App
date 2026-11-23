@@ -42,6 +42,31 @@ async function setup() {
 }
 
 describe("explicit proposal provenance", () => {
+  it("starts a proposal with the linked property address and preserves it at issue", async () => {
+    const s = await setup();
+    const propertyId = await s.t.run(async ctx => {
+      const id = await ctx.db.insert("properties", { companyId: s.companyId, name: "Site",
+        address: "Current property address", type: "commercial", amenities: [], active: true });
+      await ctx.db.patch(s.requestId, { propertyId: id });
+      return id;
+    });
+    const proposalId = await s.t.mutation(api.mutations.proposals.createProposalFromLead, {
+      ...s.ownerAuth, clientRequestId: s.requestId, sourceWalkthroughId: s.sourceId,
+    });
+    const proposal = (await s.t.run(ctx => ctx.db.get(proposalId)))!;
+    expect(proposal.propertyAddress).toBe("Current property address");
+    await s.t.mutation(api.mutations.proposals.updateProposal, {
+      ...s.ownerAuth, proposalId, title: proposal.title, clientName: proposal.clientName,
+      propertyAddress: proposal.propertyAddress, monthlyPriceCents: 20000,
+    });
+    await s.t.mutation(api.mutations.proposals.markProposalSent, { ...s.ownerAuth, proposalId });
+    const issueId = (await s.t.run(ctx => ctx.db.get(proposalId)))!.currentIssueId!;
+    const issued = await s.t.run(ctx => ctx.db.get(issueId));
+    await s.t.run(ctx => ctx.db.patch(propertyId, { address: "Later property correction" }));
+    expect(await s.t.run(ctx => ctx.db.get(issueId))).toEqual(issued);
+    expect(issued?.content.proposal.propertyAddress).toBe("Current property address");
+  });
+
   it("copies only confirmed assessment scope, exact frequency, address, and an unapplied monthly estimate", async () => {
     const s = await setup();
     await s.t.run((ctx) => ctx.db.patch(s.requestId, { estimatedFrequency: "monthly", estimatedFrequencyNotes: "Monthly lead schedule" }));

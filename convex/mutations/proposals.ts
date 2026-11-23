@@ -115,6 +115,8 @@ export const createProposalFromLead = mutation({
     }
 
     const recommendedFrequency = assessmentFrequency(sourceWalkthrough?.serviceFrequencyRecommendation);
+    const propertyId = request.propertyId ?? sourceWalkthrough?.propertyId;
+    const property = propertyId ? await ctx.db.get(propertyId) : null;
     const leadFrequency = (request as any).estimatedFrequency;
     const now = Date.now();
     const clientRelationshipId = await ensureClientRelationshipForLead(ctx, request);
@@ -127,7 +129,10 @@ export const createProposalFromLead = mutation({
       title: "Cleaning Proposal",
       clientName: request.requesterName,
       businessName: cleanOptional((request as any).businessName, 200),
-      propertyAddress: cleanOptional(sourceWalkthrough?.address, 500) ?? cleanOptional(request.propertySnapshot?.address, 500),
+      propertyAddress: (property?.companyId === request.companyId &&
+        (!property.clientRelationshipId || property.clientRelationshipId === clientRelationshipId)
+        ? cleanOptional(property.address, 500) : undefined) ??
+        cleanOptional(sourceWalkthrough?.address, 500) ?? cleanOptional(request.propertySnapshot?.address, 500),
       serviceFrequency: recommendedFrequency ?? leadFrequency,
       serviceFrequencyNotes: recommendedFrequency && recommendedFrequency !== leadFrequency
         ? undefined
