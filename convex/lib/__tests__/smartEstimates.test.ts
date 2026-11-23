@@ -84,6 +84,38 @@ async function approveAndApply(s: Setup, cadence: "one_time" | "monthly") {
 }
 
 describe("Smart Estimates Phase 1", () => {
+  it("reproduces override-only Flat Price and unresolved room-price handoff without a walkthrough", async () => {
+    const s = await setup();
+    vi.stubEnv("SCRUB_SMART_ESTIMATES_PREVIEW_COMPANY_ID", s.companyId);
+    const scope = { ...s.owner, clientRequestId: s.clientRequestId };
+    await s.t.run(ctx => ctx.db.patch(s.clientRequestId, { leadType: "move_out", propertyId: undefined }));
+    const flat = { strategy: "flat", cadence: "one_time" } as const;
+    const estimateId = await s.t.mutation(browserEstimates.previewOpen, { ...scope, input: flat, override: { baseCents: 20000 } });
+    const estimate = { ...s.owner, estimateId };
+    await expect(s.t.mutation(browserEstimates.previewApprove, { ...estimate, expectedDraftRevision: 1 }))
+      .rejects.toThrow("required pricing inputs");
+    await s.t.mutation(browserEstimates.previewSave, { ...estimate, expectedDraftRevision: 1, input: { ...flat, baseCents: 0 } });
+    const flatApproval = await s.t.mutation(browserEstimates.previewApprove, { ...estimate, expectedDraftRevision: 2 });
+    expect(await s.t.run(ctx => ctx.db.get(flatApproval))).toMatchObject({ approvedBaseCents: 0, engineVersion: 1 });
+
+    const proposalId = await s.t.mutation(proposals.createProposalFromLead, scope);
+    const proposal = (await s.t.run(ctx => ctx.db.get(proposalId)))!;
+    expect(proposal).toMatchObject({ sourceKind: "request", status: "draft" });
+    const target = { proposalId, expectedProposalRevision: proposal.updatedAt };
+    const rooms = { strategy: "rooms", cadence: "one_time", baseCents: 10000,
+      bedrooms: 2, bedroomRateCents: 2500, bathHalves: 3, bathroomRateCents: 2000 } as const;
+    await s.t.mutation(browserEstimates.previewSave, { ...estimate, expectedDraftRevision: 2, input: rooms });
+    const revisionId = await s.t.mutation(browserEstimates.previewApprove, { ...estimate, expectedDraftRevision: 3, proposal: target });
+    expect(await s.t.run(ctx => ctx.db.get(revisionId))).toMatchObject({ approvedBaseCents: 18000, engineVersion: 2 });
+    const application = { ...estimate, ...target, revisionId };
+    await expect(s.t.mutation(browserEstimates.previewApply, application)).rejects.toThrow("billing destination");
+    expect(await s.t.run(ctx => ctx.db.get(proposalId))).toEqual(proposal);
+    await s.t.mutation(api.mutations.clientRequests.updateLeadDetails, { ...s.owner, requestId: s.clientRequestId, leadType: "residential" });
+    await s.t.mutation(browserEstimates.previewApply, application);
+    expect(await s.t.run(ctx => ctx.db.get(proposalId))).toMatchObject({ oneTimePriceCents: 18000, appliedEstimateRevisionId: revisionId });
+    expect(await s.t.run(ctx => ctx.db.query("walkthroughs").collect())).toHaveLength(0);
+  }, 15000);
+
   it("creates one manual proposal from an unlinked request, then keeps a later walkthrough separate", async () => {
     const s = await setup();
     await s.t.run(ctx => ctx.db.patch(s.clientRequestId, {

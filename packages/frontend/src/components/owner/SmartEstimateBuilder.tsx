@@ -94,7 +94,15 @@ function BuilderForm({ workspace, profiles, auth, clientRequestId, proposalDirty
   const canApprove = !!currentDraft && !dirty && !workspace.propertyChanged && !workspace.walkthroughArchived &&
     !!calculation && (!proposal || !!editableProposal);
   const canApply = !!editableProposal && !!approval && !stale && !!calculation && !handoffError && !workspace.walkthroughArchived;
-  const existingTotals = proposal && calculateProposalTotals({ ...proposal, addOnLineItems: lines });
+  const existingTotals = proposal && ("oneTimePriceCents" in proposal || "monthlyPriceCents" in proposal)
+    ? calculateProposalTotals({ ...proposal, addOnLineItems: lines }) : null;
+  const approvalHelp = workspace.replacement || workspace.walkthroughArchived || workspace.propertyChanged ? undefined
+    : proposalDirty ? "saveProposalFirst"
+    : proposal && !proposal.editable ? "proposalNotEditable"
+    : input.strategy === "flat" && input.baseCents === undefined ? "flatInputMissing"
+    : draft && draftRevision !== undefined && draft.draftRevision > draftRevision ? "reopenDraft"
+    : calculation && dirty ? "saveBeforeApproval"
+    : undefined;
 
   function markEdited() {
     setDirty(true);
@@ -221,9 +229,9 @@ function BuilderForm({ workspace, profiles, auth, clientRequestId, proposalDirty
           </>}
         </dl>}
         {!proposal && <p>{t("smartEstimates.noProposal")}</p>}
-        {canApply && calculation && existingTotals && proposal && <div className="space-y-2 border-t border-gray-200 pt-2">
+        {canApply && calculation && proposal && <div className="space-y-2 border-t border-gray-200 pt-2">
           <h4 className="font-medium">{t("proposals.pricingSource.applyPreview")}</h4>
-          <p>{t("proposals.pricingSource.currentOffer", { oneTime: money(existingTotals.oneTimeTotalCents), monthly: money(existingTotals.monthlyTotalCents) })}</p>
+          {existingTotals && <p>{t("proposals.pricingSource.currentOffer", { oneTime: money(existingTotals.oneTimeTotalCents), monthly: money(existingTotals.monthlyTotalCents) })}</p>}
           <p>{t("proposals.pricingSource.appliedBase", { amount: money(calculation.approvedBaseCents),
             cadence: t(calculation.cadence === "monthly" ? "smartEstimates.monthly" : "smartEstimates.oneTime") })}</p>
           <p>{t("proposals.pricingSource.keepAddOns")}</p>
@@ -238,10 +246,11 @@ function BuilderForm({ workspace, profiles, auth, clientRequestId, proposalDirty
         </div>}
       </section>
       {propertyType === "commercial" && <p className="text-sm text-gray-600">{t("smartEstimates.commercialHelp")}</p>}
-      {proposalDirty && <p className="text-sm text-amber-800">{t("smartEstimates.saveProposalFirst")}</p>}
+      {approvalHelp && <p role="status" className="text-sm text-amber-800">{t(`smartEstimates.${approvalHelp}`)}</p>}
       {status && <p role="status" className="text-sm text-green-800">{t(`smartEstimates.${status}`)}</p>}
       {Array.from(new Set([
-        pricingError, handoffError, errorKey, stale ? "stale" : undefined,
+        approvalHelp === "flatInputMissing" && pricingError === "inputsMissing" ? undefined : pricingError,
+        handoffError, errorKey, stale ? "stale" : undefined,
         propertyType === null ? "billingDestinationMissing" : undefined,
         workspace.propertyChanged && !workspace.replacement ? "propertyChanged" : undefined,
         workspace.walkthroughArchived && !workspace.replacement ? "archivedWalkthrough" : undefined,
