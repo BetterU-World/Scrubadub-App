@@ -1792,6 +1792,7 @@ export default defineSchema({
     ),
     schedulingNotes: v.optional(v.string()),
     scheduledAt: v.optional(v.number()),
+    startedAt: v.optional(v.number()),
     rescheduledAt: v.optional(v.number()),
     cancelledAt: v.optional(v.number()),
     completedAt: v.optional(v.number()),
@@ -1864,6 +1865,7 @@ export default defineSchema({
       "updatedAt",
     ])
     .index("by_clientRequest", ["clientRequestId"])
+    .index("by_companyId_clientRequestId_status", ["companyId", "clientRequestId", "status"])
     .index("by_property", ["propertyId"])
     .index("by_commercialAccount", ["commercialAccountId"])
     .index("by_proposal", ["proposalId"]),

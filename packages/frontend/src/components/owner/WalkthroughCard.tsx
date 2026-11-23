@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
+import { selectRequestWalkthrough } from "../../../../../convex/lib/walkthroughSelection";
 import { useAuth } from "@/hooks/useAuth";
 import { toFriendlyMessage } from "../../lib/friendlyError";
 import { Archive, Check, ClipboardCheck, Plus, Save, Trash2, X } from "lucide-react";
@@ -258,6 +259,8 @@ export function WalkthroughCard({
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadedId, setLoadedId] = useState<string | null>(null);
+  const [openAfterStartId, setOpenAfterStartId] = useState<string | null>(null);
+  const findingsHeading = useRef<HTMLHeadingElement>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [propertyForm, setPropertyForm] = useState(EMPTY_PROPERTY_FORM);
 
@@ -281,6 +284,7 @@ export function WalkthroughCard({
   );
 
   const createFromLead = useMutation((api as any).mutations.walkthroughs.createFromClientRequest);
+  const startFromLead = useMutation(api.mutations.walkthroughs.startFromClientRequest);
   const updateWalkthrough = useMutation((api as any).mutations.walkthroughs.update);
   const completeWalkthrough = useMutation((api as any).mutations.walkthroughs.complete);
   const archiveWalkthrough = useMutation((api as any).mutations.walkthroughs.archive);
@@ -294,7 +298,9 @@ export function WalkthroughCard({
     : proposalId
       ? byProposal
       : byClientRequest;
-  const walkthrough = (walkthroughs ?? []).find((item: any) => item.status !== "archived") ?? null;
+  const walkthrough: any = clientRequestId && !commercialAccountId && !proposalId
+    ? selectRequestWalkthrough(walkthroughs ?? []) ?? null
+    : (walkthroughs ?? []).find((item: any) => item.status !== "archived") ?? null;
   const isLoading = walkthroughs === undefined;
   const resolvedPropertyType =
     walkthrough?.property?.type ??
@@ -325,6 +331,21 @@ export function WalkthroughCard({
     setLoadedId(walkthrough._id);
     setEditing(false);
   }, [walkthrough, loadedId]);
+
+  useEffect(() => {
+    if (!openAfterStartId || !walkthroughs?.some((item: any) => item._id === openAfterStartId)) return;
+    if (walkthrough?._id === openAfterStartId && loadedId !== openAfterStartId) return;
+    setOpenAfterStartId(null);
+    if (walkthrough?._id === openAfterStartId && walkthrough.status === "draft" &&
+        walkthrough.appointmentStatus !== "cancelled") setEditing(true);
+  }, [loadedId, openAfterStartId, walkthrough, walkthroughs]);
+
+  useEffect(() => {
+    if (editing && walkthrough?.status === "draft" && walkthrough.startedAt != null &&
+        !walkthrough.scheduledDate) {
+      findingsHeading.current?.focus();
+    }
+  }, [editing, walkthrough?._id, walkthrough?.status, walkthrough?.startedAt, walkthrough?.scheduledDate]);
 
   const showToast = (message: string, type: "success" | "error") => {
     onToast?.(message, type);
@@ -634,6 +655,18 @@ export function WalkthroughCard({
     }
   };
 
+  const handleStart = async () => {
+    if (!clientRequestId || !user || !sessionToken || saving || openAfterStartId) return;
+    setSaving(true);
+    try {
+      setOpenAfterStartId(await startFromLead({ userId: user._id, sessionToken, clientRequestId }));
+    } catch (err: unknown) {
+      showToast(displayError(err, t("walkthroughs.startFailed")), "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleComplete = async () => {
     if (!walkthrough || !user) return;
     setSaving(true);
@@ -696,16 +729,28 @@ export function WalkthroughCard({
               </div>
             </div>
           ) : (
-            <button type="button" onClick={() => setEditing(true)} className="btn-primary flex w-full items-center justify-center gap-2 text-sm sm:w-auto">
-              <Plus className="h-4 w-4" /> {t("walkthroughs.schedule")}
-            </button>
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <button type="button" onClick={handleStart} disabled={saving || Boolean(openAfterStartId)} className="btn-primary min-h-11 w-full text-sm sm:w-auto">
+                {t(saving || openAfterStartId ? "common.saving" : "walkthroughs.startNow")}
+              </button>
+              <button type="button" disabled={saving || Boolean(openAfterStartId)} onClick={() => { setForm(EMPTY_FORM); setEditing(true); }} className="btn-secondary flex min-h-11 w-full items-center justify-center gap-2 text-sm sm:w-auto">
+                <Plus className="h-4 w-4" aria-hidden="true" /> {t("walkthroughs.schedule")}
+              </button>
+            </div>
           )
         ) : (
           <p className="text-sm text-gray-500">{t("walkthroughs.noneLinked")}</p>
         )
-      ) : editing ? (
+      ) : editing && loadedId === walkthrough._id ? (
         <div className="space-y-4">
-          <SchedulingFields form={form} setForm={setForm} managers={walkthroughAssignees ?? []} currentUserId={user?._id} t={t} showStatus />
+          {walkthrough.startedAt != null && walkthrough.appointmentStatus === "draft" ? (
+            <details>
+              <summary className="flex min-h-11 cursor-pointer items-center text-sm font-medium text-gray-700">{t("walkthroughs.appointmentDetails")}</summary>
+              <SchedulingFields form={form} setForm={setForm} managers={walkthroughAssignees ?? []} currentUserId={user?._id} t={t} showStatus />
+            </details>
+          ) : (
+            <SchedulingFields form={form} setForm={setForm} managers={walkthroughAssignees ?? []} currentUserId={user?._id} t={t} showStatus />
+          )}
           {linkedProperty && (
             <div className="space-y-3 rounded-md border border-primary-200 bg-primary-50/30 p-3">
               <div>
@@ -724,7 +769,7 @@ export function WalkthroughCard({
             </div>
           )}
           <div>
-            <h4 className="text-sm font-semibold text-gray-900">{t("walkthroughs.findings")}</h4>
+            <h4 ref={findingsHeading} tabIndex={-1} className="scroll-mt-24 text-sm font-semibold text-gray-900">{t("walkthroughs.findings")}</h4>
             <p className="text-xs text-gray-500">{t("walkthroughs.findingsHelper")}</p>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -1049,9 +1094,16 @@ export function WalkthroughCard({
             {walkthrough.scopeNotes && <div className="rounded-md bg-white/70 p-3 text-sm text-gray-700"><p className="font-medium">{t("walkthroughs.fields.scopeNotes")}</p><p className="mt-1 whitespace-pre-wrap">{walkthrough.scopeNotes}</p>{walkthrough.proposalReadyScopeText === walkthrough.scopeNotes.trim() && <p className="mt-2 text-xs text-primary-700">{t("walkthroughs.scopeProposalReadyConfirmed")}</p>}</div>}
             {walkthrough.proposalNotes && <p className="whitespace-pre-wrap rounded-md bg-white/70 p-3 text-sm text-gray-700">{walkthrough.proposalNotes}</p>}
           </div>
+          {allowCreate && (walkthrough.status === "completed" || walkthrough.status === "proposal_created") && (
+            <p className="text-sm text-gray-600">{t("walkthroughs.completedRequestHelp")}</p>
+          )}
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => setEditing(true)} className="btn-secondary text-sm">
-              {t("walkthroughs.edit")}
+            <button type="button" onClick={() => {
+              setForm(formFromWalkthrough(walkthrough));
+              if (walkthrough.property) setPropertyForm(propertyFormFromWalkthrough(walkthrough));
+              setEditing(true);
+            }} className="btn-secondary min-h-11 w-full text-sm sm:w-auto">
+              {t(walkthrough.status === "draft" && walkthrough.appointmentStatus !== "cancelled" ? "walkthroughs.resume" : "walkthroughs.edit")}
             </button>
             {walkthrough.status === "draft" && walkthrough.appointmentStatus !== "cancelled" && (
               <button type="button" onClick={handleComplete} disabled={saving} className="btn-primary flex items-center gap-2 text-sm">

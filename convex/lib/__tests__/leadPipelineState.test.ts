@@ -32,6 +32,18 @@ describe("derived lead pipeline state", () => {
     expect(state.nextAction).toEqual({ key: "complete_walkthrough", hrefSuffix: "#request-walkthrough" });
   });
 
+  it("resumes a started visit without requiring an appointment, even with older duplicates", () => {
+    const state = deriveLeadPipelineState(base({ walkthroughs: [
+      { status: "completed", createdAt: NOW - 50, updatedAt: NOW },
+      { status: "draft", createdAt: NOW - 10, appointmentStatus: "draft", startedAt: NOW - 10 },
+      { status: "draft", createdAt: NOW - 20, appointmentStatus: "scheduled" },
+      { status: "archived", createdAt: NOW },
+    ] }));
+    expect(state.stage).toBe("walkthrough");
+    expect(state.blockers).not.toContain("walkthrough_not_scheduled");
+    expect(state.nextAction).toEqual({ key: "resume_walkthrough", hrefSuffix: "#request-walkthrough" });
+  });
+
   it("keeps unscheduled, cancelled, archived, and legacy walkthroughs readable", () => {
     const unscheduled = deriveLeadPipelineState(base({ walkthroughs: [{ status: "draft", appointmentStatus: "draft", updatedAt: NOW }] }));
     expect(unscheduled.blockers).toContain("walkthrough_not_scheduled");

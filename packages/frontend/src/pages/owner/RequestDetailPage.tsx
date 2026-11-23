@@ -1072,6 +1072,7 @@ export function RequestDetailPage() {
         contentClassName="-m-4 mt-0"
       >
         <div id="request-walkthrough"><WalkthroughCard
+          key={request._id}
           clientRequestId={request._id}
           allowCreate
           proposalExists={Boolean(proposal)}
