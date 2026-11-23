@@ -233,8 +233,8 @@ Ordinary submission does not automatically report every problem as a red flag. P
 
 1. Choose **Create Proposal** from the lead or completed walkthrough. Review scope, frequency, price, recipient, and requested/catalog/custom add-ons. Save each add-on line and finalize prices before sending.
 2. Choose **Save Proposal** and use **Review Proposal** to inspect the saved content. Confirm what the client will receive.
-3. Choose **Send Proposal** to initiate SCRUB email delivery, or **Mark Sent Without Email** only to record sending outside SCRUB. Check delivery information separately from proposal status.
-4. The client can accept/decline through the supported client-facing response. Use **Mark Accepted Outside** or **Mark Declined Outside** only to record an actual external response.
+3. Review the name, client record, service address, and actual email destination before choosing **Send Proposal**. The provider accepting the message confirms an attempt, and mailbox delivery remains unconfirmed. **Mark Sent Without Email** records an outside send and leaves the offer without a customer link.
+4. A valid emailed proposal link lets the customer review and respond without signing in. Acceptance records their decision so your team can follow up about the agreement or scheduling. Invite the existing client relationship separately when they need the Client Portal. New portal users create a password, and returning users use their existing password. Use **Mark Accepted Outside** or **Mark Declined Outside** to record an actual external response.
 5. For a sent proposal that needs revision, use **Make changes** to return it to draft before editing. Save/review and send the revision; the previous client link is no longer valid. Check issue history for previously sent content.
 
 **Check the result:** verify saved content, delivery evidence, and Draft/Sent/Accepted/Declined state. Acceptance does not automatically schedule a job; continue with Section 13.

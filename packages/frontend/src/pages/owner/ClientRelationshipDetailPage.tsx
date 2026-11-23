@@ -7,6 +7,8 @@ import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { getStaffSessionToken, useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { toFriendlyMessage } from "@/lib/friendlyError";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
 import { Clock, Home, Mail, Plus, Phone, Save, User, Wrench } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -166,7 +168,7 @@ function buildTimeline(detail: any, t: any) {
 
 export function ClientRelationshipDetailPage() {
   const { user, sessionToken } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const params = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const [editing, setEditing] = useState(false);
@@ -174,6 +176,7 @@ export function ClientRelationshipDetailPage() {
   const [saving, setSaving] = useState(false);
   const [creatingLead, setCreatingLead] = useState(false);
   const [inviting, setInviting] = useState(false);
+  const [showInviteReview, setShowInviteReview] = useState(false);
   const [inviteLink, setInviteLink] = useState("");
   const [form, setForm] = useState(EMPTY_FORM);
   const [leadForm, setLeadForm] = useState(EMPTY_LEAD_FORM);
@@ -275,18 +278,20 @@ export function ClientRelationshipDetailPage() {
   };
 
   const handleInviteClient = async () => {
+    if (inviting || !relationship.email?.trim()) return;
     setInviting(true);
     try {
       const result = await inviteClient({
         userId: user._id,
         sessionToken: getStaffSessionToken(),
         relationshipId: relationship._id,
+        expectedEmail: relationship.email.trim().toLowerCase(),
+        locale: i18n.language?.startsWith("es") ? "es" : "en",
       });
       if (result.status === "active") {
         showToast(t("clientRelationships.inviteAlreadyActive"), "success");
       } else {
         setInviteLink(result.inviteUrl);
-        await navigator.clipboard?.writeText(result.inviteUrl).catch(() => {});
         showToast(
           result.emailSent
             ? t("clientRelationships.inviteSent")
@@ -294,8 +299,9 @@ export function ClientRelationshipDetailPage() {
           "success"
         );
       }
+      setShowInviteReview(false);
     } catch (err: any) {
-      showToast(err.message || t("clientRelationships.inviteFailed"), "error");
+      showToast(toFriendlyMessage(err, t("clientRelationships.inviteFailed"), t), "error");
     } finally {
       setInviting(false);
     }
@@ -337,12 +343,21 @@ export function ClientRelationshipDetailPage() {
                 {t("clientRelationships.createLead")}
               </button>
             )}
-            <button type="button" onClick={handleInviteClient} disabled={inviting || !relationship.email} className="btn-secondary text-sm">
+            {relationship.inviteStatus !== "active" && relationship.status !== "archived" && <button type="button" onClick={() => setShowInviteReview(true)} disabled={inviting || !relationship.email} className="btn-secondary text-sm">
               {inviting ? t("common.saving") : t("clientRelationships.inviteClient")}
-            </button>
+            </button>}
           </div>
         }
       />
+      <ConfirmDialog open={showInviteReview} onOpenChange={setShowInviteReview}
+        title={t("requests.clientPortal.confirmTitle", { name: relationship.displayName })}
+        description={<div className="space-y-2">
+          <p>{t("requests.clientPortal.confirmRecipient")}</p>
+          <p className="break-words font-medium">{relationship.email?.trim().toLowerCase()}</p>
+          <p>{t("requests.clientPortal.inviteAccountHelp")}</p>
+          {relationship.inviteStatus === "pending" && <p>{t("requests.clientPortal.replacesInvite")}</p>}
+        </div>}
+        confirmLabel={t("requests.clientPortal.sendInvitation")} onConfirm={handleInviteClient} loading={inviting} />
 
       {canManageSales && showLeadForm && (
         <form onSubmit={handleCreateLead} className="card space-y-4">

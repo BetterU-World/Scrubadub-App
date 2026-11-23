@@ -15,7 +15,8 @@ describe("request client invitation UI", () => {
   });
 
   it("teaches the missing-email prerequisite and prevents duplicate sends", () => {
-    expect(requestDetail).toContain("disabled={!request.requesterEmail?.trim() || sendingClientInvite}");
+    expect(requestDetail).toContain("disabled={!clientPortalRecipientEmail || sendingClientInvite}");
+    expect(requestDetail).toContain("expectedEmail: clientPortalRecipientEmail");
     expect(requestDetail).toContain('t("requests.clientPortal.missingEmail")');
     expect(requestDetail).toContain("if (sendingClientInvite) return");
     expect(requestDetail).toContain("loading={sendingClientInvite}");

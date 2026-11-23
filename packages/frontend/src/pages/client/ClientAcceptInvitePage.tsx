@@ -15,7 +15,7 @@ export function ClientAcceptInvitePage() {
   const getInviteInfo = useAction(api.clientAuthActions.getInviteInfo);
   const { setSignedInClient, isLoading } = useClientAuth();
   const [, navigate] = useLocation();
-  const [inviteInfo, setInviteInfo] = useState<null | { email: string; displayName: string } | undefined>(undefined);
+  const [inviteInfo, setInviteInfo] = useState<null | { email: string; displayName: string; accountMode: "existing" | "new" } | undefined>(undefined);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
@@ -35,20 +35,22 @@ export function ClientAcceptInvitePage() {
       <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
         <div className="card w-full max-w-md text-center">
           <h1 className="mb-2 text-xl font-semibold text-gray-900">{t("clientAuth.invalidInvite")}</h1>
+          <p className="mb-4 text-sm text-gray-600">{t("clientAuth.inviteRecovery")}</p>
           <a href="/client/login" className="btn-primary inline-block">{t("clientAuth.goToLogin")}</a>
         </div>
       </div>
     );
   }
 
+  const existingAccount = inviteInfo.accountMode === "existing";
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError("");
-    if (password.length < 10) {
+    if (!existingAccount && password.length < 10) {
       setError(t("auth.passwordMinLength"));
       return;
     }
-    if (password !== confirmPassword) {
+    if (!existingAccount && password !== confirmPassword) {
       setError(t("auth.passwordsNoMatch"));
       return;
     }
@@ -58,7 +60,8 @@ export function ClientAcceptInvitePage() {
       const result = await acceptInvite({ token: params.token!, password });
       if (setSignedInClient(result.sessionToken, sessionRevision)) navigate("/client/home", { replace: true });
     } catch (err: any) {
-      setError(err.message || t("clientAuth.acceptFailed"));
+      setError(err instanceof Error && err.message.includes("existing Client Portal password")
+        ? t("clientAuth.invitePasswordMismatch") : t("clientAuth.acceptFailed"));
     } finally {
       setLoading(false);
     }
@@ -70,7 +73,7 @@ export function ClientAcceptInvitePage() {
         <div className="mb-8 text-center">
           <img src="/logo-icon.png" alt="SCRUB" className="mx-auto mb-3 h-12 w-12" />
           <img src="/logo-word.png" alt="SCRUB" className="mx-auto h-8 w-auto" />
-          <p className="mt-2 text-gray-500">{t("clientAuth.acceptSubtitle")}</p>
+          <p className="mt-2 text-gray-500">{t(existingAccount ? "clientAuth.inviteExistingHelp" : "clientAuth.acceptSubtitle")}</p>
         </div>
         <div className="card">
           <h1 className="mb-2 text-xl font-semibold text-gray-900">{t("clientAuth.acceptInvite")}</h1>
@@ -83,15 +86,18 @@ export function ClientAcceptInvitePage() {
             </label>
             <label className="block">
               <span className="mb-1 block text-sm font-medium text-gray-700">{t("auth.password")}</span>
-              <PasswordInput className="input-field" value={password} onChange={(event) => setPassword(event.target.value)} required />
+              <PasswordInput className="input-field" value={password} autoComplete={existingAccount ? "current-password" : "new-password"} onChange={(event) => setPassword(event.target.value)} required />
             </label>
-            <label className="block">
+            {!existingAccount && <label className="block">
               <span className="mb-1 block text-sm font-medium text-gray-700">{t("auth.confirmPassword")}</span>
-              <PasswordInput className="input-field" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required />
-            </label>
+              <PasswordInput className="input-field" value={confirmPassword} autoComplete="new-password" onChange={(event) => setConfirmPassword(event.target.value)} required />
+            </label>}
+            {existingAccount && <a href="/client/forgot-password" className="inline-flex min-h-11 items-center text-sm font-medium text-primary-700">
+              {t("clientAuth.forgotPassword")}
+            </a>}
             <button type="submit" disabled={loading} className="btn-primary flex w-full items-center justify-center gap-2">
               {loading && <LoadingSpinner size="sm" />}
-              {t("clientAuth.acceptInvite")}
+              {t(existingAccount ? "clientAuth.inviteExistingAction" : "clientAuth.acceptInvite")}
             </button>
           </form>
         </div>

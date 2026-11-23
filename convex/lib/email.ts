@@ -130,13 +130,17 @@ export async function sendProposalEmail(args: ProposalEmailArgs): Promise<boolea
           <p>${escapeHtml(args.companyName)}</p>
           <h1>${escapeHtml(args.proposal.title)}</h1>
           <p>${spanish ? "Hola" : "Hi"} ${escapeHtml(args.clientName)},</p>
-          <p>${spanish ? "Revisa la propuesta y responde a tu proveedor de limpieza." : "Review the proposal and respond to your cleaning provider."}</p>
+          <p>${spanish ? "Revisa los servicios y precios, y usa los botones de la propuesta para aceptar o rechazar. No necesitas una cuenta." : "Review the services and prices, then use the buttons on the proposal to accept or decline. No account is needed."}</p>
+          ${args.proposal.propertyAddress ? `<p>${escapeHtml(args.proposal.propertyAddress)}</p>` : ""}
           <p><a href="${escapeHtml(args.viewUrl)}" style="display:inline-block;padding:12px 18px;background:#115e59;color:#fff;border-radius:8px;text-decoration:none">${spanish ? "Ver propuesta" : "View proposal"}</a></p>
+          <p>${spanish ? "Si aceptas, la empresa de limpieza se pondrá en contacto contigo para confirmar los próximos pasos." : "If you accept, the cleaning company will contact you to confirm the next steps."}</p>
+          <p>${spanish ? "¿Preguntas? Comunícate con" : "Questions? Contact"} ${escapeHtml(args.companyName)}${args.companyEmail ? ` · ${escapeHtml(args.companyEmail)}` : ""}${args.companyPhone ? ` · ${escapeHtml(args.companyPhone)}` : ""}.</p>
         </div>`,
       });
+      if (error?.name === "application_error") throw new Error("Proposal email result is unknown");
       return !error;
     } catch {
-      return false;
+      throw new Error("Proposal email result is unknown");
     }
   }
   const appUrl = getAppUrl();
@@ -218,7 +222,7 @@ export async function sendProposalEmail(args: ProposalEmailArgs): Promise<boolea
                   </a>
                 </p>
                 <p style="margin:0; color:#6b7280; font-size:13px; line-height:1.6; text-align:center;">
-                  After reviewing, you can accept or decline the proposal securely in SCRUB.
+                  You can review, accept, or decline without an account. If you accept, the cleaning company will contact you to confirm the next steps.
                 </p>
               </div>
 
@@ -236,13 +240,14 @@ export async function sendProposalEmail(args: ProposalEmailArgs): Promise<boolea
     });
 
     if (error) {
+      if (error.name === "application_error") throw new Error("Proposal email result is unknown");
       console.error("[email] Failed to send proposal email:", error);
       return false;
     }
     return true;
   } catch (err) {
     console.error("[email] Error sending proposal email:", err);
-    return false;
+    throw new Error("Proposal email result is unknown");
   }
 }
 
@@ -910,30 +915,33 @@ export async function sendClientInviteEmail(
   email: string,
   inviteToken: string,
   name?: string,
-  identity: OperationalEmailIdentity = { companyName: "Your Cleaning Company" }
+  identity: OperationalEmailIdentity = { companyName: "Your Cleaning Company" },
+  locale: "en" | "es" = "en",
 ): Promise<boolean> {
   const resend = getResendClient();
   const inviteLink = `${getAppUrl()}/client/accept-invite/${inviteToken}`;
-  const greeting = name ? `Hi ${name},` : "Hi,";
+  const spanish = locale === "es";
+  const greeting = `${spanish ? "Hola" : "Hi"}${name ? ` ${name}` : ""},`;
 
   try {
     const { error } = await resend.emails.send({
       ...getOperationalEmailHeaders(identity),
       to: email,
-      subject: "Your SCRUB client access",
+      subject: spanish ? `Acceso al Portal del Cliente de ${identity.companyName}` : `Client Portal access from ${identity.companyName}`,
       html: `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
+        <div lang="${locale}" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 0;">
           <div style="text-align: center; margin-bottom: 24px;">
             <img src="${escapeHtml(`${getAppUrl()}/logo-icon.png`)}" alt="SCRUB" width="48" height="48" style="border-radius: 8px;" />
           </div>
-          <h2 style="text-align: center; color: #111; font-size: 22px; margin: 0 0 16px;">Set up your SCRUB client access</h2>
-          <p style="color: #374151; font-size: 15px; line-height: 1.6;">${escapeHtml(greeting)} you've been invited to view your cleaning service records in SCRUB. Click below to set your password.</p>
+          <h2 style="text-align: center; color: #111; font-size: 22px; margin: 0 0 16px;">${escapeHtml(identity.companyName)}</h2>
+          <p>${escapeHtml(greeting)}</p>
+          <p style="color: #374151; font-size: 15px; line-height: 1.6;">${spanish ? "Tu empresa de limpieza te invita a consultar tus documentos de servicio en el Portal del Cliente. Abre la invitación para crear tu contraseña o usar la que ya tienes." : "Your cleaning company invited you to view your service documents in the Client Portal. Open the invitation to create a password or use your existing password."}</p>
           <p style="text-align: center; margin: 28px 0;">
             <a href="${escapeHtml(inviteLink)}" style="background-color: #111; color: #ffffff; padding: 12px 18px; border-radius: 6px; text-decoration: none; display: inline-block; font-size: 15px; font-weight: 500;">
-              Accept Invite
+              ${spanish ? "Abrir invitación" : "Open invitation"}
             </a>
           </p>
-          <p style="color: #9ca3af; font-size: 13px; line-height: 1.5;">This free client access link expires in 72 hours. If you weren't expecting this invite, you can safely ignore this email.</p>
+          <p style="color: #6b7280; font-size: 13px; line-height: 1.5;">${spanish ? "El enlace vence en 72 horas. Si no esperabas esta invitación, puedes ignorar el correo." : "This link expires in 72 hours. If you weren't expecting this invitation, you can ignore this email."}</p>
         </div>
       `,
     });

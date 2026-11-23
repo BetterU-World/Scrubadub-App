@@ -2,10 +2,10 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { requireOwnerOrManagerCapability } from "../lib/sessionAuth";
 import { calculateProposalTotals } from "../lib/proposalAddOnLineItems";
-import { safeProposalPayload } from "../proposalDeliveryInternal";
+import { proposalEmailRecipient, safeProposalPayload } from "../proposalDeliveryInternal";
 import { proposalIssueContent } from "../lib/proposalIssueContent";
 
-async function decorateProposal(ctx: any, proposal: any) {
+async function decorateProposal(ctx: any, proposal: any, request: any) {
   const issueId = ["accepted", "declined"].includes(proposal.status)
     ? proposal.responseIssueId ?? proposal.currentIssueId : proposal.currentIssueId;
   const issue = issueId ? await ctx.db.get(issueId) : null;
@@ -23,6 +23,12 @@ async function decorateProposal(ctx: any, proposal: any) {
   const latestDeliveryAttempt = await ctx.db.query("transactionalDocumentDeliveryAttempts")
     .withIndex("by_document", (q: any) => q.eq("documentKind", "proposal").eq("documentId", String(proposal._id)))
     .order("desc").first();
+  const preparedIssueId = proposal.pendingDeliveryAttemptId && latestDeliveryAttempt?.companyId === proposal.companyId &&
+    latestDeliveryAttempt._id === proposal.pendingDeliveryAttemptId
+    ? ctx.db.normalizeId("proposalIssues", latestDeliveryAttempt.issueId) : null;
+  const preparedIssue = preparedIssueId ? await ctx.db.get(preparedIssueId) : null;
+  const emailContent = validIssue?.content ?? (preparedIssue?.companyId === proposal.companyId &&
+    preparedIssue.proposalId === proposal._id ? preparedIssue.content : savedContent);
   return {
     ...proposal,
     appliedEstimate: estimate?.companyId === proposal.companyId && estimate.clientRequestId === proposal.clientRequestId &&
@@ -38,8 +44,14 @@ async function decorateProposal(ctx: any, proposal: any) {
     sourceAssessment: source && source.companyId === proposal.companyId && source.clientRequestId === proposal.clientRequestId
       ? { title: source.title, completedAt: source.completedAt ?? null } : null,
     calculatedTotals: calculateProposalTotals(proposal),
+    emailReview: {
+      ...proposalEmailRecipient(proposal, request, relationship),
+      clientName: emailContent?.clientName ?? proposal.clientName,
+      propertyAddress: emailContent ? emailContent.proposal.propertyAddress : proposal.propertyAddress ?? null,
+    },
     latestDeliveryAttempt: latestDeliveryAttempt?.companyId === proposal.companyId
-      ? { channel: latestDeliveryAttempt.channel, result: latestDeliveryAttempt.result, attemptedAt: latestDeliveryAttempt.attemptedAt }
+      ? { channel: latestDeliveryAttempt.channel, result: latestDeliveryAttempt.result, attemptedAt: latestDeliveryAttempt.attemptedAt,
+          recipientEmail: latestDeliveryAttempt.recipientEmail ?? null }
       : null,
     clientRelationship:
       relationship?.companyId === proposal.companyId
@@ -83,6 +95,6 @@ export const getProposalByClientRequest = query({
     if (!proposal) return null;
     if (proposal.companyId !== owner.companyId) throw new Error("Access denied");
 
-    return await decorateProposal(ctx, proposal);
+    return await decorateProposal(ctx, proposal, request);
   },
 });

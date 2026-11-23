@@ -45,16 +45,94 @@ async function createRequest(t: ReturnType<typeof backend>, companyId: any, over
 
 describe("request client portal invitations", () => {
   beforeEach(() => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     process.env.TOKEN_PEPPER = "request-invite-pepper";
     process.env.STRIPE_SECRET_KEY = "test-stripe-key";
     process.env.STRIPE_WEBHOOK_ACCOUNT_SECRET = "test-webhook-secret";
     process.env.RESEND_API_KEY = "test-resend-key";
     process.env.RESEND_FROM_EMAIL = "test@example.com";
     process.env.APP_URL = "https://app.scrub.test";
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ id: "provider-id" })));
   });
 
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it("does not silently replace the client record email or match a different contact by business name", async () => {
+    const t = backend();
+    const s = await seed(t);
+    const auth = await login(t, "owner@invite.test");
+    const relationshipId = await t.run(ctx => ctx.db.insert("clientRelationships", { companyId: s.companyA,
+      displayName: "Jamie's Homes", businessName: "Jamie's Homes", email: "office@client.test",
+      clientType: "residential", status: "active", createdAt: 1, updatedAt: 1 }));
+    const unlinked = await createRequest(t, s.companyA);
+    const args = { userId: s.owner, sessionToken: auth.sessionToken };
+    await expect(t.action(api.clientAuthActions.inviteClientFromRequest,
+      { ...args, requestId: unlinked, expectedEmail: "jamie@client.test" })).rejects.toThrow("details changed");
+    expect((await t.run(ctx => ctx.db.get(unlinked)))?.clientRelationshipId).toBeUndefined();
+    const requestId = await createRequest(t, s.companyA, { clientRelationshipId: relationshipId });
+    await expect(t.action(api.clientAuthActions.inviteClientFromRequest,
+      { ...args, requestId, expectedEmail: "jamie@client.test" })).rejects.toThrow("details changed");
+    await expect(t.action(api.clientAuthActions.inviteClientFromRequest,
+      { ...args, requestId, expectedEmail: "office@client.test", locale: "es" })).resolves.toMatchObject({ status: "pending" });
+    expect((await t.run(ctx => ctx.db.get(relationshipId)))?.email).toBe("office@client.test");
+    await t.finishAllScheduledFunctions(() => { vi.runAllTimers(); });
+    expect(vi.mocked(fetch).mock.calls.some(([, init]) =>
+      String(init?.body).includes("office@client.test") && String(init?.body).includes("Abrir invitación"))).toBe(true);
+  });
+
+  it("requires the returning client's password and preserves relationship scope and single-use redemption", async () => {
+    const t = backend();
+    const s = await seed(t);
+    const auth = await login(t, "owner@invite.test");
+    const passwordHash = await hashPassword(PASSWORD);
+    const { clientUserId, relationshipId, otherRelationshipId } = await t.run(async ctx => {
+      const clientUserId = await ctx.db.insert("clientUsers", { email: "jamie@client.test", displayName: "Jamie",
+        passwordHash, status: "active", createdAt: 1, updatedAt: 1 });
+      const fields = { displayName: "Jamie", email: "jamie@client.test", clientType: "residential", status: "active",
+        createdAt: 1, updatedAt: 1 } as const;
+      const relationshipId = await ctx.db.insert("clientRelationships", { ...fields, companyId: s.companyA });
+      const otherRelationshipId = await ctx.db.insert("clientRelationships", { ...fields, companyId: s.companyB, clientUserId });
+      return { clientUserId, relationshipId, otherRelationshipId };
+    });
+    const result = await t.action(api.clientAuthActions.inviteClient, {
+      userId: s.owner, sessionToken: auth.sessionToken, relationshipId, expectedEmail: "jamie@client.test",
+    });
+    const token = result.inviteUrl.split("/").pop()!;
+    await expect(t.action(api.clientAuthActions.getInviteInfo, { token })).resolves.toMatchObject({ accountMode: "existing" });
+    await expect(t.action(api.clientAuthActions.acceptInvite, { token, password: "incorrect-password" })).rejects.toThrow("did not match");
+    expect((await t.run(ctx => ctx.db.get(relationshipId)))?.clientUserId).toBeUndefined();
+    await expect(t.action(api.clientAuthActions.acceptInvite, { token, password: PASSWORD })).resolves.toMatchObject({ clientUserId });
+    await expect(t.action(api.clientAuthActions.acceptInvite, { token, password: PASSWORD })).rejects.toThrow("expired invite");
+    expect((await t.run(ctx => ctx.db.get(otherRelationshipId)))?.clientUserId).toBe(clientUserId);
+    expect((await t.run(ctx => ctx.db.get(clientUserId)))?.passwordHash).toBe(passwordHash);
+  });
+
+  it("reuses one identity when two authorized companies invite the same new mailbox", async () => {
+    const t = backend();
+    const s = await seed(t);
+    const [auth, other] = await Promise.all([login(t, "owner@invite.test"), login(t, "other@invite.test")]);
+    const [a, b] = await t.run(ctx => Promise.all([s.companyA, s.companyB].map(companyId =>
+      ctx.db.insert("clientRelationships", { companyId, displayName: "Jamie", email: "jamie@client.test",
+        clientType: "residential", status: "active", createdAt: 1, updatedAt: 1 })
+    )));
+    const outcomes = await Promise.all([
+      t.action(api.clientAuthActions.inviteClient, { userId: s.owner, sessionToken: auth.sessionToken, relationshipId: a }),
+      t.action(api.clientAuthActions.inviteClient, { userId: s.otherOwner, sessionToken: other.sessionToken, relationshipId: b }),
+    ]);
+    const accounts = await t.run(ctx => ctx.db.query("clientUsers").collect());
+    expect(accounts).toHaveLength(1);
+    const [left, right] = await t.run(ctx => Promise.all([ctx.db.get(a), ctx.db.get(b)]));
+    for (const relationship of [left, right]) {
+      expect(relationship?.pendingInviteClientUserId ?? relationship?.clientUserId).toBe(accounts[0]._id);
+    }
+    await t.run(ctx => ctx.db.patch(a, { inviteTokenExpiry: Date.now() - 1 }));
+    const expiredToken = outcomes[0].inviteUrl.split("/").pop()!;
+    await expect(t.action(api.clientAuthActions.getInviteInfo, { token: expiredToken })).resolves.toBeNull();
+    await expect(t.action(api.clientAuthActions.acceptInvite, { token: expiredToken, password: PASSWORD })).rejects.toThrow("expired invite");
+  }, 15000);
 
   it("creates a missing relationship canonically, sends the existing invite, and preserves acceptance", async () => {
     const t = backend();

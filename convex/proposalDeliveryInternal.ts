@@ -104,10 +104,7 @@ export async function safeProposalPayload(ctx: any, proposal: any, { forNewIssue
   return {
     presentation,
     company: branding,
-    recipientEmail:
-      relationship?.companyId === proposal.companyId
-        ? relationship.email ?? request?.requesterEmail ?? null
-        : request?.requesterEmail ?? null,
+    recipientEmail: proposalEmailRecipient(proposal, request, relationship).email,
     clientName: proposal.clientName,
     proposal: {
       title: proposal.title,
@@ -134,6 +131,22 @@ export async function safeProposalPayload(ctx: any, proposal: any, { forNewIssue
       declinedAt: proposal.declinedAt ?? null,
       proposalResponseNote: proposal.proposalResponseNote ?? null,
     },
+  };
+}
+
+export function proposalEmailRecipient(proposal: { companyId: string; clientRelationshipId?: string },
+  request: { companyId: string; requesterEmail: string } | null,
+  relationship: { companyId: string; email?: string; displayName: string } | null) {
+  const scoped = relationship?.companyId === proposal.companyId ? relationship : null;
+  const requestEmail = request?.companyId === proposal.companyId ? request.requesterEmail.trim().toLowerCase() : null;
+  const relationshipEmail = scoped?.email?.trim().toLowerCase();
+  const email = relationshipEmail ?? requestEmail;
+  return {
+    email: email || null,
+    canSend: !!email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
+    relationshipName: scoped?.displayName ?? null,
+    mismatch: Boolean(requestEmail && relationshipEmail && requestEmail !== relationshipEmail),
+    invalidRelationship: Boolean(proposal.clientRelationshipId && !scoped),
   };
 }
 
@@ -168,10 +181,14 @@ export const prepareProposalEmail = internalMutation({
   args: {
     companyId: v.id("companies"), proposalId: v.id("proposals"),
     tokenNonce: v.string(), tokenHash: v.string(),
+    expectedRecipientEmail: v.optional(v.string()), expectedProposalRevision: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const proposal = await ctx.db.get(args.proposalId);
     if (!proposal || proposal.companyId !== args.companyId) throw new Error("Access denied");
+    if (args.expectedProposalRevision !== undefined && args.expectedProposalRevision !== proposal.updatedAt) {
+      throw new Error("Proposal draft changed. Review the current offer before sending.");
+    }
     if (proposal.status === "accepted" || proposal.status === "declined") throw new Error("Accepted or declined proposals cannot be sent");
     const now = Date.now();
     const previousAttempt = proposal.pendingDeliveryAttemptId
@@ -193,6 +210,9 @@ export const prepareProposalEmail = internalMutation({
     if (proposal.status === "draft" && issue && !previousAttempt) throw new Error("Draft proposal cannot have an active issue");
     const currentPayload = await safeProposalPayload(ctx, proposal, { forNewIssue: !issue });
     const recipientEmail = currentPayload.recipientEmail?.trim().toLowerCase();
+    if (args.expectedRecipientEmail !== undefined && args.expectedRecipientEmail !== recipientEmail) {
+      throw new Error("Proposal recipient changed. Review the destination before sending.");
+    }
     if (!recipientEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail)) {
       throw new Error("Add a valid client email before sending this proposal");
     }
