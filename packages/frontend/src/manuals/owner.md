@@ -211,7 +211,7 @@ Ordinary submission does not automatically report every problem as a red flag. P
 
 ### Schedule and complete a walkthrough when needed
 
-**Before you start:** open the correct Request and have its contact/location details. A walkthrough is optional for some proposals, but a proposal sourced from a walkthrough requires that assessment to be completed.
+**Before you start:** open the correct request and check the contact and location details. A walkthrough is optional. Complete the assessment if you want to use it as the proposal source.
 
 **Steps**
 
@@ -231,7 +231,7 @@ Ordinary submission does not automatically report every problem as a red flag. P
 
 **Steps**
 
-1. Choose **Create Proposal** from the lead or completed walkthrough. Review scope, frequency, price, recipient, and requested/catalog/custom add-ons. Save each add-on line and finalize prices before sending.
+1. Choose **Create Proposal** at the top of the request to start from the request and linked property. To start from a completed assessment, choose **Create from walkthrough**. **Open Proposal** opens the existing offer if there is one. Completing a walkthrough later keeps the existing proposal as saved. Review scope, frequency, price, recipient, and add-ons. Save each add-on line and finalize prices before sending.
 2. Choose **Save Proposal** and use **Review Proposal** to inspect the saved content. Confirm what the client will receive.
 3. Review the name, client record, service address, and actual email destination before choosing **Send Proposal**. The provider accepting the message confirms an attempt, and mailbox delivery remains unconfirmed. **Mark Sent Without Email** records an outside send and leaves the offer without a customer link.
 4. A valid emailed proposal link lets the customer review and respond without signing in. Acceptance records their decision so your team can follow up about the agreement or scheduling. Invite the existing client relationship separately when they need the Client Portal. New portal users create a password, and returning users use their existing password. Use **Mark Accepted Outside** or **Mark Declined Outside** to record an actual external response.

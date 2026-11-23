@@ -46,11 +46,11 @@ describe("derived lead pipeline state", () => {
 
   it("keeps unscheduled, cancelled, archived, and legacy walkthroughs readable", () => {
     const unscheduled = deriveLeadPipelineState(base({ walkthroughs: [{ status: "draft", appointmentStatus: "draft", updatedAt: NOW }] }));
-    expect(unscheduled.blockers).toContain("walkthrough_not_scheduled");
+    expect(unscheduled.blockers).not.toContain("walkthrough_not_scheduled");
     expect(unscheduled.nextAction.key).toBe("schedule_walkthrough");
 
     const cancelled = deriveLeadPipelineState(base({ walkthroughs: [{ status: "draft", appointmentStatus: "cancelled", scheduledDate: "2030-01-10", scheduledStartTime: "09:00", updatedAt: NOW }] }));
-    expect(cancelled.blockers).toContain("walkthrough_not_scheduled");
+    expect(cancelled.blockers).not.toContain("walkthrough_not_scheduled");
     expect(cancelled.nextAction.key).toBe("schedule_walkthrough");
 
     const archived = deriveLeadPipelineState(base({ walkthroughs: [{ status: "archived", appointmentStatus: "scheduled", updatedAt: NOW }] }));

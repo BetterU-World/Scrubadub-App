@@ -69,6 +69,7 @@ export function ProposalEditor({ proposal, form, onChange, sourceAssessment, dir
             title: sourceAssessment.title, date: sourceAssessment.completedAt ? new Date(sourceAssessment.completedAt).toLocaleDateString() : t("proposals.v2.completedAssessment")
           })}</p>}
           {!sourceAssessment && proposal.sourceWalkthroughId && <p className="mt-1 text-sm text-gray-700">{t("proposals.v2.sourceUnavailable")}</p>}
+          {proposal.sourceKind === "request" && <p className="mt-1 text-sm text-gray-700">{t("proposals.directSource")}</p>}
         </div>
         <p role="status" aria-live="polite" className={`shrink-0 text-sm font-medium ${dirty || saving ? "text-amber-800" : "text-green-800"}`}>
           {t(saving ? "proposals.v2.savingState" : dirty ? "proposals.v2.unsavedState" : "proposals.v2.savedState")}

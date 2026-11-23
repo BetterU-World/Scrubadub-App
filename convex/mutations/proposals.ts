@@ -76,7 +76,7 @@ export function requireDraft(proposal: Doc<"proposals">) {
   if (proposal.pendingDeliveryAttemptId) throw new Error("Wait for the pending proposal delivery attempt before editing");
 }
 
-/** Create an owner-only draft proposal from a lead. Pricing is intentionally blank. */
+/** Create or reuse the Sales-authorized request proposal. Pricing starts blank. */
 export const createProposalFromLead = mutation({
   args: {
     userId: v.id("users"),
@@ -84,6 +84,7 @@ export const createProposalFromLead = mutation({
     clientRequestId: v.id("clientRequests"),
     sourceWalkthroughId: v.optional(v.id("walkthroughs")),
   },
+  returns: v.id("proposals"),
   handler: async (ctx, args) => {
     const owner = await requireOwnerOrManagerCapability(
       ctx, args.sessionToken, args.userId, "canManageSalesAndCommercial"
@@ -99,7 +100,11 @@ export const createProposalFromLead = mutation({
         q.eq("clientRequestId", args.clientRequestId)
       )
       .first();
-    if (existing) return existing._id;
+    if (existing) {
+      if (existing.companyId !== request.companyId) throw new Error("Access denied");
+      return existing._id;
+    }
+    if (request.status === "archived") throw new Error("Archived requests cannot start new proposals");
 
     const sourceWalkthrough = args.sourceWalkthroughId
       ? await ctx.db.get(args.sourceWalkthroughId)
@@ -111,6 +116,10 @@ export const createProposalFromLead = mutation({
       if (sourceWalkthrough.status !== "completed" && sourceWalkthrough.status !== "proposal_created") {
         throw new Error("Complete the walkthrough before creating its proposal");
       }
+      if (sourceWalkthrough.appointmentStatus === "cancelled") throw new Error("Cancelled walkthroughs cannot source a proposal");
+      if (sourceWalkthrough.propertyId && request.propertyId && sourceWalkthrough.propertyId !== request.propertyId) {
+        throw new Error("Source walkthrough property must match the request");
+      }
       if (sourceWalkthrough.proposalId) throw new Error("Source walkthrough is already linked to a proposal");
     }
 
@@ -120,11 +129,15 @@ export const createProposalFromLead = mutation({
     const leadFrequency = (request as any).estimatedFrequency;
     const now = Date.now();
     const clientRelationshipId = await ensureClientRelationshipForLead(ctx, request);
+    if (sourceWalkthrough?.clientRelationshipId && sourceWalkthrough.clientRelationshipId !== clientRelationshipId) {
+      throw new Error("Source walkthrough client must match the request");
+    }
     const proposalId = await ctx.db.insert("proposals", {
       companyId: request.companyId,
       clientRelationshipId,
       clientRequestId: request._id,
       sourceWalkthroughId: sourceWalkthrough?._id,
+      sourceKind: sourceWalkthrough ? "walkthrough" : "request",
       createdByUserId: owner._id,
       title: "Cleaning Proposal",
       clientName: request.requesterName,

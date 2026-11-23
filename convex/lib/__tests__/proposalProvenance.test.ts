@@ -42,6 +42,24 @@ async function setup() {
 }
 
 describe("explicit proposal provenance", () => {
+  it("denies new proposals for archived requests and preserves access to existing ones", async () => {
+    const s = await setup();
+    const args = { ...s.ownerAuth, clientRequestId: s.requestId };
+    await expect(s.t.mutation(api.mutations.proposals.createProposalFromLead, { ...args, ...s.foreignAuth })).rejects.toThrow("Access denied");
+    await expect(s.t.mutation(api.mutations.proposals.createProposalFromLead, { ...args, ...s.cleanerAuth })).rejects.toThrow();
+    await s.t.run(ctx => ctx.db.patch(s.requestId, { status: "archived" }));
+    await expect(s.t.mutation(api.mutations.proposals.createProposalFromLead, args)).rejects.toThrow("Archived requests");
+    expect(await s.t.query(api.queries.proposals.getProposalByClientRequest, args)).toBeNull();
+    await s.t.run(ctx => ctx.db.patch(s.requestId, { status: "new" }));
+    await s.t.run(ctx => ctx.db.patch(s.sourceId, { appointmentStatus: "cancelled" }));
+    await expect(s.t.mutation(api.mutations.proposals.createProposalFromLead, { ...args, sourceWalkthroughId: s.sourceId }))
+      .rejects.toThrow("Cancelled walkthroughs");
+    const id = await s.t.mutation(api.mutations.proposals.createProposalFromLead, args);
+    await s.t.run(ctx => ctx.db.patch(s.requestId, { status: "archived" }));
+    expect(await s.t.mutation(api.mutations.proposals.createProposalFromLead, args)).toBe(id);
+    expect(await s.t.query(api.queries.proposals.getProposalByClientRequest, args)).toMatchObject({ _id: id, sourceKind: "request" });
+  });
+
   it("starts a proposal with the linked property address and preserves it at issue", async () => {
     const s = await setup();
     const propertyId = await s.t.run(async ctx => {
@@ -55,6 +73,7 @@ describe("explicit proposal provenance", () => {
     });
     const proposal = (await s.t.run(ctx => ctx.db.get(proposalId)))!;
     expect(proposal.propertyAddress).toBe("Current property address");
+    expect(proposal).toMatchObject({ sourceKind: "walkthrough", sourceWalkthroughId: s.sourceId });
     await s.t.mutation(api.mutations.proposals.updateProposal, {
       ...s.ownerAuth, proposalId, title: proposal.title, clientName: proposal.clientName,
       propertyAddress: proposal.propertyAddress, monthlyPriceCents: 20000,
@@ -218,7 +237,7 @@ describe("explicit proposal provenance", () => {
     const s = await setup();
     await s.t.run((ctx) => ctx.db.patch(s.incompleteId, { status: "archived" }));
     const proposalId = await s.t.mutation(api.mutations.proposals.createProposalFromLead, { ...s.ownerAuth, clientRequestId: s.requestId });
-    await s.t.run((ctx) => ctx.db.patch(proposalId, { status: "accepted" }));
+    await s.t.run((ctx) => ctx.db.patch(proposalId, { status: "accepted", sourceKind: undefined }));
     const agreementId = await s.t.mutation(api.mutations.serviceAgreements.createDraftFromAcceptedProposal, { ...s.ownerAuth, proposalId });
     const agreement = await s.t.run((ctx) => ctx.db.get(agreementId));
     expect(agreement?.propertyAddress).toBe("Other address");

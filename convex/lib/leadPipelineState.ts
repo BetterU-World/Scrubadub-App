@@ -138,7 +138,6 @@ export function deriveLeadPipelineState(input: LeadPipelineInput) {
 
   const blockers: string[] = [];
   if (!request.requesterEmail?.trim() && !request.requesterPhone?.trim()) blockers.push("missing_contact_method");
-  if (stage === "walkthrough" && !walkthroughIsScheduled && !walkthroughIsStarted) blockers.push("walkthrough_not_scheduled");
   if (stage === "proposal" && latestProposal?.status === "draft") blockers.push("proposal_not_sent");
   if (stage === "onboarding" && !request.clientRelationshipId) blockers.push("client_relationship_missing");
 

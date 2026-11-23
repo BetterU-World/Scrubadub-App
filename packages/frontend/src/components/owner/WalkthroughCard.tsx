@@ -1132,7 +1132,7 @@ export function WalkthroughCard({
             )}
             {onProposalNextAction && (walkthrough.status === "completed" || walkthrough.status === "proposal_created") && (
               <button type="button" onClick={() => onProposalNextAction(walkthrough._id)} disabled={proposalActionLoading} className="btn-primary w-full text-sm sm:w-auto">
-                {proposalExists ? t("proposals.open") : proposalActionLoading ? t("requests.creating") : t("proposals.create")}
+                {proposalExists ? t("proposals.open") : proposalActionLoading ? t("requests.creating") : t("proposals.createFromWalkthrough")}
               </button>
             )}
             {onBuildEstimate && <button type="button" className="btn-secondary text-sm" onClick={() => onBuildEstimate(walkthrough._id)}>

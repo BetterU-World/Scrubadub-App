@@ -4,6 +4,7 @@ import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
+import { selectRequestWalkthrough } from "../../../../../convex/lib/walkthroughSelection";
 import { useAuth } from "@/hooks/useAuth";
 import { isOptionalAgreementSetupAction } from "@/lib/pipelineActionPresentation";
 import { toFriendlyMessage } from "@/lib/friendlyError";
@@ -15,6 +16,7 @@ import { AsyncButton } from "@/components/ui/AsyncButton";
 import { ServiceAgreementCard } from "@/components/owner/ServiceAgreementCard";
 import { WalkthroughCard } from "@/components/owner/WalkthroughCard";
 import { ProposalEditor } from "@/components/owner/ProposalEditor";
+import { RequestProposalAction } from "@/components/owner/RequestProposalAction";
 import { SmartEstimateBuilder } from "@/components/owner/SmartEstimateBuilder";
 import { ProposalReviewItems } from "@/components/owner/ProposalReviewItems";
 import { ProposalContentView } from "@/components/ProposalContentView";
@@ -169,9 +171,12 @@ export function RequestDetailPage() {
     params.id && user ? { userId: user._id, sessionToken, clientRequestId: params.id as Id<"clientRequests"> } : "skip"
   );
   const eligibleProposalWalkthroughs = (leadWalkthroughs ?? []).filter((item: any) =>
-    item.status === "completed" || item.status === "proposal_created"
+    item.appointmentStatus !== "cancelled" && !item.proposalId &&
+    (item.status === "completed" || item.status === "proposal_created")
   );
-  const proposalUnlocked = eligibleProposalWalkthroughs.length > 0;
+  const displayedWalkthrough: any = selectRequestWalkthrough(leadWalkthroughs ?? []);
+  const showAssessmentPicker = eligibleProposalWalkthroughs.length > 1 ||
+    (eligibleProposalWalkthroughs.length === 1 && eligibleProposalWalkthroughs[0]._id !== displayedWalkthrough?._id);
   const commercialAccount = useQuery(
     (api as any).queries.commercialAccounts.getByProposal,
     proposal && user
@@ -474,6 +479,10 @@ export function RequestDetailPage() {
   const isJobRequest = (request as any).requestContext === "existing_client_service_request";
   const canMarkContacted = request.status === "new";
   const canArchive = request.status !== "archived";
+  const canStartProposal = request.status !== "archived";
+  const assessmentSourceId = eligibleProposalWalkthroughs.length === 1
+    ? eligibleProposalWalkthroughs[0]._id
+    : eligibleProposalWalkthroughs.find((item: any) => item._id === selectedSourceWalkthroughId)?._id;
   const clientPortalRecipientEmail = ((request as any).clientRelationship
     ? (request as any).clientRelationship.email : request.requesterEmail)?.trim().toLowerCase();
   const handleMarkContacted = async () => {
@@ -651,7 +660,9 @@ export function RequestDetailPage() {
     }
   };
 
-  const handleCreateProposal = async (sourceWalkthroughId: Id<"walkthroughs">) => {
+  const handleCreateProposal = async (sourceWalkthroughId?: Id<"walkthroughs">) => {
+    if (proposal) { openProposalSection(); return; }
+    if (!canStartProposal || creatingProposal) return;
     setCreatingProposal(true);
     try {
       await createProposal({ userId: user!._id, sessionToken, clientRequestId: request._id, sourceWalkthroughId });
@@ -943,6 +954,8 @@ export function RequestDetailPage() {
         back={{ href: "/requests", label: t("navigation.backToRequests") }}
         action={
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            {(proposal || canStartProposal) && <RequestProposalAction exists={Boolean(proposal)} creating={creatingProposal}
+              onClick={() => void handleCreateProposal()} />}
             {!isJobRequest && canMarkContacted && (
               <button
                 onClick={handleMarkContacted}
@@ -956,7 +969,7 @@ export function RequestDetailPage() {
               <>
                 <button
                   onClick={handleConvert}
-                  className="btn-primary flex w-full items-center justify-center gap-2 sm:w-auto"
+                  className="btn-secondary flex w-full items-center justify-center gap-2 sm:w-auto"
                 >
                   <Briefcase className="w-4 h-4" /> {t("requests.convertToJob")}
                 </button>
@@ -1152,16 +1165,17 @@ export function RequestDetailPage() {
         <div id="request-walkthrough"><WalkthroughCard
           key={request._id}
           clientRequestId={request._id}
-          allowCreate
+          allowCreate={canArchive}
           proposalExists={Boolean(proposal)}
           proposalActionLoading={creatingProposal}
-          onProposalNextAction={proposal ? () => openProposalSection() : handleCreateProposal}
+          onProposalNextAction={!proposal && canStartProposal && !showAssessmentPicker &&
+            eligibleProposalWalkthroughs.length === 1 ? handleCreateProposal : undefined}
           onBuildEstimate={estimateAccess?.sales ? walkthroughId => setEstimateEntry({ requestId: request._id, walkthroughId }) : undefined}
           onToast={(message, type) => {
             setToast({ message, type });
           }}
         />
-        {estimateAccess?.sales && leadWalkthroughs?.length === 0 && <button type="button" className="btn-secondary m-4" onClick={() => setEstimateEntry({ requestId: request._id })}>
+        {!proposal && canStartProposal && estimateAccess?.sales && leadWalkthroughs?.length === 0 && <button type="button" className="btn-secondary m-4" onClick={() => setEstimateEntry({ requestId: request._id })}>
           {t("smartEstimates.build")}
         </button>}
         </div>
@@ -1196,36 +1210,30 @@ export function RequestDetailPage() {
           <button type="button" role="tab" aria-selected={!editingProposal} onClick={requestProposalReview} className={`min-w-0 flex-1 rounded-md px-4 py-2 text-sm font-medium sm:flex-none ${!editingProposal ? "bg-white text-primary-700 shadow-sm" : "text-gray-600"}`}>{t("proposals.v2.reviewTab")}</button>
         </div>}
 
-        {!proposal && !proposalUnlocked ? (
-          <p className="rounded-md bg-gray-50 p-3 text-sm text-gray-600">
-            {t("proposals.completeWalkthroughToStart")}
-          </p>
-        ) : !proposal ? (
+        {!proposal ? (
           <div className="space-y-3">
-            {eligibleProposalWalkthroughs.length > 1 && (
-              <label className="block text-sm font-medium text-gray-700">
-                {t("proposals.sourceWalkthrough")}
-                <select className="input-field mt-1" value={selectedSourceWalkthroughId} onChange={(event) => setSelectedSourceWalkthroughId(event.target.value)}>
-                  <option value="">{t("common.select")}</option>
-                  {eligibleProposalWalkthroughs.map((item: any) => (
-                    <option key={item._id} value={item._id}>{item.title} — {new Date(item.completedAt ?? item.updatedAt).toLocaleString()}</option>
-                  ))}
-                </select>
-              </label>
-            )}
-            <button
-              onClick={() => {
-                const sourceId = eligibleProposalWalkthroughs.length === 1
-                  ? eligibleProposalWalkthroughs[0]._id
-                  : eligibleProposalWalkthroughs.find((item: any) => item._id === selectedSourceWalkthroughId)?._id;
-                if (sourceId) void handleCreateProposal(sourceId);
-              }}
-              disabled={creatingProposal || (eligibleProposalWalkthroughs.length > 1 && !eligibleProposalWalkthroughs.some((item: any) => item._id === selectedSourceWalkthroughId))}
-              className="btn-primary flex items-center justify-center gap-2 text-sm w-full sm:w-auto"
-            >
-              <FileText className="w-4 h-4" />
-              {creatingProposal ? t("requests.creating") : t("proposals.create")}
-            </button>
+            <p className="rounded-md bg-gray-50 p-3 text-sm text-gray-600">
+              {t(canStartProposal ? "proposals.directHelp" : "proposals.archivedCreateBlocked")}
+            </p>
+            {canStartProposal && showAssessmentPicker && <div className="space-y-3">
+              {eligibleProposalWalkthroughs.length > 1 && (
+                <label className="block text-sm font-medium text-gray-700">
+                  {t("proposals.sourceWalkthrough")}
+                  <select className="input-field mt-1" value={selectedSourceWalkthroughId} onChange={(event) => setSelectedSourceWalkthroughId(event.target.value)}>
+                    <option value="">{t("common.select")}</option>
+                    {eligibleProposalWalkthroughs.map((item: any) => (
+                      <option key={item._id} value={item._id}>{item.title} — {new Date(item.completedAt ?? item.updatedAt).toLocaleString()}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <button type="button" onClick={() => { if (assessmentSourceId) void handleCreateProposal(assessmentSourceId); }}
+                disabled={creatingProposal || !assessmentSourceId}
+                className="btn-secondary flex min-h-11 w-full items-center justify-center gap-2 text-sm sm:w-auto">
+                <FileText aria-hidden="true" className="h-4 w-4 shrink-0" />
+                {creatingProposal ? t("requests.creating") : t("proposals.createFromWalkthrough")}
+              </button>
+            </div>}
           </div>
         ) : editingProposal && proposal.status === "draft" ? (
           <ProposalEditor proposal={proposal} form={proposalForm}
