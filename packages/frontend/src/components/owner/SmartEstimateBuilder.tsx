@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
 import { calculateEstimate, MissingEstimateInput, validateEstimateHandoff, type EstimateInput } from "../../../../../convex/lib/smartEstimatePricing";
-import { proposalAddOnLineAmount } from "../../../../../convex/lib/proposalAddOnLineItems";
+import { calculateProposalTotals, proposalAddOnLineAmount } from "../../../../../convex/lib/proposalAddOnLineItems";
 import { DialogShell } from "@/components/ui/DialogShell";
 import { EstimateNumber, SmartEstimateFields } from "./SmartEstimateFields";
 
@@ -93,6 +93,7 @@ function BuilderForm({ workspace, profiles, auth, clientRequestId, proposalDirty
   const canApprove = !!currentDraft && !dirty && !workspace.propertyChanged && !workspace.walkthroughArchived &&
     !!calculation && (!proposal || !!editableProposal);
   const canApply = !!editableProposal && !!approval && !stale && !!calculation && !handoffError && !workspace.walkthroughArchived;
+  const existingTotals = proposal && calculateProposalTotals({ ...proposal, addOnLineItems: lines });
 
   function markEdited() {
     setDirty(true);
@@ -208,6 +209,13 @@ function BuilderForm({ workspace, profiles, auth, clientRequestId, proposalDirty
           </>}
         </dl>}
         {!proposal && <p>{t("smartEstimates.noProposal")}</p>}
+        {canApply && calculation && existingTotals && proposal && <div className="space-y-2 border-t border-gray-200 pt-2">
+          <h4 className="font-medium">{t("proposals.pricingSource.applyPreview")}</h4>
+          <p>{t("proposals.pricingSource.currentOffer", { oneTime: money(existingTotals.oneTimeTotalCents), monthly: money(existingTotals.monthlyTotalCents) })}</p>
+          <p>{t("proposals.pricingSource.appliedBase", { amount: money(calculation.approvedBaseCents),
+            cadence: t(calculation.cadence === "monthly" ? "smartEstimates.monthly" : "smartEstimates.oneTime") })}</p>
+          <p>{t("proposals.pricingSource.keepAddOns")}</p>
+        </div>}
         {proposal && <div>
           <h4 className="font-medium">{t("smartEstimates.addOns")}</h4>
           <ul>{lines.map(line => {

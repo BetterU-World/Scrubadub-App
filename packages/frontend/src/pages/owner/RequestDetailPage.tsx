@@ -279,6 +279,16 @@ export function RequestDetailPage() {
   const previousProposalStatus = useRef<string | null>(null);
   const [accountLoadedKey, setAccountLoadedKey] = useState<string | null>(null);
   const [proposalForm, setProposalForm] = useState<ProposalForm>(EMPTY_PROPOSAL_FORM);
+  const [savedProposalAt, setSavedProposalAt] = useState<number>();
+  const [pricingConfirmation, setPricingConfirmation] = useState<string>();
+  const pendingPricingConfirmation = useRef<((confirmed: boolean) => void) | undefined>();
+  useEffect(() => {
+    setPricingConfirmation(undefined);
+    return () => {
+      pendingPricingConfirmation.current?.(false);
+      pendingPricingConfirmation.current = undefined;
+    };
+  }, [params.id]);
   const [showAccountForm, setShowAccountForm] = useState(false);
   const [savingAccount, setSavingAccount] = useState(false);
   const [accountForm, setAccountForm] = useState({
@@ -330,6 +340,7 @@ export function RequestDetailPage() {
       const initial = proposalFormFromRecord(proposal);
       setProposalForm(initial);
       setSavedProposalForm(initial);
+      setSavedProposalAt(proposal.updatedAt);
       setEditingProposal(proposal.status === "draft");
       setProposalLoadedId(proposal._id);
     }
@@ -337,12 +348,21 @@ export function RequestDetailPage() {
 
   const proposalDirty = proposalFormIsDirty(proposalForm, savedProposalForm);
   useEffect(() => {
+    if (!proposal || proposal._id !== proposalLoadedId || proposalDirty ||
+        savedProposalAt === undefined || proposal.updatedAt <= savedProposalAt) return;
+    const saved = proposalFormFromRecord(proposal);
+    setProposalForm(saved);
+    setSavedProposalForm(saved);
+    setSavedProposalAt(proposal.updatedAt);
+  }, [proposal, proposalLoadedId, proposalDirty, savedProposalAt]);
+  useEffect(() => {
     if (pendingProposalPreviewAt !== null && proposal?.updatedAt >= pendingProposalPreviewAt) {
       setPendingProposalPreviewAt(null);
       if (!proposalDirty) {
         const saved = proposalFormFromRecord(proposal);
         setProposalForm(saved);
         setSavedProposalForm(saved);
+        setSavedProposalAt(proposal.updatedAt);
         setEditingProposal(false);
       }
     }
@@ -691,14 +711,63 @@ export function RequestDetailPage() {
     }
   };
 
+  const formatPricingBases = (oneTime?: number, monthly?: number) => t("proposals.pricingSource.baseSummary", {
+    oneTime: oneTime == null ? t("common.unassigned") : formatPrice(oneTime),
+    monthly: monthly == null ? t("common.unassigned") : formatPrice(monthly),
+  });
+
+  const confirmManualPricing = (description: string) => new Promise<boolean>(resolve => {
+    if (pendingPricingConfirmation.current) return resolve(false);
+    pendingPricingConfirmation.current = resolve;
+    setPricingConfirmation(description);
+  });
+
+  const finishPricingConfirmation = (confirmed: boolean) => {
+    pendingPricingConfirmation.current?.(confirmed);
+    pendingPricingConfirmation.current = undefined;
+    setPricingConfirmation(undefined);
+  };
+
+  const editProposalAddOn = async (edit: (args: {
+    expectedProposalRevision: number;
+    confirmedEstimateRevisionId?: Id<"smartEstimateRevisions">;
+  }) => Promise<unknown>, editedAt?: number) => {
+    if (proposalDirty) throw new Error(t("smartEstimates.saveProposalFirst"));
+    const { appliedEstimateRevisionId, updatedAt } = proposal;
+    if (editedAt !== undefined && editedAt !== updatedAt) throw new Error(t("proposals.pricingSource.changed"));
+    if (appliedEstimateRevisionId && !await confirmManualPricing(t("proposals.pricingSource.confirmAddOn", {
+      oneTime: formatPrice(proposal.calculatedTotals?.addOnOneTimeTotalCents ?? 0),
+      monthly: formatPrice(proposal.calculatedTotals?.addOnMonthlyTotalCents ?? 0),
+    }))) return false;
+    try {
+      await edit({ expectedProposalRevision: updatedAt, confirmedEstimateRevisionId: appliedEstimateRevisionId });
+      return true;
+    } catch (error) {
+      throw new Error(displayError(error, t("proposals.actionFailed")));
+    }
+  };
+
   const handleSaveProposal = async () => {
     if (!proposal) return;
     setSavingProposal(true);
     try {
+      const monthly = centsFromPrice(proposalForm.monthlyPrice);
+      const oneTime = centsFromPrice(proposalForm.oneTimePrice);
+      const pricingChanged = monthly !== centsFromPrice(savedProposalForm.monthlyPrice) ||
+        oneTime !== centsFromPrice(savedProposalForm.oneTimePrice) ||
+        proposalForm.serviceFrequency !== savedProposalForm.serviceFrequency ||
+        proposalForm.serviceFrequencyNotes.trim() !== savedProposalForm.serviceFrequencyNotes.trim();
+      const confirmedEstimateRevisionId = pricingChanged ? proposal.appliedEstimateRevisionId : undefined;
+      if (confirmedEstimateRevisionId && !await confirmManualPricing(t("proposals.pricingSource.confirmBase", {
+        existing: formatPricingBases(proposal.oneTimePriceCents, proposal.monthlyPriceCents),
+        next: formatPricingBases(oneTime, monthly),
+      }))) return;
       const updatedAt = await updateProposalMut({
         sessionToken,
         userId: user!._id,
         proposalId: proposal._id,
+        expectedProposalRevision: savedProposalAt,
+        confirmedEstimateRevisionId,
         title: proposalForm.title,
         clientName: proposalForm.clientName,
         businessName: proposalForm.businessName || undefined,
@@ -717,6 +786,7 @@ export function RequestDetailPage() {
         } : undefined,
       });
       setSavedProposalForm(proposalForm);
+      setSavedProposalAt(updatedAt);
       setPendingProposalPreviewAt(typeof updatedAt === "number" ? updatedAt : (proposal.updatedAt ?? 0) + 1);
       setToast({ message: t("proposals.saved"), type: "success" });
     } catch (err: any) {
@@ -1113,12 +1183,6 @@ export function RequestDetailPage() {
       >
 
         <div id="request-proposal" className="scroll-mt-24" />
-        {estimateAccess?.sales && editingProposal && proposal?.status === "draft" && !proposal.pendingDeliveryAttemptId && (
-          <button type="button" className="btn-secondary mb-3 w-full sm:w-auto" onClick={() => setEstimateEntry({ requestId: request._id, walkthroughId: proposal.sourceWalkthroughId })}>
-            {t("smartEstimates.use")}
-          </button>
-        )}
-
         {proposal?.status === "draft" && <div role="tablist" aria-label={t("proposals.v2.modeLabel")} className="mb-4 flex w-full gap-1 rounded-lg bg-gray-100 p-1 sm:w-fit">
           <button type="button" role="tab" aria-selected={editingProposal} onClick={() => setEditingProposal(true)} className={`min-w-0 flex-1 rounded-md px-4 py-2 text-sm font-medium sm:flex-none ${editingProposal ? "bg-white text-primary-700 shadow-sm" : "text-gray-600"}`}>{t("proposals.v2.editTab")}</button>
           <button type="button" role="tab" aria-selected={!editingProposal} onClick={requestProposalReview} className={`min-w-0 flex-1 rounded-md px-4 py-2 text-sm font-medium sm:flex-none ${!editingProposal ? "bg-white text-primary-700 shadow-sm" : "text-gray-600"}`}>{t("proposals.v2.reviewTab")}</button>
@@ -1157,14 +1221,16 @@ export function RequestDetailPage() {
           </div>
         ) : editingProposal && proposal.status === "draft" ? (
           <ProposalEditor proposal={proposal} form={proposalForm}
+            onOpenEstimate={estimateAccess?.sales && !proposal.pendingDeliveryAttemptId
+              ? () => setEstimateEntry({ requestId: request._id, walkthroughId: proposal.sourceWalkthroughId }) : undefined}
             onChange={(field, value) => setProposalForm((previous) => ({ ...previous, [field]: value }))}
             sourceAssessment={proposal.sourceAssessment} dirty={proposalDirty}
             saving={savingProposal || pendingProposalPreviewAt !== null} revision={proposal.hasPriorIssue}
             onSave={handleSaveProposal} onCancel={requestProposalReview}
-            onAddCatalog={(companyAddOnId) => addCatalogAddOnLine({ userId: user!._id, sessionToken, proposalId: proposal._id, companyAddOnId, billingCadence: "one_time" })}
-            onAddCustom={(name, unitPriceCents) => addCustomAddOnLine({ userId: user!._id, sessionToken, proposalId: proposal._id, name, pricingMethod: "flat", unitPriceCents, billingCadence: "one_time" })}
-            onUpdateLine={(lineItemId, values) => updateAddOnLine({ userId: user!._id, sessionToken, proposalId: proposal._id, lineItemId, ...values })}
-            onRemoveLine={(lineItemId) => removeAddOnLine({ userId: user!._id, sessionToken, proposalId: proposal._id, lineItemId })}
+            onAddCatalog={(companyAddOnId) => editProposalAddOn(check => addCatalogAddOnLine({ userId: user!._id, sessionToken, proposalId: proposal._id, companyAddOnId, billingCadence: "one_time", ...check }))}
+            onAddCustom={(name, unitPriceCents) => editProposalAddOn(check => addCustomAddOnLine({ userId: user!._id, sessionToken, proposalId: proposal._id, name, pricingMethod: "flat", unitPriceCents, billingCadence: "one_time", ...check }))}
+            onUpdateLine={(lineItemId, values, editedAt) => editProposalAddOn(check => updateAddOnLine({ userId: user!._id, sessionToken, proposalId: proposal._id, lineItemId, ...values, ...check }), editedAt)}
+            onRemoveLine={(lineItemId) => editProposalAddOn(check => removeAddOnLine({ userId: user!._id, sessionToken, proposalId: proposal._id, lineItemId, ...check }))}
             onFeedback={(message, type) => setToast({ message, type })} />
         ) : (
           <div className="space-y-3">
@@ -1717,6 +1783,9 @@ export function RequestDetailPage() {
             </div>
           </div>
         )}
+        <ConfirmDialog open={!!pricingConfirmation} onOpenChange={open => { if (!open) finishPricingConfirmation(false); }}
+          title={t("proposals.pricingSource.confirmTitle")} description={pricingConfirmation}
+          confirmLabel={t("proposals.pricingSource.confirmAction")} onConfirm={() => finishPricingConfirmation(true)} />
         <ConfirmDialog open={proposalDiscardOpen} onOpenChange={setProposalDiscardOpen}
           title={t("proposals.v2.discardTitle")} description={t("proposals.v2.discardBody")}
           confirmLabel={t("proposals.v2.discardChanges")} confirmVariant="danger"

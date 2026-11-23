@@ -1,4 +1,6 @@
-import { createElement } from "react";
+// @vitest-environment jsdom
+import { act, createElement } from "react";
+import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import en from "../../i18n/en/common.json";
@@ -6,8 +8,9 @@ import es from "../../i18n/es/common.json";
 import { ProposalContentView } from "../ProposalContentView";
 import { EMPTY_PROPOSAL_FORM, localProposalTotals, proposalFormFromRecord, proposalFormIsDirty } from "./proposalEditorModel";
 
+const language = vi.hoisted(() => ({ current: "en" }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string, args?: Record<string, unknown>) => {
-  const value = key.split(".").reduce((entry: any, part) => entry?.[part], (args?.lng === "es" ? es : en) as any) ?? key;
+  const value = key.split(".").reduce((entry: any, part) => entry?.[part], ((args?.lng ?? language.current) === "es" ? es : en) as any) ?? key;
   return typeof value === "string" ? value.replace(/\{\{(\w+)\}\}/g, (_: string, name: string) => String(args?.[name] ?? "")) : key;
 } }) }));
 vi.mock("./ProposalCatalogAddOnPicker", () => ({ ProposalCatalogAddOnPicker: () => createElement("div", { "data-testid": "catalog-picker" }) }));
@@ -23,6 +26,40 @@ const lines = [
 const form = { ...EMPTY_PROPOSAL_FORM, title: "Office proposal", clientName: "Client", monthlyPrice: "100", oneTimePrice: "50", scopeOfWork: "Clean offices", notes: "Client-visible note" };
 
 describe("proposal editor V2", () => {
+  it.each([["en", en], ["es", es]] as const)("labels provenance and stages the budget note from a compact %s pricing section", async (locale, labels) => {
+    language.current = locale;
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    const rootElement = document.createElement("div");
+    const root = createRoot(rootElement);
+    const onChange = vi.fn();
+    const onSave = vi.fn();
+    const onOpenEstimate = vi.fn();
+    try {
+      await act(async () => root.render(createElement(ProposalEditor, {
+        proposal: { appliedEstimateRevisionId: "revision", appliedEstimate: { strategy: "hourly", cadence: "one_time", approvedAt: 1 },
+          assessmentSuggestedMonthlyPriceCents: 12000, addOnLineItems: lines },
+        form, onChange, onSave, onOpenEstimate, dirty: false, saving: false, revision: false, onCancel: noop,
+        onAddCatalog: async () => {}, onAddCustom: async () => {}, onUpdateLine: async () => {},
+        onRemoveLine: async () => {}, onFeedback: noop,
+      })));
+      const pricing = rootElement.querySelector("#proposal-section-pricing")!;
+      expect(pricing.textContent).toContain(labels.proposals.pricingSource.applied);
+      expect(pricing.textContent).toContain(labels.smartEstimates.strategies.hourly);
+      const button = (label: string) => Array.from(pricing.querySelectorAll("button")).find(item => item.textContent?.trim() === label)!;
+      const reopen = button(labels.proposals.pricingSource.reopen);
+      expect(reopen.className).toContain("w-full");
+      await act(async () => reopen.click());
+      expect(onOpenEstimate).toHaveBeenCalledOnce();
+      await act(async () => button(labels.proposals.v2.useEstimateAsBase).click());
+      expect(onChange).toHaveBeenCalledExactlyOnceWith("monthlyPrice", "120");
+      expect(onSave).not.toHaveBeenCalled();
+    } finally {
+      await act(async () => root.unmount());
+      language.current = "en";
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("loads saved fields and detects main-form edits separately from saved add-ons", () => {
     const saved = proposalFormFromRecord({ title: "Office proposal", monthlyPriceCents: 10000, notes: "Client-visible note" });
     expect(saved.monthlyPrice).toBe("100");

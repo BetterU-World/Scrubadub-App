@@ -14,6 +14,8 @@ async function decorateProposal(ctx: any, proposal: any) {
   const priorIssue = await ctx.db.query("proposalIssues")
     .withIndex("by_proposal", (q: any) => q.eq("proposalId", proposal._id)).first();
   const source = proposal.sourceWalkthroughId ? await ctx.db.get(proposal.sourceWalkthroughId) : null;
+  const revision = proposal.appliedEstimateRevisionId ? await ctx.db.get(proposal.appliedEstimateRevisionId) : null;
+  const estimate = revision?.companyId === proposal.companyId ? await ctx.db.get(revision.estimateId) : null;
   const savedContent = validIssue ? null : proposalIssueContent(await safeProposalPayload(ctx, proposal));
   const relationship = proposal.clientRelationshipId
     ? await ctx.db.get(proposal.clientRelationshipId)
@@ -23,6 +25,9 @@ async function decorateProposal(ctx: any, proposal: any) {
     .order("desc").first();
   return {
     ...proposal,
+    appliedEstimate: estimate?.companyId === proposal.companyId && estimate.clientRequestId === proposal.clientRequestId &&
+      (!revision.proposalId || revision.proposalId === proposal._id)
+      ? { strategy: revision.input.strategy, cadence: revision.input.cadence, approvedAt: revision.approvedAt } : null,
     brandedAuthoringEnabled: Boolean(savedContent?.presentation),
     canonicalPreview: {
       source: validIssue ? "issued_snapshot" : proposal.status === "draft" ? "saved_draft" : "legacy_current",

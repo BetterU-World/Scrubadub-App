@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
 
-export function ProposalAddOnLineEditor({ line, onSave, onRemove, onFeedback, t }: { line: any; onSave: (values: any) => Promise<any>; onRemove: () => Promise<any>; onFeedback: (message: string, type: "success" | "error") => void; t: any }) {
+export function ProposalAddOnLineEditor({ line, proposalRevision, onSave, onRemove, onFeedback, t }: { line: any; proposalRevision?: number; onSave: (values: any, editedAt?: number) => Promise<any>; onRemove: () => Promise<any>; onFeedback: (message: string, type: "success" | "error") => void; t: any }) {
   const [name, setName] = useState(line.name);
   const [method, setMethod] = useState(line.pricingMethod);
   const [price, setPrice] = useState(String(line.unitPriceCents / 100));
@@ -11,6 +11,7 @@ export function ProposalAddOnLineEditor({ line, onSave, onRemove, onFeedback, t 
   const [cadence, setCadence] = useState(line.billingCadence);
   const [saving, setSaving] = useState(false);
   const editingRef = useRef(false);
+  const editedAt = useRef<number>();
   useEffect(() => {
     if (editingRef.current) return;
     setName(line.name);
@@ -21,7 +22,10 @@ export function ProposalAddOnLineEditor({ line, onSave, onRemove, onFeedback, t 
     setFinalPrice(line.finalizedPriceCents !== undefined ? String(line.finalizedPriceCents / 100) : "");
     setCadence(line.billingCadence);
   }, [line.name, line.pricingMethod, line.unitPriceCents, line.unitLabel, line.quantity, line.finalizedPriceCents, line.billingCadence]);
-  const markEditing = () => { editingRef.current = true; };
+  const markEditing = () => {
+    if (!editingRef.current) editedAt.current = proposalRevision;
+    editingRef.current = true;
+  };
   const sourceLabel = line.sourceType === "request_snapshot" ? t("proposals.addOns.requested") : line.sourceType === "catalog" ? t("proposals.addOns.catalog") : t("proposals.addOns.custom");
   const needsFinalPrice = method === "starting_at" && !finalPrice;
   return <div className={`rounded-lg border bg-gray-50 p-3 ${needsFinalPrice ? "border-amber-300" : "border-gray-200"}`}>
@@ -38,15 +42,17 @@ export function ProposalAddOnLineEditor({ line, onSave, onRemove, onFeedback, t 
      <button type="button" disabled={saving} className="btn-secondary mt-3 text-sm" onClick={async () => {
        setSaving(true);
        try {
-         await onSave({
+         const accepted = await onSave({
            name,
            pricingMethod: method,
            unitPriceCents: Math.round(Number(price) * 100),
            ...(method === "per_unit" ? { unitLabel, quantity: Number(quantity) } : {}),
            ...(method === "starting_at" && finalPrice ? { finalizedPriceCents: Math.round(Number(finalPrice) * 100) } : {}),
            billingCadence: cadence,
-         });
+         }, editedAt.current);
+         if (accepted === false) return;
          editingRef.current = false;
+         editedAt.current = undefined;
          onFeedback(t("proposals.addOns.lineSaved"), "success");
        } catch (err: any) {
          onFeedback(err.message || t("proposals.addOns.lineSaveFailed"), "error");
