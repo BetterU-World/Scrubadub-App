@@ -60,6 +60,7 @@ export const workspace = query({
     approval: v.union(v.null(), v.object({ id: v.id("smartEstimateRevisions"), stale: v.boolean() })),
     proposal: v.union(v.null(), v.object({
       id: v.id("proposals"), updatedAt: v.number(), editable: v.boolean(), lines: v.array(proposalAddOnLineValidator),
+      oneTimePriceCents: v.optional(v.number()), monthlyPriceCents: v.optional(v.number()),
     })),
   }),
   handler: async (ctx, args) => {
@@ -99,6 +100,7 @@ export const workspace = query({
         (approval.proposalId !== undefined && approval.proposalId !== proposal?._id) ||
         fingerprintAddOns(approval.addOnSnapshot) !== fingerprintAddOns(lines) } : null,
       proposal: proposal ? { id: proposal._id, updatedAt: proposal.updatedAt,
+        oneTimePriceCents: proposal.oneTimePriceCents, monthlyPriceCents: proposal.monthlyPriceCents,
         editable: proposal.status === "draft" && !proposal.pendingDeliveryAttemptId, lines } : null,
     };
   },

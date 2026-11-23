@@ -22,7 +22,7 @@ export function ProposalCatalogAddOnPicker({ onAdd, onError }: { onAdd: (company
     </select>
     <button type="button" className="btn-secondary inline-flex items-center gap-2" disabled={!selectedId || adding} onClick={async () => {
       setAdding(true);
-      try { await onAdd(selectedId); setSelectedId(""); }
+      try { if (await onAdd(selectedId) !== false) setSelectedId(""); }
       catch (error: any) { onError?.(error.message || t("proposals.actionFailed")); }
       finally { setAdding(false); }
     }}>

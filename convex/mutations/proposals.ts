@@ -169,6 +169,24 @@ export const createProposalFromLead = mutation({
 });
 
 /** Update editable proposal fields. */
+const pricingEditArgs = {
+  expectedProposalRevision: v.optional(v.number()),
+  confirmedEstimateRevisionId: v.optional(v.id("smartEstimateRevisions")),
+};
+
+function assertPricingEdit(proposal: Doc<"proposals">, args: {
+  expectedProposalRevision?: number;
+  confirmedEstimateRevisionId?: Id<"smartEstimateRevisions">;
+}, changesPricing: boolean) {
+  if (args.expectedProposalRevision !== undefined && args.expectedProposalRevision !== proposal.updatedAt) {
+    throw new Error("Proposal draft changed. Reopen it before editing.");
+  }
+  if (changesPricing && proposal.appliedEstimateRevisionId &&
+      (args.confirmedEstimateRevisionId !== proposal.appliedEstimateRevisionId || args.expectedProposalRevision !== proposal.updatedAt)) {
+    throw new Error("Confirm switching the applied Smart Estimate to manual pricing.");
+  }
+}
+
 export const updateProposal = mutation({
   args: {
     userId: v.id("users"),
@@ -185,6 +203,7 @@ export const updateProposal = mutation({
     oneTimePriceCents: v.optional(v.number()),
     notes: v.optional(v.string()),
     presentation: v.optional(proposalPresentationValidator),
+    ...pricingEditArgs,
   },
   handler: async (ctx, args) => {
     const { proposal } = await getOwnedProposal(ctx, args.sessionToken, args.userId, args.proposalId);
@@ -212,6 +231,7 @@ export const updateProposal = mutation({
     const pricingChanged = monthlyPriceCents !== proposal.monthlyPriceCents ||
       oneTimePriceCents !== proposal.oneTimePriceCents || args.serviceFrequency !== proposal.serviceFrequency ||
       cleanOptional(args.serviceFrequencyNotes, 1000) !== proposal.serviceFrequencyNotes;
+    assertPricingEdit(proposal, args, pricingChanged);
     await ctx.db.patch(args.proposalId, {
       title: cleanRequired(args.title, "Cleaning Proposal", 200),
       clientName: cleanRequired(args.clientName, "Client", 200),
@@ -301,9 +321,10 @@ export const markProposalAccepted = mutation({
 });
 
 export const addCatalogAddOnLine = mutation({
-  args: { userId: v.id("users"), sessionToken: v.string(), proposalId: v.id("proposals"), companyAddOnId: v.id("companyAddOns"), billingCadence: v.union(v.literal("one_time"), v.literal("monthly")) },
+  args: { userId: v.id("users"), sessionToken: v.string(), proposalId: v.id("proposals"), companyAddOnId: v.id("companyAddOns"), billingCadence: v.union(v.literal("one_time"), v.literal("monthly")), ...pricingEditArgs },
   handler: async (ctx, args) => {
     const { owner, proposal } = await getOwnedProposal(ctx, args.sessionToken, args.userId, args.proposalId); requireDraft(proposal);
+    assertPricingEdit(proposal, args, true);
     const item = await ctx.db.get(args.companyAddOnId);
     if (!item || item.companyId !== owner.companyId || !item.isActive || item.archivedAt !== undefined) throw new Error("Catalog add-on is unavailable");
     const line = normalizeProposalAddOnLine({ lineItemId: newProposalLineItemId(), sourceType: "catalog", sourceCompanyAddOnId: item._id, name: item.name, pricingMethod: item.pricingMethod, unitPriceCents: item.priceCents, unitLabel: item.unitLabel, quantity: item.pricingMethod === "per_unit" ? 1 : undefined, billingCadence: args.billingCadence });
@@ -319,9 +340,10 @@ function manualPricingRevision(proposal: Doc<"proposals">) {
 }
 
 export const addCustomAddOnLine = mutation({
-  args: { userId: v.id("users"), sessionToken: v.string(), proposalId: v.id("proposals"), ...editableLineArgs },
+  args: { userId: v.id("users"), sessionToken: v.string(), proposalId: v.id("proposals"), ...editableLineArgs, ...pricingEditArgs },
   handler: async (ctx, args) => {
     const { proposal } = await getOwnedProposal(ctx, args.sessionToken, args.userId, args.proposalId); requireDraft(proposal);
+    assertPricingEdit(proposal, args, true);
     const line = normalizeProposalAddOnLine({ lineItemId: newProposalLineItemId(), sourceType: "custom", name: args.name, pricingMethod: args.pricingMethod, unitPriceCents: args.unitPriceCents, unitLabel: args.unitLabel, quantity: args.quantity, finalizedPriceCents: args.finalizedPriceCents, billingCadence: args.billingCadence });
     await ctx.db.patch(proposal._id, { addOnLineItems: validateProposalAddOnLines([...(proposal.addOnLineItems ?? []), line]), ...manualPricingRevision(proposal) });
     return line.lineItemId;
@@ -329,21 +351,25 @@ export const addCustomAddOnLine = mutation({
 });
 
 export const updateAddOnLine = mutation({
-  args: { userId: v.id("users"), sessionToken: v.string(), proposalId: v.id("proposals"), lineItemId: v.string(), ...editableLineArgs },
+  args: { userId: v.id("users"), sessionToken: v.string(), proposalId: v.id("proposals"), lineItemId: v.string(), ...editableLineArgs, ...pricingEditArgs },
   handler: async (ctx, args) => {
     const { proposal } = await getOwnedProposal(ctx, args.sessionToken, args.userId, args.proposalId); requireDraft(proposal);
     const existing: any = (proposal.addOnLineItems ?? []).find((line: any) => line.lineItemId === args.lineItemId);
     if (!existing) throw new Error("Proposal add-on line not found");
     const updated = normalizeProposalAddOnLine({ ...existing, name: args.name, pricingMethod: args.pricingMethod, unitPriceCents: args.unitPriceCents, unitLabel: args.unitLabel, quantity: args.quantity, finalizedPriceCents: args.finalizedPriceCents, billingCadence: args.billingCadence });
+    const changed = (Object.keys(editableLineArgs) as Array<keyof typeof editableLineArgs>).some(key => updated[key] !== existing[key]);
+    assertPricingEdit(proposal, args, changed);
+    if (!changed) return;
     const lines = (proposal.addOnLineItems ?? []).map((line: any) => line.lineItemId === args.lineItemId ? updated : line);
     await ctx.db.patch(proposal._id, { addOnLineItems: validateProposalAddOnLines(lines as any), ...manualPricingRevision(proposal) });
   },
 });
 
 export const removeAddOnLine = mutation({
-  args: { userId: v.id("users"), sessionToken: v.string(), proposalId: v.id("proposals"), lineItemId: v.string() },
+  args: { userId: v.id("users"), sessionToken: v.string(), proposalId: v.id("proposals"), lineItemId: v.string(), ...pricingEditArgs },
   handler: async (ctx, args) => {
     const { proposal } = await getOwnedProposal(ctx, args.sessionToken, args.userId, args.proposalId); requireDraft(proposal);
+    assertPricingEdit(proposal, args, true);
     const lines = (proposal.addOnLineItems ?? []).filter((line: any) => line.lineItemId !== args.lineItemId);
     if (lines.length === (proposal.addOnLineItems ?? []).length) throw new Error("Proposal add-on line not found");
     await ctx.db.patch(proposal._id, { addOnLineItems: lines, ...manualPricingRevision(proposal) });

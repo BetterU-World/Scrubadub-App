@@ -50,6 +50,8 @@ export function toFriendlyMessage(
       "Branded proposal authoring is disabled. Re-enable it before issuing this draft. Its saved content and pricing are unchanged.";
   }
   if (/rate limit exceeded/i.test(raw)) return translate?.("errors.rateLimited") ?? "Too many attempts. Try again in a moment.";
+  if (/proposal draft changed/i.test(raw)) return translate?.("proposals.pricingSource.changed") ?? fallback;
+  if (/confirm switching the applied Smart Estimate/i.test(raw)) return translate?.("proposals.pricingSource.confirmNeeded") ?? fallback;
   if (/invalid or expired reset token/i.test(raw)) return translate?.("errors.resetLinkExpired") ?? fallback;
   if (/invalid email address/i.test(raw)) return translate?.("auth.invalidEmail") ?? fallback;
   if (/assigned manager is invalid/i.test(raw)) return translate?.("walkthroughs.invalidAssignee") ?? fallback;

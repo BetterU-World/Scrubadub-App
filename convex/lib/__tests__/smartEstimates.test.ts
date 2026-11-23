@@ -84,6 +84,56 @@ async function approveAndApply(s: Setup, cadence: "one_time" | "monthly") {
 }
 
 describe("Smart Estimates Phase 1", () => {
+  it("requires a current revision-specific confirmation for budget, frequency and add-on edits", async () => {
+    const s = await setup();
+    const { proposalId, revisionId, appliedAt, ovenLine, applyArgs } = await approveAndApply(s, "one_time");
+    const before = (await s.t.run(ctx => ctx.db.get(proposalId)))!;
+    const sales = { userId: s.salesId, sessionToken: await s.signIn("sales@test.dev") };
+    const edit = { ...sales, proposalId, title: before.title, clientName: before.clientName,
+      oneTimePriceCents: before.oneTimePriceCents, expectedProposalRevision: appliedAt };
+    const budget = { ...edit, monthlyPriceCents: 12000 };
+    const line = { ...sales, proposalId, lineItemId: ovenLine, name: "Oven",
+      pricingMethod: "flat" as const, unitPriceCents: 3000, billingCadence: "one_time" as const };
+    await expect(s.t.mutation(proposals.updateProposal, budget)).rejects.toThrow("Confirm switching");
+    await expect(s.t.mutation(proposals.updateProposal, { ...edit, serviceFrequency: "weekly" })).rejects.toThrow("Confirm switching");
+    await expect(s.t.mutation(proposals.updateAddOnLine, line)).rejects.toThrow("Confirm switching");
+    expect(await s.t.run(ctx => ctx.db.get(proposalId))).toEqual(before);
+
+    const updatedAt = await s.t.mutation(proposals.updateProposal, { ...edit, notes: "Customer note" });
+    expect(await s.t.run(ctx => ctx.db.get(proposalId))).toMatchObject({ appliedEstimateRevisionId: revisionId });
+    await expect(s.t.mutation(proposals.updateProposal, { ...budget, confirmedEstimateRevisionId: revisionId })).rejects.toThrow("Proposal draft changed");
+    await s.t.mutation(proposals.updateAddOnLine, { ...line, unitPriceCents: 2500 });
+    expect(await s.t.run(ctx => ctx.db.get(proposalId))).toMatchObject({ updatedAt, appliedEstimateRevisionId: revisionId });
+    await s.t.mutation(proposals.updateAddOnLine, {
+      ...line, expectedProposalRevision: updatedAt, confirmedEstimateRevisionId: revisionId,
+    });
+    const manual = (await s.t.run(ctx => ctx.db.get(proposalId)))!;
+    expect(manual.appliedEstimateRevisionId).toBeUndefined();
+    expect(manual.addOnLineItems).toEqual([expect.objectContaining({
+      lineItemId: ovenLine, sourceCompanyAddOnId: s.ovenId, unitPriceCents: 3000,
+    })]);
+    await expect(s.t.mutation(estimates.applyToProposal, { ...applyArgs, expectedProposalRevision: manual.updatedAt })).rejects.toThrow("add-ons changed");
+    expect(await s.t.run(ctx => ctx.db.get(revisionId))).toMatchObject({ approvedBaseCents: 15000 });
+  });
+
+  it("adopts a walkthrough budget as manual without stacking on reapplication", async () => {
+    const s = await setup();
+    const { proposalId, revisionId, appliedAt, ovenLine, applyArgs } = await approveAndApply(s, "one_time");
+    const manualAt = await s.t.mutation(proposals.updateProposal, {
+      ...s.owner, proposalId, title: "Offer", clientName: "Client",
+      oneTimePriceCents: 15000, monthlyPriceCents: 12000,
+      expectedProposalRevision: appliedAt, confirmedEstimateRevisionId: revisionId,
+    });
+    const manual = (await s.t.run(ctx => ctx.db.get(proposalId)))!;
+    expect(manual.appliedEstimateRevisionId).toBeUndefined();
+    expect(manual).toMatchObject({ oneTimePriceCents: 15000, monthlyPriceCents: 12000 });
+    await s.t.mutation(estimates.applyToProposal, { ...applyArgs, expectedProposalRevision: manualAt });
+    const applied = (await s.t.run(ctx => ctx.db.get(proposalId)))!;
+    expect(applied).toMatchObject({ oneTimePriceCents: 15000, appliedEstimateRevisionId: revisionId });
+    expect(applied.monthlyPriceCents).toBeUndefined();
+    expect(applied.addOnLineItems?.map(line => line.lineItemId)).toEqual([ovenLine]);
+  });
+
   it("validates whole cents, base minimums and explicit overrides", () => {
     const input = { strategy: "flat", cadence: "monthly", baseCents: 100, minimumCents: 200 } as const;
     expect(calculateEstimate(input, []).approved.monthlyTotalCents).toBe(200);
@@ -474,8 +524,14 @@ describe("Smart Estimates Phase 1", () => {
     });
     const firstIssueId = (await s.t.run(ctx => ctx.db.get(proposalId)))!.currentIssueId!;
     await s.t.mutation(proposals.returnProposalToDraft, { ...s.owner, proposalId });
-    const newRevision = await s.t.mutation(proposals.updateProposal, {
+    const before = (await s.t.run(ctx => ctx.db.get(proposalId)))!;
+    const manual = {
       ...s.owner, proposalId, title: "Manual edit", clientName: "Client", oneTimePriceCents: 9500,
+    };
+    await expect(s.t.mutation(proposals.updateProposal, manual)).rejects.toThrow("Confirm switching");
+    expect(await s.t.run(ctx => ctx.db.get(proposalId))).toEqual(before);
+    const newRevision = await s.t.mutation(proposals.updateProposal, {
+      ...manual, expectedProposalRevision: before.updatedAt, confirmedEstimateRevisionId: revisionId,
     });
     await expect(s.t.mutation(estimates.applyToProposal, applyArgs)).rejects.toThrow("Proposal draft changed");
     expect((await s.t.run(ctx => ctx.db.get(proposalId)))?.appliedEstimateRevisionId).toBeUndefined();
@@ -491,8 +547,12 @@ describe("Smart Estimates Phase 1", () => {
 
   it("rejects changed add-ons and unsupported handoff cadence before applying", async () => {
     const s = await setup();
-    const { estimateId, proposalId, applyArgs, ovenLine } = await approveAndApply(s, "one_time");
-    await s.t.mutation(proposals.removeAddOnLine, { ...s.owner, proposalId, lineItemId: ovenLine });
+    const { estimateId, proposalId, applyArgs, ovenLine, revisionId: appliedRevisionId, appliedAt } = await approveAndApply(s, "one_time");
+    const removal = { ...s.owner, proposalId, lineItemId: ovenLine };
+    await expect(s.t.mutation(proposals.removeAddOnLine, removal)).rejects.toThrow("Confirm switching");
+    await s.t.mutation(proposals.removeAddOnLine, {
+      ...removal, expectedProposalRevision: appliedAt, confirmedEstimateRevisionId: appliedRevisionId,
+    });
     const current = (await s.t.run(ctx => ctx.db.get(proposalId)))!;
     await expect(s.t.mutation(estimates.applyToProposal, { ...applyArgs, expectedProposalRevision: current.updatedAt }))
       .rejects.toThrow("Proposal add-ons changed");

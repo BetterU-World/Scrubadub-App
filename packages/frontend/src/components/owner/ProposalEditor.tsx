@@ -13,9 +13,10 @@ type Props = {
   onSave: () => void; onCancel: () => void;
   onAddCatalog: (id: string) => Promise<unknown>;
   onAddCustom: (name: string, priceCents: number) => Promise<unknown>;
-  onUpdateLine: (lineId: string, values: any) => Promise<unknown>;
+  onUpdateLine: (lineId: string, values: any, editedAt?: number) => Promise<unknown>;
   onRemoveLine: (lineId: string) => Promise<unknown>;
   onFeedback: (message: string, type: "success" | "error") => void;
+  onOpenEstimate?: () => void;
 };
 
 const frequencies = ["one_time", "weekly", "biweekly", "monthly", "quarterly", "custom"] as const;
@@ -45,7 +46,7 @@ function PricingRow({ title, base, addOns, total, unsaved }: { title: string; ba
 }
 
 export function ProposalEditor({ proposal, form, onChange, sourceAssessment, dirty, saving, revision, onSave, onCancel,
-  onAddCatalog, onAddCustom, onUpdateLine, onRemoveLine, onFeedback }: Props) {
+  onAddCatalog, onAddCustom, onUpdateLine, onRemoveLine, onFeedback, onOpenEstimate }: Props) {
   const { t } = useTranslation();
   const [customName, setCustomName] = useState("");
   const [customPrice, setCustomPrice] = useState("");
@@ -99,6 +100,19 @@ export function ProposalEditor({ proposal, form, onChange, sourceAssessment, dir
     </Section>
 
     <Section id="pricing" title={t("proposals.v2.sections.pricing")}>
+      <div className="flex flex-col gap-2 rounded-lg bg-gray-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="font-semibold">{t(proposal.appliedEstimateRevisionId ? "proposals.pricingSource.applied" : "proposals.pricingSource.manual")}</p>
+          {proposal.appliedEstimate && <p className="text-sm text-gray-600">{t("proposals.pricingSource.approvedOn", {
+            strategy: t(`smartEstimates.strategies.${proposal.appliedEstimate.strategy}`),
+            cadence: t(proposal.appliedEstimate.cadence === "monthly" ? "smartEstimates.monthly" : "smartEstimates.oneTime"),
+            date: new Date(proposal.appliedEstimate.approvedAt).toLocaleString(),
+          })}</p>}
+        </div>
+        {onOpenEstimate && <button type="button" onClick={onOpenEstimate} className="btn-secondary w-full text-sm sm:w-auto">
+          {t(proposal.appliedEstimateRevisionId ? "proposals.pricingSource.reopen" : "smartEstimates.use")}
+        </button>}
+      </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t("proposals.v2.monthlyBasePrice")}>{input("monthlyPrice", "number")}</Field>
         <Field label={t("proposals.v2.oneTimeBasePrice")}>{input("oneTimePrice", "number")}</Field>
@@ -114,6 +128,7 @@ export function ProposalEditor({ proposal, form, onChange, sourceAssessment, dir
       </div> : <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{t("proposals.invalidPrice")}</p>}
       {totals && !totals.hasMonthlyPricing && !totals.hasOneTimePricing && <p className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600">{t("proposals.v2.noQuotedPrice")}</p>}
       {totals?.hasUnfinalizedStartingAt && <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{t("proposals.addOns.finalizeWarning")}</p>}
+      <p className="text-sm text-gray-600">{t("proposals.pricingSource.customerReview")}</p>
 
       <div className="space-y-4 border-t border-gray-100 pt-4">
         <div><h5 className="font-semibold text-gray-900">{t("proposals.addOns.title")}</h5><p className="mt-1 text-xs text-gray-600">{t("proposals.v2.addOnSaveHelp")}</p></div>
@@ -123,13 +138,16 @@ export function ProposalEditor({ proposal, form, onChange, sourceAssessment, dir
           <input className="input-field min-w-0" type="number" min="0.01" step="0.01" value={customPrice} onChange={(event) => setCustomPrice(event.target.value)} placeholder="0.00" />
           <button type="button" className="btn-secondary" disabled={addingCustom || !customName.trim() || !customPrice} onClick={async () => {
             setAddingCustom(true);
-            try { await onAddCustom(customName, Math.round(Number(customPrice) * 100)); setCustomName(""); setCustomPrice(""); }
+            try {
+              if (await onAddCustom(customName, Math.round(Number(customPrice) * 100)) === false) return;
+              setCustomName(""); setCustomPrice("");
+            }
             catch (error: any) { onFeedback(error.message || t("proposals.actionFailed"), "error"); }
             finally { setAddingCustom(false); }
           }}>{t("proposals.addOns.addCustom")}</button>
         </div>
         <div className="space-y-3">{addOns.map((line: any) => <ProposalAddOnLineEditor key={line.lineItemId} line={line} t={t}
-          onSave={(values) => onUpdateLine(line.lineItemId, values)} onRemove={async () => {
+          proposalRevision={proposal.updatedAt} onSave={(values, editedAt) => onUpdateLine(line.lineItemId, values, editedAt)} onRemove={async () => {
             try { await onRemoveLine(line.lineItemId); }
             catch (error: any) { onFeedback(error.message || t("proposals.actionFailed"), "error"); }
           }} onFeedback={onFeedback} />)}</div>
