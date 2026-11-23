@@ -74,6 +74,7 @@ export const resolveRelationshipForRequest = internalMutation({
   args: {
     userId: v.id("users"),
     requestId: v.id("clientRequests"),
+    expectedEmail: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId);
@@ -85,17 +86,16 @@ export const resolveRelationshipForRequest = internalMutation({
     if (!request) throw new Error("Request not found");
     if (request.companyId !== user.companyId) throw new Error("Access denied");
     if (request.status === "archived") throw new Error("Archived requests cannot invite clients");
-    if (!request.requesterEmail?.trim()) throw new Error("Client email is required");
+    if (!request.clientRelationshipId && !request.requesterEmail?.trim()) throw new Error("Client email is required");
 
     const relationshipId = await ensureClientRelationshipForLead(ctx, request);
     const relationship: any = await ctx.db.get(relationshipId);
     if (!relationship || relationship.companyId !== user.companyId) throw new Error("Access denied");
     if (relationship.status === "archived") throw new Error("Archived client relationships cannot invite clients");
-    if (!relationship.clientUserId && !relationship.pendingInviteClientUserId && !relationship.inviteTokenHash) {
-      await ctx.db.patch(relationshipId, {
-        email: request.requesterEmail.trim().toLowerCase(),
-        updatedAt: Date.now(),
-      });
+    const email = relationship.email?.trim().toLowerCase();
+    if (!email || (!request.clientRelationshipId && email !== request.requesterEmail.trim().toLowerCase()) ||
+        (args.expectedEmail !== undefined && email !== args.expectedEmail)) {
+      throw new Error("Client invitation details changed. Review the client contact before inviting.");
     }
     return relationshipId;
   },
@@ -135,44 +135,43 @@ export const getRelationshipByInviteToken = internalQuery({
   },
 });
 
-export const createClientUser = internalMutation({
-  args: {
-    email: v.string(),
-    displayName: v.string(),
-    phone: v.optional(v.string()),
-    status: v.union(v.literal("active"), v.literal("disabled"), v.literal("pending")),
-  },
-  handler: async (ctx, args) => {
-    const now = Date.now();
-    return await ctx.db.insert("clientUsers", {
-      email: args.email,
-      displayName: args.displayName,
-      phone: args.phone,
-      status: args.status,
-      createdAt: now,
-      updatedAt: now,
-    });
-  },
-});
-
 export const setRelationshipInvite = internalMutation({
   args: {
     relationshipId: v.id("clientRelationships"),
-    clientUserId: v.optional(v.id("clientUsers")),
-    pendingInviteClientUserId: v.optional(v.id("clientUsers")),
     inviteTokenHash: v.string(),
     inviteTokenExpiry: v.number(),
     inviteSentAt: v.number(),
+    expectedEmail: v.string(),
+    previousInviteTokenHash: v.optional(v.string()),
   },
+  returns: v.union(v.literal("active"), v.literal("pending")),
   handler: async (ctx, args) => {
+    const relationship = await ctx.db.get(args.relationshipId);
+    if (!relationship || relationship.status === "archived" || relationship.email?.trim().toLowerCase() !== args.expectedEmail ||
+        relationship.inviteTokenHash !== args.previousInviteTokenHash) {
+      throw new Error("Client invitation details changed. Review the client contact before inviting.");
+    }
+    const linkedId = relationship.clientUserId ?? relationship.pendingInviteClientUserId;
+    const target = linkedId ? await ctx.db.get(linkedId) : await ctx.db.query("clientUsers")
+      .withIndex("by_email", q => q.eq("email", args.expectedEmail)).first();
+    if ((linkedId && !target) || (target && (target.status === "disabled" || target.email !== args.expectedEmail))) {
+      throw new Error("Client invitation email does not match the account");
+    }
+    if (relationship.clientUserId && target?.status === "active") return "active";
+    const now = Date.now();
+    const clientUserId = relationship.clientUserId ?? (target ? undefined : await ctx.db.insert("clientUsers", {
+      email: args.expectedEmail, displayName: relationship.primaryContactName || relationship.displayName,
+      phone: relationship.phone, status: "pending", createdAt: now, updatedAt: now,
+    }));
     await ctx.db.patch(args.relationshipId, {
-      clientUserId: args.clientUserId,
-      pendingInviteClientUserId: args.pendingInviteClientUserId,
+      clientUserId,
+      pendingInviteClientUserId: clientUserId ? undefined : target?._id,
       inviteTokenHash: args.inviteTokenHash,
       inviteTokenExpiry: args.inviteTokenExpiry,
       inviteSentAt: args.inviteSentAt,
-      updatedAt: Date.now(),
+      updatedAt: now,
     });
+    return "pending";
   },
 });
 
@@ -181,8 +180,19 @@ export const acceptRelationshipInvite = internalMutation({
     relationshipId: v.id("clientRelationships"),
     clientUserId: v.id("clientUsers"),
     passwordHash: v.optional(v.string()),
+    expectedPasswordHash: v.optional(v.string()),
+    tokenHash: v.string(),
   },
   handler: async (ctx, args) => {
+    const [relationship, clientUser] = await Promise.all([ctx.db.get(args.relationshipId), ctx.db.get(args.clientUserId)]);
+    if (!relationship || relationship.status === "archived" || relationship.inviteTokenHash !== args.tokenHash ||
+        !relationship.inviteTokenExpiry || relationship.inviteTokenExpiry <= Date.now() ||
+        (relationship.pendingInviteClientUserId ?? relationship.clientUserId) !== args.clientUserId ||
+        !clientUser || clientUser.status === "disabled" || relationship.email?.trim().toLowerCase() !== clientUser.email ||
+        clientUser.passwordHash !== args.expectedPasswordHash ||
+        (clientUser.status === "active" && clientUser.passwordHash && args.passwordHash)) {
+      throw new Error("Invalid or expired invite link");
+    }
     if (args.passwordHash) {
       await ctx.db.patch(args.clientUserId, {
         passwordHash: args.passwordHash,

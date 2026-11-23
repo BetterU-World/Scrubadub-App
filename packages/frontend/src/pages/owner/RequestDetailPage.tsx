@@ -68,7 +68,7 @@ function loadLeadPipelineExpanded(userId?: string) {
 
 export function RequestDetailPage() {
   const { user, sessionToken } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const displayError = (error: unknown, fallback = t("feedback.unexpectedError")) => {
     console.error("Request action failed", error);
     return toFriendlyMessage(error, fallback, t);
@@ -474,10 +474,8 @@ export function RequestDetailPage() {
   const isJobRequest = (request as any).requestContext === "existing_client_service_request";
   const canMarkContacted = request.status === "new";
   const canArchive = request.status !== "archived";
-  const clientPortalRecipientEmail =
-    (request as any).clientPortalStatus === "pending"
-      ? (request as any).clientRelationship?.email || request.requesterEmail
-      : request.requesterEmail;
+  const clientPortalRecipientEmail = ((request as any).clientRelationship
+    ? (request as any).clientRelationship.email : request.requesterEmail)?.trim().toLowerCase();
   const handleMarkContacted = async () => {
     setContactingLoading(true);
     try {
@@ -684,21 +682,30 @@ export function RequestDetailPage() {
 
   const handleInviteClient = async () => {
     if (sendingClientInvite) return;
+    if (!clientPortalRecipientEmail) {
+      setToast({ message: t("requests.clientPortal.missingEmail"), type: "error" });
+      return;
+    }
     setSendingClientInvite(true);
     try {
       const result = await inviteClientFromRequest({
         userId: user!._id,
         sessionToken,
         requestId: request._id,
+        expectedEmail: clientPortalRecipientEmail,
+        locale: i18n.language?.startsWith("es") ? "es" : "en",
       });
       if (result.status === "active") {
         setToast({ message: t("requests.clientPortal.existingAccount"), type: "success" });
-      } else {
+      } else if (result.emailSent) {
         setToast({ message: t("requests.clientPortal.invitationSent"), type: "success" });
+      } else {
+        setToast({ message: t("requests.clientPortal.invitationNotQueued"), type: "success" });
       }
       setShowClientInvite(false);
     } catch (err: any) {
-      const message = err.message?.includes("Invalid email")
+      const message = err.message?.includes("Client invitation details changed") || err.message?.includes("Client invitation email does not match")
+        ? t("requests.clientPortal.reviewContact") : err.message?.includes("Invalid email")
         ? t("requests.clientPortal.invalidEmail")
         : err.message?.includes("email")
           ? t("requests.clientPortal.missingEmail")
@@ -832,10 +839,11 @@ export function RequestDetailPage() {
   };
 
   const handleSendProposalEmail = async () => {
-    if (!proposal) return;
+    if (!proposal?.emailReview?.canSend) return;
     setProposalActionLoading("email");
     try {
-      await sendProposalEmail({ userId: user!._id, sessionToken, proposalId: proposal._id });
+      await sendProposalEmail({ userId: user!._id, sessionToken, proposalId: proposal._id,
+        expectedRecipientEmail: proposal.emailReview.email, expectedProposalRevision: proposal.updatedAt });
       setToast({
         message:
           proposal.status === "sent"
@@ -1252,6 +1260,8 @@ export function RequestDetailPage() {
                 issueNumber={proposal.canonicalPreview.issueNumber ?? undefined} legacyBaseOnly={proposal.canonicalPreview.source === "legacy_current"} /></div>}
               {proposal.latestDeliveryAttempt?.result === "unknown" && <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{t("proposals.deliveryUnknown")}</p>}
               {proposal.latestDeliveryAttempt?.result === "failed" && <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">{t("proposals.deliveryFailed")}</p>}
+              {proposal.latestDeliveryAttempt?.result === "pending" && <p role="status" className="text-sm text-gray-600">{t("proposals.deliveryReview.pending")}</p>}
+              {proposal.latestDeliveryAttempt?.result === "provider_accepted" && <p role="status" className="text-sm text-gray-600">{t("proposals.deliveryReview.providerAccepted", { email: proposal.latestDeliveryAttempt.recipientEmail })}</p>}
               {proposal.latestDeliveryAttempt?.channel === "owner_reported_outside_send" && <p className="text-xs text-gray-600">{t("proposals.outsideSendRecorded")}</p>}
               {proposal.responseSource === "owner_reported" && <p className="text-xs text-gray-600">{t("proposals.outsideResponseRecorded")}</p>}
             </div>
@@ -1716,6 +1726,27 @@ export function RequestDetailPage() {
                 </p>
               </div>
             )}
+            {(proposal.status === "draft" || proposal.status === "sent") && proposal.emailReview && (
+              <div className="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm">
+                <h4 className="font-semibold">{t("proposals.deliveryReview.title")}</h4>
+                <dl className="grid gap-2 break-words sm:grid-cols-2">
+                  {([["name", proposal.emailReview.clientName], ["email", proposal.emailReview.email],
+                    ["relationship", proposal.emailReview.relationshipName], ["address", proposal.emailReview.propertyAddress]] as const)
+                    .map(([field, value]) => <div className="min-w-0" key={field}>
+                      <dt className="text-gray-600">{t(`proposals.deliveryReview.${field}`)}</dt>
+                      <dd className="break-words font-medium">{value || t("common.unassigned")}</dd>
+                    </div>)}
+                </dl>
+                {!proposal.emailReview.canSend && <p role="status" className="text-amber-900">{t("proposals.deliveryReview.missingEmail")}</p>}
+                {proposal.emailReview.mismatch && <p className="text-amber-900">{t("proposals.deliveryReview.mismatch")}</p>}
+                {proposal.latestDeliveryAttempt?.recipientEmail && proposal.latestDeliveryAttempt.recipientEmail !== proposal.emailReview.email &&
+                  <p className="break-words text-amber-900">{t("proposals.deliveryReview.previousDestination", {
+                    email: proposal.latestDeliveryAttempt.recipientEmail,
+                  })}</p>}
+                {proposal.emailReview.invalidRelationship && <p className="text-amber-900">{t("proposals.deliveryReview.relationshipUnavailable")}</p>}
+                {proposal.status === "draft" && <p className="text-gray-600">{t("proposals.deliveryReview.outsideHelp")}</p>}
+              </div>
+            )}
             <div className="flex gap-2 flex-wrap">
               {proposal.status === "draft" && (
                 <button
@@ -1731,7 +1762,7 @@ export function RequestDetailPage() {
                     onClick={handleSendProposalEmail}
                     pending={proposalActionLoading === "email"}
                     pendingLabel={t("common.sending")}
-                    disabled={proposal.calculatedTotals?.hasUnfinalizedStartingAt || proposalDirty || (proposalActionLoading !== null && proposalActionLoading !== "email")}
+                    disabled={!proposal.emailReview?.canSend || proposal.calculatedTotals?.hasUnfinalizedStartingAt || proposalDirty || (proposalActionLoading !== null && proposalActionLoading !== "email")}
                     className="btn-primary flex items-center gap-2 text-sm"
                   >
                     <Send aria-hidden="true" className="w-4 h-4" />
@@ -1756,7 +1787,7 @@ export function RequestDetailPage() {
                     onClick={handleSendProposalEmail}
                     pending={proposalActionLoading === "email"}
                     pendingLabel={t("common.sending")}
-                    disabled={proposalActionLoading !== null && proposalActionLoading !== "email"}
+                    disabled={!proposal.emailReview?.canSend || (proposalActionLoading !== null && proposalActionLoading !== "email")}
                     className="btn-secondary flex items-center gap-2 text-sm"
                   >
                     <Send aria-hidden="true" className="w-4 h-4" />
@@ -1824,8 +1855,8 @@ export function RequestDetailPage() {
               <button
                 type="button"
                 onClick={() => setShowClientInvite(true)}
-                disabled={!request.requesterEmail?.trim() || sendingClientInvite}
-                title={!request.requesterEmail?.trim() ? t("requests.clientPortal.missingEmail") : undefined}
+                disabled={!clientPortalRecipientEmail || sendingClientInvite}
+                title={!clientPortalRecipientEmail ? t("requests.clientPortal.missingEmail") : undefined}
                 className="btn-secondary flex w-full items-center justify-center gap-2 text-sm sm:w-auto"
               >
                 <Send className="h-4 w-4" />
@@ -1834,7 +1865,7 @@ export function RequestDetailPage() {
                   : t("requests.clientPortal.inviteClient")}
               </button>
             )}
-            {canManageClients && !request.requesterEmail?.trim() && request.status !== "archived" && (
+            {canManageClients && !clientPortalRecipientEmail && request.status !== "archived" && (
               <p className="max-w-sm text-xs text-amber-700">{t("requests.clientPortal.missingEmail")}</p>
             )}
             {(request as any).clientPortalStatus === "active" && (
@@ -2234,7 +2265,11 @@ export function RequestDetailPage() {
         description={
           <div className="space-y-3">
             <p>{t("requests.clientPortal.confirmRecipient")}</p>
-            <p className="break-all font-medium text-gray-900">{clientPortalRecipientEmail}</p>
+            <p className="break-words font-medium text-gray-900">{clientPortalRecipientEmail || t("requests.clientPortal.missingEmail")}</p>
+            {(request as any).clientRelationship && request.requesterEmail?.trim().toLowerCase() !== clientPortalRecipientEmail &&
+              <p className="text-amber-900">{t("requests.clientPortal.contactMismatch")}</p>}
+            <p>{t("requests.clientPortal.inviteAccountHelp")}</p>
+            {request.clientPortalStatus === "pending" && <p>{t("requests.clientPortal.replacesInvite")}</p>}
             {(request as any).businessName && <p>{t("requests.clientPortal.company", { company: (request as any).businessName })}</p>}
             <div>
               <p>{t("requests.clientPortal.accessIntro", { name: request.requesterName })}</p>

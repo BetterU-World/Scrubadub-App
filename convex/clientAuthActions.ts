@@ -28,7 +28,7 @@ function displayNameForRelationship(relationship: any) {
   return relationship.primaryContactName || relationship.displayName || relationship.businessName || "Client";
 }
 
-async function sendClientInvitation(ctx: any, userId: Id<"users">, relationshipId: Id<"clientRelationships">) {
+async function sendClientInvitation(ctx: any, userId: Id<"users">, relationshipId: Id<"clientRelationships">, expectedEmail?: string, locale?: "en" | "es") {
     const { relationship } = await ctx.runQuery(
       internal.clientAuthInternal.getRelationshipForOwner,
       { userId, relationshipId }
@@ -36,40 +36,19 @@ async function sendClientInvitation(ctx: any, userId: Id<"users">, relationshipI
 
     if (relationship.status === "archived") throw new Error("Archived client relationships cannot invite clients");
     const email = cleanEmail(relationship.email || "");
+    if (expectedEmail !== undefined && expectedEmail !== email) throw new Error("Client invitation details changed. Review the client contact before inviting.");
     const now = Date.now();
-
-    if (relationship.clientUserId) {
-      const linkedUser = await ctx.runQuery(internal.clientAuthInternal.getClientUserById, {
-        clientUserId: relationship.clientUserId,
-      });
-      if (linkedUser?.status === "active") {
-        return { inviteUrl: `${appUrl()}/client/login`, emailSent: false, status: "active" as const };
-      }
-    }
-
-    const existingClientUser = await ctx.runQuery(internal.clientAuthInternal.getClientUserByEmail, { email });
-    let clientUserId = relationship.clientUserId as Id<"clientUsers"> | undefined;
-    let pendingInviteClientUserId: Id<"clientUsers"> | undefined;
-    if (!clientUserId && existingClientUser) pendingInviteClientUserId = existingClientUser._id;
-    else if (!clientUserId) {
-      clientUserId = await ctx.runMutation(internal.clientAuthInternal.createClientUser, {
-        email,
-        displayName: displayNameForRelationship(relationship),
-        phone: relationship.phone,
-        status: "pending",
-      });
-    }
 
     const token = generateSecureToken();
     const inviteUrl = `${appUrl()}/client/accept-invite/${token}`;
-    await ctx.runMutation(internal.clientAuthInternal.setRelationshipInvite, {
+    const status = await ctx.runMutation(internal.clientAuthInternal.setRelationshipInvite, {
       relationshipId: relationship._id,
-      clientUserId,
-      pendingInviteClientUserId,
       inviteTokenHash: hashToken(token),
       inviteTokenExpiry: now + INVITE_TOKEN_EXPIRY_MS,
       inviteSentAt: now,
+      expectedEmail: email, previousInviteTokenHash: relationship.inviteTokenHash,
     });
+    if (status === "active") return { inviteUrl: `${appUrl()}/client/login`, emailSent: false, status };
     const emailSent = !areExternalSideEffectsDisabled();
     if (emailSent) {
       await ctx.runMutation(internal.mutations.scheduleEmail.scheduleClientInviteEmail, {
@@ -77,6 +56,7 @@ async function sendClientInvitation(ctx: any, userId: Id<"users">, relationshipI
         token,
         name: displayNameForRelationship(relationship),
         companyId: relationship.companyId,
+        locale,
       });
     }
     return { inviteUrl, emailSent, status: "pending" as const };
@@ -87,6 +67,8 @@ export const inviteClient = action({
     userId: v.id("users"),
     sessionToken: v.string(),
     relationshipId: v.id("clientRelationships"),
+    expectedEmail: v.optional(v.string()),
+    locale: v.optional(v.union(v.literal("en"), v.literal("es"))),
   },
   handler: async (ctx, args): Promise<{
     inviteUrl: string;
@@ -94,7 +76,7 @@ export const inviteClient = action({
     status: "pending" | "active";
   }> => {
     const principal = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageClients");
-    return await sendClientInvitation(ctx, principal.userId, args.relationshipId);
+    return await sendClientInvitation(ctx, principal.userId, args.relationshipId, args.expectedEmail, args.locale);
   },
 });
 
@@ -103,14 +85,17 @@ export const inviteClientFromRequest = action({
     userId: v.id("users"),
     sessionToken: v.string(),
     requestId: v.id("clientRequests"),
+    expectedEmail: v.optional(v.string()),
+    locale: v.optional(v.union(v.literal("en"), v.literal("es"))),
   },
   handler: async (ctx, args): Promise<{ inviteUrl: string; emailSent: boolean; status: "pending" | "active" }> => {
     const principal = await requireOwnerOrManagerCapability(ctx, args.sessionToken, args.userId, "canManageClients");
     const relationshipId = await ctx.runMutation(internal.clientAuthInternal.resolveRelationshipForRequest, {
       userId: principal.userId,
       requestId: args.requestId,
+      expectedEmail: args.expectedEmail,
     });
-    const result = await sendClientInvitation(ctx, principal.userId, relationshipId);
+    const result = await sendClientInvitation(ctx, principal.userId, relationshipId, args.expectedEmail, args.locale);
     if (result.emailSent) {
       await ctx.runMutation(internal.clientAuthInternal.recordRequestInvitationAudit, {
         userId: principal.userId,
@@ -124,12 +109,12 @@ export const inviteClientFromRequest = action({
 
 export const getInviteInfo = action({
   args: { token: v.string() },
-  handler: async (ctx, args): Promise<null | { email: string; displayName: string }> => {
+  handler: async (ctx, args): Promise<null | { email: string; displayName: string; accountMode: "existing" | "new" }> => {
     const relationship = await ctx.runQuery(
       internal.clientAuthInternal.getRelationshipByInviteToken,
       { tokenHash: hashToken(args.token) }
     );
-    if (!relationship || !relationship.inviteTokenExpiry || relationship.inviteTokenExpiry < Date.now()) {
+    if (!relationship || relationship.status === "archived" || !relationship.inviteTokenExpiry || relationship.inviteTokenExpiry <= Date.now()) {
       return null;
     }
 
@@ -138,10 +123,9 @@ export const getInviteInfo = action({
       ? await ctx.runQuery(internal.clientAuthInternal.getClientUserById, { clientUserId })
       : null;
 
-    return {
-      email: clientUser?.email || relationship.email || "",
-      displayName: clientUser?.displayName || displayNameForRelationship(relationship),
-    };
+    if (!clientUser || clientUser.status === "disabled" || clientUser.email !== relationship.email?.trim().toLowerCase()) return null;
+    return { email: clientUser.email, displayName: displayNameForRelationship(relationship),
+      accountMode: clientUser.status === "active" && clientUser.passwordHash ? "existing" : "new" };
   },
 });
 
@@ -156,17 +140,16 @@ export const acceptInvite = action({
     sessionExpiresAt: number;
     sessionIdleExpiresAt: number;
   }> => {
-    validatePassword(args.password);
-
     await ctx.runMutation(internal.rateLimitInternal.enforce, {
       key: `ctp:${args.token.slice(0, 8)}:acceptClientInvite`,
       limit: 5,
       windowMs: 60_000,
     });
 
+    const tokenHash = hashToken(args.token);
     const relationship = await ctx.runQuery(
       internal.clientAuthInternal.getRelationshipByInviteToken,
-      { tokenHash: hashToken(args.token) }
+      { tokenHash }
     );
 
     if (!relationship || !relationship.inviteTokenExpiry || relationship.inviteTokenExpiry < Date.now()) {
@@ -184,10 +167,16 @@ export const acceptInvite = action({
     }
 
     const shouldSetPassword = clientUser.status !== "active" || !clientUser.passwordHash;
+    if (shouldSetPassword) validatePassword(args.password);
+    else if (!await verifyBcryptPassword(args.password, clientUser.passwordHash!)) {
+      throw new Error("The existing Client Portal password did not match");
+    }
     await ctx.runMutation(internal.clientAuthInternal.acceptRelationshipInvite, {
       relationshipId: relationship._id,
       clientUserId,
       passwordHash: shouldSetPassword ? await hashPassword(args.password) : undefined,
+      expectedPasswordHash: clientUser.passwordHash,
+      tokenHash,
     });
 
     await recordSecurityEventFromAction(ctx, {

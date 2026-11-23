@@ -223,12 +223,13 @@ export const sendClientInvite = internalAction({
     name: v.optional(v.string()),
     companyName: v.string(),
     replyTo: v.optional(v.string()),
+    locale: v.optional(v.union(v.literal("en"), v.literal("es"))),
   },
   handler: async (_ctx, args) => {
     const sent = await sendClientInviteEmail(args.email, args.token, args.name, {
       companyName: args.companyName,
       replyTo: args.replyTo,
-    });
+    }, args.locale);
     if (!sent) {
       console.error("[emailNotifications] Client invite email failed for", args.email);
     }

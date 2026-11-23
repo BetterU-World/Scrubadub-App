@@ -51,6 +51,9 @@ export function toFriendlyMessage(
   }
   if (/rate limit exceeded/i.test(raw)) return translate?.("errors.rateLimited") ?? "Too many attempts. Try again in a moment.";
   if (/proposal draft changed/i.test(raw)) return translate?.("proposals.pricingSource.changed") ?? fallback;
+  if (/proposal recipient changed/i.test(raw)) return translate?.("proposals.deliveryReview.recipientChanged") ?? fallback;
+  if (/proposal email result is unknown/i.test(raw)) return translate?.("proposals.deliveryUnknown") ?? fallback;
+  if (/client invitation details changed|client invitation email does not match/i.test(raw)) return translate?.("requests.clientPortal.reviewContact") ?? fallback;
   if (/confirm switching the applied Smart Estimate/i.test(raw)) return translate?.("proposals.pricingSource.confirmNeeded") ?? fallback;
   if (/invalid or expired reset token/i.test(raw)) return translate?.("errors.resetLinkExpired") ?? fallback;
   if (/invalid email address/i.test(raw)) return translate?.("auth.invalidEmail") ?? fallback;

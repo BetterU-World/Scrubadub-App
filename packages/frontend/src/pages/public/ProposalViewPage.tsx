@@ -123,7 +123,7 @@ export function ProposalViewPage() {
           <Result
             icon={<CheckCircle className="h-6 w-6 text-green-600" />}
             title={label("acceptedTitle")}
-            message={label("acceptedMessage")}
+            message={t("proposals.deliveryReview.acceptedNext", { lng, company: proposal.company.companyName })}
           />
         )}
         {status === "declined" && (
@@ -142,6 +142,7 @@ export function ProposalViewPage() {
         )}
         {canRespond && (
           <form className="space-y-4">
+            <p className="text-sm text-gray-700">{t("proposals.deliveryReview.noAccount", { lng })}</p>
             <div>
               <label htmlFor="proposal-response-note" className="block text-sm font-medium text-gray-700">
                 {label("responseNote")}
@@ -183,6 +184,10 @@ export function ProposalViewPage() {
             </div>
           </form>
         )}
+        <p className="mt-4 break-words text-sm text-gray-600">
+          {t("proposals.deliveryReview.questions", { lng, company: proposal.company.companyName })}
+          {[proposal.company.companyEmail, proposal.company.companyPhone].filter(Boolean).map(contact => <span key={contact}> · {contact}</span>)}
+        </p>
       </section>
     </Shell>
   );

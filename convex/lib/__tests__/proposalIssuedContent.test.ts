@@ -62,6 +62,59 @@ async function issueToken(issue: any) {
 }
 
 describe("proposal issued content", () => {
+  it("retries an uncertain email transport with the same prepared issue and link", async () => {
+    const s = await setup();
+    const send = { ...s.ownerAuth, proposalId: s.proposalId };
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("Synthetic transport loss"); }));
+    await expect(s.t.action(delivery.sendProposal, send)).rejects.toThrow("result is unknown");
+    const [prepared] = await s.t.run(ctx => ctx.db.query("proposalIssues").collect());
+    expect(prepared.issuedAt).toBeUndefined();
+    const attempts = await s.t.run(ctx => ctx.db.query("transactionalDocumentDeliveryAttempts").collect());
+    expect(attempts.map(row => row.result)).toEqual(["unknown"]);
+    mockEmail();
+    await s.t.action(delivery.sendProposal, send);
+    const issues = await s.t.run(ctx => ctx.db.query("proposalIssues").collect());
+    expect(issues).toHaveLength(1);
+    expect(issues[0]).toMatchObject({ _id: prepared._id, tokenHash: prepared.tokenHash, content: prepared.content, issuedAt: expect.any(Number) });
+    expect(await s.t.action(delivery.getProposalByToken, { token: await issueToken(prepared) })).toMatchObject({ proposal: { status: "sent" } });
+  }, 15000);
+
+  it("binds staff email review to the exact destination and keeps delivery evidence separate from acceptance", async () => {
+    const s = await setup();
+    vi.stubEnv("SCRUB_SMART_ESTIMATES_RELEASE_ENABLED", "true");
+    await s.t.mutation(proposals.updateProposal, { ...s.ownerAuth, proposalId: s.proposalId, title: "Limpieza de oficinas",
+      clientName: "Client", propertyAddress: "1 Original St", monthlyPriceCents: 10000, presentation: { locale: "es" } });
+    const reviewArgs = { ...s.managerAuth, clientRequestId: s.requestId };
+    await s.t.run(ctx => ctx.db.patch(s.relationshipId, { email: " Work@Client.test " }));
+    await expect(s.t.query(api.queries.proposals.getProposalByClientRequest, { ...s.otherAuth, clientRequestId: s.requestId })).rejects.toThrow("Access denied");
+    const review = (await s.t.query(api.queries.proposals.getProposalByClientRequest, reviewArgs))!;
+    expect(review.emailReview).toMatchObject({ email: "work@client.test", canSend: true, mismatch: true,
+      clientName: "Client", relationshipName: "Client", propertyAddress: "1 Original St" });
+    const send = { ...s.managerAuth, proposalId: s.proposalId, expectedRecipientEmail: review.emailReview.email!,
+      expectedProposalRevision: review.updatedAt };
+    const messages = mockEmail();
+    await s.t.run(ctx => ctx.db.patch(s.relationshipId, { email: "new@client.test" }));
+    await expect(s.t.action(delivery.sendProposal, send)).rejects.toThrow("recipient changed");
+    expect(messages).toHaveLength(0);
+    expect(await s.t.run(ctx => ctx.db.query("proposalIssues").collect())).toEqual([]);
+    await s.t.action(delivery.sendProposal, { ...send, expectedRecipientEmail: "new@client.test" });
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toContain("new@client.test");
+    expect(messages[0]).toContain("No necesitas una cuenta");
+    const staff = (await s.t.query(api.queries.proposals.getProposalByClientRequest, reviewArgs))!;
+    expect(staff).toMatchObject({ status: "sent", latestDeliveryAttempt: { result: "provider_accepted", recipientEmail: "new@client.test" } });
+    const issue = await s.t.run(ctx => ctx.db.get("proposalIssues", staff.currentIssueId!));
+    const token = await issueToken(issue);
+    expect(await s.t.action(delivery.getProposalByToken, { token: "invalid-token" })).toBeNull();
+    const publicOffer = await s.t.action(delivery.getProposalByToken, { token });
+    expect(publicOffer).toMatchObject({ proposal: { title: "Limpieza de oficinas", status: "sent" } });
+    expect(JSON.stringify(publicOffer)).not.toContain("new@client.test");
+    await s.t.action(delivery.respondToProposal, { token, decision: "accepted" });
+    const accepted = await s.t.run(ctx => ctx.db.get(s.proposalId));
+    expect(accepted).toMatchObject({ status: "accepted", responseIssueId: issue!._id });
+    expect(await s.t.run(ctx => ctx.db.get(issue!._id))).toEqual(issue);
+  }, 15000);
+
   it.each(["email", "outside"] as const)("preserves a branded draft and blocks its first %s issue while authoring is off", async (channel) => {
     const s = await setup();
     const args = { ...s.ownerAuth, proposalId: s.proposalId };

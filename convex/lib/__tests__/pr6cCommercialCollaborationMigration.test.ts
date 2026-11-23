@@ -214,7 +214,8 @@ describe("PR 6C commercial and collaboration session migration", () => {
     const frontendSource = frontendFiles.map((path) => readFileSync(fileURLToPath(new URL(`../../../packages/frontend/src/${path}`, import.meta.url)), "utf8")).join("\n");
     expect(frontendSource).toContain("user && sessionToken ? { userId: user._id, sessionToken, commercialAccountId }");
     expect(frontendSource).toContain("uid && sessionToken ? { userId: uid, sessionToken } : \"skip\"");
-    expect(frontendSource).toContain("sendProposalEmail({ userId: user!._id, sessionToken, proposalId: proposal._id })");
+    expect(frontendSource).toContain("sendProposalEmail({ userId: user!._id, sessionToken, proposalId: proposal._id,");
+    expect(frontendSource).toContain("expectedRecipientEmail: proposal.emailReview.email, expectedProposalRevision: proposal.updatedAt");
     expect(frontendSource).toContain("sendAgreement({ userId: user._id, sessionToken, agreementId: agreement._id })");
     expect(frontendSource).not.toContain('sessionToken: ""');
 

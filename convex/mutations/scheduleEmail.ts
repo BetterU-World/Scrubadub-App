@@ -47,13 +47,15 @@ export const scheduleInviteEmail = internalMutation({
 });
 
 export const scheduleClientInviteEmail = internalMutation({
-  args: { email: v.string(), token: v.string(), name: v.optional(v.string()), companyId: v.id("companies") },
+  args: { email: v.string(), token: v.string(), name: v.optional(v.string()), companyId: v.id("companies"),
+    locale: v.optional(v.union(v.literal("en"), v.literal("es"))) },
   handler: async (ctx, args) => {
     const identity = await resolveOperationalEmailIdentity(ctx, args.companyId);
     await ctx.scheduler.runAfter(0, internal.actions.emailNotifications.sendClientInvite, {
       email: args.email,
       token: args.token,
       name: args.name,
+      locale: args.locale,
       ...identity,
     });
   },

@@ -25,6 +25,8 @@ export const sendProposal = action({
     userId: v.id("users"),
     sessionToken: v.string(),
     proposalId: v.id("proposals"),
+    expectedRecipientEmail: v.optional(v.string()),
+    expectedProposalRevision: v.optional(v.number()),
   },
   handler: async (ctx, args): Promise<{ success: true; sentAt: number }> => {
     const owner = await requireOwnerOrManagerCapability(
@@ -35,7 +37,8 @@ export const sendProposal = action({
     const tokenNonce = generateSecureToken();
     const prepared = await ctx.runMutation(
       (internal as any).proposalDeliveryInternal.prepareProposalEmail,
-      { ...ownerArgs, tokenNonce, tokenHash: hashToken(proposalIssueToken(tokenNonce)) }
+      { ...ownerArgs, tokenNonce, tokenHash: hashToken(proposalIssueToken(tokenNonce)),
+        expectedRecipientEmail: args.expectedRecipientEmail, expectedProposalRevision: args.expectedProposalRevision }
     );
     const viewUrl = `${baseUrl}/proposal/${proposalIssueToken(prepared.tokenNonce)}`;
     let sent = false;
@@ -53,7 +56,9 @@ export const sendProposal = action({
         proposal: prepared.content.proposal,
       });
     } catch {
-      sent = false;
+      await ctx.runMutation(internal.proposalDeliveryInternal.finishProposalEmail,
+        { ...ownerArgs, attemptId: prepared.attemptId, result: "unknown" });
+      throw new Error("Proposal email result is unknown");
     }
     if (sent) {
       try {
