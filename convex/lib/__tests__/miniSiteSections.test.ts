@@ -278,6 +278,43 @@ describe("managed microsite media", () => {
     await expect(test.mutation(mediaApi.begin, { ...request, sessionToken: owner.sessionToken })).rejects.toThrow("Rate limit exceeded");
   });
 
+  it("settles a cancelled upload after storage, preserving unrelated and already registered files", async () => {
+    const { test, owner } = await fixture();
+    const { assetId } = await test.mutation(mediaApi.begin, {
+      sessionToken: owner.sessionToken, requestId: "cancel-active-upload", purpose: "gallery", bytes: bytes.length, mime,
+    });
+    const claim = await test.mutation(ops.claim, { sessionToken: owner.sessionToken, assetId, bytes: bytes.length });
+    if (!claim.lease) throw new Error("Expected an upload lease");
+    await test.mutation(mediaApi.discard, { sessionToken: owner.sessionToken, assetId });
+    const candidate = await test.run(async (ctx) => {
+      const id = await ctx.storage.store(new Blob([bytes], { type: mime }));
+      await ctx.db.patch(id, { contentType: `${mime}; scrub-site-media=${claim.tag}` });
+      return id;
+    });
+    const registered = await stage(test, owner.sessionToken, "registered-other");
+    const finish = { assetId, lease: claim.lease, storageId: candidate, width: 10, height: 10, mime, bytes: bytes.length };
+    await expect(test.mutation(ops.finish, finish)).rejects.toThrow("could not be registered");
+    await test.mutation(ops.release, { assetId, lease: claim.lease, candidate: registered.storageId });
+    expect(await test.run((ctx) => ctx.db.system.get("_storage", registered.storageId))).not.toBeNull();
+    await test.mutation(ops.release, { assetId, lease: claim.lease, candidate });
+    await test.mutation(ops.release, { assetId, lease: claim.lease, candidate });
+    expect(await test.run((ctx) => ctx.db.system.get("_storage", candidate))).toBeNull();
+    expect(await test.run((ctx) => ctx.db.get(assetId))).toMatchObject({ state: "retired" });
+
+    const registeredAsset = await test.run((ctx) => ctx.db.get(registered.assetId));
+    await test.mutation(ops.release, { assetId: registered.assetId, lease: "old-lease", candidate: registered.storageId });
+    expect(await test.run((ctx) => ctx.db.get(registered.assetId))).toEqual(registeredAsset);
+    expect(await test.run((ctx) => ctx.db.system.get("_storage", registered.storageId))).not.toBeNull();
+
+    const abandoned = await test.mutation(mediaApi.begin, {
+      sessionToken: owner.sessionToken, requestId: "abandoned-reservation", purpose: "gallery", bytes: bytes.length, mime,
+    });
+    await test.run((ctx) => ctx.db.patch(abandoned.assetId, { expiresAt: 0 }));
+    await test.mutation(ops.cleanup, {});
+    expect(await test.run((ctx) => ctx.db.get(abandoned.assetId))).toMatchObject({ state: "deleted" });
+    expect(await test.run((ctx) => ctx.db.system.get("_storage", registered.storageId))).not.toBeNull();
+  });
+
   it("keeps saved bytes through failed changes and discards only unreferenced or verified expired candidates", async () => {
     vi.stubEnv("CONVEX_SITE_URL", "https://media.example.test");
     const { test, owner, companyId } = await fixture();

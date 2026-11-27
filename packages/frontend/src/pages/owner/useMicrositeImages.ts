@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAction, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
 import type { Id } from "../../../../../convex/_generated/dataModel";
@@ -10,6 +10,7 @@ type Source = { url: string; width: number; height: number };
 type Job = {
   file: File; status: "queued" | "preparing" | "uploading" | "failed"; error?: string;
   id: string; assetId?: AssetId; purpose: MediaPurpose; prepared?: PreparedImage;
+  attempts: number; discardResult?: Promise<unknown>;
   complete: (image: MediaImage) => void;
 };
 
@@ -26,6 +27,12 @@ export function useMicrositeImages(sessionToken: string, config: MediaConfig, lo
   const queue = useRef<Promise<void>>(Promise.resolve());
   const [, setRevision] = useState(0);
   const refresh = () => { if (mounted.current) setRevision((current) => current + 1); };
+  const discardAsset = useCallback((assetId: AssetId) =>
+    discard({ sessionToken, assetId }).catch(() => {}), [discard, sessionToken]);
+  const discardJob = useCallback((job: Job) => {
+    if (job.assetId) job.discardResult ??= discardAsset(job.assetId);
+    return job.discardResult;
+  }, [discardAsset]);
 
   useEffect(() => {
     mounted.current = true;
@@ -33,9 +40,13 @@ export function useMicrositeImages(sessionToken: string, config: MediaConfig, lo
       mounted.current = false;
       for (const source of urls.current.values()) URL.revokeObjectURL(source.url);
       urls.current.clear();
+      for (const job of jobs.current.values()) void discardJob(job);
       jobs.current.clear();
+      for (const id of staged.current) void discardAsset(id);
+      staged.current.clear();
+      failedPreviews.current.clear();
     };
-  }, []);
+  }, [discardAsset, discardJob]);
 
   useEffect(() => {
     const active = new Set(mediaReferences(config).map(({ assetId }) => assetId));
@@ -47,11 +58,11 @@ export function useMicrositeImages(sessionToken: string, config: MediaConfig, lo
       failedPreviews.current.delete(id);
       if (staged.current.delete(id)) {
         freedSlot = true;
-        void discard({ sessionToken, assetId: id }).catch(() => {});
+        void discardAsset(id);
       }
     }
     if (freedSlot) refresh();
-  }, [config, discard, sessionToken]);
+  }, [config, discardAsset]);
 
   useEffect(() => {
     if (!loadSaved || !sessionToken) return;
@@ -84,7 +95,7 @@ export function useMicrositeImages(sessionToken: string, config: MediaConfig, lo
     const job = jobs.current.get(key);
     if (!job) return;
     jobs.current.delete(key);
-    if (job.assetId) void discard({ sessionToken, assetId: job.assetId }).catch(() => {});
+    void discardJob(job);
     refresh();
   };
 
@@ -93,6 +104,7 @@ export function useMicrositeImages(sessionToken: string, config: MediaConfig, lo
     queue.current = queue.current.then(async () => {
       if (!present()) return;
       try {
+        job.attempts++;
         job.status = "preparing";
         refresh();
         job.prepared ??= await prepareMicrositeImage(job.file, job.purpose);
@@ -102,19 +114,27 @@ export function useMicrositeImages(sessionToken: string, config: MediaConfig, lo
         const ticket = await begin({ sessionToken, purpose: job.purpose, requestId: job.id, bytes: job.prepared.blob.size, mime: job.prepared.mime });
         job.assetId = ticket.assetId;
         if (!present()) {
-          await discard({ sessionToken, assetId: ticket.assetId });
+          await discardJob(job);
           return;
         }
-        const result = ticket.ready ?? await upload({ sessionToken, assetId: ticket.assetId, data: await job.prepared.blob.arrayBuffer() });
+        let result = ticket.ready;
+        if (!result) {
+          const data = await job.prepared.blob.arrayBuffer();
+          if (!present()) {
+            await discardJob(job);
+            return;
+          }
+          result = await upload({ sessionToken, assetId: ticket.assetId, data });
+        }
         if (!present()) {
-          await discard({ sessionToken, assetId: ticket.assetId });
+          await discardJob(job);
           return;
         }
         // Display the validated derivative, including any final server-side encoding.
         const verified = await fetchPreview({ sessionToken, assetId: result.assetId });
         if (!verified) throw new Error("Image preview unavailable.");
         if (!present()) {
-          await discard({ sessionToken, assetId: ticket.assetId });
+          await discardJob(job);
           return;
         }
         const url = URL.createObjectURL(new Blob([verified.data], { type: verified.mime }));
@@ -123,9 +143,15 @@ export function useMicrositeImages(sessionToken: string, config: MediaConfig, lo
         jobs.current.delete(key);
         job.complete({ assetId: result.assetId, alt: "" });
       } catch (error) {
+        if (!present()) {
+          await discardJob(job);
+          return;
+        }
+        if (job.attempts >= MEDIA_LIMITS.uploadClaims) await discardJob(job);
         if (!present()) return;
         job.status = "failed";
-        job.error = error instanceof MediaPreparationError ? error.code : "uploadFailed";
+        job.error = error instanceof MediaPreparationError ? error.code
+          : job.attempts >= MEDIA_LIMITS.uploadClaims ? "retryLimit" : "uploadFailed";
       } finally {
         refresh();
       }
@@ -135,7 +161,7 @@ export function useMicrositeImages(sessionToken: string, config: MediaConfig, lo
   const choose = (key: string, file: File, purpose: MediaPurpose, complete: Job["complete"]) => {
     if (!jobs.current.has(key) && jobs.current.size + staged.current.size >= MEDIA_LIMITS.stages) return false;
     removeJob(key);
-    const job: Job = { file, purpose, complete, id: crypto.randomUUID(), status: "queued" };
+    const job: Job = { file, purpose, complete, id: crypto.randomUUID(), status: "queued", attempts: 0 };
     jobs.current.set(key, job);
     refresh();
     run(key, job);
@@ -144,14 +170,17 @@ export function useMicrositeImages(sessionToken: string, config: MediaConfig, lo
 
   return {
     source: (id: AssetId) => urls.current.get(id),
-    job: (key: string): Pick<Job, "status" | "error"> | undefined => jobs.current.get(key),
+    job: (key: string) => {
+      const job = jobs.current.get(key);
+      return job && { status: job.status, error: job.error, canRetry: job.attempts < MEDIA_LIMITS.uploadClaims };
+    },
     remaining: Math.max(0, MEDIA_LIMITS.stages - jobs.current.size - staged.current.size),
     blocked: jobs.current.size > 0,
     choose, removeJob,
     hasJobForEntry: (id: string) => [...jobs.current.keys()].some((key) => key.startsWith(`${id}:`)),
     retry: (key: string) => {
       const job = jobs.current.get(key);
-      if (job?.status !== "failed") return;
+      if (job?.status !== "failed" || job.attempts >= MEDIA_LIMITS.uploadClaims) return;
       job.status = "queued";
       job.error = undefined;
       refresh();

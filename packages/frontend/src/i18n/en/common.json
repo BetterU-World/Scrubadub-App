@@ -1987,7 +1987,8 @@
       "unsupported": "Choose a still JPEG, PNG, or WebP photo.",
       "heicUnsupported": "This browser couldn’t open the HEIC photo. Try Safari on a recent Apple device or share the photo as a JPEG, then select it here.",
       "prepareFailed": "This photo couldn’t be prepared. Choose another photo or try again.",
-      "uploadFailed": "The photo couldn’t be saved yet. Try again, or cancel and select it again."
+      "uploadFailed": "The photo couldn’t be saved yet. Try again, or cancel and select it again.",
+      "retryLimit": "The photo couldn’t be saved. Select it again or choose a different photo."
     }
   },
   "miniSiteSections": {

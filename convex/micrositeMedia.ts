@@ -27,6 +27,11 @@ function readyImage(asset: Doc<"micrositeMediaAssets">) {
   return { assetId: asset._id, width, height, mime, bytes };
 }
 
+function matchesStorageTag(stored: { _creationTime: number; contentType?: string } | null, asset: Doc<"micrositeMediaAssets">) {
+  return stored && stored._creationTime >= asset._creationTime &&
+    ["image/webp", "image/jpeg", "image/png"].some((mime) => stored.contentType === `${mime}; scrub-site-media=${asset.storageTag}`);
+}
+
 async function siteForCompany(ctx: Pick<QueryCtx, "db">, companyId: Doc<"micrositeMediaAssets">["companyId"]) {
   return ctx.db.query("companySites").withIndex("by_companyId", (q) => q.eq("companyId", companyId)).first();
 }
@@ -75,7 +80,7 @@ export const claim = internalMutation({
     if (asset.state === "saved" || asset.state === "staged" && asset.expiresAt > now) return { ready: readyImage(asset) };
     if (asset.state !== "pending" || asset.expiresAt <= now || (asset.leaseUntil ?? 0) > now) throw new Error("Upload expired or in progress.");
     const attempts = asset.uploadClaims ?? 0;
-    if (attempts >= 3) throw new Error("Image retry limit reached. Select the photo again.");
+    if (attempts >= MEDIA_LIMITS.uploadClaims) throw new Error("Image retry limit reached. Select the photo again.");
     const lease = crypto.randomUUID();
     await ctx.db.patch(asset._id, { lease, leaseUntil: now + MEDIA_LEASE, uploadClaims: attempts + 1 });
     return { lease, tag: asset.storageTag, purpose: asset.purpose, mime: asset.inputMime };
@@ -98,10 +103,20 @@ export const finish = internalMutation({
 });
 
 export const release = internalMutation({
-  args: { assetId, lease: v.string() }, returns: v.null(),
+  args: { assetId, lease: v.string(), candidate: v.optional(storageId) }, returns: v.null(),
   handler: async (ctx, args) => {
     const asset = await ctx.db.get(args.assetId);
-    if (asset?.state === "pending" && asset.lease === args.lease) await ctx.db.patch(asset._id, { lease: undefined, leaseUntil: undefined });
+    if (!asset) return null;
+    if (args.candidate) {
+      const stored = await ctx.db.system.get("_storage", args.candidate);
+      if (matchesStorageTag(stored, asset) &&
+        !await ctx.db.query("micrositeMediaAssets").withIndex("by_storage", (q) => q.eq("storageId", args.candidate)).first()) {
+        await ctx.storage.delete(args.candidate);
+      }
+    }
+    if ((asset.state === "pending" || asset.state === "retired") && asset.lease === args.lease) {
+      await ctx.db.patch(asset._id, { lease: undefined, leaseUntil: undefined });
+    }
     return null;
   },
 });
@@ -199,9 +214,7 @@ export const reconcileOrphan = internalMutation({
     if (!stored) return false;
     if (!asset || (asset.leaseUntil ?? 0) > Date.now() ||
       (asset.state === "pending" && asset.expiresAt > Date.now()) ||
-      stored._creationTime < asset._creationTime ||
-      !/^image\/(webp|jpeg|png); scrub-site-media=/.test(stored.contentType ?? "") ||
-      !stored.contentType?.endsWith(`=${asset.storageTag}`) ||
+      !matchesStorageTag(stored, asset) ||
       await ctx.db.query("micrositeMediaAssets").withIndex("by_storage", (q) => q.eq("storageId", args.storageId)).first()) {
       throw new Error("Storage object is not a verified orphan of this image upload.");
     }

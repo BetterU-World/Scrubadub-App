@@ -1988,7 +1988,8 @@
       "unsupported": "Elige una foto fija en formato JPEG, PNG o WebP.",
       "heicUnsupported": "Este navegador no pudo abrir la foto HEIC. Prueba Safari en un dispositivo Apple reciente o comparte la foto como JPEG y selecciónala aquí.",
       "prepareFailed": "No se pudo preparar esta foto. Elige otra o inténtalo de nuevo.",
-      "uploadFailed": "Todavía no se pudo guardar la foto. Reintenta o cancela y vuelve a seleccionarla."
+      "uploadFailed": "Todavía no se pudo guardar la foto. Reintenta o cancela y vuelve a seleccionarla.",
+      "retryLimit": "No se pudo guardar la foto. Vuelve a seleccionarla o elige otra."
     }
   },
   "miniSiteSections": {

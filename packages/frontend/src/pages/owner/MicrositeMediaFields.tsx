@@ -35,7 +35,7 @@ function ImageField({ id, slot, image, images, onChange, canAdd = true }: {
         <span role={job.status === "failed" ? "alert" : "status"}>
           {t(job.error ? `miniSiteMedia.errors.${job.error}` : `miniSiteMedia.status.${job.status}`)}
         </span>
-        {job.status === "failed" && <button type="button" className="btn-secondary touch-target" onClick={() => images.retry(key)}>{t("miniSiteMedia.retry")}</button>}
+        {job.status === "failed" && job.canRetry && <button type="button" className="btn-secondary touch-target" onClick={() => images.retry(key)}>{t("miniSiteMedia.retry")}</button>}
         <button type="button" className="btn-secondary touch-target" onClick={() => images.removeJob(key)}>{t("miniSiteMedia.cancelUpload")}</button>
       </div>}
       {image && <>

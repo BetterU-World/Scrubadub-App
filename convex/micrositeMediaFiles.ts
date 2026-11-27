@@ -83,9 +83,12 @@ export const upload = action({
         assetId: args.assetId, lease: claim.lease, storageId: candidate, width, height, mime, bytes: data.length,
       });
     } catch {
-      // Never delete a candidate optimistically after an ambiguous commit.
-      if (candidate) console.warn("Microsite image registration uncertain", { assetId: args.assetId, candidate });
-      await ctx.runMutation(internal.micrositeMedia.release, { assetId: args.assetId, lease: claim.lease });
+      // Settlement checks the storage index in the same transaction as any deletion.
+      try {
+        await ctx.runMutation(internal.micrositeMedia.release, { assetId: args.assetId, lease: claim.lease, candidate });
+      } catch {
+        if (candidate) console.warn("Microsite image registration uncertain", { assetId: args.assetId, candidate });
+      }
       throw new Error("We couldn't prepare this photo. Try again or choose a different photo.");
     }
   },

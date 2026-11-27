@@ -6,7 +6,7 @@ export const MEDIA_LIMITS = {
   galleryEdge: 1600, portraitEdge: 640, imageBytes: 600_000,
   galleryTargetBytes: 250_000, portraitTargetBytes: 120_000,
   savedBytes: 24_000_000, stages: 8, stagedBytes: 4_800_000,
-  uploadsPerHour: 50, deliveryBytesPerHour: 512 * 1024 * 1024,
+  uploadsPerHour: 50, uploadClaims: 3, deliveryBytesPerHour: 512 * 1024 * 1024,
   title: 100, alt: 160, caption: 320, bio: 500,
 } as const;
 
