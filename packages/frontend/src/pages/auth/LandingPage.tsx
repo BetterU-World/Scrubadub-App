@@ -263,6 +263,12 @@ export function LandingPage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (window.location.hash === "#pricing") {
+      document.getElementById("pricing")?.scrollIntoView();
+    }
+  }, []);
+
   async function copyHolidayCode() {
     try {
       await navigator.clipboard.writeText(holidayCampaign.code);
