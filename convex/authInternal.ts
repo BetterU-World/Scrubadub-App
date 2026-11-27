@@ -36,6 +36,7 @@ export const createCompany = internalMutation({
         bio: "",
         serviceArea: "",
         isPublished: false,
+        sections: [],
       });
     }
 
@@ -257,6 +258,7 @@ export const provisionPublicCheckout = internalMutation({
         bio: "",
         serviceArea: "",
         isPublished: false,
+        sections: [],
       });
     }
 

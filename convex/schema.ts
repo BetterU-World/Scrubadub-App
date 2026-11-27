@@ -8,6 +8,7 @@ import { executionEvidence } from "./lib/performedWorkers";
 import { operationalEmailEvent, deliveryState, errorCategory, attemptSummary } from "./lib/operationalEmailModel";
 import { outgoingTables } from "./lib/outgoingSchema";
 import { ownerOnboardingPreferences } from "./lib/ownerOnboarding";
+import { miniSiteSectionsValidator } from "./lib/miniSiteSections";
 import { v } from "convex/values";
 import { calendarClassification, calendarEventMetadata } from "./lib/calendarClassification";
 import { bedroomsValidator } from "./lib/propertyBedrooms";
@@ -1478,6 +1479,7 @@ export default defineSchema({
     publicEmail: v.optional(v.string()),
     publicPhone: v.optional(v.string()),
     metaDescription: v.optional(v.string()),
+    sections: v.optional(miniSiteSectionsValidator),
   })
     .index("by_companyId", ["companyId"])
     .index("by_slug", ["slug"]),

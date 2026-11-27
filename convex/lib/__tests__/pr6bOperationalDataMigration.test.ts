@@ -164,8 +164,8 @@ describe("PR 6B ordinary operational data migration", () => {
     ];
     const source = backendFiles.map((path) => readFileSync(fileURLToPath(new URL(`../../${path}`, import.meta.url)), "utf8")).join("\n");
     expect(source).not.toMatch(/\b(requireAuth|assertCompanyAccess|requireOwner)\s*\(/);
-    // Original 55 plus owner-only missing acknowledgement and classification.
-    expect((source.match(/sessionToken:\s*v\.string\(\)/g) ?? [])).toHaveLength(57);
+    // Original 55 plus owner-only missing acknowledgement, classification, and microsite preview.
+    expect((source.match(/sessionToken:\s*v\.string\(\)/g) ?? [])).toHaveLength(58);
 
     const cleanerLeads = readFileSync(fileURLToPath(new URL("../../mutations/cleanerLeads.ts", import.meta.url)), "utf8");
     const companySites = readFileSync(fileURLToPath(new URL("../../queries/companySites.ts", import.meta.url)), "utf8");
@@ -173,6 +173,7 @@ describe("PR 6B ordinary operational data migration", () => {
     const calendarSync = readFileSync(fileURLToPath(new URL("../../mutations/calendarSync.ts", import.meta.url)), "utf8");
     expect(cleanerLeads.match(/export const createCleanerLeadBySlug[\s\S]*?\n\}\);/)?.[0]).not.toContain("sessionToken");
     expect(companySites.match(/export const getBySlug[\s\S]*?\n\}\);/)?.[0]).not.toContain("sessionToken");
+    expect(companySites.match(/export const getPreviewContent[\s\S]*?\n\}\);/)?.[0]).toContain("requireOwnerSession(ctx, args.sessionToken");
     expect(clientRequests.match(/export const getCompanyByRequestToken[\s\S]*?\n\}\);/)?.[0]).not.toContain("sessionToken");
     expect(calendarSync.match(/export const processSyncResults[\s\S]*?\n\}\);/)?.[0]).not.toContain("sessionToken");
   });
