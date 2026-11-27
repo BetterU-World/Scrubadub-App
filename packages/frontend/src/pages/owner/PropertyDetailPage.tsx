@@ -205,6 +205,7 @@ export function PropertyDetailPage() {
           companyId={property.companyId}
           userId={user!._id}
           propertyName={property.name}
+          canReconcile={user?.role === "owner"}
         />
       )}
     </div>

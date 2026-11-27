@@ -164,13 +164,29 @@ describe("PR 6B ordinary operational data migration", () => {
     ];
     const source = backendFiles.map((path) => readFileSync(fileURLToPath(new URL(`../../${path}`, import.meta.url)), "utf8")).join("\n");
     expect(source).not.toMatch(/\b(requireAuth|assertCompanyAccess|requireOwner)\s*\(/);
-    // Original 55 plus owner-only missing acknowledgement and classification.
-    expect((source.match(/sessionToken:\s*v\.string\(\)/g) ?? [])).toHaveLength(57);
+    // Original 55 plus owner-only missing acknowledgement, classification,
+    // identity review and date-change acknowledgement (#274).
+    expect((source.match(/sessionToken:\s*v\.string\(\)/g) ?? [])).toHaveLength(59);
 
     const cleanerLeads = readFileSync(fileURLToPath(new URL("../../mutations/cleanerLeads.ts", import.meta.url)), "utf8");
     const companySites = readFileSync(fileURLToPath(new URL("../../queries/companySites.ts", import.meta.url)), "utf8");
     const clientRequests = readFileSync(fileURLToPath(new URL("../../queries/clientRequests.ts", import.meta.url)), "utf8");
     const calendarSync = readFileSync(fileURLToPath(new URL("../../mutations/calendarSync.ts", import.meta.url)), "utf8");
+    // Supplement the aggregate count: pin the intended entry-point visibility
+    // and require each new owner review handler to authenticate before access.
+    expect([...calendarSync.matchAll(/export const (\w+) = (mutation|internalMutation)\(/g)]
+      .map(([, name, visibility]) => [name, visibility])).toEqual([
+      ["beginSyncAttempt", "internalMutation"], ["cronTick", "internalMutation"],
+      ["processSyncResults", "internalMutation"], ["confirmEventClassification", "mutation"],
+      ["reviewReservationIdentity", "mutation"], ["acknowledgeReservationDates", "mutation"],
+      ["acknowledgeMissingReservation", "mutation"], ["recordSyncError", "internalMutation"], ["triggerSync", "mutation"],
+    ]);
+    for (const name of ["reviewReservationIdentity", "acknowledgeReservationDates"]) {
+      const entry = calendarSync.match(new RegExp(`export const ${name} = mutation\\([\\s\\S]*?\\n\\}\\);`))?.[0];
+      expect(entry).toMatch(/sessionToken:\s*v\.string\(\)/);
+      expect(entry).toMatch(/handler: async \(ctx, args\) => \{\s*const owner = await requireOwnerSession\(ctx, args\.sessionToken, args\.userId\);/);
+      expect(entry).toContain("requireReconciliationSource(ctx, args.reservationId, owner.companyId!");
+    }
     expect(cleanerLeads.match(/export const createCleanerLeadBySlug[\s\S]*?\n\}\);/)?.[0]).not.toContain("sessionToken");
     expect(companySites.match(/export const getBySlug[\s\S]*?\n\}\);/)?.[0]).not.toContain("sessionToken");
     expect(clientRequests.match(/export const getCompanyByRequestToken[\s\S]*?\n\}\);/)?.[0]).not.toContain("sessionToken");

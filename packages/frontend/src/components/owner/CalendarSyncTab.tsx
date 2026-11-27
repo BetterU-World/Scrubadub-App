@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { getStaffSessionToken } from "@/hooks/useAuth";
+import { CalendarReconciliationReview } from "./CalendarReconciliationReview";
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -26,6 +27,7 @@ interface CalendarSyncTabProps {
   companyId: Id<"companies">;
   userId: Id<"users">;
   propertyName: string;
+  canReconcile?: boolean;
 }
 
 const PLATFORM_OPTIONS = [
@@ -66,6 +68,7 @@ export function CalendarSyncTab({
   companyId,
   userId,
   propertyName,
+  canReconcile = false,
 }: CalendarSyncTabProps) {
   const sessionToken = getStaffSessionToken();
   const connections = useQuery(
@@ -136,7 +139,7 @@ export function CalendarSyncTab({
       {/* Reservations Section */}
       {reservations && reservations.length > 0 && (
         <ReservationsSection reservations={reservations} connections={connections ?? []}
-          propertyName={propertyName} userId={userId} sessionToken={sessionToken} />
+          propertyName={propertyName} userId={userId} sessionToken={sessionToken} canReconcile={canReconcile} />
       )}
 
       {/* Explainer */}
@@ -670,12 +673,13 @@ function AutomationRulesSection({
 
 // ── Reservations Section ────────────────────────────────────────────────
 
-function ReservationsSection({ reservations, connections, propertyName, userId, sessionToken }: {
-  reservations: any[]; connections: any[]; propertyName: string; userId: Id<"users">; sessionToken: string;
+function ReservationsSection({ reservations, connections, propertyName, userId, sessionToken, canReconcile }: {
+  reservations: any[]; connections: any[]; propertyName: string; userId: Id<"users">; sessionToken: string; canReconcile: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   // Keep unresolved missing episodes visible ahead of recent ordinary imports.
   const priority = (res: any) => {
+    if (res.identityReview?.state === "pending" || res.dateReview?.state === "pending") return 5;
     if (res.missing && res.missing.acknowledgedAt === undefined) return 4;
     if ((res.status === "active" && res.classification?.kind === "needs_review") || res.dateConflict ||
         res.cancellationFlagged || (res.classification?.kind === "non_guest_block" && res.linkedJobId)) return 3;
@@ -697,7 +701,7 @@ function ReservationsSection({ reservations, connections, propertyName, userId, 
       <div className="divide-y divide-gray-100">
         {visible.map((res) => (
           <ReservationRow key={res._id} reservation={res}
-            connection={connections.find((item) => item._id === res.connectionId)} userId={userId} sessionToken={sessionToken} />
+            connection={connections.find((item) => item._id === res.connectionId)} userId={userId} sessionToken={sessionToken} neighbors={reservations} canReconcile={canReconcile} />
         ))}
       </div>
 
@@ -717,8 +721,8 @@ function ReservationsSection({ reservations, connections, propertyName, userId, 
   );
 }
 
-function ReservationRow({ reservation, connection, userId, sessionToken }: {
-  reservation: any; connection: any; userId: Id<"users">; sessionToken: string;
+function ReservationRow({ reservation, connection, userId, sessionToken, neighbors, canReconcile }: {
+  reservation: any; connection: any; userId: Id<"users">; sessionToken: string; neighbors: any[]; canReconcile: boolean;
 }) {
   const acknowledge = useMutation(api.mutations.calendarSync.acknowledgeMissingReservation);
   const classify = useMutation(api.mutations.calendarSync.confirmEventClassification);
@@ -801,7 +805,7 @@ function ReservationRow({ reservation, connection, userId, sessionToken }: {
           {canClassify ? <>
             <p>Confirming a guest can create an unassigned job if automation and eligibility allow it. {hasJob ? "A job is already linked and will be kept unchanged." : "No cleaning job is linked."}</p>
             <div className="flex flex-wrap gap-2">
-              <button type="button" className="btn-secondary text-xs min-h-11 focus-visible:ring-2 focus-visible:ring-primary-600" disabled={classifying} onClick={() => handleClassify("guest_reservation")}>Confirm guest reservation</button>
+              <button type="button" className="btn-secondary text-xs min-h-11 focus-visible:ring-2 focus-visible:ring-primary-600" disabled={classifying || reservation.identityReview?.state === "pending" || reservation.identityReview?.state === "duplicate" || reservation.dateReview?.state === "pending"} onClick={() => handleClassify("guest_reservation")}>Confirm guest reservation</button>
               <button type="button" className="btn-secondary text-xs min-h-11 focus-visible:ring-2 focus-visible:ring-primary-600" disabled={classifying} onClick={() => handleClassify("non_guest_block")}>Confirm non-guest block</button>
             </div>
           </> : !isCancelled && <p>{connection ? "Sync this feed before confirming classification." : "Classification unavailable: this feed was removed."}</p>}
@@ -811,6 +815,8 @@ function ReservationRow({ reservation, connection, userId, sessionToken }: {
           {classificationError && <p role="alert" className="text-red-700">{classificationError}</p>}
         </div>
         <div className="text-xs text-gray-500 mt-1">
+          <CalendarReconciliationReview reservation={reservation} neighbors={neighbors}
+            feedRevision={connection ? connection.feedRevision ?? 0 : undefined} canReview={canReconcile} sessionToken={sessionToken} userId={userId} />
           Feed: {connection ? `${connection.label || connection.platform} (${connection.platform})` : "Removed feed"}
           {reservation.connectionId && <> · {String(reservation.connectionId).slice(-6)}</>}
         </div>

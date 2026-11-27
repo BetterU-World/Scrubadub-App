@@ -9,6 +9,7 @@ import { requireOwnerSession } from "../lib/sessionAuth";
 import { resolvePropertyConditionRequirement } from "../lib/propertyConditionRequirements";
 import { CALENDAR_SYNC_COOLDOWN_MS, CALENDAR_SYNC_LEASE_MS, cancelPendingCalendarSync } from "../lib/calendarSyncAdmission";
 import { calendarEventMetadata, classifyICalEvent } from "../lib/calendarClassification";
+import { IDENTITY_SCAN_LIMIT, identityReviewFor, validStayDate } from "../lib/calendarReconciliation";
 
 /** Sync interval: connections are eligible for sync after this many ms. */
 const SYNC_INTERVAL_MS = 60 * 60 * 1000; // 60 minutes
@@ -149,12 +150,24 @@ export const cronTick = internalMutation({
   },
 });
 
-/**
- * Attempt to create a calendar-sync job for a reservation.
- *
- * Returns the new job ID, or null if creation was skipped (with the
- * reservation flagged accordingly).
- */
+/** Refresh bounded identity evidence before any path can create new work. */
+async function refreshIdentityReview(
+  ctx: MutationCtx, reservation: Doc<"calendarReservations">,
+  actorId: Id<"users">,
+  propertyRows?: Doc<"calendarReservations">[],
+): Promise<Doc<"calendarReservations">> {
+  const rows = propertyRows ?? await ctx.db.query("calendarReservations")
+    .withIndex("by_propertyId", q => q.eq("propertyId", reservation.propertyId)).take(IDENTITY_SCAN_LIMIT + 1);
+  const review = identityReviewFor(reservation, rows.slice(0, IDENTITY_SCAN_LIMIT), rows.length > IDENTITY_SCAN_LIMIT, Date.now());
+  if (!review || review.fingerprint === reservation.identityReview?.fingerprint) return reservation;
+  await ctx.db.patch(reservation._id, { identityReview: review });
+  await logAudit(ctx, { companyId: reservation.companyId, userId: actorId, action: "calendar_identity_review_required",
+    entityType: "calendarReservation", entityId: reservation._id,
+    details: JSON.stringify({ revision: review.revision, candidateIds: review.candidateIds, reasons: review.reasons, incomplete: review.incomplete }) });
+  return { ...reservation, identityReview: review };
+}
+
+/** Create new work only; existing linked jobs are never changed here. */
 async function maybeCreateJobForReservation(
   ctx: MutationCtx,
   reservationId: Id<"calendarReservations">,
@@ -196,6 +209,9 @@ async function maybeCreateJobForReservation(
     : reservation.missing ? "reservation_missing"
     : !connection.enabled ? "connection_disabled"
     : !currentFeed ? "feed_source_changed"
+    : reservation.identityReview?.state === "duplicate" ? "duplicate_identity"
+    : reservation.identityReview?.state === "pending" ? "identity_review_required"
+    : reservation.dateReview?.state === "pending" ? "date_review_required"
     : !confirmedGuest
       ? classification?.kind === "non_guest_block" ? "non_guest_block" : "classification_required" : null;
   if (deniedReason) {
@@ -393,6 +409,8 @@ export const processSyncResults = internalMutation({
     // A disabled/deleted connection, owner recovery, expired round or newer
     // attempt cancels this result. Never persist or cancel reservations for it.
     if (!connection || !isCurrentAttempt(connection, args.attemptId)) return "skipped" as const;
+    const property = await ctx.db.get(connection.propertyId);
+    if (!property || property.companyId !== connection.companyId) throw new Error("Calendar property is unavailable");
 
     if (args.snapshotStatus === "valid_empty") {
       if (args.totalEvents !== 0 || args.skipped !== 0 || args.reservations.length !== 0 ||
@@ -425,7 +443,7 @@ export const processSyncResults = internalMutation({
         cancelledUids.size !== (args.cancelledUids ?? []).length ||
         args.totalEvents !== args.reservations.length + cancelledUids.size ||
         [...cancelledUids].some((uid) => !uid.trim() || reservationUids.has(uid)) ||
-        args.reservations.some((r) => !r.uid.trim() || r.checkOut <= r.checkIn)) {
+        args.reservations.some((r) => !r.uid.trim() || !validStayDate(r.checkIn) || !validStayDate(r.checkOut) || r.checkOut <= r.checkIn)) {
       throw new Error("Unsafe or unvalidated iCalendar snapshot");
     }
 
@@ -435,6 +453,7 @@ export const processSyncResults = internalMutation({
     let reservationsCancelled = 0;
     let reservationsMissing = 0;
     let jobsCreated = 0;
+    const observedIds: Id<"calendarReservations">[] = [];
 
     // Build a set of UIDs present in this sync for cancellation detection
     const incomingUids = new Set(args.reservations.map((r) => r.uid));
@@ -449,7 +468,7 @@ export const processSyncResults = internalMutation({
         .withIndex("by_connectionId_externalUid", (q) =>
           q.eq("connectionId", args.connectionId).eq("externalUid", res.uid)
         )
-        .first();
+        .unique();
 
       if (!existing) {
         // ── New reservation ────────────────────────────────────────────
@@ -479,23 +498,16 @@ export const processSyncResults = internalMutation({
             : {}),
         });
         reservationsCreated++;
-
-        // Attempt job creation for eligible new reservations
-        if (!beforeCutoff) {
-          const reservation = await ctx.db.get(reservationId);
-          if (reservation) {
-            const jobId = await maybeCreateJobForReservation(
-              ctx, reservationId, reservation, connection
-            );
-            if (jobId) jobsCreated++;
-          }
-        }
+        observedIds.push(reservationId);
       } else {
         // ── Existing reservation ───────────────────────────────────────
+        if (existing.companyId !== connection.companyId || existing.propertyId !== connection.propertyId) throw new Error("Calendar reservation scope mismatch");
 
         const updates: Record<string, unknown> = { lastSeenAt: now, eventVersion, eventMetadata: res.eventMetadata };
-        const materialChanged = existing.eventVersion !== undefined
-          ? existing.eventVersion !== eventVersion : existing.rawHash !== res.rawHash;
+        observedIds.push(existing._id);
+        const datesChanged = existing.checkIn !== res.checkIn || existing.checkOut !== res.checkOut;
+        const materialChanged = datesChanged || (existing.eventVersion !== undefined
+          ? existing.eventVersion !== eventVersion : existing.rawHash !== res.rawHash);
         // Unchanged legacy rows remain unconfirmed without mass review episodes.
         // Every job path nevertheless requires current, explicit guest approval.
         if (materialChanged) {
@@ -534,11 +546,23 @@ export const processSyncResults = internalMutation({
         }
 
         // If hash changed, dates or summary changed — update fields
-        if (existing.rawHash !== res.rawHash) {
+        if (datesChanged) {
+          const previous = existing.dateReview?.state === "pending" ? existing.dateReview : undefined;
+          updates.dateReview = { revision: (existing.dateReview?.revision ?? 0) + 1, eventVersion, state: "pending",
+            previousCheckIn: previous?.previousCheckIn ?? existing.checkIn, previousCheckOut: previous?.previousCheckOut ?? existing.checkOut,
+            proposedCheckIn: res.checkIn, proposedCheckOut: res.checkOut, observedAt: now };
+          await logAudit(ctx, { companyId: connection.companyId, userId: connection.createdBy,
+            action: "calendar_reservation_dates_changed", entityType: "calendarReservation", entityId: existing._id,
+            details: JSON.stringify({ previousCheckIn: existing.checkIn, previousCheckOut: existing.checkOut,
+              proposedCheckIn: res.checkIn, proposedCheckOut: res.checkOut, eventVersion, linkedJobId: existing.linkedJobId }) });
+        } else if (materialChanged && existing.dateReview?.state === "pending") {
+          updates.dateReview = { ...existing.dateReview, revision: existing.dateReview.revision + 1, eventVersion };
+        }
+        if (existing.rawHash !== res.rawHash || datesChanged) {
           // Track if checkout date specifically changed (for future flagging)
           if (existing.checkOut !== res.checkOut && existing.linkedJobId) {
             updates.dateConflict = true;
-            updates.originalCheckOut = existing.checkOut;
+            updates.originalCheckOut = existing.originalCheckOut ?? existing.checkOut;
           }
 
           updates.checkIn = res.checkIn;
@@ -550,19 +574,6 @@ export const processSyncResults = internalMutation({
         }
 
         await ctx.db.patch(existing._id, updates);
-
-        // Retry job creation for reservations that don't yet have a job.
-        // This covers: reactivated cancelled reservations, and reservations
-        // previously skipped for a temporary reason (rules disabled, duplicate).
-        if (!existing.linkedJobId) {
-          const updated = await ctx.db.get(existing._id);
-          if (updated) {
-            const jobId = await maybeCreateJobForReservation(
-              ctx, existing._id, updated, connection
-            );
-            if (jobId) jobsCreated++;
-          }
-        }
       }
     }
 
@@ -572,8 +583,9 @@ export const processSyncResults = internalMutation({
     for (const uid of cancelledUids) {
       const existing = await ctx.db.query("calendarReservations")
         .withIndex("by_connectionId_externalUid", (q) => q.eq("connectionId", args.connectionId).eq("externalUid", uid))
-        .first();
+        .unique();
       if (!existing || (existing.status === "cancelled" && existing.cancellationEvidence)) continue;
+      if (existing.companyId !== connection.companyId || existing.propertyId !== connection.propertyId) throw new Error("Calendar reservation scope mismatch");
       await ctx.db.patch(existing._id, {
         status: "cancelled", cancelledAt: existing.status === "cancelled" ? (existing.cancelledAt ?? now) : now, missing: undefined,
         cancellationFlagged: existing.linkedJobId ? true : undefined,
@@ -599,6 +611,7 @@ export const processSyncResults = internalMutation({
       .collect();
 
     for (const existing of allExisting) {
+      if (existing.companyId !== connection.companyId || existing.propertyId !== connection.propertyId) throw new Error("Calendar reservation scope mismatch");
       if (!incomingUids.has(existing.externalUid)) {
         const missing = existing.missing
           ? { ...existing.missing, lastMissingAt: now, observations: existing.missing.observations + 1 }
@@ -614,6 +627,19 @@ export const processSyncResults = internalMutation({
         }
         reservationsMissing++;
       }
+    }
+
+    // Reconcile only after all observations, cancellations and missing evidence
+    // are visible. A single bounded property scan also catches same-snapshot
+    // collisions, independently of event order, before any job creation.
+    const propertyRows = await ctx.db.query("calendarReservations")
+      .withIndex("by_propertyId", q => q.eq("propertyId", connection.propertyId)).take(IDENTITY_SCAN_LIMIT + 1);
+    for (const id of observedIds) {
+      const row = await ctx.db.get(id);
+      if (!row) continue;
+      const reviewed = await refreshIdentityReview(ctx, row, connection.createdBy, propertyRows);
+      const jobId = await maybeCreateJobForReservation(ctx, id, reviewed, connection);
+      if (jobId) jobsCreated++;
     }
 
     // ── Update connection status ───────────────────────────────────────
@@ -696,7 +722,7 @@ export const confirmEventClassification = mutation({
         details: JSON.stringify({ kind: args.kind, previousKind: previous?.kind ?? "legacy_unconfirmed", revision, eventVersion: reservation.eventVersion }),
       });
     }
-    const updated = (await ctx.db.get(reservation._id))!;
+    const updated = await refreshIdentityReview(ctx, (await ctx.db.get(reservation._id))!, owner._id);
     const jobId = await maybeCreateJobForReservation(ctx, updated._id, updated, connection, owner._id);
     const final = (await ctx.db.get(reservation._id))!;
     return {
@@ -705,6 +731,87 @@ export const confirmEventClassification = mutation({
       ...(final.skipReason ? { skipReason: final.skipReason } : {}),
       manualJobReviewRequired: args.kind === "non_guest_block" && !!final.linkedJobId,
     };
+  },
+});
+
+/** Scope/version checks shared by the two review actions. No job writes. */
+async function requireReconciliationSource(
+  ctx: MutationCtx, reservationId: Id<"calendarReservations">, companyId: Id<"companies">,
+  expectedEventVersion: string, expectedFeedRevision: number,
+) {
+  const reservation = await ctx.db.get(reservationId);
+  if (!reservation || reservation.companyId !== companyId) throw new Error("Reservation not found");
+  const connection = await ctx.db.get(reservation.connectionId);
+  const property = await ctx.db.get(reservation.propertyId);
+  if (!connection || connection.companyId !== companyId || connection.propertyId !== reservation.propertyId
+    || !property || property.companyId !== companyId) throw new Error("Calendar source or property is unavailable");
+  if (reservation.status !== "active" || reservation.eventVersion !== expectedEventVersion
+    || (connection.feedRevision ?? 0) !== expectedFeedRevision
+    || !expectedEventVersion.startsWith(`${connection.feedRevision ?? 0}:`)) throw new Error("Event or feed changed. Refresh and review again.");
+  return reservation;
+}
+
+/** Owner attestation only: never merge rows, transfer links or create jobs. */
+export const reviewReservationIdentity = mutation({
+  args: {
+    sessionToken: v.string(), userId: v.optional(v.id("users")), reservationId: v.id("calendarReservations"),
+    expectedEventVersion: v.string(), expectedFeedRevision: v.number(), expectedRevision: v.number(),
+    decision: v.union(v.literal("distinct"), v.literal("duplicate")), duplicateOf: v.optional(v.id("calendarReservations")),
+  },
+  returns: v.union(v.literal("reviewed"), v.literal("already_reviewed"), v.literal("stale")),
+  handler: async (ctx, args) => {
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const reservation = await requireReconciliationSource(ctx, args.reservationId, owner.companyId!, args.expectedEventVersion, args.expectedFeedRevision);
+    const current = await refreshIdentityReview(ctx, reservation, owner._id);
+    const review = current.identityReview;
+    if (!review || review.eventVersion !== current.eventVersion || !Number.isSafeInteger(args.expectedRevision)) throw new Error("Identity review is unavailable");
+    if (review.state === args.decision && review.duplicateOf === args.duplicateOf
+      && (args.expectedRevision === review.revision || args.expectedRevision === review.revision - 1)) return "already_reviewed" as const;
+    // Commit refreshed evidence rather than throwing/rolling it back. The UI
+    // receives the new revision and the owner must inspect it before retrying.
+    if (review.revision !== args.expectedRevision || review.state !== "pending") return "stale" as const;
+    if (args.decision === "distinct" && (review.incomplete || args.duplicateOf)) throw new Error("Identity evidence is incomplete. Manual review is required; automation stays blocked.");
+    if (args.decision === "duplicate") {
+      const target = args.duplicateOf ? await ctx.db.get(args.duplicateOf) : null;
+      if (!target || !review.candidateIds.includes(target._id) || target._id === current._id
+        || target.companyId !== current.companyId || target.propertyId !== current.propertyId
+        || target.identityReview?.state === "duplicate") throw new Error("Choose a current same-property candidate that is not already suppressed");
+    }
+    const now = Date.now();
+    await ctx.db.patch(current._id, {
+      identityReview: { ...review, state: args.decision, revision: review.revision + 1,
+        reviewedAt: now, reviewedBy: owner._id, ...(args.duplicateOf ? { duplicateOf: args.duplicateOf } : {}) },
+      ...(!current.linkedJobId && args.decision === "duplicate" ? { jobCreationSkipped: true, skipReason: "duplicate_identity" } : {}),
+      ...(!current.linkedJobId && args.decision === "distinct" && current.skipReason === "identity_review_required"
+        ? { jobCreationSkipped: undefined, skipReason: undefined } : {}),
+    });
+    await logAudit(ctx, { companyId: current.companyId, userId: owner._id, action: "calendar_identity_reviewed",
+      entityType: "calendarReservation", entityId: current._id,
+      details: JSON.stringify({ decision: args.decision, duplicateOf: args.duplicateOf, revision: review.revision + 1,
+        eventVersion: current.eventVersion, candidateIds: review.candidateIds, linkedJobId: current.linkedJobId }) });
+    return "reviewed" as const;
+  },
+});
+
+/** Acknowledgement does not clear a linked job discrepancy or change a job. */
+export const acknowledgeReservationDates = mutation({
+  args: {
+    sessionToken: v.string(), userId: v.optional(v.id("users")), reservationId: v.id("calendarReservations"),
+    expectedEventVersion: v.string(), expectedFeedRevision: v.number(), expectedRevision: v.number(),
+  },
+  returns: v.union(v.literal("acknowledged"), v.literal("already_acknowledged")),
+  handler: async (ctx, args) => {
+    const owner = await requireOwnerSession(ctx, args.sessionToken, args.userId);
+    const reservation = await requireReconciliationSource(ctx, args.reservationId, owner.companyId!, args.expectedEventVersion, args.expectedFeedRevision);
+    const review = reservation.dateReview;
+    if (!review || review.eventVersion !== reservation.eventVersion || !Number.isSafeInteger(args.expectedRevision)
+      || review.proposedCheckIn !== reservation.checkIn || review.proposedCheckOut !== reservation.checkOut) throw new Error("Date review changed. Refresh and review again.");
+    if (review.state === "acknowledged" && (args.expectedRevision === review.revision || args.expectedRevision === review.revision - 1)) return "already_acknowledged" as const;
+    if (review.revision !== args.expectedRevision || review.state !== "pending") throw new Error("Date review changed. Refresh and review again.");
+    await ctx.db.patch(reservation._id, { dateReview: { ...review, state: "acknowledged", revision: review.revision + 1, acknowledgedAt: Date.now(), acknowledgedBy: owner._id } });
+    await logAudit(ctx, { companyId: reservation.companyId, userId: owner._id, action: "calendar_dates_acknowledged",
+      entityType: "calendarReservation", entityId: reservation._id, details: JSON.stringify({ ...review, linkedJobId: reservation.linkedJobId }) });
+    return "acknowledged" as const;
   },
 });
 
