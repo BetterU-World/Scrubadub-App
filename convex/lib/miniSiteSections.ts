@@ -9,6 +9,9 @@ export const MINI_SITE_SECTIONS = {
   reviews: { enabled: true, entryBodyLimit: 0 },
   highlights: { enabled: false, entryBodyLimit: 320 },
   faq: { enabled: false, entryBodyLimit: 1200 },
+  businessHours: { enabled: false, entryBodyLimit: 0 },
+  socialProfiles: { enabled: false, entryBodyLimit: 0 },
+  policies: { enabled: false, entryBodyLimit: 1200 },
 } as const;
 
 export type MiniSiteSectionId = keyof typeof MINI_SITE_SECTIONS;

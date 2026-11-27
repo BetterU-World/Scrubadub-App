@@ -4,6 +4,7 @@ import { useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { miniSiteSectionHeadingKey, publicMiniSiteSections, supportedHighlightIcon, type HighlightIcon, type PublicMiniSiteSections } from "../../../../../convex/lib/miniSiteSections";
+import { SITE_CONTENT_LIMITS, type MiniSiteHours, type MiniSiteProfile, type PublicMiniSitePresentation } from "../../../../../convex/lib/miniSitePresentation";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { encodePublicAddOnSelection, formatPublicAddOnPrice } from "@/lib/publicAddOnPresentation";
 import { miniSiteCanonical, miniSiteDescription, miniSiteTitle, safePublicImage } from "../../../../../convex/lib/miniSiteSeo";
@@ -30,6 +31,12 @@ import {
   ClipboardCheck,
   ChevronDown,
   ArrowRight,
+  ExternalLink,
+  Facebook,
+  Instagram,
+  Linkedin,
+  Music2,
+  Youtube,
 } from "lucide-react";
 
 // ── SEO helper ────────────────────────────────────────────────────────
@@ -100,6 +107,7 @@ function toTelHref(phone: string): string {
 // ── Types ─────────────────────────────────────────────────────────────
 
 interface SiteData {
+  presentation?: PublicMiniSitePresentation;
   templateId: string;
   brandName: string;
   bio: string;
@@ -208,7 +216,7 @@ const MiniSitePreviewContext = createContext(false);
 function SiteLink({ children, className, ...props }: ComponentPropsWithoutRef<"a">) {
   const preview = useContext(MiniSitePreviewContext);
   return preview
-    ? <span className={className} role="link" aria-disabled="true">{children}</span>
+    ? <span className={className} role="link" aria-label={props["aria-label"]} aria-disabled="true">{children}</span>
     : <a className={className} {...props}>{children}</a>;
 }
 
@@ -227,6 +235,8 @@ export function MiniSiteContent({
   const requestHref = publicRequestToken ? `/r/${publicRequestToken}` : null;
   const cleanerHref = `/${slug}/cleaner`;
   const isDark = site.templateId === "B";
+  const presentation = site.presentation;
+  const quoteLabel = presentation?.quote?.label;
 
   return (
     <MiniSitePreviewContext.Provider value={preview}>
@@ -261,7 +271,7 @@ export function MiniSiteContent({
               {site.brandName}
             </span>
           </div>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex max-w-[60%] shrink-0 items-center gap-2 sm:max-w-[55%]">
             {site.publicPhone && (
               <SiteLink
                 href={toTelHref(site.publicPhone)}
@@ -275,7 +285,7 @@ export function MiniSiteContent({
                 Call / Text
               </SiteLink>
             )}
-            <QuoteButton href={requestHref} size="sm" />
+            <QuoteButton href={requestHref} label={quoteLabel ?? t("sitePresentation.quoteNav")} size="sm" />
           </div>
         </div>
       </nav>
@@ -286,13 +296,14 @@ export function MiniSiteContent({
         requestHref={requestHref}
         cleanerHref={cleanerHref}
         isDark={isDark}
+        quoteLabel={quoteLabel ?? t("sitePresentation.quoteDefault")}
       />
 
       {sections.map((section) => {
         const heading = section.heading || t(miniSiteSectionHeadingKey(section.id));
         switch (section.id) {
           case "services":
-            return site.services.length ? <ServicesSection key={section.id} heading={heading} services={site.services} requestHref={requestHref} isDark={isDark} /> : null;
+            return site.services.length ? <ServicesSection key={section.id} heading={heading} services={site.services} details={presentation?.serviceDetails} requestHref={requestHref} isDark={isDark} /> : null;
           case "addOns":
             return <AddOnsSection key={section.id} heading={heading} addOns={addOns} isDark={isDark} locale={i18n.resolvedLanguage ?? i18n.language} t={t} requestHref={requestHref} />;
           case "serviceArea":
@@ -300,10 +311,19 @@ export function MiniSiteContent({
               ? <ServiceAreaSection key={section.id} heading={heading} serviceArea={site.serviceArea} additionalServiceAreas={site.additionalServiceAreas} isDark={isDark} />
               : null;
           case "reviews":
-            return reviews.length ? <ReviewsSection key={section.id} heading={heading} reviews={reviews} isDark={isDark} /> : null;
+            return reviews.length || presentation?.externalReviews?.length
+              ? <ReviewsSection key={section.id} heading={heading} reviews={reviews} profiles={presentation?.externalReviews} isDark={isDark} /> : null;
+          case "businessHours":
+            return presentation?.hours?.length ? <BusinessHoursSection key={section.id} heading={heading} hours={presentation.hours} isDark={isDark} /> : null;
+          case "socialProfiles":
+            return presentation?.socials?.length ? <section key={section.id} className={`px-4 py-14 text-center ${isDark ? "text-white" : "text-gray-900"}`}>
+              <h2 className="mb-6 text-3xl font-bold">{heading}</h2>
+              <ProfileLinks profiles={presentation.socials} isDark={isDark} />
+            </section> : null;
           case "howItWorks":
           case "highlights":
           case "faq":
+          case "policies":
             return <InformationalSection key={section.id} section={section} heading={heading} isDark={isDark} />;
         }
       })}
@@ -313,6 +333,8 @@ export function MiniSiteContent({
         brandName={site.brandName}
         requestHref={requestHref}
         cleanerHref={cleanerHref}
+        quoteLabel={quoteLabel ?? t("sitePresentation.quoteFree")}
+        quoteText={presentation?.quote?.text}
       />
 
       {/* ── Footer ─────────────────────────────────────────────── */}
@@ -348,11 +370,11 @@ export function MiniSiteContent({
               href={requestHref}
               className="btn-primary flex-1 text-center py-3 block font-semibold"
             >
-              Request a Free Quote
+              {quoteLabel ?? t("sitePresentation.quoteFree")}
             </SiteLink>
           ) : (
             <span className="flex-1 text-center py-3 block font-semibold rounded-lg bg-gray-300 text-gray-500 cursor-not-allowed text-sm">
-              Booking link not configured yet
+              {t("sitePresentation.quoteUnavailable")}
             </span>
           )}
         </div>
@@ -366,22 +388,25 @@ export function MiniSiteContent({
 
 function QuoteButton({
   href,
+  label,
   size = "md",
   className = "",
 }: {
   href: string | null;
+  label: string;
   size?: "sm" | "md";
   className?: string;
 }) {
+  const { t } = useTranslation();
   const sizeClasses = size === "sm" ? "px-3 py-2 text-sm sm:px-4" : "text-base px-8 py-3";
 
   if (href) {
     return (
       <SiteLink
         href={href}
-        className={`btn-primary ${sizeClasses} ${className}`}
+        className={`btn-primary min-w-0 text-center ${sizeClasses} ${className}`}
       >
-        Get a Quote
+        {label}
       </SiteLink>
     );
   }
@@ -389,9 +414,9 @@ function QuoteButton({
   return (
     <span
       className={`inline-block rounded-lg font-medium bg-gray-300 text-gray-500 cursor-not-allowed ${sizeClasses} ${className}`}
-      title="Booking link not configured yet"
+      title={t("sitePresentation.quoteUnavailable")}
     >
-      Get a Quote
+      {label}
     </span>
   );
 }
@@ -403,12 +428,15 @@ function HeroSection({
   requestHref,
   cleanerHref,
   isDark,
+  quoteLabel,
 }: {
   site: SiteData;
   requestHref: string | null;
   cleanerHref: string;
   isDark: boolean;
+  quoteLabel: string;
 }) {
+  const { t } = useTranslation();
   const hasHero = !!site.heroImageUrl;
   // For dark template without a hero image, use a dark gradient
   const useLightOnDark = isDark || hasHero;
@@ -466,12 +494,12 @@ function HeroSection({
               href={requestHref}
               className="btn-primary text-base px-8 py-3 shadow-lg hover:shadow-xl transition-shadow flex items-center gap-2"
             >
-              Request a Quote
+              <span>{quoteLabel}</span>
               <ArrowRight className="w-4 h-4" />
             </SiteLink>
           ) : (
             <span className="inline-flex items-center gap-2 px-8 py-3 rounded-lg font-medium text-base bg-gray-400 text-gray-200 cursor-not-allowed">
-              Request a Quote
+              <span>{quoteLabel}</span>
               <ArrowRight className="w-4 h-4" />
             </span>
           )}
@@ -488,7 +516,7 @@ function HeroSection({
         </div>
         {!requestHref && (
           <p className="mt-3 text-xs text-gray-400">
-            Booking link not configured yet.
+            {t("sitePresentation.quoteUnavailable")}
           </p>
         )}
       </div>
@@ -503,18 +531,23 @@ const SERVICE_ICONS = [Sparkles, Home, Truck, Building2, HardHat, ClipboardCheck
 function ServicesSection({
   heading,
   services,
+  details,
   requestHref,
   isDark,
 }: {
   heading: string;
   services: string[];
+  details?: PublicMiniSitePresentation["serviceDetails"];
   requestHref: string | null;
   isDark: boolean;
 }) {
-  const cards = services.filter((service) => service.trim()).slice(0, 8).map((svc, i) => ({
+  const { t } = useTranslation();
+  const cards = services.slice(0, SITE_CONTENT_LIMITS.services).map((svc, i) => ({
+    index: i,
     name: svc,
+    detail: details?.find(({ index }) => index === i),
     icon: SERVICE_ICONS[i % SERVICE_ICONS.length],
-  }));
+  })).filter(({ name }) => name.trim());
   if (!cards.length) return null;
 
   return (
@@ -527,14 +560,14 @@ function ServicesSection({
             {heading}
           </h2>
           <p className={isDark ? "text-gray-400" : "text-gray-500"}>
-            Explore the services we offer.
+            {t("sitePresentation.servicesHelp")}
           </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {cards.map((card) => (
             <div
-              key={card.name}
+              key={card.index}
               className={`group rounded-xl border p-6 hover:shadow-md transition-all ${
                 isDark
                   ? "bg-gray-900 border-gray-800 hover:border-primary-700"
@@ -555,12 +588,26 @@ function ServicesSection({
               >
                 {card.name}
               </h3>
+              {card.detail && (
+                <details className={`mb-3 rounded-lg border px-3 text-sm ${isDark ? "border-gray-700 text-gray-300" : "border-gray-200 text-gray-700"}`}>
+                  <summary className="cursor-pointer py-2 font-medium">{t("sitePresentation.serviceDetails")}<span className="sr-only"> {card.name}</span></summary>
+                  <div className="space-y-3 pb-3">
+                    {card.detail.description && <p className="whitespace-pre-wrap">{card.detail.description}</p>}
+                    {(["included", "excluded"] as const).map((field) => card.detail?.[field] && (
+                      <div key={field}>
+                        <h4 className="font-semibold">{t(`sitePresentation.${field}`)}</h4>
+                        <p className="whitespace-pre-wrap">{card.detail[field]}</p>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
               {requestHref && (
                 <SiteLink
                   href={`${requestHref}?service=${encodeURIComponent(card.name)}`}
                   className="inline-flex items-center gap-1 text-sm font-medium text-primary-500 hover:text-primary-400"
                 >
-                  Request quote <ArrowRight className="w-3.5 h-3.5" />
+                  {t("sitePresentation.serviceQuote")} <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
                 </SiteLink>
               )}
             </div>
@@ -719,12 +766,15 @@ function ServiceAreaSection({
 function ReviewsSection({
   heading,
   reviews,
+  profiles,
   isDark,
 }: {
   heading: string;
   reviews: ReviewData[];
+  profiles?: MiniSiteProfile[];
   isDark: boolean;
 }) {
+  const { t } = useTranslation();
   const avgRating = reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length;
 
   return (
@@ -738,12 +788,12 @@ function ReviewsSection({
           >
             {heading}
           </h2>
-          <div className="flex items-center justify-center gap-2">
+          {!!reviews.length && <div className="flex items-center justify-center gap-2">
             <StarRating rating={Math.round(avgRating)} />
             <span className={`text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>
               {avgRating.toFixed(1)} average from {reviews.length} review{reviews.length !== 1 ? "s" : ""}
             </span>
-          </div>
+          </div>}
         </div>
 
         {reviews.length > 0 && (
@@ -784,6 +834,59 @@ function ReviewsSection({
             ))}
           </div>
         )}
+        {profiles?.length ? (
+          <div className={`text-center ${reviews.length ? "mt-10 border-t pt-6" : ""} ${isDark ? "border-gray-700 text-white" : "border-gray-200 text-gray-900"}`}>
+            <h3 className="mb-4 font-semibold">{t("sitePresentation.externalReviewsTitle")}</h3>
+            <ProfileLinks profiles={profiles} isDark={isDark} reviews />
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+const SOCIAL_ICONS = { facebook: Facebook, instagram: Instagram, tiktok: Music2, linkedin: Linkedin, youtube: Youtube };
+
+function ProfileLinks({ profiles, isDark, reviews = false }: { profiles: MiniSiteProfile[]; isDark: boolean; reviews?: boolean }) {
+  const { t } = useTranslation();
+  return (
+    <ul className="flex flex-wrap justify-center gap-3" role="list">
+      {profiles.map(({ platform, url }) => {
+        const Icon = SOCIAL_ICONS[platform as keyof typeof SOCIAL_ICONS] ?? ExternalLink;
+        const name = t(`sitePresentation.platforms.${platform}`);
+        return (
+          <li key={platform}>
+            <SiteLink href={url} target="_blank" rel="noopener noreferrer" aria-label={t(reviews ? "sitePresentation.viewReviews" : "sitePresentation.visitProfile", { platform: name })}
+              className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-4 text-sm font-semibold ${isDark ? "border-gray-700 bg-gray-900 text-white hover:bg-gray-800" : "border-gray-200 bg-white text-gray-900 hover:bg-gray-50"}`}>
+              <Icon aria-hidden="true" className="h-4 w-4 shrink-0 text-primary-500" />{name}
+            </SiteLink>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function BusinessHoursSection({ heading, hours, isDark }: { heading: string; hours: MiniSiteHours[]; isDark: boolean }) {
+  const { t, i18n } = useTranslation();
+  const formatTime = (value: string) => {
+    const [hour, minute] = value.split(":").map(Number);
+    return new Intl.DateTimeFormat(i18n.resolvedLanguage ?? "en", { hour: "numeric", minute: "2-digit", timeZone: "UTC" })
+      .format(Date.UTC(2000, 0, 1, hour, minute));
+  };
+  return (
+    <section className={`px-4 py-16 sm:py-20 ${isDark ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"}`}>
+      <div className="mx-auto max-w-lg">
+        <h2 className="text-center text-3xl font-bold">{heading}</h2>
+        <p className={`mb-6 mt-3 text-center text-sm ${isDark ? "text-gray-300" : "text-gray-600"}`}>{t("sitePresentation.hoursNote")}</p>
+        <dl className={`divide-y rounded-xl border px-4 ${isDark ? "divide-gray-700 border-gray-700" : "divide-gray-200 border-gray-200 bg-white"}`}>
+          {hours.map((entry) => (
+            <div key={entry.day} className="flex flex-wrap justify-between gap-x-4 gap-y-1 py-3 text-sm">
+              <dt className="font-semibold">{t(`sitePresentation.days.${entry.day}`)}</dt>
+              <dd>{entry.status === "open" ? <><time dateTime={entry.opens}>{formatTime(entry.opens)}</time> – <time dateTime={entry.closes}>{formatTime(entry.closes)}</time></> : t(`sitePresentation.status.${entry.status}`)}</dd>
+            </div>
+          ))}
+        </dl>
       </div>
     </section>
   );
@@ -826,7 +929,7 @@ function InformationalSection({ section, heading, isDark }: {
     : section.entries ?? [];
   if (!entries.length) return null;
 
-  const isFaq = section.id === "faq";
+  const isFaq = section.id === "faq" || section.id === "policies";
   const isProcess = section.id === "howItWorks";
   const headingColor = isDark ? "text-white" : "text-gray-900";
   return (
@@ -918,20 +1021,24 @@ function CTASection({
   brandName,
   requestHref,
   cleanerHref,
+  quoteLabel,
+  quoteText,
 }: {
   brandName: string;
   requestHref: string | null;
   cleanerHref: string;
+  quoteLabel: string;
+  quoteText?: string;
 }) {
+  const { t } = useTranslation();
   return (
     <section className="py-16 sm:py-20 bg-primary-600 text-white">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 text-center">
         <h2 className="text-3xl font-bold mb-4">
-          Ready for a cleaner space?
+          {t("sitePresentation.quoteHeading")}
         </h2>
-        <p className="text-primary-100 mb-8 text-lg">
-          Let {brandName} take care of the cleaning so you can focus on what
-          matters.
+        <p className="text-primary-100 mb-8 whitespace-pre-wrap text-lg">
+          {quoteText ?? t("sitePresentation.quoteSupport", { brand: brandName })}
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           {requestHref ? (
@@ -939,12 +1046,12 @@ function CTASection({
               href={requestHref}
               className="bg-white text-primary-700 px-8 py-3 rounded-lg font-semibold hover:bg-primary-50 transition-colors shadow-lg flex items-center gap-2"
             >
-              Request a Free Quote
+              <span>{quoteLabel}</span>
               <ArrowRight className="w-4 h-4" />
             </SiteLink>
           ) : (
             <span className="bg-white/30 text-white/70 px-8 py-3 rounded-lg font-semibold cursor-not-allowed flex items-center gap-2">
-              Request a Free Quote
+              <span>{quoteLabel}</span>
               <ArrowRight className="w-4 h-4" />
             </span>
           )}
@@ -957,7 +1064,7 @@ function CTASection({
         </div>
         {!requestHref && (
           <p className="mt-3 text-xs text-primary-200">
-            Booking link not configured yet.
+            {t("sitePresentation.quoteUnavailable")}
           </p>
         )}
       </div>

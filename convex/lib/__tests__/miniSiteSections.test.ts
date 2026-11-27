@@ -4,6 +4,7 @@ import { api } from "../../_generated/api";
 import schema from "../../schema";
 import { MINI_SITE_SECTIONS, publicMiniSiteSections, resolveMiniSiteSections, SECTION_LIMITS } from "../miniSiteSections";
 import { hashToken } from "../tokens";
+import { safeMiniSiteProfile, SITE_CONTENT_LIMITS, type MiniSitePresentation, type MiniSiteProfile } from "../miniSitePresentation";
 
 const modules = import.meta.glob("../../**/*.ts");
 const siteFields = {
@@ -153,7 +154,128 @@ describe("microsite section configuration", () => {
     ];
     expect(resolveMiniSiteSections(outdated).map(({ id }) => id)).toEqual([
       "highlights", "services", "addOns", "howItWorks", "serviceArea", "reviews", "faq",
+      "businessHours", "socialProfiles", "policies",
     ]);
     expect(publicMiniSiteSections(outdated)[0]).toEqual({ id: "highlights", entries: [{ title: "Title", body: "Body" }] });
+  });
+});
+
+describe("microsite business presentation", () => {
+  const description = "Dusting, floors, and kitchen surfaces.";
+  const presentation: MiniSitePresentation = {
+    serviceDetails: [{ index: 0, name: "Deep cleaning", description, included: "Kitchen", excluded: "Attic" }],
+    hours: [{ day: "sunday", status: "closed" }, { day: "monday", status: "open", opens: "09:00", closes: "17:30" }, { day: "tuesday", status: "appointment" }],
+    socials: [{ platform: "instagram", url: "https://www.instagram.com/bright.homes/" }],
+    externalReviewsEnabled: true,
+    externalReviews: [{ platform: "google", url: "https://www.google.com/maps/place/Bright+Homes" }],
+    quote: { label: "Tell Us About Your Cleaning Needs", text: "Tell us how we can help." },
+  };
+
+  it("round-trips Phase 1 ordering and Phase 2 content, withholding hidden and incomplete entries", async () => {
+    const { test, owner, companyId } = await fixture();
+    const write = api.mutations.companySites.upsertSite;
+    const publicQuery = api.queries.companySites.getBySlug;
+    const phaseOne = [{ id: "faq", enabled: true, heading: "Your questions", entries: [{ id: "q", enabled: true, title: "Where?", body: "Tampa" }] }];
+    await test.mutation(write, { ...siteFields, ...owner, companyId, sections: phaseOne });
+    const settings = (await test.query(api.queries.companySites.getMySite, { ...owner, companyId }))!;
+    const sections = [
+      ...settings.sections!,
+      { id: "businessHours", enabled: true },
+      { id: "socialProfiles", enabled: true },
+      { id: "policies", enabled: true, entries: [
+        { id: "second", title: "Rescheduling", body: "Contact us to discuss changes.", enabled: true },
+        { id: "hidden", title: "Hidden policy", body: "Private", enabled: false },
+        { id: "incomplete", title: "Incomplete policy", body: "", enabled: true },
+        { id: "first", title: "Access", body: "Tell us how to enter.", enabled: true },
+      ] },
+    ];
+    await test.mutation(write, { ...siteFields, ...owner, companyId, sections, presentation });
+    expect(await test.query(api.queries.companySites.getMySite, { ...owner, companyId })).toMatchObject({ sections, presentation });
+    let site = (await test.query(publicQuery, { slug: siteFields.slug }))!;
+    expect(site.publicRequestToken).toBe("bright-token");
+    expect(site.sections[0]).toMatchObject({ id: "faq", heading: "Your questions" });
+    expect(site.sections.find(({ id }) => id === "policies")?.entries?.map(({ title }) => title)).toEqual(["Rescheduling", "Access"]);
+    expect(site.presentation?.hours?.map(({ day }) => day)).toEqual(["monday", "tuesday", "sunday"]);
+    expect(site.presentation?.serviceDetails).toEqual([{ index: 0, description, included: "Kitchen", excluded: "Attic" }]);
+    expect(site.presentation?.quote).toEqual(presentation.quote);
+    expect(site.presentation?.socials).toEqual(presentation.socials);
+    expect(site.presentation?.externalReviews).toEqual(presentation.externalReviews);
+
+    const hiddenTypes = ["businessHours", "socialProfiles", "policies", "reviews", "services"];
+    await test.mutation(write, { ...siteFields, ...owner, companyId, sections: [
+      ...sections.filter(({ id }) => !hiddenTypes.includes(id)), ...hiddenTypes.map((id) => ({ id, enabled: false })),
+    ], presentation });
+    site = (await test.query(publicQuery, { slug: siteFields.slug }))!;
+    expect(site.sections.some(({ id }) => hiddenTypes.includes(id))).toBe(false);
+    expect(site.presentation).toEqual({ quote: presentation.quote });
+    expect(JSON.stringify(site)).not.toMatch(/17:30|instagram|google.com|Hidden policy|Incomplete policy|Dusting/);
+  });
+
+  it("keeps presentation with legacy writes and removes details attached to a renamed service", async () => {
+    const { test, owner, companyId } = await fixture();
+    const write = api.mutations.companySites.upsertSite;
+    await test.mutation(write, { ...siteFields, ...owner, companyId, presentation });
+    await test.mutation(write, { ...siteFields, ...owner, companyId, bio: "Updated" });
+    const site = await test.query(api.queries.companySites.getBySlug, { slug: siteFields.slug });
+    expect(site?.presentation?.serviceDetails).toHaveLength(1);
+    expect(site?.presentation).not.toHaveProperty("hours");
+    expect(site?.presentation).not.toHaveProperty("socials");
+    await test.mutation(write, { ...siteFields, ...owner, companyId, services: ["Move out"] });
+    expect(await test.query(api.queries.companySites.getMySite, { ...owner, companyId })).toMatchObject({
+      presentation: { ...presentation, serviceDetails: [] },
+    });
+  });
+
+  it("omits headings and payloads for enabled but empty business hours and social profiles", async () => {
+    const { test, owner, companyId } = await fixture();
+    await test.mutation(api.mutations.companySites.upsertSite, {
+      ...siteFields, ...owner, companyId, presentation: {},
+      sections: [{ id: "businessHours", enabled: true, heading: "Hours draft" }, { id: "socialProfiles", enabled: true }],
+    });
+    const site = (await test.query(api.queries.companySites.getBySlug, { slug: siteFields.slug }))!;
+    expect(site.sections.some(({ id }) => id === "businessHours" || id === "socialProfiles")).toBe(false);
+    expect(site).not.toHaveProperty("presentation");
+  });
+
+  it("rejects unauthorized writes and invalid details, hours, profiles, and limits", async () => {
+    const { test, owner, companyId, manager, otherOwner } = await fixture();
+    const write = api.mutations.companySites.upsertSite;
+    await expect(test.mutation(write, { ...siteFields, ...manager, companyId, presentation })).rejects.toThrow("Owner session required");
+    await expect(test.mutation(write, { ...siteFields, ...otherOwner, companyId, presentation })).rejects.toThrow("Access denied");
+    const bad: MiniSitePresentation[] = [
+      { serviceDetails: [{ index: 0, name: "Unknown" }] },
+      { serviceDetails: [{ index: 0, name: "Deep cleaning", description: "x".repeat(SITE_CONTENT_LIMITS.serviceText + 1) }] },
+      { hours: [{ day: "monday", status: "open", opens: "18:00", closes: "07:00" }] },
+      { hours: [{ day: "monday", status: "open", opens: "9:00", closes: "17:00" }] },
+      { hours: [{ day: "monday", status: "closed" }, { day: "monday", status: "appointment" }] },
+      { socials: [{ platform: "yelp", url: "https://www.yelp.com/biz/bright-homes" }] },
+      { externalReviews: [{ platform: "google", url: "https://g.page/r/bright-homes/review" }] },
+      { quote: { label: "x".repeat(SITE_CONTENT_LIMITS.quoteLabel + 1) } },
+    ];
+    for (const item of bad) {
+      await expect(test.mutation(write, { ...siteFields, ...owner, companyId, presentation: item })).rejects.toThrow("INVALID_MINI_SITE_PRESENTATION");
+    }
+  });
+
+  it.each<[MiniSiteProfile["platform"], string, boolean]>([
+    ["facebook", "https://www.facebook.com/Bright.Homes", true],
+    ["instagram", "https://www.instagram.com/bright.homes/", true],
+    ["linkedin", "https://www.linkedin.com/company/bright-homes", true],
+    ["tiktok", "https://www.tiktok.com/@brighthomes", true],
+    ["youtube", "https://www.youtube.com/@brighthomes", true],
+    ["google", "https://maps.app.goo.gl/AbcD", true],
+    ["yelp", "https://www.yelp.com/biz/bright-homes", true],
+    ["trustpilot", "https://www.trustpilot.com/review/bright-homes.example", true],
+    ["instagram", "http://www.instagram.com/bright.homes/", false],
+    ["instagram", "https://instagram.com.elsewhere.test/bright", false],
+    ["instagram", "https://other.test@instagram.com/bright", false],
+    ["instagram", "https://instagram.com:444/bright", false],
+    ["youtube", "https://www.youtube.com/redirect?q=https://example.test", false],
+    ["facebook", "https://www.facebook.com/l.php?u=https://example.test", false],
+    ["google", "https://www.google.com/url?q=https://example.test", false],
+    ["google", "https://g.page/r/bright/review", false],
+    ["yelp", "javascript:alert(1)", false],
+  ])("validates %s profile %s", (platform, url, valid) => {
+    expect(Boolean(safeMiniSiteProfile({ platform, url }))).toBe(valid);
   });
 });
