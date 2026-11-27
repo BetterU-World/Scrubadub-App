@@ -1820,6 +1820,9 @@
   },
   "publicSite": {
     "sections": {
+      "businessHours": "Business Hours",
+      "socialProfiles": "Find Us on Social Media",
+      "policies": "Service Policies",
       "services": "Our Services",
       "howItWorks": "How It Works",
       "serviceArea": "Service Area",
@@ -1860,6 +1863,72 @@
       "requestedTitle": "Requested Add-Ons"
     }
   },
+  "sitePresentation": {
+    "serviceName": "Service {{number}}",
+    "serviceDetails": "Service details",
+    "description": "Service description",
+    "included": "What’s included",
+    "excluded": "What’s not included",
+    "servicesHelp": "Explore the services we offer.",
+    "serviceQuote": "Request quote",
+    "hoursHelp": "Enter one opening and closing time per day in local time. Unspecified days are omitted. Confirm appointment times separately.",
+    "hoursNote": "Public business hours are shown in local time. Appointment times are confirmed separately.",
+    "dayStatus": "Hours for {{day}}",
+    "opens": "Opens",
+    "closes": "Closes",
+    "days": {
+      "monday": "Monday",
+      "tuesday": "Tuesday",
+      "wednesday": "Wednesday",
+      "thursday": "Thursday",
+      "friday": "Friday",
+      "saturday": "Saturday",
+      "sunday": "Sunday"
+    },
+    "status": {
+      "unset": "Unspecified",
+      "open": "Open",
+      "closed": "Closed",
+      "appointment": "By appointment"
+    },
+    "socialHelp": "Enter the HTTPS address of your profile on each platform you use.",
+    "showExternalReviews": "Show links to external review profiles",
+    "reviewsHelp": "Link to public business profiles where visitors can read reviews. Featured customer feedback is managed in the feedback inbox.",
+    "profileError": "Enter a valid HTTPS profile address for this platform.",
+    "externalReviewsTitle": "Read reviews on other sites",
+    "viewReviews": "View reviews on {{platform}}",
+    "visitProfile": "Visit our {{platform}} profile",
+    "policiesHelp": "Describe the policies your company uses, such as cancellation, access, supplies, pets, or payments. Visitors can read them on your public site.",
+    "quoteTitle": "Quote button and supporting text",
+    "quoteHelp": "Use text that invites visitors to request a quote. The button opens your existing request form.",
+    "quoteLabel": "Quote button label",
+    "quoteText": "Supporting text near the final quote button",
+    "quoteNav": "Get a Quote",
+    "quoteDefault": "Request a Quote",
+    "quoteFree": "Request a Free Quote",
+    "quoteHeading": "Ready for a cleaner space?",
+    "quoteSupport": "Let {{brand}} take care of the cleaning so you can focus on what matters.",
+    "quoteUnavailable": "Booking link not configured yet",
+    "errors": {
+      "services": "Check the service details and keep each field to 600 characters.",
+      "hours": "Enter both times for each open day. Closing must be later than opening on the same day.",
+      "socials": "Check that each social link is a supported HTTPS profile address.",
+      "externalReviews": "Check that each review link leads to a supported HTTPS business profile.",
+      "quote": "Keep the quote button label to 48 characters and supporting text to 240 characters."
+    },
+    "platforms": {
+      "facebook": "Facebook",
+      "instagram": "Instagram",
+      "tiktok": "TikTok",
+      "linkedin": "LinkedIn",
+      "youtube": "YouTube",
+      "google": "Google Maps",
+      "yelp": "Yelp",
+      "bbb": "Better Business Bureau",
+      "angi": "Angi",
+      "trustpilot": "Trustpilot"
+    }
+  },
   "miniSiteSections": {
     "title": "Website sections",
     "help": "Choose which sections appear and use the arrows to change their order. Open a section to edit its heading or content.",
@@ -1874,7 +1943,7 @@
     "moveDown": "Move {{label}} down",
     "moved": "{{label}} moved to position {{position}}.",
     "preview": "Preview site",
-    "previewHelp": "Includes your unsaved changes. Quote, contact, and job application links are disabled here.",
+    "previewHelp": "Includes your unsaved changes. Quote, contact, job application, and external profile links are disabled here.",
     "unsaved": "You have unsaved changes.",
     "saving": "Saving your site…",
     "saveFailed": "Your site could not be saved.",
@@ -1901,7 +1970,8 @@
     "add": {
       "faq": "Add question",
       "highlights": "Add highlight",
-      "howItWorks": "Add step"
+      "howItWorks": "Add step",
+      "policies": "Add policy"
     },
     "suggestions": "Suggested questions",
     "choosePrompt": "Choose a question",

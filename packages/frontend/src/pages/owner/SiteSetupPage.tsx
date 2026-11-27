@@ -13,6 +13,11 @@ import { MiniSiteContent } from "@/pages/public/PublicSitePage";
 import { isMiniSitePublished, MAX_ADDITIONAL_AREAS, normalizedAdditionalAreas } from "../../../../../convex/lib/miniSiteSeo";
 import { publicMiniSiteSections, resolveMiniSiteSections } from "../../../../../convex/lib/miniSiteSections";
 import { MiniSiteSectionEditor } from "./MiniSiteSectionEditor";
+import { BusinessHoursFields, ProfileFields, QuoteFields } from "./MiniSitePresentationFields";
+import { publicMiniSitePresentation, SITE_CONTENT_LIMITS, type MiniSitePresentation } from "../../../../../convex/lib/miniSitePresentation";
+
+type ServiceDraft = Pick<NonNullable<MiniSitePresentation["serviceDetails"]>[number], "name" | "description" | "included" | "excluded">;
+type PresentationDraft = Omit<MiniSitePresentation, "serviceDetails">;
 
 export function SiteSetupPage() {
   const { t } = useTranslation();
@@ -53,7 +58,8 @@ export function SiteSetupPage() {
   const [isPublished, setIsPublished] = useState(false);
   const [logoUrl, setLogoUrl] = useState("");
   const [heroImageUrl, setHeroImageUrl] = useState("");
-  const [services, setServices] = useState<string[]>([]);
+  const [services, setServices] = useState<ServiceDraft[]>([]);
+  const [presentation, setPresentation] = useState<PresentationDraft>({});
   const [publicEmail, setPublicEmail] = useState("");
   const [publicPhone, setPublicPhone] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
@@ -67,6 +73,10 @@ export function SiteSetupPage() {
   const markDirty = () => {
     setDirty(true);
     setSaved(false);
+  };
+  const updatePresentation = (changes: Partial<PresentationDraft>) => {
+    setPresentation((current) => ({ ...current, ...changes }));
+    markDirty();
   };
 
   const previewContent = useQuery(
@@ -91,7 +101,12 @@ export function SiteSetupPage() {
       setIsPublished(isMiniSitePublished(site));
       setLogoUrl(site.logoUrl ?? "");
       setHeroImageUrl(site.heroImageUrl ?? "");
-      setServices(site.services ?? []);
+      const { serviceDetails, ...savedPresentation } = site.presentation ?? {};
+      setServices((site.services ?? []).map((name, index) => {
+        const details = serviceDetails?.find((item) => item.index === index && item.name === name);
+        return { name, description: details?.description, included: details?.included, excluded: details?.excluded };
+      }));
+      setPresentation(savedPresentation);
       setPublicEmail(site.publicEmail ?? "");
       setPublicPhone(site.publicPhone ?? "");
       setMetaDescription(site.metaDescription ?? "");
@@ -101,6 +116,14 @@ export function SiteSetupPage() {
 
   if (!user || site === undefined) return <PageLoader />;
   const sitePublished = site ? isMiniSitePublished(site) : false;
+  const configuredServices = services.filter(({ name }) => name.trim()).slice(0, SITE_CONTENT_LIMITS.services)
+    .map((service) => ({ ...service, name: service.name.trim().slice(0, SITE_CONTENT_LIMITS.serviceName).trimEnd() }));
+  const serviceNames = configuredServices.map(({ name }) => name);
+  const currentPresentation = {
+    ...presentation,
+    serviceDetails: configuredServices.map((service, index) => ({ ...service, index }))
+      .filter(({ description, included, excluded }) => description?.trim() || included?.trim() || excluded?.trim()),
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -122,34 +145,37 @@ export function SiteSetupPage() {
         isPublished,
         logoUrl: logoUrl.trim() || undefined,
         heroImageUrl: heroImageUrl.trim() || undefined,
-        services: services.filter((s) => s.trim().length > 0),
+        services: serviceNames,
         publicEmail: publicEmail.trim() || undefined,
         publicPhone: publicPhone.trim() || undefined,
         metaDescription: metaDescription.trim() || undefined,
         sections,
+        presentation: currentPresentation,
       });
       setDirty(false);
       setSaved(true);
     } catch (err) {
       const isSectionError = err instanceof ConvexError && typeof err.data === "object" &&
         err.data !== null && "code" in err.data && err.data.code === "INVALID_MINI_SITE_SECTIONS";
-      setError(isSectionError ? t("miniSiteSections.invalid") : err instanceof Error ? err.message : t("miniSiteSections.saveFailed"));
+      const data = err instanceof ConvexError ? err.data : null;
+      const presentationError = typeof data === "object" && data !== null && "code" in data &&
+        data.code === "INVALID_MINI_SITE_PRESENTATION" && "field" in data ? data.field : null;
+      setError(presentationError ? t(`sitePresentation.errors.${presentationError}`)
+        : isSectionError ? t("miniSiteSections.invalid") : err instanceof Error ? err.message : t("miniSiteSections.saveFailed"));
     } finally {
       setSaving(false);
     }
   };
 
   const addService = () => {
-    if (services.length < 8) {
-      setServices([...services, ""]);
+    if (services.length < SITE_CONTENT_LIMITS.services) {
+      setServices([...services, { name: "" }]);
       markDirty();
     }
   };
 
-  const updateService = (index: number, value: string) => {
-    const next = [...services];
-    next[index] = value.slice(0, 60);
-    setServices(next);
+  const updateService = (index: number, changes: Partial<ServiceDraft>) => {
+    setServices((current) => current.map((service, i) => i === index ? { ...service, ...changes } : service));
     markDirty();
   };
 
@@ -225,10 +251,10 @@ export function SiteSetupPage() {
           <h2 id="get-found-heading" className="text-lg font-semibold text-gray-900">Get Found on Google</h2>
           <p className="mt-1 text-sm text-gray-600">Add accurate details below so customers and search engines can understand your business. Publishing makes these details public; it does not guarantee search placement.</p>
           <p className="mt-3 text-sm font-semibold text-gray-800">Setup completeness: {[
-            !!bio.trim(), !!serviceArea.trim(), services.some(value => !!value.trim()), !!(publicEmail.trim() || publicPhone.trim()), additionalServiceAreas.some(value => !!value.trim()),
+            !!bio.trim(), !!serviceArea.trim(), serviceNames.length > 0, !!(publicEmail.trim() || publicPhone.trim()), additionalServiceAreas.some(value => !!value.trim()),
           ].filter(Boolean).length * 20}%</p>
           <ul className="mt-1 grid gap-1 text-sm text-gray-700 sm:grid-cols-2">
-            {[["Business description added", !!bio.trim()], ["Primary service area added", !!serviceArea.trim()], ["Services confirmed", services.some(value => !!value.trim())], ["Public contact configured", !!(publicEmail.trim() || publicPhone.trim())], ["Additional service areas added", additionalServiceAreas.some(value => !!value.trim())]].map(([label, complete]) => <li key={String(label)}>{complete ? "✓" : "○"} {label}</li>)}
+            {[["Business description added", !!bio.trim()], ["Primary service area added", !!serviceArea.trim()], ["Services confirmed", serviceNames.length > 0], ["Public contact configured", !!(publicEmail.trim() || publicPhone.trim())], ["Additional service areas added", additionalServiceAreas.some(value => !!value.trim())]].map(([label, complete]) => <li key={String(label)}>{complete ? "✓" : "○"} {label}</li>)}
           </ul>
           <label className="mt-4 flex items-start gap-2 text-sm text-gray-800">
             <input type="checkbox" className="mt-1" checked={isPublished} onChange={event => { setIsPublished(event.target.checked); markDirty(); }} />
@@ -352,26 +378,43 @@ export function SiteSetupPage() {
           </label>
           <div className="space-y-2">
             {services.map((svc, i) => (
-              <div key={i} className="flex items-center gap-2">
+              <div key={i} className="rounded-lg border border-gray-200 p-3">
+                <div className="flex items-center gap-2">
                 <input
-                  className="input-field flex-1"
-                  value={svc}
-                  onChange={(e) => updateService(i, e.target.value)}
-                  placeholder={`Service ${i + 1}`}
-                  maxLength={60}
+                  className="input-field min-w-0 flex-1"
+                  value={svc.name}
+                  onChange={(e) => updateService(i, { name: e.target.value.slice(0, SITE_CONTENT_LIMITS.serviceName) })}
+                  aria-label={t("sitePresentation.serviceName", { number: i + 1 })}
+                  placeholder={t("sitePresentation.serviceName", { number: i + 1 })}
+                  maxLength={SITE_CONTENT_LIMITS.serviceName}
                 />
                 <button
                   type="button"
                   onClick={() => removeService(i)}
                   className="touch-target flex shrink-0 items-center justify-center text-gray-400 hover:text-red-500 rounded-lg hover:bg-gray-100"
-                  aria-label={`${t("common.delete")} ${svc || i + 1}`}
+                  aria-label={`${t("common.delete")} ${svc.name || i + 1}`}
                 >
                   <X className="w-4 h-4" />
                 </button>
+                </div>
+                {svc.name.trim() && (
+                  <details className="mt-2">
+                    <summary className="cursor-pointer py-2 text-sm font-medium text-primary-700">{t("sitePresentation.serviceDetails")}</summary>
+                    <div className="grid gap-3 pt-2">
+                      {(["description", "included", "excluded"] as const).map((field) => (
+                        <label key={field} className="block text-sm font-medium text-gray-700">
+                          {t(`sitePresentation.${field}`)}
+                          <textarea className="input-field mt-1" rows={2} maxLength={SITE_CONTENT_LIMITS.serviceText} value={svc[field] ?? ""}
+                            onChange={(event) => updateService(i, { [field]: event.target.value })} />
+                        </label>
+                      ))}
+                    </div>
+                  </details>
+                )}
               </div>
             ))}
           </div>
-          {services.length < 8 && (
+          {services.length < SITE_CONTENT_LIMITS.services && (
             <button
               type="button"
               onClick={addService}
@@ -472,6 +515,24 @@ export function SiteSetupPage() {
         <MiniSiteSectionEditor
           sections={sections}
           onChange={(next) => { setSections(next); markDirty(); }}
+          settings={{
+            businessHours: <BusinessHoursFields hours={presentation.hours ?? []} onChange={(hours) => updatePresentation({ hours })} />,
+            socialProfiles: <>
+              <p className="text-sm text-gray-600">{t("sitePresentation.socialHelp")}</p>
+              <ProfileFields type="socials" profiles={presentation.socials ?? []} onChange={(socials) => updatePresentation({ socials })} />
+            </>,
+            reviews: <>
+              <p className="text-sm text-gray-600">{t("miniSiteSections.sources.reviews")}</p>
+              <label className="flex min-h-11 items-center gap-2 text-sm text-gray-700">
+                <input type="checkbox" checked={presentation.externalReviewsEnabled ?? false}
+                  onChange={(event) => updatePresentation({ externalReviewsEnabled: event.target.checked })} />
+                {t("sitePresentation.showExternalReviews")}
+              </label>
+              <p className="text-sm text-gray-600">{t("sitePresentation.reviewsHelp")}</p>
+              <ProfileFields type="externalReviews" profiles={presentation.externalReviews ?? []}
+                onChange={(externalReviews) => updatePresentation({ externalReviews })} />
+            </>,
+          }}
           previewAction={
             <button type="button" className="btn-secondary touch-target inline-flex items-center gap-2" onClick={() => setPreviewOpen(true)}>
               <Eye className="h-4 w-4" aria-hidden="true" />
@@ -479,6 +540,7 @@ export function SiteSetupPage() {
             </button>
           }
         />
+        <QuoteFields quote={presentation.quote} onChange={(quote) => updatePresentation({ quote })} />
 
         <div className="pt-2">
           {error && (
@@ -515,7 +577,8 @@ export function SiteSetupPage() {
             site={{
               templateId, brandName: brandName.trim(), bio: bio.trim(), serviceArea: serviceArea.trim(),
               additionalServiceAreas: normalizedAdditionalAreas(additionalServiceAreas, serviceArea),
-              services: services.map((service) => service.trim()).filter(Boolean),
+              services: serviceNames,
+              presentation: publicMiniSitePresentation(currentPresentation, serviceNames, sections),
               logoUrl: logoUrl.trim(), heroImageUrl: heroImageUrl.trim(),
               publicEmail: publicEmail.trim(), publicPhone: publicPhone.trim(),
             }}

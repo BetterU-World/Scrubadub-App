@@ -2,6 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { publicMiniSiteSections } from "../../../../../convex/lib/miniSiteSections";
+import { publicMiniSitePresentation, type MiniSitePresentation } from "../../../../../convex/lib/miniSitePresentation";
 import { renderMiniSiteHtml } from "../../../api/_miniSiteHtml";
 import { MiniSiteContent } from "./PublicSitePage";
 
@@ -70,5 +71,70 @@ describe("microsite public content and preview", () => {
     expect(html).toContain("Literal &lt;script&gt; and $&amp;.");
     expect(html.indexOf("Before your visit")).toBeLessThan(html.indexOf("Our process"));
     expect(html).not.toMatch(/Hidden question|Hidden step|Why choose us/);
+  });
+});
+
+describe("microsite business presentation", () => {
+  const settings = [
+    { id: "businessHours", enabled: true, heading: "Office hours" },
+    { id: "socialProfiles", enabled: true },
+    { id: "policies", enabled: true, entries: [
+      { id: "access", enabled: true, title: "Access", body: "Use the side door <only>." },
+      { id: "private", enabled: false, title: "Hidden policy", body: "Private terms" },
+    ] },
+  ];
+  const brand: MiniSitePresentation = {
+    serviceDetails: [{ index: 0, name: "Deep cleaning", description: "Care for <wood>.", included: "Counters", excluded: "Attic" }],
+    hours: [{ day: "monday", status: "open", opens: "09:00", closes: "17:00" }, { day: "sunday", status: "appointment" }],
+    socials: [{ platform: "instagram", url: "https://www.instagram.com/bright.homes/" }],
+    externalReviewsEnabled: true,
+    externalReviews: [{ platform: "yelp", url: "https://www.yelp.com/biz/bright-homes" }],
+    quote: { label: "Ask for an estimate", text: "Tell us about your <space>." },
+  };
+  const brandedSite = { ...site, presentation: publicMiniSitePresentation(brand, site.services, settings) };
+  const ordered = publicMiniSiteSections(settings);
+
+  it("renders the new content and keeps the quote and service handoff destinations", () => {
+    const html = renderToStaticMarkup(createElement(MiniSiteContent, {
+      site: brandedSite, slug: site.slug, publicRequestToken: site.publicRequestToken, sections: ordered, reviews: [], addOns: [],
+    }));
+    expect(html).toContain('href="/r/test-request?service=Deep%20cleaning"');
+    expect(html).toContain('href="/r/test-request"');
+    expect(html).toContain("Ask for an estimate");
+    expect(html).toContain("Tell us about your &lt;space&gt;.");
+    expect(html).toContain("Care for &lt;wood&gt;.");
+    expect(html).toContain('dateTime="09:00"');
+    expect(html).toContain("Office hours");
+    expect(html).toContain("sitePresentation.status.appointment");
+    expect(html).toContain("Use the side door &lt;only&gt;.");
+    expect(html).toContain('href="https://www.instagram.com/bright.homes/"');
+    expect(html).toContain('href="https://www.yelp.com/biz/bright-homes"');
+    expect(html).not.toMatch(/Hidden policy|Private terms|average from|NaN/);
+  });
+
+  it("renders unsaved content with inert quote, application and external profile links", () => {
+    const html = renderToStaticMarkup(createElement(MiniSiteContent, {
+      site: brandedSite, slug: site.slug, publicRequestToken: site.publicRequestToken, sections: ordered, reviews: [], addOns: [], preview: true,
+    }));
+    expect(html).toContain("Ask for an estimate");
+    expect(html).toContain("Care for &lt;wood&gt;.");
+    expect(html).toContain('aria-label="sitePresentation.viewReviews" aria-disabled="true"');
+    expect(html).not.toMatch(/\shref=|test-request|www\.yelp|www\.instagram/);
+  });
+
+  it("uses escaped public text and visible profiles in initial HTML", () => {
+    const template = '<html><head></head><body><div id="root"></div></body></html>';
+    const html = renderMiniSiteHtml(template, { ...brandedSite, sections: ordered });
+    expect(html).toContain('href="/r/test-request">Ask for an estimate');
+    expect(html).toContain("Care for &lt;wood&gt;.");
+    expect(html).toContain("Use the side door &lt;only&gt;.");
+    expect(html).toContain('datetime="09:00"');
+    expect(html).toContain("View reviews on Yelp");
+    expect(html).not.toMatch(/Hidden policy|Private terms|<wood>/);
+    const hidden = [{ id: "services", enabled: false }, { id: "reviews", enabled: false }];
+    const hiddenHtml = renderMiniSiteHtml(template, {
+      ...site, sections: publicMiniSiteSections(hidden), presentation: publicMiniSitePresentation(brand, site.services, hidden),
+    });
+    expect(hiddenHtml).not.toMatch(/Care for|Office hours|side door|instagram.com|yelp.com/);
   });
 });

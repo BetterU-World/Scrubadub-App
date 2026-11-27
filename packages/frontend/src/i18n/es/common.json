@@ -1821,6 +1821,9 @@
   },
   "publicSite": {
     "sections": {
+      "businessHours": "Horario de atención",
+      "socialProfiles": "Encuéntranos en redes sociales",
+      "policies": "Políticas de servicio",
       "services": "Nuestros servicios",
       "howItWorks": "Cómo funciona",
       "serviceArea": "Zona de servicio",
@@ -1861,6 +1864,72 @@
       "requestedTitle": "Complementos solicitados"
     }
   },
+  "sitePresentation": {
+    "serviceName": "Servicio {{number}}",
+    "serviceDetails": "Detalles del servicio",
+    "description": "Descripción del servicio",
+    "included": "Qué incluye",
+    "excluded": "Qué no incluye",
+    "servicesHelp": "Conoce los servicios que ofrecemos.",
+    "serviceQuote": "Solicitar cotización",
+    "hoursHelp": "Indica una hora de apertura y otra de cierre por día en hora local. Se omiten los días sin especificar. Confirma las citas por separado.",
+    "hoursNote": "El horario de atención se muestra en hora local. Las citas se confirman por separado.",
+    "dayStatus": "Horario del {{day}}",
+    "opens": "Apertura",
+    "closes": "Cierre",
+    "days": {
+      "monday": "Lunes",
+      "tuesday": "Martes",
+      "wednesday": "Miércoles",
+      "thursday": "Jueves",
+      "friday": "Viernes",
+      "saturday": "Sábado",
+      "sunday": "Domingo"
+    },
+    "status": {
+      "unset": "Sin especificar",
+      "open": "Abierto",
+      "closed": "Cerrado",
+      "appointment": "Con cita previa"
+    },
+    "socialHelp": "Introduce la dirección HTTPS de tu perfil en cada plataforma que uses.",
+    "showExternalReviews": "Mostrar enlaces a perfiles externos de reseñas",
+    "reviewsHelp": "Enlaza a perfiles públicos de tu empresa donde se puedan leer reseñas. Las opiniones destacadas se gestionan en la bandeja de comentarios.",
+    "profileError": "Introduce una dirección HTTPS de perfil válida para esta plataforma.",
+    "externalReviewsTitle": "Lee reseñas en otros sitios",
+    "viewReviews": "Ver reseñas en {{platform}}",
+    "visitProfile": "Visita nuestro perfil en {{platform}}",
+    "policiesHelp": "Describe las políticas de tu empresa, como cancelaciones, acceso, productos, mascotas o pagos. Los visitantes pueden leerlas en tu sitio público.",
+    "quoteTitle": "Botón de cotización y texto de apoyo",
+    "quoteHelp": "Invita a los visitantes a solicitar una cotización. El botón abre tu formulario de solicitud actual.",
+    "quoteLabel": "Texto del botón de cotización",
+    "quoteText": "Texto de apoyo junto al botón de cotización final",
+    "quoteNav": "Pide una cotización",
+    "quoteDefault": "Solicita una cotización",
+    "quoteFree": "Solicita una cotización gratis",
+    "quoteHeading": "¿Todo listo para un espacio más limpio?",
+    "quoteSupport": "Deja que {{brand}} se encargue de la limpieza para que puedas centrarte en lo que importa.",
+    "quoteUnavailable": "El enlace de solicitud aún no está configurado",
+    "errors": {
+      "services": "Revisa los detalles del servicio y usa hasta 600 caracteres por campo.",
+      "hours": "Indica las dos horas de cada día abierto. La hora de cierre debe ser posterior a la de apertura en el mismo día.",
+      "socials": "Comprueba que cada enlace de redes sociales sea una dirección HTTPS de perfil admitida.",
+      "externalReviews": "Comprueba que cada enlace de reseñas dirija a un perfil de empresa HTTPS admitido.",
+      "quote": "Usa hasta 48 caracteres en el botón de cotización y 240 en el texto de apoyo."
+    },
+    "platforms": {
+      "facebook": "Facebook",
+      "instagram": "Instagram",
+      "tiktok": "TikTok",
+      "linkedin": "LinkedIn",
+      "youtube": "YouTube",
+      "google": "Google Maps",
+      "yelp": "Yelp",
+      "bbb": "Better Business Bureau",
+      "angi": "Angi",
+      "trustpilot": "Trustpilot"
+    }
+  },
   "miniSiteSections": {
     "title": "Secciones del sitio web",
     "help": "Elige qué secciones aparecen y usa las flechas para cambiar el orden. Abre una sección para editar su título o contenido.",
@@ -1875,7 +1944,7 @@
     "moveDown": "Bajar {{label}}",
     "moved": "{{label}} ahora está en la posición {{position}}.",
     "preview": "Vista previa del sitio",
-    "previewHelp": "Incluye los cambios sin guardar. Los enlaces de cotización, contacto y solicitud de empleo están desactivados aquí.",
+    "previewHelp": "Incluye los cambios sin guardar. Los enlaces de cotización, contacto, solicitud de empleo y sitios externos están desactivados aquí.",
     "unsaved": "Tienes cambios sin guardar.",
     "saving": "Guardando tu sitio…",
     "saveFailed": "No se pudo guardar el sitio.",
@@ -1902,7 +1971,8 @@
     "add": {
       "faq": "Añadir pregunta",
       "highlights": "Añadir aspecto destacado",
-      "howItWorks": "Añadir paso"
+      "howItWorks": "Añadir paso",
+      "policies": "Añadir política"
     },
     "suggestions": "Preguntas sugeridas",
     "choosePrompt": "Elige una pregunta",

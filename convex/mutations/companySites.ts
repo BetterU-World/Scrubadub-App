@@ -4,6 +4,7 @@ import { requireOwnerSession } from "../lib/sessionAuth";
 import { validateSlug } from "../lib/slugs";
 import { isMiniSitePublished, normalizedAdditionalAreas } from "../lib/miniSiteSeo";
 import { miniSiteSectionsValidator, validateMiniSiteSections } from "../lib/miniSiteSections";
+import { miniSitePresentationValidator, SITE_CONTENT_LIMITS, validateMiniSitePresentation } from "../lib/miniSitePresentation";
 
 /** Generate a cryptographically random hex token (Web Crypto API). */
 function generateRandomToken(length = 40): string {
@@ -37,6 +38,7 @@ export const upsertSite = mutation({
     publicPhone: v.optional(v.string()),
     metaDescription: v.optional(v.string()),
     sections: v.optional(miniSiteSectionsValidator),
+    presentation: v.optional(miniSitePresentationValidator),
   },
   returns: v.id("companySites"),
   handler: async (ctx, args) => {
@@ -68,9 +70,9 @@ export const upsertSite = mutation({
 
     // Validate & sanitize services list
     const services = (args.services ?? [])
-      .map((s) => s.trim().slice(0, 60))
+      .map((s) => s.trim().slice(0, SITE_CONTENT_LIMITS.serviceName))
       .filter((s) => s.length > 0)
-      .slice(0, 8);
+      .slice(0, SITE_CONTENT_LIMITS.services);
 
     const data = {
       companyId: args.companyId,
@@ -91,6 +93,11 @@ export const upsertSite = mutation({
         args.sections,
         existing ? existing.sections : [],
       ) } : {}),
+      ...(args.presentation ? { presentation: validateMiniSitePresentation(args.presentation, services) }
+        : existing?.presentation ? { presentation: {
+          ...existing.presentation,
+          serviceDetails: existing.presentation.serviceDetails?.filter(({ index, name }) => services[index] === name),
+        } } : {}),
     };
 
     if (existing) {

@@ -47,10 +47,11 @@ function OrderButtons({ label, index, count, onMove }: {
 
 const FAQ_PROMPTS = ["supplies", "home", "areas", "quote", "cancellation", "insurance", "recurring", "extras"] as const;
 
-export function MiniSiteSectionEditor({ sections, onChange, previewAction }: {
+export function MiniSiteSectionEditor({ sections, onChange, previewAction, settings }: {
   sections: MiniSiteSection[];
   onChange: (sections: MiniSiteSection[]) => void;
   previewAction: ReactNode;
+  settings?: Partial<Record<MiniSiteSection["id"], ReactNode>>;
 }) {
   const { t } = useTranslation();
   const [announcement, setAnnouncement] = useState("");
@@ -113,7 +114,7 @@ export function MiniSiteSectionEditor({ sections, onChange, previewAction }: {
                     </label>
                     {MINI_SITE_SECTIONS[section.id].entryBodyLimit > 0
                       ? <EntryEditor section={section} onChange={update} onMove={announceMove} />
-                      : <p className="text-sm text-gray-600">{t(`miniSiteSections.sources.${section.id}`)}</p>}
+                      : settings?.[section.id] ?? <p className="text-sm text-gray-600">{t(`miniSiteSections.sources.${section.id}`)}</p>}
                   </>
                 )}
               </div>
@@ -154,6 +155,7 @@ function EntryEditor({ section, onChange, onMove }: {
     <div className="space-y-3">
       <p className="text-sm text-gray-600">{t(legacy ? "miniSiteSections.legacyProcess" : "miniSiteSections.entryHelp")}</p>
       {section.id === "highlights" && <p className="text-sm text-gray-600">{t("miniSiteSections.highlightsHelp")}</p>}
+      {section.id === "policies" && <p className="text-sm text-gray-600">{t("sitePresentation.policiesHelp")}</p>}
       {!entries.length && !legacy && <p className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600">{t("miniSiteSections.empty")}</p>}
       <ol className="space-y-3">
         {entries.map((entry, index) => {

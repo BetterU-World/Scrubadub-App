@@ -5,6 +5,7 @@ import { isMiniSitePublished, normalizedAdditionalAreas, validMiniSiteSlug } fro
 import type { Doc, Id } from "../_generated/dataModel";
 import { miniSiteSectionEnabled, publicMiniSiteSections, publicMiniSiteSectionsValidator } from "../lib/miniSiteSections";
 import { listPublicCompanyAddOns, publicCompanyAddOnValidator } from "../lib/publicCompanyAddOns";
+import { publicMiniSitePresentation, publicMiniSitePresentationValidator } from "../lib/miniSitePresentation";
 
 const DEFAULT_PUBLIC_REVIEW_LIMIT = 6;
 const MAX_PUBLIC_REVIEW_LIMIT = 24;
@@ -45,6 +46,7 @@ export const getBySlug = query({
     metaDescription: v.union(v.string(), v.null()),
     searchIndexEligible: v.boolean(),
     sections: publicMiniSiteSectionsValidator,
+    presentation: v.optional(publicMiniSitePresentationValidator),
   })),
   handler: async (ctx, args) => {
     const site = await ctx.db
@@ -56,6 +58,7 @@ export const getBySlug = query({
 
     const company = await ctx.db.get(site.companyId);
     if (!company) return null;
+    const presentation = publicMiniSitePresentation(site.presentation, site.services ?? [], site.sections);
 
     // Explicit public mini-site fields only. Company profile contact details
     // may be operational or personal and must never leak through this query.
@@ -76,7 +79,10 @@ export const getBySlug = query({
       publicPhone: site.publicPhone ?? null,
       metaDescription: site.metaDescription ?? null,
       searchIndexEligible: !company.qaFixtureKey,
-      sections: publicMiniSiteSections(site.sections),
+      sections: publicMiniSiteSections(site.sections).filter(({ id }) =>
+        (id !== "businessHours" || presentation.hours?.length) &&
+        (id !== "socialProfiles" || presentation.socials?.length)),
+      ...(Object.keys(presentation).length ? { presentation } : {}),
     };
   },
 });
