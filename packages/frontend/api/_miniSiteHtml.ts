@@ -1,9 +1,20 @@
 import { miniSiteCanonical, miniSiteDescription, miniSiteTitle, safePublicImage, type MiniSiteFacts } from "./_miniSiteRuntime.js";
+import type { PublicMiniSiteSections } from "../../../convex/lib/miniSiteSections";
 
 const escapeHtml = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 const scrubImage = "https://scrubscrubscrub.com/scrub-social-preview.png";
 
-export function renderMiniSiteHtml(template: string, site: MiniSiteFacts) {
+const fallbackHeadings = {
+  services: "Our services",
+  serviceArea: "Service area",
+  faq: "Frequently asked questions",
+  highlights: "Why choose us",
+  howItWorks: "How it works",
+  addOns: "Optional add-ons",
+  reviews: "What our clients say",
+} satisfies Record<PublicMiniSiteSections[number]["id"], string>;
+
+export function renderMiniSiteHtml(template: string, site: MiniSiteFacts & { sections?: PublicMiniSiteSections }) {
   const title = miniSiteTitle(site);
   const description = miniSiteDescription(site);
   const canonical = miniSiteCanonical(site.slug);
@@ -23,7 +34,23 @@ export function renderMiniSiteHtml(template: string, site: MiniSiteFacts) {
     ...(safePublicImage(site.heroImageUrl) ? { image: site.heroImageUrl } : {}),
     ...(site.services.length ? { hasOfferCatalog: { "@type": "OfferCatalog", name: "Services", itemListElement: site.services.map(name => ({ "@type": "Offer", itemOffered: { "@type": "Service", name } })) } } : {}),
   };
-  const content = `<main style="font-family:system-ui,sans-serif;max-width:64rem;margin:auto;padding:2rem"><h1>${escapeHtml(site.brandName)}</h1>${site.bio ? `<p>${escapeHtml(site.bio)}</p>` : ""}${areas.length ? `<section><h2>Service area</h2><p>${areas.map(escapeHtml).join(", ")}</p></section>` : ""}${site.services.length ? `<section><h2>Our services</h2><ul>${site.services.map(service => `<li>${escapeHtml(service)}</li>`).join("")}</ul></section>` : ""}${site.publicPhone || site.publicEmail ? `<section><h2>Contact</h2>${site.publicPhone ? `<p>${escapeHtml(site.publicPhone)}</p>` : ""}${site.publicEmail ? `<p>${escapeHtml(site.publicEmail)}</p>` : ""}</section>` : ""}</main>`;
+  const sections: PublicMiniSiteSections = site.sections ?? [{ id: "serviceArea" }, { id: "services" }];
+  const sectionsHtml = sections.map(({ id, heading, entries }) => {
+    let body = "";
+    if (id === "serviceArea" && areas.length) body = `<p>${areas.map(escapeHtml).join(", ")}</p>`;
+    if (id === "services" && site.services.length) {
+      body = `<ul>${site.services.map((service) => `<li>${escapeHtml(service)}</li>`).join("")}</ul>`;
+    }
+    if (id === "faq" && entries?.length) {
+      body = entries.map(({ title, body }) => `<details><summary>${escapeHtml(title)}</summary><p>${escapeHtml(body)}</p></details>`).join("");
+    }
+    if ((id === "highlights" || id === "howItWorks") && entries?.length) {
+      const list = id === "howItWorks" ? "ol" : "ul";
+      body = `<${list}>${entries.map(({ title, body }) => `<li><h3>${escapeHtml(title)}</h3><p>${escapeHtml(body)}</p></li>`).join("")}</${list}>`;
+    }
+    return body ? `<section><h2>${escapeHtml(heading || fallbackHeadings[id])}</h2>${body}</section>` : "";
+  }).join("");
+  const content = `<main style="font-family:system-ui,sans-serif;max-width:64rem;margin:auto;padding:2rem"><h1>${escapeHtml(site.brandName)}</h1>${site.bio ? `<p>${escapeHtml(site.bio)}</p>` : ""}${sectionsHtml}${site.publicPhone || site.publicEmail ? `<section><h2>Contact</h2>${site.publicPhone ? `<p>${escapeHtml(site.publicPhone)}</p>` : ""}${site.publicEmail ? `<p>${escapeHtml(site.publicEmail)}</p>` : ""}</section>` : ""}</main>`;
   const tags = [
     `<title>${escapeHtml(title)}</title>`,
     `<meta name="description" content="${escapeHtml(description)}" />`,
@@ -45,6 +72,6 @@ export function renderMiniSiteHtml(template: string, site: MiniSiteFacts) {
     .replace(/<title>[^<]*<\/title>/, "")
     .replace(/\s*<meta (?:name|property)="(?:description|og:[^"]+|twitter:[^"]+)"[^>]*>/g, "")
     .replace(/\s*<link rel="canonical"[^>]*>/g, "")
-    .replace("</head>", `    ${tags}\n  </head>`)
-    .replace('<div id="root"></div>', `<div id="root">${content}</div>`);
+    .replace("</head>", () => `    ${tags}\n  </head>`)
+    .replace('<div id="root"></div>', () => `<div id="root">${content}</div>`);
 }

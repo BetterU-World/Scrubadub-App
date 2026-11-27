@@ -87,6 +87,18 @@ async function traced(t: Backend, slug = "company-a", limit?: number) {
 }
 
 describe("public microsite featured feedback", () => {
+  it("withholds featured feedback from a published site when its reviews section is hidden", async () => {
+    const t = convexTest(schema, modules);
+    const s = await seed(t);
+    await t.run(async ({ db }) => {
+      await db.insert("clientFeedback", feedback(s.requestA, 1));
+      await db.insert("clientFeedback", feedback(s.requestB, 2));
+      await db.patch(s.siteA, { sections: [{ id: "reviews", enabled: false }] });
+    });
+    expect(await t.query(query, { slug: "company-a" })).toEqual([]);
+    expect(await t.query(query, { slug: "company-b" })).toHaveLength(1);
+  });
+
   it("preserves exact ordering and eligibility across requests, including equal review timestamps", async () => {
     const t = convexTest(schema, modules);
     const s = await seed(t);

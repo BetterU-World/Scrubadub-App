@@ -3,8 +3,9 @@ import { v } from "convex/values";
 import { canManageBusinessConfiguration } from "../lib/auth";
 import { COMPANY_ADD_ON_PRESETS } from "../lib/companyAddOnPresets";
 import { requireOwnerManagerSession } from "../lib/sessionAuth";
-import { companyAddOnSelectionVersion } from "../lib/companyAddOnSelection";
+import { listPublicCompanyAddOns, publicCompanyAddOnValidator } from "../lib/publicCompanyAddOns";
 import { isMiniSitePublished } from "../lib/miniSiteSeo";
+import { miniSiteSectionEnabled } from "../lib/miniSiteSections";
 
 async function requireCatalogManager(ctx: any, sessionToken: string, claimedUserId?: any) {
   const user = await requireOwnerManagerSession(ctx, sessionToken, claimedUserId);
@@ -35,31 +36,18 @@ export const listPresets = query({
 
 export const listPublic = query({
   args: { slug: v.optional(v.string()), publicRequestToken: v.optional(v.string()) },
+  returns: v.array(publicCompanyAddOnValidator),
   handler: async (ctx, args) => {
     if ((args.slug ? 1 : 0) + (args.publicRequestToken ? 1 : 0) !== 1) throw new Error("Provide exactly one public company identifier");
     let companyId;
     if (args.slug) {
       const site = await ctx.db.query("companySites").withIndex("by_slug", (q: any) => q.eq("slug", args.slug!.trim().toLowerCase())).first();
-      companyId = site && isMiniSitePublished(site) ? site.companyId : undefined;
+      companyId = site && isMiniSitePublished(site) && miniSiteSectionEnabled(site.sections, "addOns")
+        ? site.companyId : undefined;
     } else {
       const company = await ctx.db.query("companies").withIndex("by_publicRequestToken", (q: any) => q.eq("publicRequestToken", args.publicRequestToken!)).first();
       companyId = company?._id;
     }
-    if (!companyId) return [];
-    const records = await ctx.db.query("companyAddOns").withIndex("by_companyId_active_displayOrder", (q: any) => q.eq("companyId", companyId).eq("isActive", true)).collect();
-    return records
-      .filter((record: any) => record.isPublic && record.archivedAt === undefined)
-      .sort(stableOrder)
-      .map((record: any) => ({
-        addOnId: record._id,
-        name: record.name,
-        description: record.description ?? null,
-        pricingMethod: record.pricingMethod,
-        priceCents: record.priceCents,
-        unitLabel: record.unitLabel ?? null,
-        estimatedDurationMinutes: record.estimatedDurationMinutes ?? null,
-        displayOrder: record.displayOrder,
-        selectionVersion: companyAddOnSelectionVersion(record),
-      }));
+    return companyId ? await listPublicCompanyAddOns(ctx, companyId) : [];
   },
 });

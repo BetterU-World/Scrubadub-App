@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { requireOwnerSession } from "../lib/sessionAuth";
 import { validateSlug } from "../lib/slugs";
 import { isMiniSitePublished, normalizedAdditionalAreas } from "../lib/miniSiteSeo";
+import { miniSiteSectionsValidator, validateMiniSiteSections } from "../lib/miniSiteSections";
 
 /** Generate a cryptographically random hex token (Web Crypto API). */
 function generateRandomToken(length = 40): string {
@@ -35,7 +36,9 @@ export const upsertSite = mutation({
     publicEmail: v.optional(v.string()),
     publicPhone: v.optional(v.string()),
     metaDescription: v.optional(v.string()),
+    sections: v.optional(miniSiteSectionsValidator),
   },
+  returns: v.id("companySites"),
   handler: async (ctx, args) => {
     const user = await requireOwnerSession(ctx, args.sessionToken, args.userId);
     if (user.companyId !== args.companyId) {
@@ -84,6 +87,10 @@ export const upsertSite = mutation({
       publicEmail: args.publicEmail?.trim() || undefined,
       publicPhone: args.publicPhone?.trim() || undefined,
       metaDescription: args.metaDescription?.trim().slice(0, 160) || undefined,
+      ...(args.sections ? { sections: validateMiniSiteSections(
+        args.sections,
+        existing ? existing.sections : [],
+      ) } : {}),
     };
 
     if (existing) {
@@ -91,7 +98,7 @@ export const upsertSite = mutation({
       return existing._id;
     }
 
-    return await ctx.db.insert("companySites", data);
+    return await ctx.db.insert("companySites", { sections: [], ...data });
   },
 });
 

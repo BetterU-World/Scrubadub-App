@@ -10,6 +10,7 @@ import { MAX_ADD_ON_PRICE_CENTS, validateCompanyAddOnInput } from "../companyAdd
 import { hashToken } from "../tokens";
 import { encodePublicAddOnSelection, formatPublicAddOnPrice, parsePublicAddOnSelections } from "../../../packages/frontend/src/lib/publicAddOnPresentation";
 import { companyAddOnSelectionVersion, createRequestedAddOnSnapshots } from "../companyAddOnSelection";
+import { publicMiniSiteSections } from "../miniSiteSections";
 
 const modules = import.meta.glob("../../**/*.ts");
 const PASSWORD = "test-password-123";
@@ -59,9 +60,9 @@ describe("company add-on catalog", () => {
     const source = readFileSync(fileURLToPath(new URL("../../../packages/frontend/src/pages/public/PublicSitePage.tsx", import.meta.url)), "utf8");
     const requestSource = readFileSync(fileURLToPath(new URL("../../../packages/frontend/src/pages/public/PublicRequestPage.tsx", import.meta.url)), "utf8");
     const ownerSource = readFileSync(fileURLToPath(new URL("../../../packages/frontend/src/pages/owner/RequestDetailPage.tsx", import.meta.url)), "utf8");
-    const addOnSection = source.slice(source.indexOf("function AddOnsSection"), source.indexOf("function HowItWorksSection"));
-    expect(source).toContain("(api as any).queries.companyAddOns.listPublic");
-    expect(source.indexOf("<AddOnsSection")).toBeGreaterThan(source.indexOf("<ServicesSection"));
+    const addOnSection = source.slice(source.indexOf("function AddOnsSection"), source.indexOf("function ServiceAreaSection"));
+    expect(source).toContain("api.queries.companyAddOns.listPublic");
+    expect(publicMiniSiteSections(undefined).slice(0, 2).map(({ id }) => id)).toEqual(["services", "addOns"]);
     expect(source).toContain("?service=${encodeURIComponent(card.name)}");
     expect(addOnSection).toContain("grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3");
     expect(addOnSection).toContain('type="checkbox"');

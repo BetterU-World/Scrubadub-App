@@ -1819,6 +1819,29 @@
     "exportCopied": "Copied!"
   },
   "publicSite": {
+    "sections": {
+      "services": "Our Services",
+      "howItWorks": "How It Works",
+      "serviceArea": "Service Area",
+      "reviews": "What Our Clients Say",
+      "highlights": "Why Choose Us",
+      "faq": "Frequently Asked Questions"
+    },
+    "legacyProcess": {
+      "description": "Getting started is simple — three easy steps.",
+      "step1": {
+        "title": "Request a Quote",
+        "body": "Fill out a quick form with your address, preferred date, and any special instructions."
+      },
+      "step2": {
+        "title": "We Confirm",
+        "body": "Our team reviews your request and confirms the date, time, and pricing."
+      },
+      "step3": {
+        "title": "We Clean",
+        "body": "Our professional cleaners arrive on time and leave your space sparkling."
+      }
+    },
     "addOns": {
       "title": "Optional Add-Ons",
       "description": "Enhance your cleaning service with these optional extras.",
@@ -1835,6 +1858,77 @@
       "unavailableSelection": "A previously selected add-on is no longer available.",
       "removeUnavailable": "Remove unavailable add-on",
       "requestedTitle": "Requested Add-Ons"
+    }
+  },
+  "miniSiteSections": {
+    "title": "Website sections",
+    "help": "Choose which sections appear and use the arrows to change their order. Open a section to edit its heading or content.",
+    "introduction": "Company introduction and navigation",
+    "contact": "Contact and quote requests",
+    "fixed": "Always shown in this position",
+    "editContent": "Edit content",
+    "show": "Show",
+    "showItem": "Show item",
+    "heading": "Public heading",
+    "moveUp": "Move {{label}} up",
+    "moveDown": "Move {{label}} down",
+    "moved": "{{label}} moved to position {{position}}.",
+    "preview": "Preview site",
+    "previewHelp": "Includes your unsaved changes. Quote, contact, and job application links are disabled here.",
+    "unsaved": "You have unsaved changes.",
+    "saving": "Saving your site…",
+    "saveFailed": "Your site could not be saved.",
+    "invalid": "Some section settings are invalid. Check the text lengths and item limit, then try saving again.",
+    "sources": {
+      "services": "Edit your services in the list above.",
+      "serviceArea": "Edit the service areas above. The primary area still appears in the introduction and footer.",
+      "addOns": "Manage these items in your add-on catalog. This switch controls the website section. The request form uses the catalog’s own visibility settings.",
+      "reviews": "Manage featured client feedback in the feedback inbox."
+    },
+    "entryHelp": "Only items with both text fields completed and visibility checked appear on your website.",
+    "highlightsHelp": "Use details that accurately describe your company. Highlights are written by your company.",
+    "legacyProcess": "Your site uses the original steps. Adding your first step replaces them with your own process.",
+    "empty": "No items yet.",
+    "item": "Item {{position}}",
+    "deleteItem": "Delete {{label}}",
+    "itemLimit": "This section holds up to {{count}} items.",
+    "question": "Question",
+    "answer": "Answer",
+    "itemTitle": "Title",
+    "description": "Description",
+    "icon": "Icon",
+    "noIcon": "No icon",
+    "add": {
+      "faq": "Add question",
+      "highlights": "Add highlight",
+      "howItWorks": "Add step"
+    },
+    "suggestions": "Suggested questions",
+    "choosePrompt": "Choose a question",
+    "usePrompt": "Add suggested question",
+    "icons": {
+      "shield": "Shield",
+      "check": "Checkmark",
+      "sparkles": "Sparkles",
+      "leaf": "Leaf",
+      "clock": "Clock",
+      "calendar": "Calendar",
+      "heart": "Heart",
+      "home": "Home",
+      "users": "People",
+      "award": "Award",
+      "star": "Star",
+      "handshake": "Handshake"
+    },
+    "prompts": {
+      "supplies": "Do I need to provide cleaning supplies?",
+      "home": "Do I need to be home during my cleaning?",
+      "areas": "What areas do you serve?",
+      "quote": "How do I request a quote?",
+      "cancellation": "What is your cancellation policy?",
+      "insurance": "Are you insured?",
+      "recurring": "Do you offer recurring cleaning services?",
+      "extras": "Can I request additional services?"
     }
   },
   "siteBuilder": {

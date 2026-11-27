@@ -1,13 +1,18 @@
 import { useState, useEffect, useRef, FormEvent } from "react";
 import { useQuery, useMutation } from "convex/react";
+import { ConvexError } from "convex/values";
 import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { PageLoader, LoadingSpinner } from "@/components/ui/LoadingSpinner";
-import { ExternalLink, Globe2, Plus, X } from "lucide-react";
+import { ExternalLink, Eye, Globe2, Plus, X } from "lucide-react";
 import { ShareKit } from "@/components/owner/ShareKit";
-import { isMiniSitePublished, MAX_ADDITIONAL_AREAS } from "../../../../../convex/lib/miniSiteSeo";
+import { DialogShell } from "@/components/ui/DialogShell";
+import { MiniSiteContent } from "@/pages/public/PublicSitePage";
+import { isMiniSitePublished, MAX_ADDITIONAL_AREAS, normalizedAdditionalAreas } from "../../../../../convex/lib/miniSiteSeo";
+import { publicMiniSiteSections, resolveMiniSiteSections } from "../../../../../convex/lib/miniSiteSections";
+import { MiniSiteSectionEditor } from "./MiniSiteSectionEditor";
 
 export function SiteSetupPage() {
   const { t } = useTranslation();
@@ -52,14 +57,31 @@ export function SiteSetupPage() {
   const [publicEmail, setPublicEmail] = useState("");
   const [publicPhone, setPublicPhone] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
+  const [sections, setSections] = useState(() => resolveMiniSiteSections([]));
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const markDirty = () => {
+    setDirty(true);
+    setSaved(false);
+  };
+
+  const previewContent = useQuery(
+    api.queries.companySites.getPreviewContent,
+    previewOpen && sessionToken && user ? {
+      userId: user._id,
+      sessionToken,
+      includeAddOns: sections.some(({ id, enabled }) => id === "addOns" && enabled),
+      includeReviews: sections.some(({ id, enabled }) => id === "reviews" && enabled),
+    } : "skip",
+  );
 
   // Seed form when site data loads
   useEffect(() => {
-    if (site) {
+    if (site && !dirty) {
       setSlug(site.slug);
       setTemplateId(site.templateId);
       setBrandName(site.brandName);
@@ -73,15 +95,16 @@ export function SiteSetupPage() {
       setPublicEmail(site.publicEmail ?? "");
       setPublicPhone(site.publicPhone ?? "");
       setMetaDescription(site.metaDescription ?? "");
+      setSections(resolveMiniSiteSections(site.sections));
     }
-  }, [site]);
+  }, [site, dirty]);
 
   if (!user || site === undefined) return <PageLoader />;
   const sitePublished = site ? isMiniSitePublished(site) : false;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!user.companyId) return;
+    if (!user.companyId || saving) return;
     setError("");
     setSaving(true);
     setSaved(false);
@@ -103,10 +126,14 @@ export function SiteSetupPage() {
         publicEmail: publicEmail.trim() || undefined,
         publicPhone: publicPhone.trim() || undefined,
         metaDescription: metaDescription.trim() || undefined,
+        sections,
       });
+      setDirty(false);
       setSaved(true);
-    } catch (err: any) {
-      setError(err.message || "Failed to save.");
+    } catch (err) {
+      const isSectionError = err instanceof ConvexError && typeof err.data === "object" &&
+        err.data !== null && "code" in err.data && err.data.code === "INVALID_MINI_SITE_SECTIONS";
+      setError(isSectionError ? t("miniSiteSections.invalid") : err instanceof Error ? err.message : t("miniSiteSections.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -115,7 +142,7 @@ export function SiteSetupPage() {
   const addService = () => {
     if (services.length < 8) {
       setServices([...services, ""]);
-      setSaved(false);
+      markDirty();
     }
   };
 
@@ -123,12 +150,12 @@ export function SiteSetupPage() {
     const next = [...services];
     next[index] = value.slice(0, 60);
     setServices(next);
-    setSaved(false);
+    markDirty();
   };
 
   const removeService = (index: number) => {
     setServices(services.filter((_, i) => i !== index));
-    setSaved(false);
+    markDirty();
   };
 
   return (
@@ -165,18 +192,6 @@ export function SiteSetupPage() {
         </div>
       )}
 
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-          {error}
-        </div>
-      )}
-
-      {saved && (
-        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
-          {t("siteBuilder.siteSaved")}
-        </div>
-      )}
-
       {tokenError && (
         <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-sm flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
           <span>{tokenError}</span>
@@ -204,7 +219,8 @@ export function SiteSetupPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="card space-y-5">
+      <form onSubmit={handleSubmit} className="card">
+        <fieldset disabled={saving} className="min-w-0 space-y-5">
         <section aria-labelledby="get-found-heading" className="rounded-lg border border-primary-100 bg-primary-50/40 p-4">
           <h2 id="get-found-heading" className="text-lg font-semibold text-gray-900">Get Found on Google</h2>
           <p className="mt-1 text-sm text-gray-600">Add accurate details below so customers and search engines can understand your business. Publishing makes these details public; it does not guarantee search placement.</p>
@@ -215,7 +231,7 @@ export function SiteSetupPage() {
             {[["Business description added", !!bio.trim()], ["Primary service area added", !!serviceArea.trim()], ["Services confirmed", services.some(value => !!value.trim())], ["Public contact configured", !!(publicEmail.trim() || publicPhone.trim())], ["Additional service areas added", additionalServiceAreas.some(value => !!value.trim())]].map(([label, complete]) => <li key={String(label)}>{complete ? "✓" : "○"} {label}</li>)}
           </ul>
           <label className="mt-4 flex items-start gap-2 text-sm text-gray-800">
-            <input type="checkbox" className="mt-1" checked={isPublished} onChange={event => { setIsPublished(event.target.checked); setSaved(false); }} />
+            <input type="checkbox" className="mt-1" checked={isPublished} onChange={event => { setIsPublished(event.target.checked); markDirty(); }} />
             <span>Publish my mini-site and make these business details visible to everyone</span>
           </label>
         </section>
@@ -233,11 +249,11 @@ export function SiteSetupPage() {
               value={slug}
               onChange={(e) => {
                 setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""));
-                setSaved(false);
+                markDirty();
               }}
               required
               placeholder="my-cleaning-co"
-              pattern="[a-z0-9][a-z0-9-]{1,48}[a-z0-9]"
+              pattern={"[a-z0-9][a-z0-9\\-]{1,48}[a-z0-9]"}
               title={t("siteBuilder.slugHint")}
             />
           </div>
@@ -253,7 +269,7 @@ export function SiteSetupPage() {
               <button
                 key={tpl}
                 type="button"
-                onClick={() => { setTemplateId(tpl); setSaved(false); }}
+                onClick={() => { setTemplateId(tpl); markDirty(); }}
                 className={
                   templateId === tpl
                     ? "flex-1 p-4 border-2 border-primary-500 rounded-lg bg-primary-50 text-center"
@@ -279,7 +295,7 @@ export function SiteSetupPage() {
           <input
             className="input-field"
             value={brandName}
-            onChange={(e) => { setBrandName(e.target.value); setSaved(false); }}
+            onChange={(e) => { setBrandName(e.target.value); markDirty(); }}
             required
             placeholder="Sparkling Clean Co."
           />
@@ -294,7 +310,7 @@ export function SiteSetupPage() {
             className="input-field"
             rows={3}
             value={bio}
-            onChange={(e) => { setBio(e.target.value); setSaved(false); }}
+            onChange={(e) => { setBio(e.target.value); markDirty(); }}
             required={isPublished}
             placeholder={t("siteBuilder.bioPlaceholder")}
           />
@@ -308,7 +324,7 @@ export function SiteSetupPage() {
           <input
             className="input-field"
             value={serviceArea}
-            onChange={(e) => { setServiceArea(e.target.value); setSaved(false); }}
+            onChange={(e) => { setServiceArea(e.target.value); markDirty(); }}
             required={isPublished}
             placeholder="Austin, TX metro area"
           />
@@ -319,11 +335,11 @@ export function SiteSetupPage() {
           <label className="block text-sm font-medium text-gray-700 mb-1">Additional service areas <span className="font-normal text-gray-400">(optional, up to {MAX_ADDITIONAL_AREAS})</span></label>
           <div className="space-y-2">
             {additionalServiceAreas.map((area, index) => <div key={index} className="flex gap-2">
-              <input className="input-field flex-1" value={area} maxLength={80} placeholder="City, State" onChange={event => { const next = [...additionalServiceAreas]; next[index] = event.target.value; setAdditionalServiceAreas(next); setSaved(false); }} />
-              <button type="button" className="touch-target text-red-600" onClick={() => { setAdditionalServiceAreas(additionalServiceAreas.filter((_, i) => i !== index)); setSaved(false); }}>Remove</button>
+              <input className="input-field flex-1" value={area} maxLength={80} placeholder="City, State" onChange={event => { const next = [...additionalServiceAreas]; next[index] = event.target.value; setAdditionalServiceAreas(next); markDirty(); }} />
+              <button type="button" className="touch-target text-red-600" onClick={() => { setAdditionalServiceAreas(additionalServiceAreas.filter((_, i) => i !== index)); markDirty(); }}>Remove</button>
             </div>)}
           </div>
-          {additionalServiceAreas.length < MAX_ADDITIONAL_AREAS && <button type="button" className="mt-2 text-sm text-primary-600" onClick={() => setAdditionalServiceAreas([...additionalServiceAreas, ""])}>Add an area</button>}
+          {additionalServiceAreas.length < MAX_ADDITIONAL_AREAS && <button type="button" className="mt-2 text-sm text-primary-600" onClick={() => { setAdditionalServiceAreas([...additionalServiceAreas, ""]); markDirty(); }}>Add an area</button>}
         </div>
 
         {/* Services list */}
@@ -382,7 +398,7 @@ export function SiteSetupPage() {
               type="email"
               className="input-field"
               value={publicEmail}
-              onChange={(e) => { setPublicEmail(e.target.value); setSaved(false); }}
+              onChange={(e) => { setPublicEmail(e.target.value); markDirty(); }}
               placeholder="hello@cleaningco.com"
             />
           </div>
@@ -395,7 +411,7 @@ export function SiteSetupPage() {
               type="tel"
               className="input-field"
               value={publicPhone}
-              onChange={(e) => { setPublicPhone(e.target.value); setSaved(false); }}
+              onChange={(e) => { setPublicPhone(e.target.value); markDirty(); }}
               placeholder="(555) 123-4567"
             />
           </div>
@@ -411,7 +427,7 @@ export function SiteSetupPage() {
             type="url"
             className="input-field"
             value={logoUrl}
-            onChange={(e) => { setLogoUrl(e.target.value); setSaved(false); }}
+            onChange={(e) => { setLogoUrl(e.target.value); markDirty(); }}
             placeholder="https://example.com/logo.png"
           />
         </div>
@@ -426,7 +442,7 @@ export function SiteSetupPage() {
             type="url"
             className="input-field"
             value={heroImageUrl}
-            onChange={(e) => { setHeroImageUrl(e.target.value); setSaved(false); }}
+            onChange={(e) => { setHeroImageUrl(e.target.value); markDirty(); }}
             placeholder="https://example.com/hero.jpg"
           />
         </div>
@@ -443,7 +459,7 @@ export function SiteSetupPage() {
             value={metaDescription}
             onChange={(e) => {
               setMetaDescription(e.target.value.slice(0, 160));
-              setSaved(false);
+              markDirty();
             }}
             placeholder={t("siteBuilder.metaPlaceholder")}
             maxLength={160}
@@ -453,8 +469,24 @@ export function SiteSetupPage() {
           </p>
         </div>
 
-        {/* Submit */}
+        <MiniSiteSectionEditor
+          sections={sections}
+          onChange={(next) => { setSections(next); markDirty(); }}
+          previewAction={
+            <button type="button" className="btn-secondary touch-target inline-flex items-center gap-2" onClick={() => setPreviewOpen(true)}>
+              <Eye className="h-4 w-4" aria-hidden="true" />
+              {t("miniSiteSections.preview")}
+            </button>
+          }
+        />
+
         <div className="pt-2">
+          {error && (
+            <p role="alert" className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>
+          )}
+          <p aria-live="polite" className="mb-2 text-sm text-gray-600">
+            {saving ? t("miniSiteSections.saving") : dirty ? t("miniSiteSections.unsaved") : saved ? t("siteBuilder.siteSaved") : ""}
+          </p>
           <button
             type="submit"
             disabled={saving}
@@ -464,7 +496,35 @@ export function SiteSetupPage() {
             {site ? t("siteBuilder.saveChanges") : t("siteBuilder.createSite")}
           </button>
         </div>
+        </fieldset>
       </form>
+
+      <DialogShell
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        title={t("miniSiteSections.preview")}
+        description={t("miniSiteSections.previewHelp")}
+        className="!max-w-6xl"
+        bodyClassName="!p-0"
+      >
+        {previewContent ? (
+          <MiniSiteContent
+            preview
+            slug={slug}
+            publicRequestToken={site?.publicRequestToken ?? null}
+            site={{
+              templateId, brandName: brandName.trim(), bio: bio.trim(), serviceArea: serviceArea.trim(),
+              additionalServiceAreas: normalizedAdditionalAreas(additionalServiceAreas, serviceArea),
+              services: services.map((service) => service.trim()).filter(Boolean),
+              logoUrl: logoUrl.trim(), heroImageUrl: heroImageUrl.trim(),
+              publicEmail: publicEmail.trim(), publicPhone: publicPhone.trim(),
+            }}
+            sections={publicMiniSiteSections(sections)}
+            reviews={previewContent.reviews}
+            addOns={previewContent.addOns}
+          />
+        ) : <PageLoader />}
+      </DialogShell>
 
       {/* Share Kit */}
       {site && sitePublished && (

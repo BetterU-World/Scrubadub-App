@@ -14,6 +14,7 @@ type DialogShellProps = {
   closeOnOutsideClick?: boolean;
   showCloseButton?: boolean;
   className?: string;
+  bodyClassName?: string;
   footer?: ReactNode;
 };
 
@@ -27,6 +28,7 @@ export function DialogShell({
   closeOnOutsideClick = true,
   showCloseButton = true,
   className,
+  bodyClassName,
   footer,
 }: DialogShellProps) {
   const { t } = useTranslation();
@@ -89,7 +91,7 @@ export function DialogShell({
               </button>
             </Dialog.Close>
           )}
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4 sm:px-6 sm:pb-6">
+          <div className={clsx("min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4 sm:px-6 sm:pb-6", bodyClassName)}>
             {children}
           </div>
           {footer && (

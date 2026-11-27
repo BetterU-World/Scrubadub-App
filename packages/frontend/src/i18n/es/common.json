@@ -1820,6 +1820,29 @@
     "exportCopied": "¡Copiado!"
   },
   "publicSite": {
+    "sections": {
+      "services": "Nuestros servicios",
+      "howItWorks": "Cómo funciona",
+      "serviceArea": "Zona de servicio",
+      "reviews": "Lo que dicen nuestros clientes",
+      "highlights": "Por qué elegirnos",
+      "faq": "Preguntas frecuentes"
+    },
+    "legacyProcess": {
+      "description": "Empieza en tres pasos sencillos.",
+      "step1": {
+        "title": "Solicita una cotización",
+        "body": "Completa un formulario con tu dirección, la fecha que prefieres y cualquier indicación especial."
+      },
+      "step2": {
+        "title": "Confirmamos tu solicitud",
+        "body": "Nuestro equipo revisa tu solicitud y confirma la fecha, la hora y el precio."
+      },
+      "step3": {
+        "title": "Realizamos la limpieza",
+        "body": "Nuestro equipo de limpieza llega a tiempo y deja tu espacio impecable."
+      }
+    },
     "addOns": {
       "title": "Complementos opcionales",
       "description": "Mejora tu servicio de limpieza con estos extras opcionales.",
@@ -1836,6 +1859,77 @@
       "unavailableSelection": "Un complemento seleccionado ya no está disponible.",
       "removeUnavailable": "Eliminar complemento no disponible",
       "requestedTitle": "Complementos solicitados"
+    }
+  },
+  "miniSiteSections": {
+    "title": "Secciones del sitio web",
+    "help": "Elige qué secciones aparecen y usa las flechas para cambiar el orden. Abre una sección para editar su título o contenido.",
+    "introduction": "Presentación de la empresa y navegación",
+    "contact": "Contacto y solicitudes de cotización",
+    "fixed": "Siempre visible en esta posición",
+    "editContent": "Editar contenido",
+    "show": "Mostrar",
+    "showItem": "Mostrar elemento",
+    "heading": "Título público",
+    "moveUp": "Subir {{label}}",
+    "moveDown": "Bajar {{label}}",
+    "moved": "{{label}} ahora está en la posición {{position}}.",
+    "preview": "Vista previa del sitio",
+    "previewHelp": "Incluye los cambios sin guardar. Los enlaces de cotización, contacto y solicitud de empleo están desactivados aquí.",
+    "unsaved": "Tienes cambios sin guardar.",
+    "saving": "Guardando tu sitio…",
+    "saveFailed": "No se pudo guardar el sitio.",
+    "invalid": "Algunos ajustes de las secciones no son válidos. Revisa la longitud de los textos y el límite de elementos, y vuelve a guardar.",
+    "sources": {
+      "services": "Edita tus servicios en la lista de arriba.",
+      "serviceArea": "Edita las zonas de servicio arriba. La zona principal sigue apareciendo en la presentación y el pie de página.",
+      "addOns": "Gestiona estos elementos en el catálogo de servicios adicionales. Esta opción controla la sección del sitio web. El formulario de solicitud usa la configuración de visibilidad del catálogo.",
+      "reviews": "Gestiona las opiniones destacadas de tus clientes en la bandeja de comentarios."
+    },
+    "entryHelp": "Solo aparecen en tu sitio los elementos con ambos campos completos y la visibilidad activada.",
+    "highlightsHelp": "Usa detalles que describan fielmente a tu empresa. Tu empresa redacta estos textos.",
+    "legacyProcess": "Tu sitio usa los pasos originales. Al añadir tu primer paso, los reemplazas con tu propio proceso.",
+    "empty": "Todavía no hay elementos.",
+    "item": "Elemento {{position}}",
+    "deleteItem": "Eliminar {{label}}",
+    "itemLimit": "Esta sección admite hasta {{count}} elementos.",
+    "question": "Pregunta",
+    "answer": "Respuesta",
+    "itemTitle": "Título",
+    "description": "Descripción",
+    "icon": "Icono",
+    "noIcon": "Sin icono",
+    "add": {
+      "faq": "Añadir pregunta",
+      "highlights": "Añadir aspecto destacado",
+      "howItWorks": "Añadir paso"
+    },
+    "suggestions": "Preguntas sugeridas",
+    "choosePrompt": "Elige una pregunta",
+    "usePrompt": "Añadir pregunta sugerida",
+    "icons": {
+      "shield": "Escudo",
+      "check": "Marca de verificación",
+      "sparkles": "Destellos",
+      "leaf": "Hoja",
+      "clock": "Reloj",
+      "calendar": "Calendario",
+      "heart": "Corazón",
+      "home": "Casa",
+      "users": "Personas",
+      "award": "Premio",
+      "star": "Estrella",
+      "handshake": "Apretón de manos"
+    },
+    "prompts": {
+      "supplies": "¿Debo proporcionar los productos de limpieza?",
+      "home": "¿Debo estar en casa durante la limpieza?",
+      "areas": "¿En qué zonas prestan servicio?",
+      "quote": "¿Cómo solicito una cotización?",
+      "cancellation": "¿Cuál es su política de cancelación?",
+      "insurance": "¿Cuentan con seguro?",
+      "recurring": "¿Ofrecen servicios de limpieza recurrentes?",
+      "extras": "¿Puedo solicitar servicios adicionales?"
     }
   },
   "siteBuilder": {
