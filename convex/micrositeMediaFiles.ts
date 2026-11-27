@@ -55,7 +55,9 @@ export async function normalizeMedia(input: Buffer, purpose: MediaPurpose, mime:
     const image = decoder.clone().rotate().toColourspace("srgb");
     const output = await (outputMime === "image/jpeg" ? image.jpeg({ quality }) : image.webp({ quality })).toBuffer({ resolveWithObject: true });
     if (!validMediaBytes(output.data.length)) continue;
-    const result = { data: output.data, mime: outputMime, width: output.info.width, height: output.info.height };
+    const result: Omit<ImageInfo, "bytes"> & { data: Buffer } = {
+      data: output.data, mime: outputMime, width: output.info.width, height: output.info.height,
+    };
     if (output.data.length <= target) return result;
     if (!fallback || output.data.length < fallback.data.length) fallback = result;
   }
