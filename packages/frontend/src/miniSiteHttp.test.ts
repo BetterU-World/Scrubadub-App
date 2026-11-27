@@ -50,7 +50,7 @@ describe("raw mini-site HTTP response", () => {
     const image = { url: gated, width: 200, height: 160, alt: '"Clean" & ready' };
     state.site = {
       slug: "cleaning-example", templateId: "B", brandName: "Cleaning Example", bio: "Local cleaners",
-      serviceArea: "Tampa", services: [], sections: [{ id: "team" }, { id: "gallery", heading: "Our work" }],
+      serviceArea: "Tampa", additionalServiceAreas: [], services: [], sections: [{ id: "team" }, { id: "gallery", heading: "Our work" }],
       media: {
         gallery: [{ id: "photo", kind: "photo", image, title: "Kitchen <detail>", caption: "Clean & dry" }],
         team: [{ id: "alex", name: "Alex", role: "Owner", bio: "Local team", portrait: { ...image, url: raw } }],
