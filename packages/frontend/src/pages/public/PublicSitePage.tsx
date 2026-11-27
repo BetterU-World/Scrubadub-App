@@ -5,6 +5,8 @@ import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { miniSiteSectionHeadingKey, publicMiniSiteSections, supportedHighlightIcon, type HighlightIcon, type PublicMiniSiteSections } from "../../../../../convex/lib/miniSiteSections";
 import { SITE_CONTENT_LIMITS, type MiniSiteHours, type MiniSiteProfile, type PublicMiniSitePresentation } from "../../../../../convex/lib/miniSitePresentation";
+import type { PublicMedia } from "../../../../../convex/lib/micrositeMediaModel";
+import { GallerySection, TeamSection } from "./MicrositeMediaSections";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { encodePublicAddOnSelection, formatPublicAddOnPrice } from "@/lib/publicAddOnPresentation";
 import { miniSiteCanonical, miniSiteDescription, miniSiteTitle, safePublicImage } from "../../../../../convex/lib/miniSiteSeo";
@@ -107,6 +109,7 @@ function toTelHref(phone: string): string {
 // ── Types ─────────────────────────────────────────────────────────────
 
 interface SiteData {
+  media?: PublicMedia;
   presentation?: PublicMiniSitePresentation;
   templateId: string;
   brandName: string;
@@ -302,6 +305,10 @@ export function MiniSiteContent({
       {sections.map((section) => {
         const heading = section.heading || t(miniSiteSectionHeadingKey(section.id));
         switch (section.id) {
+          case "gallery":
+            return <GallerySection key={section.id} heading={heading} entries={site.media?.gallery ?? []} isDark={isDark} />;
+          case "team":
+            return <TeamSection key={section.id} heading={heading} profiles={site.media?.team ?? []} isDark={isDark} />;
           case "services":
             return site.services.length ? <ServicesSection key={section.id} heading={heading} services={site.services} details={presentation?.serviceDetails} requestHref={requestHref} isDark={isDark} /> : null;
           case "addOns":

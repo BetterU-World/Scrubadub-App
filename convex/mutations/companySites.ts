@@ -5,6 +5,8 @@ import { validateSlug } from "../lib/slugs";
 import { isMiniSitePublished, normalizedAdditionalAreas } from "../lib/miniSiteSeo";
 import { miniSiteSectionsValidator, validateMiniSiteSections } from "../lib/miniSiteSections";
 import { miniSitePresentationValidator, SITE_CONTENT_LIMITS, validateMiniSitePresentation } from "../lib/miniSitePresentation";
+import { micrositeMediaConfig } from "../lib/micrositeMediaModel";
+import { commitMicrositeMedia } from "../lib/micrositeMedia";
 
 /** Generate a cryptographically random hex token (Web Crypto API). */
 function generateRandomToken(length = 40): string {
@@ -39,6 +41,7 @@ export const upsertSite = mutation({
     metaDescription: v.optional(v.string()),
     sections: v.optional(miniSiteSectionsValidator),
     presentation: v.optional(miniSitePresentationValidator),
+    media: v.optional(micrositeMediaConfig),
   },
   returns: v.id("companySites"),
   handler: async (ctx, args) => {
@@ -67,6 +70,7 @@ export const upsertSite = mutation({
     if (slugHolder && slugHolder._id !== existing?._id) {
       throw new Error("This slug is already taken.");
     }
+    if (args.media) await commitMicrositeMedia(ctx, args.companyId, user._id, existing?.media, args.media);
 
     // Validate & sanitize services list
     const services = (args.services ?? [])
@@ -98,6 +102,7 @@ export const upsertSite = mutation({
           ...existing.presentation,
           serviceDetails: existing.presentation.serviceDetails?.filter(({ index, name }) => services[index] === name),
         } } : {}),
+      ...(args.media ? { media: args.media } : {}),
     };
 
     if (existing) {

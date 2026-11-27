@@ -12,6 +12,8 @@ export const MINI_SITE_SECTIONS = {
   businessHours: { enabled: false, entryBodyLimit: 0 },
   socialProfiles: { enabled: false, entryBodyLimit: 0 },
   policies: { enabled: false, entryBodyLimit: 1200 },
+  gallery: { enabled: false, entryBodyLimit: 0 },
+  team: { enabled: false, entryBodyLimit: 0 },
 } as const;
 
 export type MiniSiteSectionId = keyof typeof MINI_SITE_SECTIONS;

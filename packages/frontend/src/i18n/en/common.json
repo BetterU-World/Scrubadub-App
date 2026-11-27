@@ -1820,6 +1820,8 @@
   },
   "publicSite": {
     "sections": {
+      "gallery": "Gallery",
+      "team": "Meet Our Team",
       "businessHours": "Business Hours",
       "socialProfiles": "Find Us on Social Media",
       "policies": "Service Policies",
@@ -1927,6 +1929,66 @@
       "bbb": "Better Business Bureau",
       "angi": "Angi",
       "trustpilot": "Trustpilot"
+    }
+  },
+  "miniSiteMedia": {
+    "editorNavigation": "My Site sections",
+    "business": "Business details",
+    "quote": "Quote settings",
+    "publicationHelp": "Saving updates your public site if it is published. Only visible, complete entries appear.",
+    "waitToSave": "Finish, retry, or cancel every image upload before saving.",
+    "title": "Title (optional)",
+    "caption": "Caption (optional)",
+    "alt": "Image description for screen readers",
+    "name": "Public display name",
+    "role": "Public role or title",
+    "bio": "Short biography (optional)",
+    "slots": {
+      "image": "Photo",
+      "before": "Before",
+      "after": "After",
+      "portrait": "Portrait"
+    },
+    "chooseImage": "Choose image for {{label}}",
+    "replaceImage": "Replace image for {{label}}",
+    "imageSelected": "Image selected",
+    "retry": "Try again",
+    "cancelUpload": "Cancel upload",
+    "removeImage": "Remove image",
+    "addPhotos": "Choose photos",
+    "addPair": "Add a before-and-after pair",
+    "addProfile": "Add a profile",
+    "swap": "Swap before and after",
+    "showEntry": "Show when complete",
+    "galleryHelp": "Share photos you have permission to publish. Keep customer names, addresses, and other private details out of the image.",
+    "teamHelp": "Add the details you want visitors to see. Ask permission before sharing another person’s name or photo.",
+    "galleryCapacity": "{{entries}} entry slots, {{images}} image slots, {{pairs}} pair slots, and {{uploads}} uploads available before saving.",
+    "teamCapacity": "{{profiles}} profile slots and {{uploads}} uploads available before saving.",
+    "summary": "{{visible}} ready to show · {{hidden}} hidden · {{incomplete}} incomplete · {{uploading}} with pending uploads",
+    "selectionLimit": "Added {{count}} photos. Save or remove entries to select more.",
+    "galleryEmpty": "Choose photos or add a before-and-after pair to start your gallery.",
+    "teamEmpty": "Introduce yourself or another representative to start this section.",
+    "photoEntry": "Photo {{number}}",
+    "pairEntry": "Comparison {{number}}",
+    "profileEntry": "Profile {{number}}",
+    "incomplete": "Add each image and its description before this entry can appear publicly.",
+    "enlarge": "Enlarge {{alt}}",
+    "galleryViewer": "Gallery image",
+    "previous": "Previous image",
+    "next": "Next image",
+    "status": {
+      "queued": "Waiting to prepare",
+      "preparing": "Preparing photo…",
+      "uploading": "Uploading and checking photo…"
+    },
+    "errors": {
+      "originalTooLarge": "Choose a photo smaller than 15 MiB.",
+      "pixels": "Choose a photo with up to 48 megapixels.",
+      "unsupported": "Choose a still JPEG, PNG, or WebP photo.",
+      "heicUnsupported": "This browser couldn’t open the HEIC photo. Try Safari on a recent Apple device or share the photo as a JPEG, then select it here.",
+      "prepareFailed": "This photo couldn’t be prepared. Choose another photo or try again.",
+      "uploadFailed": "The photo couldn’t be saved yet. Try again, or cancel and select it again.",
+      "retryLimit": "The photo couldn’t be saved. Select it again or choose a different photo."
     }
   },
   "miniSiteSections": {

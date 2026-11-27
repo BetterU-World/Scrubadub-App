@@ -18,6 +18,7 @@ crons.interval(
 );
 
 crons.interval("expired-resource-upload-intents", { minutes: 15 }, (internal as any).mutations.resourceUploadIntents.cleanupExpired);
+crons.interval("expired-microsite-media", { minutes: 15 }, internal.micrositeMedia.cleanup, {});
 
 crons.interval("operational-email-recovery", { minutes: 5 }, internal.operationalEmailDelivery.recover);
 

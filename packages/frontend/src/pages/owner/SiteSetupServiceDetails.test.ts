@@ -19,6 +19,7 @@ const requestToken = "service-association-test";
 const requestCompany = { companyName: "Association Test" };
 
 vi.mock("convex/react", () => ({
+  useAction: () => vi.fn(),
   useQuery: (ref: Parameters<typeof getFunctionName>[0]) => {
     const name = getFunctionName(ref);
     if (name === "queries/companySites:getMySite") return persistedSite;

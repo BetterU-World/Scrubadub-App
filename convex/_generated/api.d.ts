@@ -135,6 +135,8 @@ import type * as mutations_clientRequests from "../mutations/clientRequests.js";
 import type * as mutations_commercialAccounts from "../mutations/commercialAccounts.js";
 import type * as mutations_commercialSchedules from "../mutations/commercialSchedules.js";
 import type * as mutations_companies from "../mutations/companies.js";
+import type * as micrositeMedia from "../micrositeMedia.js";
+import type * as micrositeMediaFiles from "../micrositeMediaFiles.js";
 import type * as mutations_companyAddOns from "../mutations/companyAddOns.js";
 import type * as mutations_companyOnboardingDocuments from "../mutations/companyOnboardingDocuments.js";
 import type * as mutations_companySites from "../mutations/companySites.js";
@@ -376,6 +378,8 @@ declare const fullApi: ApiFromModules<{
   "mutations/commercialAccounts": typeof mutations_commercialAccounts;
   "mutations/commercialSchedules": typeof mutations_commercialSchedules;
   "mutations/companies": typeof mutations_companies;
+  micrositeMedia: typeof micrositeMedia;
+  micrositeMediaFiles: typeof micrositeMediaFiles;
   "mutations/companyAddOns": typeof mutations_companyAddOns;
   "mutations/companyOnboardingDocuments": typeof mutations_companyOnboardingDocuments;
   "mutations/companySites": typeof mutations_companySites;
