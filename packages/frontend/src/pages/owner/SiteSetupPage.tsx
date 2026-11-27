@@ -15,6 +15,9 @@ import { publicMiniSiteSections, resolveMiniSiteSections } from "../../../../../
 import { MiniSiteSectionEditor } from "./MiniSiteSectionEditor";
 import { BusinessHoursFields, ProfileFields, QuoteFields } from "./MiniSitePresentationFields";
 import { publicMiniSitePresentation, SITE_CONTENT_LIMITS, type MiniSitePresentation } from "../../../../../convex/lib/miniSitePresentation";
+import { EMPTY_MEDIA, projectMicrositeMedia, type MediaConfig } from "../../../../../convex/lib/micrositeMediaModel";
+import { GalleryFields, TeamFields } from "./MicrositeMediaFields";
+import { useMicrositeImages } from "./useMicrositeImages";
 
 type ServiceDraft = Pick<NonNullable<MiniSitePresentation["serviceDetails"]>[number], "name" | "description" | "included" | "excluded">;
 type PresentationDraft = Omit<MiniSitePresentation, "serviceDetails">;
@@ -65,6 +68,9 @@ export function SiteSetupPage() {
   const [metaDescription, setMetaDescription] = useState("");
   const [sections, setSections] = useState(() => resolveMiniSiteSections([]));
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [media, setMedia] = useState<MediaConfig>(EMPTY_MEDIA);
+  const [mediaPanel, setMediaPanel] = useState<"gallery" | "team" | false>(false);
+  const images = useMicrositeImages(sessionToken, media, previewOpen ? "all" : mediaPanel);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -111,6 +117,7 @@ export function SiteSetupPage() {
       setPublicPhone(site.publicPhone ?? "");
       setMetaDescription(site.metaDescription ?? "");
       setSections(resolveMiniSiteSections(site.sections));
+      setMedia(site.media ?? EMPTY_MEDIA);
     }
   }, [site, dirty]);
 
@@ -127,7 +134,7 @@ export function SiteSetupPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!user.companyId || saving) return;
+    if (!user.companyId || saving || images.blocked) return;
     setError("");
     setSaving(true);
     setSaved(false);
@@ -151,7 +158,9 @@ export function SiteSetupPage() {
         metaDescription: metaDescription.trim() || undefined,
         sections,
         presentation: currentPresentation,
+        ...(site?.media || media.gallery.length || media.team.length ? { media } : {}),
       });
+      images.markSaved();
       setDirty(false);
       setSaved(true);
     } catch (err) {
@@ -190,6 +199,15 @@ export function SiteSetupPage() {
         title={t("siteBuilder.title")}
         description={t("guidance.owner.siteSetup")}
       />
+      <nav aria-label={t("miniSiteMedia.editorNavigation")} className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-medium">
+        <a className="inline-flex min-h-11 items-center text-primary-700 underline" href="#site-business">{t("miniSiteMedia.business")}</a>
+        <a className="inline-flex min-h-11 items-center text-primary-700 underline" href="#microsite-sections-heading">{t("miniSiteSections.title")}</a>
+        <a className="inline-flex min-h-11 items-center text-primary-700 underline" href="#site-quote">{t("miniSiteMedia.quote")}</a>
+        <button type="button" className="btn-secondary touch-target inline-flex items-center gap-2" onClick={() => setPreviewOpen(true)}>
+          <Eye className="h-4 w-4" aria-hidden="true" />
+          {t("miniSiteSections.preview")}
+        </button>
+      </nav>
 
       {site && (
         <section className="card mb-6 overflow-hidden border-primary-100 bg-primary-50/40" aria-labelledby="site-overview-title">
@@ -245,7 +263,7 @@ export function SiteSetupPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="card">
+      <form id="site-business" onSubmit={handleSubmit} className="card">
         <fieldset disabled={saving} className="min-w-0 space-y-5">
         <section aria-labelledby="get-found-heading" className="rounded-lg border border-primary-100 bg-primary-50/40 p-4">
           <h2 id="get-found-heading" className="text-lg font-semibold text-gray-900">Get Found on Google</h2>
@@ -515,7 +533,16 @@ export function SiteSetupPage() {
         <MiniSiteSectionEditor
           sections={sections}
           onChange={(next) => { setSections(next); markDirty(); }}
+          onEditSection={(id) => setMediaPanel(id === "gallery" || id === "team" ? id : false)}
           settings={{
+            gallery: <GalleryFields entries={media.gallery} images={images} onChange={(update) => {
+              setMedia((current) => ({ ...current, gallery: update(current.gallery) }));
+              markDirty();
+            }} />,
+            team: <TeamFields entries={media.team} images={images} onChange={(update) => {
+              setMedia((current) => ({ ...current, team: update(current.team) }));
+              markDirty();
+            }} />,
             businessHours: <BusinessHoursFields hours={presentation.hours ?? []} onChange={(hours) => updatePresentation({ hours })} />,
             socialProfiles: <>
               <p className="text-sm text-gray-600">{t("sitePresentation.socialHelp")}</p>
@@ -533,16 +560,12 @@ export function SiteSetupPage() {
                 onChange={(externalReviews) => updatePresentation({ externalReviews })} />
             </>,
           }}
-          previewAction={
-            <button type="button" className="btn-secondary touch-target inline-flex items-center gap-2" onClick={() => setPreviewOpen(true)}>
-              <Eye className="h-4 w-4" aria-hidden="true" />
-              {t("miniSiteSections.preview")}
-            </button>
-          }
         />
-        <QuoteFields quote={presentation.quote} onChange={(quote) => updatePresentation({ quote })} />
+        <div id="site-quote"><QuoteFields quote={presentation.quote} onChange={(quote) => updatePresentation({ quote })} /></div>
 
         <div className="pt-2">
+          <p className="mb-2 text-sm text-gray-600">{t("miniSiteMedia.publicationHelp")}</p>
+          {images.blocked && <p role="status" className="mb-2 text-sm text-gray-700">{t("miniSiteMedia.waitToSave")}</p>}
           {error && (
             <p role="alert" className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</p>
           )}
@@ -551,7 +574,7 @@ export function SiteSetupPage() {
           </p>
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || images.blocked}
             className="btn-primary touch-target w-full flex items-center justify-center gap-2"
           >
             {saving && <LoadingSpinner size="sm" />}
@@ -579,6 +602,10 @@ export function SiteSetupPage() {
               additionalServiceAreas: normalizedAdditionalAreas(additionalServiceAreas, serviceArea),
               services: serviceNames,
               presentation: publicMiniSitePresentation(currentPresentation, serviceNames, sections),
+              media: projectMicrositeMedia(media, {
+                gallery: sections.some(({ id, enabled }) => id === "gallery" && enabled),
+                team: sections.some(({ id, enabled }) => id === "team" && enabled),
+              }, ({ assetId }) => images.source(assetId)),
               logoUrl: logoUrl.trim(), heroImageUrl: heroImageUrl.trim(),
               publicEmail: publicEmail.trim(), publicPhone: publicPhone.trim(),
             }}

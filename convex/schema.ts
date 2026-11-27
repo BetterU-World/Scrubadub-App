@@ -10,6 +10,7 @@ import { outgoingTables } from "./lib/outgoingSchema";
 import { ownerOnboardingPreferences } from "./lib/ownerOnboarding";
 import { miniSiteSectionsValidator } from "./lib/miniSiteSections";
 import { miniSitePresentationValidator } from "./lib/miniSitePresentation";
+import { mediaMime, mediaPurpose, mediaState, micrositeMediaConfig } from "./lib/micrositeMediaModel";
 import { v } from "convex/values";
 import { calendarClassification, calendarEventMetadata } from "./lib/calendarClassification";
 import { bedroomsValidator } from "./lib/propertyBedrooms";
@@ -1482,9 +1483,42 @@ export default defineSchema({
     metaDescription: v.optional(v.string()),
     sections: v.optional(miniSiteSectionsValidator),
     presentation: v.optional(miniSitePresentationValidator),
+    media: v.optional(micrositeMediaConfig),
+    mediaDeliverySuspended: v.optional(v.boolean()),
   })
     .index("by_companyId", ["companyId"])
     .index("by_slug", ["slug"]),
+
+  micrositeMediaAssets: defineTable({
+    companyId: v.id("companies"),
+    ownerId: v.id("users"),
+    purpose: mediaPurpose,
+    state: mediaState,
+    requestId: v.string(),
+    publicKey: v.string(),
+    storageTag: v.string(),
+    uploadClaims: v.optional(v.number()),
+    reservedBytes: v.number(),
+    inputMime: mediaMime,
+    expiresAt: v.number(),
+    lease: v.optional(v.string()),
+    leaseUntil: v.optional(v.number()),
+    storageId: v.optional(v.id("_storage")),
+    bytes: v.optional(v.number()),
+    mime: v.optional(mediaMime),
+    width: v.optional(v.number()),
+    height: v.optional(v.number()),
+  })
+    .index("by_company_request", ["companyId", "requestId"])
+    .index("by_company_state_expiry", ["companyId", "state", "expiresAt"])
+    .index("by_state_expiry", ["state", "expiresAt"])
+    .index("by_storage", ["storageId"]),
+
+  micrositeMediaDelivery: defineTable({
+    companyId: v.id("companies"),
+    windowStart: v.number(),
+    bytes: v.number(),
+  }).index("by_company", ["companyId"]),
 
   // Cleaner Leads (v1)
 

@@ -1821,6 +1821,8 @@
   },
   "publicSite": {
     "sections": {
+      "gallery": "Galería",
+      "team": "Conoce a nuestro equipo",
       "businessHours": "Horario de atención",
       "socialProfiles": "Encuéntranos en redes sociales",
       "policies": "Políticas de servicio",
@@ -1928,6 +1930,65 @@
       "bbb": "Better Business Bureau",
       "angi": "Angi",
       "trustpilot": "Trustpilot"
+    }
+  },
+  "miniSiteMedia": {
+    "editorNavigation": "Secciones de Mi sitio",
+    "business": "Datos de la empresa",
+    "quote": "Ajustes de cotización",
+    "publicationHelp": "Al guardar se actualiza tu sitio si está publicado. Solo aparecen los elementos visibles y completos.",
+    "waitToSave": "Termina, reintenta o cancela cada carga de imagen antes de guardar.",
+    "title": "Título (opcional)",
+    "caption": "Descripción (opcional)",
+    "alt": "Descripción de la imagen para lectores de pantalla",
+    "name": "Nombre público",
+    "role": "Cargo público",
+    "bio": "Biografía breve (opcional)",
+    "slots": {
+      "image": "Foto",
+      "before": "Antes",
+      "after": "Después",
+      "portrait": "Retrato"
+    },
+    "chooseImage": "Elegir imagen para {{label}}",
+    "replaceImage": "Reemplazar imagen para {{label}}",
+    "imageSelected": "Imagen seleccionada",
+    "retry": "Reintentar",
+    "cancelUpload": "Cancelar carga",
+    "removeImage": "Quitar imagen",
+    "addPhotos": "Elegir fotos",
+    "addPair": "Añadir una comparación de antes y después",
+    "addProfile": "Añadir perfil",
+    "swap": "Intercambiar antes y después",
+    "showEntry": "Mostrar cuando esté completo",
+    "galleryHelp": "Comparte fotos que tengas permiso para publicar. Evita que aparezcan nombres, direcciones u otros datos privados de clientes.",
+    "teamHelp": "Añade los datos que quieras mostrar a los visitantes. Pide permiso antes de compartir el nombre o la foto de otra persona.",
+    "galleryCapacity": "{{entries}} espacios para entradas, {{images}} para imágenes, {{pairs}} para comparaciones y {{uploads}} cargas disponibles antes de guardar.",
+    "teamCapacity": "{{profiles}} espacios para perfiles y {{uploads}} cargas disponibles antes de guardar.",
+    "summary": "{{visible}} listos para mostrar · {{hidden}} ocultos · {{incomplete}} incompletos · {{uploading}} con cargas pendientes",
+    "selectionLimit": "Se añadieron {{count}} fotos. Guarda o elimina entradas para seleccionar más.",
+    "galleryEmpty": "Elige fotos o añade una comparación de antes y después para comenzar la galería.",
+    "teamEmpty": "Preséntate o añade a otra persona representante para comenzar esta sección.",
+    "photoEntry": "Foto {{number}}",
+    "pairEntry": "Comparación {{number}}",
+    "profileEntry": "Perfil {{number}}",
+    "incomplete": "Añade cada imagen y su descripción para que esta entrada pueda aparecer en público.",
+    "enlarge": "Ampliar {{alt}}",
+    "galleryViewer": "Imagen de la galería",
+    "previous": "Imagen anterior",
+    "next": "Siguiente imagen",
+    "status": {
+      "queued": "En espera de preparación",
+      "preparing": "Preparando foto…",
+      "uploading": "Cargando y comprobando la foto…"
+    },
+    "errors": {
+      "originalTooLarge": "Elige una foto de menos de 15 MiB.",
+      "pixels": "Elige una foto de hasta 48 megapíxeles.",
+      "unsupported": "Elige una foto fija en formato JPEG, PNG o WebP.",
+      "heicUnsupported": "Este navegador no pudo abrir la foto HEIC. Prueba Safari en un dispositivo Apple reciente o comparte la foto como JPEG y selecciónala aquí.",
+      "prepareFailed": "No se pudo preparar esta foto. Elige otra o inténtalo de nuevo.",
+      "uploadFailed": "Todavía no se pudo guardar la foto. Reintenta o cancela y vuelve a seleccionarla."
     }
   },
   "miniSiteSections": {

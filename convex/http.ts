@@ -9,10 +9,12 @@ import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { areExternalSideEffectsDisabled, requireStripeSecretKey } from "./lib/environment";
 import type { Id } from "./_generated/dataModel";
+import { deliverMicrositeImage } from "./micrositeMediaHttp";
 
 declare const process: { env: Record<string, string | undefined> };
 
 const http = httpRouter();
+http.route({ pathPrefix: "/microsite-media/", method: "GET", handler: deliverMicrositeImage });
 
 function resourceCors(request: Request) {
   const origin = request.headers.get("Origin");

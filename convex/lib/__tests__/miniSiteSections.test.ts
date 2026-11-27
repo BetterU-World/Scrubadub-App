@@ -1,12 +1,15 @@
 import { convexTest } from "convex-test";
-import { describe, expect, it } from "vitest";
-import { api } from "../../_generated/api";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { api, internal } from "../../_generated/api";
+import type { Id } from "../../_generated/dataModel";
 import schema from "../../schema";
 import { MINI_SITE_SECTIONS, publicMiniSiteSections, resolveMiniSiteSections, SECTION_LIMITS } from "../miniSiteSections";
 import { hashToken } from "../tokens";
 import { safeMiniSiteProfile, SITE_CONTENT_LIMITS, type MiniSitePresentation, type MiniSiteProfile } from "../miniSitePresentation";
+import { EMPTY_MEDIA, MEDIA_LIMITS, type MediaConfig, type MediaPurpose } from "../micrositeMediaModel";
 
 const modules = import.meta.glob("../../**/*.ts");
+afterEach(() => vi.unstubAllEnvs());
 const siteFields = {
   slug: "bright-homes",
   templateId: "A" as const,
@@ -154,9 +157,158 @@ describe("microsite section configuration", () => {
     ];
     expect(resolveMiniSiteSections(outdated).map(({ id }) => id)).toEqual([
       "highlights", "services", "addOns", "howItWorks", "serviceArea", "reviews", "faq",
-      "businessHours", "socialProfiles", "policies",
+      "businessHours", "socialProfiles", "policies", "gallery", "team",
     ]);
     expect(publicMiniSiteSections(outdated)[0]).toEqual({ id: "highlights", entries: [{ title: "Title", body: "Body" }] });
+  });
+});
+
+describe("managed microsite media", () => {
+  const sections = [{ id: "gallery", enabled: true }, { id: "team", enabled: true }];
+  const mediaApi = api.micrositeMedia;
+  const ops = internal.micrositeMedia;
+  const bytes = new Uint8Array([1, 2, 3]);
+  const mime = "image/webp" as const;
+
+  async function stage(test: Awaited<ReturnType<typeof fixture>>["test"], sessionToken: string, requestId: string, purpose: MediaPurpose = "gallery") {
+    const ticket = await test.mutation(mediaApi.begin, { sessionToken, requestId, purpose, bytes: bytes.length, mime });
+    const claim = await test.mutation(ops.claim, { sessionToken, assetId: ticket.assetId, bytes: bytes.length });
+    if ("ready" in claim) throw new Error("Unexpected replay");
+    const storageId = await test.run((ctx) => ctx.storage.store(new Blob([bytes], { type: `${mime}; scrub-site-media=${claim.tag}` })));
+    await test.run((ctx) => ctx.db.patch(storageId, { contentType: `${mime}; scrub-site-media=${claim.tag}` }));
+    await test.mutation(ops.finish, { assetId: ticket.assetId, lease: claim.lease, storageId, width: 20, height: 16, bytes: bytes.length, mime });
+    return { assetId: ticket.assetId, storageId, tag: claim.tag };
+  }
+
+  it("publishes ordered mixed entries, hides incomplete and disabled entries, and checks the exact slot on delivery", async () => {
+    vi.stubEnv("CONVEX_SITE_URL", "https://media.example.test");
+    const { test, owner, companyId } = await fixture();
+    const first = await stage(test, owner.sessionToken, "photo-one");
+    const before = await stage(test, owner.sessionToken, "pair-before");
+    const after = await stage(test, owner.sessionToken, "pair-after");
+    const portrait = await stage(test, owner.sessionToken, "team-portrait", "portrait");
+    const p = (assetId: Id<"micrositeMediaAssets">, alt: string) => ({ assetId, alt });
+    const media: MediaConfig = {
+      gallery: [
+        { id: "pair", kind: "pair", title: "Kitchen", caption: "A fresh start", enabled: true, before: p(before.assetId, "Before"), after: p(after.assetId, "After") },
+        { id: "photo", kind: "photo", title: "Sink", caption: "", enabled: true, image: p(first.assetId, "Clean sink") },
+        { id: "incomplete", kind: "pair", title: "Incomplete", caption: "", enabled: true, before: p(before.assetId, "Not finished") },
+        { id: "hidden", kind: "photo", title: "Hidden", caption: "", enabled: false, image: p(first.assetId, "Hidden") },
+      ],
+      team: [
+        { id: "person", name: "Alex", role: "Owner", bio: "Local cleaner", enabled: true, portrait: p(portrait.assetId, "") },
+        { id: "no-portrait", name: "Jo", role: "Cleaner", bio: "", enabled: true },
+      ],
+    };
+    const write = api.mutations.companySites.upsertSite;
+    const lookup = () => test.query(api.queries.companySites.getBySlug, { slug: siteFields.slug });
+    const save = (change: Partial<{ media: MediaConfig; sections: typeof sections; isPublished: boolean }> = {}) =>
+      test.mutation(write, { ...siteFields, companyId, ...owner, sections, media, ...change });
+    expect(await lookup()).not.toHaveProperty("media");
+    expect((await test.fetch("/microsite-media/bright-homes/gallery/pair/before/unknown")).status).toBe(404);
+    await save();
+    const view = (await lookup())!.media!;
+    expect(view.gallery.map(({ id }) => id)).toEqual(["pair", "photo"]);
+    expect(view.team[0].portrait?.alt).toBe("Alex");
+    expect(view.team[1]).not.toHaveProperty("portrait");
+    expect(JSON.stringify(view)).not.toMatch(/_storage|storageId|assetId|Incomplete|Hidden/);
+    expect(await test.query(api.queries.companySites.getMySite, { companyId, ...owner })).toMatchObject({ media });
+    const pair = view.gallery[0];
+    if (pair.kind !== "pair") throw new Error("Pair missing");
+    const beforePath = new URL(pair.before.url).pathname;
+    const response = await test.fetch(beforePath);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(response.headers.get("Content-Type")).toBe(mime);
+    expect(Array.from(new Uint8Array(await response.arrayBuffer()))).toEqual(Array.from(bytes));
+    expect((await test.fetch(beforePath.replace("/before/", "/after/"))).status).toBe(404);
+    await test.mutation(ops.setDeliverySuspension, { companyId, suspended: true });
+    expect((await test.fetch(beforePath)).status).toBe(404);
+    expect((await lookup())?.media?.team[0]).not.toHaveProperty("portrait");
+    await test.mutation(ops.setDeliverySuspension, { companyId, suspended: false });
+    await save({ isPublished: false });
+    expect((await test.fetch(beforePath)).status).toBe(404);
+    await save({ sections: [{ id: "gallery", enabled: false }, sections[1]] });
+    expect((await test.fetch(beforePath)).status).toBe(404);
+    await save({ media: { ...media, gallery: [{ ...media.gallery[0], enabled: false }] } });
+    expect((await test.fetch(beforePath)).status).toBe(404);
+    const original = media.gallery[0];
+    if (original.kind !== "pair") throw new Error("Pair missing");
+    await save({ media: { ...media, gallery: [{ ...original, before: original.after, after: original.before }] } });
+    expect((await test.fetch(beforePath)).status).toBe(404);
+    const swapped = (await lookup())!.media!.gallery[0];
+    expect(swapped.kind === "pair" && swapped.before.alt).toBe("After");
+  });
+
+  it("rejects unauthorized uploads, preview, cross-tenant references and over-quota reservations", async () => {
+    const { test, owner, manager, otherOwner, otherCompany, companyId } = await fixture();
+    const request = { requestId: "auth-check", bytes: 200_000, mime, purpose: "gallery" as const };
+    await expect(test.mutation(mediaApi.begin, { ...request, sessionToken: "" })).rejects.toThrow();
+    await expect(test.mutation(mediaApi.begin, { ...request, sessionToken: manager.sessionToken })).rejects.toThrow("Owner session required");
+    await expect(test.mutation(mediaApi.begin, { ...request, sessionToken: owner.sessionToken, bytes: 600_001 })).rejects.toThrow("Invalid image size");
+    const outside = await stage(test, otherOwner.sessionToken, "outside-photo");
+    expect(await test.query(ops.previewFile, { sessionToken: owner.sessionToken, assetId: outside.assetId })).toBeNull();
+    await expect(test.mutation(api.mutations.companySites.upsertSite, {
+      ...siteFields, ...owner, companyId, sections,
+      media: { gallery: [{ id: "photo", kind: "photo", enabled: true, title: "", caption: "", image: { assetId: outside.assetId, alt: "Photo" } }], team: [] },
+    })).rejects.toThrow("image is unavailable");
+    await expect(test.mutation(api.mutations.companySites.upsertSite, {
+      ...siteFields, ...manager, companyId, sections, media: EMPTY_MEDIA,
+    })).rejects.toThrow("Owner session required");
+    await expect(test.mutation(api.mutations.companySites.upsertSite, {
+      ...siteFields, ...owner, companyId: otherCompany, sections, media: EMPTY_MEDIA,
+    })).rejects.toThrow("Access denied");
+    for (let i = 0; i < 8; i++) await test.mutation(mediaApi.begin, { ...request, sessionToken: owner.sessionToken, requestId: `reserve-${i}` });
+    await expect(test.mutation(mediaApi.begin, { ...request, sessionToken: owner.sessionToken })).rejects.toThrow("pending images");
+    const replay = await test.mutation(mediaApi.begin, { ...request, sessionToken: owner.sessionToken, requestId: "reserve-0" });
+    expect(replay.ready).toBeNull();
+    const claimArgs = { sessionToken: owner.sessionToken, assetId: replay.assetId, bytes: request.bytes };
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const claim = await test.mutation(ops.claim, claimArgs);
+      if (!claim.lease) throw new Error("Expected an upload lease");
+      await test.mutation(ops.release, { assetId: replay.assetId, lease: claim.lease });
+    }
+    await expect(test.mutation(ops.claim, claimArgs)).rejects.toThrow("retry limit");
+    await test.run(async (ctx) => {
+      const pending = await ctx.db.query("micrositeMediaAssets").withIndex("by_company_state_expiry", (q) => q.eq("companyId", companyId).eq("state", "pending")).take(8);
+      for (const asset of pending) await ctx.db.patch(asset._id, { expiresAt: 0 });
+      const hour = await ctx.db.query("rateLimits").withIndex("by_key", (q) => q.eq("key", `microsite-media-hour:${companyId}`)).first();
+      await ctx.db.patch(hour!._id, { count: MEDIA_LIMITS.uploadsPerHour });
+    });
+    await expect(test.mutation(mediaApi.begin, { ...request, sessionToken: owner.sessionToken })).rejects.toThrow("Rate limit exceeded");
+  });
+
+  it("keeps saved bytes through failed changes and discards only unreferenced or verified expired candidates", async () => {
+    vi.stubEnv("CONVEX_SITE_URL", "https://media.example.test");
+    const { test, owner, companyId } = await fixture();
+    const old = await stage(test, owner.sessionToken, "saved-photo");
+    const incoming = await stage(test, owner.sessionToken, "incoming-photo");
+    const abandoned = await stage(test, owner.sessionToken, "abandoned-photo");
+    const draft = (assetId: Id<"micrositeMediaAssets">): MediaConfig => ({
+      gallery: [{ id: "photo", enabled: true, kind: "photo", title: "", caption: "", image: { assetId, alt: "Photo" } }], team: [],
+    });
+    const save = (media: MediaConfig) => test.mutation(api.mutations.companySites.upsertSite, { ...siteFields, ...owner, companyId, sections, media });
+    await save(draft(old.assetId));
+    const image = (await test.query(api.queries.companySites.getBySlug, { slug: siteFields.slug }))!.media!.gallery[0];
+    if (image.kind !== "photo") throw new Error("Photo missing");
+    const path = new URL(image.image.url).pathname;
+    const invalid = draft(incoming.assetId);
+    invalid.gallery.push(invalid.gallery[0]);
+    await expect(save(invalid)).rejects.toThrow("identifier");
+    await test.mutation(mediaApi.discard, { sessionToken: owner.sessionToken, assetId: old.assetId });
+    expect((await test.fetch(path)).status).toBe(200);
+    // Race a valid replacement with cleanup of another, expired staged image.
+    await test.run((ctx) => ctx.db.patch(abandoned.assetId, { expiresAt: 0 }));
+    await Promise.all([save(draft(incoming.assetId)), test.mutation(ops.cleanup, {})]);
+    expect((await test.fetch(path)).status).toBe(404);
+    expect(await test.run((ctx) => ctx.db.system.get("_storage", old.storageId))).not.toBeNull();
+    expect(await test.run((ctx) => ctx.db.system.get("_storage", abandoned.storageId))).toBeNull();
+    expect(await test.run((ctx) => ctx.db.system.get("_storage", incoming.storageId))).not.toBeNull();
+    const orphan = await test.run((ctx) => ctx.storage.store(new Blob([bytes], { type: `${mime}; scrub-site-media=${abandoned.tag}` })));
+    await test.run((ctx) => ctx.db.patch(orphan, { contentType: `${mime}; scrub-site-media=${abandoned.tag}` }));
+    await expect(test.mutation(ops.reconcileOrphan, { assetId: abandoned.assetId, storageId: incoming.storageId })).rejects.toThrow("verified orphan");
+    await expect(test.mutation(ops.reconcileOrphan, { assetId: abandoned.assetId, storageId: orphan })).resolves.toBe(true);
+    await expect(test.mutation(ops.reconcileOrphan, { assetId: abandoned.assetId, storageId: orphan })).resolves.toBe(false);
   });
 });
 

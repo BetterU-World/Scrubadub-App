@@ -16,7 +16,7 @@ function moved<T>(items: T[], index: number, offset: -1 | 1) {
   return next;
 }
 
-function OrderButtons({ label, index, count, onMove }: {
+export function OrderButtons({ label, index, count, onMove }: {
   label: string;
   index: number;
   count: number;
@@ -47,10 +47,10 @@ function OrderButtons({ label, index, count, onMove }: {
 
 const FAQ_PROMPTS = ["supplies", "home", "areas", "quote", "cancellation", "insurance", "recurring", "extras"] as const;
 
-export function MiniSiteSectionEditor({ sections, onChange, previewAction, settings }: {
+export function MiniSiteSectionEditor({ sections, onChange, onEditSection, settings }: {
   sections: MiniSiteSection[];
   onChange: (sections: MiniSiteSection[]) => void;
-  previewAction: ReactNode;
+  onEditSection?: (id: MiniSiteSection["id"] | null) => void;
   settings?: Partial<Record<MiniSiteSection["id"], ReactNode>>;
 }) {
   const { t } = useTranslation();
@@ -67,7 +67,6 @@ export function MiniSiteSectionEditor({ sections, onChange, previewAction, setti
           <h2 id="microsite-sections-heading" className="text-lg font-semibold text-gray-900">{t("miniSiteSections.title")}</h2>
           <p className="mt-1 text-sm text-gray-600">{t("miniSiteSections.help")}</p>
         </div>
-        {previewAction}
       </div>
       <p role="status" className="sr-only">{announcement}</p>
       <p className="rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-700">
@@ -87,7 +86,11 @@ export function MiniSiteSectionEditor({ sections, onChange, previewAction, setti
                   className="touch-target flex min-w-0 items-center gap-2 text-left font-semibold text-gray-900"
                   aria-expanded={expanded}
                   aria-controls={panelId}
-                  onClick={() => setEditingId(expanded ? null : section.id)}
+                  onClick={() => {
+                    const next = expanded ? null : section.id;
+                    setEditingId(next);
+                    onEditSection?.(next);
+                  }}
                 >
                   <ChevronDown className={`h-4 w-4 shrink-0 transition-transform ${expanded ? "rotate-180" : ""}`} aria-hidden="true" />
                   <span>{name}</span>

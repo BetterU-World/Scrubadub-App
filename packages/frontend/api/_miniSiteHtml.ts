@@ -1,6 +1,7 @@
 import { miniSiteCanonical, miniSiteDescription, miniSiteTitle, safePublicImage, type MiniSiteFacts } from "./_miniSiteRuntime.js";
 import type { PublicMiniSiteSections } from "../../../convex/lib/miniSiteSections";
 import type { MiniSiteProfile, PublicMiniSitePresentation } from "../../../convex/lib/miniSitePresentation";
+import type { PublicMedia } from "../../../convex/lib/micrositeMediaModel";
 
 const escapeHtml = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 const scrubImage = "https://scrubscrubscrub.com/scrub-social-preview.png";
@@ -16,6 +17,8 @@ const fallbackHeadings = {
   businessHours: "Business hours",
   socialProfiles: "Social profiles",
   policies: "Service policies",
+  gallery: "Gallery",
+  team: "Meet our team",
 } satisfies Record<PublicMiniSiteSections[number]["id"], string>;
 
 const profileNames = {
@@ -34,9 +37,21 @@ function profileLinks(profiles: MiniSiteProfile[] | undefined, reviews: boolean)
   return items.length ? `<ul>${items.join("")}</ul>` : "";
 }
 
+function mediaImage(image: NonNullable<PublicMedia["team"][number]["portrait"]>) {
+  try {
+    const url = new URL(image.url);
+    if ((url.protocol !== "https:" && !(url.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname))) ||
+      !url.pathname.startsWith("/microsite-media/")) return "";
+    return `<img src="${escapeHtml(url.href)}" width="${image.width}" height="${image.height}" alt="${escapeHtml(image.alt)}" loading="lazy" decoding="async" style="max-width:100%;height:auto">`;
+  } catch {
+    return "";
+  }
+}
+
 export function renderMiniSiteHtml(template: string, site: MiniSiteFacts & {
   sections?: PublicMiniSiteSections;
   presentation?: PublicMiniSitePresentation;
+  media?: PublicMedia;
 }) {
   const title = miniSiteTitle(site);
   const description = miniSiteDescription(site);
@@ -86,6 +101,13 @@ export function renderMiniSiteHtml(template: string, site: MiniSiteFacts & {
     }
     if (id === "socialProfiles") body = profileLinks(presentation?.socials, false);
     if (id === "reviews") body = profileLinks(presentation?.externalReviews, true);
+    if (id === "gallery") body = site.media?.gallery.map((entry) => {
+      const images = entry.kind === "photo" ? mediaImage(entry.image)
+        : `<div><p>Before</p>${mediaImage(entry.before)}</div><div><p>After</p>${mediaImage(entry.after)}</div>`;
+      return `<figure>${images}${entry.title ? `<h3>${escapeHtml(entry.title)}</h3>` : ""}${entry.caption ? `<figcaption>${escapeHtml(entry.caption)}</figcaption>` : ""}</figure>`;
+    }).join("") ?? "";
+    if (id === "team") body = site.media?.team.map(({ name, role, bio, portrait }) =>
+      `<article>${portrait ? mediaImage(portrait) : ""}<h3>${escapeHtml(name)}</h3><p>${escapeHtml(role)}</p>${bio ? `<p>${escapeHtml(bio)}</p>` : ""}</article>`).join("") ?? "";
     if ((id === "highlights" || id === "howItWorks") && entries?.length) {
       const list = id === "howItWorks" ? "ol" : "ul";
       body = `<${list}>${entries.map(({ title, body }) => `<li><h3>${escapeHtml(title)}</h3><p>${escapeHtml(body)}</p></li>`).join("")}</${list}>`;
