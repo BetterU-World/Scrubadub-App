@@ -1,5 +1,11 @@
 {
   "trailingSlash": false,
+  "git": {
+    "deploymentEnabled": { "codex/public-pricing-redirect": false }
+  },
+  "redirects": [
+    { "source": "/pricing", "destination": "/#pricing", "permanent": true }
+  ],
   "functions": {
     "api/mini-site.ts": { "includeFiles": "dist/index.html" }
   },

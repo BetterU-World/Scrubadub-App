@@ -4,11 +4,14 @@ import { readFileSync } from "node:fs";
 const config = JSON.parse(readFileSync("packages/frontend/vercel.json", "utf8")) as {
   trailingSlash: boolean;
   functions: Record<string, { includeFiles: string }>;
+  redirects: { source: string; destination: string; permanent: boolean }[];
   rewrites: { source: string; destination: string }[];
 };
 
 function destination(path: string) {
   if (config.trailingSlash === false && path.length > 1 && path.endsWith("/")) return `308 ${path.slice(0, -1)}`;
+  const redirect = config.redirects.find(route => route.source === path);
+  if (redirect) return `${redirect.permanent ? 308 : 307} ${redirect.destination}`;
   for (const route of config.rewrites) {
     const match = new RegExp(`^${route.source}$`).exec(path);
     if (match) return route.destination.replace(/\$(\d+)/g, (_value, group) => match[Number(group)] ?? "");
@@ -17,6 +20,12 @@ function destination(path: string) {
 }
 
 describe("Vercel slash routing", () => {
+  it("redirects the public pricing URL to the landing section before the mini-site rewrite", () => {
+    expect(destination("/pricing")).toBe("308 /#pricing");
+    expect(destination("/pricing/")).toBe("308 /pricing");
+    expect(destination("/")).toBe("/index.html");
+  });
+
   it.each(["/scrubadubsolutionsllc", "/showcase", "/login", "/definitely-missing-slug-zz20261001"])(
     "sends %s through the mini-site function",
     path => expect(destination(path)).toBe(`/api/mini-site?slug=${path.split("/")[1]}`),
