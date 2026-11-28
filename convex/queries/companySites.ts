@@ -8,6 +8,8 @@ import { listPublicCompanyAddOns, publicCompanyAddOnValidator } from "../lib/pub
 import { publicMiniSitePresentation, publicMiniSitePresentationValidator } from "../lib/miniSitePresentation";
 import { publicMicrositeMedia } from "../lib/micrositeMediaModel";
 import { publicMediaForSite } from "../lib/micrositeMedia";
+import { publicResources } from "../lib/micrositeResourcesModel";
+import { projectedResources } from "../lib/micrositeResources";
 
 const DEFAULT_PUBLIC_REVIEW_LIMIT = 6;
 const MAX_PUBLIC_REVIEW_LIMIT = 24;
@@ -50,6 +52,7 @@ export const getBySlug = query({
     sections: publicMiniSiteSectionsValidator,
     presentation: v.optional(publicMiniSitePresentationValidator),
     media: v.optional(publicMicrositeMedia),
+    resources: v.optional(publicResources),
   })),
   handler: async (ctx, args) => {
     const site = await ctx.db
@@ -63,6 +66,7 @@ export const getBySlug = query({
     if (!company) return null;
     const presentation = publicMiniSitePresentation(site.presentation, site.services ?? [], site.sections);
     const media = site.media ? await publicMediaForSite(ctx, site) : undefined;
+    const resources = site.resources ? await projectedResources(ctx, site) : [];
 
     // Explicit public mini-site fields only. Company profile contact details
     // may be operational or personal and must never leak through this query.
@@ -87,9 +91,10 @@ export const getBySlug = query({
         (id !== "businessHours" || presentation.hours?.length) &&
         (id !== "socialProfiles" || presentation.socials?.length) &&
         (id !== "gallery" || media?.gallery.length) &&
-        (id !== "team" || media?.team.length)),
+        (id !== "team" || media?.team.length) && (id !== "resources" || resources.length)),
       ...(Object.keys(presentation).length ? { presentation } : {}),
       ...(media?.gallery.length || media?.team.length ? { media } : {}),
+      ...(resources.length ? { resources } : {}),
     };
   },
 });

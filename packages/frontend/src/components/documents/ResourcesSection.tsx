@@ -1,13 +1,14 @@
 import { useMemo, useRef, useState } from "react";
-import { useAction, useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { useTranslation } from "react-i18next";
 import { api } from "../../../../../convex/_generated/api";
 import { useAuth } from "@/hooks/useAuth";
 import { DialogShell } from "@/components/ui/DialogShell";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { PageLoader } from "@/components/ui/LoadingSpinner";
-import { filterResources, resourceDeclaredMime, resourceFileError, resourceSiteUrl, type ResourceRow } from "./resourceModel";
-import { fetchResourceBlob, uploadResourceCandidate } from "./resourceTransfer";
+import { filterResources, resourceFileError, resourceSiteUrl, type ResourceRow } from "./resourceModel";
+import { fetchResourceBlob } from "./resourceTransfer";
+import { useCanonicalResourceUpload } from "./useCanonicalResourceUpload";
 
 type Editor = { mode: "add" | "edit" | "replace"; row?: ResourceRow };
 
@@ -34,10 +35,7 @@ export function ResourcesSection() {
   const archive = useMutation((api as any).mutations.companyResources.archive);
   const restore = useMutation((api as any).mutations.companyResources.restore);
   const deleteArchived = useMutation((api as any).mutations.companyResources.deleteArchived);
-  const beginUpload = useMutation((api as any).mutations.resourceUploadIntents.begin);
-  const registerCandidate = useMutation((api as any).mutations.resourceUploadIntents.registerCandidate);
-  const cancelUpload = useMutation((api as any).mutations.resourceUploadIntents.cancel);
-  const finalizeUpload = useAction((api as any).resourceUploads.finalize);
+  const uploadCanonical = useCanonicalResourceUpload();
   const rows = useMemo(() => filterResources(data?.rows ?? [], search), [data, search]);
   const shares = useQuery((api as any).queries.clientResourceAssignments.countsForResources,
     sessionToken && data ? { sessionToken, resourceIds: data.rows.map((row) => row._id) } : "skip") as Record<string, { count: number; limited: boolean }> | undefined;
@@ -78,28 +76,12 @@ export function ResourcesSection() {
       } else {
         const controller = new AbortController();
         uploadAbort.current = controller;
-        const mimeType = resourceDeclaredMime(file!);
-        const intent = await beginUpload({ sessionToken, requestId, title: cleanedTitle, description: description.trim() || undefined,
-          originalFileName: file!.name, declaredMimeType: mimeType,
-          resourceId: editor.mode === "replace" ? editor.row!._id : undefined,
-          expectedStorageId: editor.mode === "replace" ? editor.row!.storageId : undefined });
-        if (!intent.resourceId) {
-          let storageId: string | null = intent.candidateStorageId;
-          if (storageId) uploadAbort.current = null;
-          try {
-            if (!storageId) {
-              if (!intent.uploadUrl) throw new Error("Upload URL unavailable");
-              storageId = await uploadResourceCandidate(intent.uploadUrl, file!, mimeType, intent.nonce, fraction => setTransfer(t("resourcesHub.uploadingProgress", { percent: Math.round(fraction * 100) })), controller.signal);
-              uploadAbort.current = null;
-              await registerCandidate({ sessionToken, intentId: intent.intentId, storageId });
-            }
-            setTransfer(t("resourcesHub.validating"));
-            await finalizeUpload({ sessionToken, intentId: intent.intentId, storageId });
-          } catch (error) {
-            try { await cancelUpload({ sessionToken, intentId: intent.intentId, storageId: storageId ?? undefined }); } catch { /* Expiry or exact-intent reconciliation handles candidates. */ }
-            throw error;
-          }
-        }
+        await uploadCanonical({ sessionToken, requestId, title: cleanedTitle, description: description.trim() || undefined,
+          file: file!, resourceId: editor.mode === "replace" ? editor.row!._id : undefined,
+          expectedStorageId: editor.mode === "replace" ? editor.row!.storageId : undefined, signal: controller.signal,
+          progress: (fraction) => setTransfer(t("resourcesHub.uploadingProgress", { percent: Math.round(fraction * 100) })),
+          validating: () => { uploadAbort.current = null; setTransfer(t("resourcesHub.validating")); },
+        });
       }
       setEditor(null);
       setNotice(t("resourcesHub.saved"));

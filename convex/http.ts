@@ -10,11 +10,14 @@ import { internal } from "./_generated/api";
 import { areExternalSideEffectsDisabled, requireStripeSecretKey } from "./lib/environment";
 import type { Id } from "./_generated/dataModel";
 import { deliverMicrositeImage } from "./micrositeMediaHttp";
+import { deliverPublicResource, readInspectionFile } from "./micrositeResourcesHttp";
 
 declare const process: { env: Record<string, string | undefined> };
 
 const http = httpRouter();
 http.route({ pathPrefix: "/microsite-media/", method: "GET", handler: deliverMicrositeImage });
+http.route({ pathPrefix: "/microsite-resource/", method: "GET", handler: deliverPublicResource });
+http.route({ path: "/internal/microsite-pdf", method: "GET", handler: readInspectionFile });
 
 function resourceCors(request: Request) {
   const origin = request.headers.get("Origin");

@@ -7,6 +7,8 @@ import { miniSiteSectionsValidator, validateMiniSiteSections } from "../lib/mini
 import { miniSitePresentationValidator, SITE_CONTENT_LIMITS, validateMiniSitePresentation } from "../lib/miniSitePresentation";
 import { micrositeMediaConfig } from "../lib/micrositeMediaModel";
 import { commitMicrositeMedia } from "../lib/micrositeMedia";
+import { micrositeResources } from "../lib/micrositeResourcesModel";
+import { validateResourceEntries } from "../lib/micrositeResources";
 
 /** Generate a cryptographically random hex token (Web Crypto API). */
 function generateRandomToken(length = 40): string {
@@ -42,6 +44,7 @@ export const upsertSite = mutation({
     sections: v.optional(miniSiteSectionsValidator),
     presentation: v.optional(miniSitePresentationValidator),
     media: v.optional(micrositeMediaConfig),
+    resources: v.optional(micrositeResources),
   },
   returns: v.id("companySites"),
   handler: async (ctx, args) => {
@@ -71,6 +74,7 @@ export const upsertSite = mutation({
       throw new Error("This slug is already taken.");
     }
     if (args.media) await commitMicrositeMedia(ctx, args.companyId, user._id, existing?.media, args.media);
+    if (args.resources) await validateResourceEntries(ctx, args.companyId, args.resources, existing?.resources);
 
     // Validate & sanitize services list
     const services = (args.services ?? [])
@@ -103,6 +107,7 @@ export const upsertSite = mutation({
           serviceDetails: existing.presentation.serviceDetails?.filter(({ index, name }) => services[index] === name),
         } } : {}),
       ...(args.media ? { media: args.media } : {}),
+      ...(args.resources ? { resources: args.resources } : {}),
     };
 
     if (existing) {
