@@ -1,8 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { timingSafeEqual } from "node:crypto";
 import { Sandbox } from "@vercel/sandbox";
-import { PDF_INSPECTOR, PDF_LIMITS, PDF_POLICY } from "../../../convex/lib/micrositeResourcesModel.js";
 import { pdfPublicationPolicy } from "./_pdfPublicationPolicy.js";
+import { PDF_INSPECTOR, PDF_LIMITS, PDF_POLICY } from "../src/lib/micrositePdfContract.js";
 
 const requestId = /^[a-z0-9]{20,64}$/;
 const nonceId = /^[0-9a-f-]{36}$/;
