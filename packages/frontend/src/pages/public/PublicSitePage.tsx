@@ -7,6 +7,8 @@ import { miniSiteSectionHeadingKey, publicMiniSiteSections, supportedHighlightIc
 import { SITE_CONTENT_LIMITS, type MiniSiteHours, type MiniSiteProfile, type PublicMiniSitePresentation } from "../../../../../convex/lib/miniSitePresentation";
 import type { PublicMedia } from "../../../../../convex/lib/micrositeMediaModel";
 import { GallerySection, TeamSection } from "./MicrositeMediaSections";
+import { ResourceCards } from "./MicrositeResourceCards";
+import type { PublicResource } from "../../../../../convex/lib/micrositeResourcesModel";
 import { LoadingSpinner } from "@/components/ui/LoadingSpinner";
 import { encodePublicAddOnSelection, formatPublicAddOnPrice } from "@/lib/publicAddOnPresentation";
 import { miniSiteCanonical, miniSiteDescription, miniSiteTitle, safePublicImage } from "../../../../../convex/lib/miniSiteSeo";
@@ -110,6 +112,7 @@ function toTelHref(phone: string): string {
 
 interface SiteData {
   media?: PublicMedia;
+  resources?: PublicResource[];
   presentation?: PublicMiniSitePresentation;
   templateId: string;
   brandName: string;
@@ -309,6 +312,8 @@ export function MiniSiteContent({
             return <GallerySection key={section.id} heading={heading} entries={site.media?.gallery ?? []} isDark={isDark} />;
           case "team":
             return <TeamSection key={section.id} heading={heading} profiles={site.media?.team ?? []} isDark={isDark} />;
+          case "resources":
+            return <ResourceCards key={section.id} heading={heading} entries={site.resources ?? []} isDark={isDark} preview={preview} />;
           case "services":
             return site.services.length ? <ServicesSection key={section.id} heading={heading} services={site.services} details={presentation?.serviceDetails} requestHref={requestHref} isDark={isDark} /> : null;
           case "addOns":

@@ -17,6 +17,8 @@ import { BusinessHoursFields, ProfileFields, QuoteFields } from "./MiniSitePrese
 import { publicMiniSitePresentation, SITE_CONTENT_LIMITS, type MiniSitePresentation } from "../../../../../convex/lib/miniSitePresentation";
 import { EMPTY_MEDIA, projectMicrositeMedia, type MediaConfig } from "../../../../../convex/lib/micrositeMediaModel";
 import { GalleryFields, TeamFields } from "./MicrositeMediaFields";
+import { MicrositeResourceFields } from "./MicrositeResourceFields";
+import type { ResourceEntry } from "../../../../../convex/lib/micrositeResourcesModel";
 import { useMicrositeImages } from "./useMicrositeImages";
 
 type ServiceDraft = Pick<NonNullable<MiniSitePresentation["serviceDetails"]>[number], "name" | "description" | "included" | "excluded">;
@@ -69,8 +71,14 @@ export function SiteSetupPage() {
   const [sections, setSections] = useState(() => resolveMiniSiteSections([]));
   const [previewOpen, setPreviewOpen] = useState(false);
   const [media, setMedia] = useState<MediaConfig>(EMPTY_MEDIA);
+  const [resourceEntries, setResourceEntries] = useState<ResourceEntry[]>([]);
+  const [resourcePanel, setResourcePanel] = useState(false);
   const [mediaPanel, setMediaPanel] = useState<"gallery" | "team" | false>(false);
   const images = useMicrositeImages(sessionToken, media, previewOpen ? "all" : mediaPanel);
+  const documentRows = useQuery(api.micrositeResources.list,
+    sessionToken && (resourcePanel || previewOpen)
+      ? { sessionToken, selected: resourceEntries.map(({ resourceId }) => resourceId) }
+      : "skip");
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -118,6 +126,7 @@ export function SiteSetupPage() {
       setMetaDescription(site.metaDescription ?? "");
       setSections(resolveMiniSiteSections(site.sections));
       setMedia(site.media ?? EMPTY_MEDIA);
+      setResourceEntries(site.resources ?? []);
     }
   }, [site, dirty]);
 
@@ -159,6 +168,7 @@ export function SiteSetupPage() {
         sections,
         presentation: currentPresentation,
         ...(site?.media || media.gallery.length || media.team.length ? { media } : {}),
+        ...(site?.resources || resourceEntries.length ? { resources: resourceEntries } : {}),
       });
       images.markSaved();
       setDirty(false);
@@ -533,8 +543,14 @@ export function SiteSetupPage() {
         <MiniSiteSectionEditor
           sections={sections}
           onChange={(next) => { setSections(next); markDirty(); }}
-          onEditSection={(id) => setMediaPanel(id === "gallery" || id === "team" ? id : false)}
+          onEditSection={(id) => {
+            setMediaPanel(id === "gallery" || id === "team" ? id : false);
+            setResourcePanel(id === "resources");
+          }}
           settings={{
+            resources: <MicrositeResourceFields entries={resourceEntries} rows={documentRows} sessionToken={sessionToken}
+              published={sitePublished && !site?.mediaDeliverySuspended && site?.sections?.some(({ id, enabled }) => id === "resources" && enabled) ? site.resources ?? [] : []}
+              onChange={(update) => { setResourceEntries(update); markDirty(); }} />,
             gallery: <GalleryFields entries={media.gallery} images={images} onChange={(update) => {
               setMedia((current) => ({ ...current, gallery: update(current.gallery) }));
               markDirty();
@@ -601,6 +617,12 @@ export function SiteSetupPage() {
               templateId, brandName: brandName.trim(), bio: bio.trim(), serviceArea: serviceArea.trim(),
               additionalServiceAreas: normalizedAdditionalAreas(additionalServiceAreas, serviceArea),
               services: serviceNames,
+              resources: resourceEntries.flatMap((entry) => {
+                const row = documentRows?.find(({ id }) => id === entry.resourceId);
+                return entry.enabled && row?.eligible
+                  ? [{ id: entry.id, title: entry.title, description: entry.description, bytes: row.bytes }]
+                  : [];
+              }),
               presentation: publicMiniSitePresentation(currentPresentation, serviceNames, sections),
               media: projectMicrositeMedia(media, {
                 gallery: sections.some(({ id, enabled }) => id === "gallery" && enabled),

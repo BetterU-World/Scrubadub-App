@@ -49,6 +49,7 @@ export const finalizeUpload = internalMutation({
       await ctx.db.patch(resource._id, {
         title, description, storageId: args.storageId, originalFileName: args.originalFileName,
         mimeType: args.mimeType, sizeBytes: args.sizeBytes, updatedAt: now,
+        publicDesignation: undefined,
         updatedByUserId: user._id, lastUploadRequestId: uploadKey,
       });
       await ctx.db.patch(intent._id, { status: "completed", completedResourceId: resource._id });
@@ -84,7 +85,7 @@ export const archive = mutation({
   handler: async (ctx, args) => {
     const { user, resource } = await ownedResource(ctx, args.sessionToken, args.resourceId);
     if (resource.status !== "active") throw new Error("Resource is already archived");
-    await ctx.db.patch(resource._id, { status: "archived", updatedAt: Date.now(), updatedByUserId: user._id });
+    await ctx.db.patch(resource._id, { status: "archived", publicDesignation: undefined, updatedAt: Date.now(), updatedByUserId: user._id });
     return resource._id;
   },
 });

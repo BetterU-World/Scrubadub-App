@@ -9,6 +9,7 @@ import { operationalEmailEvent, deliveryState, errorCategory, attemptSummary } f
 import { outgoingTables } from "./lib/outgoingSchema";
 import { ownerOnboardingPreferences } from "./lib/ownerOnboarding";
 import { miniSiteSectionsValidator } from "./lib/miniSiteSections";
+import { micrositeResources, pdfJobStatus, publicDesignation } from "./lib/micrositeResourcesModel";
 import { miniSitePresentationValidator } from "./lib/miniSitePresentation";
 import { mediaMime, mediaPurpose, mediaState, micrositeMediaConfig } from "./lib/micrositeMediaModel";
 import { v } from "convex/values";
@@ -782,6 +783,7 @@ export default defineSchema({
     createdByUserId: v.id("users"),
     updatedByUserId: v.id("users"),
     lastUploadRequestId: v.string(),
+    publicDesignation: v.optional(publicDesignation),
   })
     .index("by_company_status_updated", ["companyId", "status", "updatedAt"])
     .index("by_company_upload_request", ["companyId", "lastUploadRequestId"])
@@ -1485,9 +1487,23 @@ export default defineSchema({
     presentation: v.optional(miniSitePresentationValidator),
     media: v.optional(micrositeMediaConfig),
     mediaDeliverySuspended: v.optional(v.boolean()),
+    resources: v.optional(micrositeResources),
   })
     .index("by_companyId", ["companyId"])
     .index("by_slug", ["slug"]),
+
+  micrositePdfInspections: defineTable({
+    companyId: v.id("companies"), resourceId: v.id("companyResources"), storageId: v.id("_storage"),
+    policy: v.string(), inspector: v.string(), status: pdfJobStatus, checkedAt: v.number(),
+    attempts: v.number(), nonce: v.optional(v.string()), leaseUntil: v.number(), claimed: v.optional(v.boolean()),
+  }).index("by_version", ["resourceId", "storageId", "policy", "inspector"])
+    .index("by_status_lease", ["status", "leaseUntil"]),
+
+  micrositePdfUsage: defineTable({ key: v.string(), day: v.number(), launches: v.number(), suspended: v.boolean() })
+    .index("by_key", ["key"]),
+
+  micrositePdfDelivery: defineTable({ companyId: v.id("companies"), windowStart: v.number(), bytes: v.number() })
+    .index("by_company", ["companyId"]),
 
   micrositeMediaAssets: defineTable({
     companyId: v.id("companies"),

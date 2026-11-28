@@ -74,6 +74,25 @@ describe("raw mini-site HTTP response", () => {
     }
   });
 
+  it("renders only gated PDF links with escaped authored text", async () => {
+    state.site = {
+      slug: "cleaning-example", templateId: "A", brandName: "Example", bio: "Local cleaners",
+      serviceArea: "Tampa", additionalServiceAreas: [], services: [], sections: [{ id: "resources" }],
+      resources: [
+        { id: "guide", title: "Welcome <guide>", description: "Before & after", bytes: 1500,
+          url: "https://example.convex.site/microsite-resource/cleaning-example/guide/key" },
+        { id: "invalid", title: "Hidden", bytes: 300, url: "https://example.convex.cloud/api/storage/private" },
+      ],
+    };
+    const result = await request("cleaning-example");
+    expect(result.statusCode).toBe(200);
+    expect(result.body).toContain("Welcome &lt;guide&gt;");
+    expect(result.body).toContain("Before &amp; after");
+    expect(result.body).toContain('href="https://example.convex.site/microsite-resource/cleaning-example/guide/key"');
+    expect(result.body).not.toContain("storage/private");
+    expect(result.body).not.toContain("Hidden");
+  });
+
   it("rejects invalid slugs and preserves reserved app routes", async () => {
     expect((await request("bad_slug")).statusCode).toBe(404);
     const reserved = await request("showcase");

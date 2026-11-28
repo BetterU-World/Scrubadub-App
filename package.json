@@ -19,6 +19,11 @@
     "qa:reset": "convex run internal.qaFixtures.reset",
     "qa:reseed": "convex run internal.qaFixtures.reseed"
   },
+  "overrides": {
+    "@vercel/cli-config@0.3.1": {
+      "zod": "4.6.7"
+    }
+  },
   "devDependencies": {
     "@types/node": "^25.3.0",
     "concurrently": "^8.2.2",

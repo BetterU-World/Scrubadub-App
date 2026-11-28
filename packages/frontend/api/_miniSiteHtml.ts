@@ -2,6 +2,7 @@ import { miniSiteCanonical, miniSiteDescription, miniSiteTitle, safePublicImage,
 import type { PublicMiniSiteSections } from "../../../convex/lib/miniSiteSections";
 import type { MiniSiteProfile, PublicMiniSitePresentation } from "../../../convex/lib/miniSitePresentation";
 import type { PublicMedia } from "../../../convex/lib/micrositeMediaModel";
+import type { PublicResource } from "../../../convex/lib/micrositeResourcesModel";
 
 const escapeHtml = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 const scrubImage = "https://scrubscrubscrub.com/scrub-social-preview.png";
@@ -19,6 +20,7 @@ const fallbackHeadings = {
   policies: "Service policies",
   gallery: "Gallery",
   team: "Meet our team",
+  resources: "Company resources",
 } satisfies Record<PublicMiniSiteSections[number]["id"], string>;
 
 const profileNames = {
@@ -52,6 +54,7 @@ export function renderMiniSiteHtml(template: string, site: MiniSiteFacts & {
   sections?: PublicMiniSiteSections;
   presentation?: PublicMiniSitePresentation;
   media?: PublicMedia;
+  resources?: PublicResource[];
 }) {
   const title = miniSiteTitle(site);
   const description = miniSiteDescription(site);
@@ -108,6 +111,15 @@ export function renderMiniSiteHtml(template: string, site: MiniSiteFacts & {
     }).join("") ?? "";
     if (id === "team") body = site.media?.team.map(({ name, role, bio, portrait }) =>
       `<article>${portrait ? mediaImage(portrait) : ""}<h3>${escapeHtml(name)}</h3><p>${escapeHtml(role)}</p>${bio ? `<p>${escapeHtml(bio)}</p>` : ""}</article>`).join("") ?? "";
+    if (id === "resources") body = site.resources?.map(({ title, description, bytes, url }) => {
+      try {
+        const link = new URL(url ?? "");
+        if ((link.protocol !== "https:" && !(link.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(link.hostname))) ||
+          link.username || link.password || link.search || link.hash ||
+          !/^\/microsite-resource\/[a-z0-9-]+\/[\w-]+\/[\w-]+$/.test(link.pathname)) return "";
+        return `<article><h3>${escapeHtml(title)}</h3>${description ? `<p>${escapeHtml(description)}</p>` : ""}<p>PDF · ${Math.ceil(bytes / 1024)} KB</p><a href="${escapeHtml(link.href)}">Download PDF</a></article>`;
+      } catch { return ""; }
+    }).join("") ?? "";
     if ((id === "highlights" || id === "howItWorks") && entries?.length) {
       const list = id === "howItWorks" ? "ol" : "ul";
       body = `<${list}>${entries.map(({ title, body }) => `<li><h3>${escapeHtml(title)}</h3><p>${escapeHtml(body)}</p></li>`).join("")}</${list}>`;

@@ -7,6 +7,7 @@ import { MINI_SITE_SECTIONS, publicMiniSiteSections, resolveMiniSiteSections, SE
 import { hashToken } from "../tokens";
 import { safeMiniSiteProfile, SITE_CONTENT_LIMITS, type MiniSitePresentation, type MiniSiteProfile } from "../miniSitePresentation";
 import { EMPTY_MEDIA, MEDIA_LIMITS, type MediaConfig, type MediaPurpose } from "../micrositeMediaModel";
+import { PDF_LIMITS, type ResourceEntry } from "../micrositeResourcesModel";
 
 const modules = import.meta.glob("../../**/*.ts");
 afterEach(() => vi.unstubAllEnvs());
@@ -157,9 +158,104 @@ describe("microsite section configuration", () => {
     ];
     expect(resolveMiniSiteSections(outdated).map(({ id }) => id)).toEqual([
       "highlights", "services", "addOns", "howItWorks", "serviceArea", "reviews", "faq",
-      "businessHours", "socialProfiles", "policies", "gallery", "team",
+      "businessHours", "socialProfiles", "policies", "gallery", "team", "resources",
     ]);
     expect(publicMiniSiteSections(outdated)[0]).toEqual({ id: "highlights", entries: [{ title: "Title", body: "Body" }] });
+  });
+});
+
+describe("canonical public PDFs", () => {
+  it("requires owner designation, a passed check, version approval, and a visible saved entry", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    vi.stubEnv("CONVEX_SITE_URL", "https://test.convex.site");
+    try {
+      const { test, owner, manager, otherOwner, companyId, siteId } = await fixture();
+      const bytes = "%PDF-1.4\nsynthetic checked fixture\n%%EOF";
+      const storageId = await test.run((ctx) => ctx.storage.store(new Blob([bytes], { type: "application/pdf" })));
+      const resourceId = await test.run((ctx) => ctx.db.insert("companyResources", {
+        companyId, title: "Private name", storageId, originalFileName: "private-name.pdf", mimeType: "application/pdf",
+        sizeBytes: bytes.length, status: "active", createdAt: 1, updatedAt: 1,
+        createdByUserId: owner.userId, updatedByUserId: owner.userId, lastUploadRequestId: "canonical",
+      }));
+      const pub = api.micrositeResources;
+      const ops = internal.micrositeResources;
+      const staff = { resourceId, sessionToken: owner.sessionToken };
+      const enable = [{ id: "resources", enabled: true }];
+      const entry: ResourceEntry = { id: "guide", title: "Public guide", description: "Getting ready", resourceId, enabled: true };
+      const save = (resources: ResourceEntry[], sections = enable, isPublished = true) =>
+        test.mutation(api.mutations.companySites.upsertSite, { ...siteFields, ...owner, companyId, resources, sections, isPublished });
+      const publicSite = () => test.query(api.queries.companySites.getBySlug, { slug: siteFields.slug });
+      await save([entry]);
+      expect((await publicSite())?.resources).toBeUndefined();
+      for (const sessionToken of ["invalid", manager.sessionToken, otherOwner.sessionToken]) {
+        await expect(test.mutation(pub.requestInspection, { resourceId, sessionToken, designate: true })).rejects.toThrow();
+      }
+      await Promise.all(Array.from({ length: 3 }, () => test.mutation(pub.requestInspection, { ...staff, designate: true })));
+      const jobs = await test.run((ctx) => ctx.db.query("micrositePdfInspections").collect());
+      expect(jobs).toHaveLength(1);
+      const job = { jobId: jobs[0]._id, nonce: jobs[0].nonce! };
+      await expect(test.mutation(pub.approve, { ...staff, expectedVersion: "forged", acknowledged: true })).rejects.toThrow();
+      await expect(test.mutation(ops.claimTransfer, job)).resolves.toEqual({ storageId, bytes: bytes.length });
+      await expect(test.mutation(ops.claimTransfer, job)).resolves.toBe(null);
+      await test.mutation(ops.finish, { ...job, status: "passed" });
+      const [row] = await test.query(pub.list, { sessionToken: owner.sessionToken });
+      expect(row.state).toBe("passed");
+      const approval = await test.mutation(pub.approve, { ...staff, expectedVersion: row.version!, acknowledged: true });
+      expect((await publicSite())?.resources).toBeUndefined();
+      await save([{ ...entry, approval }]);
+      const site = (await publicSite())!;
+      expect(site.resources?.[0]).toMatchObject({ title: entry.title, description: entry.description, bytes: bytes.length });
+      expect(JSON.stringify(site)).not.toContain("private-name.pdf");
+      expect(JSON.stringify(site)).not.toContain(storageId);
+      expect(JSON.stringify(site)).not.toContain(resourceId);
+      const path = new URL(site.resources![0].url!).pathname;
+      const download = await test.fetch(path);
+      expect(await download.text()).toBe(bytes);
+      expect(download.headers.get("Content-Disposition")).toMatch(/^attachment/);
+      expect(download.headers.get("Cache-Control")).toBe("no-store");
+      expect(download.headers.get("X-Content-Type-Options")).toBe("nosniff");
+
+      await test.run((ctx) => ctx.db.patch(resourceId, { title: "Renamed internally" }));
+      expect((await publicSite())?.resources?.[0].title).toBe(entry.title);
+      for (const [entries, sections, published] of [
+        [[{ ...entry, approval, enabled: false }], enable, true],
+        [[{ ...entry, approval }], [{ id: "resources", enabled: false }], true],
+        [[{ ...entry, approval }], enable, false],
+      ] as const) {
+        await save([...entries], [...sections], published);
+        expect((await test.fetch(path)).status).toBe(404);
+      }
+      await save([{ ...entry, approval }]);
+      await test.run(async (ctx) => {
+        const budget = await ctx.db.query("micrositePdfDelivery").first();
+        await ctx.db.patch(budget!._id, { bytes: PDF_LIMITS.downloadBytesHourly });
+      });
+      expect((await test.fetch(path)).status).toBe(429);
+      await test.run((ctx) => ctx.db.patch(siteId, { mediaDeliverySuspended: true }));
+      expect((await test.fetch(path)).status).toBe(404);
+      await test.run((ctx) => ctx.db.patch(siteId, { mediaDeliverySuspended: false }));
+      expect(await test.run((ctx) => ctx.db.query("micrositePdfInspections").collect())).toHaveLength(1);
+
+      const replacement = await test.run((ctx) => ctx.storage.store(new Blob([bytes + "new"])));
+      await test.run((ctx) => ctx.db.patch(resourceId, { storageId: replacement, sizeBytes: bytes.length + 3 }));
+      expect((await test.fetch(path)).status).toBe(404);
+      await expect(test.mutation(pub.approve, { ...staff, expectedVersion: row.version!, acknowledged: true })).rejects.toThrow();
+      await test.mutation(ops.setInspectionSuspension, { suspended: true });
+      await expect(test.mutation(pub.requestInspection, { ...staff, designate: true })).rejects.toThrow("temporarily unavailable");
+      await test.mutation(ops.setInspectionSuspension, { suspended: false });
+      await test.mutation(pub.requestInspection, { ...staff, designate: true });
+      const newJob = (await test.run((ctx) => ctx.db.query("micrositePdfInspections").collect()))
+        .find(({ storageId }) => storageId === replacement)!;
+      const replacementJob = { jobId: newJob._id, nonce: newJob.nonce! };
+      await expect(test.mutation(ops.claimTransfer, replacementJob)).resolves.toEqual({ storageId: replacement, bytes: bytes.length + 3 });
+      await test.mutation(api.mutations.companyResources.archive, staff);
+      await test.mutation(ops.finish, { ...replacementJob, status: "passed" });
+      expect((await test.run((ctx) => ctx.db.get(newJob._id)))?.status).toBe("unavailable");
+      expect((await test.fetch(path)).status).toBe(404);
+      await save([]);
+      expect(await test.run((ctx) => ctx.db.system.get("_storage", replacement))).not.toBeNull();
+      expect(await test.run((ctx) => ctx.db.get(resourceId))).not.toBeNull();
+    } finally { vi.useRealTimers(); }
   });
 });
 
