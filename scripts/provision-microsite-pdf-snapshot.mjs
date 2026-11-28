@@ -42,7 +42,8 @@ try {
     throw new Error("Pinned PDF inspector provisioning failed.");
   }
   await sandbox.update({ networkPolicy: "deny-all" });
-  const snapshot = await sandbox.snapshot({ expiration: 30 * 86_400_000 });
+  // Retain only the clean dependency artifact until an intentional update.
+  const snapshot = await sandbox.snapshot({ expiration: 0 });
   console.log(snapshot.snapshotId);
 } finally {
   await sandbox.stop().catch(() => {});
