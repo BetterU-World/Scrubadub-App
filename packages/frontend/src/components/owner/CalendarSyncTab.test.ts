@@ -19,6 +19,12 @@ function render(connection: Record<string, unknown>, reservations: any[] = [], c
 }
 
 describe("empty calendar check presentation", () => {
+  it("hides credentials even from a legacy response and sanitizes legacy diagnostics", () => {
+    const markup = render({ icalUrl: "https://secret.example.com/private-token?key=secret-query", lastSyncError: "Failed https://secret.example.com/private-token?key=secret-query body-secret" });
+    expect(markup).toContain("Private feed URL saved (hidden)");
+    expect(markup).toContain("Replace URL");
+    expect(markup).not.toContain("private-token"); expect(markup).not.toContain("secret-query"); expect(markup).not.toContain("body-secret");
+  });
   it("distinguishes a healthy empty check from authoritative reconciliation", () => {
     const markup = render({ lastSyncAt: Date.now() - 2 * 60 * 60_000 });
     expect(markup).toContain("no events returned");

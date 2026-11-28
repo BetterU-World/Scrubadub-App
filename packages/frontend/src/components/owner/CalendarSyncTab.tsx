@@ -1,3 +1,4 @@
+import { sanitizeFeedDiagnostic } from "../../../../../convex/lib/calendarFeedSecurity";
 import { useSimpleFeedbackState } from "@/components/ui/FeedbackProvider";
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
@@ -171,7 +172,8 @@ function ConnectionSection({
   sessionToken: string;
 }) {
   const [showForm, setShowForm] = useState(!connection);
-  const [url, setUrl] = useState(connection?.icalUrl ?? "");
+  const [url, setUrl] = useState("");
+  const [replacingUrl, setReplacingUrl] = useState(false);
   const [platform, setPlatform] = useState<Platform>(connection?.platform ?? "airbnb");
   const [label, setLabel] = useState(connection?.label ?? "");
   const [saving, setSaving] = useState(false);
@@ -190,7 +192,7 @@ function ConnectionSection({
   };
 
   const handleSave = async () => {
-    if (!url.trim()) {
+    if ((!connection || replacingUrl) && !url.trim()) {
       setError("Please enter a calendar feed URL");
       return;
     }
@@ -202,7 +204,7 @@ function ConnectionSection({
           userId,
           sessionToken,
           connectionId: connection._id,
-          icalUrl: url.trim(),
+          ...(replacingUrl ? { icalUrl: url.trim() } : {}),
           platform,
           label: label.trim() || undefined,
         });
@@ -220,8 +222,10 @@ function ConnectionSection({
         showToast("Calendar feed connected");
       }
       setShowForm(false);
+      setUrl("");
+      setReplacingUrl(false);
     } catch (err: any) {
-      setError(err.message || "Failed to save");
+      setError("Unable to save. Check your access and feed URL, then try again.");
     } finally {
       setSaving(false);
     }
@@ -238,7 +242,7 @@ function ConnectionSection({
       });
       showToast(connection.enabled ? "Sync disabled" : "Sync enabled");
     } catch (err: any) {
-      setError(err.message || "Failed to toggle");
+      setError("Unable to toggle. Check your access and feed URL, then try again.");
     }
   };
 
@@ -252,7 +256,7 @@ function ConnectionSection({
       setShowForm(true);
       showToast("Calendar feed removed");
     } catch (err: any) {
-      setError(err.message || "Failed to remove");
+      setError("Unable to remove. Check your access and feed URL, then try again.");
     }
   };
 
@@ -267,7 +271,7 @@ function ConnectionSection({
         : outcome === "suspended" ? "Sync disabled after repeated failures. Check the feed and re-enable."
         : "Sync started — results will appear shortly");
     } catch (err: any) {
-      setError(err.message || "Failed to trigger sync");
+      setError("Unable to trigger sync. Check your access and feed URL, then try again.");
     } finally {
       setSyncing(false);
     }
@@ -276,13 +280,13 @@ function ConnectionSection({
   return (
     <div className="card">
 
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap gap-3 items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Calendar className="w-5 h-5 text-primary-600" />
           <h3 className="font-semibold text-gray-900">Calendar Feed</h3>
         </div>
         {connection && !showForm && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={handleSync}
               disabled={syncing || !connection.enabled}
@@ -293,7 +297,8 @@ function ConnectionSection({
             </button>
             <button
               onClick={() => {
-                setUrl(connection.icalUrl);
+                setUrl("");
+                setReplacingUrl(false);
                 setPlatform(connection.platform);
                 setLabel(connection.label ?? "");
                 setShowForm(true);
@@ -302,6 +307,10 @@ function ConnectionSection({
             >
               Edit
             </button>
+            <button className="btn-secondary text-sm" onClick={() => {
+              setUrl(""); setReplacingUrl(true); setPlatform(connection.platform);
+              setLabel(connection.label ?? ""); setShowForm(true);
+            }}>Replace URL</button>
           </div>
         )}
       </div>
@@ -361,7 +370,7 @@ function ConnectionSection({
           {connection.lastSyncError && (
             <div className="p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
               <AlertTriangle className="w-3.5 h-3.5 inline mr-1" />
-              {connection.lastSyncError}
+              {sanitizeFeedDiagnostic(connection.lastSyncError)}
             </div>
           )}
 
@@ -378,7 +387,7 @@ function ConnectionSection({
               <span className="capitalize font-medium">{connection.platform}</span>
               {connection.label && <span className="text-gray-400">· {connection.label}</span>}
             </div>
-            <div className="text-xs text-gray-400 truncate">{connection.icalUrl}</div>
+            <div className="text-xs text-gray-500">Private feed URL saved (hidden)</div>
           </div>
 
           <button
@@ -412,16 +421,18 @@ function ConnectionSection({
             </select>
           </div>
 
-          <div>
+          {(!connection || replacingUrl) && <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">iCal Feed URL</label>
             <input
               type="url"
+              autoComplete="off"
+              spellCheck={false}
               className="input-field"
               placeholder="https://www.airbnb.com/calendar/ical/..."
               value={url}
               onChange={(e) => setUrl(e.target.value)}
             />
-          </div>
+          </div>}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -445,7 +456,7 @@ function ConnectionSection({
               {saving ? "Saving…" : connection ? "Update Feed" : "Connect Feed"}
             </button>
             {connection && (
-              <button onClick={() => setShowForm(false)} className="btn-secondary text-sm">
+              <button onClick={() => { setUrl(""); setReplacingUrl(false); setShowForm(false); }} className="btn-secondary text-sm">
                 Cancel
               </button>
             )}
