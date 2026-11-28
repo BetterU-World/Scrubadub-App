@@ -43,7 +43,8 @@ try {
     await pipeline(file.toStream(), createWriteStream(destination));
   }
   const handlerUrl = pathToFileURL(path.join(bundle, output.handler)).href;
-  const invocation = spawnSync(process.execPath, ["--input-type=module", "-e", `
+  // Vercel disables require(esm) by default; the worker deployment opts in for the pinned SDK.
+  const invocation = spawnSync(process.execPath, ["--experimental-require-module", "--input-type=module", "-e", `
     import assert from "node:assert/strict";
     const { default: handler } = await import(process.argv[1]);
     process.env.MICROSITE_PDF_WORKER_KEY = "test-key-for-bundled-function-authentication";
